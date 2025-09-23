@@ -91,6 +91,7 @@ contract HubMock is IHubGatewayHandler {
     function initiateTransferShares(uint16, uint16, PoolId, ShareClassId, bytes32, uint128, uint128)
         external
         override
+        returns (uint256)
     {}
 
     function updateShares(uint16, PoolId, ShareClassId, uint128, bool, bool, uint64) external override {}

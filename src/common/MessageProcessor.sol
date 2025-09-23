@@ -207,9 +207,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.MaxSharePriceAge) {
             MessageLib.MaxSharePriceAge memory m = message.deserializeMaxSharePriceAge();
             spoke.setMaxSharePriceAge(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.maxPriceAge);
-        } else if (kind == MessageType.SetGatewayManager) {
-            MessageLib.SetGatewayManager memory m = message.deserializeSetGatewayManager();
-            gateway.setManager(PoolId.wrap(m.poolId), m.manager.toAddress());
+        } else if (kind == MessageType.UpdateGatewayManager) {
+            MessageLib.UpdateGatewayManager memory m = message.deserializeUpdateGatewayManager();
+            gateway.updateManager(PoolId.wrap(m.poolId), m.who.toAddress(), m.canManage);
         } else {
             revert InvalidMessage(uint8(kind));
         }

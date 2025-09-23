@@ -2,8 +2,8 @@
 pragma solidity 0.8.28;
 
 import {ERC20} from "../../../src/misc/ERC20.sol";
-import {D18} from "../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+import {IERC7575Share, IERC165} from "../../../src/misc/interfaces/IERC7575.sol";
 
 import {Root} from "../../../src/common/Root.sol";
 import {Gateway} from "../../../src/common/Gateway.sol";
@@ -23,6 +23,8 @@ import {ShareClassManager} from "../../../src/hub/ShareClassManager.sol";
 
 import {Spoke} from "../../../src/spoke/Spoke.sol";
 import {BalanceSheet} from "../../../src/spoke/BalanceSheet.sol";
+import {UpdateContractMessageLib} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";
+import {IVaultManager, REQUEST_MANAGER_V3_0} from "../../../src/spoke/interfaces/legacy/IVaultManager.sol";
 
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
@@ -35,38 +37,75 @@ import {MockSnapshotHook} from "../../hooks/mocks/MockSnapshotHook.sol";
 import {FreezeOnly} from "../../../src/hooks/FreezeOnly.sol";
 import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
 import {RedemptionRestrictions} from "../../../src/hooks/RedemptionRestrictions.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {OracleValuation} from "../../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../../src/valuations/IdentityValuation.sol";
 
 import "forge-std/Test.sol";
 
-import {EndToEndFlows} from "../EndToEnd.t.sol";
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 
-interface HubLike {
-    function updateRestriction(
-        PoolId poolId,
-        ShareClassId scId,
-        uint16 centrifugeId,
-        bytes calldata payload,
-        uint128 extraGasLimit
-    ) external payable;
+struct CHub {
+    uint16 centrifugeId;
+    // Common
+    Root root;
+    Guardian guardian;
+    Gateway gateway;
+    MultiAdapter multiAdapter;
+    GasService gasService;
+    // Hub
+    HubRegistry hubRegistry;
+    Accounting accounting;
+    Holdings holdings;
+    ShareClassManager shareClassManager;
+    Hub hub;
+    // Others
+    IdentityValuation identityValuation;
+    OracleValuation oracleValuation;
+    MockSnapshotHook snapshotHook;
+}
 
-    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external payable;
-
-    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
+struct CSpoke {
+    uint16 centrifugeId;
+    // Common
+    Root root;
+    Guardian guardian;
+    Gateway gateway;
+    MultiAdapter multiAdapter;
+    // Vaults
+    BalanceSheet balanceSheet;
+    Spoke spoke;
+    VaultRouter router;
+    bytes32 asyncVaultFactory;
+    bytes32 syncDepositVaultFactory;
+    AsyncRequestManager asyncRequestManager;
+    SyncManager syncManager;
+    // Hooks
+    FreezeOnly freezeOnlyHook;
+    FullRestrictions fullRestrictionsHook;
+    RedemptionRestrictions redemptionRestrictionsHook;
+    // Others
+    ERC20 usdc;
+    AssetId usdcId;
 }
 
 /// @title ForkTestBase
 /// @notice Base contract for all fork tests, providing common setup and utilities
-contract ForkTestBase is EndToEndFlows {
+contract ForkTestBase is Test {
     using CastLib for *;
+    using UpdateContractMessageLib for *;
+    using UpdateRestrictionMessageLib for *;
+
+    uint128 constant GAS = IntegrationConstants.GAS;
+    uint128 constant EXTRA_GAS = IntegrationConstants.EXTRA_GAS;
+
+    address immutable ANY = makeAddr("ANY");
 
     CHub forkHub;
     CSpoke forkSpoke;
 
-    function setUp() public virtual override {
+    function setUp() public virtual {
         vm.createSelectFork(_rpcEndpoint());
         _loadContracts();
     }
@@ -92,8 +131,6 @@ contract ForkTestBase is EndToEndFlows {
             holdings: Holdings(IntegrationConstants.HOLDINGS),
             shareClassManager: ShareClassManager(IntegrationConstants.SHARE_CLASS_MANAGER),
             hub: Hub(IntegrationConstants.HUB),
-            hubHelpers: HubHelpers(IntegrationConstants.HUB_HELPERS),
-            hubRequestManager: HubRequestManager(address(0)), // TODO: add this once deployed
             identityValuation: IdentityValuation(IntegrationConstants.IDENTITY_VALUATION),
             oracleValuation: OracleValuation(address(0)), // TODO: add this once deployed
             snapshotHook: MockSnapshotHook(address(0)) // Fork tests don't use snapshot hooks
@@ -119,12 +156,15 @@ contract ForkTestBase is EndToEndFlows {
             usdcId: newAssetId(0) // NOTE: Unused in fork tests in order to be chain agnostic
         });
 
-        // Initialize pricing state
-        currentAssetPrice = IntegrationConstants.identityPrice();
-        currentSharePrice = IntegrationConstants.identityPrice();
-
         // Fund pool admin
         vm.deal(_poolAdmin(), 10 ether);
+    }
+
+    function _updateRestrictionMemberMsg(address addr) internal pure returns (bytes memory) {
+        return UpdateRestrictionMessageLib.UpdateRestrictionMember({
+            user: addr.toBytes32(),
+            validUntil: type(uint64).max
+        }).serialize();
     }
 
     function _addPoolMember(IBaseVault vault, address user) internal virtual {
@@ -143,17 +183,46 @@ contract ForkTestBase is EndToEndFlows {
         PoolId poolId,
         ShareClassId shareClassId,
         AssetId assetId,
-        address poolManager,
-        D18 assetPrice,
-        D18 sharePrice
-    ) internal virtual override {
-        currentAssetPrice = assetPrice;
-        currentSharePrice = sharePrice;
-
+        address poolManager
+    ) internal virtual {
         vm.startPrank(poolManager);
-        hub.hub.updateSharePrice(poolId, shareClassId, sharePrice);
+        hub.hub.updateSharePrice(poolId, shareClassId, IntegrationConstants.identityPrice());
         hub.hub.notifySharePrice(poolId, shareClassId, spoke.centrifugeId);
         hub.hub.notifyAssetPrice(poolId, shareClassId, assetId);
         vm.stopPrank();
+    }
+
+    function _isShareToken(address token) internal view returns (bool) {
+        try IERC165(token).supportsInterface(type(IERC7575Share).interfaceId) returns (bool supported) {
+            return supported;
+        } catch {
+            return false;
+        }
+    }
+
+    function _getAsyncVault(CSpoke memory spoke, PoolId poolId, ShareClassId shareClassId, AssetId assetId)
+        internal
+        view
+        returns (address vaultAddr)
+    {
+        if (spoke.asyncRequestManager == REQUEST_MANAGER_V3_0) {
+            // Fallback to legacy V3.0 lookup if not found in new system
+            return
+                address(IVaultManager(address(spoke.asyncRequestManager)).vaultByAssetId(poolId, shareClassId, assetId));
+        } else {
+            // Try new system first
+            return address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
+        }
+    }
+
+    function _updateContractSyncDepositMaxReserveMsg(AssetId assetId, uint128 maxReserve)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        return UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
+            assetId: assetId.raw(),
+            maxReserve: maxReserve
+        }).serialize();
     }
 }

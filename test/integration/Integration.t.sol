@@ -24,7 +24,7 @@ import "forge-std/Test.sol";
 contract CentrifugeIntegrationTest is FullDeployer, Test {
     uint16 constant LOCAL_CENTRIFUGE_ID = IntegrationConstants.LOCAL_CENTRIFUGE_ID;
     address immutable ADMIN = address(adminSafe);
-    address immutable FUNDED = address(this);
+    address immutable FUNDED = makeAddr("FUNDED");
     uint256 constant DEFAULT_SUBSIDY = IntegrationConstants.INTEGRATION_DEFAULT_SUBSIDY;
 
     // Helper contracts
@@ -50,6 +50,9 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
 
         // Subsidizing guardian actions
         gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
+
+        // Accounts
+        vm.deal(FUNDED, 100 ether);
     }
 }
 

@@ -55,7 +55,7 @@ contract BaseTest is HubDeployer, Test {
 
     uint128 constant GAS = MAX_MESSAGE_COST;
     uint128 constant DEFAULT_SUBSIDY = MAX_MESSAGE_COST * 1000;
-    uint128 constant SHARE_HOOK_GAS = 0 wei;
+    uint128 constant HOOK_GAS = 0 wei;
 
     MockVaults cv;
     MockValuation valuation;

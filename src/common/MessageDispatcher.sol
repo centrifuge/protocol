@@ -67,7 +67,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
-        else if (what == "gateway") gateway = IGateway(gateway);
+        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
         else revert FileUnrecognizedParam();
@@ -383,13 +383,15 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         ShareClassId scId,
         bytes32 receiver,
         uint128 amount,
+        uint128 extraGasLimit,
         uint128 remoteExtraGasLimit
     ) external auth returns (uint256 cost) {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.initiateTransferShares(
+            return hub.initiateTransferShares(
                 localCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit
             );
         } else {
+            gateway.setExtraGasLimit(extraGasLimit);
             return gateway.send(
                 poolId.centrifugeId(),
                 MessageLib.InitiateTransferShares({
@@ -583,16 +585,17 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
-    function sendSetGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager)
+    function sendUpdateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
         external
         auth
         returns (uint256 cost)
     {
         if (centrifugeId == localCentrifugeId) {
-            gateway.setManager(poolId, manager.toAddress());
+            gateway.updateManager(poolId, who.toAddress(), canManage);
         } else {
             return gateway.send(
-                centrifugeId, MessageLib.SetGatewayManager({poolId: poolId.raw(), manager: manager}).serialize()
+                centrifugeId,
+                MessageLib.UpdateGatewayManager({poolId: poolId.raw(), who: who, canManage: canManage}).serialize()
             );
         }
     }

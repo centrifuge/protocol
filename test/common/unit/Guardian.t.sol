@@ -273,19 +273,21 @@ contract GuardianTestSetAdapters is GuardianTest {
     }
 }
 
-contract GuardianTestSetGatewayManagers is GuardianTest {
-    function testSetAdaptersManagers() public {
+contract GuardianTestUpdateGatewayManagers is GuardianTest {
+    function testUpdateAdaptersManagers() public {
         vm.mockCall(
-            address(gateway), abi.encodeWithSelector(IGateway.setManager.selector, POOL_0, MANAGER), abi.encode()
+            address(gateway),
+            abi.encodeWithSelector(IGateway.updateManager.selector, POOL_0, MANAGER, true),
+            abi.encode()
         );
 
         vm.prank(address(SAFE));
-        guardian.setGatewayManager(MANAGER);
+        guardian.updateGatewayManager(MANAGER, true);
     }
 
     function testSetAdaptersOnlySafe() public {
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.setGatewayManager(MANAGER);
+        guardian.updateGatewayManager(MANAGER, true);
     }
 }

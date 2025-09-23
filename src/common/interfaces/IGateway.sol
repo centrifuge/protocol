@@ -25,7 +25,7 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
 
     event File(bytes32 indexed what, address addr);
 
-    event SetManager(PoolId poolId, address manager);
+    event UpdateManager(PoolId poolId, address who, bool canManage);
     event BlockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked);
 
     event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
@@ -85,8 +85,9 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
 
     /// @notice Configures a manager address for a pool.
     /// @param  poolId PoolId associated to the adapters
-    /// @param  manager address
-    function setManager(PoolId poolId, address manager) external;
+    /// @param  who Manager address
+    /// @param  canManage if enabled as manager
+    function updateManager(PoolId poolId, address who, bool canManage) external;
 
     /// @notice Indicates if the gateway for a determined pool can send messages or not
     /// @param centrifugeId Centrifuge ID associated to this block

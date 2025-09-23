@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ForkTestBase} from "./ForkTestBase.sol";
+import {CHub, CSpoke, ForkTestBase} from "./ForkTestBase.sol";
 
 import {ERC20} from "../../../src/misc/ERC20.sol";
 import {D18} from "../../../src/misc/types/D18.sol";
+import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {Root} from "../../../src/common/Root.sol";
@@ -14,9 +15,9 @@ import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {AssetId} from "../../../src/common/types/AssetId.sol";
 import {GasService} from "../../../src/common/GasService.sol";
 import {MultiAdapter} from "../../../src/common/MultiAdapter.sol";
-import {MessageLib} from "../../../src/common/libraries/MessageLib.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {MessageProcessor} from "../../../src/common/MessageProcessor.sol";
+import {MessageLib, VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
 import {RequestCallbackMessageLib} from "../../../src/common/libraries/RequestCallbackMessageLib.sol";
 
 import {Hub} from "../../../src/hub/Hub.sol";
@@ -35,6 +36,7 @@ import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 import {HubRequestManager} from "../../../src/vaults/HubRequestManager.sol";
 import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
+import {IAsyncRedeemVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 
 import {MockSnapshotHook} from "../../hooks/mocks/MockSnapshotHook.sol";
 
@@ -50,33 +52,164 @@ import "forge-std/Test.sol";
 import {VMLabeling} from "../utils/VMLabeling.sol";
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 
-/// @title ForkTestAsyncInvestments
-/// @notice Fork tests for async investment flows on Ethereum mainnet
-contract ForkTestAsyncInvestments is ForkTestBase, VMLabeling {
+contract ForkTestInvestmentFlows is ForkTestBase, VMLabeling {
     using CastLib for *;
     using RequestCallbackMessageLib for *;
     using MessageLib for *;
-
-    // TODO(later): After v2 disable, switch to JAAA
-    IBaseVault constant VAULT = IBaseVault(IntegrationConstants.ETH_DEJAA_USDC_VAULT);
-
-    uint128 constant depositAmount = IntegrationConstants.DEFAULT_USDC_AMOUNT;
 
     function setUp() public virtual override {
         super.setUp();
         _setupVMLabels();
     }
 
-    function test_completeAsyncDepositLocalFlow() public virtual {
-        completeAsyncDepositLocal(VAULT, makeAddr("INVESTOR_A"), depositAmount);
+    //----------------------------------------------------------------------------------------------
+    // Async Deposit Flows
+    //----------------------------------------------------------------------------------------------
+
+    function _asyncDepositFlow(
+        CHub memory hub,
+        CSpoke memory spoke,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address poolManager,
+        address investor,
+        uint128 amount,
+        address existingVault
+    ) internal {
+        _baseConfigurePrices(hub, spoke, poolId, shareClassId, assetId, poolManager);
+
+        // Deploy or get existing vault (with fallback for fork tests)
+        IAsyncVault vault =
+            _ensureAsyncVaultExists(hub, spoke, poolId, shareClassId, assetId, poolManager, existingVault);
+
+        // Execute deposit request
+        _executeAsyncDepositRequest(vault, investor, amount);
+
+        // Ensure deposit/issue epochs are aligned before proceeding (handles live chain state)
+        _ensureDepositEpochsAligned(hub, poolId, shareClassId, assetId, poolManager);
+
+        // Process deposit approval and share issuance
+        _processAsyncDepositApproval(hub, poolId, shareClassId, assetId, poolManager, amount);
+
+        // Claim shares
+        _processAsyncDepositClaim(hub, spoke, poolId, shareClassId, assetId, investor, vault);
     }
 
-    function test_completeAsyncRedeemLocalFlow() public virtual {
-        completeAsyncRedeemLocal(VAULT, makeAddr("INVESTOR_A"), depositAmount);
+    function _ensureAsyncVaultExists(
+        CHub memory hub,
+        CSpoke memory spoke,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address poolManager,
+        address fallbackVault
+    ) internal returns (IAsyncVault vault) {
+        vm.startPrank(poolManager);
+
+        // Check if vault already exists (for fork tests)
+        vault = IAsyncVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
+        if (address(vault) == address(0)) {
+            // If we have a fallback vault (for fork tests), use it
+            if (fallbackVault != address(0)) {
+                vault = IAsyncVault(fallbackVault);
+                vm.stopPrank();
+                return vault;
+            }
+
+            // Otherwise try to create new vault
+            hub.hub.updateVault(
+                poolId, shareClassId, assetId, spoke.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
+            );
+            vault = IAsyncVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
+        }
+
+        vm.stopPrank();
+        assertNotEq(address(vault), address(0));
+    }
+
+    function _executeAsyncDepositRequest(IAsyncVault vault, address investor, uint128 amount) internal {
+        vm.startPrank(investor);
+        ERC20(vault.asset()).approve(address(vault), amount);
+        vault.requestDeposit(amount, investor, investor);
+    }
+
+    function _ensureDepositEpochsAligned(
+        CHub memory hub,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address poolManager
+    ) internal {
+        uint32 nowDepositEpoch = hub.shareClassManager.nowDepositEpoch(shareClassId, assetId);
+        uint32 nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
+
+        // Handle live chain state: if deposits have been approved but not yet issued,
+        // we need to issue outstanding epochs before we can approve new ones
+        if (nowDepositEpoch != nowIssueEpoch) {
+            vm.startPrank(poolManager);
+            while (nowIssueEpoch < nowDepositEpoch) {
+                (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
+                hub.hub.issueShares(
+                    poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, IntegrationConstants.HOOK_GAS
+                );
+                nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
+            }
+            vm.stopPrank();
+        }
+    }
+
+    function _processAsyncDepositApproval(
+        CHub memory hub,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address poolManager,
+        uint128 amount
+    ) internal {
+        vm.startPrank(poolManager);
+        uint32 depositEpochId = hub.shareClassManager.nowDepositEpoch(shareClassId, assetId);
+        hub.hub.approveDeposits(poolId, shareClassId, assetId, depositEpochId, amount);
+
+        uint32 issueEpochId = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
+        (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
+        hub.hub.issueShares(poolId, shareClassId, assetId, issueEpochId, sharePrice, IntegrationConstants.HOOK_GAS);
+    }
+
+    function _processAsyncDepositClaim(
+        CHub memory hub,
+        CSpoke memory spoke,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address investor,
+        IAsyncVault vault
+    ) internal {
+        vm.startPrank(ANY);
+        vm.deal(ANY, GAS);
+        hub.hub.notifyDeposit(
+            poolId,
+            shareClassId,
+            assetId,
+            investor.toBytes32(),
+            hub.shareClassManager.maxDepositClaims(shareClassId, investor.toBytes32(), assetId)
+        );
+
+        // Store initial share balance for fork tests
+        uint256 initialShares = spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor);
+
+        vm.startPrank(investor);
+        vault.mint(vault.maxMint(investor), investor);
+
+        // For fork tests just verify shares increased
+        assertTrue(
+            spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor) > initialShares,
+            "Investor should have received shares"
+        );
     }
 
     function completeAsyncDepositLocal(IBaseVault vault, address investor, uint128 amount) public {
-        if (isShareToken(vault.asset())) {
+        if (_isShareToken(vault.asset())) {
             vm.startPrank(IntegrationConstants.V2_ROOT);
             ERC20(vault.asset()).mint(investor, amount);
             vm.stopPrank();
@@ -95,9 +228,126 @@ contract ForkTestAsyncInvestments is ForkTestBase, VMLabeling {
             _poolAdmin(),
             investor,
             amount,
-            true,
-            true,
             address(vault)
+        );
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Async Redeem Flows
+    //----------------------------------------------------------------------------------------------
+
+    function _asyncRedeemFlow(
+        CHub memory hub,
+        CSpoke memory spoke,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address poolManager,
+        address investor,
+        address existingVault
+    ) internal {
+        _configureAsyncRedeemRestriction(hub, spoke, poolId, shareClassId, investor, poolManager);
+
+        // Resolve vault - use existing if provided, otherwise get from manager
+        IAsyncRedeemVault vault = existingVault != address(0)
+            ? IAsyncRedeemVault(existingVault)
+            : IAsyncRedeemVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
+
+        vm.startPrank(investor);
+        uint128 shares = uint128(spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor));
+
+        vault.requestRedeem(shares, investor, investor);
+
+        // Ensure epochs are aligned before proceeding (handles live chain state)
+        _ensureRedeemEpochsAligned(hub, poolId, shareClassId, assetId, poolManager);
+
+        _processAsyncRedeemApproval(hub, poolId, shareClassId, assetId, shares, poolManager);
+        _processAsyncRedeemClaim(hub, poolId, shareClassId, assetId, investor, vault);
+    }
+
+    function _ensureRedeemEpochsAligned(
+        CHub memory hub,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address poolManager
+    ) internal {
+        uint32 nowRedeemEpoch = hub.shareClassManager.nowRedeemEpoch(shareClassId, assetId);
+        uint32 nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
+
+        // Handle live chain state: if redemptions have been approved but not revoked,
+        // we need to revoke outstanding epochs before we can approve new ones
+        if (nowRedeemEpoch != nowRevokeEpoch) {
+            vm.startPrank(poolManager);
+            while (nowRevokeEpoch < nowRedeemEpoch) {
+                (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
+                hub.hub.revokeShares(
+                    poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, IntegrationConstants.HOOK_GAS
+                );
+                nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
+            }
+            vm.stopPrank();
+        }
+    }
+
+    function _configureAsyncRedeemRestriction(
+        CHub memory hub,
+        CSpoke memory spoke,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        address investor,
+        address poolManager
+    ) internal {
+        vm.startPrank(poolManager);
+        hub.hub.updateRestriction(
+            poolId, shareClassId, spoke.centrifugeId, _updateRestrictionMemberMsg(investor), EXTRA_GAS
+        );
+    }
+
+    function _processAsyncRedeemApproval(
+        CHub memory hub,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        uint128 shares,
+        address poolManager
+    ) internal {
+        vm.startPrank(poolManager);
+        uint32 redeemEpochId = hub.shareClassManager.nowRedeemEpoch(shareClassId, assetId);
+        hub.hub.approveRedeems(poolId, shareClassId, assetId, redeemEpochId, shares);
+
+        uint32 revokeEpochId = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
+        (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
+        hub.hub.revokeShares(poolId, shareClassId, assetId, revokeEpochId, sharePrice, IntegrationConstants.HOOK_GAS);
+    }
+
+    function _processAsyncRedeemClaim(
+        CHub memory hub,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address investor,
+        IAsyncRedeemVault vault
+    ) internal {
+        vm.startPrank(ANY);
+        vm.deal(ANY, GAS);
+        hub.hub.notifyRedeem(
+            poolId,
+            shareClassId,
+            assetId,
+            investor.toBytes32(),
+            hub.shareClassManager.maxRedeemClaims(shareClassId, investor.toBytes32(), assetId)
+        );
+
+        // Store initial asset balance for fork tests
+        uint256 initialAssets = IERC20(vault.asset()).balanceOf(investor);
+
+        vm.startPrank(investor);
+        vault.withdraw(vault.maxWithdraw(investor), investor, investor);
+
+        assertTrue(
+            IERC20(vault.asset()).balanceOf(investor) > initialAssets,
+            "Investor should have received assets from redemption"
         );
     }
 
@@ -112,10 +362,99 @@ contract ForkTestAsyncInvestments is ForkTestBase, VMLabeling {
             forkSpoke.spoke.assetToId(vault.asset(), 0),
             _poolAdmin(),
             investor,
-            true,
-            true,
             address(vault)
         );
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Sync Deposit Flows
+    //----------------------------------------------------------------------------------------------
+
+    function _syncDepositFlow(
+        CHub memory hub,
+        CSpoke memory spoke,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address poolManager,
+        address investor,
+        uint128 amount
+    ) internal {
+        _baseConfigurePrices(hub, spoke, poolId, shareClassId, assetId, poolManager);
+        _configureSyncDepositVault(hub, spoke, poolId, shareClassId, assetId, poolManager);
+        _processSyncDeposit(hub, spoke, poolId, shareClassId, assetId, investor, amount);
+    }
+
+    function _configureSyncDepositVault(
+        CHub memory hub,
+        CSpoke memory spoke,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address poolManager
+    ) internal {
+        vm.startPrank(poolManager);
+        // Check if vault already exists (for fork tests)
+        address existingVault = _getAsyncVault(spoke, poolId, shareClassId, assetId);
+        if (existingVault == address(0)) {
+            hub.hub.updateVault(
+                poolId, shareClassId, assetId, spoke.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
+            );
+        }
+        hub.hub.updateContract(
+            poolId,
+            shareClassId,
+            spoke.centrifugeId,
+            address(spoke.syncManager).toBytes32(),
+            _updateContractSyncDepositMaxReserveMsg(assetId, type(uint128).max),
+            EXTRA_GAS
+        );
+    }
+
+    function _processSyncDeposit(
+        CHub memory,
+        CSpoke memory spoke,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address investor,
+        uint128 amount
+    ) internal {
+        IBaseVault vault = IBaseVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
+
+        // Store initial share balance for fork tests
+        uint256 initialShares = spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor);
+
+        vm.startPrank(investor);
+        spoke.usdc.approve(address(vault), amount);
+        vault.deposit(amount, investor);
+
+        // For fork tests: just verify shares increased
+        assertTrue(
+            spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor) > initialShares,
+            "Investor should have received shares"
+        );
+    }
+}
+
+/// @title ForkTestAsyncInvestments
+/// @notice Fork tests for async investment flows on Ethereum mainnet
+contract ForkTestAsyncInvestments is ForkTestInvestmentFlows {
+    using CastLib for *;
+    using RequestCallbackMessageLib for *;
+    using MessageLib for *;
+
+    // TODO(later): After v2 disable, switch to JAAA
+    IBaseVault constant VAULT = IBaseVault(IntegrationConstants.ETH_DEJAA_USDC_VAULT);
+
+    uint128 constant depositAmount = IntegrationConstants.DEFAULT_USDC_AMOUNT;
+
+    function test_completeAsyncDepositLocalFlow() public virtual {
+        completeAsyncDepositLocal(VAULT, makeAddr("INVESTOR_A"), depositAmount);
+    }
+
+    function test_completeAsyncRedeemLocalFlow() public virtual {
+        completeAsyncRedeemLocal(VAULT, makeAddr("INVESTOR_A"), depositAmount);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -348,7 +687,7 @@ contract ForkTestAsyncInvestments is ForkTestBase, VMLabeling {
 
 /// @title ForkTestSyncInvestments
 /// @notice Fork tests for sync investment flows on Plume network
-contract ForkTestSyncInvestments is ForkTestBase, VMLabeling {
+contract ForkTestSyncInvestments is ForkTestInvestmentFlows {
     using CastLib for *;
 
     IBaseVault constant VAULT = IBaseVault(IntegrationConstants.PLUME_SYNC_DEPOSIT_VAULT);
@@ -360,14 +699,7 @@ contract ForkTestSyncInvestments is ForkTestBase, VMLabeling {
         _setupVMLabels();
 
         _baseConfigurePrices(
-            forkHub,
-            forkSpoke,
-            VAULT.poolId(),
-            VAULT.scId(),
-            forkSpoke.spoke.assetToId(VAULT.asset(), 0),
-            _poolAdmin(),
-            IntegrationConstants.identityPrice(),
-            IntegrationConstants.identityPrice()
+            forkHub, forkSpoke, VAULT.poolId(), VAULT.scId(), forkSpoke.spoke.assetToId(VAULT.asset(), 0), _poolAdmin()
         );
     }
 
@@ -419,10 +751,6 @@ contract ForkTestSyncInvestments is ForkTestBase, VMLabeling {
             usdcId: Spoke(IntegrationConstants.SPOKE).assetToId(IntegrationConstants.PLUME_PUSD, 0)
         });
 
-        // Initialize pricing state
-        currentAssetPrice = IntegrationConstants.identityPrice();
-        currentSharePrice = IntegrationConstants.identityPrice();
-
         // Fund pool admin
         vm.deal(_poolAdmin(), 10 ether);
     }
@@ -449,9 +777,7 @@ contract ForkTestSyncInvestments is ForkTestBase, VMLabeling {
             forkSpoke.spoke.assetToId(VAULT.asset(), 0),
             _poolAdmin(),
             investor,
-            amount,
-            true,
-            true
+            amount
         );
     }
 
@@ -466,8 +792,6 @@ contract ForkTestSyncInvestments is ForkTestBase, VMLabeling {
             forkSpoke.spoke.assetToId(VAULT.asset(), 0),
             _poolAdmin(),
             investor,
-            true,
-            true,
             address(VAULT)
         );
     }

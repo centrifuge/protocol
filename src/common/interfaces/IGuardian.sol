@@ -72,6 +72,7 @@ interface IGuardian {
         external;
 
     /// @notice Set a gateway manager for the global adaters.
-    /// @param manager address used as manager.
-    function setGatewayManager(address manager) external;
+    /// @param who address used as manager.
+    /// @param canManage if enabled as manager
+    function updateGatewayManager(address who, bool canManage) external;
 }

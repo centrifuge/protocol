@@ -153,7 +153,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external returns (uint256 cost);
 
     /// @notice Creates and send the message
-    function sendSetGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager)
+    function sendUpdateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
         external
         returns (uint256 cost);
 }
@@ -174,6 +174,7 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         bytes32 receiver,
         uint128 amount,
+        uint128 extraGasLimit,
         uint128 remoteExtraGasLimit
     ) external returns (uint256 cost);
 

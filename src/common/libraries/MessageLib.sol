@@ -47,7 +47,7 @@ enum MessageType {
     Request,
     RequestCallback,
     SetRequestManager,
-    SetGatewayManager
+    UpdateGatewayManager
 }
 
 /// @dev Used internally in the UpdateVault message (not represent a submessage)
@@ -107,7 +107,7 @@ library MessageLib {
         (41  << (uint8(MessageType.Request) - 32) * 8) +
         (41  << (uint8(MessageType.RequestCallback) - 32) * 8) +
         (41  << (uint8(MessageType.SetRequestManager) - 32) * 8) +
-        (41  << (uint8(MessageType.SetGatewayManager) - 32) * 8);
+        (42  << (uint8(MessageType.UpdateGatewayManager) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -823,20 +823,21 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   SetGatewayManager
+    //   UpdateGatewayManager
     //---------------------------------------
 
-    struct SetGatewayManager {
+    struct UpdateGatewayManager {
         uint64 poolId;
-        bytes32 manager;
+        bytes32 who;
+        bool canManage;
     }
 
-    function deserializeSetGatewayManager(bytes memory data) internal pure returns (SetGatewayManager memory) {
-        require(messageType(data) == MessageType.SetGatewayManager, UnknownMessageType());
-        return SetGatewayManager({poolId: data.toUint64(1), manager: data.toBytes32(9)});
+    function deserializeUpdateGatewayManager(bytes memory data) internal pure returns (UpdateGatewayManager memory) {
+        require(messageType(data) == MessageType.UpdateGatewayManager, UnknownMessageType());
+        return UpdateGatewayManager({poolId: data.toUint64(1), who: data.toBytes32(9), canManage: data.toBool(41)});
     }
 
-    function serialize(SetGatewayManager memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.SetGatewayManager, t.poolId, t.manager);
+    function serialize(UpdateGatewayManager memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UpdateGatewayManager, t.poolId, t.who, t.canManage);
     }
 }

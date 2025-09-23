@@ -43,7 +43,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     IAdapter public adapter;
 
     // Management
-    mapping(PoolId => address) public manager;
+    mapping(PoolId => mapping(address => bool)) public manager;
 
     // Outbound & payments
     bool public transient isBatching;
@@ -69,8 +69,8 @@ contract Gateway is Auth, Recoverable, IGateway {
         _;
     }
 
-    modifier onlyManager(PoolId poolId) {
-        require(msg.sender == manager[poolId], ManagerNotAllowed());
+    modifier onlyAuthOrManager(PoolId poolId) {
+        require(wards[msg.sender] == 1 || manager[poolId][msg.sender], NotAuthorized());
         _;
     }
 
@@ -89,9 +89,9 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function setManager(PoolId poolId, address manager_) external auth {
-        manager[poolId] = manager_;
-        emit SetManager(poolId, manager_);
+    function updateManager(PoolId poolId, address who, bool canManage) external auth {
+        manager[poolId][who] = canManage;
+        emit UpdateManager(poolId, who, canManage);
     }
 
     receive() external payable {
@@ -269,7 +269,9 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function withdrawSubsidy(PoolId poolId, address to, uint256 amount) external onlyManager(poolId) {
+    function withdrawSubsidy(PoolId poolId, address to, uint256 amount) external onlyAuthOrManager(poolId) {
+        if (amount > subsidy[poolId].value) _requestPoolFunding(poolId);
+
         subsidy[poolId].value -= amount.toUint96();
 
         (bool success,) = payable(to).call{value: amount}(new bytes(0));
@@ -304,7 +306,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external onlyManager(poolId) {
+    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external onlyAuthOrManager(poolId) {
         isOutgoingBlocked[centrifugeId][poolId] = isBlocked;
         emit BlockOutgoing(centrifugeId, poolId, isBlocked);
     }
