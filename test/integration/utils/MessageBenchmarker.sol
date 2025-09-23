@@ -19,24 +19,6 @@ contract MessageBenchmarker is IMessageProcessor, Test {
 
     constructor(IMessageProcessor messageProcessor_) {
         messageProcessor = messageProcessor_;
-
-        uint256 newRunId = vm.envOr("BENCHMARKING_RUN_ID", uint256(0));
-
-        string memory json = vm.readFile(FILE_PATH);
-        uint256 fileRunId = _getPreviousRegisteredValue(json, "$.BENCHMARKING_RUN_ID");
-
-        // Because the final results will be the higher ones,
-        // we need to clean all previous results in case there are some lower values
-        // NOTE: It only cleans by each execution of all tests.
-        // Recommend to provide BENCHMARKING_RUN_ID as: BENCHMARKING_RUN_ID="$(date +%s)"
-        if (fileRunId != newRunId) {
-            string[] memory keys = vm.parseJsonKeys(json, "$");
-            for (uint256 i; i < keys.length; i++) {
-                vm.writeJson("0", FILE_PATH, string.concat("$.", keys[i]));
-            }
-
-            vm.writeJson(vm.toString(newRunId), FILE_PATH, "$.BENCHMARKING_RUN_ID");
-        }
     }
 
     /// @inheritdoc IMessageProcessor
@@ -46,6 +28,8 @@ contract MessageBenchmarker is IMessageProcessor, Test {
 
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes calldata message) external {
+        _cleanFirstFileInteraction();
+
         string memory json = vm.readFile(FILE_PATH);
         string memory name = _getName(message);
 
@@ -117,6 +101,25 @@ contract MessageBenchmarker is IMessageProcessor, Test {
             return value;
         } catch {
             return 0;
+        }
+    }
+
+    /// Because the final results will be the higher ones,
+    /// we need to clean all previous results (from previous runs) in case there are some lower values
+    /// Recommend to provide BENCHMARKING_RUN_ID as: BENCHMARKING_RUN_ID="$(date +%s)"
+    function _cleanFirstFileInteraction() internal {
+        uint256 newRunId = vm.envUint("BENCHMARKING_RUN_ID");
+
+        string memory json = vm.readFile(FILE_PATH);
+        uint256 fileRunId = _getPreviousRegisteredValue(json, "$.BENCHMARKING_RUN_ID");
+
+        if (fileRunId != newRunId) {
+            string[] memory keys = vm.parseJsonKeys(json, "$");
+            for (uint256 i; i < keys.length; i++) {
+                vm.writeJson("0", FILE_PATH, string.concat("$.", keys[i]));
+            }
+
+            vm.writeJson(vm.toString(newRunId), FILE_PATH, "$.BENCHMARKING_RUN_ID");
         }
     }
 }
