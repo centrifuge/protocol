@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
@@ -40,6 +41,7 @@ contract QueueManagerTest is Test {
 
     address contractUpdater = makeAddr("contractUpdater");
     address unauthorized = makeAddr("unauthorized");
+    address auth = makeAddr("auth");
 
     QueueManager queueManager;
 
@@ -65,7 +67,7 @@ contract QueueManagerTest is Test {
     }
 
     function _deployManager() internal {
-        queueManager = new QueueManager(contractUpdater, IBalanceSheet(address(balanceSheet)));
+        queueManager = new QueueManager(contractUpdater, IBalanceSheet(address(balanceSheet)), auth);
     }
 
     function _mockQueuedShares(
@@ -110,6 +112,32 @@ contract QueueManagerConstructorTest is QueueManagerTest {
     function testConstructor() public view {
         assertEq(queueManager.contractUpdater(), contractUpdater);
         assertEq(address(queueManager.balanceSheet()), address(balanceSheet));
+    }
+}
+
+contract QueueManagerFileTests is QueueManagerTest {
+    function testErrNotAuthorized() public {
+        vm.prank(unauthorized);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        queueManager.file("any", address(0));
+    }
+
+    function testErrFileUnrecognizedParam() public {
+        vm.prank(auth);
+        vm.expectRevert(IQueueManager.FileUnrecognizedParam.selector);
+        queueManager.file("unknown", address(1));
+    }
+
+    function testFileGateway() public {
+        vm.prank(auth);
+        address newGateway = makeAddr("newGateway");
+
+        vm.expectEmit(true, true, true, true);
+        emit IQueueManager.File("gateway", newGateway);
+
+        queueManager.file("gateway", newGateway);
+
+        assertEq(address(queueManager.gateway()), newGateway);
     }
 }
 

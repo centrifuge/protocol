@@ -23,6 +23,13 @@ contract ManagersActionBatcher is SpokeActionBatcher {
     function engageManagers(ManagersReport memory report) public onlyDeployer {
         // rely QueueManager on Gateway
         report.spoke.common.gateway.rely(address(report.queueManager));
+
+        // rely Root
+        report.queueManager.rely(address(report.spoke.common.root));
+    }
+
+    function revokeManagers(ManagersReport memory report) public onlyDeployer {
+        report.queueManager.deny(address(this));
     }
 }
 
@@ -44,7 +51,9 @@ contract ManagersDeployer is SpokeDeployer {
         queueManager = QueueManager(
             create3(
                 generateSalt("queueManager"),
-                abi.encodePacked(type(QueueManager).creationCode, abi.encode(contractUpdater, balanceSheet))
+                abi.encodePacked(
+                    type(QueueManager).creationCode, abi.encode(contractUpdater, balanceSheet, address(batcher))
+                )
             )
         );
 
@@ -85,6 +94,8 @@ contract ManagersDeployer is SpokeDeployer {
 
     function removeManagersDeployerAccess(ManagersActionBatcher batcher) public {
         removeSpokeDeployerAccess(batcher);
+
+        batcher.revokeManagers(_managersReport());
     }
 
     function _managersReport() internal view returns (ManagersReport memory) {

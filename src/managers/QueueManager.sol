@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IQueueManager} from "./interfaces/IQueueManager.sol";
 
+import {Auth} from "../misc/Auth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {BitmapLib} from "../misc/libraries/BitmapLib.sol";
 import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
@@ -18,17 +19,17 @@ import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/U
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified
 ///      (e.g. if the on/off ramp manager is used, or if sync deposits are enabled). This prevents spam.
-contract QueueManager is IQueueManager, IUpdateContract {
+contract QueueManager is IQueueManager, IUpdateContract, Auth {
     using CastLib for *;
     using BitmapLib for *;
 
-    IGateway public immutable gateway;
+    IGateway public gateway;
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
 
     mapping(PoolId => mapping(ShareClassId => ShareClassQueueState)) public scQueueState;
 
-    constructor(address contractUpdater_, IBalanceSheet balanceSheet_) {
+    constructor(address contractUpdater_, IBalanceSheet balanceSheet_, address deployer) Auth(deployer) {
         contractUpdater = contractUpdater_;
         balanceSheet = balanceSheet_;
         gateway = balanceSheet_.gateway();
@@ -37,6 +38,13 @@ contract QueueManager is IQueueManager, IUpdateContract {
     //----------------------------------------------------------------------------------------------
     // Owner actions
     //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IQueueManager
+    function file(bytes32 what, address data) external auth {
+        if (what == "gateway") gateway = IGateway(data);
+        else revert FileUnrecognizedParam();
+        emit File(what, data);
+    }
 
     /// @inheritdoc IUpdateContract
     function update(PoolId poolId, ShareClassId scId, bytes calldata payload) external {
