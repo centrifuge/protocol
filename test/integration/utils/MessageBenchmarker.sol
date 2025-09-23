@@ -20,22 +20,22 @@ contract MessageBenchmarker is IMessageProcessor, Test {
     constructor(IMessageProcessor messageProcessor_) {
         messageProcessor = messageProcessor_;
 
-        uint256 newRunId = vm.envOr("RUN_ID", uint256(0));
+        uint256 newRunId = vm.envOr("BENCHMARKING_RUN_ID", uint256(0));
 
         string memory json = vm.readFile(FILE_PATH);
-        uint256 fileRunId = _getPreviousRegisteredValue(json, "$.RUN_ID");
+        uint256 fileRunId = _getPreviousRegisteredValue(json, "$.BENCHMARKING_RUN_ID");
 
         // Because the final results will be the higher ones,
         // we need to clean all previous results in case there are some lower values
         // NOTE: It only cleans by each execution of all tests.
-        // Recommend to provide RUN_ID as: RUN_ID="$(date +%s)"
+        // Recommend to provide BENCHMARKING_RUN_ID as: BENCHMARKING_RUN_ID="$(date +%s)"
         if (fileRunId != newRunId) {
             string[] memory keys = vm.parseJsonKeys(json, "$");
             for (uint256 i; i < keys.length; i++) {
                 vm.writeJson("0", FILE_PATH, string.concat("$.", keys[i]));
             }
 
-            vm.writeJson(vm.toString(newRunId), FILE_PATH, "$.RUN_ID");
+            vm.writeJson(vm.toString(newRunId), FILE_PATH, "$.BENCHMARKING_RUN_ID");
         }
     }
 

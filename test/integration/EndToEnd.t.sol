@@ -267,7 +267,7 @@ contract EndToEndDeployment is Test {
         _setAdapter(deploy, remoteCentrifugeId, adapter);
 
         // Only run the benchmarks if using one thread to avoid concurrence issues writting the json
-        // Example of command: RAYON_NUM_THREADS=1 RUN_ID="$(date +%s)" forge test EndToEnd
+        // Example of command: RAYON_NUM_THREADS=1 BENCHMARKING_RUN_ID="$(date +%s)" forge test EndToEnd
         if (vm.envOr("RAYON_NUM_THREADS", uint256(0)) == 1) {
             _attachBenchmark(deploy, batcher);
         }
