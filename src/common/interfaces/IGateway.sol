@@ -40,6 +40,12 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
 
+    /// @notice Dispatched when the gateway is already batching for some pool
+    error AlreadyBatching();
+
+    /// @notice Dispatched when the gateway is already batching, but for a different pool
+    error BatchingForDifferentPool();
+
     /// @notice Dispatched when the batch is ended without starting it.
     error NoBatched();
 
@@ -119,10 +125,10 @@ interface IGateway is IMessageHandler, IRecoverable {
     function addUnpaidMessage(uint16 centrifugeId, bytes memory message, uint128 extraGasLimit) external;
 
     /// @notice Initialize batching message
-    function startBatching() external;
+    function startBatching(PoolId poolId) external;
 
     /// @notice Finalize batching messages and send the resulting batch message
-    function endBatching() external;
+    function endBatching(PoolId poolId) external returns (uint256 cost);
 
     /// @notice Returns the current gateway batching level.
     function isBatching() external view returns (bool);

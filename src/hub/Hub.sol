@@ -10,9 +10,9 @@ import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18} from "../misc/types/D18.sol";
+import {Multicall} from "../misc/Multicall.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
-import {Multicall, IMulticall} from "../misc/Multicall.sol";
 
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
@@ -84,21 +84,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         emit File(what, data);
     }
 
-    /// @inheritdoc IMulticall
-    /// @notice performs a multicall but all messages sent in the process will be batched
-    function multicall(bytes[] calldata data) public payable override {
-        bool wasBatching = gateway.isBatching();
-        if (!wasBatching) {
-            gateway.startBatching();
-        }
-
-        super.multicall(data);
-
-        if (!wasBatching) {
-            gateway.endBatching();
-        }
-    }
-
     /// @inheritdoc IHubGuardianActions
     function createPool(PoolId poolId, address admin, AssetId currency) external {
         _auth();
@@ -107,7 +92,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         hubRegistry.registerPool(poolId, admin, currency);
 
         IPoolEscrow escrow = poolEscrowFactory.newEscrow(poolId);
-        gateway.setRefundAddress(poolId, escrow);
+        sender.gateway().setRefundAddress(poolId, escrow);
     }
 
     //----------------------------------------------------------------------------------------------

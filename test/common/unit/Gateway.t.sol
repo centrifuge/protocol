@@ -111,16 +111,16 @@ contract GatewayExt is Gateway {
         return TransientArrayLib.length(BATCH_LOCATORS_SLOT);
     }
 
-    function batchGasLimit(uint16 centrifugeId, PoolId poolId) public view returns (uint128) {
-        return TransientStorageLib.tloadUint128(_gasLimitSlot(centrifugeId, poolId));
+    function batchGasLimit(uint16 centrifugeId) public view returns (uint128) {
+        return TransientStorageLib.tloadUint128(_gasLimitSlot(centrifugeId));
     }
 
-    function batchLocators(uint256 index) public view returns (uint16 centrifugeId, PoolId poolId) {
+    function batchLocators(uint256 index) public view returns (uint16 centrifugeId) {
         return _parseLocator(TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT)[index]);
     }
 
-    function outboundBatch(uint16 centrifugeId, PoolId poolId) public view returns (bytes memory) {
-        return TransientBytesLib.get(_outboundBatchSlot(centrifugeId, poolId));
+    function outboundBatch(uint16 centrifugeId) public view returns (bytes memory) {
+        return TransientBytesLib.get(_outboundBatchSlot(centrifugeId));
     }
 
     function process(uint16 centrifugeId, bytes memory message, bytes32 messageHash) public {
@@ -484,15 +484,41 @@ contract GatewayTestWithdrawSubsidizedPool is GatewayTest {
 }
 
 contract GatewayTestStartBatching is GatewayTest {
+    function testErrNotAuthorized() public {
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.startBatching(POOL_A);
+    }
+
+    function testErrAlreadyBatching() public {
+        gateway.updateManager(POOL_A, MANAGER, true);
+
+        vm.prank(MANAGER);
+        gateway.startBatching(POOL_A);
+
+        vm.prank(MANAGER);
+        vm.expectRevert(IGateway.AlreadyBatching.selector);
+        gateway.startBatching(POOL_A);
+
+        vm.prank(MANAGER);
+        vm.expectRevert(IGateway.AlreadyBatching.selector);
+        gateway.startBatching(POOL_0); // Even with different pool
+    }
+
     function testStartBatching() public {
-        gateway.startBatching();
+        gateway.updateManager(POOL_A, MANAGER, true);
+
+        vm.prank(MANAGER);
+        gateway.startBatching(POOL_A);
 
         assertEq(gateway.isBatching(), true);
     }
 
     /// forge-config: default.isolate = true
     function testStartBatchingIsTransactional() public {
-        gateway.startBatching();
+        gateway.updateManager(POOL_A, MANAGER, true);
+
+        vm.prank(MANAGER);
+        gateway.startBatching(POOL_A);
 
         assertEq(gateway.isBatching(), false);
     }
@@ -517,7 +543,10 @@ contract GatewayTestSend is GatewayTest {
     }
 
     function testErrExceedsMaxBatching() public {
-        gateway.startBatching();
+        gateway.updateManager(POOL_A, MANAGER, true);
+
+        vm.prank(MANAGER);
+        gateway.startBatching(POOL_A);
         uint256 maxMessages = MAX_BATCH_GAS_LIMIT / MESSAGE_GAS_LIMIT;
 
         for (uint256 i; i < maxMessages; i++) {
@@ -541,64 +570,63 @@ contract GatewayTestSend is GatewayTest {
         gateway.send(REMOTE_CENT_ID, message, 0);
     }
 
+    function testErrSecondMessageWasBatchedDifferentPoolSameChain() public {
+        vm.prank(MANAGER);
+        gateway.startBatching(POOL_A);
+        gateway.send(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes(), 0);
+
+        vm.expectRevert(IGateway.BatchingForDifferentPool.selector);
+        gateway.send(REMOTE_CENT_ID, MessageKind.WithPool0.asBytes(), 0);
+    }
+
     function testMessageWasBatched() public {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
+        gateway.updateManager(POOL_A, MANAGER, true);
 
-        gateway.startBatching();
+        vm.prank(MANAGER);
+        gateway.startBatching(POOL_A);
 
         vm.expectEmit();
         emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
         assertEq(gateway.send(REMOTE_CENT_ID, message, 0), 0);
 
-        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), MESSAGE_GAS_LIMIT);
-        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), message);
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID), MESSAGE_GAS_LIMIT);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID), message);
         assertEq(gateway.batchLocatorsLength(), 1);
 
-        (uint16 centrifugeId, PoolId poolId) = gateway.batchLocators(0);
+        uint16 centrifugeId = gateway.batchLocators(0);
         assertEq(centrifugeId, REMOTE_CENT_ID);
-        assertEq(poolId.raw(), POOL_A.raw());
     }
 
     function testSecondMessageWasBatchedSamePoolSameChain() public {
         bytes memory message1 = MessageKind.WithPoolA1.asBytes();
         bytes memory message2 = MessageKind.WithPoolA2.asBytes();
+        gateway.updateManager(POOL_A, MANAGER, true);
 
-        gateway.startBatching();
+        vm.prank(MANAGER);
+        gateway.startBatching(POOL_A);
         gateway.send(REMOTE_CENT_ID, message1, 0);
         gateway.send(REMOTE_CENT_ID, message2, 0);
 
-        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), MESSAGE_GAS_LIMIT * 2);
-        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), abi.encodePacked(message1, message2));
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID), MESSAGE_GAS_LIMIT * 2);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID), abi.encodePacked(message1, message2));
         assertEq(gateway.batchLocatorsLength(), 1);
     }
 
     function testSecondMessageWasBatchedSamePoolDifferentChain() public {
         bytes memory message1 = MessageKind.WithPoolA1.asBytes();
         bytes memory message2 = MessageKind.WithPoolA2.asBytes();
+        gateway.updateManager(POOL_A, MANAGER, true);
 
-        gateway.startBatching();
+        vm.prank(MANAGER);
+        gateway.startBatching(POOL_A);
         gateway.send(REMOTE_CENT_ID, message1, 0);
         gateway.send(REMOTE_CENT_ID + 1, message2, 0);
 
-        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), MESSAGE_GAS_LIMIT);
-        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID + 1, POOL_A), MESSAGE_GAS_LIMIT);
-        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), message1);
-        assertEq(gateway.outboundBatch(REMOTE_CENT_ID + 1, POOL_A), message2);
-        assertEq(gateway.batchLocatorsLength(), 2);
-    }
-
-    function testSecondMessageWasBatchedDifferentPoolSameChain() public {
-        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
-        bytes memory message2 = MessageKind.WithPool0.asBytes();
-
-        gateway.startBatching();
-        gateway.send(REMOTE_CENT_ID, message1, 0);
-        gateway.send(REMOTE_CENT_ID, message2, 0);
-
-        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), MESSAGE_GAS_LIMIT);
-        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_0), MESSAGE_GAS_LIMIT);
-        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), message1);
-        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_0), message2);
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID), MESSAGE_GAS_LIMIT);
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID + 1), MESSAGE_GAS_LIMIT);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID), message1);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID + 1), message2);
         assertEq(gateway.batchLocatorsLength(), 2);
     }
 
@@ -685,26 +713,41 @@ contract GatewayTestSend is GatewayTest {
 
     function testMessageBatchedWithExtraGasLimit() public {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
+        gateway.updateManager(POOL_A, MANAGER, true);
 
-        gateway.startBatching();
+        vm.prank(MANAGER);
+        gateway.startBatching(POOL_A);
 
         gateway.send(REMOTE_CENT_ID, message, EXTRA_GAS_LIMIT);
         gateway.send(REMOTE_CENT_ID, message, EXTRA_GAS_LIMIT);
 
-        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), (MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT) * 2);
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID), (MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT) * 2);
     }
 }
 
 contract GatewayTestEndBatching is GatewayTest {
     function testErrNotAuthorized() public {
-        vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.endBatching();
+        gateway.endBatching(POOL_A);
     }
 
     function testErrNoBatched() public {
+        gateway.updateManager(POOL_A, MANAGER, true);
+
+        vm.prank(MANAGER);
         vm.expectRevert(IGateway.NoBatched.selector);
-        gateway.endBatching();
+        gateway.endBatching(POOL_A);
+    }
+
+    function testErrBatchingForDifferentPool() public {
+        gateway.updateManager(POOL_A, MANAGER, true);
+
+        vm.prank(MANAGER);
+        gateway.startBatching(POOL_A);
+
+        vm.prank(MANAGER);
+        vm.expectRevert(IGateway.BatchingForDifferentPool.selector);
+        gateway.endBatching(POOL_0);
     }
 
     function testSendTwoMessageBatching() public {
@@ -716,16 +759,19 @@ contract GatewayTestEndBatching is GatewayTest {
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
         gateway.depositSubsidy{value: payment}(POOL_A);
 
-        gateway.startBatching();
+        gateway.updateManager(POOL_A, MANAGER, true);
+
+        vm.prank(MANAGER);
+        gateway.startBatching(POOL_A);
         gateway.send(REMOTE_CENT_ID, message1, 0);
         gateway.send(REMOTE_CENT_ID, message2, 0);
 
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, address(POOL_REFUND));
 
-        gateway.endBatching();
+        gateway.endBatching(POOL_A);
 
-        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
-        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), new bytes(0));
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID), 0);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID), new bytes(0));
         assertEq(gateway.batchLocatorsLength(), 0);
         assertEq(gateway.isBatching(), false);
     }
@@ -737,47 +783,22 @@ contract GatewayTestEndBatching is GatewayTest {
         uint256 payment = (MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE) * 2;
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
         gateway.depositSubsidy{value: payment}(POOL_A);
+        gateway.updateManager(POOL_A, MANAGER, true);
 
-        gateway.startBatching();
+        vm.prank(MANAGER);
+        gateway.startBatching(POOL_A);
         gateway.send(REMOTE_CENT_ID, message1, 0);
         gateway.send(REMOTE_CENT_ID + 1, message2, 0);
 
         _mockAdapter(REMOTE_CENT_ID, message1, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
         _mockAdapter(REMOTE_CENT_ID + 1, message2, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
 
-        gateway.endBatching();
+        gateway.endBatching(POOL_A);
 
-        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
-        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), new bytes(0));
-        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID + 1, POOL_A), 0);
-        assertEq(gateway.outboundBatch(REMOTE_CENT_ID + 1, POOL_A), new bytes(0));
-        assertEq(gateway.batchLocatorsLength(), 0);
-        assertEq(gateway.isBatching(), false);
-    }
-
-    function testSendTwoMessageBatchingSameChainDifferentPool() public {
-        bytes memory message1 = MessageKind.WithPool0.asBytes();
-        bytes memory message2 = MessageKind.WithPoolA1.asBytes();
-
-        uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
-        gateway.setRefundAddress(POOL_A, POOL_REFUND);
-        gateway.setRefundAddress(POOL_0, POOL_REFUND);
-        gateway.depositSubsidy{value: payment}(POOL_A);
-        gateway.depositSubsidy{value: payment}(POOL_0);
-
-        gateway.startBatching();
-        gateway.send(REMOTE_CENT_ID, message1, 0);
-        gateway.send(REMOTE_CENT_ID, message2, 0);
-
-        _mockAdapter(REMOTE_CENT_ID, message1, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
-        _mockAdapter(REMOTE_CENT_ID, message2, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
-
-        gateway.endBatching();
-
-        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
-        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), new bytes(0));
-        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_0), 0);
-        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_0), new bytes(0));
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID), 0);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID), new bytes(0));
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID + 1), 0);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID + 1), new bytes(0));
         assertEq(gateway.batchLocatorsLength(), 0);
         assertEq(gateway.isBatching(), false);
     }
@@ -789,12 +810,14 @@ contract GatewayTestEndBatching is GatewayTest {
         bytes32 batchHash = keccak256(batch);
 
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
-        gateway.startBatching();
+        gateway.updateManager(POOL_A, MANAGER, true);
+        vm.prank(MANAGER);
+        gateway.startBatching(POOL_A);
         gateway.send(REMOTE_CENT_ID, message1, 0);
         gateway.send(REMOTE_CENT_ID, message2, 0);
 
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, address(POOL_REFUND));
-        gateway.endBatching();
+        gateway.endBatching(POOL_A);
 
         (uint128 gasLimit, uint64 counter) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
         assertEq(counter, 1);
@@ -849,12 +872,14 @@ contract GatewayTestRepay is GatewayTest {
         bytes memory message2 = MessageKind.WithPoolA2.asBytes();
         bytes memory batch = bytes.concat(message1, message2);
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
-        gateway.startBatching();
+        gateway.updateManager(POOL_A, MANAGER, true);
+        vm.prank(MANAGER);
+        gateway.startBatching(POOL_A);
         gateway.send(REMOTE_CENT_ID, message1, 0);
         gateway.send(REMOTE_CENT_ID, message2, 0);
 
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, address(POOL_REFUND));
-        gateway.endBatching();
+        gateway.endBatching(POOL_A);
 
         // Expected: MESSAGE_GAS_LIMIT * 2 + ...
         uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
@@ -890,12 +915,15 @@ contract GatewayTestRepay is GatewayTest {
         bytes memory message2 = MessageKind.WithPoolA2.asBytes();
         bytes memory batch = bytes.concat(message1, message2);
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
-        gateway.startBatching();
+        gateway.updateManager(POOL_A, MANAGER, true);
+
+        vm.prank(MANAGER);
+        gateway.startBatching(POOL_A);
         gateway.send(REMOTE_CENT_ID, message1, 0);
         gateway.send(REMOTE_CENT_ID, message2, 0);
 
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, address(POOL_REFUND));
-        gateway.endBatching();
+        gateway.endBatching(POOL_A);
         gateway.depositSubsidy{value: 1234}(POOL_A);
 
         uint256 payment = MESSAGE_GAS_LIMIT * 2 + ADAPTER_ESTIMATE;

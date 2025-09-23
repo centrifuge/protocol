@@ -7,19 +7,18 @@ import {IBalanceSheet, ShareQueueAmount, AssetQueueAmount} from "./interfaces/IB
 
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
+import {Multicall} from "../misc/Multicall.sol";
 import {IAuth} from "../misc/interfaces/IAuth.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {IERC6909} from "../misc/interfaces/IERC6909.sol";
-import {Multicall, IMulticall} from "../misc/Multicall.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
 import {IRoot} from "../common/interfaces/IRoot.sol";
-import {IGateway} from "../common/interfaces/IGateway.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IPoolEscrow} from "../common/interfaces/IPoolEscrow.sol";
 import {ISpokeMessageSender} from "../common/interfaces/IGatewaySenders.sol";
@@ -43,7 +42,6 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     ISpoke public spoke;
     ISpokeMessageSender public sender;
     IPoolEscrowProvider public poolEscrowProvider;
-    IGateway public gateway;
 
     mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId poolId => mapping(ShareClassId scId => ShareQueueAmount)) public queuedShares;
@@ -68,27 +66,10 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     function file(bytes32 what, address data) external auth {
         if (what == "spoke") spoke = ISpoke(data);
         else if (what == "sender") sender = ISpokeMessageSender(data);
-        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
-    }
-
-    /// @inheritdoc IMulticall
-    /// @notice performs a multicall but all messages sent in the process will be batched
-    function multicall(bytes[] calldata data) public payable override {
-        require(msg.value == 0, NotPayable()); // Not payable by now
-        bool wasBatching = gateway.isBatching();
-        if (!wasBatching) {
-            gateway.startBatching();
-        }
-
-        super.multicall(data);
-
-        if (!wasBatching) {
-            gateway.endBatching();
-        }
     }
 
     //----------------------------------------------------------------------------------------------

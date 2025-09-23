@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IGateway} from "./IGateway.sol";
+
 import {D18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../types/PoolId.sol";
@@ -12,6 +14,8 @@ interface ILocalCentrifugeId {
     error CannotBeSentLocally();
 
     function localCentrifugeId() external view returns (uint16);
+
+    function gateway() external returns (IGateway);
 }
 
 /// @notice Interface for dispatch-only gateway

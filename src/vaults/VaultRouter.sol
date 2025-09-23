@@ -7,16 +7,15 @@ import {IAsyncVault} from "./interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "./interfaces/IVaultRouter.sol";
 
 import {Auth} from "../misc/Auth.sol";
+import {Multicall} from "../misc/Multicall.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {IEscrow} from "../misc/interfaces/IEscrow.sol";
-import {Multicall, IMulticall} from "../misc/Multicall.sol";
 import {IERC7540Deposit} from "../misc/interfaces/IERC7540.sol";
 import {IERC20, IERC20Permit} from "../misc/interfaces/IERC20.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../common/types/PoolId.sol";
-import {IGateway} from "../common/interfaces/IGateway.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 
 import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
@@ -37,34 +36,13 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
     ISpoke public immutable spoke;
     IEscrow public immutable escrow;
-    IGateway public immutable gateway;
 
     /// @inheritdoc IVaultRouter
     mapping(address controller => mapping(IBaseVault vault => uint256 amount)) public lockedRequests;
 
-    constructor(address escrow_, IGateway gateway_, ISpoke spoke_, address deployer) Auth(deployer) {
+    constructor(address escrow_, ISpoke spoke_, address deployer) Auth(deployer) {
         escrow = IEscrow(escrow_);
-        gateway = gateway_;
         spoke = spoke_;
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Administration
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IMulticall
-    /// @notice performs a multicall but all message sent in the process will be batched
-    function multicall(bytes[] calldata data) public payable override(Multicall, IMulticall) {
-        bool wasBatching = gateway.isBatching();
-        if (!wasBatching) {
-            gateway.startBatching();
-        }
-
-        super.multicall(data);
-
-        if (!wasBatching) {
-            gateway.endBatching();
-        }
     }
 
     //----------------------------------------------------------------------------------------------

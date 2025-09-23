@@ -745,7 +745,7 @@ contract EndToEndFlows is EndToEndUtils {
         vault.requestRedeem(shares, investor, investor);
 
         _processAsyncRedeemApproval(hub, poolId, shareClassId, assetId, shares, poolManager);
-        
+
         _processAsyncRedeemClaim(hub, spoke, poolId, shareClassId, assetId, investor, vault, shares);
     }
 
