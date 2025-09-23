@@ -12,9 +12,9 @@ verbosity = 3
 
 ffi = true
 fs_permissions = [
-  { access = "read-write", path = ".forge-snapshots/" },
   { access = "read-write", path = "./env/latest" },
   { access = "read", path = "env" },
+  { access = "read-write", path = "snapshots" },
 ]
 
 # Deployment specific settings

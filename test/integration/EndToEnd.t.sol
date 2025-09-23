@@ -65,6 +65,8 @@ import "forge-std/Test.sol";
 
 import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
 
+import {MessageBenchmarker} from "./utils/MessageBenchmarker.sol";
+
 /// End to end testing assuming two full deployments in two different chains
 ///
 /// This EndToEnd tests emulates two chains fully deployed and connected through an adapter
@@ -264,7 +266,21 @@ contract EndToEndDeployment is Test {
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         _setAdapter(deploy, remoteCentrifugeId, adapter);
 
+        // Only run the benchmarks if using one thread to avoid concurrence issues writting the json
+        // Example of command: RAYON_NUM_THREADS=1 RUN_ID="$(date +%s)" forge test EndToEnd
+        if (vm.envOr("RAYON_NUM_THREADS", uint256(0)) == 1) {
+            _attachBenchmark(deploy, batcher);
+        }
+
         deploy.removeFullDeployerAccess(batcher);
+    }
+
+    function _attachBenchmark(FullDeployer deploy, FullActionBatcher batcher) internal {
+        vm.startPrank(address(batcher));
+        MessageBenchmarker benchmarker = new MessageBenchmarker(deploy.messageProcessor());
+        deploy.messageProcessor().rely(address(benchmarker));
+        deploy.gateway().file("processor", address(benchmarker));
+        vm.stopPrank();
     }
 
     function _setSpoke(FullDeployer deploy, uint16 centrifugeId, CSpoke storage s_) internal {
