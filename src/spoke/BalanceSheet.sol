@@ -205,6 +205,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 extraGasLimit)
         external
         authOrManager(poolId)
+        returns (uint256 cost)
     {
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
@@ -227,13 +228,14 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         shareQueue.queuedAssetCounter -= assetCounter;
 
         emit SubmitQueuedAssets(poolId, scId, assetId, data, pricePoolPerAsset);
-        sender.sendUpdateHoldingAmount(poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit);
+        return sender.sendUpdateHoldingAmount(poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit);
     }
 
     /// @inheritdoc IBalanceSheet
     function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit)
         external
         authOrManager(poolId)
+        returns (uint256 cost)
     {
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
 
@@ -249,7 +251,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         shareQueue.nonce++;
 
         emit SubmitQueuedShares(poolId, scId, data);
-        sender.sendUpdateShares(poolId, scId, data, extraGasLimit);
+        return sender.sendUpdateShares(poolId, scId, data, extraGasLimit);
     }
 
     /// @inheritdoc IBalanceSheet

@@ -36,7 +36,7 @@ function length(MessageKind kind) pure returns (uint16) {
     if (kind == MessageKind.WithPool0) return 5;
     if (kind == MessageKind.WithPoolA1) return 10;
     if (kind == MessageKind.WithPoolA2) return 15;
-    if (kind == MessageKind.WithPoolAFail) return 10;
+    if (kind == MessageKind.WithPoolAFail) return 250;
     return 2;
 }
 
@@ -96,12 +96,16 @@ contract MockPoolRefund is Recoverable {
     receive() external payable {}
 }
 
+contract NoPayableDestination {}
+
 // -----------------------------------------
 //     GATEWAY EXTENSION
 // -----------------------------------------
 
 contract GatewayExt is Gateway {
-    constructor(IRoot root_, IGasService gasService_, address deployer) Gateway(root_, gasService_, deployer) {}
+    constructor(uint16 localCentrifugeId, IRoot root_, IGasService gasService_, address deployer)
+        Gateway(localCentrifugeId, root_, gasService_, deployer)
+    {}
 
     function batchLocatorsLength() public view returns (uint256) {
         return TransientArrayLib.length(BATCH_LOCATORS_SLOT);
@@ -118,6 +122,10 @@ contract GatewayExt is Gateway {
     function outboundBatch(uint16 centrifugeId, PoolId poolId) public view returns (bytes memory) {
         return TransientBytesLib.get(_outboundBatchSlot(centrifugeId, poolId));
     }
+
+    function process(uint16 centrifugeId, bytes memory message, bytes32 messageHash) public {
+        _process(centrifugeId, message, messageHash);
+    }
 }
 
 // -----------------------------------------
@@ -125,25 +133,29 @@ contract GatewayExt is Gateway {
 // -----------------------------------------
 
 contract GatewayTest is Test {
+    uint16 constant LOCAL_CENT_ID = 23;
     uint16 constant REMOTE_CENT_ID = 24;
 
-    uint256 constant ADAPTER_ESTIMATE = 1 gwei;
+    uint256 constant ADAPTER_ESTIMATE = 1;
     bytes32 constant ADAPTER_DATA = bytes32("adapter data");
 
-    uint256 constant MESSAGE_GAS_LIMIT = 10.0 gwei;
-    uint256 constant MAX_BATCH_GAS_LIMIT = 50.0 gwei;
-    uint128 constant EXTRA_GAS_LIMIT = 1.0 gwei;
+    uint256 constant MESSAGE_GAS_LIMIT = 100_000;
+    uint256 constant MAX_BATCH_GAS_LIMIT = 500_000;
+    uint128 constant EXTRA_GAS_LIMIT = 10;
+    bool constant NO_SUBSIDIZED = false;
 
     IGasService gasService = IGasService(makeAddr("GasService"));
     IRoot root = IRoot(makeAddr("Root"));
     IAdapter adapter = IAdapter(makeAddr("Adapter"));
 
     MockProcessor processor = new MockProcessor();
-    GatewayExt gateway = new GatewayExt(IRoot(address(root)), gasService, address(this));
+    GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), gasService, address(this));
 
     address immutable ANY = makeAddr("ANY");
     address immutable TRANSIENT_REFUND = makeAddr("TRANSIENT_REFUND");
     IRecoverable immutable POOL_REFUND = new MockPoolRefund(address(gateway));
+    address immutable MANAGER = makeAddr("MANAGER");
+    address NO_PAYABLE_DESTINATION = address(new NoPayableDestination());
 
     function _mockAdapter(uint16 centrifugeId, bytes memory message, uint256 gasLimit, address refund) internal {
         vm.mockCall(
@@ -220,6 +232,22 @@ contract GatewayTestFile is GatewayTest {
     }
 }
 
+contract GatewayTestUpdateManager is GatewayTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.updateManager(POOL_A, MANAGER, true);
+    }
+
+    function testUpdateManager() public {
+        vm.expectEmit();
+        emit IGateway.UpdateManager(POOL_A, MANAGER, true);
+        gateway.updateManager(POOL_A, MANAGER, true);
+
+        assertEq(gateway.manager(POOL_A, MANAGER), true);
+    }
+}
+
 contract GatewayTestReceive is GatewayTest {
     function testGatewayReceive() public {
         (bool success,) = address(gateway).call{value: 100}(new bytes(0));
@@ -246,11 +274,21 @@ contract GatewayTestHandle is GatewayTest {
         gateway.handle(REMOTE_CENT_ID, new bytes(0));
     }
 
+    function testErrNotEnoughGasToProcess() public {
+        bytes memory batch = MessageKind.WithPool0.asBytes();
+        uint256 gas = MESSAGE_GAS_LIMIT + gateway.GAS_FAIL_MESSAGE_STORAGE();
+
+        vm.expectRevert(IGateway.NotEnoughGasToProcess.selector);
+
+        // NOTE: The own handle() also consume some gas, so passing gas + <small value> can also make it fails
+        gateway.handle{gas: gas - 1}(REMOTE_CENT_ID, batch);
+    }
+
     function testMessage() public {
         bytes memory batch = MessageKind.WithPool0.asBytes();
 
         vm.expectEmit();
-        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch);
+        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch, keccak256(batch));
         gateway.handle(REMOTE_CENT_ID, batch);
 
         assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
@@ -260,7 +298,7 @@ contract GatewayTestHandle is GatewayTest {
         bytes memory batch = MessageKind.WithPoolAFail.asBytes();
 
         vm.expectEmit();
-        emit IGateway.FailMessage(REMOTE_CENT_ID, batch, abi.encodeWithSignature("HandleError()"));
+        emit IGateway.FailMessage(REMOTE_CENT_ID, batch, keccak256(batch), abi.encodeWithSignature("HandleError()"));
         gateway.handle(REMOTE_CENT_ID, batch);
 
         assertEq(processor.count(REMOTE_CENT_ID), 0);
@@ -311,6 +349,13 @@ contract GatewayTestHandle is GatewayTest {
 
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(message)), 2);
     }
+
+    function testMessageFailBenchmark() public {
+        bytes memory message = MessageKind.WithPoolAFail.asBytes();
+        bytes32 messageHash = keccak256(message);
+
+        gateway.process(REMOTE_CENT_ID, message, messageHash);
+    }
 }
 
 contract GatewayTestRetry is GatewayTest {
@@ -333,7 +378,7 @@ contract GatewayTestRetry is GatewayTest {
         processor.disableFailure();
 
         vm.prank(ANY);
-        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch);
+        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch, keccak256(batch));
         gateway.retry(REMOTE_CENT_ID, batch);
 
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);
@@ -360,19 +405,6 @@ contract GatewayTestRetry is GatewayTest {
     }
 }
 
-contract GatewayTestSetExtraGasLimit is GatewayTest {
-    function testErrNotAuthorized() public {
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.setExtraGasLimit(0);
-    }
-
-    function testCorrectSetExtraGasLimit() public {
-        gateway.setExtraGasLimit(EXTRA_GAS_LIMIT);
-        assertEq(gateway.extraGasLimit(), EXTRA_GAS_LIMIT);
-    }
-}
-
 contract GatewayTestSetRefundAddress is GatewayTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
@@ -390,49 +422,64 @@ contract GatewayTestSetRefundAddress is GatewayTest {
     }
 }
 
-contract GatewayTestSetSubsidizePool is GatewayTest {
+contract GatewayTestSubsidizePool is GatewayTest {
     function testErrRefundAddressNotSet() public {
         vm.deal(ANY, 100);
         vm.prank(ANY);
         vm.expectRevert(IGateway.RefundAddressNotSet.selector);
-        gateway.subsidizePool{value: 100}(POOL_A);
+        gateway.depositSubsidy{value: 100}(POOL_A);
     }
 
-    function testSetSubsidizePool() public {
+    function testSubsidizePool() public {
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
 
         vm.deal(ANY, 100);
         vm.prank(ANY);
         vm.expectEmit();
-        emit IGateway.SubsidizePool(POOL_A, ANY, 100);
-        gateway.subsidizePool{value: 100}(POOL_A);
+        emit IGateway.DepositSubsidy(POOL_A, ANY, 100);
+        gateway.depositSubsidy{value: 100}(POOL_A);
 
-        (uint96 value,) = gateway.subsidy(POOL_A);
-        assertEq(value, 100);
+        assertEq(gateway.subsidizedValue(POOL_A), 100);
     }
 }
 
-contract GatewayTestPayTransaction is GatewayTest {
-    function testErrNotAuthorized() public {
-        vm.deal(ANY, 100);
+contract GatewayTestWithdrawSubsidizedPool is GatewayTest {
+    function testErrManagerNotAllowed() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.startTransactionPayment{value: 100}(TRANSIENT_REFUND);
+        gateway.withdrawSubsidy(POOL_A, MANAGER, 100);
     }
 
-    function testPayTransaction() public {
-        gateway.startTransactionPayment{value: 100}(TRANSIENT_REFUND);
+    function testErrCannotWithdraw() public {
+        gateway.setRefundAddress(POOL_A, POOL_REFUND);
+        gateway.updateManager(POOL_A, MANAGER, true);
 
-        assertEq(gateway.transactionRefund(), TRANSIENT_REFUND);
-        assertEq(gateway.fuel(), 100);
+        vm.deal(ANY, 100);
+        vm.prank(ANY);
+        gateway.depositSubsidy{value: 100}(POOL_A);
+
+        vm.prank(MANAGER);
+        vm.expectRevert(IGateway.CannotWithdraw.selector);
+        gateway.withdrawSubsidy(POOL_A, NO_PAYABLE_DESTINATION, 100);
     }
 
-    /// forge-config: default.isolate = true
-    function testPayTransactionIsTransactional() public {
-        gateway.startTransactionPayment{value: 100}(TRANSIENT_REFUND);
+    function testWithdrawSubsidizedPool() public {
+        gateway.setRefundAddress(POOL_A, POOL_REFUND);
+        gateway.updateManager(POOL_A, MANAGER, true);
 
-        assertEq(gateway.transactionRefund(), address(0));
-        assertEq(gateway.fuel(), 0);
+        vm.deal(ANY, 100);
+        vm.prank(ANY);
+        gateway.depositSubsidy{value: 100}(POOL_A);
+
+        address to = makeAddr("to");
+        vm.prank(MANAGER);
+        vm.expectEmit();
+        emit IGateway.WithdrawSubsidy(POOL_A, to, 100);
+        gateway.withdrawSubsidy(POOL_A, to, 100);
+
+        assertEq(gateway.subsidizedValue(POOL_A), 0);
+        assertEq(MANAGER.balance, 0);
+        assertEq(to.balance, 100);
     }
 }
 
@@ -455,18 +502,18 @@ contract GatewayTestSend is GatewayTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.send(REMOTE_CENT_ID, new bytes(0));
+        gateway.send(REMOTE_CENT_ID, new bytes(0), 0);
     }
 
     function testErrPaused() public {
         _mockPause(true);
         vm.expectRevert(IGateway.Paused.selector);
-        gateway.send(REMOTE_CENT_ID, new bytes(0));
+        gateway.send(REMOTE_CENT_ID, new bytes(0), 0);
     }
 
     function testErrEmptyMessage() public {
         vm.expectRevert(IGateway.EmptyMessage.selector);
-        gateway.send(REMOTE_CENT_ID, new bytes(0));
+        gateway.send(REMOTE_CENT_ID, new bytes(0), 0);
     }
 
     function testErrExceedsMaxBatching() public {
@@ -474,23 +521,24 @@ contract GatewayTestSend is GatewayTest {
         uint256 maxMessages = MAX_BATCH_GAS_LIMIT / MESSAGE_GAS_LIMIT;
 
         for (uint256 i; i < maxMessages; i++) {
-            gateway.send(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes());
+            gateway.send(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes(), 0);
         }
 
         vm.expectRevert(IGateway.ExceedsMaxGasLimit.selector);
-        gateway.send(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes());
+        gateway.send(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes(), 0);
     }
 
-    function testErrNotEnoughTransactionGas() public {
+    function testErrOutgoingBlocked() public {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
+        gateway.updateManager(POOL_A, MANAGER, true);
 
-        uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE - 1;
-        gateway.startTransactionPayment{value: payment}(TRANSIENT_REFUND);
+        vm.prank(MANAGER);
+        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
 
         _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, TRANSIENT_REFUND);
 
-        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        gateway.send(REMOTE_CENT_ID, message);
+        vm.expectRevert(IGateway.OutgoingBlocked.selector);
+        gateway.send(REMOTE_CENT_ID, message, 0);
     }
 
     function testMessageWasBatched() public {
@@ -500,7 +548,7 @@ contract GatewayTestSend is GatewayTest {
 
         vm.expectEmit();
         emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
-        gateway.send(REMOTE_CENT_ID, message);
+        assertEq(gateway.send(REMOTE_CENT_ID, message, 0), 0);
 
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), MESSAGE_GAS_LIMIT);
         assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), message);
@@ -516,8 +564,8 @@ contract GatewayTestSend is GatewayTest {
         bytes memory message2 = MessageKind.WithPoolA2.asBytes();
 
         gateway.startBatching();
-        gateway.send(REMOTE_CENT_ID, message1);
-        gateway.send(REMOTE_CENT_ID, message2);
+        gateway.send(REMOTE_CENT_ID, message1, 0);
+        gateway.send(REMOTE_CENT_ID, message2, 0);
 
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), MESSAGE_GAS_LIMIT * 2);
         assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), abi.encodePacked(message1, message2));
@@ -529,8 +577,8 @@ contract GatewayTestSend is GatewayTest {
         bytes memory message2 = MessageKind.WithPoolA2.asBytes();
 
         gateway.startBatching();
-        gateway.send(REMOTE_CENT_ID, message1);
-        gateway.send(REMOTE_CENT_ID + 1, message2);
+        gateway.send(REMOTE_CENT_ID, message1, 0);
+        gateway.send(REMOTE_CENT_ID + 1, message2, 0);
 
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), MESSAGE_GAS_LIMIT);
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID + 1, POOL_A), MESSAGE_GAS_LIMIT);
@@ -544,8 +592,8 @@ contract GatewayTestSend is GatewayTest {
         bytes memory message2 = MessageKind.WithPool0.asBytes();
 
         gateway.startBatching();
-        gateway.send(REMOTE_CENT_ID, message1);
-        gateway.send(REMOTE_CENT_ID, message2);
+        gateway.send(REMOTE_CENT_ID, message1, 0);
+        gateway.send(REMOTE_CENT_ID, message2, 0);
 
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), MESSAGE_GAS_LIMIT);
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_0), MESSAGE_GAS_LIMIT);
@@ -563,10 +611,10 @@ contract GatewayTestSend is GatewayTest {
         vm.expectEmit();
         emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
         vm.expectEmit();
-        emit IGateway.UnderpaidBatch(REMOTE_CENT_ID, message);
-        gateway.send(REMOTE_CENT_ID, message);
+        emit IGateway.UnderpaidBatch(REMOTE_CENT_ID, message, batchHash);
+        assertEq(gateway.send(REMOTE_CENT_ID, message, 0), 0);
 
-        (uint128 counter, uint128 gasLimit) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
+        (uint128 gasLimit, uint64 counter) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
         assertEq(counter, 1);
         assertEq(gasLimit, MESSAGE_GAS_LIMIT);
     }
@@ -577,10 +625,10 @@ contract GatewayTestSend is GatewayTest {
 
         _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
 
-        gateway.send(REMOTE_CENT_ID, message);
-        gateway.send(REMOTE_CENT_ID, message);
+        gateway.send(REMOTE_CENT_ID, message, 0);
+        gateway.send(REMOTE_CENT_ID, message, 0);
 
-        (uint128 counter, uint128 gasLimit) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
+        (uint128 gasLimit, uint64 counter) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
         assertEq(counter, 2);
         assertEq(gasLimit, MESSAGE_GAS_LIMIT);
     }
@@ -588,15 +636,15 @@ contract GatewayTestSend is GatewayTest {
     function testSendMessageUsingSubsidizedPoolPayment() public {
         bytes memory message = MessageKind.WithPool0.asBytes(); // NOTE payment for WithPool0 is POOL_A
 
-        uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE + 1234;
+        uint256 cost = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
-        gateway.subsidizePool{value: payment}(POOL_A);
+        gateway.depositSubsidy{value: cost + 1234}(POOL_A);
 
         _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
 
         vm.expectEmit();
         emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_0, message);
-        gateway.send(REMOTE_CENT_ID, message);
+        assertEq(gateway.send(REMOTE_CENT_ID, message, 0), cost);
 
         (uint256 value,) = gateway.subsidy(POOL_A);
         assertEq(value, 1234);
@@ -605,10 +653,10 @@ contract GatewayTestSend is GatewayTest {
     function testSendMessageUsingSubsidizedPoolPaymentAndPoolRefunding() public {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
 
-        /// Not enough payment
-        uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE - 1;
+        uint256 cost = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
-        gateway.subsidizePool{value: payment}(POOL_A);
+        gateway.depositSubsidy{value: cost - 1}(POOL_A);
+        /// Not enough payment
 
         // The refund system will take this amount to perform the required payment
         vm.deal(address(POOL_REFUND), 1);
@@ -616,35 +664,23 @@ contract GatewayTestSend is GatewayTest {
         _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
 
         vm.expectEmit();
-        emit IGateway.SubsidizePool(POOL_A, address(POOL_REFUND), 1);
-        gateway.send(REMOTE_CENT_ID, message);
+        emit IGateway.DepositSubsidy(POOL_A, address(POOL_REFUND), 1);
+        assertEq(gateway.send(REMOTE_CENT_ID, message, 0), cost);
 
         (uint256 value,) = gateway.subsidy(POOL_A);
         assertEq(value, 0);
     }
 
-    function testSendMessageUsingTransactionPayment() public {
-        bytes memory message = MessageKind.WithPoolA1.asBytes();
-
-        uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE + 1234;
-        gateway.startTransactionPayment{value: payment}(TRANSIENT_REFUND);
-
-        _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, TRANSIENT_REFUND);
-
-        vm.expectEmit();
-        emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
-        gateway.send(REMOTE_CENT_ID, message);
-    }
-
     function testMessageWithExtraGasLimit() public {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
 
-        _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT, TRANSIENT_REFUND);
+        uint256 cost = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE + EXTRA_GAS_LIMIT;
+        gateway.setRefundAddress(POOL_A, POOL_REFUND);
+        gateway.depositSubsidy{value: cost}(POOL_A);
 
-        gateway.setExtraGasLimit(EXTRA_GAS_LIMIT);
-        gateway.send(REMOTE_CENT_ID, message);
+        _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT, address(POOL_REFUND));
 
-        assertEq(gateway.extraGasLimit(), 0);
+        assertEq(gateway.send(REMOTE_CENT_ID, message, EXTRA_GAS_LIMIT), cost);
     }
 
     function testMessageBatchedWithExtraGasLimit() public {
@@ -652,14 +688,10 @@ contract GatewayTestSend is GatewayTest {
 
         gateway.startBatching();
 
-        gateway.setExtraGasLimit(EXTRA_GAS_LIMIT);
-        gateway.send(REMOTE_CENT_ID, message);
-
-        gateway.setExtraGasLimit(EXTRA_GAS_LIMIT);
-        gateway.send(REMOTE_CENT_ID, message);
+        gateway.send(REMOTE_CENT_ID, message, EXTRA_GAS_LIMIT);
+        gateway.send(REMOTE_CENT_ID, message, EXTRA_GAS_LIMIT);
 
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), (MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT) * 2);
-        assertEq(gateway.extraGasLimit(), 0);
     }
 }
 
@@ -682,11 +714,11 @@ contract GatewayTestEndBatching is GatewayTest {
 
         uint256 payment = MESSAGE_GAS_LIMIT * 2 + ADAPTER_ESTIMATE;
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
-        gateway.subsidizePool{value: payment}(POOL_A);
+        gateway.depositSubsidy{value: payment}(POOL_A);
 
         gateway.startBatching();
-        gateway.send(REMOTE_CENT_ID, message1);
-        gateway.send(REMOTE_CENT_ID, message2);
+        gateway.send(REMOTE_CENT_ID, message1, 0);
+        gateway.send(REMOTE_CENT_ID, message2, 0);
 
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, address(POOL_REFUND));
 
@@ -704,11 +736,11 @@ contract GatewayTestEndBatching is GatewayTest {
 
         uint256 payment = (MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE) * 2;
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
-        gateway.subsidizePool{value: payment}(POOL_A);
+        gateway.depositSubsidy{value: payment}(POOL_A);
 
         gateway.startBatching();
-        gateway.send(REMOTE_CENT_ID, message1);
-        gateway.send(REMOTE_CENT_ID + 1, message2);
+        gateway.send(REMOTE_CENT_ID, message1, 0);
+        gateway.send(REMOTE_CENT_ID + 1, message2, 0);
 
         _mockAdapter(REMOTE_CENT_ID, message1, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
         _mockAdapter(REMOTE_CENT_ID + 1, message2, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
@@ -730,12 +762,12 @@ contract GatewayTestEndBatching is GatewayTest {
         uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
         gateway.setRefundAddress(POOL_0, POOL_REFUND);
-        gateway.subsidizePool{value: payment}(POOL_A);
-        gateway.subsidizePool{value: payment}(POOL_0);
+        gateway.depositSubsidy{value: payment}(POOL_A);
+        gateway.depositSubsidy{value: payment}(POOL_0);
 
         gateway.startBatching();
-        gateway.send(REMOTE_CENT_ID, message1);
-        gateway.send(REMOTE_CENT_ID, message2);
+        gateway.send(REMOTE_CENT_ID, message1, 0);
+        gateway.send(REMOTE_CENT_ID, message2, 0);
 
         _mockAdapter(REMOTE_CENT_ID, message1, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
         _mockAdapter(REMOTE_CENT_ID, message2, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
@@ -750,23 +782,6 @@ contract GatewayTestEndBatching is GatewayTest {
         assertEq(gateway.isBatching(), false);
     }
 
-    function testSendTwoMessageBatchingUsingTransactionPayment() public {
-        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
-        bytes memory message2 = MessageKind.WithPoolA2.asBytes();
-        bytes memory batch = bytes.concat(message1, message2);
-
-        gateway.startBatching();
-        gateway.send(REMOTE_CENT_ID, message1);
-        gateway.send(REMOTE_CENT_ID, message2);
-
-        uint256 payment = MESSAGE_GAS_LIMIT * 2 + ADAPTER_ESTIMATE;
-        gateway.startTransactionPayment{value: payment}(TRANSIENT_REFUND);
-
-        _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, TRANSIENT_REFUND);
-
-        gateway.endBatching();
-    }
-
     function testSendMessageUnderpaid() public {
         bytes memory message1 = MessageKind.WithPoolA1.asBytes();
         bytes memory message2 = MessageKind.WithPoolA2.asBytes();
@@ -775,13 +790,13 @@ contract GatewayTestEndBatching is GatewayTest {
 
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
         gateway.startBatching();
-        gateway.send(REMOTE_CENT_ID, message1);
-        gateway.send(REMOTE_CENT_ID, message2);
+        gateway.send(REMOTE_CENT_ID, message1, 0);
+        gateway.send(REMOTE_CENT_ID, message2, 0);
 
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, address(POOL_REFUND));
         gateway.endBatching();
 
-        (uint128 counter, uint128 gasLimit) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
+        (uint128 gasLimit, uint64 counter) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
         assertEq(counter, 1);
         assertEq(gasLimit, MESSAGE_GAS_LIMIT * 2);
     }
@@ -801,15 +816,50 @@ contract GatewayTestRepay is GatewayTest {
         gateway.repay(REMOTE_CENT_ID, batch);
     }
 
-    function testErrInsufficientFundsForRepayment() public {
+    function testErrCannotBeRepaid() public {
         bytes memory batch = MessageKind.WithPoolA1.asBytes();
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
+        gateway.depositSubsidy{value: MESSAGE_GAS_LIMIT / 2}(POOL_A);
 
-        _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
-        gateway.send(REMOTE_CENT_ID, batch);
+        _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT, address(this));
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, batch, 0);
 
-        vm.expectRevert(IGateway.InsufficientFundsForRepayment.selector);
-        gateway.repay(REMOTE_CENT_ID, batch);
+        vm.expectRevert(IGateway.CannotBeRepaid.selector);
+        gateway.repay{value: MESSAGE_GAS_LIMIT / 2}(REMOTE_CENT_ID, batch);
+    }
+
+    function testErrOutgoingBlocked() public {
+        bytes memory batch = MessageKind.WithPoolA1.asBytes();
+        gateway.setRefundAddress(POOL_A, POOL_REFUND);
+        gateway.updateManager(POOL_A, MANAGER, true);
+
+        vm.prank(MANAGER);
+        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
+
+        _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT, address(this));
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, batch, 0);
+        uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
+
+        vm.expectRevert(IGateway.OutgoingBlocked.selector);
+        gateway.repay{value: payment}(REMOTE_CENT_ID, batch);
+    }
+
+    function testErrForRepaymentWithBatches() public {
+        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
+        bytes memory message2 = MessageKind.WithPoolA2.asBytes();
+        bytes memory batch = bytes.concat(message1, message2);
+        gateway.setRefundAddress(POOL_A, POOL_REFUND);
+        gateway.startBatching();
+        gateway.send(REMOTE_CENT_ID, message1, 0);
+        gateway.send(REMOTE_CENT_ID, message2, 0);
+
+        _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, address(POOL_REFUND));
+        gateway.endBatching();
+
+        // Expected: MESSAGE_GAS_LIMIT * 2 + ...
+        uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
+        vm.expectRevert(IGateway.CannotBeRepaid.selector);
+        gateway.repay{value: payment}(REMOTE_CENT_ID, batch);
     }
 
     function testCorrectRepay() public {
@@ -817,34 +867,22 @@ contract GatewayTestRepay is GatewayTest {
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
 
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
-        gateway.send(REMOTE_CENT_ID, batch);
+        gateway.send(REMOTE_CENT_ID, batch, 0);
+        gateway.depositSubsidy{value: 1234}(POOL_A);
 
         uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
+        vm.deal(ANY, payment);
+        vm.prank(ANY);
         vm.expectEmit();
         emit IGateway.RepayBatch(REMOTE_CENT_ID, batch);
         gateway.repay{value: payment}(REMOTE_CENT_ID, batch);
 
-        (uint128 counter, uint128 gasLimit) = gateway.underpaid(REMOTE_CENT_ID, keccak256(batch));
+        (uint128 gasLimit, uint64 counter) = gateway.underpaid(REMOTE_CENT_ID, keccak256(batch));
         assertEq(counter, 0);
         assertEq(gasLimit, 0);
-    }
 
-    function testErrInsufficientFundsForRepaymentWithBatches() public {
-        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
-        bytes memory message2 = MessageKind.WithPoolA2.asBytes();
-        bytes memory batch = bytes.concat(message1, message2);
-        gateway.setRefundAddress(POOL_A, POOL_REFUND);
-        gateway.startBatching();
-        gateway.send(REMOTE_CENT_ID, message1);
-        gateway.send(REMOTE_CENT_ID, message2);
-
-        _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, address(POOL_REFUND));
-        gateway.endBatching();
-
-        // Expected: MESSAGE_GAS_LIMIT * 2 + ...
-        uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
-        vm.expectRevert(IGateway.InsufficientFundsForRepayment.selector);
-        gateway.repay{value: payment}(REMOTE_CENT_ID, batch);
+        assertEq(address(ANY).balance, 0);
+        assertEq(gateway.subsidizedValue(POOL_A), 1234);
     }
 
     function testCorrectRepayForBatches() public {
@@ -853,17 +891,22 @@ contract GatewayTestRepay is GatewayTest {
         bytes memory batch = bytes.concat(message1, message2);
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
         gateway.startBatching();
-        gateway.send(REMOTE_CENT_ID, message1);
-        gateway.send(REMOTE_CENT_ID, message2);
+        gateway.send(REMOTE_CENT_ID, message1, 0);
+        gateway.send(REMOTE_CENT_ID, message2, 0);
 
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, address(POOL_REFUND));
         gateway.endBatching();
+        gateway.depositSubsidy{value: 1234}(POOL_A);
 
         uint256 payment = MESSAGE_GAS_LIMIT * 2 + ADAPTER_ESTIMATE;
-
+        vm.deal(ANY, payment);
+        vm.prank(ANY);
         vm.expectEmit();
         emit IGateway.RepayBatch(REMOTE_CENT_ID, batch);
         gateway.repay{value: payment}(REMOTE_CENT_ID, batch);
+
+        assertEq(address(ANY).balance, 0);
+        assertEq(gateway.subsidizedValue(POOL_A), 1234);
     }
 }
 
@@ -871,7 +914,7 @@ contract GatewayTestAddUnpaidMessage is GatewayTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.addUnpaidMessage(REMOTE_CENT_ID, bytes(""));
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, bytes(""), 0);
     }
 
     function testCorrectAddUnpaidMessage() public {
@@ -881,10 +924,10 @@ contract GatewayTestAddUnpaidMessage is GatewayTest {
         vm.expectEmit();
         emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
         vm.expectEmit();
-        emit IGateway.UnderpaidBatch(REMOTE_CENT_ID, message);
-        gateway.addUnpaidMessage(REMOTE_CENT_ID, message);
+        emit IGateway.UnderpaidBatch(REMOTE_CENT_ID, message, batchHash);
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, message, 0);
 
-        (uint128 counter, uint128 gasLimit) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
+        (uint128 gasLimit, uint64 counter) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
         assertEq(counter, 1);
         assertEq(gasLimit, MESSAGE_GAS_LIMIT);
     }
@@ -893,10 +936,10 @@ contract GatewayTestAddUnpaidMessage is GatewayTest {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
         bytes32 batchHash = keccak256(message);
 
-        gateway.addUnpaidMessage(REMOTE_CENT_ID, message);
-        gateway.addUnpaidMessage(REMOTE_CENT_ID, message);
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, message, 0);
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, message, 0);
 
-        (uint128 counter, uint128 gasLimit) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
+        (uint128 gasLimit, uint64 counter) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
         assertEq(counter, 2);
         assertEq(gasLimit, MESSAGE_GAS_LIMIT);
     }
@@ -905,11 +948,28 @@ contract GatewayTestAddUnpaidMessage is GatewayTest {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
         bytes32 batchHash = keccak256(message);
 
-        gateway.setExtraGasLimit(EXTRA_GAS_LIMIT);
-        gateway.addUnpaidMessage(REMOTE_CENT_ID, message);
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, message, EXTRA_GAS_LIMIT);
 
-        (, uint128 gasLimit) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
+        (uint128 gasLimit,) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
         assertEq(gasLimit, MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT);
-        assertEq(gateway.extraGasLimit(), 0);
+    }
+}
+
+contract GatewayTestBlockOutgoing is GatewayTest {
+    function testErrManagerNotAllowed() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, false);
+    }
+
+    function testBlockOutgoing() public {
+        gateway.updateManager(POOL_A, MANAGER, true);
+
+        vm.prank(MANAGER);
+        vm.expectEmit();
+        emit IGateway.BlockOutgoing(REMOTE_CENT_ID, POOL_A, true);
+        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
+
+        assertEq(gateway.isOutgoingBlocked(REMOTE_CENT_ID, POOL_A), true);
     }
 }

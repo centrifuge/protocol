@@ -24,7 +24,7 @@ interface IHubGatewayHandler {
     /// @param  scId The share class id
     /// @param  assetId The asset id
     /// @param  payload The request payload to be processed
-    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external payable;
+    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
 
     /// @notice Update a holding by request from Vaults.
     function updateHoldingAmount(
@@ -48,7 +48,7 @@ interface IHubGatewayHandler {
         bytes32 receiver,
         uint128 amount,
         uint128 extraGasLimit
-    ) external;
+    ) external returns (uint256 cost);
 
     /// @notice Updates the total issuance of shares by request from vaults.
     function updateShares(
@@ -83,12 +83,10 @@ interface ISpokeGatewayHandler {
         address hook
     ) external;
 
-    /// @notice Updates the request manager for a specific asset
+    /// @notice Updates the request manager for a pool
     /// @param  poolId The centrifuge pool id
-    /// @param  scId The share class id
-    /// @param  assetId The asset id
     /// @param  manager The new request manager address
-    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager) external;
+    function setRequestManager(PoolId poolId, IRequestManager manager) external;
 
     /// @notice   Updates the tokenName and tokenSymbol of a share class token
     function updateShareMetadata(PoolId poolId, ShareClassId scId, string memory tokenName, string memory tokenSymbol)

@@ -13,6 +13,9 @@ interface IMessageProcessor is IMessageHandler, IMessageProperties {
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
 
+    /// @notice Dispatched when a message is tried to send from a different chain than mainnet
+    error OnlyFromMainnet();
+
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
     /// Accepts a `bytes32` representation of 'hubRegistry' string value.

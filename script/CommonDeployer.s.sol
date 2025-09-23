@@ -65,10 +65,13 @@ contract CommonActionBatcher {
         report.root.rely(address(report.messageDispatcher));
         report.gateway.rely(address(report.root));
         report.gateway.rely(address(report.messageDispatcher));
+        report.gateway.rely(address(report.messageProcessor));
+        report.gateway.rely(address(report.guardian));
         report.gateway.rely(address(report.multiAdapter));
         report.multiAdapter.rely(address(report.root));
         report.multiAdapter.rely(address(report.guardian));
         report.multiAdapter.rely(address(report.gateway));
+        report.multiAdapter.rely(address(report.messageProcessor));
         report.messageDispatcher.rely(address(report.root));
         report.messageDispatcher.rely(address(report.guardian));
         report.messageProcessor.rely(address(report.root));
@@ -81,6 +84,8 @@ contract CommonActionBatcher {
         report.gateway.file("processor", address(report.messageProcessor));
         report.gateway.file("adapter", address(report.multiAdapter));
         report.poolEscrowFactory.file("gateway", address(report.gateway));
+        report.messageProcessor.file("multiAdapter", address(report.multiAdapter));
+        report.messageProcessor.file("gateway", address(report.gateway));
     }
 
     function postEngageCommon(CommonReport memory report) public onlyDeployer {
@@ -188,7 +193,9 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             payable(
                 create3(
                     generateSalt("gateway"),
-                    abi.encodePacked(type(Gateway).creationCode, abi.encode(root, gasService, batcher))
+                    abi.encodePacked(
+                        type(Gateway).creationCode, abi.encode(input.centrifugeId, root, gasService, batcher)
+                    )
                 )
             )
         );
@@ -196,7 +203,9 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         multiAdapter = MultiAdapter(
             create3(
                 generateSalt("multiAdapter"),
-                abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, batcher))
+                abi.encodePacked(
+                    type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, messageProcessor, batcher)
+                )
             )
         );
 
@@ -215,7 +224,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
                 generateSalt("guardian"),
                 abi.encodePacked(
                     type(Guardian).creationCode,
-                    abi.encode(ISafe(address(batcher)), multiAdapter, root, messageDispatcher)
+                    abi.encode(ISafe(address(batcher)), root, gateway, multiAdapter, messageDispatcher)
                 )
             )
         );

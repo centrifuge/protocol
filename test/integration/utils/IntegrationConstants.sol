@@ -10,10 +10,10 @@ import {MAX_MESSAGE_COST} from "../../../src/common/interfaces/IGasService.sol";
 /// @notice Centralized constants for integration tests
 library IntegrationConstants {
     // ======== Network IDs ========
-    uint16 constant CENTRIFUGE_ID_A = 5;
-    uint16 constant CENTRIFUGE_ID_B = 6;
-    uint16 constant CENTRIFUGE_ID_C = 7;
-    uint16 constant LOCAL_CENTRIFUGE_ID = 1;
+    uint16 constant CENTRIFUGE_ID_A = 1;
+    uint16 constant CENTRIFUGE_ID_B = 2;
+    uint16 constant CENTRIFUGE_ID_C = 3;
+    uint16 constant LOCAL_CENTRIFUGE_ID = 4;
 
     // ======== Amounts ========
     uint128 constant DEFAULT_USDC_AMOUNT = 1e12; // 1M USDC
@@ -32,7 +32,7 @@ library IntegrationConstants {
     uint128 constant GAS = MAX_MESSAGE_COST;
     uint256 constant DEFAULT_SUBSIDY = 0.1 ether;
     uint256 constant INTEGRATION_DEFAULT_SUBSIDY = 1 ether;
-    uint128 constant SHARE_HOOK_GAS = 0 ether;
+    uint128 constant HOOK_GAS = 0 ether;
     uint128 constant EXTRA_GAS = 0;
 
     // ======== Protocol Addresses ========

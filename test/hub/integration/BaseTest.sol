@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import {D18, d18} from "../../../src/misc/types/D18.sol";
-import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
 import {MockValuation} from "../../common/mocks/MockValuation.sol";
 
@@ -51,7 +50,8 @@ contract BaseTest is HubDeployer, Test {
     AccountId constant ASSET_EUR_STABLE_ACCOUNT = AccountId.wrap(0x05);
 
     uint128 constant GAS = MAX_MESSAGE_COST;
-    uint128 constant SHARE_HOOK_GAS = 0 wei;
+    uint128 constant DEFAULT_SUBSIDY = MAX_MESSAGE_COST * 1000;
+    uint128 constant HOOK_GAS = 0 wei;
 
     MockVaults cv;
     MockValuation valuation;
@@ -60,21 +60,13 @@ contract BaseTest is HubDeployer, Test {
         vm.startPrank(address(batcher));
 
         cv = new MockVaults(CHAIN_CV, multiAdapter);
-        _wire(CHAIN_CV, cv);
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = cv;
+        multiAdapter.setAdapters(CHAIN_CV, PoolId.wrap(0), adapters, uint8(adapters.length), uint8(adapters.length));
 
         valuation = new MockValuation(hubRegistry);
 
         vm.stopPrank();
-    }
-
-    function _wire(uint16 centrifugeId, IAdapter adapter) internal {
-        IAuth(address(adapter)).rely(address(root));
-        IAuth(address(adapter)).rely(address(guardian));
-        IAuth(address(adapter)).deny(address(this));
-
-        IAdapter[] memory adapters = new IAdapter[](1);
-        adapters[0] = adapter;
-        multiAdapter.file("adapters", centrifugeId, adapters);
     }
 
     function setUp() public virtual {
@@ -97,6 +89,8 @@ contract BaseTest is HubDeployer, Test {
 
         // We should not use the block ChainID
         vm.chainId(0xDEAD);
+
+        gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
     }
 
     function _assertEqAccountValue(PoolId poolId, AccountId accountId, bool expectedIsPositive, uint128 expectedValue)
