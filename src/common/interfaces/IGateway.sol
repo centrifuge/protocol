@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IAdapter} from "./IAdapter.sol";
+import {IGasService} from "./IGasService.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
 
 import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
-
-import {IGasService} from "./IGasService.sol";
-import {IAdapter} from "./IAdapter.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 

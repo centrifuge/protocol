@@ -5,14 +5,11 @@ import {IQueueManager} from "./interfaces/IQueueManager.sol";
 
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {BitmapLib} from "../misc/libraries/BitmapLib.sol";
-import {IMulticall} from "../misc/interfaces/IMulticall.sol";
 import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 
-import {IGateway} from "../common/interfaces/IGateway.sol";
-import {IAdapter} from "../common/interfaces/IAdapter.sol";
-import {IGasService} from "../common/interfaces/IGasService.sol";
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
+import {IGateway} from "../common/interfaces/IGateway.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 
 import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
@@ -25,9 +22,9 @@ contract QueueManager is IQueueManager, IUpdateContract {
     using CastLib for *;
     using BitmapLib for *;
 
+    IGateway public immutable gateway;
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
-    IGateway public immutable gateway;
 
     mapping(PoolId => mapping(ShareClassId => ShareClassQueueState)) public scQueueState;
 
