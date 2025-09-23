@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IMessageSender} from "./IMessageSender.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
 
 import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
@@ -9,7 +8,7 @@ import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 import {PoolId} from "../types/PoolId.sol";
 
 /// @notice Interface for dispatch-only gateway
-interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
+interface IGateway is IMessageHandler, IRecoverable {
     struct Funds {
         /// @notice Funds associated to pay for sending messages
         /// @dev    Overflows with type(uint64).max / 10**18 = 7.923 × 10^10 ETH
@@ -101,9 +100,6 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     /// @notice Retry a failed message.
     function retry(uint16 centrifugeId, bytes memory message) external;
 
-    /// @notice Set an extra gas to the gas limit of the message
-    function setExtraGasLimit(uint128 gas) external;
-
     /// @notice Set the refund address for message associated to a poolId
     function setRefundAddress(PoolId poolId, IRecoverable refund) external;
 
@@ -113,9 +109,14 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     /// @notice Withdraw the funds associated to the pool
     function withdrawSubsidy(PoolId poolId, address to, uint256 amount) external;
 
+    /// @notice Handling outgoing messages.
+    /// @param centrifugeId Destination chain
+    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit) external returns (uint256 cost);
+
     /// @notice Add a message to the underpaid storage to be repay and send later.
     /// @dev It only supports one message, not a batch
-    function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external;
+    /// @param extraGasLimit Adds an extra cost for the message
+    function addUnpaidMessage(uint16 centrifugeId, bytes memory message, uint128 extraGasLimit) external;
 
     /// @notice Initialize batching message
     function startBatching() external;

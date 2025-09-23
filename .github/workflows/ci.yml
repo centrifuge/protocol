@@ -21,27 +21,10 @@ jobs:
           version: nightly
 
       - name: Run tests
-        run: forge test --no-match-path "test/integration/fork/**/*.sol" --deny-warnings
+        run: forge test --deny-warnings
         env:
           FOUNDRY_PROFILE: ci
-          FORK_TESTS: false
 
-  fork-investment-tests:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Run fork investment flow tests
-        run: forge test --match-path "test/integration/fork/ForkTestInvestments*.sol" --deny-warnings
-        env:
-          FOUNDRY_PROFILE: ci
-          FORK_TESTS: true
 
   lint:
     runs-on: ubuntu-latest
@@ -197,10 +180,9 @@ jobs:
           version: nightly
 
       - name: Run coverage
-        run: forge coverage --report summary --report lcov --no-match-path "test/integration/fork/**/*.sol"
+        run: forge coverage --report summary --report lcov
         env:
           FOUNDRY_PROFILE: ci-coverage
-          FORK_TESTS: false
           FORGE_SNAPSHOT_CHECK: false
 
       # To ignore coverage for certain directories modify the paths in this step as needed. The
