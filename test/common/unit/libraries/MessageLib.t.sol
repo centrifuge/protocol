@@ -40,8 +40,8 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeSetGatewayManager() public {
-        MessageLib.deserializeSetGatewayManager(_prepareFor());
+    function testDeserializeUpdateGatewayManager() public {
+        MessageLib.deserializeUpdateGatewayManager(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -637,12 +637,14 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
-    function testSetGatewayManager(uint64 poolId, bytes32 manager) public pure {
-        MessageLib.SetGatewayManager memory a = MessageLib.SetGatewayManager({poolId: poolId, manager: manager});
-        MessageLib.SetGatewayManager memory b = MessageLib.deserializeSetGatewayManager(a.serialize());
+    function testUpdateGatewayManager(uint64 poolId, bytes32 who, bool canManage) public pure {
+        MessageLib.UpdateGatewayManager memory a =
+            MessageLib.UpdateGatewayManager({poolId: poolId, who: who, canManage: canManage});
+        MessageLib.UpdateGatewayManager memory b = MessageLib.deserializeUpdateGatewayManager(a.serialize());
 
         assertEq(a.poolId, b.poolId);
-        assertEq(a.manager, b.manager);
+        assertEq(a.who, b.who);
+        assertEq(a.canManage, b.canManage);
 
         assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);

@@ -287,7 +287,9 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
     function testErrShareTokenDoesNotExists() public {
         vm.prank(ANY);
         vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.crosschainTransferShares{value: GAS}(LOCAL_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0);
+        spoke.crosschainTransferShares{value: GAS}(
+            LOCAL_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0, 0
+        );
     }
 
     function testErrLocalTransferNotAllowed() public {
@@ -295,7 +297,9 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
 
         vm.prank(ANY);
         vm.expectRevert(ISpoke.LocalTransferNotAllowed.selector);
-        spoke.crosschainTransferShares{value: GAS}(LOCAL_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0);
+        spoke.crosschainTransferShares{value: GAS}(
+            LOCAL_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0, 0
+        );
     }
 
     function testErrCrossChainTransferNotAllowed() public {
@@ -305,7 +309,9 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
 
         vm.prank(ANY);
         vm.expectRevert(ISpoke.CrossChainTransferNotAllowed.selector);
-        spoke.crosschainTransferShares{value: GAS}(REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0);
+        spoke.crosschainTransferShares{value: GAS}(
+            REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0, 0
+        );
     }
 
     function testErrNotEnoughGas() public {
@@ -350,6 +356,7 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
                 SC_1,
                 RECEIVER.toBytes32(),
                 AMOUNT,
+                0,
                 0
             ),
             abi.encode(GAS)
@@ -362,7 +369,9 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
         vm.prank(ANY);
         vm.expectEmit();
         emit ISpoke.InitiateTransferShares(REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, ANY, RECEIVER.toBytes32(), AMOUNT);
-        spoke.crosschainTransferShares{value: GAS}(REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0);
+        spoke.crosschainTransferShares{value: GAS}(
+            REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0, 0
+        );
     }
 }
 

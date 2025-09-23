@@ -133,7 +133,7 @@ contract EndToEndDeployment is Test {
     uint16 constant CENTRIFUGE_ID_B = IntegrationConstants.CENTRIFUGE_ID_B;
     uint128 constant GAS = IntegrationConstants.GAS;
     uint256 constant DEFAULT_SUBSIDY = IntegrationConstants.DEFAULT_SUBSIDY;
-    uint128 constant SHARE_HOOK_GAS = IntegrationConstants.SHARE_HOOK_GAS;
+    uint128 constant HOOK_GAS = IntegrationConstants.HOOK_GAS;
 
     address immutable ERC20_DEPLOYER = address(this);
     address immutable FM = makeAddr("FM");
@@ -232,7 +232,7 @@ contract EndToEndDeployment is Test {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
         deploy.guardian().setAdapters(remoteCentrifugeId, adapters, uint8(adapters.length), uint8(adapters.length));
-        deploy.guardian().setGatewayManager(GATEWAY_MANAGER);
+        deploy.guardian().updateGatewayManager(GATEWAY_MANAGER, true);
         vm.stopPrank();
     }
 
@@ -501,8 +501,8 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         h.hub.setAdapters(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1);
-        h.hub.setGatewayManager(h.centrifugeId, POOL_A, GATEWAY_MANAGER.toBytes32());
-        h.hub.setGatewayManager(s.centrifugeId, POOL_A, GATEWAY_MANAGER.toBytes32());
+        h.hub.updateGatewayManager(h.centrifugeId, POOL_A, GATEWAY_MANAGER.toBytes32(), true);
+        h.hub.updateGatewayManager(s.centrifugeId, POOL_A, GATEWAY_MANAGER.toBytes32(), true);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -609,7 +609,7 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(poolManager);
         uint32 issueEpochId = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.issueShares(poolId, shareClassId, assetId, issueEpochId, sharePrice, SHARE_HOOK_GAS);
+        hub.hub.issueShares(poolId, shareClassId, assetId, issueEpochId, sharePrice, HOOK_GAS);
     }
 
     function _processAsyncDepositClaim(
@@ -624,7 +624,7 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.hub.notifyDeposit(
+        hub.hub.notifyDeposit{value: GAS}(
             poolId,
             shareClassId,
             assetId,
@@ -745,6 +745,7 @@ contract EndToEndFlows is EndToEndUtils {
         vault.requestRedeem(shares, investor, investor);
 
         _processAsyncRedeemApproval(hub, poolId, shareClassId, assetId, shares, poolManager);
+        
         _processAsyncRedeemClaim(hub, spoke, poolId, shareClassId, assetId, investor, vault, shares);
     }
 
@@ -776,7 +777,7 @@ contract EndToEndFlows is EndToEndUtils {
 
         uint32 revokeEpochId = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.revokeShares(poolId, shareClassId, assetId, revokeEpochId, sharePrice, SHARE_HOOK_GAS);
+        hub.hub.revokeShares(poolId, shareClassId, assetId, revokeEpochId, sharePrice, HOOK_GAS);
     }
 
     function _processAsyncRedeemClaim(
@@ -791,7 +792,7 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.hub.notifyRedeem(
+        hub.hub.notifyRedeem{value: GAS}(
             poolId,
             shareClassId,
             assetId,

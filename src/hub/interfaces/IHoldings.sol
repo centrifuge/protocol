@@ -153,6 +153,15 @@ interface IHoldings {
 
     function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external;
 
+    /// @notice Returns the snapshot hook for the given pool.
+    function snapshotHook(PoolId poolId) external view returns (ISnapshotHook);
+
+    /// @notice Returns the snapshot info for a given pool, share class and centrifugeId.
+    function snapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId)
+        external
+        view
+        returns (bool isSnapshot, uint64 nonce);
+
     /// @notice Returns the value of this holding.
     function value(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128 value);
 

@@ -6,7 +6,6 @@ import {IRoot} from "./interfaces/IRoot.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
 import {IGasService} from "./interfaces/IGasService.sol";
-import {IMessageSender} from "./interfaces/IMessageSender.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 
@@ -43,11 +42,10 @@ contract Gateway is Auth, Recoverable, IGateway {
     IAdapter public adapter;
 
     // Management
-    mapping(PoolId => address) public manager;
+    mapping(PoolId => mapping(address => bool)) public manager;
 
     // Outbound & payments
     bool public transient isBatching;
-    uint128 public transient extraGasLimit;
     mapping(PoolId => Funds) public subsidy;
     mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Underpaid)) public underpaid;
@@ -69,8 +67,8 @@ contract Gateway is Auth, Recoverable, IGateway {
         _;
     }
 
-    modifier onlyManager(PoolId poolId) {
-        require(msg.sender == manager[poolId], ManagerNotAllowed());
+    modifier onlyAuthOrManager(PoolId poolId) {
+        require(wards[msg.sender] == 1 || manager[poolId][msg.sender], NotAuthorized());
         _;
     }
 
@@ -89,9 +87,9 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function setManager(PoolId poolId, address manager_) external auth {
-        manager[poolId] = manager_;
-        emit SetManager(poolId, manager_);
+    function updateManager(PoolId poolId, address who, bool canManage) external auth {
+        manager[poolId][who] = canManage;
+        emit UpdateManager(poolId, who, canManage);
     }
 
     receive() external payable {
@@ -142,17 +140,19 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Outgoing
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IMessageSender
-    function send(uint16 centrifugeId, bytes calldata message) external pauseable auth returns (uint256) {
+    /// @inheritdoc IGateway
+    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit)
+        external
+        pauseable
+        auth
+        returns (uint256)
+    {
         require(message.length > 0, EmptyMessage());
 
         PoolId poolId = processor.messagePoolId(message);
-
         emit PrepareMessage(centrifugeId, poolId, message);
 
         uint128 gasLimit = gasService.messageGasLimit(centrifugeId, message) + extraGasLimit;
-        extraGasLimit = 0;
-
         if (isBatching) {
             bytes32 batchSlot = _outboundBatchSlot(centrifugeId, poolId);
             bytes memory previousMessage = TransientBytesLib.get(batchSlot);
@@ -195,9 +195,8 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external auth {
+    function addUnpaidMessage(uint16 centrifugeId, bytes memory message, uint128 extraGasLimit) external auth {
         uint128 gasLimit = gasService.messageGasLimit(centrifugeId, message) + extraGasLimit;
-        extraGasLimit = 0;
         emit PrepareMessage(centrifugeId, processor.messagePoolId(message), message);
         _addUnpaidBatch(centrifugeId, message, gasLimit);
     }
@@ -247,11 +246,6 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function setExtraGasLimit(uint128 gas) public auth {
-        extraGasLimit = gas;
-    }
-
-    /// @inheritdoc IGateway
     function setRefundAddress(PoolId poolId, IRecoverable refund) public auth {
         subsidy[poolId].refund = refund;
         emit SetRefundAddress(poolId, refund);
@@ -269,7 +263,9 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function withdrawSubsidy(PoolId poolId, address to, uint256 amount) external onlyManager(poolId) {
+    function withdrawSubsidy(PoolId poolId, address to, uint256 amount) external onlyAuthOrManager(poolId) {
+        if (amount > subsidy[poolId].value) _requestPoolFunding(poolId);
+
         subsidy[poolId].value -= amount.toUint96();
 
         (bool success,) = payable(to).call{value: amount}(new bytes(0));
@@ -304,7 +300,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external onlyManager(poolId) {
+    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external onlyAuthOrManager(poolId) {
         isOutgoingBlocked[centrifugeId][poolId] = isBlocked;
         emit BlockOutgoing(centrifugeId, poolId, isBlocked);
     }
