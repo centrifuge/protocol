@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {Multicall} from "../../../src/misc/Multicall.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
@@ -23,27 +22,6 @@ import "forge-std/Test.sol";
 
 contract IsContract {}
 
-contract MockBalanceSheet is Multicall {
-    struct ShareQueueAmount {
-        uint128 delta;
-        bool isPositive;
-        uint32 queuedAssetCounter;
-        uint64 nonce;
-    }
-
-    struct AssetQueueAmount {
-        uint128 deposits;
-        uint128 withdrawals;
-    }
-
-    mapping(PoolId => mapping(ShareClassId => ShareQueueAmount)) public queuedShares;
-    mapping(PoolId => mapping(ShareClassId => mapping(AssetId => AssetQueueAmount))) public queuedAssets;
-
-    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 extraGasLimit) external {}
-
-    function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit) external {}
-}
-
 contract QueueManagerTest is Test {
     using CastLib for *;
     using UpdateContractMessageLib for *;
@@ -60,9 +38,7 @@ contract QueueManagerTest is Test {
     uint128 constant DEFAULT_EXTRA_GAS = 1000;
     uint128 constant DEFAULT_AMOUNT = 100_000_000;
 
-    IBalanceSheet balanceSheet = IBalanceSheet(address(new MockBalanceSheet()));
-    address adapter = address(new IsContract());
-    address gasService = address(new IsContract());
+    address balanceSheet = address(new IsContract());
     address gateway = address(new IsContract());
 
     address contractUpdater = makeAddr("contractUpdater");
@@ -79,17 +55,16 @@ contract QueueManagerTest is Test {
         vm.mockCall(
             address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.gateway.selector), abi.encode(IGateway(gateway))
         );
-
-        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.adapter.selector), abi.encode(adapter));
-        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.gasService.selector), abi.encode(gasService));
-        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.subsidizePool.selector), abi.encode());
-
+        vm.mockCall(balanceSheet, abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector), abi.encode(0));
+        vm.mockCall(balanceSheet, abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector), abi.encode(0));
+        vm.mockCall(balanceSheet, abi.encodeWithSelector(IBalanceSheet.queuedAssets.selector), abi.encode(0, 0));
         vm.mockCall(
-            gasService, abi.encodeWithSelector(IGasService.updateHoldingAmount.selector), abi.encode(uint128(100000))
+            balanceSheet, abi.encodeWithSelector(IBalanceSheet.queuedShares.selector), abi.encode(0, false, 0, 0)
         );
-        vm.mockCall(gasService, abi.encodeWithSelector(IGasService.updateShares.selector), abi.encode(uint128(150000)));
 
-        vm.mockCall(adapter, abi.encodeWithSelector(IAdapter.estimate.selector), abi.encode(uint256(0.1 ether)));
+        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.startBatching.selector), abi.encode());
+        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.endBatching.selector), abi.encode());
+        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.depositSubsidy.selector), abi.encode());
     }
 
     function _deployManager() internal {
@@ -245,19 +220,6 @@ contract QueueManagerSyncFailureTests is QueueManagerTest {
         queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
     }
 
-    function testSyncWithTooManyAssets() public {
-        _mockQueuedShares(POOL_A, SC_1, 100, true, 1);
-        _mockQueuedAssets(POOL_A, SC_1, ASSET_1, 100, 0);
-
-        AssetId[] memory assetIds = new AssetId[](257);
-        for (uint128 i = 0; i < 257; i++) {
-            assetIds[i] = AssetId.wrap(i + 1);
-        }
-
-        vm.expectRevert(IQueueManager.TooManyAssets.selector);
-        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
-    }
-
     function testSyncWithNoQueuedData() public {
         AssetId[] memory assetIds = new AssetId[](1);
         assetIds[0] = ASSET_1;
@@ -299,7 +261,9 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         _expectSubmitAssets(POOL_A, SC_1, ASSET_2);
         _expectSubmitAssets(POOL_A, SC_1, ASSET_3);
         _expectSubmitShares(POOL_A, SC_1);
-        vm.expectCall(gateway, 0.1 ether, abi.encodeWithSelector(IGateway.subsidizePool.selector, POOL_A));
+        vm.expectCall(gateway, 0.1 ether, abi.encodeWithSelector(IGateway.depositSubsidy.selector, POOL_A));
+        vm.expectCall(gateway, abi.encodeWithSelector(IGateway.endBatching.selector));
+        vm.expectCall(gateway, abi.encodeWithSelector(IGateway.startBatching.selector));
 
         queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
 
@@ -330,7 +294,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         vm.expectCall(
             address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, POOL_A, SC_1, 0), 0
         );
-        vm.expectCall(gateway, 0.1 ether, abi.encodeWithSelector(IGateway.subsidizePool.selector, POOL_A));
+        vm.expectCall(gateway, 0.1 ether, abi.encodeWithSelector(IGateway.depositSubsidy.selector, POOL_A));
 
         queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
 
@@ -361,7 +325,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         _mockQueuedShares(POOL_A, SC_1, 100, true, 0);
 
         _expectSubmitShares(POOL_A, SC_1);
-        vm.expectCall(gateway, 0.1 ether, abi.encodeWithSelector(IGateway.subsidizePool.selector, POOL_A));
+        vm.expectCall(gateway, 0.1 ether, abi.encodeWithSelector(IGateway.depositSubsidy.selector, POOL_A));
 
         queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
 

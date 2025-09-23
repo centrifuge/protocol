@@ -28,9 +28,6 @@ contract QueueManager is IQueueManager, IUpdateContract {
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
     IGateway public immutable gateway;
-    IAdapter public immutable adapter;
-    uint128 public immutable sendUpdateAssetsGasLimit;
-    uint128 public immutable sendUpdateSharesGasLimit;
 
     mapping(PoolId => mapping(ShareClassId => ShareClassQueueState)) public scQueueState;
 
@@ -38,10 +35,6 @@ contract QueueManager is IQueueManager, IUpdateContract {
         contractUpdater = contractUpdater_;
         balanceSheet = balanceSheet_;
         gateway = balanceSheet_.gateway();
-        adapter = gateway.adapter();
-        IGasService gasService = gateway.gasService();
-        sendUpdateAssetsGasLimit = gasService.updateHoldingAmount();
-        sendUpdateSharesGasLimit = gasService.updateShares();
     }
 
     //----------------------------------------------------------------------------------------------
@@ -78,12 +71,10 @@ contract QueueManager is IQueueManager, IUpdateContract {
 
         (uint128 delta,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
 
-        require(assetIds.length <= 256, TooManyAssets()); // Bitmap limit
+        gateway.depositSubsidy{value: msg.value}(poolId);
+        gateway.startBatching();
 
-        // Deduplicate and validate using bitmap for valid indices
-        uint256 validBitmap = 0; // Each bit represents if that index is valid
         uint256 validCount = 0;
-        uint128 gasLimit = 0;
 
         for (uint256 i = 0; i < assetIds.length; i++) {
             bytes32 key = keccak256(abi.encode(scId.raw(), assetIds[i].raw()));
@@ -95,45 +86,20 @@ contract QueueManager is IQueueManager, IUpdateContract {
             // Check if valid
             (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(poolId, scId, assetIds[i]);
             if (deposits > 0 || withdrawals > 0) {
-                validBitmap = validBitmap.withBit(i, true);
+                balanceSheet.submitQueuedAssets(poolId, scId, assetIds[i], sc.extraGasLimit);
                 validCount++;
-                gasLimit += sendUpdateAssetsGasLimit + sc.extraGasLimit;
             }
         }
 
-        // Build exactly-sized array
         bool submitShares = delta > 0 && validCount >= queuedAssetCounter;
-        uint256 callCount = validCount + (submitShares ? 1 : 0);
 
-        require(callCount > 0, NoUpdates());
-
-        bytes[] memory cs = new bytes[](callCount);
-
-        uint256 csIndex = 0;
-        for (uint256 i = 0; i < assetIds.length; i++) {
-            if (validBitmap.getBit(i)) {
-                // Check if index i is valid
-                cs[csIndex++] = abi.encodeWithSelector(
-                    balanceSheet.submitQueuedAssets.selector, poolId, scId, assetIds[i], sc.extraGasLimit
-                );
-            }
-        }
+        require(validCount > 0 || submitShares, NoUpdates());
 
         if (submitShares) {
-            cs[validCount] =
-                abi.encodeWithSelector(balanceSheet.submitQueuedShares.selector, poolId, scId, sc.extraGasLimit);
+            balanceSheet.submitQueuedShares(poolId, scId, sc.extraGasLimit);
             sc.lastSync = uint64(block.timestamp);
-            gasLimit += sendUpdateSharesGasLimit + sc.extraGasLimit;
         }
 
-        // Split because stack too deep
-        _sync(poolId, cs, gasLimit);
-    }
-
-    function _sync(PoolId poolId, bytes[] memory cs, uint128 gasLimit) internal {
-        uint256 estimate = adapter.estimate(poolId.centrifugeId(), cs[0], gasLimit);
-        require(msg.value >= estimate, InsufficientFunds());
-        gateway.subsidizePool{value: msg.value}(poolId);
-        IMulticall(address(balanceSheet)).multicall(cs);
+        gateway.endBatching();
     }
 }

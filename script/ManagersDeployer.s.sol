@@ -19,7 +19,12 @@ struct ManagersReport {
     CircleDecoder circleDecoder;
 }
 
-contract ManagersActionBatcher is SpokeActionBatcher {}
+contract ManagersActionBatcher is SpokeActionBatcher {
+    function engageManagers(ManagersReport memory report) public onlyDeployer {
+        // rely QueueManager on Gateway
+        report.spoke.common.gateway.rely(address(report.queueManager));
+    }
+}
 
 contract ManagersDeployer is SpokeDeployer {
     QueueManager public queueManager;
@@ -64,6 +69,8 @@ contract ManagersDeployer is SpokeDeployer {
 
         circleDecoder =
             CircleDecoder(create3(generateSalt("circleDecoder"), abi.encodePacked(type(CircleDecoder).creationCode)));
+
+        batcher.engageManagers(_managersReport());
 
         register("queueManager", address(queueManager));
         register("onOfframpManagerFactory", address(onOfframpManagerFactory));

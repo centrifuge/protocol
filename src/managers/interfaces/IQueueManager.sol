@@ -13,7 +13,6 @@ interface IQueueManager {
     error NotContractUpdater();
     error NoUpdates();
     error MinDelayNotElapsed();
-    error TooManyAssets();
     error NoUpdateForAsset();
     error InsufficientFunds();
 
