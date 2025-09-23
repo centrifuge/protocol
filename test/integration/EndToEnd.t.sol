@@ -37,7 +37,6 @@ import {Spoke} from "../../src/spoke/Spoke.sol";
 import {IVault} from "../../src/spoke/interfaces/IVault.sol";
 import {BalanceSheet} from "../../src/spoke/BalanceSheet.sol";
 import {UpdateContractMessageLib} from "../../src/spoke/libraries/UpdateContractMessageLib.sol";
-import {IVaultManager, REQUEST_MANAGER_V3_0} from "../../src/spoke/interfaces/legacy/IVaultManager.sol";
 
 import {SyncManager} from "../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
@@ -339,14 +338,27 @@ contract EndToEndUtils is EndToEndDeployment {
         view
         returns (address vaultAddr)
     {
-        if (spoke.asyncRequestManager == REQUEST_MANAGER_V3_0) {
-            // Fallback to legacy V3.0 lookup if not found in new system
-            return
-                address(IVaultManager(address(spoke.asyncRequestManager)).vaultByAssetId(poolId, shareClassId, assetId));
-        } else {
-            // Try new system first
-            return address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
+        return address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
+    }
+
+    function _getOrCreateAsyncVault(
+        CHub memory hub,
+        CSpoke memory spoke,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address poolManager
+    ) internal returns (address vaultAddr) {
+        vaultAddr = address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
+        if (vaultAddr == address(0)) {
+            vm.startPrank(poolManager);
+            hub.hub.updateVault(
+                poolId, shareClassId, assetId, spoke.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
+            );
+            vm.stopPrank();
+            vaultAddr = address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
         }
+        assertNotEq(vaultAddr, address(0));
     }
 }
 
@@ -543,13 +555,10 @@ contract EndToEndFlows is EndToEndUtils {
         _configurePricesForFlow(hub, spoke, poolId, shareClassId, assetId, poolManager, nonZeroPrices);
 
         // Deploy or get existing vault
-        IAsyncVault vault = _ensureAsyncVaultExists(hub, spoke, poolId, shareClassId, assetId, poolManager);
+        IAsyncVault vault = IAsyncVault(_getOrCreateAsyncVault(hub, spoke, poolId, shareClassId, assetId, poolManager));
 
         // Execute deposit request
         _executeAsyncDepositRequest(vault, investor, amount);
-
-        // Ensure deposit/issue epochs are aligned before proceeding (handles live chain state)
-        _ensureDepositEpochsAligned(hub, poolId, shareClassId, assetId, poolManager);
 
         // Process deposit approval and share issuance
         _processAsyncDepositApproval(hub, poolId, shareClassId, assetId, poolManager, amount);
@@ -577,30 +586,6 @@ contract EndToEndFlows is EndToEndUtils {
             nonZeroPrices ? IntegrationConstants.assetPrice() : IntegrationConstants.zeroPrice(),
             nonZeroPrices ? IntegrationConstants.sharePrice() : IntegrationConstants.zeroPrice()
         );
-    }
-
-    function _ensureAsyncVaultExists(
-        CHub memory hub,
-        CSpoke memory spoke,
-        PoolId poolId,
-        ShareClassId shareClassId,
-        AssetId assetId,
-        address poolManager
-    ) internal returns (IAsyncVault vault) {
-        vm.startPrank(poolManager);
-
-        // Check if vault already exists
-        vault = IAsyncVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
-        if (address(vault) == address(0)) {
-            // Create new vault
-            hub.hub.updateVault(
-                poolId, shareClassId, assetId, spoke.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
-            );
-            vault = IAsyncVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
-        }
-
-        vm.stopPrank();
-        assertNotEq(address(vault), address(0));
     }
 
     function _executeAsyncDepositRequest(IAsyncVault vault, address investor, uint128 amount) internal {
@@ -759,57 +744,8 @@ contract EndToEndFlows is EndToEndUtils {
 
         vault.requestRedeem(shares, investor, investor);
 
-        // Ensure epochs are aligned before proceeding (handles live chain state)
-        _ensureRedeemEpochsAligned(hub, poolId, shareClassId, assetId, poolManager);
-
         _processAsyncRedeemApproval(hub, poolId, shareClassId, assetId, shares, poolManager);
         _processAsyncRedeemClaim(hub, spoke, poolId, shareClassId, assetId, investor, vault, shares);
-    }
-
-    function _ensureRedeemEpochsAligned(
-        CHub memory hub,
-        PoolId poolId,
-        ShareClassId shareClassId,
-        AssetId assetId,
-        address poolManager
-    ) internal {
-        uint32 nowRedeemEpoch = hub.shareClassManager.nowRedeemEpoch(shareClassId, assetId);
-        uint32 nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
-
-        // Handle live chain state: if redemptions have been approved but not revoked,
-        // we need to revoke outstanding epochs before we can approve new ones
-        if (nowRedeemEpoch != nowRevokeEpoch) {
-            vm.startPrank(poolManager);
-            while (nowRevokeEpoch < nowRedeemEpoch) {
-                (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-                hub.hub.revokeShares(poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, SHARE_HOOK_GAS);
-                nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
-            }
-            vm.stopPrank();
-        }
-    }
-
-    function _ensureDepositEpochsAligned(
-        CHub memory hub,
-        PoolId poolId,
-        ShareClassId shareClassId,
-        AssetId assetId,
-        address poolManager
-    ) internal {
-        uint32 nowDepositEpoch = hub.shareClassManager.nowDepositEpoch(shareClassId, assetId);
-        uint32 nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
-
-        // Handle live chain state: if deposits have been approved but not yet issued,
-        // we need to issue outstanding epochs before we can approve new ones
-        if (nowDepositEpoch != nowIssueEpoch) {
-            vm.startPrank(poolManager);
-            while (nowIssueEpoch < nowDepositEpoch) {
-                (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-                hub.hub.issueShares(poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, SHARE_HOOK_GAS);
-                nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
-            }
-            vm.stopPrank();
-        }
     }
 
     function _configureAsyncRedeemRestriction(
