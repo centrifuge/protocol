@@ -104,7 +104,7 @@ contract MessageBenchmarker is IMessageProcessor, Test {
     }
 
     /// Because the final results will be the higher ones,
-    /// we need to clean all previous results (from previous runs) in case there are some lower values
+    /// we need to clean all previous results (from previous runs) in case there are some new lower values
     /// Recommend to provide BENCHMARKING_RUN_ID as: BENCHMARKING_RUN_ID="$(date +%s)"
     function _cleanFirstFileInteraction() internal {
         uint256 newRunId = vm.envUint("BENCHMARKING_RUN_ID");
