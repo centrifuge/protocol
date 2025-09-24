@@ -47,7 +47,7 @@ contract NAVManagerIntegrationTest is BaseTest {
     }
 
     function _setupMocks() internal {
-        vm.mockCall(address(hub), abi.encodeWithSelector(hub.notifySharePrice.selector), abi.encode());
+        vm.mockCall(address(hub), abi.encodeWithSelector(hub.notifySharePrice.selector), abi.encode(uint256(0)));
     }
 
     function _setupPool() internal {

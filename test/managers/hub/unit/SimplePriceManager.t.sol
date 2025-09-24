@@ -9,6 +9,7 @@ import {PoolId} from "../../../../src/common/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/common/types/AssetId.sol";
 
+import {IGateway} from "../../../../src/common/interfaces/IGateway.sol";
 import {IHub} from "../../../../src/hub/interfaces/IHub.sol";
 import {IHubRegistry} from "../../../../src/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "../../../../src/hub/interfaces/IShareClassManager.sol";
@@ -37,6 +38,7 @@ contract SimplePriceManagerTest is Test {
     AssetId asset2 = newAssetId(2, 1);
 
     address hub = address(new MockHub());
+    address gateway = address(new IsContract());
     address hubRegistry = address(new IsContract());
     address shareClassManager = address(new IsContract());
 
@@ -44,6 +46,7 @@ contract SimplePriceManagerTest is Test {
     address hubManager = makeAddr("hubManager");
     address manager = makeAddr("manager");
     address caller = makeAddr("caller");
+    address auth = makeAddr("auth");
 
     SimplePriceManager priceManager;
 
@@ -55,15 +58,26 @@ contract SimplePriceManagerTest is Test {
     function _setupMocks() internal {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.shareClassManager.selector), abi.encode(shareClassManager));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.hubRegistry.selector), abi.encode(hubRegistry));
+        vm.mockCall(hub, abi.encodeWithSelector(IHub.gateway.selector), abi.encode(gateway));
+
+        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.startBatching.selector), abi.encode());
+        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.endBatching.selector), abi.encode());
+
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateSharePrice.selector), abi.encode());
-        vm.mockCall(hub, abi.encodeWithSelector(IHub.notifySharePrice.selector), abi.encode());
-        vm.mockCall(hub, abi.encodeWithSelector(IHub.approveDeposits.selector), abi.encode(uint128(0), uint128(0)));
+        vm.mockCall(hub, abi.encodeWithSelector(IHub.notifySharePrice.selector), abi.encode(uint256(0)));
         vm.mockCall(
-            hub, abi.encodeWithSelector(IHub.issueShares.selector), abi.encode(uint128(0), uint128(0), uint128(0))
+            hub, abi.encodeWithSelector(IHub.approveDeposits.selector), abi.encode(uint256(0), uint128(0), uint128(0))
         );
-        vm.mockCall(hub, abi.encodeWithSelector(IHub.approveRedeems.selector), abi.encode(uint128(0)));
         vm.mockCall(
-            hub, abi.encodeWithSelector(IHub.revokeShares.selector), abi.encode(uint128(0), uint128(0), uint128(0))
+            hub,
+            abi.encodeWithSelector(IHub.issueShares.selector),
+            abi.encode(uint256(0), uint128(0), uint128(0), uint128(0))
+        );
+        vm.mockCall(hub, abi.encodeWithSelector(IHub.approveRedeems.selector), abi.encode(uint256(0), uint128(0)));
+        vm.mockCall(
+            hub,
+            abi.encodeWithSelector(IHub.revokeShares.selector),
+            abi.encode(uint256(0), uint128(0), uint128(0), uint128(0))
         );
         vm.mockCall(hubRegistry, abi.encodeWithSelector(IHubRegistry.manager.selector), abi.encode(false));
         vm.mockCall(
@@ -113,7 +127,8 @@ contract SimplePriceManagerTest is Test {
     }
 
     function _deployManager() internal {
-        priceManager = new SimplePriceManager(IHub(hub), address(this));
+        priceManager = new SimplePriceManager(IHub(hub), auth);
+        vm.prank(auth);
         priceManager.rely(caller);
 
         vm.prank(hubManager);

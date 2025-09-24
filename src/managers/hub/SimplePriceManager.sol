@@ -12,6 +12,7 @@ import {PoolId} from "../../common/types/PoolId.sol";
 import {AssetId} from "../../common/types/AssetId.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
 import {MAX_MESSAGE_COST} from "../../common/interfaces/IGasService.sol";
+import {IGateway} from "../../common/interfaces/IGateway.sol";
 
 import {IHub} from "../../hub/interfaces/IHub.sol";
 import {IHubRegistry} from "../../hub/interfaces/IHubRegistry.sol";
@@ -20,6 +21,7 @@ import {IShareClassManager} from "../../hub/interfaces/IShareClassManager.sol";
 /// @notice Share price calculation manager for single share class pools.
 contract SimplePriceManager is ISimplePriceManager, Auth {
     IHub public immutable hub;
+    IGateway public gateway;
     IHubRegistry public immutable hubRegistry;
     IShareClassManager public immutable shareClassManager;
 
@@ -29,6 +31,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
 
     constructor(IHub hub_, address deployer) Auth(deployer) {
         hub = hub_;
+        gateway = hub_.gateway();
         hubRegistry = hub_.hubRegistry();
         shareClassManager = hub_.shareClassManager();
 
@@ -86,14 +89,12 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         networkMetrics_.issuance = issuance;
 
         uint256 networkCount = metrics[poolId].networks.length;
-        bytes[] memory cs = new bytes[](networkCount + 1);
-        cs[0] = abi.encodeWithSelector(hub.updateSharePrice.selector, poolId, scId, price);
+        gateway.startBatching();
+        hub.updateSharePrice(poolId, scId, price);
 
         for (uint256 i; i < networkCount; i++) {
-            cs[i + 1] = abi.encodeWithSelector(hub.notifySharePrice.selector, poolId, scId, metrics[poolId].networks[i]);
+            hub.notifySharePrice(poolId, scId, metrics[poolId].networks[i]);
         }
-
-        IMulticall(address(hub)).multicall{value: MAX_MESSAGE_COST * (cs.length)}(cs);
 
         emit Update(poolId, metrics[poolId].netAssetValue, metrics[poolId].issuance, price);
     }

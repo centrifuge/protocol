@@ -17,6 +17,10 @@ struct HubManagersReport {
 
 contract HubManagersActionBatcher is HubActionBatcher {
     function engageManagers(HubManagersReport memory report) public onlyDeployer {
+        // Rely root
+        report.navManager.rely(address(report.hub.common.root));
+        report.simplePriceManager.rely(address(report.hub.common.root));
+
         // Rely hub
         report.navManager.rely(address(report.hub.hub));
         report.simplePriceManager.rely(address(report.hub.hub));
@@ -24,10 +28,7 @@ contract HubManagersActionBatcher is HubActionBatcher {
         // Rely other
         report.simplePriceManager.rely(address(report.navManager));
         report.navManager.rely(address(report.hub.holdings));
-
-        // Rely root
-        report.navManager.rely(address(report.hub.common.root));
-        report.simplePriceManager.rely(address(report.hub.common.root));
+        report.hub.common.gateway.rely(address(report.simplePriceManager));
     }
 
     function revokeManagers(HubManagersReport memory report) public onlyDeployer {
