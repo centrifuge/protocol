@@ -219,6 +219,36 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
     }
 }
 
+contract SimplePriceManagerFileTests is SimplePriceManagerTest {
+    function testFileGateway() public {
+        address newGateway = makeAddr("newGateway");
+
+        vm.expectEmit(true, false, true, true);
+        emit ISimplePriceManager.File("gateway", newGateway);
+
+        vm.prank(auth);
+        priceManager.file("gateway", newGateway);
+
+        assertEq(address(priceManager.gateway()), newGateway);
+    }
+
+    function testFileUnrecognizedParam() public {
+        address someAddress = makeAddr("someAddress");
+
+        vm.expectRevert(ISimplePriceManager.FileUnrecognizedParam.selector);
+        vm.prank(auth);
+        priceManager.file("invalid", someAddress);
+    }
+
+    function testFileUnauthorized() public {
+        address newGateway = makeAddr("newGateway");
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        priceManager.file("gateway", newGateway);
+    }
+}
+
 contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
     function setUp() public override {
         super.setUp();

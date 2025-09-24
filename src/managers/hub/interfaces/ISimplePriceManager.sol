@@ -15,9 +15,11 @@ interface ISimplePriceManager is INAVHook {
         PoolId indexed poolId, uint16 indexed fromCentrifugeId, uint16 indexed toCentrifugeId, uint128 sharesTransferred
     );
     event UpdateManager(PoolId indexed poolId, address indexed manager, bool canManage);
+    event File(bytes32 indexed what, address data);
 
     error InvalidShareClassCount();
     error MismatchedEpochs();
+    error FileUnrecognizedParam();
 
     struct Metrics {
         uint128 netAssetValue;
@@ -53,6 +55,8 @@ interface ISimplePriceManager is INAVHook {
     /// @param manager The address of the manager
     /// @param canManage Whether the address can manage this manager
     function updateManager(PoolId poolId, address manager, bool canManage) external;
+
+    function file(bytes32 what, address data) external;
 
     //----------------------------------------------------------------------------------------------
     // Manager actions

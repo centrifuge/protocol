@@ -55,6 +55,13 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISimplePriceManager
+    function file(bytes32 what, address data) external auth {
+        if (what == "gateway") gateway = IGateway(data);
+        else revert ISimplePriceManager.FileUnrecognizedParam();
+        emit File(what, data);
+    }
+
+    /// @inheritdoc ISimplePriceManager
     function networks(PoolId poolId) external view returns (uint16[] memory) {
         return metrics[poolId].networks;
     }
