@@ -564,16 +564,12 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
 
         uint128 expectedIssuedShares = _calcSharesIssued(USDC, approvedAmount, navPoolPerShare);
 
-        // Get epoch data before issuance
-        (uint128 epochApprovedAsset, uint128 epochApprovedPool,,,,) =
-            batchRequestManager.epochInvestAmounts(scId, USDC, _nowIssue(USDC));
-
         vm.recordLogs();
         uint256 cost =
             batchRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS);
         assertEq(cost, 1000, "Should return callback cost");
 
-        (uint128 actualIssuedShares, D18 eventNav, D18 eventPrice) = _extractIssueSharesEvent();
+        (uint128 actualIssuedShares, D18 eventNav,) = _extractIssueSharesEvent();
         assertEq(actualIssuedShares, expectedIssuedShares, "Issued shares mismatch");
         assertEq(eventNav.raw(), navPoolPerShare.raw(), "NAV in event mismatch");
         {
@@ -1948,7 +1944,6 @@ contract BatchRequestManagerAuthTest is BatchRequestManagerBaseTest {
     }
 }
 
-///@dev Contains all error condition tests with minimal setup
 contract BatchRequestManagerErrorTest is BatchRequestManagerBaseTest {
     function testRequestUnknownType() public {
         // Create payload with invalid message type (0 = Invalid enum value, valid handled ones are 1,2,3,4)
@@ -2099,7 +2094,7 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
         uint256 cost = batchRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), d18(0), SHARE_HOOK_GAS);
         assertEq(cost, 1000, "Should return callback cost");
 
-        (,, uint128 approvedPoolAmount, D18 pricePoolPerAsset, D18 navPoolPerShare, uint64 issuedAt) =
+        (,, uint128 approvedPoolAmount,, D18 navPoolPerShare, uint64 issuedAt) =
             batchRequestManager.epochInvestAmounts(scId, USDC, 1);
         assertEq(navPoolPerShare.raw(), 0, "NAV should be zero");
         assertEq(issuedAt, 1, "Should be issued at epoch 1");
@@ -2128,7 +2123,7 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
         uint256 cost = batchRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), d18(0), SHARE_HOOK_GAS);
         assertEq(cost, 1000, "Should return callback cost");
 
-        (,, D18 pricePoolPerAsset, D18 navPoolPerShare, uint128 payoutAssetAmount, uint64 revokedAt) =
+        (,,, D18 navPoolPerShare, uint128 payoutAssetAmount, uint64 revokedAt) =
             batchRequestManager.epochRedeemAmounts(scId, USDC, 1);
         assertEq(navPoolPerShare.raw(), 0, "NAV should be zero");
         assertEq(payoutAssetAmount, 0, "Payout should be zero");
@@ -2160,7 +2155,7 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
         );
         batchRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS);
 
-        (,, uint128 approvedPoolAmount, D18 pricePoolPerAsset, D18 navPoolPerShare, uint64 issuedAt) =
+        (,,, D18 pricePoolPerAsset, D18 navPoolPerShare, uint64 issuedAt) =
             batchRequestManager.epochInvestAmounts(scId, USDC, 1);
         assertEq(pricePoolPerAsset.raw(), 0, "Price should be zero");
         assertEq(navPoolPerShare.raw(), 1, "NAV should be stored as 1 raw");
@@ -2194,7 +2189,7 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
         );
         batchRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), d18(1), SHARE_HOOK_GAS);
 
-        (,, D18 pricePoolPerAsset, D18 navPoolPerShare, uint128 payoutAssetAmount, uint64 revokedAt) =
+        (,, D18 pricePoolPerAsset,, uint128 payoutAssetAmount, uint64 revokedAt) =
             batchRequestManager.epochRedeemAmounts(scId, USDC, 1);
         assertEq(pricePoolPerAsset.raw(), 0, "Price should be zero");
         assertEq(payoutAssetAmount, 0, "Asset payout should be zero due to zero price");
