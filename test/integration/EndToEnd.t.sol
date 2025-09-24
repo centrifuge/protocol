@@ -31,7 +31,7 @@ import {VaultUpdateKind, MessageType, MessageLib} from "../../src/common/librari
 import {Hub} from "../../src/hub/Hub.sol";
 import {Holdings} from "../../src/hub/Holdings.sol";
 import {Accounting} from "../../src/hub/Accounting.sol";
-import {HubHelpers} from "../../src/hub/HubHelpers.sol";
+import {HubHandler} from "../../src/hub/HubHandler.sol";
 import {HubRegistry} from "../../src/hub/HubRegistry.sol";
 import {ShareClassManager} from "../../src/hub/ShareClassManager.sol";
 import {IHubRequestManager} from "../../src/hub/interfaces/IHubRequestManager.sol";
@@ -101,7 +101,7 @@ contract EndToEndDeployment is Test {
         Holdings holdings;
         ShareClassManager shareClassManager;
         Hub hub;
-        HubHelpers hubHelpers;
+        HubHandler hubHandler;
         BatchRequestManager batchRequestManager;
         // Others
         IdentityValuation identityValuation;
@@ -218,7 +218,7 @@ contract EndToEndDeployment is Test {
             holdings: deployA.holdings(),
             shareClassManager: deployA.shareClassManager(),
             hub: deployA.hub(),
-            hubHelpers: deployA.hubHelpers(),
+            hubHandler: deployA.hubHandler(),
             batchRequestManager: deployA.batchRequestManager(),
             identityValuation: deployA.identityValuation(),
             oracleValuation: deployA.oracleValuation(),
@@ -633,7 +633,7 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(poolManager);
         uint32 depositEpochId = hub.batchRequestManager.nowDepositEpoch(shareClassId, assetId);
-        D18 pricePoolPerAsset = hub.hubHelpers.pricePoolPerAsset(poolId, shareClassId, assetId);
+        D18 pricePoolPerAsset = hub.hub.pricePoolPerAsset(poolId, shareClassId, assetId);
         hub.hub.callRequestManager(
             poolId,
             assetId.centrifugeId(),
@@ -815,7 +815,7 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(poolManager);
         uint32 redeemEpochId = hub.batchRequestManager.nowRedeemEpoch(shareClassId, assetId);
-        D18 pricePoolPerAsset = hub.hubHelpers.pricePoolPerAsset(poolId, shareClassId, assetId);
+        D18 pricePoolPerAsset = hub.hub.pricePoolPerAsset(poolId, shareClassId, assetId);
         hub.hub.callRequestManager(
             poolId,
             assetId.centrifugeId(),
