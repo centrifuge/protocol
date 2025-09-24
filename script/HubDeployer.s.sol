@@ -49,7 +49,7 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
         report.shareClassManager.rely(address(report.hubHandler));
         report.common.messageDispatcher.rely(address(report.hubHandler));
 
-        // Rely others on spoke handler
+        // Rely others on hub handler
         report.hubHandler.rely(address(report.common.messageProcessor));
         report.hubHandler.rely(address(report.common.messageDispatcher));
 
