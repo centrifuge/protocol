@@ -1,0 +1,61 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity ^0.8.28;
+
+import {D18} from "../../../src/misc/types/D18.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
+
+import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {AssetId} from "../../../src/common/types/AssetId.sol";
+import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+
+import {IHub} from "../../../src/hub/interfaces/IHub.sol";
+import {SpokeHandler} from "../../../src/hub/SpokeHandler.sol";
+import {IHoldings} from "../../../src/hub/interfaces/IHoldings.sol";
+import {JournalEntry} from "../../../src/hub/interfaces/IAccounting.sol";
+import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "../../../src/hub/interfaces/IShareClassManager.sol";
+
+import "forge-std/Test.sol";
+
+contract TestCommon is Test {
+    uint16 constant CHAIN_A = 23;
+    uint16 constant CHAIN_B = 24;
+    PoolId constant POOL_A = PoolId.wrap(1);
+    ShareClassId constant SC_A = ShareClassId.wrap(bytes16(uint128(2)));
+    AssetId constant ASSET_A = AssetId.wrap(3);
+    address constant ADMIN = address(1);
+    JournalEntry[] EMPTY;
+
+    IHubRegistry immutable hubRegistry = IHubRegistry(makeAddr("HubRegistry"));
+    IHub immutable hub = IHub(makeAddr("Hub"));
+    IHoldings immutable holdings = IHoldings(makeAddr("Holdings"));
+    IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
+
+    SpokeHandler spokeHandler = new SpokeHandler(hub, holdings, hubRegistry, scm, address(this));
+}
+
+contract TestMainMethodsChecks is TestCommon {
+    function testErrNotAuthotized() public {
+        vm.startPrank(makeAddr("noGateway"));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spokeHandler.registerAsset(AssetId.wrap(0), 0);
+
+        bytes memory EMPTY_BYTES;
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spokeHandler.request(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), EMPTY_BYTES);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spokeHandler.updateHoldingAmount(
+            CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false, true, 0
+        );
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spokeHandler.updateShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), 0, true, true, 0);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spokeHandler.initiateTransferShares(CHAIN_A, CHAIN_B, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""), 0, 0);
+
+        vm.stopPrank();
+    }
+}

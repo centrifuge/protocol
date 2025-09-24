@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IHoldings} from "./interfaces/IHoldings.sol";
-import {IHubHelpers} from "./interfaces/IHubHelpers.sol";
+import {IHoldings, HoldingAccount} from "./interfaces/IHoldings.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
-import {IHub, VaultUpdateKind} from "./interfaces/IHub.sol";
+import {IHub, VaultUpdateKind, AccountType} from "./interfaces/IHub.sol";
 import {IAccounting, JournalEntry} from "./interfaces/IAccounting.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 import {IHubRequestManagerCallback} from "./interfaces/IHubRequestManagerCallback.sol";
 
 import {Auth} from "../misc/Auth.sol";
-import {D18} from "../misc/types/D18.sol";
+import {d18, D18} from "../misc/types/D18.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {Multicall, IMulticall} from "../misc/Multicall.sol";
@@ -26,7 +25,6 @@ import {IValuation} from "../common/interfaces/IValuation.sol";
 import {IMultiAdapter} from "../common/interfaces/IMultiAdapter.sol";
 import {ISnapshotHook} from "../common/interfaces/ISnapshotHook.sol";
 import {IHubMessageSender} from "../common/interfaces/IGatewaySenders.sol";
-import {IHubGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
 import {IHubGuardianActions} from "../common/interfaces/IGuardianActions.sol";
 import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
 import {IPoolEscrow, IPoolEscrowFactory} from "../common/factories/interfaces/IPoolEscrowFactory.sol";
@@ -36,21 +34,12 @@ import {IPoolEscrow, IPoolEscrowFactory} from "../common/factories/interfaces/IP
 ///         Pools can assign hub managers which have full rights over all actions.
 ///
 ///         Also acts as the central contract that routes messages from other chains to the Hub contracts.
-contract Hub is
-    Multicall,
-    Auth,
-    Recoverable,
-    IHub,
-    IHubGatewayHandler,
-    IHubRequestManagerCallback,
-    IHubGuardianActions
-{
+contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, IHubGuardianActions {
     using MathLib for uint256;
     using RequestCallbackMessageLib for *;
 
     IGateway public gateway;
     IHoldings public holdings;
-    IHubHelpers public hubHelpers;
     IAccounting public accounting;
     IHubRegistry public hubRegistry;
     IMultiAdapter public multiAdapter;
@@ -61,7 +50,6 @@ contract Hub is
     constructor(
         IGateway gateway_,
         IHoldings holdings_,
-        IHubHelpers hubHelpers_,
         IAccounting accounting_,
         IHubRegistry hubRegistry_,
         IMultiAdapter multiAdapter_,
@@ -70,7 +58,6 @@ contract Hub is
     ) Auth(deployer) {
         gateway = gateway_;
         holdings = holdings_;
-        hubHelpers = hubHelpers_;
         accounting = accounting_;
         hubRegistry = hubRegistry_;
         multiAdapter = multiAdapter_;
@@ -182,9 +169,9 @@ contract Hub is
     /// @inheritdoc IHub
     function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) public returns (uint256 cost) {
         _isManager(poolId);
-        D18 pricePoolPerAsset = hubHelpers.pricePoolPerAsset(poolId, scId, assetId);
-        emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset);
-        return sender.sendNotifyPricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset);
+        D18 pricePoolPerAsset_ = pricePoolPerAsset(poolId, scId, assetId);
+        emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset_);
+        return sender.sendNotifyPricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset_);
     }
 
     /// @inheritdoc IHub
@@ -372,11 +359,11 @@ contract Hub is
             assetId,
             valuation,
             false,
-            hubHelpers.holdingAccounts(assetAccount, equityAccount, gainAccount, lossAccount)
+            holdingAccounts(assetAccount, equityAccount, gainAccount, lossAccount)
         );
 
         // If increase/decrease was called before initialize, we add journal entries for this
-        hubHelpers.updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
+        _updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
     }
 
     /// @inheritdoc IHub
@@ -397,12 +384,10 @@ contract Hub is
             IAccounting.AccountDoesNotExist()
         );
 
-        holdings.initialize(
-            poolId, scId, assetId, valuation, true, hubHelpers.liabilityAccounts(expenseAccount, liabilityAccount)
-        );
+        holdings.initialize(poolId, scId, assetId, valuation, true, liabilityAccounts(expenseAccount, liabilityAccount));
 
         // If increase/decrease was called before initialize, we add journal entries for this
-        hubHelpers.updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
+        _updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
     }
 
     /// @inheritdoc IHub
@@ -410,7 +395,7 @@ contract Hub is
         _isManager(poolId);
 
         (bool isPositive, uint128 diff) = holdings.update(poolId, scId, assetId);
-        hubHelpers.updateAccountingValue(poolId, scId, assetId, isPositive, diff);
+        _updateAccountingValue(poolId, scId, assetId, isPositive, diff);
     }
 
     /// @inheritdoc IHub
@@ -507,91 +492,127 @@ contract Hub is
     }
 
     //----------------------------------------------------------------------------------------------
-    // Gateway owner methods
+    //  Accounting methods
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IHubGatewayHandler
-    function registerAsset(AssetId assetId, uint8 decimals) external {
-        _auth();
-
-        hubRegistry.registerAsset(assetId, decimals);
+    /// @inheritdoc IHub
+    /// @notice Create credit & debit entries for the deposit or withdrawal of a holding.
+    ///         This updates the asset/expense as well as the equity/liability accounts.
+    function updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
+        external
+        auth
+    {
+        _updateAccountingAmount(poolId, scId, assetId, isPositive, diff);
     }
 
-    /// @inheritdoc IHubGatewayHandler
-    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external {
-        _auth();
+    function _updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
+        internal
+    {
+        if (diff == 0) return;
 
-        IHubRequestManager manager = hubRegistry.hubRequestManager(poolId, assetId.centrifugeId());
-        require(address(manager) != address(0), InvalidRequestManager());
+        accounting.unlock(poolId);
 
-        IHubRequestManager(manager).request(poolId, scId, assetId, payload);
-    }
+        bool isLiability = holdings.isLiability(poolId, scId, assetId);
+        AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
+        AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;
 
-    /// @inheritdoc IHubGatewayHandler
-    function updateHoldingAmount(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 amount,
-        D18 pricePoolPerAsset,
-        bool isIncrease,
-        bool isSnapshot,
-        uint64 nonce
-    ) external {
-        _auth();
-
-        uint128 value = isIncrease
-            ? holdings.increase(poolId, scId, assetId, pricePoolPerAsset, amount)
-            : holdings.decrease(poolId, scId, assetId, pricePoolPerAsset, amount);
-
-        if (holdings.isInitialized(poolId, scId, assetId)) {
-            hubHelpers.updateAccountingAmount(poolId, scId, assetId, isIncrease, value);
+        if (isPositive) {
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), diff);
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), diff);
+        } else {
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), diff);
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), diff);
         }
 
-        holdings.setSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
+        accounting.lock();
     }
 
-    /// @inheritdoc IHubGatewayHandler
-    function updateShares(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        uint128 amount,
-        bool isIssuance,
-        bool isSnapshot,
-        uint64 nonce
-    ) external {
-        _auth();
-
-        shareClassManager.updateShares(centrifugeId, poolId, scId, amount, isIssuance);
-
-        holdings.setSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
+    /// @inheritdoc IHub
+    /// @notice Create credit & debit entries for the increase or decrease in the value of a holding.
+    ///         This updates the asset/expense as well as the gain/loss accounts.
+    function updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
+        external
+        auth
+    {
+        _updateAccountingValue(poolId, scId, assetId, isPositive, diff);
     }
 
-    /// @inheritdoc IHubGatewayHandler
-    function initiateTransferShares(
-        uint16 originCentrifugeId,
-        uint16 targetCentrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 receiver,
-        uint128 amount,
-        uint128 extraGasLimit
-    ) external returns (uint256 cost) {
-        _auth();
+    function _updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
+        internal
+    {
+        if (diff == 0) return;
 
-        shareClassManager.updateShares(originCentrifugeId, poolId, scId, amount, false);
-        shareClassManager.updateShares(targetCentrifugeId, poolId, scId, amount, true);
+        accounting.unlock(poolId);
 
-        ISnapshotHook hook = holdings.snapshotHook(poolId);
-        if (address(hook) != address(0)) hook.onTransfer(poolId, scId, originCentrifugeId, targetCentrifugeId, amount);
+        // Save a diff=0 update gas cost
+        if (isPositive) {
+            if (holdings.isLiability(poolId, scId, assetId)) {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), diff);
+            } else {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), diff);
+            }
+        } else {
+            if (holdings.isLiability(poolId, scId, assetId)) {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
+            } else {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss)), diff);
+            }
+        }
 
-        emit ForwardTransferShares(originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount);
+        accounting.lock();
+    }
 
-        return sender.sendExecuteTransferShares(
-            originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, extraGasLimit
-        );
+    //----------------------------------------------------------------------------------------------
+    //  View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IHub
+    function holdingAccounts(
+        AccountId assetAccount,
+        AccountId equityAccount,
+        AccountId gainAccount,
+        AccountId lossAccount
+    ) public pure returns (HoldingAccount[] memory) {
+        HoldingAccount[] memory accounts = new HoldingAccount[](4);
+        accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
+        accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
+        accounts[2] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
+        accounts[3] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
+        return accounts;
+    }
+
+    /// @inheritdoc IHub
+    function liabilityAccounts(AccountId expenseAccount, AccountId liabilityAccount)
+        public
+        pure
+        returns (HoldingAccount[] memory)
+    {
+        HoldingAccount[] memory accounts = new HoldingAccount[](2);
+        accounts[0] = HoldingAccount(expenseAccount, uint8(AccountType.Expense));
+        accounts[1] = HoldingAccount(liabilityAccount, uint8(AccountType.Liability));
+        return accounts;
+    }
+
+    /// @inheritdoc IHub
+    function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (D18) {
+        // Assume price of 1.0 if the holding is not initialized yet
+        if (!holdings.isInitialized(poolId, scId, assetId)) return d18(1, 1);
+
+        // NOTE: We assume symmetric prices are provided by holdings valuation
+        IValuation valuation = holdings.valuation(poolId, scId, assetId);
+
+        // Retrieve amount of 1 asset unit in pool currency
+        AssetId poolCurrency = hubRegistry.currency(poolId);
+        uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
+        uint128 poolUnitAmount = (10 ** hubRegistry.decimals(poolCurrency.raw())).toUint128();
+        uint128 poolAmountPerAsset = valuation.getQuote(poolId, scId, assetId, assetUnitAmount);
+
+        // Retrieve price by normalizing by pool denomination
+        return d18(poolAmountPerAsset, poolUnitAmount);
     }
 
     //----------------------------------------------------------------------------------------------

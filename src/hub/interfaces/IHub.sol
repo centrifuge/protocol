@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IHoldings} from "./IHoldings.sol";
+import {IHoldings, HoldingAccount} from "./IHoldings.sol";
 import {IHubRegistry} from "./IHubRegistry.sol";
 import {IAccounting, JournalEntry} from "./IAccounting.sol";
 import {IHubRequestManager} from "./IHubRequestManager.sol";
@@ -337,4 +337,24 @@ interface IHub {
     function callRequestManager(PoolId poolId, uint16 centrifugeId, bytes calldata data)
         external
         returns (uint256 cost);
+
+    function updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
+        external;
+
+    function updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
+        external;
+
+    function holdingAccounts(
+        AccountId assetAccount,
+        AccountId equityAccount,
+        AccountId gainAccount,
+        AccountId lossAccount
+    ) external pure returns (HoldingAccount[] memory accounts);
+
+    function liabilityAccounts(AccountId expenseAccount, AccountId liabilityAccount)
+        external
+        pure
+        returns (HoldingAccount[] memory accounts);
+
+    function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (D18);
 }
