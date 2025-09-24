@@ -14,6 +14,7 @@ import {IHubGatewayHandler} from "../../../src/common/interfaces/IGatewayHandler
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
 import {IHubRequestManagerCallback} from "../../../src/hub/interfaces/IHubRequestManagerCallback.sol";
 
+import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
 import {
     IBatchRequestManager,
     EpochInvestAmounts,
@@ -23,7 +24,6 @@ import {
     RequestType,
     EpochId
 } from "../../../src/vaults/interfaces/IBatchRequestManager.sol";
-import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
 
 import "forge-std/Test.sol";
 

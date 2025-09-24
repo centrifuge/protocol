@@ -26,10 +26,10 @@ import {UpdateContractMessageLib} from "../src/spoke/libraries/UpdateContractMes
 import {SyncManager} from "../src/vaults/SyncManager.sol";
 import {SyncDepositVault} from "../src/vaults/SyncDepositVault.sol";
 import {IAsyncVault} from "../src/vaults/interfaces/IAsyncVault.sol";
-import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
-import {IBatchRequestManager} from "../src/vaults/interfaces/IBatchRequestManager.sol";
 import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
+import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
+import {IBatchRequestManager} from "../src/vaults/interfaces/IBatchRequestManager.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
@@ -179,7 +179,7 @@ contract TestData is FullDeployer {
         );
         balanceSheet.submitQueuedShares(state.poolId, state.scId, DEFAULT_EXTRA_GAS);
         uint32 maxClaims = batchRequestManager.maxDepositClaims(state.scId, msg.sender.toBytes32(), assetId);
-        hub.notifyDeposit(state.poolId, state.scId, assetId, msg.sender.toBytes32(), maxClaims);
+        batchRequestManager.notifyDeposit(state.poolId, state.scId, assetId, msg.sender.toBytes32(), maxClaims);
         state.vault.mint(1_000_000e18, msg.sender);
 
         // Update price, deposit principal + yield
@@ -223,7 +223,7 @@ contract TestData is FullDeployer {
             )
         );
         balanceSheet.submitQueuedShares(state.poolId, state.scId, DEFAULT_EXTRA_GAS);
-        hub.notifyRedeem(state.poolId, state.scId, assetId, bytes32(bytes20(msg.sender)), 1);
+        batchRequestManager.notifyRedeem(state.poolId, state.scId, assetId, bytes32(bytes20(msg.sender)), 1);
 
         // Deposit for withdraw
         token.approve(address(balanceSheet), 1_100_000e18);

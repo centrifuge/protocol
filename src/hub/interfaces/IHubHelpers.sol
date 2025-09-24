@@ -24,16 +24,6 @@ interface IHubHelpers {
     /// Accepts a `bytes32` representation of 'hub'
     function file(bytes32 what, address data) external;
 
-    /// @notice Notify a deposit for an investor address located in the chain where the asset belongs
-    function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
-        external
-        returns (uint128 totalPayoutShareAmount, uint128 totalPaymentAssetAmount, uint128 cancelledAssetAmount);
-
-    /// @notice Notify a redemption for an investor address located in the chain where the asset belongs
-    function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
-        external
-        returns (uint128 totalPayoutAssetAmount, uint128 totalPaymentShareAmount, uint128 cancelledShareAmount);
-
     function updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
         external;
 

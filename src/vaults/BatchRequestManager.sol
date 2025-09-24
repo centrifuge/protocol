@@ -16,12 +16,13 @@ import {D18, d18} from "../misc/types/D18.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
+import {ReentrancyProtection} from "../misc/ReentrancyProtection.sol";
 
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
+import {IGateway} from "../common/interfaces/IGateway.sol";
 import {PricingLib} from "../common/libraries/PricingLib.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
-import {IHubGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
 import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
 import {RequestMessageLib, RequestType as RequestMessageType} from "../common/libraries/RequestMessageLib.sol";
 
@@ -31,7 +32,7 @@ import {IHubRequestManagerCallback} from "../hub/interfaces/IHubRequestManagerCa
 
 /// @title  Batch Request Manager
 /// @notice Manager for handling deposit/redeem requests, epochs, and fulfillment logic for share classes
-contract BatchRequestManager is Auth, IBatchRequestManager {
+contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager {
     using MathLib for *;
     using CastLib for *;
     using BytesLib for bytes;
@@ -41,6 +42,7 @@ contract BatchRequestManager is Auth, IBatchRequestManager {
     IHubRegistry public immutable hubRegistry;
 
     IHubRequestManagerCallback public hub;
+    IGateway public gateway;
 
     // Epochs
     mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) public epochId;
@@ -77,11 +79,10 @@ contract BatchRequestManager is Auth, IBatchRequestManager {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Updates a contract parameter.
-    /// @param what Name of the parameter to update.
     /// Accepts a `bytes32` representation of 'hub'
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubRequestManagerCallback(data);
+        if (what == "gateway") gateway = IGateway(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -433,10 +434,56 @@ contract BatchRequestManager is Auth, IBatchRequestManager {
     // Claiming methods
     //----------------------------------------------------------------------------------------------
 
+    /// @inheritdoc IBatchRequestManager
+    function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
+        external
+        payable
+        protected
+        returns (uint256 cost)
+    {
+        uint128 totalPayoutShareAmount;
+        uint128 totalPaymentAssetAmount;
+        uint128 cancelledAssetAmount;
+
+        for (uint32 i = 0; i < maxClaims; i++) {
+            (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelled, bool canClaimAgain) =
+                _claimDeposit(poolId, scId, investor, assetId);
+
+            totalPayoutShareAmount += payoutShareAmount;
+            totalPaymentAssetAmount += paymentAssetAmount;
+
+            // Should be written at most once with non-zero amount iff the last claimable epoch was processed and
+            // the user had a pending cancellation
+            // NOTE: Purposely delaying corresponding message dispatch after deposit fulfillment message
+            if (cancelled > 0) {
+                cancelledAssetAmount = cancelled;
+            }
+
+            if (!canClaimAgain) {
+                break;
+            }
+        }
+
+        gateway.depositSubsidy{value: msg.value}(poolId);
+        if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
+            cost = hub.requestCallback(
+                poolId,
+                scId,
+                assetId,
+                RequestCallbackMessageLib.FulfilledDepositRequest(
+                    investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
+                ).serialize(),
+                0
+            );
+        }
+
+        require(msg.value >= cost, NotEnoughGas());
+        if (msg.value > cost) gateway.withdrawSubsidy(poolId, msg.sender, msg.value - cost);
+    }
+
     /// @inheritdoc IHubRequestManager
-    function claimDeposit(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
-        public
-        auth
+    function _claimDeposit(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
+        internal
         returns (
             uint128 payoutShareAmount,
             uint128 paymentAssetAmount,
@@ -500,10 +547,55 @@ contract BatchRequestManager is Auth, IBatchRequestManager {
         }
     }
 
+    /// @inheritdoc IBatchRequestManager
+    function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
+        external
+        payable
+        protected
+        returns (uint256 cost)
+    {
+        uint128 totalPayoutAssetAmount;
+        uint128 totalPaymentShareAmount;
+        uint128 cancelledShareAmount;
+
+        for (uint32 i = 0; i < maxClaims; i++) {
+            (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelled, bool canClaimAgain) =
+                _claimRedeem(poolId, scId, investor, assetId);
+
+            totalPayoutAssetAmount += payoutAssetAmount;
+            totalPaymentShareAmount += paymentShareAmount;
+
+            // Should be written at most once with non-zero amount iff the last claimable epoch was processed and
+            // the user had a pending cancellation
+            // NOTE: Purposely delaying corresponding message dispatch after redemption fulfillment message
+            if (cancelled > 0) {
+                cancelledShareAmount = cancelled;
+            }
+
+            if (!canClaimAgain) {
+                break;
+            }
+        }
+        gateway.depositSubsidy{value: msg.value}(poolId);
+        if (totalPaymentShareAmount > 0 || cancelledShareAmount > 0) {
+            cost = hub.requestCallback(
+                poolId,
+                scId,
+                assetId,
+                RequestCallbackMessageLib.FulfilledRedeemRequest(
+                    investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
+                ).serialize(),
+                0
+            );
+        }
+
+        require(msg.value >= cost, NotEnoughGas());
+        if (msg.value > cost) gateway.withdrawSubsidy(poolId, msg.sender, msg.value - cost);
+    }
+
     /// @inheritdoc IHubRequestManager
-    function claimRedeem(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
-        public
-        auth
+    function _claimRedeem(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
+        internal
         returns (
             uint128 payoutAssetAmount,
             uint128 paymentShareAmount,

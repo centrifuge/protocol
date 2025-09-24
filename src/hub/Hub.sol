@@ -6,9 +6,9 @@ import {IHubHelpers} from "./interfaces/IHubHelpers.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IHub, VaultUpdateKind} from "./interfaces/IHub.sol";
 import {IAccounting, JournalEntry} from "./interfaces/IAccounting.sol";
-import {IHubRequestManagerCallback} from "./interfaces/IHubRequestManagerCallback.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
+import {IHubRequestManagerCallback} from "./interfaces/IHubRequestManagerCallback.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18} from "../misc/types/D18.sol";
@@ -118,64 +118,6 @@ contract Hub is
 
         IPoolEscrow escrow = poolEscrowFactory.newEscrow(poolId);
         gateway.setRefundAddress(poolId, escrow);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Permissionless methods
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IHub
-    function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
-        external
-        payable
-        protected
-        returns (uint256 cost)
-    {
-        (uint128 totalPayoutShareAmount, uint128 totalPaymentAssetAmount, uint128 cancelledAssetAmount) =
-            hubHelpers.notifyDeposit(poolId, scId, assetId, investor, maxClaims);
-
-        gateway.depositSubsidy{value: msg.value}(poolId);
-        if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
-            cost = sender.sendRequestCallback(
-                poolId,
-                scId,
-                assetId,
-                RequestCallbackMessageLib.FulfilledDepositRequest(
-                    investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
-                ).serialize(),
-                0
-            );
-        }
-
-        require(msg.value >= cost, NotEnoughGas());
-        if (msg.value > cost) gateway.withdrawSubsidy(poolId, msg.sender, msg.value - cost);
-    }
-
-    /// @inheritdoc IHub
-    function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
-        external
-        payable
-        protected
-        returns (uint256 cost)
-    {
-        (uint128 totalPayoutAssetAmount, uint128 totalPaymentShareAmount, uint128 cancelledShareAmount) =
-            hubHelpers.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
-
-        gateway.depositSubsidy{value: msg.value}(poolId);
-        if (totalPaymentShareAmount > 0 || cancelledShareAmount > 0) {
-            cost = sender.sendRequestCallback(
-                poolId,
-                scId,
-                assetId,
-                RequestCallbackMessageLib.FulfilledRedeemRequest(
-                    investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
-                ).serialize(),
-                0
-            );
-        }
-
-        require(msg.value >= cost, NotEnoughGas());
-        if (msg.value > cost) gateway.withdrawSubsidy(poolId, msg.sender, msg.value - cost);
     }
 
     //----------------------------------------------------------------------------------------------

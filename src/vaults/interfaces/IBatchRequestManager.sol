@@ -190,6 +190,9 @@ interface IBatchRequestManager is IHubRequestManager {
     /// @notice Dispatched when unknown request type is encountered.
     error UnknownRequestType();
 
+    /// @notice Dispatched when there is not enough gas for payment methods
+    error NotEnoughGas();
+
     error InsufficientPending();
     error ZeroApprovalAmount();
     error EpochNotFound();

@@ -108,18 +108,6 @@ interface IHub {
     /// sender' as string value.
     function file(bytes32 what, address data) external;
 
-    /// @notice Notify a deposit for an investor address located in the chain where the asset belongs
-    function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor, uint32 maxClaims)
-        external
-        payable
-        returns (uint256 cost);
-
-    /// @notice Notify a redemption for an investor address located in the chain where the asset belongs
-    function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, bytes32 investor, uint32 maxClaims)
-        external
-        payable
-        returns (uint256 cost);
-
     /// @notice Notify to a CV instance that a new pool is available
     /// @param centrifugeId Chain where CV instance lives
     function notifyPool(PoolId poolId, uint16 centrifugeId) external returns (uint256 cost);

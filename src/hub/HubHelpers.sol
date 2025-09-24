@@ -6,7 +6,6 @@ import {IAccounting} from "./interfaces/IAccounting.sol";
 import {IHubHelpers} from "./interfaces/IHubHelpers.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IHoldings, HoldingAccount} from "./interfaces/IHoldings.sol";
-import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -61,62 +60,6 @@ contract HubHelpers is Auth, IHubHelpers {
     //----------------------------------------------------------------------------------------------
     //  Auth methods
     //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IHubHelpers
-    function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
-        external
-        auth
-        returns (uint128 totalPayoutShareAmount, uint128 totalPaymentAssetAmount, uint128 cancelledAssetAmount)
-    {
-        for (uint32 i = 0; i < maxClaims; i++) {
-            (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelled, bool canClaimAgain) =
-            IHubRequestManager(hubRegistry.hubRequestManager(poolId, assetId.centrifugeId())).claimDeposit(
-                poolId, scId, investor, assetId
-            );
-
-            totalPayoutShareAmount += payoutShareAmount;
-            totalPaymentAssetAmount += paymentAssetAmount;
-
-            // Should be written at most once with non-zero amount iff the last claimable epoch was processed and
-            // the user had a pending cancellation
-            // NOTE: Purposely delaying corresponding message dispatch after deposit fulfillment message
-            if (cancelled > 0) {
-                cancelledAssetAmount = cancelled;
-            }
-
-            if (!canClaimAgain) {
-                break;
-            }
-        }
-    }
-
-    /// @inheritdoc IHubHelpers
-    function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
-        external
-        auth
-        returns (uint128 totalPayoutAssetAmount, uint128 totalPaymentShareAmount, uint128 cancelledShareAmount)
-    {
-        for (uint32 i = 0; i < maxClaims; i++) {
-            (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelled, bool canClaimAgain) =
-            IHubRequestManager(hubRegistry.hubRequestManager(poolId, assetId.centrifugeId())).claimRedeem(
-                poolId, scId, investor, assetId
-            );
-
-            totalPayoutAssetAmount += payoutAssetAmount;
-            totalPaymentShareAmount += paymentShareAmount;
-
-            // Should be written at most once with non-zero amount iff the last claimable epoch was processed and
-            // the user had a pending cancellation
-            // NOTE: Purposely delaying corresponding message dispatch after redemption fulfillment message
-            if (cancelled > 0) {
-                cancelledShareAmount = cancelled;
-            }
-
-            if (!canClaimAgain) {
-                break;
-            }
-        }
-    }
 
     /// @inheritdoc IHubHelpers
     /// @notice Create credit & debit entries for the deposit or withdrawal of a holding.
