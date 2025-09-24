@@ -47,13 +47,13 @@ contract GasService is IGasService {
     constructor(uint128 maxBatchGasLimit_) {
         _maxBatchGasLimit = maxBatchGasLimit_;
 
-        // NOTE: The hardcoded values are taken from the EndToEnd tests. This should be automated in the future.
+        // NOTE: Below values should be updated using script/utils/benchmark.sh
         scheduleUpgrade = BASE_COST + 28514;
         cancelUpgrade = BASE_COST + 8861;
         recoverTokens = BASE_COST + 82906;
         registerAsset = BASE_COST + 34329;
         setPoolAdapters = BASE_COST + 398010; // using MAX_ADAPTER_COUNT
-        request = BASE_COST + 86084; // request deposit case
+        request = BASE_COST + 86084;
         notifyPool = BASE_COST + 1154806; // create escrow case
         notifyShareClass = BASE_COST + 1775916;
         notifyPricePoolPerShare = BASE_COST + 30496;
