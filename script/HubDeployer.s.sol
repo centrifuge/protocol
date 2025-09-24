@@ -42,7 +42,7 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
         report.common.multiAdapter.rely(address(report.hub));
         report.common.poolEscrowFactory.rely(address(report.hub));
 
-        // Rely spoke handler
+        // Rely hub handler
         report.hub.rely(address(report.hubHandler));
         report.hubRegistry.rely(address(report.hubHandler));
         report.holdings.rely(address(report.hubHandler));
