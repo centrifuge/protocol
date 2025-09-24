@@ -20,8 +20,8 @@ import {IShareClassManager} from "../../hub/interfaces/IShareClassManager.sol";
 
 /// @notice Share price calculation manager for single share class pools.
 contract SimplePriceManager is ISimplePriceManager, Auth {
-    IHub public immutable hub;
     IGateway public gateway;
+    IHub public immutable hub;
     IHubRegistry public immutable hubRegistry;
     IShareClassManager public immutable shareClassManager;
 

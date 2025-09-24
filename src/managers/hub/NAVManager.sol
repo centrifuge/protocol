@@ -19,10 +19,10 @@ import {IHubRegistry} from "../../hub/interfaces/IHubRegistry.sol";
 
 /// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
 contract NAVManager is INAVManager, Auth {
-    IHub public hub;
-    IHubRegistry public hubRegistry;
-    IHoldings public holdings;
-    IAccounting public accounting;
+    IHub public immutable hub;
+    IHubRegistry public immutable hubRegistry;
+    IHoldings public immutable holdings;
+    IAccounting public immutable accounting;
 
     mapping(PoolId => INAVHook) public navHook;
     mapping(PoolId poolId => mapping(uint16 centrifugeId => bool)) public initialized;
