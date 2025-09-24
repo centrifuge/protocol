@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IHoldings, HoldingAccount} from "./IHoldings.sol";
 import {IHubRegistry} from "./IHubRegistry.sol";
+import {IHoldings, HoldingAccount} from "./IHoldings.sol";
 import {IAccounting, JournalEntry} from "./IAccounting.sol";
 import {IHubRequestManager} from "./IHubRequestManager.sol";
 import {IShareClassManager} from "./IShareClassManager.sol";

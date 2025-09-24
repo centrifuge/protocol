@@ -30,8 +30,8 @@ import {VaultUpdateKind, MessageType, MessageLib} from "../../src/common/librari
 import {Hub} from "../../src/hub/Hub.sol";
 import {Holdings} from "../../src/hub/Holdings.sol";
 import {Accounting} from "../../src/hub/Accounting.sol";
-import {SpokeHandler} from "../../src/hub/SpokeHandler.sol";
 import {HubRegistry} from "../../src/hub/HubRegistry.sol";
+import {SpokeHandler} from "../../src/hub/SpokeHandler.sol";
 import {ShareClassManager} from "../../src/hub/ShareClassManager.sol";
 import {IHubRequestManager} from "../../src/hub/interfaces/IHubRequestManager.sol";
 
