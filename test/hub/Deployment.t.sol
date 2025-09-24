@@ -18,10 +18,12 @@ contract HubDeploymentTest is HubDeployer, CommonDeploymentInputTest {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(hubHandler));
         vm.assume(nonWard != address(messageProcessor));
         vm.assume(nonWard != address(messageDispatcher));
 
         assertEq(hub.wards(address(root)), 1);
+        assertEq(hub.wards(address(hubHandler)), 1);
         assertEq(hub.wards(address(guardian)), 1);
         assertEq(hub.wards(nonWard), 0);
 
@@ -58,9 +60,11 @@ contract HubDeploymentTest is HubDeployer, CommonDeploymentInputTest {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(hub));
+        vm.assume(nonWard != address(hubHandler));
 
         assertEq(hubRegistry.wards(address(root)), 1);
         assertEq(hubRegistry.wards(address(hub)), 1);
+        assertEq(hubRegistry.wards(address(hubHandler)), 1);
         assertEq(hubRegistry.wards(nonWard), 0);
 
         // initial values set correctly
@@ -87,9 +91,11 @@ contract HubDeploymentTest is HubDeployer, CommonDeploymentInputTest {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(hub));
+        vm.assume(nonWard != address(hubHandler));
 
         assertEq(holdings.wards(address(root)), 1);
         assertEq(holdings.wards(address(hub)), 1);
+        assertEq(holdings.wards(address(hubHandler)), 1);
         assertEq(holdings.wards(nonWard), 0);
 
         // dependencies set correctly
