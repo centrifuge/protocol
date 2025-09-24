@@ -85,25 +85,26 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     /// @inheritdoc INAVHook
     function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) external auth {
         NetworkMetrics storage networkMetrics_ = networkMetrics[poolId][centrifugeId];
+        Metrics storage metrics_ = metrics[poolId];
         uint128 issuance = shareClassManager.issuance(scId, centrifugeId);
 
-        metrics[poolId].issuance = metrics[poolId].issuance + issuance - networkMetrics_.issuance;
-        metrics[poolId].netAssetValue = metrics[poolId].netAssetValue + netAssetValue - networkMetrics_.netAssetValue;
+        metrics_.issuance = metrics_.issuance + issuance - networkMetrics_.issuance;
+        metrics_.netAssetValue = metrics_.netAssetValue + netAssetValue - networkMetrics_.netAssetValue;
 
         D18 price = _navPerShare(poolId);
 
         networkMetrics_.netAssetValue = netAssetValue;
         networkMetrics_.issuance = issuance;
 
-        uint256 networkCount = metrics[poolId].networks.length;
+        uint256 networkCount = metrics_.networks.length;
         gateway.startBatching();
         hub.updateSharePrice(poolId, scId, price);
 
         for (uint256 i; i < networkCount; i++) {
-            hub.notifySharePrice(poolId, scId, metrics[poolId].networks[i]);
+            hub.notifySharePrice(poolId, scId, metrics_.networks[i]);
         }
 
-        emit Update(poolId, metrics[poolId].netAssetValue, metrics[poolId].issuance, price);
+        emit Update(poolId, metrics_.netAssetValue, metrics_.issuance, price);
     }
 
     /// @inheritdoc INAVHook
