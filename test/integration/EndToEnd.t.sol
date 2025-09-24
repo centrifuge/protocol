@@ -477,6 +477,7 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
         h.oracleValuation.updateFeeder(POOL_A, FEEDER, true);
         h.hub.updateHubManager(POOL_A, address(h.oracleValuation), true);
+        h.hub.updateGatewayManager(h.centrifugeId, POOL_A, address(h.batchRequestManager).toBytes32(), true);
         vm.stopPrank();
 
         // We also subsidize the hub
