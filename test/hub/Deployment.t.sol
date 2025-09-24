@@ -43,8 +43,8 @@ contract HubDeploymentTest is HubDeployer, CommonDeploymentInputTest {
         vm.assume(nonWard != address(messageDispatcher));
 
         assertEq(spokeHandler.wards(address(root)), 1);
-        assertEq(hub.wards(address(messageProcessor)), 1);
-        assertEq(hub.wards(address(messageDispatcher)), 1);
+        assertEq(spokeHandler.wards(address(messageProcessor)), 1);
+        assertEq(spokeHandler.wards(address(messageDispatcher)), 1);
         assertEq(spokeHandler.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -100,11 +100,9 @@ contract HubDeploymentTest is HubDeployer, CommonDeploymentInputTest {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(hub));
-        vm.assume(nonWard != address(spokeHandler));
 
         assertEq(accounting.wards(address(root)), 1);
         assertEq(accounting.wards(address(hub)), 1);
-        assertEq(accounting.wards(address(spokeHandler)), 1);
         assertEq(accounting.wards(nonWard), 0);
     }
 }
