@@ -11,7 +11,7 @@ library ArrayLib {
 
     function decreaseFirstNValues(int16[8] storage arr, uint8 numValues, uint8 numValuesLowerZero) internal {
         for (uint256 i; i < numValues; i++) {
-            if (i >= numValuesLowerZero && arr[i] <= 0) break;
+            if (i >= numValuesLowerZero && arr[i] <= 0) continue;
             arr[i] -= 1;
         }
     }

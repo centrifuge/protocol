@@ -72,6 +72,10 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     uint8 public defaultDecimals = 8;
     bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
+    receive() external payable {
+        // For repayments used in setRegisterAssets and crosschainTransferShares
+    }
+
     function setUp() public virtual {
         // deploy core contracts
         CommonInput memory input = CommonInput({
@@ -106,6 +110,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         multiAdapter.setAdapters(
             OTHER_CHAIN_ID, PoolId.wrap(0), testAdapters, uint8(testAdapters.length), uint8(testAdapters.length)
         );
+        gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
 
         // We should not use the block ChainID
         vm.chainId(BLOCK_CHAIN_ID);
@@ -125,6 +130,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         catch {
             if (spoke.pool(POOL_A) == 0) {
                 centrifugeChain.addPool(POOL_A.raw());
+                gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(POOL_A);
             }
             centrifugeChain.addShareClass(POOL_A.raw(), scId, "name", "symbol", shareTokenDecimals, hook);
             centrifugeChain.updatePricePoolPerShare(POOL_A.raw(), scId, uint128(10 ** 18), uint64(block.timestamp));
@@ -158,7 +164,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         poolId = POOL_A.raw();
 
         gateway.setRefundAddress(POOL_A, gateway);
-        gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+        gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(POOL_A);
     }
 
     function deployVault(VaultKind vaultKind, uint8 decimals, bytes16 scId)

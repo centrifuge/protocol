@@ -24,7 +24,7 @@ contract TestBatchingAndPayment is BaseTest {
         cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, CHAIN_CV);
         assertEq(c, cs.length);
 
-        hub.multicall{value: GAS * 2}(cs);
+        hub.multicall(cs);
     }
 
     /// Test the following:
@@ -50,6 +50,6 @@ contract TestBatchingAndPayment is BaseTest {
         cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolB, CHAIN_CV);
         assertEq(c, cs.length);
 
-        hub.multicall{value: GAS * 2}(cs);
+        hub.multicall(cs);
     }
 }

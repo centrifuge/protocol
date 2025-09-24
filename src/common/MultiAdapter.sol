@@ -26,9 +26,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     IMessageHandler public gateway;
     IMessageProperties public messageProperties;
 
-    mapping(PoolId => address) public manager;
     mapping(uint16 centrifugeId => mapping(PoolId => IAdapter[])) public adapters;
-    mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
     mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => Inbound)) public inbound;
     mapping(uint16 centrifugeId => mapping(PoolId => mapping(IAdapter adapter => Adapter))) internal _adapterDetails;
 
@@ -94,28 +92,21 @@ contract MultiAdapter is Auth, IMultiAdapter {
         emit SetAdapters(centrifugeId, poolId, addresses, threshold_, recoveryIndex_);
     }
 
-    /// @inheritdoc IMultiAdapter
-    function setManager(PoolId poolId, address manager_) external auth {
-        manager[poolId] = manager_;
-        emit SetManager(poolId, manager_);
-    }
-
     //----------------------------------------------------------------------------------------------
     // Incoming
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes calldata payload) external {
-        _handle(centrifugeId, payload, IAdapter(msg.sender));
-    }
-
-    function _handle(uint16 centrifugeId, bytes calldata payload, IAdapter adapter_) internal {
+        IAdapter adapter_ = IAdapter(msg.sender);
         PoolId poolId = messageProperties.messagePoolId(payload);
 
         Adapter memory adapter = _adapterDetails[centrifugeId][poolId][adapter_];
 
         // If adapters not configured per pool, then assume it's received by a global adapters
-        if (adapter.id == 0) adapter = _adapterDetails[centrifugeId][PoolId.wrap(0)][adapter_];
+        if (adapter.id == 0 && adapters[centrifugeId][poolId].length == 0) {
+            adapter = _adapterDetails[centrifugeId][PoolId.wrap(0)][adapter_];
+        }
 
         require(adapter.id != 0, InvalidAdapter());
 
@@ -149,13 +140,6 @@ contract MultiAdapter is Auth, IMultiAdapter {
         }
     }
 
-    /// @inheritdoc IMultiAdapter
-    function execute(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes calldata payload) external {
-        require(msg.sender == manager[poolId], ManagerNotAllowed());
-        _handle(centrifugeId, payload, adapter);
-        emit Execute(centrifugeId, payload, adapter);
-    }
-
     //----------------------------------------------------------------------------------------------
     // Outgoing
     //----------------------------------------------------------------------------------------------
@@ -168,8 +152,6 @@ contract MultiAdapter is Auth, IMultiAdapter {
         returns (bytes32)
     {
         PoolId poolId = messageProperties.messagePoolId(payload);
-        require(!isOutgoingBlocked[centrifugeId][poolId], OutgoingBlocked());
-
         IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
         require(adapters_.length != 0, EmptyAdapterSet());
 
@@ -195,13 +177,6 @@ contract MultiAdapter is Auth, IMultiAdapter {
         for (uint256 i; i < adapters_.length; i++) {
             total += adapters_[i].estimate(centrifugeId, payload, gasLimit);
         }
-    }
-
-    /// @inheritdoc IMultiAdapter
-    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external {
-        require(msg.sender == manager[poolId], ManagerNotAllowed());
-        isOutgoingBlocked[centrifugeId][poolId] = isBlocked;
-        emit BlockOutgoing(centrifugeId, poolId, isBlocked);
     }
 
     //----------------------------------------------------------------------------------------------

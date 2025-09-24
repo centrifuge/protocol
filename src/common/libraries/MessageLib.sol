@@ -17,7 +17,7 @@ enum MessageType {
     RecoverTokens,
     RegisterAsset,
     SetPoolAdapters,
-    SetPoolAdaptersManager,
+    _Placeholder6,
     _Placeholder7,
     _Placeholder8,
     _Placeholder9,
@@ -46,7 +46,8 @@ enum MessageType {
     MaxSharePriceAge,
     Request,
     RequestCallback,
-    SetRequestManager
+    SetRequestManager,
+    UpdateGatewayManager
 }
 
 /// @dev Used internally in the UpdateVault message (not represent a submessage)
@@ -74,7 +75,7 @@ library MessageLib {
         (161 << uint8(MessageType.RecoverTokens) * 8) +
         (18  << uint8(MessageType.RegisterAsset) * 8) +
         (13  << uint8(MessageType.SetPoolAdapters) * 8) +
-        (41  << uint8(MessageType.SetPoolAdaptersManager) * 8) +
+        (0   << uint8(MessageType._Placeholder6) * 8) +
         (0   << uint8(MessageType._Placeholder7) * 8) +
         (0   << uint8(MessageType._Placeholder8) * 8) +
         (0   << uint8(MessageType._Placeholder9) * 8) +
@@ -105,7 +106,8 @@ library MessageLib {
     uint256 constant MESSAGE_LENGTHS_2 =
         (41  << (uint8(MessageType.Request) - 32) * 8) +
         (41  << (uint8(MessageType.RequestCallback) - 32) * 8) +
-        (41  << (uint8(MessageType.SetRequestManager) - 32) * 8);
+        (41  << (uint8(MessageType.SetRequestManager) - 32) * 8) +
+        (42  << (uint8(MessageType.UpdateGatewayManager) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -151,7 +153,7 @@ library MessageLib {
     function messagePoolIdPayment(bytes memory message) internal pure returns (PoolId poolId) {
         uint8 kind = message.toUint8(0);
 
-        if (kind == uint8(MessageType.SetPoolAdapters) || kind == uint8(MessageType.SetPoolAdaptersManager)) {
+        if (kind == uint8(MessageType.SetPoolAdapters)) {
             return PoolId.wrap(message.toUint64(1));
         }
 
@@ -165,8 +167,6 @@ library MessageLib {
             return 0; // Non centrifugeId associated
         } else if (kind == uint8(MessageType.SetPoolAdapters)) {
             return message.messagePoolIdPayment().centrifugeId();
-        } else if (kind == uint8(MessageType.SetPoolAdaptersManager)) {
-            return 0; // Non centrifugeId associated
         } else if (kind == uint8(MessageType.UpdateShares) || kind == uint8(MessageType.InitiateTransferShares)) {
             return 0; // Non centrifugeId associated
         } else if (kind == uint8(MessageType.RegisterAsset)) {
@@ -296,28 +296,6 @@ library MessageLib {
             t.adapterList.length.toUint16(),
             t.adapterList
         );
-    }
-
-    //---------------------------------------
-    //   SetPoolAdaptersManager
-    //---------------------------------------
-
-    struct SetPoolAdaptersManager {
-        uint64 poolId;
-        bytes32 manager;
-    }
-
-    function deserializeSetPoolAdaptersManager(bytes memory data)
-        internal
-        pure
-        returns (SetPoolAdaptersManager memory)
-    {
-        require(messageType(data) == MessageType.SetPoolAdaptersManager, UnknownMessageType());
-        return SetPoolAdaptersManager({poolId: data.toUint64(1), manager: data.toBytes32(9)});
-    }
-
-    function serialize(SetPoolAdaptersManager memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.SetPoolAdaptersManager, t.poolId, t.manager);
     }
 
     //---------------------------------------
@@ -842,5 +820,24 @@ library MessageLib {
 
     function serialize(MaxSharePriceAge memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(MessageType.MaxSharePriceAge, t.poolId, t.scId, t.maxPriceAge);
+    }
+
+    //---------------------------------------
+    //   UpdateGatewayManager
+    //---------------------------------------
+
+    struct UpdateGatewayManager {
+        uint64 poolId;
+        bytes32 who;
+        bool canManage;
+    }
+
+    function deserializeUpdateGatewayManager(bytes memory data) internal pure returns (UpdateGatewayManager memory) {
+        require(messageType(data) == MessageType.UpdateGatewayManager, UnknownMessageType());
+        return UpdateGatewayManager({poolId: data.toUint64(1), who: data.toBytes32(9), canManage: data.toBool(41)});
+    }
+
+    function serialize(UpdateGatewayManager memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UpdateGatewayManager, t.poolId, t.who, t.canManage);
     }
 }

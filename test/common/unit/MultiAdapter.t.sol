@@ -103,7 +103,6 @@ contract MultiAdapterTest is Test {
 
     address immutable ANY = makeAddr("ANY");
     address immutable REFUND = makeAddr("REFUND");
-    address immutable MANAGER = makeAddr("MANAGER");
 
     function _mockAdapter(IAdapter adapter, bytes memory message, uint256 estimate, bytes32 adapterData) internal {
         vm.mockCall(
@@ -212,6 +211,7 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
         emit IMultiAdapter.SetAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 2);
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 2);
 
+        assertEq(multiAdapter.poolAdapters(REMOTE_CENT_ID, POOL_A).length, 3);
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 0);
         assertEq(multiAdapter.quorum(REMOTE_CENT_ID, POOL_A), threeAdapters.length);
         assertEq(multiAdapter.threshold(REMOTE_CENT_ID, POOL_A), 1);
@@ -237,22 +237,6 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
 
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 1);
-    }
-}
-
-contract MultiAdapterTestSetManager is MultiAdapterTest {
-    function testErrNotAuthorized() public {
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        multiAdapter.setManager(POOL_A, MANAGER);
-    }
-
-    function testSetManager() public {
-        vm.expectEmit();
-        emit IMultiAdapter.SetManager(POOL_A, MANAGER);
-        multiAdapter.setManager(POOL_A, MANAGER);
-
-        assertEq(multiAdapter.manager(POOL_A), MANAGER);
     }
 }
 
@@ -503,42 +487,6 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     }
 }
 
-contract MultiAdapterTestExecute is MultiAdapterTest {
-    function testErrManagerNotAllowed() public {
-        vm.prank(ANY);
-        vm.expectRevert(IMultiAdapter.ManagerNotAllowed.selector);
-        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, adapter1, bytes(""));
-    }
-
-    function testExecute() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, oneAdapter, 1, 1);
-        multiAdapter.setManager(POOL_A, MANAGER);
-
-        vm.prank(MANAGER);
-        emit IMultiAdapter.Execute(REMOTE_CENT_ID, MESSAGE_1, adapter1);
-        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, adapter1, MESSAGE_1);
-
-        assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
-    }
-
-    function testExecuteWithSeveralAdapters() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
-        multiAdapter.setManager(POOL_A, MANAGER);
-
-        vm.startPrank(MANAGER);
-
-        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, adapter1, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 0); // nothing yet
-
-        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, adapter2, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 0); // nothing yet
-
-        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, adapter3, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1); // executed!
-        assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
-    }
-}
-
 contract MultiAdapterTestSend is MultiAdapterTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
@@ -548,18 +496,6 @@ contract MultiAdapterTestSend is MultiAdapterTest {
 
     function testErrEmptyAdapterSet() public {
         vm.expectRevert(IMultiAdapter.EmptyAdapterSet.selector);
-        multiAdapter.send(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
-    }
-
-    function testErrSendingBlocked() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, oneAdapter, 1, 1);
-        multiAdapter.setManager(POOL_A, MANAGER);
-
-        vm.prank(MANAGER);
-        multiAdapter.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
-
-        vm.prank(address(this));
-        vm.expectRevert(IMultiAdapter.OutgoingBlocked.selector);
         multiAdapter.send(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
     }
 
@@ -622,24 +558,5 @@ contract MultiAdapterTestEstimate is MultiAdapterTest {
         uint256 estimation = GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
 
         assertEq(multiAdapter.estimate(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT), estimation);
-    }
-}
-
-contract MultiAdapterTestBlockOutgoing is MultiAdapterTest {
-    function testErrManagerNotAllowed() public {
-        vm.prank(ANY);
-        vm.expectRevert(IMultiAdapter.ManagerNotAllowed.selector);
-        multiAdapter.blockOutgoing(REMOTE_CENT_ID, POOL_A, false);
-    }
-
-    function testBlockOutgoing() public {
-        multiAdapter.setManager(POOL_A, MANAGER);
-
-        vm.prank(MANAGER);
-        vm.expectEmit();
-        emit IMultiAdapter.BlockOutgoing(REMOTE_CENT_ID, POOL_A, true);
-        multiAdapter.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
-
-        assertEq(multiAdapter.isOutgoingBlocked(REMOTE_CENT_ID, POOL_A), true);
     }
 }

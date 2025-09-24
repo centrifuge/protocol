@@ -40,8 +40,8 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeSetPoolAdaptersManager() public {
-        MessageLib.deserializeSetPoolAdaptersManager(_prepareFor());
+    function testDeserializeUpdateGatewayManager() public {
+        MessageLib.deserializeUpdateGatewayManager(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -234,20 +234,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), 0);
         assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
-    }
-
-    function testSetPoolAdaptersManager(uint64 poolId, bytes32 manager) public pure {
-        MessageLib.SetPoolAdaptersManager memory a =
-            MessageLib.SetPoolAdaptersManager({poolId: poolId, manager: manager});
-        MessageLib.SetPoolAdaptersManager memory b = MessageLib.deserializeSetPoolAdaptersManager(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.manager, b.manager);
-
-        assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
-        assertEq(a.serialize().messagePoolId().raw(), 0);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
-        assertEq(a.serialize().messageSourceCentrifugeId(), 0);
     }
 
     function testNotifyPool(uint64 poolId) public pure {
@@ -646,6 +632,21 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.maxPriceAge, b.maxPriceAge);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
+        assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
+    }
+
+    function testUpdateGatewayManager(uint64 poolId, bytes32 who, bool canManage) public pure {
+        MessageLib.UpdateGatewayManager memory a =
+            MessageLib.UpdateGatewayManager({poolId: poolId, who: who, canManage: canManage});
+        MessageLib.UpdateGatewayManager memory b = MessageLib.deserializeUpdateGatewayManager(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.who, b.who);
+        assertEq(a.canManage, b.canManage);
+
+        assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
