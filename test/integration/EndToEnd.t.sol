@@ -30,8 +30,10 @@ import {VaultUpdateKind, MessageType, MessageLib} from "../../src/common/librari
 import {Hub} from "../../src/hub/Hub.sol";
 import {Holdings} from "../../src/hub/Holdings.sol";
 import {Accounting} from "../../src/hub/Accounting.sol";
+import {HubHelpers} from "../../src/hub/HubHelpers.sol";
 import {HubRegistry} from "../../src/hub/HubRegistry.sol";
 import {ShareClassManager} from "../../src/hub/ShareClassManager.sol";
+import {IHubRequestManager} from "../../src/hub/interfaces/IHubRequestManager.sol";
 
 import {Spoke} from "../../src/spoke/Spoke.sol";
 import {IVault} from "../../src/spoke/interfaces/IVault.sol";
@@ -43,7 +45,9 @@ import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
+import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {IBatchRequestManager} from "../../src/vaults/interfaces/IBatchRequestManager.sol";
 
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
 
@@ -96,6 +100,8 @@ contract EndToEndDeployment is Test {
         Holdings holdings;
         ShareClassManager shareClassManager;
         Hub hub;
+        HubHelpers hubHelpers;
+        BatchRequestManager batchRequestManager;
         // Others
         IdentityValuation identityValuation;
         OracleValuation oracleValuation;
@@ -211,6 +217,8 @@ contract EndToEndDeployment is Test {
             holdings: deployA.holdings(),
             shareClassManager: deployA.shareClassManager(),
             hub: deployA.hub(),
+            hubHelpers: deployA.hubHelpers(),
+            batchRequestManager: deployA.batchRequestManager(),
             identityValuation: deployA.identityValuation(),
             oracleValuation: deployA.oracleValuation(),
             snapshotHook: new MockSnapshotHook()
@@ -445,7 +453,12 @@ contract EndToEndFlows is EndToEndUtils {
             GAIN_ACCOUNT,
             LOSS_ACCOUNT
         );
-        hub.hub.setRequestManager(poolId, spoke.centrifugeId, address(spoke.asyncRequestManager).toBytes32());
+        hub.hub.setRequestManager(
+            poolId,
+            spoke.centrifugeId,
+            IHubRequestManager(hub.batchRequestManager),
+            address(spoke.asyncRequestManager).toBytes32()
+        );
         hub.hub.updateBalanceSheetManager(
             spoke.centrifugeId, poolId, address(spoke.asyncRequestManager).toBytes32(), true
         );
@@ -468,6 +481,7 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
         h.oracleValuation.updateFeeder(POOL_A, FEEDER, true);
         h.hub.updateHubManager(POOL_A, address(h.oracleValuation), true);
+        h.hub.updateGatewayManager(h.centrifugeId, POOL_A, address(h.batchRequestManager).toBytes32(), true);
         vm.stopPrank();
 
         // We also subsidize the hub
@@ -603,13 +617,27 @@ contract EndToEndFlows is EndToEndUtils {
         uint128 amount
     ) internal {
         vm.startPrank(poolManager);
-        uint32 depositEpochId = hub.shareClassManager.nowDepositEpoch(shareClassId, assetId);
-        hub.hub.approveDeposits(poolId, shareClassId, assetId, depositEpochId, amount);
+        uint32 depositEpochId = hub.batchRequestManager.nowDepositEpoch(shareClassId, assetId);
+        D18 pricePoolPerAsset = hub.hubHelpers.pricePoolPerAsset(poolId, shareClassId, assetId);
+        hub.hub.callRequestManager(
+            poolId,
+            assetId.centrifugeId(),
+            abi.encodeCall(
+                IBatchRequestManager.approveDeposits,
+                (poolId, shareClassId, assetId, depositEpochId, amount, pricePoolPerAsset)
+            )
+        );
 
         vm.startPrank(poolManager);
-        uint32 issueEpochId = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
+        uint32 issueEpochId = hub.batchRequestManager.nowIssueEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.issueShares(poolId, shareClassId, assetId, issueEpochId, sharePrice, HOOK_GAS);
+        hub.hub.callRequestManager(
+            poolId,
+            assetId.centrifugeId(),
+            abi.encodeCall(
+                IBatchRequestManager.issueShares, (poolId, shareClassId, assetId, issueEpochId, sharePrice, HOOK_GAS)
+            )
+        );
     }
 
     function _processAsyncDepositClaim(
@@ -624,12 +652,12 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.hub.notifyDeposit{value: GAS}(
+        hub.batchRequestManager.notifyDeposit{value: GAS}(
             poolId,
             shareClassId,
             assetId,
             investor.toBytes32(),
-            hub.shareClassManager.maxDepositClaims(shareClassId, investor.toBytes32(), assetId)
+            hub.batchRequestManager.maxDepositClaims(shareClassId, investor.toBytes32(), assetId)
         );
 
         vm.startPrank(investor);
@@ -745,7 +773,6 @@ contract EndToEndFlows is EndToEndUtils {
         vault.requestRedeem(shares, investor, investor);
 
         _processAsyncRedeemApproval(hub, poolId, shareClassId, assetId, shares, poolManager);
-        
         _processAsyncRedeemClaim(hub, spoke, poolId, shareClassId, assetId, investor, vault, shares);
     }
 
@@ -772,12 +799,26 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager
     ) internal {
         vm.startPrank(poolManager);
-        uint32 redeemEpochId = hub.shareClassManager.nowRedeemEpoch(shareClassId, assetId);
-        hub.hub.approveRedeems(poolId, shareClassId, assetId, redeemEpochId, shares);
+        uint32 redeemEpochId = hub.batchRequestManager.nowRedeemEpoch(shareClassId, assetId);
+        D18 pricePoolPerAsset = hub.hubHelpers.pricePoolPerAsset(poolId, shareClassId, assetId);
+        hub.hub.callRequestManager(
+            poolId,
+            assetId.centrifugeId(),
+            abi.encodeCall(
+                IBatchRequestManager.approveRedeems,
+                (poolId, shareClassId, assetId, redeemEpochId, shares, pricePoolPerAsset)
+            )
+        );
 
-        uint32 revokeEpochId = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
+        uint32 revokeEpochId = hub.batchRequestManager.nowRevokeEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.revokeShares(poolId, shareClassId, assetId, revokeEpochId, sharePrice, HOOK_GAS);
+        hub.hub.callRequestManager(
+            poolId,
+            assetId.centrifugeId(),
+            abi.encodeCall(
+                IBatchRequestManager.revokeShares, (poolId, shareClassId, assetId, revokeEpochId, sharePrice, HOOK_GAS)
+            )
+        );
     }
 
     function _processAsyncRedeemClaim(
@@ -792,12 +833,12 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.hub.notifyRedeem{value: GAS}(
+        hub.batchRequestManager.notifyRedeem{value: GAS}(
             poolId,
             shareClassId,
             assetId,
             investor.toBytes32(),
-            hub.shareClassManager.maxRedeemClaims(shareClassId, investor.toBytes32(), assetId)
+            hub.batchRequestManager.maxRedeemClaims(shareClassId, investor.toBytes32(), assetId)
         );
 
         vm.startPrank(investor);

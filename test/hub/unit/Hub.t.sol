@@ -135,24 +135,6 @@ contract TestMainMethodsChecks is TestCommon {
         hub.addShareClass(POOL_A, "", "", bytes32(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.approveDeposits(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, 0);
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.approveRedeems(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, 0);
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.issueShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(0), 0);
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.revokeShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(0), 0);
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.forceCancelDepositRequest(POOL_A, ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.forceCancelRedeemRequest(POOL_A, ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
-
-        vm.expectRevert(IHub.NotManager.selector);
         hub.updateRestriction(POOL_A, ShareClassId.wrap(0), 0, bytes(""), 0);
 
         vm.expectRevert(IHub.NotManager.selector);

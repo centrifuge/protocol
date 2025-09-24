@@ -18,7 +18,7 @@ import {AccountId} from "../common/types/AccountId.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IValuation} from "../common/interfaces/IValuation.sol";
 import {IHubMessageSender} from "../common/interfaces/IGatewaySenders.sol";
-import {RequestMessageLib, RequestType} from "../common/libraries/RequestMessageLib.sol";
+import {RequestMessageLib} from "../common/libraries/RequestMessageLib.sol";
 import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
 
 contract HubHelpers is Auth, IHubHelpers {
@@ -60,58 +60,6 @@ contract HubHelpers is Auth, IHubHelpers {
     //----------------------------------------------------------------------------------------------
     //  Auth methods
     //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IHubHelpers
-    function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
-        external
-        auth
-        returns (uint128 totalPayoutShareAmount, uint128 totalPaymentAssetAmount, uint128 cancelledAssetAmount)
-    {
-        for (uint32 i = 0; i < maxClaims; i++) {
-            (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelled, bool canClaimAgain) =
-                shareClassManager.claimDeposit(poolId, scId, investor, assetId);
-
-            totalPayoutShareAmount += payoutShareAmount;
-            totalPaymentAssetAmount += paymentAssetAmount;
-
-            // Should be written at most once with non-zero amount iff the last claimable epoch was processed and
-            // the user had a pending cancellation
-            // NOTE: Purposely delaying corresponding message dispatch after deposit fulfillment message
-            if (cancelled > 0) {
-                cancelledAssetAmount = cancelled;
-            }
-
-            if (!canClaimAgain) {
-                break;
-            }
-        }
-    }
-
-    /// @inheritdoc IHubHelpers
-    function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
-        external
-        auth
-        returns (uint128 totalPayoutAssetAmount, uint128 totalPaymentShareAmount, uint128 cancelledShareAmount)
-    {
-        for (uint32 i = 0; i < maxClaims; i++) {
-            (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelled, bool canClaimAgain) =
-                shareClassManager.claimRedeem(poolId, scId, investor, assetId);
-
-            totalPayoutAssetAmount += payoutAssetAmount;
-            totalPaymentShareAmount += paymentShareAmount;
-
-            // Should be written at most once with non-zero amount iff the last claimable epoch was processed and
-            // the user had a pending cancellation
-            // NOTE: Purposely delaying corresponding message dispatch after redemption fulfillment message
-            if (cancelled > 0) {
-                cancelledShareAmount = cancelled;
-            }
-
-            if (!canClaimAgain) {
-                break;
-            }
-        }
-    }
 
     /// @inheritdoc IHubHelpers
     /// @notice Create credit & debit entries for the deposit or withdrawal of a holding.
@@ -170,50 +118,6 @@ contract HubHelpers is Auth, IHubHelpers {
         }
 
         accounting.lock();
-    }
-
-    /// @inheritdoc IHubHelpers
-    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external auth {
-        uint8 kind = uint8(RequestMessageLib.requestType(payload));
-
-        if (kind == uint8(RequestType.DepositRequest)) {
-            RequestMessageLib.DepositRequest memory m = payload.deserializeDepositRequest();
-            shareClassManager.requestDeposit(poolId, scId, m.amount, m.investor, assetId);
-        } else if (kind == uint8(RequestType.RedeemRequest)) {
-            RequestMessageLib.RedeemRequest memory m = payload.deserializeRedeemRequest();
-            shareClassManager.requestRedeem(poolId, scId, m.amount, m.investor, assetId);
-        } else if (kind == uint8(RequestType.CancelDepositRequest)) {
-            RequestMessageLib.CancelDepositRequest memory m = payload.deserializeCancelDepositRequest();
-            uint128 cancelledAssetAmount = shareClassManager.cancelDepositRequest(poolId, scId, m.investor, assetId);
-
-            // Cancellation might have been queued such that it will be executed in the future during claiming
-            if (cancelledAssetAmount > 0) {
-                sender.sendRequestCallback(
-                    poolId,
-                    scId,
-                    assetId,
-                    RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount).serialize(
-                    ),
-                    0
-                );
-            }
-        } else if (kind == uint8(RequestType.CancelRedeemRequest)) {
-            RequestMessageLib.CancelRedeemRequest memory m = payload.deserializeCancelRedeemRequest();
-            uint128 cancelledShareAmount = shareClassManager.cancelRedeemRequest(poolId, scId, m.investor, assetId);
-
-            // Cancellation might have been queued such that it will be executed in the future during claiming
-            if (cancelledShareAmount > 0) {
-                sender.sendRequestCallback(
-                    poolId,
-                    scId,
-                    assetId,
-                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount).serialize(),
-                    0
-                );
-            }
-        } else {
-            revert UnknownRequestType();
-        }
     }
 
     //----------------------------------------------------------------------------------------------
