@@ -16,6 +16,7 @@ import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMess
 import {RequestMessageLib, RequestType as RequestMessageType} from "../common/libraries/RequestMessageLib.sol";
 
 import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
+import {IHubRequestHandler} from "../hub/interfaces/IHubRequestHandler.sol";
 import {
     IHubRequestManager,
     EpochInvestAmounts,
@@ -37,7 +38,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
     IHubRegistry public immutable hubRegistry;
 
-    address public hub;
+    IHubRequestHandler public hub;
 
     // Epochs
     mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) public epochId;
@@ -78,7 +79,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
     /// @param what Name of the parameter to update.
     /// Accepts a `bytes32` representation of 'hub'
     function file(bytes32 what, address data) external auth {
-        if (what == "hub") hub = data;
+        if (what == "hub") hub = IHubRequestHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -104,7 +105,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
             // Cancellation might have been queued such that it will be executed in the future during claiming
             if (cancelledAssetAmount > 0) {
-                IHubGatewayHandler(hub).requestCallback(
+                hub.requestCallback(
                     poolId,
                     scId,
                     assetId,
@@ -119,7 +120,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
             // Cancellation might have been queued such that it will be executed in the future during claiming
             if (cancelledShareAmount > 0) {
-                IHubGatewayHandler(hub).requestCallback(
+                hub.requestCallback(
                     poolId,
                     scId,
                     assetId,
@@ -223,7 +224,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
             pendingAssetAmount
         );
 
-        return IHubGatewayHandler(hub).requestCallback(
+        return hub.requestCallback(
             poolId,
             scId_,
             depositAssetId,
@@ -308,7 +309,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
             issuedShareAmount
         );
 
-        return IHubGatewayHandler(hub).requestCallback(
+        return hub.requestCallback(
             poolId,
             scId_,
             depositAssetId,
@@ -368,7 +369,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
             payoutPoolAmount
         );
 
-        return IHubGatewayHandler(hub).requestCallback(
+        return hub.requestCallback(
             poolId,
             scId_,
             payoutAssetId,
@@ -392,7 +393,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
         if (cancelledAssetAmount > 0) {
-            return IHubGatewayHandler(hub).requestCallback(
+            return hub.requestCallback(
                 poolId,
                 scId_,
                 depositAssetId,
@@ -416,7 +417,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
         if (cancelledShareAmount > 0) {
-            return IHubGatewayHandler(hub).requestCallback(
+            return hub.requestCallback(
                 poolId,
                 scId_,
                 payoutAssetId,

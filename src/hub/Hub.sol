@@ -6,6 +6,7 @@ import {IHubHelpers} from "./interfaces/IHubHelpers.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IHub, VaultUpdateKind} from "./interfaces/IHub.sol";
 import {IAccounting, JournalEntry} from "./interfaces/IAccounting.sol";
+import {IHubRequestHandler} from "./interfaces/IHubRequestHandler.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 
@@ -35,7 +36,7 @@ import {IPoolEscrow, IPoolEscrowFactory} from "../common/factories/interfaces/IP
 ///         Pools can assign hub managers which have full rights over all actions.
 ///
 ///         Also acts as the central contract that routes messages from other chains to the Hub contracts.
-contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuardianActions {
+contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubRequestHandler, IHubGuardianActions {
     using MathLib for uint256;
     using RequestCallbackMessageLib for *;
 
@@ -536,6 +537,25 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     //----------------------------------------------------------------------------------------------
+    // Request manager callback
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IHubRequestHandler
+    function requestCallback(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes calldata payload,
+        uint128 extraGasLimit
+    ) external returns (uint256 cost) {
+        address manager = hubRegistry.hubRequestManager(poolId, assetId.centrifugeId());
+        require(manager != address(0), InvalidRequestManager());
+        require(msg.sender == manager, NotAuthorized());
+
+        return sender.sendRequestCallback(poolId, scId, assetId, payload, extraGasLimit);
+    }
+
+    //----------------------------------------------------------------------------------------------
     // Gateway owner methods
     //----------------------------------------------------------------------------------------------
 
@@ -554,21 +574,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         require(address(manager) != address(0), InvalidRequestManager());
 
         IHubRequestManager(manager).request(poolId, scId, assetId, payload);
-    }
-
-    /// @inheritdoc IHubGatewayHandler
-    function requestCallback(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes calldata payload,
-        uint128 extraGasLimit
-    ) external returns (uint256 cost) {
-        address manager = hubRegistry.hubRequestManager(poolId, assetId.centrifugeId());
-        require(manager != address(0), InvalidRequestManager());
-        require(msg.sender == manager, NotAuthorized());
-
-        return sender.sendRequestCallback(poolId, scId, assetId, payload, extraGasLimit);
     }
 
     /// @inheritdoc IHubGatewayHandler

@@ -9,16 +9,17 @@ import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 import {IHubGatewayHandler} from "../../../../src/common/interfaces/IGatewayHandlers.sol";
 import {RequestCallbackMessageLib} from "../../../../src/common/libraries/RequestCallbackMessageLib.sol";
 
+import {IHubRequestHandler} from "../../../../src/hub/interfaces/IHubRequestHandler.sol";
 import {IHubRequestManager} from "../../../../src/hub/interfaces/IHubRequestManager.sol";
 
 contract MockHubRequestManager is IHubRequestManager {
     using RequestCallbackMessageLib for *;
 
     uint32 private constant MOCK_EPOCH = 1;
-    address public hub;
+    IHubRequestHandler public hub;
 
     constructor(address hub_) {
-        hub = hub_;
+        hub = IHubRequestHandler(hub_);
     }
 
     function request(PoolId, ShareClassId, AssetId, bytes calldata) external override {}
@@ -44,7 +45,7 @@ contract MockHubRequestManager is IHubRequestManager {
         D18 pricePoolPerAsset
     ) external override returns (uint256) {
         // Send the ApprovedDeposits callback message like the real implementation
-        return IHubGatewayHandler(hub).requestCallback(
+        return hub.requestCallback(
             poolId,
             scId,
             assetId,
@@ -67,7 +68,7 @@ contract MockHubRequestManager is IHubRequestManager {
         uint128 issuedShareAmount = 10 * 1e18; // Mock value matching our test expectations
 
         // Send the IssuedShares callback message like the real implementation
-        return IHubGatewayHandler(hub).requestCallback(
+        return hub.requestCallback(
             poolId,
             scId,
             assetId,
@@ -89,7 +90,7 @@ contract MockHubRequestManager is IHubRequestManager {
         uint128 revokedShareAmount = 2 * 1e18; // Mock value matching our test expectations
 
         // Send the RevokedShares callback message like the real implementation
-        return IHubGatewayHandler(hub).requestCallback(
+        return hub.requestCallback(
             poolId,
             scId,
             assetId,
