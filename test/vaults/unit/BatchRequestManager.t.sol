@@ -94,13 +94,41 @@ contract HubMock is IHubGatewayHandler, IHubRequestManagerCallback {
     function updateShares(uint16, PoolId, ShareClassId, uint128, bool, bool, uint64) external override {}
 }
 
+contract BatchRequestManagerHarness is BatchRequestManager {
+    constructor(IHubRegistry hubRegistry_, address deployer) BatchRequestManager(hubRegistry_, deployer) {}
+
+    function claimDeposit(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
+        public
+        returns (
+            uint128 payoutShareAmount,
+            uint128 paymentAssetAmount,
+            uint128 cancelledAssetAmount,
+            bool canClaimAgain
+        )
+    {
+        return _claimDeposit(poolId, scId_, investor, depositAssetId);
+    }
+
+    function claimRedeem(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
+        public
+        returns (
+            uint128 payoutAssetAmount,
+            uint128 paymentShareAmount,
+            uint128 cancelledShareAmount,
+            bool canClaimAgain
+        )
+    {
+        return _claimRedeem(poolId, scId_, investor, payoutAssetId);
+    }
+}
+
 abstract contract BatchRequestManagerBaseTest is Test {
     using MathLib for uint128;
     using MathLib for uint256;
     using CastLib for string;
     using PricingLib for *;
 
-    BatchRequestManager public batchRequestManager;
+    BatchRequestManagerHarness public batchRequestManager;
     HubRegistryMock public hubRegistryMock;
     HubMock public hubMock;
 
@@ -117,7 +145,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
     function setUp() public virtual {
         hubRegistryMock = new HubRegistryMock();
         hubMock = new HubMock();
-        batchRequestManager = new BatchRequestManager(IHubRegistry(address(hubRegistryMock)), address(this));
+        batchRequestManager = new BatchRequestManagerHarness(IHubRegistry(address(hubRegistryMock)), address(this));
 
         // Set the hub address
         batchRequestManager.file("hub", address(hubMock));

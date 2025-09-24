@@ -82,7 +82,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     /// Accepts a `bytes32` representation of 'hub'
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubRequestManagerCallback(data);
-        if (what == "gateway") gateway = IGateway(data);
+        else if (what == "gateway") gateway = IGateway(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -481,7 +481,6 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         if (msg.value > cost) gateway.withdrawSubsidy(poolId, msg.sender, msg.value - cost);
     }
 
-    /// @inheritdoc IHubRequestManager
     function _claimDeposit(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
         internal
         returns (
@@ -593,7 +592,6 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         if (msg.value > cost) gateway.withdrawSubsidy(poolId, msg.sender, msg.value - cost);
     }
 
-    /// @inheritdoc IHubRequestManager
     function _claimRedeem(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
         internal
         returns (
