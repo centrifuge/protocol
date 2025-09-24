@@ -280,7 +280,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function endBatching() external auth {
+    function endBatching() external auth returns (uint256 cost) {
         require(isBatching, NoBatched());
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
 
@@ -292,7 +292,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             bytes32 outboundBatchSlot = _outboundBatchSlot(centrifugeId, poolId);
             uint128 gasLimit = _gasLimitSlot(centrifugeId, poolId).tloadUint128();
 
-            _send(centrifugeId, TransientBytesLib.get(outboundBatchSlot), gasLimit);
+            cost += _send(centrifugeId, TransientBytesLib.get(outboundBatchSlot), gasLimit);
 
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));

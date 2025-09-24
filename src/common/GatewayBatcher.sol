@@ -9,9 +9,12 @@ import {ShareClassId} from "./types/ShareClassId.sol";
 import {Auth} from "../misc/Auth.sol";
 
 // Gateway trust on GatewayBatcher
-contract GatewayBatcher is Auth {
-    IGateway public gateway; // In case we need to migrate the gateway
+contract GatewayBatchCallback is Auth {
+    IGateway public gateway;
     address public transient sender;
+
+    error AlreadyBatching();
+    error CallFailedWithEmptyRevert();
 
     constructor(IGateway gateway_, address deployer) Auth(deployer) {
         gateway = gateway_;
@@ -21,33 +24,23 @@ contract GatewayBatcher is Auth {
         if (what == "gateway") gateway = IGateway(instance);
     }
 
-    function withBatch(bytes memory data) external payable {
-        require(sender == address(0)); // avoid reentrancy issues
+    function withBatch(bytes memory data) external payable returns (uint256 cost) {
+        require(sender == address(0), AlreadyBatching());
 
         gateway.startBatching();
         sender = msg.sender;
 
-        msg.sender.call(data);
+        (bool success, bytes memory returnData) = msg.sender.call(data);
+        if (!success) {
+            uint256 length = returnData.length;
+            require(length != 0, CallFailedWithEmptyRevert());
+
+            assembly ("memory-safe") {
+                revert(add(32, returnData), length)
+            }
+        }
 
         sender = address(0);
-        gateway.endBatching();
-    }
-}
-
-// ============================
-// Integrators, as QueueManager, only need to:
-// ============================
-contract Integration {
-    GatewayBatcher gatewayBatcher;
-
-    function sync(PoolId poolId, ShareClassId scId, AssetId assetId) external {
-        gatewayBatcher.withBatch(abi.encodeWithSelector(Integration._sync.selector, poolId, scId, assetId));
-    }
-
-    function _sync(PoolId poolId, ShareClassId scId, AssetId assetId) external {
-        // Only the same contract can call this method
-        require(gatewayBatcher.sender() == address(this));
-
-        // Do several actions that call messages
+        return gateway.endBatching();
     }
 }
