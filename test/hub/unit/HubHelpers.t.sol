@@ -36,12 +36,6 @@ contract TestMainMethodsChecks is TestCommon {
         vm.startPrank(makeAddr("noWard"));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hubHelpers.notifyDeposit(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hubHelpers.notifyRedeem(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
         hubHelpers.updateAccountingAmount(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), true, 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);

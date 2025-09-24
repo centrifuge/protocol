@@ -4,6 +4,7 @@ pragma solidity >=0.5.0;
 import {IHoldings} from "./IHoldings.sol";
 import {IHubRegistry} from "./IHubRegistry.sol";
 import {IAccounting, JournalEntry} from "./IAccounting.sol";
+import {IHubRequestManager} from "./IHubRequestManager.sol";
 import {IShareClassManager} from "./IShareClassManager.sol";
 
 import {D18} from "../../misc/types/D18.sol";
@@ -86,6 +87,12 @@ interface IHub {
     /// @notice Dispatched when an invalid combination of account IDs is passed.
     error InvalidAccountCombination();
 
+    /// @notice TODO
+    error InvalidRequestManager();
+
+    /// @notice TODO
+    error RequestManagerCallFailed();
+
     /// @notice Dispatched when there is not enough gas for payment methods
     error NotEnoughGas();
 
@@ -101,18 +108,6 @@ interface IHub {
     /// Accepts a `bytes32` representation of 'hubRegistry', 'assetRegistry', 'accounting', 'holdings', 'gateway' and '
     /// sender' as string value.
     function file(bytes32 what, address data) external;
-
-    /// @notice Notify a deposit for an investor address located in the chain where the asset belongs
-    function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor, uint32 maxClaims)
-        external
-        payable
-        returns (uint256 cost);
-
-    /// @notice Notify a redemption for an investor address located in the chain where the asset belongs
-    function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, bytes32 investor, uint32 maxClaims)
-        external
-        payable
-        returns (uint256 cost);
 
     /// @notice Notify to a CV instance that a new pool is available
     /// @param centrifugeId Chain where CV instance lives
@@ -178,7 +173,9 @@ interface IHub {
     function updateHubManager(PoolId poolId, address who, bool canManage) external;
 
     /// @notice Allow/disallow an account to interact as request manager
-    function setRequestManager(PoolId poolId, uint16 centrifugeId, bytes32 manager) external returns (uint256 cost);
+    function setRequestManager(PoolId poolId, uint16 centrifugeId, IHubRequestManager hubManager, bytes32 spokeManager)
+        external
+        returns (uint256 cost);
 
     /// @notice Allow/disallow an account to interact as balance sheet manager for this pool
     function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
@@ -189,79 +186,6 @@ interface IHub {
     function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
         external
         returns (ShareClassId scId);
-
-    /// @notice Approves an asset amount of all deposit requests for the given triplet of pool id, share class id and
-    /// deposit asset id.
-    /// @param scId Identifier of the share class
-    /// @param depositAssetId Identifier of the asset locked for the deposit request
-    /// @param nowDepositEpochId The epoch for which deposits will be approved.
-    /// @param approvedAssetAmount Ampunt of assets that will be approved
-    function approveDeposits(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId depositAssetId,
-        uint32 nowDepositEpochId,
-        uint128 approvedAssetAmount
-    ) external returns (uint256 cost, uint128 pendingAssetAmount, uint128 approvedPoolAmount);
-
-    /// @notice Approves a percentage of all redemption requests for the given triplet of pool id, share class id and
-    /// deposit asset id.
-    /// @param scId Identifier of the share class
-    /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
-    /// @param nowRedeemEpochId The epoch for which redemptions will be approved.
-    /// @param approvedShareAmount Amount of shares that will be approved
-    function approveRedeems(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId payoutAssetId,
-        uint32 nowRedeemEpochId,
-        uint128 approvedShareAmount
-    ) external returns (uint128 pendingShareAmount);
-
-    /// @notice Emits new shares for the given identifier based on the provided NAV per share.
-    /// @param depositAssetId Identifier of the deposit asset for which shares should be issued
-    /// @param nowIssueEpochId The epoch for which shares will be issued.
-    /// @param navPoolPerShare Total value of assets of the share class per share
-    /// @param extraGasLimit extra gas limit used for some extra computation that can happen by some callback in the
-    /// remote centrifugeId. Avoid this param if the message applies to the same centrifugeId.
-    function issueShares(
-        PoolId poolId,
-        ShareClassId id,
-        AssetId depositAssetId,
-        uint32 nowIssueEpochId,
-        D18 navPoolPerShare,
-        uint128 extraGasLimit
-    )
-        external
-        returns (uint256 cost, uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount);
-
-    /// @notice Take back shares for the given identifier based on the provided NAV per share.
-    /// deposit asset id.
-    /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
-    /// @param nowRevokeEpochId The epoch for which shares will be issued.
-    /// @param navPoolPerShare Total value of assets of the share class per share
-    /// @param extraGasLimit extra gas limit used for some extra computation that can happen by some callback in the
-    /// remote centrifugeId. Avoid this param if the message applies to the same centrifugeId.
-    function revokeShares(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId payoutAssetId,
-        uint32 nowRevokeEpochId,
-        D18 navPoolPerShare,
-        uint128 extraGasLimit
-    )
-        external
-        returns (uint256 cost, uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
-
-    /// @notice Force cancels a pending deposit request.
-    function forceCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
-        external
-        returns (uint256 cost);
-
-    /// @notice Force cancels a pending redeem request.
-    function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
-        external
-        returns (uint256 cost);
 
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.
@@ -401,6 +325,16 @@ interface IHub {
     /// @param who address used as manager.
     /// @param canManage if enabled as manager
     function updateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
+        external
+        returns (uint256 cost);
+
+    /// @notice Calls the request manager for a specific pool and centrifuge chain
+    /// @dev This is included in the Hub contract in order to be included in multicalls with other Hub methods.
+    /// @param poolId The pool ID
+    /// @param centrifugeId The centrifuge chain ID
+    /// @param data The encoded function call data
+    /// @return cost The gas cost for the operation
+    function callRequestManager(PoolId poolId, uint16 centrifugeId, bytes calldata data)
         external
         returns (uint256 cost);
 }
