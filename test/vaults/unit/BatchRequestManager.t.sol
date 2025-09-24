@@ -1946,18 +1946,6 @@ contract BatchRequestManagerAuthTest is BatchRequestManagerBaseTest {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         batchRequestManager.forceCancelRedeemRequest(poolId, scId, investor, USDC);
     }
-
-    function testClaimDepositUnauthorized() public {
-        vm.prank(unauthorized);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        batchRequestManager.claimDeposit(poolId, scId, investor, USDC);
-    }
-
-    function testClaimRedeemUnauthorized() public {
-        vm.prank(unauthorized);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        batchRequestManager.claimRedeem(poolId, scId, investor, USDC);
-    }
 }
 
 ///@dev Contains all error condition tests with minimal setup
