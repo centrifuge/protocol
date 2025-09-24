@@ -5,7 +5,7 @@ import {PoolId} from "../../common/types/PoolId.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
 
 /// @notice Interface with all methods available in the system used by actors
-interface ISpokeHandler {
+interface IHubHandler {
     event ForwardTransferShares(
         uint16 indexed fromCentrifugeId,
         uint16 indexed toCentrifugeId,

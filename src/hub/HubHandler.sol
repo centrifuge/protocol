@@ -3,8 +3,8 @@ pragma solidity 0.8.28;
 
 import {IHub} from "./interfaces/IHub.sol";
 import {IHoldings} from "./interfaces/IHoldings.sol";
+import {IHubHandler} from "./interfaces/IHubHandler.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
-import {ISpokeHandler} from "./interfaces/ISpokeHandler.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 
@@ -18,7 +18,7 @@ import {ISnapshotHook} from "../common/interfaces/ISnapshotHook.sol";
 import {IHubMessageSender} from "../common/interfaces/IGatewaySenders.sol";
 import {IHubGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
 
-contract SpokeHandler is Auth, ISpokeHandler, IHubGatewayHandler {
+contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
     IHub public hub;
     IHoldings public holdings;
     IHubRegistry public hubRegistry;
@@ -42,7 +42,7 @@ contract SpokeHandler is Auth, ISpokeHandler, IHubGatewayHandler {
     // System methods
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc ISpokeHandler
+    /// @inheritdoc IHubHandler
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHub(data);
         else if (what == "holdings") holdings = IHoldings(data);

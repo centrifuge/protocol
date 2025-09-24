@@ -8,8 +8,8 @@ import {AssetId, newAssetId} from "../src/common/types/AssetId.sol";
 import {Hub} from "../src/hub/Hub.sol";
 import {Holdings} from "../src/hub/Holdings.sol";
 import {Accounting} from "../src/hub/Accounting.sol";
+import {HubHandler} from "../src/hub/HubHandler.sol";
 import {HubRegistry} from "../src/hub/HubRegistry.sol";
-import {SpokeHandler} from "../src/hub/SpokeHandler.sol";
 import {ShareClassManager} from "../src/hub/ShareClassManager.sol";
 
 import "forge-std/Script.sol";
@@ -26,7 +26,7 @@ struct HubReport {
     Accounting accounting;
     Holdings holdings;
     ShareClassManager shareClassManager;
-    SpokeHandler spokeHandler;
+    HubHandler hubHandler;
     Hub hub;
 }
 
@@ -43,15 +43,15 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
         report.common.poolEscrowFactory.rely(address(report.hub));
 
         // Rely spoke handler
-        report.hub.rely(address(report.spokeHandler));
-        report.hubRegistry.rely(address(report.spokeHandler));
-        report.holdings.rely(address(report.spokeHandler));
-        report.shareClassManager.rely(address(report.spokeHandler));
-        report.common.messageDispatcher.rely(address(report.spokeHandler));
+        report.hub.rely(address(report.hubHandler));
+        report.hubRegistry.rely(address(report.hubHandler));
+        report.holdings.rely(address(report.hubHandler));
+        report.shareClassManager.rely(address(report.hubHandler));
+        report.common.messageDispatcher.rely(address(report.hubHandler));
 
         // Rely others on spoke handler
-        report.spokeHandler.rely(address(report.common.messageProcessor));
-        report.spokeHandler.rely(address(report.common.messageDispatcher));
+        report.hubHandler.rely(address(report.common.messageProcessor));
+        report.hubHandler.rely(address(report.common.messageDispatcher));
 
         // Rely others on hub
         report.hub.rely(address(report.common.guardian));
@@ -62,18 +62,18 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
         report.holdings.rely(address(report.common.root));
         report.shareClassManager.rely(address(report.common.root));
         report.hub.rely(address(report.common.root));
-        report.spokeHandler.rely(address(report.common.root));
+        report.hubHandler.rely(address(report.common.root));
 
         // File methods
-        report.common.messageProcessor.file("spokeHandler", address(report.spokeHandler));
-        report.common.messageDispatcher.file("spokeHandler", address(report.spokeHandler));
+        report.common.messageProcessor.file("hubHandler", address(report.hubHandler));
+        report.common.messageDispatcher.file("hubHandler", address(report.hubHandler));
 
         report.hub.file("sender", address(report.common.messageDispatcher));
         report.hub.file("poolEscrowFactory", address(report.common.poolEscrowFactory));
 
         report.common.guardian.file("hub", address(report.hub));
 
-        report.spokeHandler.file("sender", address(report.common.messageDispatcher));
+        report.hubHandler.file("sender", address(report.common.messageDispatcher));
 
         // Init configuration
         report.hubRegistry.registerAsset(USD_ID, ISO4217_DECIMALS);
@@ -86,7 +86,7 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
         report.holdings.deny(address(this));
         report.shareClassManager.deny(address(this));
         report.hub.deny(address(this));
-        report.spokeHandler.deny(address(this));
+        report.hubHandler.deny(address(this));
     }
 }
 
@@ -96,7 +96,7 @@ contract HubDeployer is CommonDeployer, HubConstants {
     Accounting public accounting;
     Holdings public holdings;
     ShareClassManager public shareClassManager;
-    SpokeHandler public spokeHandler;
+    HubHandler public hubHandler;
     Hub public hub;
 
     function deployHub(CommonInput memory input, HubActionBatcher batcher) public {
@@ -147,11 +147,11 @@ contract HubDeployer is CommonDeployer, HubConstants {
             )
         );
 
-        spokeHandler = SpokeHandler(
+        hubHandler = HubHandler(
             create3(
-                generateSalt("spokeHandler"),
+                generateSalt("hubHandler"),
                 abi.encodePacked(
-                    type(SpokeHandler).creationCode,
+                    type(HubHandler).creationCode,
                     abi.encode(
                         address(hub), address(holdings), address(hubRegistry), address(shareClassManager), batcher
                     )
@@ -165,7 +165,7 @@ contract HubDeployer is CommonDeployer, HubConstants {
         register("accounting", address(accounting));
         register("holdings", address(holdings));
         register("shareClassManager", address(shareClassManager));
-        register("spokeHandler", address(spokeHandler));
+        register("hubHandler", address(hubHandler));
         register("hub", address(hub));
     }
 
@@ -179,6 +179,6 @@ contract HubDeployer is CommonDeployer, HubConstants {
     }
 
     function _hubReport() internal view returns (HubReport memory) {
-        return HubReport(_commonReport(), hubRegistry, accounting, holdings, shareClassManager, spokeHandler, hub);
+        return HubReport(_commonReport(), hubRegistry, accounting, holdings, shareClassManager, hubHandler, hub);
     }
 }

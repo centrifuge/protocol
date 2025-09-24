@@ -36,22 +36,22 @@ contract HubDeploymentTest is HubDeployer, CommonDeploymentInputTest {
         assertEq(address(hub.poolEscrowFactory()), address(poolEscrowFactory));
     }
 
-    function testSpokeHandler(address nonWard) public view {
+    function testHubHandler(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(messageProcessor));
         vm.assume(nonWard != address(messageDispatcher));
 
-        assertEq(spokeHandler.wards(address(root)), 1);
-        assertEq(spokeHandler.wards(address(messageProcessor)), 1);
-        assertEq(spokeHandler.wards(address(messageDispatcher)), 1);
-        assertEq(spokeHandler.wards(nonWard), 0);
+        assertEq(hubHandler.wards(address(root)), 1);
+        assertEq(hubHandler.wards(address(messageProcessor)), 1);
+        assertEq(hubHandler.wards(address(messageDispatcher)), 1);
+        assertEq(hubHandler.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(spokeHandler.hub()), address(hub));
-        assertEq(address(spokeHandler.holdings()), address(holdings));
-        assertEq(address(spokeHandler.hubRegistry()), address(hubRegistry));
-        assertEq(address(spokeHandler.shareClassManager()), address(shareClassManager));
+        assertEq(address(hubHandler.hub()), address(hub));
+        assertEq(address(hubHandler.holdings()), address(holdings));
+        assertEq(address(hubHandler.hubRegistry()), address(hubRegistry));
+        assertEq(address(hubHandler.shareClassManager()), address(shareClassManager));
     }
 
     function testHubRegistry(address nonWard) public view {
@@ -72,11 +72,11 @@ contract HubDeploymentTest is HubDeployer, CommonDeploymentInputTest {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(hub));
-        vm.assume(nonWard != address(spokeHandler));
+        vm.assume(nonWard != address(hubHandler));
 
         assertEq(shareClassManager.wards(address(root)), 1);
         assertEq(shareClassManager.wards(address(hub)), 1);
-        assertEq(shareClassManager.wards(address(spokeHandler)), 1);
+        assertEq(shareClassManager.wards(address(hubHandler)), 1);
         assertEq(shareClassManager.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -114,19 +114,19 @@ contract HubDeploymentCommonExtTest is HubDeploymentTest {
         vm.assume(nonWard != address(root)); // From common
         vm.assume(nonWard != address(guardian)); // From common
         vm.assume(nonWard != address(hub));
-        vm.assume(nonWard != address(spokeHandler));
+        vm.assume(nonWard != address(hubHandler));
 
         assertEq(messageDispatcher.wards(address(hub)), 1);
-        assertEq(messageDispatcher.wards(address(spokeHandler)), 1);
+        assertEq(messageDispatcher.wards(address(hubHandler)), 1);
         assertEq(messageDispatcher.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(messageDispatcher.spokeHandler()), address(spokeHandler));
+        assertEq(address(messageDispatcher.hubHandler()), address(hubHandler));
     }
 
     function testMessageProcessorExt() public view {
         // dependencies set correctly
-        assertEq(address(messageProcessor.spokeHandler()), address(spokeHandler));
+        assertEq(address(messageProcessor.hubHandler()), address(hubHandler));
     }
 
     function testGatewayExt(address nonWard) public view {

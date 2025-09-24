@@ -34,7 +34,7 @@ contract FullActionBatcher is ExtendedHubActionBatcher, ExtendedSpokeActionBatch
 
         // Rely others
         report.batchRequestManager.rely(address(report.hub.hub));
-        report.batchRequestManager.rely(address(report.hub.spokeHandler));
+        report.batchRequestManager.rely(address(report.hub.hubHandler));
 
         // File methods
         report.batchRequestManager.file("hub", address(report.hub.hub));
@@ -287,8 +287,8 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
             "ShareClassManager address mismatch with mainnet"
         );
         require(
-            address(spokeHandler) == 0xA30D9E76a80675A719d835a74d09683AD2CB71EE,
-            "SpokeHandler address mismatch with mainnet"
+            address(hubHandler) == 0xA30D9E76a80675A719d835a74d09683AD2CB71EE,
+            "HubHandler address mismatch with mainnet"
         );
         require(address(hub) == 0x9c8454A506263549f07c80698E276e3622077098, "Hub address mismatch with mainnet");
         require(

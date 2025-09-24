@@ -9,7 +9,7 @@ import {AssetId} from "../../../src/common/types/AssetId.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 
 import {IHub} from "../../../src/hub/interfaces/IHub.sol";
-import {SpokeHandler} from "../../../src/hub/SpokeHandler.sol";
+import {HubHandler} from "../../../src/hub/HubHandler.sol";
 import {IHoldings} from "../../../src/hub/interfaces/IHoldings.sol";
 import {JournalEntry} from "../../../src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
@@ -31,7 +31,7 @@ contract TestCommon is Test {
     IHoldings immutable holdings = IHoldings(makeAddr("Holdings"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
 
-    SpokeHandler spokeHandler = new SpokeHandler(hub, holdings, hubRegistry, scm, address(this));
+    HubHandler hubHandler = new HubHandler(hub, holdings, hubRegistry, scm, address(this));
 }
 
 contract TestMainMethodsChecks is TestCommon {
@@ -39,22 +39,22 @@ contract TestMainMethodsChecks is TestCommon {
         vm.startPrank(makeAddr("noGateway"));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spokeHandler.registerAsset(AssetId.wrap(0), 0);
+        hubHandler.registerAsset(AssetId.wrap(0), 0);
 
         bytes memory EMPTY_BYTES;
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spokeHandler.request(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), EMPTY_BYTES);
+        hubHandler.request(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), EMPTY_BYTES);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spokeHandler.updateHoldingAmount(
+        hubHandler.updateHoldingAmount(
             CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false, true, 0
         );
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spokeHandler.updateShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), 0, true, true, 0);
+        hubHandler.updateShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), 0, true, true, 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spokeHandler.initiateTransferShares(CHAIN_A, CHAIN_B, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""), 0, 0);
+        hubHandler.initiateTransferShares(CHAIN_A, CHAIN_B, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""), 0, 0);
 
         vm.stopPrank();
     }
