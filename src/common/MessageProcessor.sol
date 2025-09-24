@@ -37,10 +37,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IRoot public immutable root;
     ITokenRecoverer public immutable tokenRecoverer;
 
-    IHubGatewayHandler public hub;
-    ISpokeGatewayHandler public spoke;
     IGateway public gateway;
     IMultiAdapter public multiAdapter;
+    ISpokeGatewayHandler public spoke;
+    IHubGatewayHandler public spokeHandler;
     IBalanceSheetGatewayHandler public balanceSheet;
     IUpdateContractGatewayHandler public contractUpdater;
 
@@ -55,7 +55,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     /// @inheritdoc IMessageProcessor
     function file(bytes32 what, address data) external auth {
-        if (what == "hub") hub = IHubGatewayHandler(data);
+        if (what == "spokeHandler") spokeHandler = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
@@ -93,7 +93,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
-            hub.registerAsset(AssetId.wrap(m.assetId), m.decimals);
+            spokeHandler.registerAsset(AssetId.wrap(m.assetId), m.decimals);
         } else if (kind == MessageType.SetPoolAdapters) {
             MessageLib.SetPoolAdapters memory m = message.deserializeSetPoolAdapters();
             IAdapter[] memory adapters = new IAdapter[](m.adapterList.length);
@@ -103,7 +103,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             multiAdapter.setAdapters(centrifugeId, PoolId.wrap(m.poolId), adapters, m.threshold, m.recoveryIndex);
         } else if (kind == MessageType.Request) {
             MessageLib.Request memory m = MessageLib.deserializeRequest(message);
-            hub.request(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
+            spokeHandler.request(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
         } else if (kind == MessageType.NotifyPool) {
             spoke.addPool(PoolId.wrap(MessageLib.deserializeNotifyPool(message).poolId));
         } else if (kind == MessageType.NotifyShareClass) {
@@ -139,7 +139,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             spoke.updateShareHook(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.hook.toAddress());
         } else if (kind == MessageType.InitiateTransferShares) {
             MessageLib.InitiateTransferShares memory m = MessageLib.deserializeInitiateTransferShares(message);
-            hub.initiateTransferShares(
+            spokeHandler.initiateTransferShares(
                 centrifugeId,
                 m.centrifugeId,
                 PoolId.wrap(m.poolId),
@@ -177,7 +177,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             balanceSheet.updateManager(PoolId.wrap(m.poolId), m.who.toAddress(), m.canManage);
         } else if (kind == MessageType.UpdateHoldingAmount) {
             MessageLib.UpdateHoldingAmount memory m = message.deserializeUpdateHoldingAmount();
-            hub.updateHoldingAmount(
+            spokeHandler.updateHoldingAmount(
                 centrifugeId,
                 PoolId.wrap(m.poolId),
                 ShareClassId.wrap(m.scId),
@@ -190,7 +190,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.UpdateShares) {
             MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
-            hub.updateShares(
+            spokeHandler.updateShares(
                 centrifugeId,
                 PoolId.wrap(m.poolId),
                 ShareClassId.wrap(m.scId),

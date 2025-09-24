@@ -40,9 +40,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     uint16 public immutable localCentrifugeId;
 
     IGateway public gateway;
-    IHubGatewayHandler public hub;
     ISpokeGatewayHandler public spoke;
     IMultiAdapter public multiAdapter;
+    IHubGatewayHandler public spokeHandler;
     IBalanceSheetGatewayHandler public balanceSheet;
     IUpdateContractGatewayHandler public contractUpdater;
 
@@ -65,7 +65,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     /// @inheritdoc IMessageDispatcher
     function file(bytes32 what, address data) external auth {
-        if (what == "hub") hub = IHubGatewayHandler(data);
+        if (what == "spokeHandler") spokeHandler = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
@@ -396,7 +396,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint128 remoteExtraGasLimit
     ) external auth returns (uint256 cost) {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            return hub.initiateTransferShares(
+            return spokeHandler.initiateTransferShares(
                 localCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit
             );
         } else {
@@ -456,7 +456,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint128 extraGasLimit
     ) external auth returns (uint256 cost) {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.updateHoldingAmount(
+            spokeHandler.updateHoldingAmount(
                 localCentrifugeId,
                 poolId,
                 scId,
@@ -493,7 +493,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         returns (uint256 cost)
     {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.updateShares(
+            spokeHandler.updateShares(
                 localCentrifugeId, poolId, scId, data.netAmount, data.isIncrease, data.isSnapshot, data.nonce
             );
         } else {
@@ -520,7 +520,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         returns (uint256 cost)
     {
         if (centrifugeId == localCentrifugeId) {
-            hub.registerAsset(assetId, decimals);
+            spokeHandler.registerAsset(assetId, decimals);
         } else {
             return gateway.send(
                 centrifugeId, MessageLib.RegisterAsset({assetId: assetId.raw(), decimals: decimals}).serialize(), 0
@@ -535,7 +535,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         returns (uint256 cost)
     {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.request(poolId, scId, assetId, payload);
+            spokeHandler.request(poolId, scId, assetId, payload);
         } else {
             return gateway.send(
                 poolId.centrifugeId(),

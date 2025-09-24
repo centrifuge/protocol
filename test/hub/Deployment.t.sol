@@ -123,12 +123,12 @@ contract HubDeploymentCommonExtTest is HubDeploymentTest {
         assertEq(messageDispatcher.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(messageDispatcher.hub()), address(hub));
+        assertEq(address(messageDispatcher.spokeHandler()), address(spokeHandler));
     }
 
     function testMessageProcessorExt() public view {
         // dependencies set correctly
-        assertEq(address(messageProcessor.hub()), address(hub));
+        assertEq(address(messageProcessor.spokeHandler()), address(spokeHandler));
     }
 
     function testGatewayExt(address nonWard) public view {

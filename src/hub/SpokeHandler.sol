@@ -44,8 +44,9 @@ contract SpokeHandler is Auth, ISpokeHandler, IHubGatewayHandler {
 
     /// @inheritdoc ISpokeHandler
     function file(bytes32 what, address data) external auth {
-        if (what == "sender") sender = IHubMessageSender(data);
+        if (what == "hub") hub = IHub(data);
         else if (what == "holdings") holdings = IHoldings(data);
+        else if (what == "sender") sender = IHubMessageSender(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);

@@ -62,15 +62,15 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
         report.spokeHandler.rely(address(report.common.root));
 
         // File methods
-        report.common.messageProcessor.file("hub", address(report.hub));
-        report.common.messageDispatcher.file("hub", address(report.hub));
+        report.common.messageProcessor.file("spokeHandler", address(report.spokeHandler));
+        report.common.messageDispatcher.file("spokeHandler", address(report.spokeHandler));
 
         report.hub.file("sender", address(report.common.messageDispatcher));
         report.hub.file("poolEscrowFactory", address(report.common.poolEscrowFactory));
 
         report.common.guardian.file("hub", address(report.hub));
 
-        report.spokeHandler.file("hub", address(report.hub));
+        report.spokeHandler.file("sender", address(report.common.messageDispatcher));
 
         // Init configuration
         report.hubRegistry.registerAsset(USD_ID, ISO4217_DECIMALS);
