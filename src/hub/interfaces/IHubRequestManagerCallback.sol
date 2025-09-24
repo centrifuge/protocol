@@ -5,7 +5,7 @@ import {PoolId} from "../../common/types/PoolId.sol";
 import {AssetId} from "../../common/types/AssetId.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
 
-interface IHubRequestHandler {
+interface IHubRequestManagerCallback {
     /// @notice Handles a request callback originating from a spoke request.
     /// @param  poolId The pool id
     /// @param  scId The share class id

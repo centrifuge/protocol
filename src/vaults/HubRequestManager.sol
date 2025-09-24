@@ -16,7 +16,7 @@ import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMess
 import {RequestMessageLib, RequestType as RequestMessageType} from "../common/libraries/RequestMessageLib.sol";
 
 import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
-import {IHubRequestHandler} from "../hub/interfaces/IHubRequestHandler.sol";
+import {IHubRequestManagerCallback} from "../hub/interfaces/IHubRequestManagerCallback.sol";
 import {
     IHubRequestManager,
     EpochInvestAmounts,
@@ -38,7 +38,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
     IHubRegistry public immutable hubRegistry;
 
-    IHubRequestHandler public hub;
+    IHubRequestManagerCallback public hub;
 
     // Epochs
     mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) public epochId;
@@ -79,7 +79,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
     /// @param what Name of the parameter to update.
     /// Accepts a `bytes32` representation of 'hub'
     function file(bytes32 what, address data) external auth {
-        if (what == "hub") hub = IHubRequestHandler(data);
+        if (what == "hub") hub = IHubRequestManagerCallback(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);

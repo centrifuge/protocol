@@ -12,7 +12,7 @@ import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {IHubGatewayHandler} from "../../../src/common/interfaces/IGatewayHandlers.sol";
 
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
-import {IHubRequestHandler} from "../../../src/hub/interfaces/IHubRequestHandler.sol";
+import {IHubRequestManagerCallback} from "../../../src/hub/interfaces/IHubRequestManagerCallback.sol";
 import {
     IHubRequestManager,
     EpochInvestAmounts,
@@ -66,7 +66,7 @@ contract HubRegistryMock {
     }
 }
 
-contract HubMock is IHubGatewayHandler, IHubRequestHandler {
+contract HubMock is IHubGatewayHandler, IHubRequestManagerCallback {
     uint256 public totalCost;
 
     function requestCallback(PoolId, ShareClassId, AssetId, bytes calldata, uint128) external returns (uint256) {

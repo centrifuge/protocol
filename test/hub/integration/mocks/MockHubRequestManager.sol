@@ -9,17 +9,17 @@ import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 import {IHubGatewayHandler} from "../../../../src/common/interfaces/IGatewayHandlers.sol";
 import {RequestCallbackMessageLib} from "../../../../src/common/libraries/RequestCallbackMessageLib.sol";
 
-import {IHubRequestHandler} from "../../../../src/hub/interfaces/IHubRequestHandler.sol";
+import {IHubRequestManagerCallback} from "../../../../src/hub/interfaces/IHubRequestManagerCallback.sol";
 import {IHubRequestManager} from "../../../../src/hub/interfaces/IHubRequestManager.sol";
 
 contract MockHubRequestManager is IHubRequestManager {
     using RequestCallbackMessageLib for *;
 
     uint32 private constant MOCK_EPOCH = 1;
-    IHubRequestHandler public hub;
+    IHubRequestManagerCallback public hub;
 
     constructor(address hub_) {
-        hub = IHubRequestHandler(hub_);
+        hub = IHubRequestManagerCallback(hub_);
     }
 
     function request(PoolId, ShareClassId, AssetId, bytes calldata) external override {}

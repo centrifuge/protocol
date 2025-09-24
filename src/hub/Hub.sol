@@ -6,7 +6,7 @@ import {IHubHelpers} from "./interfaces/IHubHelpers.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IHub, VaultUpdateKind} from "./interfaces/IHub.sol";
 import {IAccounting, JournalEntry} from "./interfaces/IAccounting.sol";
-import {IHubRequestHandler} from "./interfaces/IHubRequestHandler.sol";
+import {IHubRequestManagerCallback} from "./interfaces/IHubRequestManagerCallback.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 
@@ -36,7 +36,7 @@ import {IPoolEscrow, IPoolEscrowFactory} from "../common/factories/interfaces/IP
 ///         Pools can assign hub managers which have full rights over all actions.
 ///
 ///         Also acts as the central contract that routes messages from other chains to the Hub contracts.
-contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubRequestHandler, IHubGuardianActions {
+contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubRequestManagerCallback, IHubGuardianActions {
     using MathLib for uint256;
     using RequestCallbackMessageLib for *;
 
@@ -541,7 +541,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubRequ
     // Request manager callback
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IHubRequestHandler
+    /// @inheritdoc IHubRequestManagerCallback
     function requestCallback(
         PoolId poolId,
         ShareClassId scId,
