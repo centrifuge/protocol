@@ -296,7 +296,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubRequ
     {
         _isManager(poolId);
 
-        hubRegistry.setHubRequestManager(poolId, centrifugeId, hubManager);
+        hubRegistry.setHubRequestManager(poolId, centrifugeId, IHubRequestManager(hubManager));
         return sender.sendSetRequestManager(centrifugeId, poolId, spokeManager);
     }
 
@@ -326,7 +326,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubRequ
         returns (uint256 cost)
     {
         _isManager(poolId);
-        (bool success, bytes memory returnData) = hubRegistry.hubRequestManager(poolId, centrifugeId).call(data);
+        (bool success, bytes memory returnData) =
+            address(hubRegistry.hubRequestManager(poolId, centrifugeId)).call(data);
         require(success, RequestManagerCallFailed());
         if (returnData.length >= 32) {
             return abi.decode(returnData, (uint256));
@@ -548,9 +549,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubRequ
         bytes calldata payload,
         uint128 extraGasLimit
     ) external returns (uint256 cost) {
-        address manager = hubRegistry.hubRequestManager(poolId, assetId.centrifugeId());
-        require(manager != address(0), InvalidRequestManager());
-        require(msg.sender == manager, NotAuthorized());
+        IHubRequestManager manager = hubRegistry.hubRequestManager(poolId, assetId.centrifugeId());
+        require(address(manager) != address(0), InvalidRequestManager());
+        require(msg.sender == address(manager), NotAuthorized());
 
         return sender.sendRequestCallback(poolId, scId, assetId, payload, extraGasLimit);
     }
@@ -570,7 +571,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubRequ
     function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external {
         _auth();
 
-        address manager = hubRegistry.hubRequestManager(poolId, assetId.centrifugeId());
+        IHubRequestManager manager = hubRegistry.hubRequestManager(poolId, assetId.centrifugeId());
         require(address(manager) != address(0), InvalidRequestManager());
 
         IHubRequestManager(manager).request(poolId, scId, assetId, payload);

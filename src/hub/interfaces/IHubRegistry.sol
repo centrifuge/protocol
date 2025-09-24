@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IHubRequestManager} from "./IHubRequestManager.sol";
+
 import {IERC6909Decimals} from "../../misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../common/types/PoolId.sol";
@@ -13,7 +15,7 @@ interface IHubRegistry is IERC6909Decimals {
     event SetMetadata(PoolId indexed poolId, bytes metadata);
     event UpdateDependency(PoolId indexed poolId, bytes32 indexed what, address dependency);
     event UpdateCurrency(PoolId indexed poolId, AssetId currency);
-    event SetHubRequestManager(PoolId indexed poolId, uint16 indexed centrifugeId, address manager);
+    event SetHubRequestManager(PoolId indexed poolId, uint16 indexed centrifugeId, IHubRequestManager manager);
 
     error NonExistingPool(PoolId id);
     error AssetAlreadyRegistered();
@@ -33,7 +35,7 @@ interface IHubRegistry is IERC6909Decimals {
     function updateManager(PoolId poolId, address newManager, bool canManage) external;
 
     /// @notice TODO
-    function setHubRequestManager(PoolId poolId, uint16 centrifuge, address manager) external;
+    function setHubRequestManager(PoolId poolId, uint16 centrifuge, IHubRequestManager manager) external;
 
     /// @notice sets metadata for this pool
     function setMetadata(PoolId poolId, bytes calldata metadata) external;
@@ -57,7 +59,7 @@ interface IHubRegistry is IERC6909Decimals {
     function manager(PoolId poolId, address who) external view returns (bool);
 
     /// @notice returns the hub request manager for a pool and centrifuge ID
-    function hubRequestManager(PoolId poolId, uint16 centrifugeId) external view returns (address);
+    function hubRequestManager(PoolId poolId, uint16 centrifugeId) external view returns (IHubRequestManager);
 
     /// @notice compute a pool ID given an ID postfix
     function poolId(uint16 centrifugeId, uint48 postfix) external view returns (PoolId poolId);

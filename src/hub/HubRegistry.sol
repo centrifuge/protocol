@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
+import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
@@ -21,7 +22,7 @@ contract HubRegistry is Auth, IHubRegistry {
     mapping(PoolId => AssetId) public currency;
     mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId => mapping(bytes32 => address)) public dependency;
-    mapping(PoolId => mapping(uint16 centrifugeId => address)) public hubRequestManager;
+    mapping(PoolId => mapping(uint16 centrifugeId => IHubRequestManager)) public hubRequestManager;
 
     constructor(address deployer) Auth(deployer) {}
 
@@ -93,7 +94,7 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     /// @inheritdoc IHubRegistry
-    function setHubRequestManager(PoolId poolId_, uint16 centrifugeId, address manager_) external auth {
+    function setHubRequestManager(PoolId poolId_, uint16 centrifugeId, IHubRequestManager manager_) external auth {
         require(exists(poolId_), NonExistingPool(poolId_));
 
         hubRequestManager[poolId_][centrifugeId] = manager_;
