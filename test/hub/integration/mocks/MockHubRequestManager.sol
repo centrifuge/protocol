@@ -24,15 +24,15 @@ contract MockHubRequestManager is IHubRequestManager {
 
     function request(PoolId, ShareClassId, AssetId, bytes calldata) external override {}
 
-    function requestDeposit(PoolId, ShareClassId, uint128, bytes32, AssetId) external override {}
+    function requestDeposit(PoolId, ShareClassId, uint128, bytes32, AssetId) external {}
 
-    function cancelDepositRequest(PoolId, ShareClassId, bytes32, AssetId) external pure override returns (uint128) {
+    function cancelDepositRequest(PoolId, ShareClassId, bytes32, AssetId) external pure returns (uint128) {
         return 0;
     }
 
-    function requestRedeem(PoolId, ShareClassId, uint128, bytes32, AssetId) external override {}
+    function requestRedeem(PoolId, ShareClassId, uint128, bytes32, AssetId) external {}
 
-    function cancelRedeemRequest(PoolId, ShareClassId, bytes32, AssetId) external pure override returns (uint128) {
+    function cancelRedeemRequest(PoolId, ShareClassId, bytes32, AssetId) external pure returns (uint128) {
         return 0;
     }
 
@@ -43,7 +43,7 @@ contract MockHubRequestManager is IHubRequestManager {
         uint32,
         uint128 approvedAmount,
         D18 pricePoolPerAsset
-    ) external override returns (uint256) {
+    ) external returns (uint256) {
         // Send the ApprovedDeposits callback message like the real implementation
         return hub.requestCallback(
             poolId,
@@ -54,7 +54,7 @@ contract MockHubRequestManager is IHubRequestManager {
         );
     }
 
-    function approveRedeems(PoolId, ShareClassId, AssetId, uint32, uint128, D18) external override {}
+    function approveRedeems(PoolId, ShareClassId, AssetId, uint32, uint128, D18) external {}
 
     function issueShares(
         PoolId poolId,
@@ -63,7 +63,7 @@ contract MockHubRequestManager is IHubRequestManager {
         uint32,
         D18 navPoolPerShare,
         uint128 extraGasLimit
-    ) external override returns (uint256) {
+    ) external returns (uint256) {
         // Calculate issued share amount (simplified for mock)
         uint128 issuedShareAmount = 10 * 1e18; // Mock value matching our test expectations
 
@@ -84,7 +84,7 @@ contract MockHubRequestManager is IHubRequestManager {
         uint32,
         D18 navPoolPerShare,
         uint128 extraGasLimit
-    ) external override returns (uint256) {
+    ) external returns (uint256) {
         // Calculate revoked amounts (simplified for mock)
         uint128 revokedAssetAmount = 4 * 1e6; // Mock value matching our test expectations
         uint128 revokedShareAmount = 2 * 1e18; // Mock value matching our test expectations
@@ -100,28 +100,17 @@ contract MockHubRequestManager is IHubRequestManager {
         );
     }
 
-    function forceCancelDepositRequest(PoolId, ShareClassId, bytes32, AssetId)
-        external
-        pure
-        override
-        returns (uint256)
-    {
+    function forceCancelDepositRequest(PoolId, ShareClassId, bytes32, AssetId) external pure returns (uint256) {
         return 0;
     }
 
-    function forceCancelRedeemRequest(PoolId, ShareClassId, bytes32, AssetId)
-        external
-        pure
-        override
-        returns (uint256)
-    {
+    function forceCancelRedeemRequest(PoolId, ShareClassId, bytes32, AssetId) external pure returns (uint256) {
         return 0;
     }
 
     function claimDeposit(PoolId, ShareClassId, bytes32, AssetId)
         external
         pure
-        override
         returns (uint128, uint128, uint128, bool)
     {
         // Return values that match the test expectations
@@ -135,7 +124,6 @@ contract MockHubRequestManager is IHubRequestManager {
     function claimRedeem(PoolId, ShareClassId, bytes32, AssetId)
         external
         pure
-        override
         returns (uint128, uint128, uint128, bool)
     {
         // Return values that match the test expectations for redeem
@@ -146,34 +134,33 @@ contract MockHubRequestManager is IHubRequestManager {
         return (payoutAssetAmount, paymentShareAmount, cancelled, canClaimAgain);
     }
 
-    function nowDepositEpoch(ShareClassId, AssetId) external pure override returns (uint32) {
+    function nowDepositEpoch(ShareClassId, AssetId) external pure returns (uint32) {
         return MOCK_EPOCH;
     }
 
-    function nowIssueEpoch(ShareClassId, AssetId) external pure override returns (uint32) {
+    function nowIssueEpoch(ShareClassId, AssetId) external pure returns (uint32) {
         return MOCK_EPOCH;
     }
 
-    function nowRedeemEpoch(ShareClassId, AssetId) external pure override returns (uint32) {
+    function nowRedeemEpoch(ShareClassId, AssetId) external pure returns (uint32) {
         return MOCK_EPOCH;
     }
 
-    function nowRevokeEpoch(ShareClassId, AssetId) external pure override returns (uint32) {
+    function nowRevokeEpoch(ShareClassId, AssetId) external pure returns (uint32) {
         return MOCK_EPOCH;
     }
 
-    function maxDepositClaims(ShareClassId, bytes32, AssetId) external pure override returns (uint32) {
+    function maxDepositClaims(ShareClassId, bytes32, AssetId) external pure returns (uint32) {
         return MOCK_EPOCH;
     }
 
-    function maxRedeemClaims(ShareClassId, bytes32, AssetId) external pure override returns (uint32) {
+    function maxRedeemClaims(ShareClassId, bytes32, AssetId) external pure returns (uint32) {
         return MOCK_EPOCH;
     }
 
     function epochInvestAmounts(ShareClassId, AssetId, uint32)
         external
         pure
-        override
         returns (
             uint128 pendingAssetAmount,
             uint128 approvedAssetAmount,
@@ -190,7 +177,6 @@ contract MockHubRequestManager is IHubRequestManager {
     function epochRedeemAmounts(ShareClassId, AssetId, uint32)
         external
         pure
-        override
         returns (
             uint128 approvedShareAmount,
             uint128 pendingShareAmount,

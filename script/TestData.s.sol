@@ -17,7 +17,6 @@ import {VaultUpdateKind} from "../src/common/libraries/MessageLib.sol";
 import {Hub} from "../src/hub/Hub.sol";
 import {HubRegistry} from "../src/hub/HubRegistry.sol";
 import {ShareClassManager} from "../src/hub/ShareClassManager.sol";
-import {IHubRequestManager} from "../src/hub/interfaces/IHubRequestManager.sol";
 
 import {Spoke} from "../src/spoke/Spoke.sol";
 import {BalanceSheet} from "../src/spoke/BalanceSheet.sol";
@@ -27,7 +26,8 @@ import {UpdateContractMessageLib} from "../src/spoke/libraries/UpdateContractMes
 import {SyncManager} from "../src/vaults/SyncManager.sol";
 import {SyncDepositVault} from "../src/vaults/SyncDepositVault.sol";
 import {IAsyncVault} from "../src/vaults/interfaces/IAsyncVault.sol";
-import {HubRequestManager} from "../src/vaults/HubRequestManager.sol";
+import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
+import {IBatchRequestManager} from "../src/vaults/interfaces/IBatchRequestManager.sol";
 import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
@@ -69,7 +69,7 @@ contract TestData is FullDeployer {
         balanceSheet = BalanceSheet(vm.parseJsonAddress(config, "$.contracts.balanceSheet"));
         hubRegistry = HubRegistry(vm.parseJsonAddress(config, "$.contracts.hubRegistry"));
         asyncRequestManager = AsyncRequestManager(vm.parseJsonAddress(config, "$.contracts.asyncRequestManager"));
-        hubRequestManager = HubRequestManager(vm.parseJsonAddress(config, "$.contracts.hubRequestManager"));
+        batchRequestManager = BatchRequestManager(vm.parseJsonAddress(config, "$.contracts.batchRequestManager"));
         syncManager = SyncManager(vm.parseJsonAddress(config, "$.contracts.syncManager"));
         guardian = Guardian(vm.parseJsonAddress(config, "$.contracts.guardian"));
 
@@ -116,7 +116,7 @@ contract TestData is FullDeployer {
         hub.notifyShareClass(state.poolId, state.scId, centrifugeId, address(redemptionRestrictionsHook).toBytes32());
 
         hub.setRequestManager(
-            state.poolId, centrifugeId, address(hubRequestManager), address(asyncRequestManager).toBytes32()
+            state.poolId, centrifugeId, address(batchRequestManager), address(asyncRequestManager).toBytes32()
         );
         hub.updateBalanceSheetManager(centrifugeId, state.poolId, address(asyncRequestManager).toBytes32(), true);
         // Add ADMIN as balance sheet manager to call submitQueuedAssets without going through the asyncRequestManager
@@ -153,12 +153,12 @@ contract TestData is FullDeployer {
         state.vault.requestDeposit(1_000_000e6, msg.sender, msg.sender);
 
         // Fulfill deposit request
-        state.nowDepositEpoch = hubRequestManager.nowDepositEpoch(state.scId, assetId);
+        state.nowDepositEpoch = batchRequestManager.nowDepositEpoch(state.scId, assetId);
         hub.callRequestManager(
             state.poolId,
             centrifugeId,
             abi.encodeCall(
-                IHubRequestManager.approveDeposits,
+                IBatchRequestManager.approveDeposits,
                 (state.poolId, state.scId, assetId, state.nowDepositEpoch, 1_000_000e6, d18(1, 1))
             )
         );
@@ -169,16 +169,16 @@ contract TestData is FullDeployer {
         balanceSheet.submitQueuedAssets(state.poolId, state.scId, assetId, DEFAULT_EXTRA_GAS);
 
         // Issue and claim
-        state.nowIssueEpoch = hubRequestManager.nowIssueEpoch(state.scId, assetId);
+        state.nowIssueEpoch = batchRequestManager.nowIssueEpoch(state.scId, assetId);
         hub.callRequestManager(
             state.poolId,
             centrifugeId,
             abi.encodeCall(
-                IHubRequestManager.issueShares, (state.poolId, state.scId, assetId, state.nowIssueEpoch, d18(1, 1), 0)
+                IBatchRequestManager.issueShares, (state.poolId, state.scId, assetId, state.nowIssueEpoch, d18(1, 1), 0)
             )
         );
         balanceSheet.submitQueuedShares(state.poolId, state.scId, DEFAULT_EXTRA_GAS);
-        uint32 maxClaims = hubRequestManager.maxDepositClaims(state.scId, msg.sender.toBytes32(), assetId);
+        uint32 maxClaims = batchRequestManager.maxDepositClaims(state.scId, msg.sender.toBytes32(), assetId);
         hub.notifyDeposit(state.poolId, state.scId, assetId, msg.sender.toBytes32(), maxClaims);
         state.vault.mint(1_000_000e18, msg.sender);
 
@@ -203,14 +203,14 @@ contract TestData is FullDeployer {
         state.vault.requestRedeem(1_000_000e18, msg.sender, msg.sender);
 
         // Fulfill redeem request
-        state.nowRedeemEpoch = hubRequestManager.nowRedeemEpoch(state.scId, assetId);
-        state.nowRevokeEpoch = hubRequestManager.nowRevokeEpoch(state.scId, assetId);
+        state.nowRedeemEpoch = batchRequestManager.nowRedeemEpoch(state.scId, assetId);
+        state.nowRevokeEpoch = batchRequestManager.nowRevokeEpoch(state.scId, assetId);
 
         hub.callRequestManager(
             state.poolId,
             centrifugeId,
             abi.encodeCall(
-                IHubRequestManager.approveRedeems,
+                IBatchRequestManager.approveRedeems,
                 (state.poolId, state.scId, assetId, state.nowRedeemEpoch, 1_000_000e18, d18(1, 1))
             )
         );
@@ -218,7 +218,7 @@ contract TestData is FullDeployer {
             state.poolId,
             centrifugeId,
             abi.encodeCall(
-                IHubRequestManager.revokeShares,
+                IBatchRequestManager.revokeShares,
                 (state.poolId, state.scId, assetId, state.nowRevokeEpoch, d18(11, 10), 0)
             )
         );
@@ -282,7 +282,7 @@ contract TestData is FullDeployer {
         hub.notifyShareClass(poolId, scId, centrifugeId, address(redemptionRestrictionsHook).toBytes32());
 
         hub.setRequestManager(
-            poolId, centrifugeId, address(hubRequestManager), address(asyncRequestManager).toBytes32()
+            poolId, centrifugeId, address(batchRequestManager), address(asyncRequestManager).toBytes32()
         );
         hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);
         hub.updateBalanceSheetManager(centrifugeId, poolId, address(syncManager).toBytes32(), true);

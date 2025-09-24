@@ -36,7 +36,15 @@ import {IPoolEscrow, IPoolEscrowFactory} from "../common/factories/interfaces/IP
 ///         Pools can assign hub managers which have full rights over all actions.
 ///
 ///         Also acts as the central contract that routes messages from other chains to the Hub contracts.
-contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubRequestManagerCallback, IHubGuardianActions {
+contract Hub is
+    Multicall,
+    Auth,
+    Recoverable,
+    IHub,
+    IHubGatewayHandler,
+    IHubRequestManagerCallback,
+    IHubGuardianActions
+{
     using MathLib for uint256;
     using RequestCallbackMessageLib for *;
 

@@ -16,13 +16,13 @@ import {
 
 import {ISafe} from "../src/common/interfaces/IGuardian.sol";
 
-import {HubRequestManager} from "../src/vaults/HubRequestManager.sol";
+import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
 
 import "forge-std/Script.sol";
 
 struct FullReport {
     HubReport hub;
-    HubRequestManager hubRequestManager;
+    BatchRequestManager batchRequestManager;
 }
 
 contract FullActionBatcher is ExtendedHubActionBatcher, ExtendedSpokeActionBatcher, AdaptersActionBatcher {
@@ -30,19 +30,19 @@ contract FullActionBatcher is ExtendedHubActionBatcher, ExtendedSpokeActionBatch
         // TODO: should be re-organized
 
         // Rely Root
-        report.hubRequestManager.rely(address(report.hub.common.root));
+        report.batchRequestManager.rely(address(report.hub.common.root));
 
         // Rely others
-        report.hubRequestManager.rely(address(report.hub.hub));
-        report.hubRequestManager.rely(address(report.hub.hubHelpers));
+        report.batchRequestManager.rely(address(report.hub.hub));
+        report.batchRequestManager.rely(address(report.hub.hubHelpers));
 
         // File methods
-        report.hubRequestManager.file("hub", address(report.hub.hub));
+        report.batchRequestManager.file("hub", address(report.hub.hub));
     }
 
     function revokeFull(FullReport memory report) public onlyDeployer {
         // TODO: should be re-organized
-        report.hubRequestManager.deny(address(this));
+        report.batchRequestManager.deny(address(this));
     }
 }
 
@@ -51,7 +51,7 @@ contract FullActionBatcher is ExtendedHubActionBatcher, ExtendedSpokeActionBatch
  * @notice Deploys the complete Centrifuge protocol stack (hub + spoke + adapters + base integrations)
  */
 contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
-    HubRequestManager public hubRequestManager;
+    BatchRequestManager public batchRequestManager;
 
     function deployFull(CommonInput memory commonInput, AdaptersInput memory adaptersInput, FullActionBatcher batcher)
         public
@@ -69,20 +69,20 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
         _preDeployExtendedSpoke(commonInput, batcher);
         _preDeployAdapters(commonInput, adaptersInput, batcher);
 
-        hubRequestManager = HubRequestManager(
+        batchRequestManager = BatchRequestManager(
             create3(
-                generateSalt("hubRequestManager"),
-                abi.encodePacked(type(HubRequestManager).creationCode, abi.encode(hubRegistry, batcher))
+                generateSalt("batchRequestManager"),
+                abi.encodePacked(type(BatchRequestManager).creationCode, abi.encode(hubRegistry, batcher))
             )
         );
 
         batcher.engageFull(_fullReport());
 
-        register("hubRequestManager", address(hubRequestManager));
+        register("batchRequestManager", address(batchRequestManager));
     }
 
     function _fullReport() internal view returns (FullReport memory) {
-        return FullReport(_hubReport(), hubRequestManager);
+        return FullReport(_hubReport(), batchRequestManager);
     }
 
     function _postDeployFull(FullActionBatcher batcher) internal {

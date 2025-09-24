@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {
+    IBatchRequestManager,
+    EpochInvestAmounts,
+    EpochRedeemAmounts,
+    UserOrder,
+    QueuedOrder,
+    RequestType,
+    EpochId
+} from "./interfaces/IBatchRequestManager.sol";
+
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
@@ -16,20 +26,12 @@ import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMess
 import {RequestMessageLib, RequestType as RequestMessageType} from "../common/libraries/RequestMessageLib.sol";
 
 import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
+import {IHubRequestManager} from "../hub/interfaces/IHubRequestManager.sol";
 import {IHubRequestManagerCallback} from "../hub/interfaces/IHubRequestManagerCallback.sol";
-import {
-    IHubRequestManager,
-    EpochInvestAmounts,
-    EpochRedeemAmounts,
-    UserOrder,
-    QueuedOrder,
-    RequestType,
-    EpochId
-} from "../hub/interfaces/IHubRequestManager.sol";
 
-/// @title  Hub Request Manager
+/// @title  Batch Request Manager
 /// @notice Manager for handling deposit/redeem requests, epochs, and fulfillment logic for share classes
-contract HubRequestManager is Auth, IHubRequestManager {
+contract BatchRequestManager is Auth, IBatchRequestManager {
     using MathLib for *;
     using CastLib for *;
     using BytesLib for bytes;
@@ -133,7 +135,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
         }
     }
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function requestDeposit(PoolId poolId, ShareClassId scId_, uint128 amount, bytes32 investor, AssetId depositAssetId)
         public
         auth
@@ -142,7 +144,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
         _updatePending(poolId, scId_, amount, true, investor, depositAssetId, RequestType.Deposit);
     }
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function cancelDepositRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
         public
         auth
@@ -154,7 +156,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
         return _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, RequestType.Deposit);
     }
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function requestRedeem(PoolId poolId, ShareClassId scId_, uint128 amount, bytes32 investor, AssetId payoutAssetId)
         public
         auth
@@ -163,7 +165,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
         _updatePending(poolId, scId_, amount, true, investor, payoutAssetId, RequestType.Redeem);
     }
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
         public
         auth
@@ -179,7 +181,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
     // Manager actions
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function approveDeposits(
         PoolId poolId,
         ShareClassId scId_,
@@ -233,7 +235,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
         );
     }
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function approveRedeems(
         PoolId poolId,
         ShareClassId scId_,
@@ -265,7 +267,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
         emit ApproveRedeems(poolId, scId_, payoutAssetId, nowRedeemEpochId, approvedShareAmount, pendingShareAmount);
     }
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function issueShares(
         PoolId poolId,
         ShareClassId scId_,
@@ -318,7 +320,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
         );
     }
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function revokeShares(
         PoolId poolId,
         ShareClassId scId_,
@@ -379,7 +381,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
         );
     }
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function forceCancelDepositRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
         external
         auth
@@ -403,7 +405,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
         }
     }
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
         external
         auth
@@ -569,27 +571,27 @@ contract HubRequestManager is Auth, IHubRequestManager {
     // View methods
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function nowDepositEpoch(ShareClassId scId_, AssetId depositAssetId) public view returns (uint32) {
         return epochId[scId_][depositAssetId].deposit + 1;
     }
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function nowIssueEpoch(ShareClassId scId_, AssetId depositAssetId) public view returns (uint32) {
         return epochId[scId_][depositAssetId].issue + 1;
     }
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function nowRedeemEpoch(ShareClassId scId_, AssetId depositAssetId) public view returns (uint32) {
         return epochId[scId_][depositAssetId].redeem + 1;
     }
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function nowRevokeEpoch(ShareClassId scId_, AssetId depositAssetId) public view returns (uint32) {
         return epochId[scId_][depositAssetId].revoke + 1;
     }
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function maxDepositClaims(ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
         public
         view
@@ -598,7 +600,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
         return _maxClaims(depositRequest[scId_][depositAssetId][investor], epochId[scId_][depositAssetId].deposit);
     }
 
-    /// @inheritdoc IHubRequestManager
+    /// @inheritdoc IBatchRequestManager
     function maxRedeemClaims(ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
         public
         view
