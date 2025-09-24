@@ -1013,8 +1013,10 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         h.hub.notifySharePrice(POOL_A, SC_1, s.centrifugeId);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
 
-        // Each message will return half of the gas wasted
-        adapterBToA.setRefundedValue(h.gasService.updateShares() / 2);
+        uint128 refunded = h.gasService.updateShares() - 100;
+        adapterBToA.setRefundedValue(refunded);
+
+        console.log(h.gasService.updateShares());
 
         // We just subsidize for two message
         vm.startPrank(ANY);
@@ -1024,17 +1026,18 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         vm.startPrank(BSM);
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
-        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares() / 2);
+        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, refunded);
         assertEq(address(s.gateway).balance, DEFAULT_SUBSIDY + h.gasService.updateShares());
 
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
-        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares());
+        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, refunded * 2);
         assertEq(address(s.gateway).balance, DEFAULT_SUBSIDY);
 
         // This message is fully paid with refunded amount
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
-        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares() / 2);
-        assertEq(address(s.gateway).balance, DEFAULT_SUBSIDY);
+        console.log("aa");
+        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, refunded);
+        assertEq(address(s.gateway).balance, DEFAULT_SUBSIDY + refunded * 2 - h.gasService.updateShares());
 
         assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 3, "3 UpdateShares messages received");
     }
