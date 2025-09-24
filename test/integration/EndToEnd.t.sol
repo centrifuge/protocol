@@ -33,6 +33,7 @@ import {Accounting} from "../../src/hub/Accounting.sol";
 import {HubHelpers} from "../../src/hub/HubHelpers.sol";
 import {HubRegistry} from "../../src/hub/HubRegistry.sol";
 import {ShareClassManager} from "../../src/hub/ShareClassManager.sol";
+import {IHubRequestManager} from "../../src/hub/interfaces/IHubRequestManager.sol";
 
 import {Spoke} from "../../src/spoke/Spoke.sol";
 import {IVault} from "../../src/spoke/interfaces/IVault.sol";
@@ -453,7 +454,10 @@ contract EndToEndFlows is EndToEndUtils {
             LOSS_ACCOUNT
         );
         hub.hub.setRequestManager(
-            poolId, spoke.centrifugeId, address(hub.batchRequestManager), address(spoke.asyncRequestManager).toBytes32()
+            poolId,
+            spoke.centrifugeId,
+            IHubRequestManager(hub.batchRequestManager),
+            address(spoke.asyncRequestManager).toBytes32()
         );
         hub.hub.updateBalanceSheetManager(
             spoke.centrifugeId, poolId, address(spoke.asyncRequestManager).toBytes32(), true

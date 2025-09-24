@@ -17,6 +17,7 @@ import {VaultUpdateKind} from "../src/common/libraries/MessageLib.sol";
 import {Hub} from "../src/hub/Hub.sol";
 import {HubRegistry} from "../src/hub/HubRegistry.sol";
 import {ShareClassManager} from "../src/hub/ShareClassManager.sol";
+import {IHubRequestManager} from "../src/hub/interfaces/IHubRequestManager.sol";
 
 import {Spoke} from "../src/spoke/Spoke.sol";
 import {BalanceSheet} from "../src/spoke/BalanceSheet.sol";
@@ -116,7 +117,10 @@ contract TestData is FullDeployer {
         hub.notifyShareClass(state.poolId, state.scId, centrifugeId, address(redemptionRestrictionsHook).toBytes32());
 
         hub.setRequestManager(
-            state.poolId, centrifugeId, address(batchRequestManager), address(asyncRequestManager).toBytes32()
+            state.poolId,
+            centrifugeId,
+            IHubRequestManager(batchRequestManager),
+            address(asyncRequestManager).toBytes32()
         );
         hub.updateBalanceSheetManager(centrifugeId, state.poolId, address(asyncRequestManager).toBytes32(), true);
         // Add ADMIN as balance sheet manager to call submitQueuedAssets without going through the asyncRequestManager
@@ -282,7 +286,7 @@ contract TestData is FullDeployer {
         hub.notifyShareClass(poolId, scId, centrifugeId, address(redemptionRestrictionsHook).toBytes32());
 
         hub.setRequestManager(
-            poolId, centrifugeId, address(batchRequestManager), address(asyncRequestManager).toBytes32()
+            poolId, centrifugeId, IHubRequestManager(batchRequestManager), address(asyncRequestManager).toBytes32()
         );
         hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);
         hub.updateBalanceSheetManager(centrifugeId, poolId, address(syncManager).toBytes32(), true);

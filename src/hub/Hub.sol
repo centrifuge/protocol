@@ -240,13 +240,13 @@ contract Hub is
     }
 
     /// @inheritdoc IHub
-    function setRequestManager(PoolId poolId, uint16 centrifugeId, address hubManager, bytes32 spokeManager)
+    function setRequestManager(PoolId poolId, uint16 centrifugeId, IHubRequestManager hubManager, bytes32 spokeManager)
         external
         returns (uint256 cost)
     {
         _isManager(poolId);
 
-        hubRegistry.setHubRequestManager(poolId, centrifugeId, IHubRequestManager(hubManager));
+        hubRegistry.setHubRequestManager(poolId, centrifugeId, hubManager);
         return sender.sendSetRequestManager(centrifugeId, poolId, spokeManager);
     }
 

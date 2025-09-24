@@ -6,7 +6,7 @@ import {AssetId} from "../../common/types/AssetId.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
 
 interface IHubRequestManagerCallback {
-    /// @notice Handles a request callback originating from a spoke request.
+    /// @notice Handles a request callback originating from a hub request manager.
     /// @param  poolId The pool id
     /// @param  scId The share class id
     /// @param  assetId The asset id

@@ -4,6 +4,7 @@ pragma solidity >=0.5.0;
 import {IHoldings} from "./IHoldings.sol";
 import {IHubRegistry} from "./IHubRegistry.sol";
 import {IAccounting, JournalEntry} from "./IAccounting.sol";
+import {IHubRequestManager} from "./IHubRequestManager.sol";
 import {IShareClassManager} from "./IShareClassManager.sol";
 
 import {D18} from "../../misc/types/D18.sol";
@@ -172,7 +173,7 @@ interface IHub {
     function updateHubManager(PoolId poolId, address who, bool canManage) external;
 
     /// @notice Allow/disallow an account to interact as request manager
-    function setRequestManager(PoolId poolId, uint16 centrifugeId, address hubManager, bytes32 spokeManager)
+    function setRequestManager(PoolId poolId, uint16 centrifugeId, IHubRequestManager hubManager, bytes32 spokeManager)
         external
         returns (uint256 cost);
 

@@ -34,7 +34,6 @@ contract FullActionBatcher is ExtendedHubActionBatcher, ExtendedSpokeActionBatch
 
         // Rely others
         report.batchRequestManager.rely(address(report.hub.hub));
-        report.batchRequestManager.rely(address(report.hub.hubHelpers));
 
         // File methods
         report.batchRequestManager.file("hub", address(report.hub.hub));
