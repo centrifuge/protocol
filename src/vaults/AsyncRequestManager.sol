@@ -555,7 +555,13 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         return pricePoolPerShare.isZero()
             ? 0
             : PricingLib.assetToShareAmount(
-                vault_.share(), vd.asset, vd.tokenId, assets_, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
+                vault_.share(),
+                vd.asset,
+                vd.tokenId,
+                assets_,
+                pricePoolPerAsset,
+                pricePoolPerShare,
+                MathLib.Rounding.Down
             );
     }
 
@@ -569,7 +575,13 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         return pricePoolPerAsset.isZero()
             ? 0
             : PricingLib.shareToAssetAmount(
-                vault_.share(), shares_, vd.asset, vd.tokenId, pricePoolPerShare, pricePoolPerAsset, MathLib.Rounding.Down
+                vault_.share(),
+                shares_,
+                vd.asset,
+                vd.tokenId,
+                pricePoolPerShare,
+                pricePoolPerAsset,
+                MathLib.Rounding.Down
             );
     }
 

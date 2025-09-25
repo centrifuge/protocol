@@ -159,9 +159,7 @@ interface IERC6909Fungible is IERC6909 {
     /// @param receiver     Address of the receiving party
     /// @param tokenId      Token Id
     /// @param amount       Amount to be transferred
-    function authTransferFrom(address sender, address receiver, uint256 tokenId, uint256 amount)
-        external
-        returns (bool);
+    function authTransferFrom(address sender, address receiver, uint256 tokenId, uint256 amount) external returns (bool);
 }
 
 /// @dev  A factory contract to deploy new collateral contracts implementing IERC6909.

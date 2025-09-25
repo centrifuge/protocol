@@ -70,9 +70,11 @@ contract AdaptersDeployer is CommonDeployer {
     AxelarAdapter axelarAdapter;
     LayerZeroAdapter layerZeroAdapter;
 
-    function deployAdapters(CommonInput memory input, AdaptersInput memory adaptersInput, AdaptersActionBatcher batcher)
-        public
-    {
+    function deployAdapters(
+        CommonInput memory input,
+        AdaptersInput memory adaptersInput,
+        AdaptersActionBatcher batcher
+    ) public {
         _preDeployAdapters(input, adaptersInput, batcher);
         _postDeployAdapters(batcher);
     }
