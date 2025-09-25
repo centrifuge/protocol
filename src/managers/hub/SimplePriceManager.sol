@@ -17,6 +17,7 @@ import {IGateway} from "../../common/interfaces/IGateway.sol";
 import {IHub} from "../../hub/interfaces/IHub.sol";
 import {IHubRegistry} from "../../hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "../../hub/interfaces/IShareClassManager.sol";
+import {IBatchRequestManager} from "../../vaults/interfaces/IBatchRequestManager.sol";
 
 /// @notice Share price calculation manager for single share class pools.
 contract SimplePriceManager is ISimplePriceManager, Auth {
@@ -135,14 +136,19 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         uint128 approvedAssetAmount,
         uint128 extraGasLimit
     ) external onlyManager(poolId) {
-        uint32 nowDepositEpochId = shareClassManager.nowDepositEpoch(scId, depositAssetId);
-        uint32 nowIssueEpochId = shareClassManager.nowIssueEpoch(scId, depositAssetId);
+        IBatchRequestManager requestManager =
+            IBatchRequestManager(address(hubRegistry.hubRequestManager(poolId, depositAssetId.centrifugeId())));
+        uint32 nowDepositEpochId = requestManager.nowDepositEpoch(scId, depositAssetId);
+        uint32 nowIssueEpochId = requestManager.nowIssueEpoch(scId, depositAssetId);
 
         require(nowDepositEpochId == nowIssueEpochId, MismatchedEpochs());
 
+        D18 pricePoolPerAsset = hub.hubHelpers().pricePoolPerAsset(poolId, scId, depositAssetId);
         D18 navPoolPerShare = _navPerShare(poolId);
-        hub.approveDeposits(poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount);
-        hub.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare, extraGasLimit);
+        requestManager.approveDeposits(
+            poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset
+        );
+        requestManager.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare, extraGasLimit);
     }
 
     /// @inheritdoc ISimplePriceManager
@@ -153,14 +159,19 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         uint128 approvedShareAmount,
         uint128 extraGasLimit
     ) external onlyManager(poolId) {
-        uint32 nowRedeemEpochId = shareClassManager.nowRedeemEpoch(scId, payoutAssetId);
-        uint32 nowRevokeEpochId = shareClassManager.nowRevokeEpoch(scId, payoutAssetId);
+        IBatchRequestManager requestManager =
+            IBatchRequestManager(address(hubRegistry.hubRequestManager(poolId, payoutAssetId.centrifugeId())));
+        uint32 nowRedeemEpochId = requestManager.nowRedeemEpoch(scId, payoutAssetId);
+        uint32 nowRevokeEpochId = requestManager.nowRevokeEpoch(scId, payoutAssetId);
 
         require(nowRedeemEpochId == nowRevokeEpochId, MismatchedEpochs());
 
+        D18 pricePoolPerAsset = hub.hubHelpers().pricePoolPerAsset(poolId, scId, payoutAssetId);
         D18 navPoolPerShare = _navPerShare(poolId);
-        hub.approveRedeems(poolId, scId, payoutAssetId, nowRedeemEpochId, approvedShareAmount);
-        hub.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, navPoolPerShare, extraGasLimit);
+        requestManager.approveRedeems(
+            poolId, scId, payoutAssetId, nowRedeemEpochId, approvedShareAmount, pricePoolPerAsset
+        );
+        requestManager.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, navPoolPerShare, extraGasLimit);
     }
 
     //----------------------------------------------------------------------------------------------

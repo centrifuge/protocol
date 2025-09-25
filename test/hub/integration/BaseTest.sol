@@ -88,9 +88,8 @@ contract BaseTest is ExtendedHubDeployer, Test {
         labelAddresses("");
         deployExtendedHub(input, batcher);
         _mockStuff(batcher);
-        removeExtendedHubDeployerAccess(batcher);
         hubRequestManager = IHubRequestManager(address(new MockHubRequestManager(address(hub))));
-        removeHubDeployerAccess(batcher);
+        removeExtendedHubDeployerAccess(batcher);
 
         // Initialize accounts
         vm.deal(FM, 1 ether);

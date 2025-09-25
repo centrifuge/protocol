@@ -10,8 +10,10 @@ import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/common/types/AssetId.sol";
 
 import {IGateway} from "../../../../src/common/interfaces/IGateway.sol";
+import {IBatchRequestManager} from "../../../../src/vaults/interfaces/IBatchRequestManager.sol";
 import {IHub} from "../../../../src/hub/interfaces/IHub.sol";
 import {IHubRegistry} from "../../../../src/hub/interfaces/IHubRegistry.sol";
+import {IHubHelpers} from "../../../../src/hub/interfaces/IHubHelpers.sol";
 import {IShareClassManager} from "../../../../src/hub/interfaces/IShareClassManager.sol";
 
 import {ISimplePriceManager} from "../../../../src/managers/hub/interfaces/ISimplePriceManager.sol";
@@ -41,6 +43,8 @@ contract SimplePriceManagerTest is Test {
     address gateway = address(new IsContract());
     address hubRegistry = address(new IsContract());
     address shareClassManager = address(new IsContract());
+    address batchRequestManager = address(new IsContract());
+    address hubHelpers = address(new IsContract());
 
     address unauthorized = makeAddr("unauthorized");
     address hubManager = makeAddr("hubManager");
@@ -59,25 +63,17 @@ contract SimplePriceManagerTest is Test {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.shareClassManager.selector), abi.encode(shareClassManager));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.hubRegistry.selector), abi.encode(hubRegistry));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.gateway.selector), abi.encode(gateway));
+        vm.mockCall(hub, abi.encodeWithSelector(IHub.hubHelpers.selector), abi.encode(hubHelpers));
+        vm.mockCall(hub, abi.encodeWithSelector(IHub.updateSharePrice.selector), abi.encode());
+        vm.mockCall(hub, abi.encodeWithSelector(IHub.notifySharePrice.selector), abi.encode(uint256(0)));
 
         vm.mockCall(gateway, abi.encodeWithSelector(IGateway.startBatching.selector), abi.encode());
         vm.mockCall(gateway, abi.encodeWithSelector(IGateway.endBatching.selector), abi.encode());
 
-        vm.mockCall(hub, abi.encodeWithSelector(IHub.updateSharePrice.selector), abi.encode());
-        vm.mockCall(hub, abi.encodeWithSelector(IHub.notifySharePrice.selector), abi.encode(uint256(0)));
         vm.mockCall(
-            hub, abi.encodeWithSelector(IHub.approveDeposits.selector), abi.encode(uint256(0), uint128(0), uint128(0))
-        );
-        vm.mockCall(
-            hub,
-            abi.encodeWithSelector(IHub.issueShares.selector),
-            abi.encode(uint256(0), uint128(0), uint128(0), uint128(0))
-        );
-        vm.mockCall(hub, abi.encodeWithSelector(IHub.approveRedeems.selector), abi.encode(uint256(0), uint128(0)));
-        vm.mockCall(
-            hub,
-            abi.encodeWithSelector(IHub.revokeShares.selector),
-            abi.encode(uint256(0), uint128(0), uint128(0), uint128(0))
+            hubRegistry,
+            abi.encodeWithSelector(IHubRegistry.hubRequestManager.selector),
+            abi.encode(batchRequestManager)
         );
         vm.mockCall(hubRegistry, abi.encodeWithSelector(IHubRegistry.manager.selector), abi.encode(false));
         vm.mockCall(
@@ -104,25 +100,50 @@ contract SimplePriceManagerTest is Test {
             abi.encodeWithSelector(IShareClassManager.issuance.selector, SC_1, CENTRIFUGE_ID_2),
             abi.encode(200)
         );
+
         vm.mockCall(
-            shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.nowDepositEpoch.selector, SC_1, asset1),
+            batchRequestManager,
+            abi.encodeWithSelector(IBatchRequestManager.nowDepositEpoch.selector, SC_1, asset1),
             abi.encode(1)
         );
         vm.mockCall(
-            shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.nowIssueEpoch.selector, SC_1, asset1),
+            batchRequestManager,
+            abi.encodeWithSelector(IBatchRequestManager.nowIssueEpoch.selector, SC_1, asset1),
             abi.encode(1)
         );
         vm.mockCall(
-            shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.nowRedeemEpoch.selector, SC_1, asset1),
+            batchRequestManager,
+            abi.encodeWithSelector(IBatchRequestManager.nowRedeemEpoch.selector, SC_1, asset1),
             abi.encode(2)
         );
         vm.mockCall(
-            shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.nowRevokeEpoch.selector, SC_1, asset1),
+            batchRequestManager,
+            abi.encodeWithSelector(IBatchRequestManager.nowRevokeEpoch.selector, SC_1, asset1),
             abi.encode(2)
+        );
+        vm.mockCall(
+            batchRequestManager,
+            abi.encodeWithSelector(IBatchRequestManager.approveDeposits.selector),
+            abi.encode(uint256(0))
+        );
+        vm.mockCall(
+            batchRequestManager,
+            abi.encodeWithSelector(IBatchRequestManager.issueShares.selector),
+            abi.encode(uint256(0))
+        );
+        vm.mockCall(
+            batchRequestManager, abi.encodeWithSelector(IBatchRequestManager.approveRedeems.selector), abi.encode()
+        );
+        vm.mockCall(
+            batchRequestManager,
+            abi.encodeWithSelector(IBatchRequestManager.revokeShares.selector),
+            abi.encode(uint256(0))
+        );
+
+        vm.mockCall(
+            hubHelpers,
+            abi.encodeWithSelector(IHubHelpers.pricePoolPerAsset.selector, POOL_A, SC_1, asset1),
+            abi.encode(d18(1, 1))
         );
     }
 
@@ -420,13 +441,21 @@ contract SimplePriceManagerInvestorActionsTest is SimplePriceManagerTest {
         D18 expectedNavPerShare = d18(10, 1); // 1000/100 = 10
 
         vm.expectCall(
-            address(hub),
-            abi.encodeWithSelector(IHub.approveDeposits.selector, POOL_A, SC_1, asset1, 1, approvedAssetAmount)
+            address(batchRequestManager),
+            abi.encodeWithSelector(
+                IBatchRequestManager.approveDeposits.selector, POOL_A, SC_1, asset1, 1, approvedAssetAmount, d18(1, 1)
+            )
         );
         vm.expectCall(
-            address(hub),
+            address(batchRequestManager),
             abi.encodeWithSelector(
-                IHub.issueShares.selector, POOL_A, SC_1, asset1, uint32(1), expectedNavPerShare, extraGasLimit
+                IBatchRequestManager.issueShares.selector,
+                POOL_A,
+                SC_1,
+                asset1,
+                uint32(1),
+                expectedNavPerShare,
+                extraGasLimit
             )
         );
 
@@ -442,13 +471,13 @@ contract SimplePriceManagerInvestorActionsTest is SimplePriceManagerTest {
 
     function testApproveDepositsAndIssueSharesMismatchedEpochs() public {
         vm.mockCall(
-            shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.nowDepositEpoch.selector, SC_1, asset1),
+            batchRequestManager,
+            abi.encodeWithSelector(IBatchRequestManager.nowDepositEpoch.selector, SC_1, asset1),
             abi.encode(1)
         );
         vm.mockCall(
-            shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.nowIssueEpoch.selector, SC_1, asset1),
+            batchRequestManager,
+            abi.encodeWithSelector(IBatchRequestManager.nowIssueEpoch.selector, SC_1, asset1),
             abi.encode(2)
         );
 
@@ -462,13 +491,21 @@ contract SimplePriceManagerInvestorActionsTest is SimplePriceManagerTest {
         uint128 extraGasLimit = 100000;
 
         vm.expectCall(
-            address(hub),
-            abi.encodeWithSelector(IHub.approveRedeems.selector, POOL_A, SC_1, asset1, uint32(2), approvedShareAmount)
+            address(batchRequestManager),
+            abi.encodeWithSelector(
+                IBatchRequestManager.approveRedeems.selector,
+                POOL_A,
+                SC_1,
+                asset1,
+                uint32(2),
+                approvedShareAmount,
+                d18(1, 1)
+            )
         );
         vm.expectCall(
-            address(hub),
+            address(batchRequestManager),
             abi.encodeWithSelector(
-                IHub.revokeShares.selector, POOL_A, SC_1, asset1, uint32(2), d18(10, 1), extraGasLimit
+                IBatchRequestManager.revokeShares.selector, POOL_A, SC_1, asset1, uint32(2), d18(10, 1), extraGasLimit
             ) // 1000/100 = 10
         );
 
@@ -484,13 +521,13 @@ contract SimplePriceManagerInvestorActionsTest is SimplePriceManagerTest {
 
     function testApproveRedeemsAndRevokeSharesMismatchedEpochs() public {
         vm.mockCall(
-            shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.nowRedeemEpoch.selector, SC_1, asset1),
+            batchRequestManager,
+            abi.encodeWithSelector(IBatchRequestManager.nowRedeemEpoch.selector, SC_1, asset1),
             abi.encode(2)
         );
         vm.mockCall(
-            shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.nowRevokeEpoch.selector, SC_1, asset1),
+            batchRequestManager,
+            abi.encodeWithSelector(IBatchRequestManager.nowRevokeEpoch.selector, SC_1, asset1),
             abi.encode(3)
         );
 
