@@ -122,7 +122,7 @@ interface IGateway is IMessageHandler, IRecoverable {
     function startBatching() external;
 
     /// @notice Finalize batching messages and send the resulting batch message
-    function endBatching() external;
+    function endBatching() external returns (uint256 cost);
 
     /// @notice Returns the current gateway batching level.
     function isBatching() external view returns (bool);
