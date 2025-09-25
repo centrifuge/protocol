@@ -7,7 +7,7 @@ import {ICrosschainBatcher} from "./interfaces/ICrosschainBatcher.sol";
 import {Auth} from "../misc/Auth.sol";
 
 /// @title  CrosschainBatcher
-/// @dev    Helper contract that enables integrations to automatically batch multiple cross-chain tansactions.
+/// @dev    Helper contract that enables integrations to automatically batch multiple cross-chain transactions.
 ///         Should be used like:
 ///         ```
 ///         contract Integration {
