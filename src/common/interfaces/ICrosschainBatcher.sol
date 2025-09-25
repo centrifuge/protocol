@@ -2,7 +2,7 @@
 pragma solidity >=0.5.0;
 
 /// @notice Contract that offers an utility for calling a method that will be batched
-interface IGatewayBatchCallback {
+interface ICrosschainBatcher {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
 
@@ -27,5 +27,8 @@ interface IGatewayBatchCallback {
     ///         so any method call inside that requires messaging will be batched.
     /// @param  data encoding data for the callback method
     /// @return cost the total cost of the batch sent
-    function withBatch(bytes memory data) external payable returns (uint256 cost);
+    function batch(bytes memory data) external payable returns (uint256 cost);
+
+    /// @notice Returns the current caller to withBatch. Only available if it's called inside withBatch.
+    function caller() external returns (address);
 }

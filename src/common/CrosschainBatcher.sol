@@ -1,17 +1,29 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {PoolId} from "./types/PoolId.sol";
-import {AssetId} from "./types/AssetId.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
-import {ShareClassId} from "./types/ShareClassId.sol";
 
 import {Auth} from "../misc/Auth.sol";
 
-import {IGatewayBatchCallback} from "./interfaces/IGatewayBatchCallback.sol";
+import {ICrosschainBatcher} from "./interfaces/ICrosschainBatcher.sol";
 
-// Gateway trust on GatewayBatcher
-contract GatewayBatchCallback is Auth, IGatewayBatchCallback {
+/// @title  CrosschainBatcher
+/// @dev    Helper contract that enables integrations to automatically batch multiple messages. Should be used like:
+///         ```
+///         contract Integration {
+///             ICrosschainBatcher batcher;
+///
+///             function doSomething(PoolId poolId) external {
+///                 uint256 cost = batcher.batch(abi.encodeWithSelector(Integration._execute.selector, poolId));
+///             }
+///
+///             function _execute(PoolId poolId) external {
+///                 require(batcher.sender() == address(this));
+///                 // Call several hub, balance sheet, or spoke methods that trigger cross-chain transactions
+///             }
+///         }
+///         ```
+contract CrosschainBatcher is Auth, ICrosschainBatcher {
     IGateway public gateway;
     address public transient caller;
 
@@ -19,15 +31,15 @@ contract GatewayBatchCallback is Auth, IGatewayBatchCallback {
         gateway = gateway_;
     }
 
-    /// @inheritdoc IGatewayBatchCallback
+    /// @inheritdoc ICrosschainBatcher
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGateway(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 
-    /// @inheritdoc IGatewayBatchCallback
-    function withBatch(bytes memory data) external payable returns (uint256 cost) {
+    /// @inheritdoc ICrosschainBatcher
+    function batch(bytes memory data) external payable returns (uint256 cost) {
         require(caller == address(0), AlreadyBatching());
 
         gateway.startBatching();
