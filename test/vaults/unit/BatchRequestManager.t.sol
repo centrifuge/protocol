@@ -48,6 +48,8 @@ uint128 constant MAX_REQUEST_AMOUNT_SHARES = type(uint128).max / 1e10;
 uint128 constant SHARE_HOOK_GAS = 100000;
 
 contract HubRegistryMock {
+    mapping(PoolId => mapping(address user => bool)) manager;
+
     function decimals(PoolId) external pure returns (uint8) {
         return DECIMALS_POOL;
     }
@@ -64,6 +66,10 @@ contract HubRegistryMock {
 
     function hubRequestManager(PoolId, uint16) external pure returns (address) {
         return address(0);
+    }
+
+    function updateManager(PoolId poolId, address user, bool isManager) external {
+        manager[poolId][user] = isManager;
     }
 }
 
