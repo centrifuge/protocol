@@ -3,26 +3,22 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
-import {IMessageProcessor} from "../../../src/common/interfaces/IMessageProcessor.sol";
-import {IMessageProperties} from "../../../src/common/interfaces/IMessageProperties.sol";
+import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
 
 import "forge-std/Test.sol";
 
 string constant FILE_PATH = "snapshots/MessageGasLimits.json";
 
-contract MessageBenchmarker is IMessageProcessor, Test {
+contract MessageBenchmarker is IMessageHandler, IAdapter, Test {
     using MessageLib for *;
 
-    IMessageProcessor public immutable messageProcessor;
+    IMessageHandler public immutable messageHandler;
+    IAdapter public immutable adapter;
 
-    constructor(IMessageProcessor messageProcessor_) {
-        messageProcessor = messageProcessor_;
-    }
-
-    /// @inheritdoc IMessageProcessor
-    function file(bytes32 what, address data) external {
-        messageProcessor.file(what, data);
+    constructor(IMessageHandler messageHandler_, IAdapter adapter_) {
+        messageHandler = messageHandler_;
+        adapter = adapter_;
     }
 
     /// @inheritdoc IMessageHandler
@@ -35,28 +31,27 @@ contract MessageBenchmarker is IMessageProcessor, Test {
         uint256 prev = _getPreviousRegisteredValue(json, string.concat("$.", name));
         uint256 before = gasleft();
 
-        messageProcessor.handle(centrifugeId, message);
+        messageHandler.handle(centrifugeId, message);
 
         uint256 new_ = before - gasleft();
         uint256 higher = prev > new_ ? prev : new_;
 
-        //NOTE: If add a new entry, add first thename in the snapshot file, i.e: "newEntry" : 0
+        // NOTE: If add a new entry, add first thename in the snapshot file, i.e: "newEntry" : 0
         vm.writeJson(vm.toString(higher), FILE_PATH, string.concat("$.", name));
     }
 
-    /// @inheritdoc IMessageProperties
-    function messageLength(bytes calldata message) external view returns (uint16) {
-        return messageProcessor.messageLength(message);
+    /// @inheritdoc IAdapter
+    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund)
+        external
+        payable
+        returns (bytes32)
+    {
+        return adapter.send{value: msg.value}(centrifugeId, payload, gasLimit, refund);
     }
 
-    /// @inheritdoc IMessageProperties
-    function messagePoolId(bytes calldata message) external view returns (PoolId) {
-        return messageProcessor.messagePoolId(message);
-    }
-
-    /// @inheritdoc IMessageProperties
-    function messagePoolIdPayment(bytes calldata message) external view returns (PoolId) {
-        return messageProcessor.messagePoolIdPayment(message);
+    /// @inheritdoc IAdapter
+    function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256) {
+        return adapter.estimate(centrifugeId, payload, gasLimit);
     }
 
     function _getName(bytes calldata message) internal pure returns (string memory) {

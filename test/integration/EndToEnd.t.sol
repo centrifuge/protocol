@@ -276,9 +276,11 @@ contract EndToEndDeployment is Test {
 
     function _attachBenchmark(FullDeployer deploy, FullActionBatcher batcher) internal {
         vm.startPrank(address(batcher));
-        MessageBenchmarker benchmarker = new MessageBenchmarker(deploy.messageProcessor());
-        deploy.messageProcessor().rely(address(benchmarker));
-        deploy.gateway().file("processor", address(benchmarker));
+        MessageBenchmarker benchmarker = new MessageBenchmarker(deploy.gateway(), deploy.multiAdapter());
+        deploy.gateway().rely(address(benchmarker));
+        deploy.multiAdapter().rely(address(benchmarker));
+        deploy.multiAdapter().file("gateway", address(benchmarker));
+        deploy.gateway().file("adapter", address(benchmarker));
         vm.stopPrank();
     }
 
@@ -1016,8 +1018,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         uint128 refunded = h.gasService.updateShares() - 100;
         adapterBToA.setRefundedValue(refunded);
 
-        console.log(h.gasService.updateShares());
-
         // We just subsidize for two message
         vm.startPrank(ANY);
         s.gateway.depositSubsidy{value: h.gasService.updateShares() * 2}(POOL_A);
@@ -1035,7 +1035,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         // This message is fully paid with refunded amount
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
-        console.log("aa");
         assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, refunded);
         assertEq(address(s.gateway).balance, DEFAULT_SUBSIDY + refunded * 2 - h.gasService.updateShares());
 
