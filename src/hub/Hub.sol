@@ -169,6 +169,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     /// @inheritdoc IHub
     function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) public returns (uint256 cost) {
         _isManager(poolId);
+        
         D18 pricePoolPerAsset_ = pricePoolPerAsset(poolId, scId, assetId);
         emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset_);
         return sender.sendNotifyPricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset_);
@@ -234,6 +235,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
         _isManager(poolId);
 
         hubRegistry.setHubRequestManager(poolId, centrifugeId, hubManager);
+
+        emit SetSpokeRequestManager(centrifugeId, poolId, spokeManager);
         return sender.sendSetRequestManager(centrifugeId, poolId, spokeManager);
     }
 
@@ -244,6 +247,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     {
         _isManager(poolId);
 
+        emit UpdateBalanceSheetManager(centrifugeId, poolId, who, canManage);
         return sender.sendUpdateBalanceSheetManager(centrifugeId, poolId, who, canManage);
     }
 
