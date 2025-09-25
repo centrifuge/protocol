@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IMessageSender} from "./IMessageSender.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
 
 import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
@@ -9,7 +8,7 @@ import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 import {PoolId} from "../types/PoolId.sol";
 
 /// @notice Interface for dispatch-only gateway
-interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
+interface IGateway is IMessageHandler, IRecoverable {
     struct Funds {
         /// @notice Funds associated to pay for sending messages
         /// @dev    Overflows with type(uint64).max / 10**18 = 7.923 × 10^10 ETH
@@ -19,20 +18,24 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     }
 
     struct Underpaid {
-        uint128 counter;
         uint128 gasLimit;
+        uint64 counter;
     }
 
     event File(bytes32 indexed what, address addr);
 
+    event UpdateManager(PoolId poolId, address who, bool canManage);
+    event BlockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked);
+
     event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
-    event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch);
+    event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch, bytes32 batchHash);
     event RepayBatch(uint16 indexed centrifugeId, bytes batch);
-    event ExecuteMessage(uint16 indexed centrifugeId, bytes message);
-    event FailMessage(uint16 indexed centrifugeId, bytes message, bytes error);
+    event ExecuteMessage(uint16 indexed centrifugeId, bytes message, bytes32 messageHash);
+    event FailMessage(uint16 indexed centrifugeId, bytes message, bytes32 messageHash, bytes error);
 
     event SetRefundAddress(PoolId poolId, IRecoverable refund);
-    event SubsidizePool(PoolId indexed poolId, address indexed sender, uint256 amount);
+    event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
+    event WithdrawSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
@@ -46,10 +49,6 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     /// @notice Dispatched when a the gateway tries to send an empty message.
     error EmptyMessage();
 
-    /// @notice Dispatched when a the gateway has not enough fuel to send a message.
-    /// Only dispatched in PayTransaction method
-    error NotEnoughTransactionGas();
-
     /// @notice Dispatched when a message that has not failed is retried.
     error NotFailedMessage();
 
@@ -57,7 +56,7 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     error NotUnderpaidBatch();
 
     /// @notice Dispatched when a batch is repaid with insufficient funds.
-    error InsufficientFundsForRepayment();
+    error CannotBeRepaid();
 
     /// @notice Dispatched when a message is added to a batch that causes it to exceed the max batch size.
     error ExceedsMaxGasLimit();
@@ -65,46 +64,69 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     /// @notice Dispatched when a refund address is not set.
     error RefundAddressNotSet();
 
+    /// @notice Dispatched when a handle is called without enough gas to process the message.
+    error NotEnoughGasToProcess();
+
+    /// @notice Dispatched when a recovery message is not executed from the manager.
+    error ManagerNotAllowed();
+
+    /// @notice Dispatched when a message is sent but the gateway is blocked for sending messages
+    error OutgoingBlocked();
+
+    /// @notice Dispatched when an account is not valid to withdraw subsidized pool funds
+    error CannotWithdraw();
+
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @dev    Currently used to update addresses of contract instances.
     /// @param  what The name of the variable to be updated.
     /// @param  data New address.
     function file(bytes32 what, address data) external;
 
-    /// @notice Repay an underpaid batch. Send unused funds to subsidy pot of the pool.
+    /// @notice Configures a manager address for a pool.
+    /// @param  poolId PoolId associated to the adapters
+    /// @param  who Manager address
+    /// @param  canManage if enabled as manager
+    function updateManager(PoolId poolId, address who, bool canManage) external;
+
+    /// @notice Indicates if the gateway for a determined pool can send messages or not
+    /// @param centrifugeId Centrifuge ID associated to this block
+    /// @param  poolId PoolId associated to this block
+    /// @param  canSend If can send messages or not
+    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool canSend) external;
+
+    /// @notice Repay an underpaid batch.
     function repay(uint16 centrifugeId, bytes memory batch) external payable;
 
     /// @notice Retry a failed message.
     function retry(uint16 centrifugeId, bytes memory message) external;
 
-    /// @notice Set an extra gas to the gas limit of the message
-    function setExtraGasLimit(uint128 gas) external;
-
     /// @notice Set the refund address for message associated to a poolId
     function setRefundAddress(PoolId poolId, IRecoverable refund) external;
 
     /// @notice Pay upfront to later be able to subsidize messages associated to a pool
-    function subsidizePool(PoolId poolId) external payable;
+    function depositSubsidy(PoolId poolId) external payable;
 
-    /// @notice Prepays for the TX cost for sending the messages through the adapters
-    ///         Currently being called from Vault Router and Hub.
-    ///         In order to prepay, the method MUST be called with `msg.value`.
-    ///         Called is assumed to have called IGateway.estimate before calling this.
-    function startTransactionPayment(address payer) external payable;
+    /// @notice Withdraw the funds associated to the pool
+    function withdrawSubsidy(PoolId poolId, address to, uint256 amount) external;
 
-    /// @notice Finalize the transaction payment mode, next payments will be subsidized (as default).
-    function endTransactionPayment() external;
+    /// @notice Handling outgoing messages.
+    /// @param centrifugeId Destination chain
+    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit) external returns (uint256 cost);
 
     /// @notice Add a message to the underpaid storage to be repay and send later.
     /// @dev It only supports one message, not a batch
-    function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external;
+    /// @param extraGasLimit Adds an extra cost for the message
+    function addUnpaidMessage(uint16 centrifugeId, bytes memory message, uint128 extraGasLimit) external;
 
     /// @notice Initialize batching message
     function startBatching() external;
 
     /// @notice Finalize batching messages and send the resulting batch message
-    function endBatching() external;
+    function endBatching() external returns (uint256 cost);
 
     /// @notice Returns the current gateway batching level.
     function isBatching() external view returns (bool);
+
+    /// @notice Returns the current gateway batching level.
+    function subsidizedValue(PoolId poolId) external view returns (uint256);
 }

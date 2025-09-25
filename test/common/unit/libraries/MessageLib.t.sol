@@ -3,16 +3,9 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "../../../../src/common/types/PoolId.sol";
 import {AssetId} from "../../../../src/common/types/AssetId.sol";
-import {MessageProofLib} from "../../../../src/common/libraries/MessageProofLib.sol";
 import {MessageType, MessageLib} from "../../../../src/common/libraries/MessageLib.sol";
 
 import "forge-std/Test.sol";
-
-contract TestMessageProofCompatibility is Test {
-    function testMessageProofCompatibility() public pure {
-        assertNotEq(uint8(type(MessageType).max), MessageProofLib.MESSAGE_PROOF_ID);
-    }
-}
 
 contract TestMessageLibIds is Test {
     function _prepareFor() private returns (bytes memory buffer) {
@@ -42,13 +35,13 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeInitiateSetPoolAdapters() public {
-        MessageLib.deserializeInitiateSetPoolAdapters(_prepareFor());
+    function testDeserializeSetPoolAdapters() public {
+        MessageLib.deserializeSetPoolAdapters(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeExecuteSetPoolAdapters() public {
-        MessageLib.deserializeExecuteSetPoolAdapters(_prepareFor());
+    function testDeserializeUpdateGatewayManager() public {
+        MessageLib.deserializeUpdateGatewayManager(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -218,30 +211,29 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
     }
 
-    function testInitiateSetPoolAdapters(uint64 poolId, bytes32[] memory adapterList) public pure {
-        MessageLib.InitiateSetPoolAdapters memory a =
-            MessageLib.InitiateSetPoolAdapters({poolId: poolId, adapterList: adapterList});
-        MessageLib.InitiateSetPoolAdapters memory b = MessageLib.deserializeInitiateSetPoolAdapters(a.serialize());
+    function testSetPoolAdapters(uint64 poolId, uint8 threshold, uint8 recoveryIndex, bytes32[] memory adapterList)
+        public
+        pure
+    {
+        vm.assume(adapterList.length <= 20);
+
+        MessageLib.SetPoolAdapters memory a = MessageLib.SetPoolAdapters({
+            poolId: poolId,
+            threshold: threshold,
+            recoveryIndex: recoveryIndex,
+            adapterList: adapterList
+        });
+        MessageLib.SetPoolAdapters memory b = MessageLib.deserializeSetPoolAdapters(a.serialize());
 
         assertEq(a.poolId, b.poolId);
+        assertEq(a.threshold, b.threshold);
+        assertEq(a.recoveryIndex, b.recoveryIndex);
         assertEq(a.adapterList, b.adapterList);
 
         assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
         assertEq(a.serialize().messagePoolId().raw(), 0);
         assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
-    }
-
-    function testExecuteSetPoolAdapters(uint64 poolId) public pure {
-        MessageLib.ExecuteSetPoolAdapters memory a = MessageLib.ExecuteSetPoolAdapters({poolId: poolId});
-        MessageLib.ExecuteSetPoolAdapters memory b = MessageLib.deserializeExecuteSetPoolAdapters(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-
-        assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
-        assertEq(a.serialize().messagePoolId().raw(), 0);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
-        assertEq(a.serialize().messageSourceCentrifugeId(), 0);
     }
 
     function testNotifyPool(uint64 poolId) public pure {
@@ -510,14 +502,11 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
-    function testSetRequestManager(uint64 poolId, bytes16 scId, uint128 assetId, bytes32 manager) public pure {
-        MessageLib.SetRequestManager memory a =
-            MessageLib.SetRequestManager({poolId: poolId, scId: scId, assetId: assetId, manager: manager});
+    function testSetRequestManager(uint64 poolId, bytes32 manager) public pure {
+        MessageLib.SetRequestManager memory a = MessageLib.SetRequestManager({poolId: poolId, manager: manager});
         MessageLib.SetRequestManager memory b = MessageLib.deserializeSetRequestManager(a.serialize());
 
         assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.assetId, b.assetId);
         assertEq(a.manager, b.manager);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
@@ -643,6 +632,21 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.maxPriceAge, b.maxPriceAge);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
+        assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
+    }
+
+    function testUpdateGatewayManager(uint64 poolId, bytes32 who, bool canManage) public pure {
+        MessageLib.UpdateGatewayManager memory a =
+            MessageLib.UpdateGatewayManager({poolId: poolId, who: who, canManage: canManage});
+        MessageLib.UpdateGatewayManager memory b = MessageLib.deserializeUpdateGatewayManager(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.who, b.who);
+        assertEq(a.canManage, b.canManage);
+
+        assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());

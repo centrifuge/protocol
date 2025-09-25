@@ -67,18 +67,12 @@ interface IGuardian {
         uint256 amount
     ) external;
 
-    /// @notice Initiate a gateway payload recovery on a specific chain
-    /// @dev    Only supports EVM targets today
-    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external;
+    /// @notice Set adapters into MultiAdapter. Check IMultiAdapter docs
+    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
+        external;
 
-    /// @notice Dispute a gateway paylaod recovery on a specific chain
-    /// @dev    Only supports EVM targets today
-    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external;
-
-    /// @notice Set adapters into MultiAdapter.
-    /// @dev Only registers adapters with MultiAdapter and does not configure individual adapters.
-    /// @dev For bidirectional communication, perform this setup on the remote MultiAdapter.
-    /// @param centrifugeId The destination chain ID to wire adapters for
-    /// @param adapters Array of adapter addresses to register with MultiAdapter
-    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters) external;
+    /// @notice Set a gateway manager for the global adaters.
+    /// @param who address used as manager.
+    /// @param canManage if enabled as manager
+    function updateGatewayManager(address who, bool canManage) external;
 }

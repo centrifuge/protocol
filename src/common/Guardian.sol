@@ -5,6 +5,7 @@ import {PoolId} from "./types/PoolId.sol";
 import {AssetId} from "./types/AssetId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
+import {IGateway} from "./interfaces/IGateway.sol";
 import {IGuardian, ISafe} from "./interfaces/IGuardian.sol";
 import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IRootMessageSender} from "./interfaces/IGatewaySenders.sol";
@@ -18,14 +19,22 @@ contract Guardian is IGuardian {
     IRoot public immutable root;
 
     ISafe public safe;
+    IGateway public gateway;
     IMultiAdapter public multiAdapter;
     IHubGuardianActions public hub;
     IRootMessageSender public sender;
 
-    constructor(ISafe safe_, IMultiAdapter multiAdapter_, IRoot root_, IRootMessageSender messageDispatcher_) {
-        root = root_;
-        multiAdapter = multiAdapter_;
+    constructor(
+        ISafe safe_,
+        IRoot root_,
+        IGateway gateway_,
+        IMultiAdapter multiAdapter_,
+        IRootMessageSender messageDispatcher_
+    ) {
         safe = safe_;
+        root = root_;
+        gateway = gateway_;
+        multiAdapter = multiAdapter_;
         sender = messageDispatcher_;
     }
 
@@ -48,6 +57,7 @@ contract Guardian is IGuardian {
         if (what == "safe") safe = ISafe(data);
         else if (what == "sender") sender = IRootMessageSender(data);
         else if (what == "hub") hub = IHubGuardianActions(data);
+        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else revert FileUnrecognizedParam();
 
@@ -106,18 +116,16 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external onlySafe {
-        multiAdapter.initiateRecovery(centrifugeId, adapter, hash);
+    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
+        external
+        onlySafe
+    {
+        multiAdapter.setAdapters(centrifugeId, PoolId.wrap(0), adapters, threshold, recoveryIndex);
     }
 
     /// @inheritdoc IGuardian
-    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external onlySafe {
-        multiAdapter.disputeRecovery(centrifugeId, adapter, hash);
-    }
-
-    /// @inheritdoc IGuardian
-    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters) external onlySafe {
-        multiAdapter.file("adapters", centrifugeId, adapters);
+    function updateGatewayManager(address who, bool canManage) external onlySafe {
+        gateway.updateManager(PoolId.wrap(0), who, canManage);
     }
 
     //----------------------------------------------------------------------------------------------

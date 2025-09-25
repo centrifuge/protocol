@@ -15,6 +15,8 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
     IMessageHandler public endpoint;
     uint128 public refundedValue;
 
+    bytes public lastReceivedPayload;
+
     constructor(uint16 localCentrifugeId_, IMessageHandler entrypoint_, address deployer) Auth(deployer) {
         entrypoint = entrypoint_;
         localCentrifugeId = localCentrifugeId_;
@@ -49,6 +51,7 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
         endpoint.handle(localCentrifugeId, payload);
 
         adapterData = bytes32("");
+        lastReceivedPayload = payload;
 
         (bool success,) = payable(refund).call{value: refundedValue}(new bytes(0));
         assertEq(success, true, "Refund must success");

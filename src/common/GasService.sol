@@ -20,8 +20,7 @@ contract GasService is IGasService {
     uint128 public immutable cancelUpgrade;
     uint128 public immutable recoverTokens;
     uint128 public immutable registerAsset;
-    uint128 public immutable initiateSetPoolAdapters;
-    uint128 public immutable executeSetPoolAdapters;
+    uint128 public immutable setPoolAdapters;
     uint128 public immutable request;
     uint128 public immutable notifyPool;
     uint128 public immutable notifyShareClass;
@@ -43,6 +42,7 @@ contract GasService is IGasService {
     uint128 public immutable updateShares;
     uint128 public immutable maxAssetPriceAge;
     uint128 public immutable maxSharePriceAge;
+    uint128 public immutable updateGatewayManager;
 
     constructor(uint128 maxBatchGasLimit_) {
         _maxBatchGasLimit = maxBatchGasLimit_;
@@ -52,8 +52,7 @@ contract GasService is IGasService {
         cancelUpgrade = BASE_COST + 8861;
         recoverTokens = BASE_COST + 82906;
         registerAsset = BASE_COST + 34329;
-        initiateSetPoolAdapters = BASE_COST + 1000000; // TODO
-        executeSetPoolAdapters = BASE_COST + 1000000; // TODO
+        setPoolAdapters = BASE_COST + 398010; // using MAX_ADAPTER_COUNT
         request = BASE_COST + 86084; // request deposit case
         notifyPool = BASE_COST + 1154806; // create escrow case
         notifyShareClass = BASE_COST + 1775916;
@@ -75,6 +74,7 @@ contract GasService is IGasService {
         updateShares = BASE_COST + 49968;
         maxAssetPriceAge = BASE_COST + 27260;
         maxSharePriceAge = BASE_COST + 26032;
+        updateGatewayManager = BASE_COST + 26287;
     }
 
     /// @inheritdoc IGasService
@@ -90,8 +90,7 @@ contract GasService is IGasService {
         if (kind == MessageType.CancelUpgrade) return cancelUpgrade;
         if (kind == MessageType.RecoverTokens) return recoverTokens;
         if (kind == MessageType.RegisterAsset) return registerAsset;
-        if (kind == MessageType.InitiateSetPoolAdapters) return initiateSetPoolAdapters;
-        if (kind == MessageType.ExecuteSetPoolAdapters) return executeSetPoolAdapters;
+        if (kind == MessageType.SetPoolAdapters) return setPoolAdapters;
         if (kind == MessageType.Request) return request;
         if (kind == MessageType.NotifyPool) return notifyPool;
         if (kind == MessageType.NotifyShareClass) return notifyShareClass;
@@ -117,6 +116,7 @@ contract GasService is IGasService {
         if (kind == MessageType.UpdateShares) return updateShares;
         if (kind == MessageType.MaxAssetPriceAge) return maxAssetPriceAge;
         if (kind == MessageType.MaxSharePriceAge) return maxSharePriceAge;
+        if (kind == MessageType.UpdateGatewayManager) return updateGatewayManager;
         revert InvalidMessageType(); // Unreachable
     }
 }

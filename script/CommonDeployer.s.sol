@@ -11,6 +11,7 @@ import {Guardian, ISafe} from "../src/common/Guardian.sol";
 import {MultiAdapter} from "../src/common/MultiAdapter.sol";
 import {TokenRecoverer} from "../src/common/TokenRecoverer.sol";
 import {MessageProcessor} from "../src/common/MessageProcessor.sol";
+import {CrosschainBatcher} from "../src/common/CrosschainBatcher.sol";
 import {MessageDispatcher} from "../src/common/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/common/factories/PoolEscrowFactory.sol";
 
@@ -34,6 +35,7 @@ struct CommonReport {
     MessageProcessor messageProcessor;
     MessageDispatcher messageDispatcher;
     PoolEscrowFactory poolEscrowFactory;
+    CrosschainBatcher crosschainBatcher;
 }
 
 contract CommonActionBatcher {
@@ -65,10 +67,14 @@ contract CommonActionBatcher {
         report.root.rely(address(report.messageDispatcher));
         report.gateway.rely(address(report.root));
         report.gateway.rely(address(report.messageDispatcher));
+        report.gateway.rely(address(report.messageProcessor));
+        report.gateway.rely(address(report.guardian));
         report.gateway.rely(address(report.multiAdapter));
+        report.gateway.rely(address(report.crosschainBatcher));
         report.multiAdapter.rely(address(report.root));
         report.multiAdapter.rely(address(report.guardian));
         report.multiAdapter.rely(address(report.gateway));
+        report.multiAdapter.rely(address(report.messageProcessor));
         report.messageDispatcher.rely(address(report.root));
         report.messageDispatcher.rely(address(report.guardian));
         report.messageProcessor.rely(address(report.root));
@@ -77,10 +83,13 @@ contract CommonActionBatcher {
         report.tokenRecoverer.rely(address(report.messageDispatcher));
         report.tokenRecoverer.rely(address(report.messageProcessor));
         report.poolEscrowFactory.rely(address(report.root));
+        report.crosschainBatcher.rely(address(report.root));
 
         report.gateway.file("processor", address(report.messageProcessor));
         report.gateway.file("adapter", address(report.multiAdapter));
         report.poolEscrowFactory.file("gateway", address(report.gateway));
+        report.messageProcessor.file("multiAdapter", address(report.multiAdapter));
+        report.messageProcessor.file("gateway", address(report.gateway));
     }
 
     function postEngageCommon(CommonReport memory report) public onlyDeployer {
@@ -114,6 +123,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
     PoolEscrowFactory public poolEscrowFactory;
+    CrosschainBatcher public crosschainBatcher;
 
     /**
      * @dev Generates a salt for contract deployment
@@ -188,7 +198,9 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             payable(
                 create3(
                     generateSalt("gateway"),
-                    abi.encodePacked(type(Gateway).creationCode, abi.encode(root, gasService, batcher))
+                    abi.encodePacked(
+                        type(Gateway).creationCode, abi.encode(input.centrifugeId, root, gasService, batcher)
+                    )
                 )
             )
         );
@@ -196,7 +208,9 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         multiAdapter = MultiAdapter(
             create3(
                 generateSalt("multiAdapter"),
-                abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, batcher))
+                abi.encodePacked(
+                    type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, messageProcessor, batcher)
+                )
             )
         );
 
@@ -215,7 +229,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
                 generateSalt("guardian"),
                 abi.encodePacked(
                     type(Guardian).creationCode,
-                    abi.encode(ISafe(address(batcher)), multiAdapter, root, messageDispatcher)
+                    abi.encode(ISafe(address(batcher)), root, gateway, multiAdapter, messageDispatcher)
                 )
             )
         );
@@ -224,6 +238,13 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             create3(
                 generateSalt("poolEscrowFactory"),
                 abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(root, batcher))
+            )
+        );
+
+        crosschainBatcher = CrosschainBatcher(
+            create3(
+                generateSalt("crosschainBatcher"),
+                abi.encodePacked(type(CrosschainBatcher).creationCode, abi.encode(gateway, batcher))
             )
         );
 
@@ -238,6 +259,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         register("messageDispatcher", address(messageDispatcher));
         register("poolEscrowFactory", address(poolEscrowFactory));
         register("tokenRecoverer", address(tokenRecoverer));
+        register("crosschainBatcher", address(crosschainBatcher));
     }
 
     function _postDeployCommon(CommonActionBatcher batcher) internal {
@@ -267,7 +289,8 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             multiAdapter,
             messageProcessor,
             messageDispatcher,
-            poolEscrowFactory
+            poolEscrowFactory,
+            crosschainBatcher
         );
     }
 }
