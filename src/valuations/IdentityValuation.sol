@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {IIdentityValuation} from "./interfaces/IIdentityValuation.sol";
 
-import {d18} from "../misc/types/D18.sol";
+import {d18, D18} from "../misc/types/D18.sol";
 
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
@@ -18,6 +18,11 @@ contract IdentityValuation is IIdentityValuation {
 
     constructor(IHubRegistry hubRegistry_) {
         hubRegistry = hubRegistry_;
+    }
+
+    /// @inheritdoc IValuation
+    function getPrice(PoolId poolId, ShareClassId scId, AssetId assetId) external pure returns (D18) {
+        return d18(1e18);
     }
 
     /// @inheritdoc IValuation

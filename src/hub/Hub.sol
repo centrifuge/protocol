@@ -602,17 +602,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
         // Assume price of 1.0 if the holding is not initialized yet
         if (!holdings.isInitialized(poolId, scId, assetId)) return d18(1, 1);
 
-        // NOTE: We assume symmetric prices are provided by holdings valuation
         IValuation valuation = holdings.valuation(poolId, scId, assetId);
-
-        // Retrieve amount of 1 asset unit in pool currency
-        AssetId poolCurrency = hubRegistry.currency(poolId);
-        uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
-        uint128 poolUnitAmount = (10 ** hubRegistry.decimals(poolCurrency.raw())).toUint128();
-        uint128 poolAmountPerAsset = valuation.getQuote(poolId, scId, assetId, assetUnitAmount);
-
-        // Retrieve price by normalizing by pool denomination
-        return d18(poolAmountPerAsset, poolUnitAmount);
+        return valuation.getPrice(poolId, scId, assetId);
     }
 
     //----------------------------------------------------------------------------------------------
