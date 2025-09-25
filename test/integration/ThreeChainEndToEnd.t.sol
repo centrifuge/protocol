@@ -8,12 +8,9 @@ import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 import {d18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../../src/common/types/PoolId.sol";
 import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
 import {IGateway} from "../../src/common/interfaces/IGateway.sol";
 import {MessageLib} from "../../src/common/libraries/MessageLib.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {IMultiAdapter} from "../../src/common/interfaces/IMultiAdapter.sol";
 
 import {IHub} from "../../src/hub/interfaces/IHub.sol";
 
