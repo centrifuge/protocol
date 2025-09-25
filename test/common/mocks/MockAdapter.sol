@@ -10,13 +10,13 @@ import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.so
 
 import "forge-std/Test.sol";
 
-contract MockAdapter is Auth, Mock, IAdapter {
+contract MockAdapter is Mock, IAdapter {
     IMessageHandler public immutable gateway;
 
     uint16 centrifugeId;
     mapping(bytes => uint256) public sent;
 
-    constructor(uint16 centrifugeId_, IMessageHandler gateway_) Auth(msg.sender) {
+    constructor(uint16 centrifugeId_, IMessageHandler gateway_) {
         centrifugeId = centrifugeId_;
         gateway = gateway_;
     }

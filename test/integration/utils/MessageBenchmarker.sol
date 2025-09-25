@@ -40,7 +40,7 @@ contract MessageBenchmarker is IMessageProcessor, Test {
         uint256 new_ = before - gasleft();
         uint256 higher = prev > new_ ? prev : new_;
 
-        //NOTE: If add a new entry, add first the name in the file, i.e: "newEntry" : 0
+        //NOTE: If add a new entry, add first thename in the snapshot file, i.e: "newEntry" : 0
         vm.writeJson(vm.toString(higher), FILE_PATH, string.concat("$.", name));
     }
 
