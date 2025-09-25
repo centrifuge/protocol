@@ -34,6 +34,7 @@ contract AsyncRequestManagerHarness is AsyncRequestManager {
             return d18(0);
         }
 
+        // forgefmt: disable-next-item
         if (address(vault) == address(0)) {
             return PricingLib.calculatePriceAssetPerShare(
                 address(0), shares, address(0), 0, assets, MathLib.Rounding.Down
