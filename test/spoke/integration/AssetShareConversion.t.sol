@@ -42,8 +42,8 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(shareToken.totalSupply(), 100000000000000000000);
         assertEq(vault.totalAssets(), 100000000);
         assertEq(vault.convertToShares(100000000), 100000000000000000000); // share class tokens have 12 more decimals
-            // than
-            // assets
+        // than
+        // assets
         assertEq(vault.convertToAssets(vault.convertToShares(100000000000000000000)), 100000000000000000000);
         assertEq(vault.pricePerShare(), 1e6);
 
@@ -52,8 +52,8 @@ contract AssetShareConversionTest is BaseTest {
 
         assertEq(vault.totalAssets(), 120000000);
         assertEq(vault.convertToShares(120000000), 100000000000000000000); // share class tokens have 12 more decimals
-            // than
-            // assets
+        // than
+        // assets
         assertEq(vault.convertToAssets(vault.convertToShares(120000000000000000000)), 120000000000000000000);
         assertEq(vault.pricePerShare(), 1.2e6);
 
@@ -64,7 +64,7 @@ contract AssetShareConversionTest is BaseTest {
         //       we now have 2 * 1.2 = 2.4 units of assets per share
         assertEq(vault.totalAssets(), 240000000);
         assertEq(vault.convertToShares(240000000), 100000000000000000000); // share class tokens have 12 more decimals
-            // than
+        // than
         // assets
         assertEq(vault.convertToAssets(vault.convertToShares(240000000000000000000)), 240000000000000000000);
         assertEq(vault.pricePerShare(), 2.4e6);

@@ -36,7 +36,14 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IUpdateContract
-    function update(PoolId poolId_, ShareClassId, /* scId */ bytes calldata payload) external {
+    function update(
+        PoolId poolId_,
+        ShareClassId,
+        /* scId */
+        bytes calldata payload
+    )
+        external
+    {
         require(poolId == poolId_, InvalidPoolId());
         require(msg.sender == contractUpdater, NotAuthorized());
 

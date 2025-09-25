@@ -35,9 +35,7 @@ interface IDepositManager {
     ///         The shares required to fulfill the mint have already been minted and transferred to the escrow on
     ///         fulfillDepositRequest.
     ///         Receiver has to pass all the share token restrictions in order to receive the shares.
-    function mint(IBaseVault vault, uint256 shares, address receiver, address owner)
-        external
-        returns (uint256 assets);
+    function mint(IBaseVault vault, uint256 shares, address receiver, address owner) external returns (uint256 assets);
 
     /// @notice Returns the max amount of assets based on the unclaimed amount of shares after at least one successful
     ///         deposit order fulfillment on the corresponding CP instance.
@@ -118,9 +116,7 @@ interface IRedeemManager {
     ///         on fulfillRedeemRequest.
     ///         The assets required to fulfill the redemption have already been reserved in escrow on
     ///         fulfillRedeemtRequest.
-    function redeem(IBaseVault vault, uint256 shares, address receiver, address owner)
-        external
-        returns (uint256 assets);
+    function redeem(IBaseVault vault, uint256 shares, address receiver, address owner) external returns (uint256 assets);
 
     /// @notice Processes owner's asset withdrawal after the epoch has been executed on the corresponding CP instance
     /// and the redeem order

@@ -31,8 +31,9 @@ contract TestUpdateContractMessageLibIdentities is Test {
     }
 
     function testUpdateContractUpdateAddress(bytes32 kind, uint128 assetId, bytes32 what, bool isEnabled) public pure {
-        UpdateContractMessageLib.UpdateContractUpdateAddress memory a = UpdateContractMessageLib
-            .UpdateContractUpdateAddress({kind: kind, assetId: assetId, what: what, isEnabled: isEnabled});
+        UpdateContractMessageLib.UpdateContractUpdateAddress memory a = UpdateContractMessageLib.UpdateContractUpdateAddress({
+            kind: kind, assetId: assetId, what: what, isEnabled: isEnabled
+        });
         UpdateContractMessageLib.UpdateContractUpdateAddress memory b =
             UpdateContractMessageLib.deserializeUpdateContractUpdateAddress(a.serialize());
 

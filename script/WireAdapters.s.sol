@@ -72,22 +72,24 @@ contract WireAdapters is Script {
 
             // Wire WormholeAdapter
             if (localWormholeAddr != address(0)) {
-                IWormholeAdapter(localWormholeAddr).wire(
-                    remoteCentrifugeId,
-                    uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
-                    vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter")
-                );
+                IWormholeAdapter(localWormholeAddr)
+                    .wire(
+                        remoteCentrifugeId,
+                        uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
+                        vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter")
+                    );
 
                 console.log("Wired WormholeAdapter from", localNetwork, "to", remoteNetwork);
             }
 
             // Wire AxelarAdapter
             if (localAxelarAddr != address(0)) {
-                IAxelarAdapter(localAxelarAddr).wire(
-                    remoteCentrifugeId,
-                    vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
-                    vm.toString(vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter"))
-                );
+                IAxelarAdapter(localAxelarAddr)
+                    .wire(
+                        remoteCentrifugeId,
+                        vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
+                        vm.toString(vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter"))
+                    );
 
                 console.log("Wired AxelarAdapter from", localNetwork, "to", remoteNetwork);
             }

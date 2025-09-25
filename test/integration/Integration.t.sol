@@ -110,9 +110,8 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
         returns (bytes memory)
     {
         return UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
-            assetId: assetId.raw(),
-            maxReserve: maxReserve
-        }).serialize();
+                assetId: assetId.raw(), maxReserve: maxReserve
+            }).serialize();
     }
 }
 
