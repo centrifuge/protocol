@@ -42,7 +42,13 @@ contract TestableBaseTransferHook is BaseTransferHook {
         address deployer
     ) BaseTransferHook(root_, redeemSource_, depositTarget_, crosschainSource_, deployer) {}
 
-    function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)
+    function checkERC20Transfer(
+        address from,
+        address to,
+        uint256,
+        /* value */
+        HookData calldata hookData
+    )
         public
         view
         override
@@ -393,8 +399,9 @@ contract BaseTransferHookTestMember is BaseTransferHookTestBase {
 
 contract BaseTransferHookTestUpdateRestriction is BaseTransferHookTestBase {
     function testUpdateRestrictionMember() public {
-        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate = UpdateRestrictionMessageLib
-            .UpdateRestrictionMember({user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP});
+        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate = UpdateRestrictionMessageLib.UpdateRestrictionMember({
+            user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP
+        });
 
         bytes memory payload = UpdateRestrictionMessageLib.serialize(memberUpdate);
 
@@ -444,8 +451,9 @@ contract BaseTransferHookTestUpdateRestriction is BaseTransferHookTestBase {
     }
 
     function testUpdateRestrictionUnauthorized() public {
-        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate = UpdateRestrictionMessageLib
-            .UpdateRestrictionMember({user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP});
+        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate = UpdateRestrictionMessageLib.UpdateRestrictionMember({
+            user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP
+        });
 
         bytes memory payload = UpdateRestrictionMessageLib.serialize(memberUpdate);
 

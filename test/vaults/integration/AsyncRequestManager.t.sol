@@ -35,8 +35,9 @@ contract AsyncRequestManagerHarness is AsyncRequestManager {
         }
 
         if (address(vault) == address(0)) {
-            return
-                PricingLib.calculatePriceAssetPerShare(address(0), shares, address(0), 0, assets, MathLib.Rounding.Down);
+            return PricingLib.calculatePriceAssetPerShare(
+                address(0), shares, address(0), 0, assets, MathLib.Rounding.Down
+            );
         }
 
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
