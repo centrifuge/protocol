@@ -9,7 +9,7 @@ import {ShareClassId} from "../types/ShareClassId.sol";
 
 /// Interface for valuation of assets, denominated in the pool currency.
 interface IValuation {
-    /// @notice TODO
+    /// @notice Returns the price as a fixed point number with 18 decimals.
     function getPrice(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (D18);
 
     /// @notice Returns the value of baseAmount of base in quote terms, e.g. 10 ETH (base) in USDC (quote).
