@@ -115,7 +115,6 @@ interface IHubMessageSender is ILocalCentrifugeId {
 
     /// @notice Creates and send the message
     function sendExecuteTransferShares(
-        uint16 originCentrifugeId,
         uint16 targetCentrifugeId,
         PoolId poolId,
         ShareClassId scId,

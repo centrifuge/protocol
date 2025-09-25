@@ -117,6 +117,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         // B: Initiate transfer of shares
         vm.expectEmit();
         emit ISpoke.InitiateTransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A, INVESTOR_A.toBytes32(), amount);
+        vm.expectEmit();
         emit IHub.ForwardTransferShares(sB.centrifugeId, sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount);
 
         // If hub is not source, then message will be pending as unpaid on hub until repaid
@@ -143,21 +144,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         // If hub is not source, then message will be pending as unpaid on hub until repaid
         if (direction == CrossChainDirection.WithIntermediaryHub) {
             assertEq(shareTokenC.balanceOf(INVESTOR_A), 0, "Share transfer not executed due to unpaid message");
-            bytes memory message = MessageLib.ExecuteTransferShares({
-                poolId: PoolId.unwrap(POOL_A),
-                scId: ShareClassId.unwrap(SC_1),
-                receiver: INVESTOR_A.toBytes32(),
-                amount: amount
-            }).serialize();
-
-            // A: Repay for unpaid ExecuteTransferShares message on A to trigger sending it to C if A != C
-            vm.expectEmit(true, false, false, false);
-            emit IMultiAdapter.HandlePayload(h.centrifugeId, bytes32(""), bytes(""), adapterCToA);
-            vm.expectEmit();
-            emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, amount);
-
-            vm.startPrank(ANY);
-            h.gateway.repay{value: GAS}(sC.centrifugeId, message);
+            h.gateway.repay{value: GAS}(sC.centrifugeId, _getLastUnpaidMessage());
         }
 
         // C: Verify shares were minted
