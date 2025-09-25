@@ -229,7 +229,7 @@ contract BalanceSheetTestMulticall is BalanceSheetTest {
     function testMulticall() public {
         vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.isBatching.selector), abi.encode(false));
         vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.startBatching.selector), abi.encode());
-        vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.endBatching.selector), abi.encode());
+        vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.endBatching.selector), abi.encode(0));
         _mockEscrowDeposit(erc20, 0, AMOUNT);
 
         bytes[] memory calls = new bytes[](2);
