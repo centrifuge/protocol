@@ -428,15 +428,16 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             // Spoke chain X => Hub chain Y => Spoke chain Y
             spoke.executeTransferShares(poolId, scId, receiver, amount);
         } else {
-            bytes memory message = MessageLib.ExecuteTransferShares({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                receiver: receiver,
-                amount: amount
-            }).serialize();
-
-            // Spoke chain X => Hub chain Y => Spoke chain Z
-            return gateway.send(targetCentrifugeId, message, extraGasLimit);
+            return gateway.send(
+                targetCentrifugeId,
+                MessageLib.ExecuteTransferShares({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    receiver: receiver,
+                    amount: amount
+                }).serialize(),
+                extraGasLimit
+            );
         }
     }
 

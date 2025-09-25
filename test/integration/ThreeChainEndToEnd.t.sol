@@ -144,6 +144,9 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         // If hub is not source, then message will be pending as unpaid on hub until repaid
         if (direction == CrossChainDirection.WithIntermediaryHub) {
             assertEq(shareTokenC.balanceOf(INVESTOR_A), 0, "Share transfer not executed due to unpaid message");
+
+            vm.expectEmit();
+            emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, amount);
             h.gateway.repay{value: GAS}(sC.centrifugeId, _getLastUnpaidMessage());
         }
 
