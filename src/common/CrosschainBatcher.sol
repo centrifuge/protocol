@@ -2,10 +2,9 @@
 pragma solidity 0.8.28;
 
 import {IGateway} from "./interfaces/IGateway.sol";
+import {ICrosschainBatcher} from "./interfaces/ICrosschainBatcher.sol";
 
 import {Auth} from "../misc/Auth.sol";
-
-import {ICrosschainBatcher} from "./interfaces/ICrosschainBatcher.sol";
 
 /// @title  CrosschainBatcher
 /// @dev    Helper contract that enables integrations to automatically batch multiple messages. Should be used like:
