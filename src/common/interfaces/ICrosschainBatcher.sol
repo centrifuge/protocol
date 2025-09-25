@@ -27,7 +27,7 @@ interface ICrosschainBatcher {
     ///         so any method call inside that requires messaging will be batched.
     /// @param  data encoding data for the callback method
     /// @return cost the total cost of the batch sent
-    function batch(bytes memory data) external payable returns (uint256 cost);
+    function execute(bytes memory data) external payable returns (uint256 cost);
 
     /// @notice Returns the current caller to withBatch. Only available if it's called inside withBatch.
     function caller() external returns (address);

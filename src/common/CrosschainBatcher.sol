@@ -7,16 +7,17 @@ import {ICrosschainBatcher} from "./interfaces/ICrosschainBatcher.sol";
 import {Auth} from "../misc/Auth.sol";
 
 /// @title  CrosschainBatcher
-/// @dev    Helper contract that enables integrations to automatically batch multiple messages. Should be used like:
+/// @dev    Helper contract that enables integrations to automatically batch multiple cross-chain tansactions.
+///         Should be used like:
 ///         ```
 ///         contract Integration {
 ///             ICrosschainBatcher batcher;
 ///
 ///             function doSomething(PoolId poolId) external {
-///                 uint256 cost = batcher.batch(abi.encodeWithSelector(Integration._execute.selector, poolId));
+///                 batcher.execute(abi.encodeWithSelector(Integration.callback.selector, poolId));
 ///             }
 ///
-///             function _execute(PoolId poolId) external {
+///             function callback(PoolId poolId) external {
 ///                 require(batcher.sender() == address(this));
 ///                 // Call several hub, balance sheet, or spoke methods that trigger cross-chain transactions
 ///             }
@@ -38,7 +39,7 @@ contract CrosschainBatcher is Auth, ICrosschainBatcher {
     }
 
     /// @inheritdoc ICrosschainBatcher
-    function batch(bytes memory data) external payable returns (uint256 cost) {
+    function execute(bytes memory data) external payable returns (uint256 cost) {
         require(caller == address(0), AlreadyBatching());
 
         gateway.startBatching();

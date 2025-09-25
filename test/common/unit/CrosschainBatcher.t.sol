@@ -58,7 +58,7 @@ contract CrosschainBatcherTestWithBatch is CrosschainBatcherTest {
     }
 
     function _nested() external payable {
-        batcher.batch(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._nested.selector));
+        batcher.execute(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._nested.selector));
     }
 
     function _emptyError() external payable {
@@ -68,20 +68,20 @@ contract CrosschainBatcherTestWithBatch is CrosschainBatcherTest {
     /// forge-config: default.isolate = true
     function testErrAlreadyBatching() public {
         vm.expectRevert(ICrosschainBatcher.AlreadyBatching.selector);
-        batcher.batch(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._nested.selector));
+        batcher.execute(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._nested.selector));
     }
 
     /// forge-config: default.isolate = true
     function testErrCallFailedWithEmptyRevert() public {
         vm.expectRevert(ICrosschainBatcher.CallFailedWithEmptyRevert.selector);
-        batcher.batch(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._emptyError.selector));
+        batcher.execute(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._emptyError.selector));
     }
 
     /// forge-config: default.isolate = true
     function testWithCallback() public {
         vm.prank(ANY);
         vm.deal(ANY, PAYMENT);
-        uint256 cost = batcher.batch{value: PAYMENT}(
+        uint256 cost = batcher.execute{value: PAYMENT}(
             abi.encodeWithSelector(CrosschainBatcherTestWithBatch._success.selector, true, 1)
         );
         assertEq(cost, COST);
