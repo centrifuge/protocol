@@ -48,7 +48,7 @@ uint128 constant MAX_REQUEST_AMOUNT_SHARES = type(uint128).max / 1e10;
 uint128 constant SHARE_HOOK_GAS = 100000;
 
 contract HubRegistryMock {
-    mapping(PoolId => mapping(address user => bool)) manager;
+    mapping(PoolId => mapping(address user => bool)) public manager;
 
     function decimals(PoolId) external pure returns (uint8) {
         return DECIMALS_POOL;
