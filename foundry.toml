@@ -27,7 +27,7 @@ ignored_warnings_from = [
   "src/misc/ReentrancyProtection.sol", # Issue: https://github.com/ethereum/solidity/issues/14359
 ]
 
-[lint]
+[profile.default.lint]
 severity = ["high"]
 exclude_lints = ["erc20-unchecked-transfer", "incorrect-shift"]
 
@@ -100,7 +100,7 @@ int_types = "long"
 multiline_func_header = "attributes_first"
 quote_style = "double"
 number_underscore = "preserve"
-wrap_comments = true
+wrap_comments = false
 ignore = [
   "test/*.sol"
 ]
