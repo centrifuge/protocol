@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {D18} from "../../../src/misc/types/D18.sol";
+import {d18, D18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
@@ -16,7 +16,6 @@ import {ISnapshotHook} from "../../../src/common/interfaces/ISnapshotHook.sol";
 
 import {Hub} from "../../../src/hub/Hub.sol";
 import {IHoldings} from "../../../src/hub/interfaces/IHoldings.sol";
-import {IHubHelpers} from "../../../src/hub/interfaces/IHubHelpers.sol";
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
 import {IHub, VaultUpdateKind} from "../../../src/hub/interfaces/IHub.sol";
 import {IAccounting, JournalEntry} from "../../../src/hub/interfaces/IAccounting.sol";
@@ -34,14 +33,13 @@ contract TestCommon is Test {
     JournalEntry[] EMPTY;
 
     IHubRegistry immutable hubRegistry = IHubRegistry(makeAddr("HubRegistry"));
-    IHubHelpers immutable hubHelpers = IHubHelpers(makeAddr("HubHelpers"));
     IHoldings immutable holdings = IHoldings(makeAddr("Holdings"));
     IAccounting immutable accounting = IAccounting(makeAddr("Accounting"));
     IMultiAdapter immutable multiAdapter = IMultiAdapter(makeAddr("MultiAdapter"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
 
-    Hub hub = new Hub(gateway, holdings, hubHelpers, accounting, hubRegistry, multiAdapter, scm, address(this));
+    Hub hub = new Hub(gateway, holdings, accounting, hubRegistry, multiAdapter, scm, address(this));
 
     function setUp() public {
         vm.mockCall(
@@ -51,7 +49,7 @@ contract TestCommon is Test {
         vm.mockCall(address(accounting), abi.encodeWithSelector(accounting.unlock.selector, POOL_A), abi.encode(true));
 
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatching.selector), abi.encode());
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatching.selector), abi.encode());
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatching.selector), abi.encode(0));
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.isBatching.selector), abi.encode(true));
     }
 }
@@ -65,24 +63,6 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         hub.createPool(PoolId.wrap(0), address(0), AssetId.wrap(0));
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.registerAsset(AssetId.wrap(0), 0);
-
-        bytes memory EMPTY_BYTES;
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.request(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), EMPTY_BYTES);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.updateHoldingAmount(
-            CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false, true, 0
-        );
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.updateShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), 0, true, true, 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.initiateTransferShares(CHAIN_A, CHAIN_B, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""), 0, 0);
 
         vm.stopPrank();
     }
@@ -244,5 +224,17 @@ contract TestInitializeLiability is TestCommon {
         vm.prank(ADMIN);
         vm.expectRevert(IHubRegistry.AssetNotFound.selector);
         hub.initializeLiability(POOL_A, SC_A, ASSET_A, IValuation(address(1)), AccountId.wrap(1), AccountId.wrap(1));
+    }
+}
+
+contract TestPricePoolPerAsset is TestCommon {
+    function testPriceWithoutHoldins() public {
+        vm.mockCall(
+            address(holdings),
+            abi.encodeWithSelector(IHoldings.isInitialized.selector, POOL_A, SC_A, ASSET_A),
+            abi.encode(false)
+        );
+
+        assertEq(hub.pricePoolPerAsset(POOL_A, SC_A, ASSET_A).raw(), d18(1, 1).raw());
     }
 }
