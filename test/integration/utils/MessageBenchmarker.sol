@@ -3,22 +3,19 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
-import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
 
 import "forge-std/Test.sol";
 
 string constant FILE_PATH = "snapshots/MessageGasLimits.json";
 
-contract MessageBenchmarker is IMessageHandler, IAdapter, Test {
+contract MessageBenchmarker is IMessageHandler, Test {
     using MessageLib for *;
 
     IMessageHandler public immutable messageHandler;
-    IAdapter public immutable adapter;
 
-    constructor(IMessageHandler messageHandler_, IAdapter adapter_) {
+    constructor(IMessageHandler messageHandler_) {
         messageHandler = messageHandler_;
-        adapter = adapter_;
     }
 
     /// @inheritdoc IMessageHandler
@@ -38,20 +35,6 @@ contract MessageBenchmarker is IMessageHandler, IAdapter, Test {
 
         // NOTE: If add a new entry, add first thename in the snapshot file, i.e: "newEntry" : 0
         vm.writeJson(vm.toString(higher), FILE_PATH, string.concat("$.", name));
-    }
-
-    /// @inheritdoc IAdapter
-    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund)
-        external
-        payable
-        returns (bytes32)
-    {
-        return adapter.send{value: msg.value}(centrifugeId, payload, gasLimit, refund);
-    }
-
-    /// @inheritdoc IAdapter
-    function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256) {
-        return adapter.estimate(centrifugeId, payload, gasLimit);
     }
 
     function _getName(bytes calldata message) internal pure returns (string memory) {

@@ -276,11 +276,9 @@ contract EndToEndDeployment is Test {
 
     function _attachBenchmark(FullDeployer deploy, FullActionBatcher batcher) internal {
         vm.startPrank(address(batcher));
-        MessageBenchmarker benchmarker = new MessageBenchmarker(deploy.gateway(), deploy.multiAdapter());
+        MessageBenchmarker benchmarker = new MessageBenchmarker(deploy.gateway());
         deploy.gateway().rely(address(benchmarker));
-        deploy.multiAdapter().rely(address(benchmarker));
         deploy.multiAdapter().file("gateway", address(benchmarker));
-        deploy.gateway().file("adapter", address(benchmarker));
         vm.stopPrank();
     }
 
