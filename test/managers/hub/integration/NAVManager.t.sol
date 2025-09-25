@@ -11,8 +11,7 @@ import {ISnapshotHook} from "../../../../src/common/interfaces/ISnapshotHook.sol
 
 import "../../../hub/integration/BaseTest.sol";
 
-import {INAVManager, INAVHook} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
-import {ISimplePriceManager} from "../../../../src/managers/hub/interfaces/ISimplePriceManager.sol";
+import {INAVHook} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
 
 contract NAVManagerIntegrationTest is BaseTest {
     PoolId constant POOL_A = PoolId.wrap(1);
@@ -76,8 +75,6 @@ contract NAVManagerIntegrationTest is BaseTest {
         valuation.setPrice(POOL_A, scId, asset2, d18(1, 1));
         valuation.setPrice(POOL_A, scId, asset3, d18(1, 1));
         valuation.setPrice(POOL_A, scId, liabilityAsset, d18(1, 1));
-
-        vm.deal(address(simplePriceManager), 1 ether);
     }
 
     /// forge-config: default.isolate = true
@@ -101,8 +98,8 @@ contract NAVManagerIntegrationTest is BaseTest {
 
         vm.stopPrank();
 
-        vm.prank(address(root));
-        hub.updateHoldingAmount(
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(
             CHAIN_CP, POOL_A, scId, asset3, uint128(500 * 10 ** asset3Decimals), d18(1, 1), true, false, 0
         );
 
@@ -110,8 +107,8 @@ contract NAVManagerIntegrationTest is BaseTest {
         vm.expectCall(address(hub), abi.encodeWithSelector(hub.notifySharePrice.selector, POOL_A, scId, CHAIN_CP));
         vm.expectCall(address(hub), abi.encodeWithSelector(hub.notifySharePrice.selector, POOL_A, scId, CHAIN_CV));
 
-        vm.prank(address(root));
-        hub.updateShares(CHAIN_CP, POOL_A, scId, 500e18, true, true, 1);
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateShares(CHAIN_CP, POOL_A, scId, 500e18, true, true, 1);
 
         uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
         uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
@@ -165,7 +162,7 @@ contract NAVManagerIntegrationTest is BaseTest {
         assertEq(globalIssuance, 3800e18);
 
         vm.prank(address(root));
-        hub.initiateTransferShares(CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32("receiver"), 130e18, 0);
+        hubHandler.initiateTransferShares(CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32("receiver"), 130e18, 0);
 
         navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
         navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
@@ -188,8 +185,8 @@ contract NAVManagerIntegrationTest is BaseTest {
             address(hub),
             abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(3600e18) / d18(3800e18))
         );
-        vm.prank(address(root));
-        hub.updateHoldingAmount(CHAIN_CP, POOL_A, scId, liabilityAsset, 50e18, d18(1, 1), true, true, 2);
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(CHAIN_CP, POOL_A, scId, liabilityAsset, 50e18, d18(1, 1), true, true, 2);
 
         navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
         navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
@@ -208,10 +205,10 @@ contract NAVManagerIntegrationTest is BaseTest {
         assertEq(globalIssuance, 3800e18);
 
         // Decrease liability by paying with a cash asset
-        vm.prank(address(root));
-        hub.updateHoldingAmount(CHAIN_CP, POOL_A, scId, liabilityAsset, 50e18, d18(1, 1), false, false, 3);
-        vm.prank(address(root));
-        hub.updateHoldingAmount(
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(CHAIN_CP, POOL_A, scId, liabilityAsset, 50e18, d18(1, 1), false, false, 3);
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(
             CHAIN_CP, POOL_A, scId, asset3, uint128(100 * 10 ** asset3Decimals), d18(1, 2), false, true, 4
         );
 

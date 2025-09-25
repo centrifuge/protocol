@@ -12,8 +12,8 @@ import {IValuation} from "../../common/interfaces/IValuation.sol";
 import {ISnapshotHook} from "../../common/interfaces/ISnapshotHook.sol";
 import {AccountId, withCentrifugeId, withAssetId} from "../../common/types/AccountId.sol";
 
-import {IHub, AccountType} from "../../hub/interfaces/IHub.sol";
 import {IHoldings} from "../../hub/interfaces/IHoldings.sol";
+import {IHub, AccountType} from "../../hub/interfaces/IHub.sol";
 import {IAccounting} from "../../hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "../../hub/interfaces/IHubRegistry.sol";
 

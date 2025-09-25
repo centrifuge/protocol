@@ -11,13 +11,12 @@ import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 import "../../../spoke/integration/BaseTest.sol";
 
 import {BalanceSheet} from "../../../../src/spoke/BalanceSheet.sol";
-import {UpdateContractMessageLib} from "../../../../src/spoke/libraries/UpdateContractMessageLib.sol";
-
-import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
-
 import {VaultDecoder} from "../../../../src/managers/spoke/decoders/VaultDecoder.sol";
+import {UpdateContractMessageLib} from "../../../../src/spoke/libraries/UpdateContractMessageLib.sol";
 import {MerkleProofManager, PolicyLeaf, Call} from "../../../../src/managers/spoke/MerkleProofManager.sol";
 import {IMerkleProofManager, IERC7751} from "../../../../src/managers/spoke/interfaces/IMerkleProofManager.sol";
+
+import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {MerkleTreeLib} from "../libraries/MerkleTreeLib.sol";
 

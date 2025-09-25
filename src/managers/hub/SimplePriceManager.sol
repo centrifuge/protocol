@@ -4,24 +4,23 @@ pragma solidity 0.8.28;
 import {INAVHook} from "./interfaces/INAVManager.sol";
 import {ISimplePriceManager} from "./interfaces/ISimplePriceManager.sol";
 
-import {D18, d18} from "../../misc/types/D18.sol";
-import {IMulticall} from "../../misc/interfaces/IMulticall.sol";
 import {Auth} from "../../misc/Auth.sol";
+import {D18, d18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../../common/types/PoolId.sol";
 import {AssetId} from "../../common/types/AssetId.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
-import {MAX_MESSAGE_COST} from "../../common/interfaces/IGasService.sol";
-import {IGateway} from "../../common/interfaces/IGateway.sol";
+import {ICrosschainBatcher} from "../../common/interfaces/ICrosschainBatcher.sol";
 
 import {IHub} from "../../hub/interfaces/IHub.sol";
 import {IHubRegistry} from "../../hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "../../hub/interfaces/IShareClassManager.sol";
+
 import {IBatchRequestManager} from "../../vaults/interfaces/IBatchRequestManager.sol";
 
 /// @notice Share price calculation manager for single share class pools.
 contract SimplePriceManager is ISimplePriceManager, Auth {
-    IGateway public gateway;
+    ICrosschainBatcher public crosschainBatcher;
     IHub public immutable hub;
     IHubRegistry public immutable hubRegistry;
     IShareClassManager public immutable shareClassManager;
@@ -30,9 +29,9 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     mapping(PoolId poolId => mapping(uint16 centrifugeId => NetworkMetrics)) public networkMetrics;
     mapping(PoolId poolId => mapping(address => bool)) public manager;
 
-    constructor(IHub hub_, address deployer) Auth(deployer) {
+    constructor(IHub hub_, ICrosschainBatcher crosschainBatcher_, address deployer) Auth(deployer) {
         hub = hub_;
-        gateway = hub_.gateway();
+        crosschainBatcher = crosschainBatcher_;
         hubRegistry = hub_.hubRegistry();
         shareClassManager = hub_.shareClassManager();
 
@@ -57,7 +56,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
 
     /// @inheritdoc ISimplePriceManager
     function file(bytes32 what, address data) external auth {
-        if (what == "gateway") gateway = IGateway(data);
+        if (what == "crosschainBatcher") crosschainBatcher = ICrosschainBatcher(data);
         else revert ISimplePriceManager.FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -85,6 +84,17 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
 
     /// @inheritdoc INAVHook
     function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) external auth {
+        crosschainBatcher.execute(
+            abi.encodeWithSignature(
+                "onUpdateCallback(uint64,bytes16,uint16,uint128)", poolId, scId, centrifugeId, netAssetValue
+            )
+        );
+    }
+
+    function onUpdateCallback(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue)
+        external
+        auth
+    {
         NetworkMetrics storage networkMetrics_ = networkMetrics[poolId][centrifugeId];
         Metrics storage metrics_ = metrics[poolId];
         uint128 issuance = shareClassManager.issuance(scId, centrifugeId);
@@ -98,7 +108,6 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         networkMetrics_.issuance = issuance;
 
         uint256 networkCount = metrics_.networks.length;
-        gateway.startBatching();
         hub.updateSharePrice(poolId, scId, price);
 
         for (uint256 i; i < networkCount; i++) {
@@ -143,7 +152,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
 
         require(nowDepositEpochId == nowIssueEpochId, MismatchedEpochs());
 
-        D18 pricePoolPerAsset = hub.hubHelpers().pricePoolPerAsset(poolId, scId, depositAssetId);
+        D18 pricePoolPerAsset = hub.pricePoolPerAsset(poolId, scId, depositAssetId);
         D18 navPoolPerShare = _navPerShare(poolId);
         requestManager.approveDeposits(
             poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset
@@ -166,7 +175,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
 
         require(nowRedeemEpochId == nowRevokeEpochId, MismatchedEpochs());
 
-        D18 pricePoolPerAsset = hub.hubHelpers().pricePoolPerAsset(poolId, scId, payoutAssetId);
+        D18 pricePoolPerAsset = hub.pricePoolPerAsset(poolId, scId, payoutAssetId);
         D18 navPoolPerShare = _navPerShare(poolId);
         requestManager.approveRedeems(
             poolId, scId, payoutAssetId, nowRedeemEpochId, approvedShareAmount, pricePoolPerAsset
@@ -179,13 +188,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     //----------------------------------------------------------------------------------------------
 
     function _navPerShare(PoolId poolId) internal view returns (D18) {
-        return metrics[poolId].issuance == 0
-            ? d18(1, 1)
-            : d18(metrics[poolId].netAssetValue) / d18(metrics[poolId].issuance);
-    }
-
-    // TODO: remove when not needed anymore
-    receive() external payable {
-        // Accept ETH refunds from multicall
+        Metrics memory metrics_ = metrics[poolId];
+        return metrics_.issuance == 0 ? d18(1, 1) : d18(metrics_.netAssetValue) / d18(metrics_.issuance);
     }
 }

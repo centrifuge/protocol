@@ -6,22 +6,37 @@ import {Multicall} from "../../../../src/misc/Multicall.sol";
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../../../src/common/types/PoolId.sol";
+import {IGateway} from "../../../../src/common/interfaces/IGateway.sol";
 import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/common/types/AssetId.sol";
+import {ICrosschainBatcher} from "../../../../src/common/interfaces/ICrosschainBatcher.sol";
 
-import {IGateway} from "../../../../src/common/interfaces/IGateway.sol";
-import {IBatchRequestManager} from "../../../../src/vaults/interfaces/IBatchRequestManager.sol";
 import {IHub} from "../../../../src/hub/interfaces/IHub.sol";
 import {IHubRegistry} from "../../../../src/hub/interfaces/IHubRegistry.sol";
-import {IHubHelpers} from "../../../../src/hub/interfaces/IHubHelpers.sol";
-import {IShareClassManager} from "../../../../src/hub/interfaces/IShareClassManager.sol";
-
-import {ISimplePriceManager} from "../../../../src/managers/hub/interfaces/ISimplePriceManager.sol";
 import {SimplePriceManager} from "../../../../src/managers/hub/SimplePriceManager.sol";
+import {IShareClassManager} from "../../../../src/hub/interfaces/IShareClassManager.sol";
+import {ISimplePriceManager} from "../../../../src/managers/hub/interfaces/ISimplePriceManager.sol";
+
+import {IBatchRequestManager} from "../../../../src/vaults/interfaces/IBatchRequestManager.sol";
 
 import "forge-std/Test.sol";
 
 contract IsContract {}
+
+contract MockCrosschainBatcher {
+    function execute(bytes memory data) external payable returns (uint256 cost) {
+        (bool success, bytes memory returnData) = msg.sender.call{value: msg.value}(data);
+        if (!success) {
+            uint256 length = returnData.length;
+            require(length != 0, "Empty revert");
+
+            assembly ("memory-safe") {
+                revert(add(32, returnData), length)
+            }
+        }
+        return 0;
+    }
+}
 
 contract MockHub is Multicall {
     function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external payable {}
@@ -45,6 +60,7 @@ contract SimplePriceManagerTest is Test {
     address shareClassManager = address(new IsContract());
     address batchRequestManager = address(new IsContract());
     address hubHelpers = address(new IsContract());
+    address crosschainBatcher = address(new MockCrosschainBatcher());
 
     address unauthorized = makeAddr("unauthorized");
     address hubManager = makeAddr("hubManager");
@@ -63,9 +79,11 @@ contract SimplePriceManagerTest is Test {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.shareClassManager.selector), abi.encode(shareClassManager));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.hubRegistry.selector), abi.encode(hubRegistry));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.gateway.selector), abi.encode(gateway));
-        vm.mockCall(hub, abi.encodeWithSelector(IHub.hubHelpers.selector), abi.encode(hubHelpers));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateSharePrice.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.notifySharePrice.selector), abi.encode(uint256(0)));
+        vm.mockCall(
+            hub, abi.encodeWithSelector(IHub.pricePoolPerAsset.selector, POOL_A, SC_1, asset1), abi.encode(d18(1, 1))
+        );
 
         vm.mockCall(gateway, abi.encodeWithSelector(IGateway.startBatching.selector), abi.encode());
         vm.mockCall(gateway, abi.encodeWithSelector(IGateway.endBatching.selector), abi.encode());
@@ -139,18 +157,14 @@ contract SimplePriceManagerTest is Test {
             abi.encodeWithSelector(IBatchRequestManager.revokeShares.selector),
             abi.encode(uint256(0))
         );
-
-        vm.mockCall(
-            hubHelpers,
-            abi.encodeWithSelector(IHubHelpers.pricePoolPerAsset.selector, POOL_A, SC_1, asset1),
-            abi.encode(d18(1, 1))
-        );
     }
 
     function _deployManager() internal {
-        priceManager = new SimplePriceManager(IHub(hub), auth);
+        priceManager = new SimplePriceManager(IHub(hub), ICrosschainBatcher(crosschainBatcher), auth);
         vm.prank(auth);
         priceManager.rely(caller);
+        vm.prank(auth);
+        priceManager.rely(crosschainBatcher);
 
         vm.prank(hubManager);
         priceManager.updateManager(POOL_A, manager, true);
@@ -241,16 +255,16 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
 }
 
 contract SimplePriceManagerFileTests is SimplePriceManagerTest {
-    function testFileGateway() public {
-        address newGateway = makeAddr("newGateway");
+    function testFileCrosschainBatcher() public {
+        address newCrosschainBatcher = makeAddr("newCrosschainBatcher");
 
         vm.expectEmit(true, false, true, true);
-        emit ISimplePriceManager.File("gateway", newGateway);
+        emit ISimplePriceManager.File("crosschainBatcher", newCrosschainBatcher);
 
         vm.prank(auth);
-        priceManager.file("gateway", newGateway);
+        priceManager.file("crosschainBatcher", newCrosschainBatcher);
 
-        assertEq(address(priceManager.gateway()), newGateway);
+        assertEq(address(priceManager.crosschainBatcher()), newCrosschainBatcher);
     }
 
     function testFileUnrecognizedParam() public {
@@ -262,11 +276,11 @@ contract SimplePriceManagerFileTests is SimplePriceManagerTest {
     }
 
     function testFileUnauthorized() public {
-        address newGateway = makeAddr("newGateway");
+        address newCrosschainBatcher = makeAddr("newCrosschainBatcher");
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(unauthorized);
-        priceManager.file("gateway", newGateway);
+        priceManager.file("gateway", newCrosschainBatcher);
     }
 }
 

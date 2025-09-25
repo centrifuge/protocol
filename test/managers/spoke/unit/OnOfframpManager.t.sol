@@ -15,10 +15,9 @@ import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 import {ISpoke} from "../../../../src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "../../../../src/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../../../../src/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib} from "../../../../src/spoke/libraries/UpdateContractMessageLib.sol";
-
 import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
 import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
+import {UpdateContractMessageLib} from "../../../../src/spoke/libraries/UpdateContractMessageLib.sol";
 import {IDepositManager, IWithdrawManager} from "../../../../src/managers/spoke/interfaces/IBalanceSheetManager.sol";
 
 import "forge-std/Test.sol";

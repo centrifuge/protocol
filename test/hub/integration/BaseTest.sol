@@ -15,7 +15,7 @@ import {MAX_MESSAGE_COST} from "../../../src/common/interfaces/IGasService.sol";
 
 import {IHubRequestManager} from "../../../src/hub/interfaces/IHubRequestManager.sol";
 
-import {HubDeployer, HubActionBatcher, CommonInput} from "../../../script/HubDeployer.s.sol";
+import {HubActionBatcher, CommonInput} from "../../../script/HubDeployer.s.sol";
 import {ExtendedHubDeployer, ExtendedHubActionBatcher} from "../../../script/ExtendedHubDeployer.s.sol";
 
 import {MockVaults} from "../mocks/MockVaults.sol";

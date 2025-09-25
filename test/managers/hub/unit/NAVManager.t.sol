@@ -12,12 +12,11 @@ import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/common/types/AssetId.sol";
 import {AccountId, withCentrifugeId, withAssetId} from "../../../../src/common/types/AccountId.sol";
 
-import {IHub, AccountType} from "../../../../src/hub/interfaces/IHub.sol";
 import {IHoldings} from "../../../../src/hub/interfaces/IHoldings.sol";
+import {NAVManager} from "../../../../src/managers/hub/NAVManager.sol";
+import {IHub, AccountType} from "../../../../src/hub/interfaces/IHub.sol";
 import {IAccounting} from "../../../../src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "../../../../src/hub/interfaces/IHubRegistry.sol";
-
-import {NAVManager} from "../../../../src/managers/hub/NAVManager.sol";
 import {INAVManager, INAVHook} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
 
 import "forge-std/Test.sol";

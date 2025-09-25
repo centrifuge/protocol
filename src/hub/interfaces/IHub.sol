@@ -6,7 +6,6 @@ import {IHoldings, HoldingAccount} from "./IHoldings.sol";
 import {IAccounting, JournalEntry} from "./IAccounting.sol";
 import {IHubRequestManager} from "./IHubRequestManager.sol";
 import {IShareClassManager} from "./IShareClassManager.sol";
-import {IHubHelpers} from "./IHubHelpers.sol";
 
 import {D18} from "../../misc/types/D18.sol";
 
@@ -101,7 +100,6 @@ interface IHub {
     function holdings() external view returns (IHoldings);
     function accounting() external view returns (IAccounting);
     function hubRegistry() external view returns (IHubRegistry);
-    function hubHelpers() external view returns (IHubHelpers);
     function sender() external view returns (IHubMessageSender);
     function shareClassManager() external view returns (IShareClassManager);
 

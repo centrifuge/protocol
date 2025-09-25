@@ -9,12 +9,11 @@ import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 
 import "../../../spoke/integration/BaseTest.sol";
 
+import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
+import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
 import {UpdateContractMessageLib} from "../../../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
-
-import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
-import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
 
 abstract contract OnOfframpManagerBaseTest is BaseTest {
     using CastLib for *;
