@@ -194,14 +194,14 @@ abstract contract BatchRequestManagerBaseTest is Test {
         returns (uint128)
     {
         return pricePoolPerShare.reciprocalMulUint256(
-            PricingLib.convertWithPrice(
-                depositAmountAsset,
-                IHubRegistry(address(hubRegistryMock)).decimals(assetId),
-                IHubRegistry(address(hubRegistryMock)).decimals(poolId),
-                _pricePoolPerAsset(assetId)
-            ),
-            MathLib.Rounding.Down
-        ).toUint128();
+                PricingLib.convertWithPrice(
+                    depositAmountAsset,
+                    IHubRegistry(address(hubRegistryMock)).decimals(assetId),
+                    IHubRegistry(address(hubRegistryMock)).decimals(poolId),
+                    _pricePoolPerAsset(assetId)
+                ),
+                MathLib.Rounding.Down
+            ).toUint128();
     }
 
     // ============ Event Parsing Helpers ============
@@ -292,10 +292,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
         assertEq(lastUpdate, expected.lastUpdate, "Mismatch: Redeem UserOrder.lastUpdate");
     }
 
-    function _assertQueuedRedeemRequestEq(AssetId asset, bytes32 investor_, QueuedOrder memory expected)
-        internal
-        view
-    {
+    function _assertQueuedRedeemRequestEq(AssetId asset, bytes32 investor_, QueuedOrder memory expected) internal view {
         (bool isCancelling, uint128 amount) = batchRequestManager.queuedRedeemRequest(scId, asset, investor_);
 
         assertEq(isCancelling, expected.isCancelling, "isCancelling redeem mismatch");
@@ -932,9 +929,11 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         // Note: Epoch state is tracked internally and tested through other assertions
     }
 
-    function testRevokeSharesSingleEpoch(uint128 navPoolPerShare_, uint128 fuzzRedeemShares, uint128 fuzzApprovedShares)
-        public
-    {
+    function testRevokeSharesSingleEpoch(
+        uint128 navPoolPerShare_,
+        uint128 fuzzRedeemShares,
+        uint128 fuzzApprovedShares
+    ) public {
         D18 navPoolPerShare = d18(uint128(bound(navPoolPerShare_, 1e14, type(uint128).max / 1e18)));
         (, uint128 approvedShares,,) =
             _redeemAndApproveWithFuzzBounds(fuzzRedeemShares, fuzzApprovedShares, navPoolPerShare.raw());

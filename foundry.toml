@@ -100,7 +100,7 @@ int_types = "long"
 multiline_func_header = "attributes_first"
 quote_style = "double"
 number_underscore = "preserve"
-wrap_comments = true
+wrap_comments = false
 ignore = [
   "test/*.sol"
 ]

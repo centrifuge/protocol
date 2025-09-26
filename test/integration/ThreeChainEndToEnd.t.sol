@@ -28,7 +28,6 @@ enum CrossChainDirection {
     WithIntermediaryHub, // C -> A -> B (Hub is on A)
     FromHub, // C => A -> B (Hub is on A)
     ToHub // C -> A => B (Hub is on A)
-
 }
 
 /// @title  Three Chain End-to-End Test
@@ -129,9 +128,10 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         }
 
         vm.prank(INVESTOR_A);
-        sB.spoke.crosschainTransferShares{value: GAS}(
-            sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount, HOOK_GAS, HOOK_GAS
-        );
+        sB.spoke
+        .crosschainTransferShares{
+            value: GAS
+        }(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount, HOOK_GAS, HOOK_GAS);
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should be burned on chain B");
         assertEq(
             h.snapshotHook.transfers(POOL_A, SC_1, sB.centrifugeId, sC.centrifugeId), amount, "Snapshot hook not called"
@@ -144,11 +144,11 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         if (direction == CrossChainDirection.WithIntermediaryHub) {
             assertEq(shareTokenC.balanceOf(INVESTOR_A), 0, "Share transfer not executed due to unpaid message");
             bytes memory message = MessageLib.ExecuteTransferShares({
-                poolId: PoolId.unwrap(POOL_A),
-                scId: ShareClassId.unwrap(SC_1),
-                receiver: INVESTOR_A.toBytes32(),
-                amount: amount
-            }).serialize();
+                    poolId: PoolId.unwrap(POOL_A),
+                    scId: ShareClassId.unwrap(SC_1),
+                    receiver: INVESTOR_A.toBytes32(),
+                    amount: amount
+                }).serialize();
 
             // A: Repay for unpaid ExecuteTransferShares message on A to trigger sending it to C if A != C
             vm.expectEmit(true, false, false, false);
