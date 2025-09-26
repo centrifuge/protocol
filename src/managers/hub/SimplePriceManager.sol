@@ -85,8 +85,8 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     /// @inheritdoc INAVHook
     function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) external auth {
         crosschainBatcher.execute(
-            abi.encodeWithSignature(
-                "onUpdateCallback(uint64,bytes16,uint16,uint128)", poolId, scId, centrifugeId, netAssetValue
+            abi.encodeWithSelector(
+                SimplePriceManager.onUpdateCallback.selector, poolId, scId, centrifugeId, netAssetValue
             )
         );
     }
