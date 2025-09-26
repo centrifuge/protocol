@@ -221,12 +221,15 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         underpaid_.counter--;
 
-        depositSubsidy(processor.messagePoolIdPayment(batch));
+        PoolId paymentPoolId = processor.messagePoolIdPayment(batch);
+        depositSubsidy(paymentPoolId);
 
         uint256 cost = _send(centrifugeId, batch, underpaid_.gasLimit);
         require(cost > 0 && msg.value >= cost, CannotBeRepaid());
 
         if (underpaid_.counter == 0) delete underpaid[centrifugeId][batchHash];
+
+        if (msg.value > cost) _withdrawSubsidy(paymentPoolId, msg.sender, msg.value - cost);
 
         emit RepayBatch(centrifugeId, batch);
     }
@@ -265,7 +268,11 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function withdrawSubsidy(PoolId poolId, address to, uint256 amount) external onlyAuthOrManager(poolId) {
+    function withdrawSubsidy(PoolId poolId, address to, uint256 amount) public onlyAuthOrManager(poolId) {
+        _withdrawSubsidy(poolId, to, amount);
+    }
+
+    function _withdrawSubsidy(PoolId poolId, address to, uint256 amount) internal {
         if (amount > subsidy[poolId].value) _requestPoolFunding(poolId);
 
         subsidy[poolId].value -= amount.toUint96();

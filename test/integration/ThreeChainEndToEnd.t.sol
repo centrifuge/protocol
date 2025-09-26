@@ -142,6 +142,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         if (direction == CrossChainDirection.WithIntermediaryHub) {
             assertEq(shareTokenC.balanceOf(INVESTOR_A), 0, "Share transfer not executed due to unpaid message");
 
+            vm.prank(ANY);
             vm.expectEmit();
             emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, amount);
             h.gateway.repay{value: GAS}(sC.centrifugeId, _getLastUnpaidMessage());

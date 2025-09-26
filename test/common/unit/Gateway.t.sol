@@ -931,7 +931,7 @@ contract GatewayTestRepay is GatewayTest {
         gateway.send(REMOTE_CENT_ID, batch, 0);
         gateway.depositSubsidy{value: 1234}(POOL_A);
 
-        uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
+        uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE + 1000;
         vm.deal(ANY, payment);
         vm.prank(ANY);
         vm.expectEmit();
@@ -942,7 +942,7 @@ contract GatewayTestRepay is GatewayTest {
         assertEq(counter, 0);
         assertEq(gasLimit, 0);
 
-        assertEq(address(ANY).balance, 0);
+        assertEq(address(ANY).balance, 1000); // Excees is refunded
         assertEq(gateway.subsidizedValue(POOL_A), 1234);
     }
 
@@ -959,14 +959,14 @@ contract GatewayTestRepay is GatewayTest {
         gateway.endBatching();
         gateway.depositSubsidy{value: 1234}(POOL_A);
 
-        uint256 payment = MESSAGE_GAS_LIMIT * 2 + ADAPTER_ESTIMATE;
+        uint256 payment = MESSAGE_GAS_LIMIT * 2 + ADAPTER_ESTIMATE + 1000;
         vm.deal(ANY, payment);
         vm.prank(ANY);
         vm.expectEmit();
         emit IGateway.RepayBatch(REMOTE_CENT_ID, batch);
         gateway.repay{value: payment}(REMOTE_CENT_ID, batch);
 
-        assertEq(address(ANY).balance, 0);
+        assertEq(address(ANY).balance, 1000); // Excees is refunded
         assertEq(gateway.subsidizedValue(POOL_A), 1234);
     }
 }
