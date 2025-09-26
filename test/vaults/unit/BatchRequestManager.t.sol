@@ -2244,7 +2244,7 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
         _depositAndApprove(MIN_REQUEST_AMOUNT_USDC, MIN_REQUEST_AMOUNT_USDC);
 
         vm.expectEmit();
-        emit IBatchRequestManager.IssueShares(poolId, scId, USDC, 1, d18(0), d18(0), 0 // Zero shares issued);
+        emit IBatchRequestManager.IssueShares(poolId, scId, USDC, 1, d18(0), d18(0), 0);
         uint256 cost = batchRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), d18(0), SHARE_HOOK_GAS);
         assertEq(cost, CB_GAS_COST, "Should return callback cost");
 
