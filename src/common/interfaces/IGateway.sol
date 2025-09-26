@@ -76,6 +76,9 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when an account is not valid to withdraw subsidized pool funds
     error CannotWithdraw();
 
+    /// @notice Dispatched when an account is not valid to withdraw subsidized pool funds
+    error NotEnoughTransactionGas();
+
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @dev    Currently used to update addresses of contract instances.
     /// @param  what The name of the variable to be updated.
@@ -98,19 +101,10 @@ interface IGateway is IMessageHandler, IRecoverable {
     function setUnpaidMode(bool enabled) external;
 
     /// @notice Repay an underpaid batch.
-    function repay(uint16 centrifugeId, bytes memory batch) external payable;
+    function repay(uint16 centrifugeId, bytes memory batch, address refund) external payable;
 
     /// @notice Retry a failed message.
     function retry(uint16 centrifugeId, bytes memory message) external;
-
-    /// @notice Set the refund address for message associated to a poolId
-    function setRefundAddress(PoolId poolId, IRecoverable refund) external;
-
-    /// @notice Pay upfront to later be able to subsidize messages associated to a pool
-    function depositSubsidy(PoolId poolId) external payable;
-
-    /// @notice Withdraw the funds associated to the pool
-    function withdrawSubsidy(PoolId poolId, address to, uint256 amount) external;
 
     /// @notice Handling outgoing messages.
     /// @param centrifugeId Destination chain
@@ -122,9 +116,8 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Finalize batching messages and send the resulting batch message
     function endBatching() external returns (uint256 cost);
 
-    /// @notice Returns the current gateway batching level.
-    function isBatching() external view returns (bool);
+    function setPayment(address refund) external payable;
 
     /// @notice Returns the current gateway batching level.
-    function subsidizedValue(PoolId poolId) external view returns (uint256);
+    function isBatching() external view returns (bool);
 }

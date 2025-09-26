@@ -204,9 +204,14 @@ interface ISpoke {
     /// @param  scId The share class id
     /// @param  assetId The asset id
     /// @param  payload The request payload to be processed
-    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload)
-        external
-        returns (uint256 cost);
+    function request(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes memory payload,
+        address refund,
+        bool unpaid
+    ) external payable returns (uint256 cost);
 
     /// @notice Deploys a new vault
     ///

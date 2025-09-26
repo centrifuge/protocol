@@ -107,12 +107,10 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         emit InitiateTransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
 
-        gateway.depositSubsidy{value: msg.value}(poolId);
-        uint256 cost = sender.sendInitiateTransferShares(
+        gateway.setPayment{value: msg.value}(refund);
+        sender.sendInitiateTransferShares(
             centrifugeId, poolId, scId, receiver, amount, extraGasLimit, remoteExtraGasLimit
         );
-        require(msg.value >= cost, NotEnoughGas());
-        if (msg.value > cost) gateway.withdrawSubsidy(poolId, refund, msg.value - cost);
     }
 
     /// @inheritdoc ISpoke
@@ -164,22 +162,27 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         emit RegisterAsset(centrifugeId, assetId, asset, tokenId, name, symbol, decimals, isInitialization);
 
-        gateway.depositSubsidy{value: msg.value}(GLOBAL_POOL);
-        uint256 cost = sender.sendRegisterAsset(centrifugeId, assetId, decimals);
-        require(msg.value >= cost, NotEnoughGas());
-        if (msg.value > cost) gateway.withdrawSubsidy(GLOBAL_POOL, refund, msg.value - cost);
+        gateway.setPayment{value: msg.value}(refund);
+        sender.sendRegisterAsset(centrifugeId, assetId, decimals);
     }
 
     /// @inheritdoc ISpoke
-    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload)
-        external
-        returns (uint256 cost)
-    {
+    function request(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes memory payload,
+        address refund,
+        bool unpaid
+    ) external payable returns (uint256 cost) {
         IRequestManager manager = requestManager[poolId];
         require(address(manager) != address(0), InvalidRequestManager());
         require(msg.sender == address(manager), NotAuthorized());
 
-        return sender.sendRequest(poolId, scId, assetId, payload);
+        gateway.setPayment{value: msg.value}(refund);
+        gateway.setUnpaidMode(unpaid);
+        cost = sender.sendRequest(poolId, scId, assetId, payload);
+        gateway.setUnpaidMode(false);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -191,12 +194,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         Pool storage pool_ = pool[poolId];
         require(pool_.createdAt == 0, PoolAlreadyAdded());
         pool_.createdAt = uint64(block.timestamp);
-
-        IPoolEscrow escrow = poolEscrowFactory.escrow(poolId);
-        if (address(escrow).code.length == 0) {
-            poolEscrowFactory.newEscrow(poolId);
-            gateway.setRefundAddress(poolId, escrow);
-        }
+        poolEscrowFactory.newEscrow(poolId);
 
         emit AddPool(poolId);
     }

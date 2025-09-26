@@ -282,6 +282,8 @@ struct AsyncInvestmentState {
 }
 
 interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
+    event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
+
     error ExceedsMaxDeposit();
     error AssetMismatch();
     error ZeroAmountNotAllowed();

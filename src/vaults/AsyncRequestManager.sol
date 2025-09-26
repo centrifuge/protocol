@@ -33,6 +33,8 @@ import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
 
+import {IRefundEscrowFactory, IRefundEscrow} from "./factories/RefundEscrowFactory.sol";
+
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
@@ -47,6 +49,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     ISpoke public spoke;
     IBalanceSheet public balanceSheet;
+    IRefundEscrowFactory public refundEscrowFactory;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
 
@@ -63,6 +66,11 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
+    }
+
+    function depositSubsidy(PoolId poolId, uint256 value) external payable {
+        address(refundEscrowFactory.getOrCreate(poolId)).call{value: msg.value}("");
+        emit DepositSubsidy(poolId, msg.sender, value);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -151,7 +159,13 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     }
 
     function _sendRequest(IBaseVault vault_, bytes memory payload) internal {
-        spoke.request(vault_.poolId(), vault_.scId(), spoke.vaultDetails(vault_).assetId, payload);
+        IRefundEscrow refund = refundEscrowFactory.get(vault_.poolId());
+        refund.requestFunds(); // All funds goes to this contract
+
+        // It use all funds for the message, and the rest is refunded again to the RefundEscrow
+        spoke.request{
+            value: address(this).balance
+        }(vault_.poolId(), vault_.scId(), spoke.vaultDetails(vault_).assetId, payload, address(refund), true);
     }
 
     //----------------------------------------------------------------------------------------------

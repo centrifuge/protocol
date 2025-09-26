@@ -45,7 +45,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     IMultiAdapter public multiAdapter;
     IHubMessageSender public sender;
     IShareClassManager public shareClassManager;
-    IPoolEscrowFactory public poolEscrowFactory;
 
     constructor(
         IGateway gateway_,
@@ -76,7 +75,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
         else if (what == "holdings") holdings = IHoldings(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else if (what == "gateway") gateway = IGateway(data);
-        else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -84,6 +82,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     /// @inheritdoc IMulticall
     /// @notice performs a multicall but all messages sent in the process will be batched
     function multicall(bytes[] calldata data) public payable override {
+        gateway.setPayment{value: msg.value}(msg.sender);
+
         bool wasBatching = gateway.isBatching();
         if (!wasBatching) {
             gateway.startBatching();
@@ -102,9 +102,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
 
         require(poolId.centrifugeId() == sender.localCentrifugeId(), InvalidPoolId());
         hubRegistry.registerPool(poolId, admin, currency);
-
-        IPoolEscrow escrow = poolEscrowFactory.newEscrow(poolId);
-        gateway.setRefundAddress(poolId, escrow);
     }
 
     //----------------------------------------------------------------------------------------------
