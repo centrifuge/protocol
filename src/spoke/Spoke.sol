@@ -92,7 +92,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         bytes32 receiver,
         uint128 amount,
         uint128 extraGasLimit,
-        uint128 remoteExtraGasLimit
+        uint128 remoteExtraGasLimit,
+        address refund
     ) public payable protected {
         IShareToken share = IShareToken(shareToken(poolId, scId));
         require(centrifugeId != sender.localCentrifugeId(), LocalTransferNotAllowed());
@@ -111,7 +112,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
             centrifugeId, poolId, scId, receiver, amount, extraGasLimit, remoteExtraGasLimit
         );
         require(msg.value >= cost, NotEnoughGas());
-        if (msg.value > cost) gateway.withdrawSubsidy(poolId, msg.sender, msg.value - cost);
+        if (msg.value > cost) gateway.withdrawSubsidy(poolId, refund, msg.value - cost);
     }
 
     /// @inheritdoc ISpoke
@@ -123,11 +124,11 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         uint128 amount,
         uint128 remoteExtraGasLimit
     ) external payable protected {
-        crosschainTransferShares(centrifugeId, poolId, scId, receiver, amount, 0, remoteExtraGasLimit);
+        crosschainTransferShares(centrifugeId, poolId, scId, receiver, amount, 0, remoteExtraGasLimit, msg.sender);
     }
 
     /// @inheritdoc ISpoke
-    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
+    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId, address refund)
         external
         payable
         protected
@@ -166,7 +167,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         gateway.depositSubsidy{value: msg.value}(GLOBAL_POOL);
         uint256 cost = sender.sendRegisterAsset(centrifugeId, assetId, decimals);
         require(msg.value >= cost, NotEnoughGas());
-        if (msg.value > cost) gateway.withdrawSubsidy(GLOBAL_POOL, msg.sender, msg.value - cost);
+        if (msg.value > cost) gateway.withdrawSubsidy(GLOBAL_POOL, refund, msg.value - cost);
     }
 
     /// @inheritdoc ISpoke

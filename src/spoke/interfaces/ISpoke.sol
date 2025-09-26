@@ -151,7 +151,7 @@ interface ISpoke {
     ///                or 'gasService'
     function file(bytes32 what, address data) external;
 
-    /// @notice transfers share class tokens to a cross-chain recipient address
+    /// @notice Transfers share class tokens to a cross-chain recipient address
     /// @dev    To transfer to evm chains, pad a 20 byte evm address with 12 bytes of 0
     /// @param  centrifugeId The destination chain id
     /// @param  poolId The centrifuge pool id
@@ -161,6 +161,7 @@ interface ISpoke {
     /// @param  extraGasLimit extra gas limit used for some extra computation that could happen on the intermediary hub
     /// @param  remoteExtraGasLimit extra gas limit used for some extra computation that could happen in the chain where
     /// the transfer is executed.
+    /// @param  refund address to refund the excedent of the payment
     function crosschainTransferShares(
         uint16 centrifugeId,
         PoolId poolId,
@@ -168,9 +169,11 @@ interface ISpoke {
         bytes32 receiver,
         uint128 amount,
         uint128 extraGasLimit,
-        uint128 remoteExtraGasLimit
+        uint128 remoteExtraGasLimit,
+        address refund
     ) external payable;
 
+    /// @dev Maintained for retrocompatibility. New implementors should use the above
     function crosschainTransferShares(
         uint16 centrifugeId,
         PoolId poolId,
@@ -188,7 +191,8 @@ interface ISpoke {
     /// @param asset The address of the asset to be registered
     /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
     /// @return assetId The underlying internal uint128 assetId.
-    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
+    /// @param refund address to refund the excedent of the payment
+    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId, address refund)
         external
         payable
         returns (AssetId assetId);

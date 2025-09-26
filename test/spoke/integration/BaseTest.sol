@@ -141,7 +141,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         try spoke.assetToId(asset, assetTokenId) {
             assetId = spoke.assetToId(asset, assetTokenId).raw();
         } catch {
-            assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, assetTokenId).raw();
+            assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, assetTokenId, address(this)).raw();
             centrifugeChain.updatePricePoolPerAsset(
                 POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)
             );

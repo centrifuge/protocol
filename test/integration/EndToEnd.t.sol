@@ -417,7 +417,7 @@ contract EndToEndFlows is EndToEndUtils {
         s_.usdc.mint(INVESTOR_A, USDC_AMOUNT_1);
 
         vm.startPrank(ANY);
-        s_.spoke.registerAsset{value: GAS}(h.centrifugeId, address(s_.usdc), 0);
+        s_.spoke.registerAsset{value: GAS}(h.centrifugeId, address(s_.usdc), 0, ANY);
     }
 
     function _createPoolAccounts(CHub memory hub, PoolId poolId, address poolManager) internal {
