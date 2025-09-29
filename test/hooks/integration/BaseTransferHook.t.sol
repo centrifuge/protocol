@@ -33,8 +33,9 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         super.removeHubDeployerAccess(batcher);
 
         vm.startPrank(ADMIN);
-        correctHook =
-            new FullRestrictions(address(root), address(balanceSheet), address(globalEscrow), address(spoke), ADMIN);
+        correctHook = new FullRestrictions(
+            address(root), address(root), address(balanceSheet), address(globalEscrow), address(spoke), ADMIN
+        );
         vm.stopPrank();
     }
 
