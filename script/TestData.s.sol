@@ -30,7 +30,6 @@ import {IAsyncVault} from "../src/vaults/interfaces/IAsyncVault.sol";
 import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
-import {IBatchRequestManager} from "../src/vaults/interfaces/IBatchRequestManager.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
@@ -158,13 +157,8 @@ contract TestData is FullDeployer {
 
         // Fulfill deposit request
         state.nowDepositEpoch = batchRequestManager.nowDepositEpoch(state.scId, assetId);
-        hub.callRequestManager(
-            state.poolId,
-            centrifugeId,
-            abi.encodeCall(
-                IBatchRequestManager.approveDeposits,
-                (state.poolId, state.scId, assetId, state.nowDepositEpoch, 1_000_000e6, d18(1, 1))
-            )
+        batchRequestManager.approveDeposits(
+            state.poolId, state.scId, assetId, state.nowDepositEpoch, 1_000_000e6, d18(1, 1)
         );
         balanceSheet.submitQueuedAssets(state.poolId, state.scId, assetId, DEFAULT_EXTRA_GAS);
 
@@ -174,13 +168,7 @@ contract TestData is FullDeployer {
 
         // Issue and claim
         state.nowIssueEpoch = batchRequestManager.nowIssueEpoch(state.scId, assetId);
-        hub.callRequestManager(
-            state.poolId,
-            centrifugeId,
-            abi.encodeCall(
-                IBatchRequestManager.issueShares, (state.poolId, state.scId, assetId, state.nowIssueEpoch, d18(1, 1), 0)
-            )
-        );
+        batchRequestManager.issueShares(state.poolId, state.scId, assetId, state.nowIssueEpoch, d18(1, 1), 0);
         balanceSheet.submitQueuedShares(state.poolId, state.scId, DEFAULT_EXTRA_GAS);
         uint32 maxClaims = batchRequestManager.maxDepositClaims(state.scId, msg.sender.toBytes32(), assetId);
         batchRequestManager.notifyDeposit(state.poolId, state.scId, assetId, msg.sender.toBytes32(), maxClaims);
@@ -209,22 +197,10 @@ contract TestData is FullDeployer {
         state.nowRedeemEpoch = batchRequestManager.nowRedeemEpoch(state.scId, assetId);
         state.nowRevokeEpoch = batchRequestManager.nowRevokeEpoch(state.scId, assetId);
 
-        hub.callRequestManager(
-            state.poolId,
-            centrifugeId,
-            abi.encodeCall(
-                IBatchRequestManager.approveRedeems,
-                (state.poolId, state.scId, assetId, state.nowRedeemEpoch, 1_000_000e18, d18(1, 1))
-            )
+        batchRequestManager.approveRedeems(
+            state.poolId, state.scId, assetId, state.nowRedeemEpoch, 1_000_000e18, d18(1, 1)
         );
-        hub.callRequestManager(
-            state.poolId,
-            centrifugeId,
-            abi.encodeCall(
-                IBatchRequestManager.revokeShares,
-                (state.poolId, state.scId, assetId, state.nowRevokeEpoch, d18(11, 10), 0)
-            )
-        );
+        batchRequestManager.revokeShares(state.poolId, state.scId, assetId, state.nowRevokeEpoch, d18(11, 10), 0);
         balanceSheet.submitQueuedShares(state.poolId, state.scId, DEFAULT_EXTRA_GAS);
         batchRequestManager.notifyRedeem(state.poolId, state.scId, assetId, bytes32(bytes20(msg.sender)), 1);
 
