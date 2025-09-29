@@ -41,6 +41,7 @@ import {BalanceSheet} from "../../src/spoke/BalanceSheet.sol";
 import {UpdateContractMessageLib} from "../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {SyncManager} from "../../src/vaults/SyncManager.sol";
+import {RefundEscrowFactory} from "../../src/vaults/factories/RefundEscrowFactory.sol";
 import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
@@ -122,6 +123,7 @@ contract EndToEndDeployment is Test {
         bytes32 syncDepositVaultFactory;
         AsyncRequestManager asyncRequestManager;
         SyncManager syncManager;
+        RefundEscrowFactory refundEscrowFactory;
         // Hooks
         FreezeOnly freezeOnlyHook;
         FullRestrictions fullRestrictionsHook;
@@ -204,6 +206,8 @@ contract EndToEndDeployment is Test {
         vm.deal(BSM, 1 ether);
         vm.deal(INVESTOR_A, 1 ether);
         vm.deal(ANY, 1 ether);
+        vm.deal(address(SAFE_ADMIN_A), 1 ether);
+        vm.deal(address(SAFE_ADMIN_B), 1 ether);
 
         h = CHub({
             centrifugeId: CENTRIFUGE_ID_A,
@@ -285,6 +289,7 @@ contract EndToEndDeployment is Test {
         s_.syncDepositVaultFactory = address(deploy.syncDepositVaultFactory()).toBytes32();
         s_.asyncRequestManager = deploy.asyncRequestManager();
         s_.syncManager = deploy.syncManager();
+        s_.refundEscrowFactory = deploy.refundEscrowFactory();
         s_.usdc = new ERC20(6);
         s_.usdcId = newAssetId(centrifugeId, 1);
 
@@ -292,7 +297,7 @@ contract EndToEndDeployment is Test {
         s_.usdc.file("name", "USD Coin");
         s_.usdc.file("symbol", "USDC");
 
-        s.asyncRequestManager.depositSubsidy{value: 0.5 ether}(POOL_A);
+        s_.asyncRequestManager.depositSubsidy{value: 0.5 ether}(POOL_A);
     }
 
     function _setSpoke(bool sameChain) internal {
@@ -972,9 +977,14 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         _setSpoke(sameChain);
 
+        (bool success,) = address(s.asyncRequestManager).call{value: VALUE}("");
+        require(success);
+
         vm.startPrank(address(SAFE_ADMIN_A));
         h.guardian
-        .recoverTokens{value: GAS}(s.centrifugeId, address(s.gateway), ETH_ADDRESS, 0, RECEIVER, VALUE, REFUND);
+        .recoverTokens{
+            value: GAS
+        }(s.centrifugeId, address(s.asyncRequestManager), ETH_ADDRESS, 0, RECEIVER, VALUE, REFUND);
 
         assertEq(RECEIVER.balance, VALUE);
     }

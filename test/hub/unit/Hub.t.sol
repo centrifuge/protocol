@@ -56,7 +56,7 @@ contract TestCommon is Test {
 }
 
 contract TestMainMethodsChecks is TestCommon {
-    function testErrNotAuthotized() public {
+    function testErrNotAuthorized() public {
         vm.startPrank(makeAddr("noGateway"));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);

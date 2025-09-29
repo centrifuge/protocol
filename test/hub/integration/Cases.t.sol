@@ -37,13 +37,13 @@ contract TestCases is BaseTest {
         vm.startPrank(FM);
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT);
-        hub.notifyPool(poolId, CHAIN_CV, REFUND);
-        hub.notifyShareClass(poolId, scId, CHAIN_CV, SC_HOOK, REFUND);
-        hub.setRequestManager(
-            poolId, CHAIN_CV, IHubRequestManager(hubRequestManager), ASYNC_REQUEST_MANAGER.toBytes32(), REFUND
-        );
-        hub.updateBalanceSheetManager(CHAIN_CV, poolId, ASYNC_REQUEST_MANAGER.toBytes32(), true, REFUND);
-        hub.updateBalanceSheetManager(CHAIN_CV, poolId, SYNC_REQUEST_MANAGER.toBytes32(), true, REFUND);
+        hub.notifyPool{value: GAS}(poolId, CHAIN_CV, REFUND);
+        hub.notifyShareClass{value: GAS}(poolId, scId, CHAIN_CV, SC_HOOK, REFUND);
+        hub.setRequestManager{
+            value: GAS
+        }(poolId, CHAIN_CV, IHubRequestManager(hubRequestManager), ASYNC_REQUEST_MANAGER.toBytes32(), REFUND);
+        hub.updateBalanceSheetManager{value: GAS}(CHAIN_CV, poolId, ASYNC_REQUEST_MANAGER.toBytes32(), true, REFUND);
+        hub.updateBalanceSheetManager{value: GAS}(CHAIN_CV, poolId, SYNC_REQUEST_MANAGER.toBytes32(), true, REFUND);
 
         hub.createAccount(poolId, ASSET_USDC_ACCOUNT, true);
         hub.createAccount(poolId, EQUITY_ACCOUNT, false);
@@ -66,7 +66,7 @@ contract TestCases is BaseTest {
                 LOSS_ACCOUNT
             );
         }
-        hub.updateVault(poolId, scId, USDC_C2, bytes32("factory"), VaultUpdateKind.DeployAndLink, 0, REFUND);
+        hub.updateVault{value: GAS}(poolId, scId, USDC_C2, bytes32("factory"), VaultUpdateKind.DeployAndLink, 0, REFUND);
 
         MessageLib.NotifyPool memory m0 = MessageLib.deserializeNotifyPool(cv.popMessage());
         assertEq(m0.poolId, poolId.raw());
@@ -182,9 +182,9 @@ contract TestCases is BaseTest {
 
         vm.startPrank(FM);
         hub.updateSharePrice(poolId, scId, sharePrice);
-        hub.notifyAssetPrice(poolId, scId, EUR_STABLE_C2, REFUND);
-        hub.notifyAssetPrice(poolId, scId, USDC_C2, REFUND);
-        hub.notifySharePrice(poolId, scId, CHAIN_CV, REFUND);
+        hub.notifyAssetPrice{value: GAS}(poolId, scId, EUR_STABLE_C2, REFUND);
+        hub.notifyAssetPrice{value: GAS}(poolId, scId, USDC_C2, REFUND);
+        hub.notifySharePrice{value: GAS}(poolId, scId, CHAIN_CV, REFUND);
 
         MessageLib.NotifyPricePoolPerAsset memory m0 = MessageLib.deserializeNotifyPricePoolPerAsset(cv.popMessage());
         assertEq(m0.poolId, poolId.raw());

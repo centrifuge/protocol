@@ -37,11 +37,15 @@ contract TestCommon is Test {
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
 
     HubHandler hubHandler = new HubHandler(hub, holdings, hubRegistry, scm, AUTH);
+
+    function setUp() external {
+        vm.deal(ANY, 1 ether);
+    }
 }
 
 contract TestMainMethodsChecks is TestCommon {
-    function testErrNotAuthotized() public {
-        vm.startPrank(makeAddr("noGateway"));
+    function testErrNotAuthorized() public {
+        vm.startPrank(ANY);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         hubHandler.registerAsset(AssetId.wrap(0), 0);
