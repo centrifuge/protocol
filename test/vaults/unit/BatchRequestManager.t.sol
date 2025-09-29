@@ -2747,7 +2747,7 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
 
         assertEq(cost, 0, "Should return 0 cost as no immediate callback");
         (uint128 pending,) = batchRequestManager.depositRequest(scId, USDC, investor);
-        assertEq(pending, 0, "Request should be cancelled");
+        assertEq(pending, MIN_REQUEST_AMOUNT_USDC, "Cancellation requires notifyCancelDeposit");
     }
 
     function testForceCancelRedeemRequestAsManager() public {
@@ -2760,7 +2760,7 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
 
         assertEq(cost, 0, "Should return 0 cost as no immediate callback");
         (uint128 pending,) = batchRequestManager.redeemRequest(scId, USDC, investor);
-        assertEq(pending, 0, "Request should be cancelled");
+        assertEq(pending, MIN_REQUEST_AMOUNT_SHARES, "Cancellation requires notifyCancelRedeem");
     }
 
     function testMultipleManagersCanManageSamePool() public {
