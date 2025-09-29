@@ -1,15 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {
-    IWormholeAdapter,
-    IAdapter,
-    IWormholeRelayer,
-    IWormholeDeliveryProvider,
-    IWormholeReceiver,
-    WormholeSource,
-    WormholeDestination
-} from "./interfaces/IWormholeAdapter.sol";
+import { IWormholeAdapter, IAdapter, IWormholeRelayer, IWormholeDeliveryProvider, IWormholeReceiver, WormholeSource, WormholeDestination } from "./interfaces/IWormholeAdapter.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";

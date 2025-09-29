@@ -8,14 +8,7 @@ import {IERC20} from "../misc/interfaces/IERC20.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {IERC7575Share, IERC165} from "../misc/interfaces/IERC7575.sol";
 
-import {
-    ITransferHook,
-    HookData,
-    SUCCESS_CODE_ID,
-    SUCCESS_MESSAGE,
-    ERROR_CODE_ID,
-    ERROR_MESSAGE
-} from "../common/interfaces/ITransferHook.sol";
+import { ITransferHook, HookData, SUCCESS_CODE_ID, SUCCESS_MESSAGE, ERROR_CODE_ID, ERROR_MESSAGE } from "../common/interfaces/ITransferHook.sol";
 
 /// @title  Share Token
 /// @notice Extension of ERC20 + ERC1404,

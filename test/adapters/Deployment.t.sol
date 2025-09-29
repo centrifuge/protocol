@@ -3,14 +3,7 @@ pragma solidity 0.8.28;
 
 import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
 
-import {
-    AdaptersDeployer,
-    AdaptersActionBatcher,
-    AdaptersInput,
-    WormholeInput,
-    AxelarInput,
-    LayerZeroInput
-} from "../../script/AdaptersDeployer.s.sol";
+import { AdaptersDeployer, AdaptersActionBatcher, AdaptersInput, WormholeInput, AxelarInput, LayerZeroInput } from "../../script/AdaptersDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
