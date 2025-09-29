@@ -50,7 +50,9 @@ interface IHub {
     );
     event UpdateRestriction(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes payload);
     event SetSpokeRequestManager(uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 indexed manager);
-    event UpdateBalanceSheetManager(uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 indexed manager, bool canManage);
+    event UpdateBalanceSheetManager(
+        uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 indexed manager, bool canManage
+    );
     event UpdateVault(
         PoolId indexed poolId, ShareClassId scId, AssetId assetId, bytes32 vaultOrFactory, VaultUpdateKind kind
     );

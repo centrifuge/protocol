@@ -399,9 +399,10 @@ contract BaseTransferHookTestMember is BaseTransferHookTestBase {
 
 contract BaseTransferHookTestUpdateRestriction is BaseTransferHookTestBase {
     function testUpdateRestrictionMember() public {
-        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate = UpdateRestrictionMessageLib.UpdateRestrictionMember({
-            user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP
-        });
+        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate =
+            UpdateRestrictionMessageLib.UpdateRestrictionMember({
+                user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP
+            });
 
         bytes memory payload = UpdateRestrictionMessageLib.serialize(memberUpdate);
 
@@ -451,9 +452,10 @@ contract BaseTransferHookTestUpdateRestriction is BaseTransferHookTestBase {
     }
 
     function testUpdateRestrictionUnauthorized() public {
-        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate = UpdateRestrictionMessageLib.UpdateRestrictionMember({
-            user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP
-        });
+        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate =
+            UpdateRestrictionMessageLib.UpdateRestrictionMember({
+                user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP
+            });
 
         bytes memory payload = UpdateRestrictionMessageLib.serialize(memberUpdate);
 
