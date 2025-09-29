@@ -173,7 +173,7 @@ interface ISpoke {
         address refund
     ) external payable;
 
-    /// @dev Maintained for retrocompatibility. New implementors should use the above
+    /// @dev Maintained for retrocompatibility. New implementers should use the above
     function crosschainTransferShares(
         uint16 centrifugeId,
         PoolId poolId,

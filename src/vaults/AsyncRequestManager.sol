@@ -53,9 +53,12 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
 
-    constructor(IEscrow globalEscrow_, address deployer) Auth(deployer) {
+    constructor(IEscrow globalEscrow_, IRefundEscrowFactory refundEscrowFactory_, address deployer) Auth(deployer) {
         globalEscrow = globalEscrow_;
+        refundEscrowFactory = refundEscrowFactory_;
     }
+
+    receive() external payable {}
 
     //----------------------------------------------------------------------------------------------
     // Administration
@@ -64,12 +67,18 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     function file(bytes32 what, address data) external auth {
         if (what == "spoke") spoke = ISpoke(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
+        else if (what == "refundEscrowFactory") refundEscrowFactory = IRefundEscrowFactory(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 
     function depositSubsidy(PoolId poolId, uint256 value) external payable {
-        address(refundEscrowFactory.getOrCreate(poolId)).call{value: msg.value}("");
+        IRefundEscrow escrow = refundEscrowFactory.get(poolId);
+        if (address(escrow).code.length == 0) {
+            escrow = refundEscrowFactory.newEscrow(poolId);
+        }
+
+        escrow.depositFunds{value: msg.value}();
         emit DepositSubsidy(poolId, msg.sender, value);
     }
 
@@ -160,7 +169,9 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     function _sendRequest(IBaseVault vault_, bytes memory payload) internal {
         IRefundEscrow refund = refundEscrowFactory.get(vault_.poolId());
-        refund.requestFunds(); // All funds goes to this contract
+        require(address(refund).code.length > 0, RefundEscrowNotDeployed());
+
+        refund.withdrawFunds(address(this), address(refund).balance); // All funds goes to this contract
 
         // It use all funds for the message, and the rest is refunded again to the RefundEscrow
         spoke.request{

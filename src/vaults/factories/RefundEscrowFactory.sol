@@ -6,53 +6,25 @@ import {Auth} from "../../misc/Auth.sol";
 import {PoolId} from "../../common/types/PoolId.sol";
 import {IAsyncRequestManager} from "../interfaces/IVaultManagers.sol";
 
-interface IRefundEscrow {
-    function requestFunds() external;
-}
+import {RefundEscrow, IRefundEscrow} from "../RefundEscrow.sol";
+import {IRefundEscrowFactory} from "./interfaces/IRefundEscrowFactory.sol";
 
-contract RefundEscrow is Auth, IRefundEscrow {
-    event ReceiveNativeTokens(address who, uint256 amount);
+contract RefundEscrowFactory is Auth, IRefundEscrowFactory {
+    address public controller;
 
-    constructor(address owner) Auth(owner) {}
-
-    receive() external payable {}
-
-    function requestFunds() external auth {
-        msg.sender.call{value: address(this).balance}("");
-    }
-}
-
-interface IRefundEscrowFactory {
-    function file(bytes32 what, address data) external;
-    function getOrCreate(PoolId poolId) external returns (IRefundEscrow);
-    function get(PoolId poolId) external view returns (IRefundEscrow);
-}
-
-contract RefundEscrowFactory is Auth {
-    event File(bytes32 what, address data);
-    event DeployRefundEscrow(PoolId indexed poolId, address indexed escrow);
-
-    error FileUnrecognizedParam();
-
-    IAsyncRequestManager public asyncRequestManager;
-
-    constructor(IAsyncRequestManager asyncRequestManager_, address deployer) Auth(deployer) {
-        asyncRequestManager = asyncRequestManager_;
+    constructor(address controller_, address deployer) Auth(deployer) {
+        controller = controller_;
     }
 
     function file(bytes32 what, address data) external auth {
-        if (what == "asyncRequestManager") asyncRequestManager = IAsyncRequestManager(data);
+        if (what == "controller") controller = data;
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 
-    function getOrCreate(PoolId poolId) external auth returns (IRefundEscrow) {
-        IRefundEscrow escrow = get(poolId);
-        if (address(escrow).code.length > 0) return escrow;
-
-        RefundEscrow escrow_ = new RefundEscrow{salt: bytes32(uint256(poolId.raw()))}(address(asyncRequestManager));
-        emit DeployRefundEscrow(poolId, address(escrow_));
-        return IRefundEscrow(escrow_);
+    function newEscrow(PoolId poolId) external auth returns (IRefundEscrow escrow) {
+        escrow = new RefundEscrow{salt: bytes32(uint256(poolId.raw()))}(address(controller));
+        emit DeployRefundEscrow(poolId, address(escrow));
     }
 
     function get(PoolId poolId) public view returns (IRefundEscrow) {

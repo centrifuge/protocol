@@ -297,6 +297,7 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
     error ExceedsMaxRedeem();
     error ExceedsRedeemLimits();
     error VaultNotLinked();
+    error RefundEscrowNotDeployed();
 
     /// @notice Returns the investment state
     function investments(IBaseVault vaultAddr, address investor)
