@@ -2121,15 +2121,11 @@ contract BatchRequestManagerAuthTest is BatchRequestManagerBaseTest {
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
     }
 
-    // Note: testCancelDepositRequestUnauthorized removed - cancelDepositRequest is now internal
-
     function testRequestRedeemUnauthorized() public {
         vm.prank(unauthorized);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         batchRequestManager.requestRedeem(poolId, scId, MIN_REQUEST_AMOUNT_SHARES, investor, USDC);
     }
-
-    // Note: testCancelRedeemRequestUnauthorized removed - cancelRedeemRequest is now internal
 
     function testApproveDepositsUnauthorized() public {
         vm.prank(unauthorized);
@@ -2350,7 +2346,6 @@ contract BatchRequestManagerErrorTest is BatchRequestManagerBaseTest {
     }
 
     function testNotifyCancelRedeemDoubleClaim() public {
-        uint128 amount = MIN_REQUEST_AMOUNT_SHARES;
         batchRequestManager.requestRedeem(poolId, scId, MIN_REQUEST_AMOUNT_SHARES, investor, USDC);
         batchRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
         batchRequestManager.notifyCancelRedeem{value: 0.1 ether}(poolId, scId, USDC, investor);
@@ -2750,7 +2745,7 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
         vm.prank(poolManager);
         uint256 cost = batchRequestManager.forceCancelDepositRequest(poolId, scId, investor, USDC);
 
-        assertEq(cost, CB_GAS_COST, "Should return callback cost");
+        assertEq(cost, 0, "Should return 0 cost as no immediate callback");
         (uint128 pending,) = batchRequestManager.depositRequest(scId, USDC, investor);
         assertEq(pending, 0, "Request should be cancelled");
     }
@@ -2763,7 +2758,7 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
         vm.prank(poolManager);
         uint256 cost = batchRequestManager.forceCancelRedeemRequest(poolId, scId, investor, USDC);
 
-        assertEq(cost, CB_GAS_COST, "Should return callback cost");
+        assertEq(cost, 0, "Should return 0 cost as no immediate callback");
         (uint128 pending,) = batchRequestManager.redeemRequest(scId, USDC, investor);
         assertEq(pending, 0, "Request should be cancelled");
     }
