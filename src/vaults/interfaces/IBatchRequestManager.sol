@@ -227,7 +227,8 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         AssetId depositAssetId,
         uint32 nowDepositEpochId,
         uint128 approvedAssetAmount,
-        D18 pricePoolPerAsset
+        D18 pricePoolPerAsset,
+        address refund
     ) external payable;
 
     function approveRedeems(
@@ -245,7 +246,8 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         AssetId depositAssetId,
         uint32 nowIssueEpochId,
         D18 navPoolPerShare,
-        uint128 extraGasLimit
+        uint128 extraGasLimit,
+        address refund
     ) external payable;
 
     function revokeShares(
@@ -254,16 +256,25 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         AssetId payoutAssetId,
         uint32 nowRevokeEpochId,
         D18 navPoolPerShare,
-        uint128 extraGasLimit
+        uint128 extraGasLimit,
+        address refund
     ) external payable;
 
-    function forceCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
-        external
-        payable;
+    function forceCancelDepositRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 investor,
+        AssetId depositAssetId,
+        address refund
+    ) external payable;
 
-    function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
-        external
-        payable;
+    function forceCancelRedeemRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 investor,
+        AssetId payoutAssetId,
+        address refund
+    ) external payable;
 
     //----------------------------------------------------------------------------------------------
     // View methods

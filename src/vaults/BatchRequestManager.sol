@@ -201,7 +201,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         AssetId depositAssetId,
         uint32 nowDepositEpochId,
         uint128 approvedAssetAmount,
-        D18 pricePoolPerAsset
+        D18 pricePoolPerAsset,
+        address refund
     ) external payable authOrManager(poolId) {
         require(
             nowDepositEpochId == nowDepositEpoch(scId_, depositAssetId),
@@ -241,7 +242,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
 
         bytes memory callback =
             RequestCallbackMessageLib.ApprovedDeposits(approvedAssetAmount, pricePoolPerAsset.raw()).serialize();
-        hub.requestCallback{value: msg.value}(poolId, scId_, depositAssetId, callback, 0, msg.sender);
+        hub.requestCallback{value: msg.value}(poolId, scId_, depositAssetId, callback, 0, refund);
     }
 
     /// @inheritdoc IBatchRequestManager
@@ -283,7 +284,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         AssetId depositAssetId,
         uint32 nowIssueEpochId,
         D18 navPoolPerShare,
-        uint128 extraGasLimit
+        uint128 extraGasLimit,
+        address refund
     ) external payable authOrManager(poolId) {
         require(nowIssueEpochId <= epochId[scId_][depositAssetId].deposit, EpochNotFound());
         require(
@@ -322,7 +324,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
 
         bytes memory callback =
             RequestCallbackMessageLib.IssuedShares(issuedShareAmount, navPoolPerShare.raw()).serialize();
-        hub.requestCallback{value: msg.value}(poolId, scId_, depositAssetId, callback, extraGasLimit, msg.sender);
+        hub.requestCallback{value: msg.value}(poolId, scId_, depositAssetId, callback, extraGasLimit, refund);
     }
 
     /// @inheritdoc IBatchRequestManager
@@ -332,7 +334,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         AssetId payoutAssetId,
         uint32 nowRevokeEpochId,
         D18 navPoolPerShare,
-        uint128 extraGasLimit
+        uint128 extraGasLimit,
+        address refund
     ) external payable authOrManager(poolId) {
         require(nowRevokeEpochId <= epochId[scId_][payoutAssetId].redeem, EpochNotFound());
         require(
@@ -379,15 +382,17 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         bytes memory callback = RequestCallbackMessageLib.RevokedShares(
                 payoutAssetAmount, revokedShareAmount, navPoolPerShare.raw()
             ).serialize();
-        hub.requestCallback{value: msg.value}(poolId, scId_, payoutAssetId, callback, extraGasLimit, msg.sender);
+        hub.requestCallback{value: msg.value}(poolId, scId_, payoutAssetId, callback, extraGasLimit, refund);
     }
 
     /// @inheritdoc IBatchRequestManager
-    function forceCancelDepositRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
-        external
-        payable
-        authOrManager(poolId)
-    {
+    function forceCancelDepositRequest(
+        PoolId poolId,
+        ShareClassId scId_,
+        bytes32 investor,
+        AssetId depositAssetId,
+        address refund
+    ) external payable authOrManager(poolId) {
         require(allowForceDepositCancel[scId_][depositAssetId][investor], CancellationInitializationRequired());
 
         uint128 cancellingAmount = depositRequest[scId_][depositAssetId][investor].pending;
@@ -398,16 +403,18 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         if (cancelledAssetAmount > 0) {
             bytes memory callback =
                 RequestCallbackMessageLib.FulfilledDepositRequest(investor, 0, 0, cancelledAssetAmount).serialize();
-            hub.requestCallback{value: msg.value}(poolId, scId_, depositAssetId, callback, 0, msg.sender);
+            hub.requestCallback{value: msg.value}(poolId, scId_, depositAssetId, callback, 0, refund);
         }
     }
 
     /// @inheritdoc IBatchRequestManager
-    function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
-        external
-        payable
-        authOrManager(poolId)
-    {
+    function forceCancelRedeemRequest(
+        PoolId poolId,
+        ShareClassId scId_,
+        bytes32 investor,
+        AssetId payoutAssetId,
+        address refund
+    ) external payable authOrManager(poolId) {
         require(allowForceRedeemCancel[scId_][payoutAssetId][investor], CancellationInitializationRequired());
 
         uint128 cancellingAmount = redeemRequest[scId_][payoutAssetId][investor].pending;
@@ -418,7 +425,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         if (cancelledShareAmount > 0) {
             bytes memory callback =
                 RequestCallbackMessageLib.FulfilledRedeemRequest(investor, 0, 0, cancelledShareAmount).serialize();
-            hub.requestCallback{value: msg.value}(poolId, scId_, payoutAssetId, callback, 0, msg.sender);
+            hub.requestCallback{value: msg.value}(poolId, scId_, payoutAssetId, callback, 0, refund);
         }
     }
 
@@ -427,11 +434,14 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHubRequestManagerNotifications
-    function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
-        external
-        payable
-        protected
-    {
+    function notifyDeposit(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 investor,
+        uint32 maxClaims,
+        address refund
+    ) external payable protected {
         uint128 totalPayoutShareAmount;
         uint128 totalPaymentAssetAmount;
         uint128 cancelledAssetAmount;
@@ -466,7 +476,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
                         investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
                     ).serialize(),
                 0,
-                msg.sender
+                refund
             );
         }
     }
@@ -537,11 +547,14 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     }
 
     /// @inheritdoc IHubRequestManagerNotifications
-    function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
-        external
-        payable
-        protected
-    {
+    function notifyRedeem(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 investor,
+        uint32 maxClaims,
+        address refund
+    ) external payable protected {
         uint128 totalPayoutAssetAmount;
         uint128 totalPaymentShareAmount;
         uint128 cancelledShareAmount;
@@ -575,7 +588,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
                         investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
                     ).serialize(),
                 0,
-                msg.sender
+                refund
             );
         }
     }

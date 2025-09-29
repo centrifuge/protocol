@@ -108,10 +108,10 @@ contract VaultsDeployer is SpokeDeployer {
         );
 
         asyncRequestManager = AsyncRequestManager(
-            create3(
-                generateSalt("asyncRequestManager-2"),
-                abi.encodePacked(type(AsyncRequestManager).creationCode, abi.encode(globalEscrow, batcher))
-            )
+            payable(create3(
+                    generateSalt("asyncRequestManager-2"),
+                    abi.encodePacked(type(AsyncRequestManager).creationCode, abi.encode(globalEscrow, batcher))
+                ))
         );
 
         syncManager = SyncManager(

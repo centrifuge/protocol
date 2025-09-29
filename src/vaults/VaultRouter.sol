@@ -63,7 +63,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         super.multicall(data);
 
         if (!wasBatching) {
-            gateway.endBatching();
+            gateway.endBatching(msg.sender);
         }
     }
 
