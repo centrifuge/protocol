@@ -85,7 +85,7 @@ contract BaseTest is HubDeployer, Test {
         labelAddresses("");
         deployHub(input, batcher);
         _mockStuff(batcher);
-        hubRequestManager = IHubRequestManager(address(new MockHubRequestManager(address(hub))));
+        hubRequestManager = new MockHubRequestManager();
         removeHubDeployerAccess(batcher);
 
         // Initialize accounts
