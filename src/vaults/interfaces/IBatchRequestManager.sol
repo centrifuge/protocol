@@ -232,7 +232,7 @@ interface IBatchRequestManager is IHubRequestManager {
         uint32 nowDepositEpochId,
         uint128 approvedAssetAmount,
         D18 pricePoolPerAsset
-    ) external returns (uint256 cost);
+    ) external payable;
 
     function approveRedeems(
         PoolId poolId,
@@ -250,7 +250,7 @@ interface IBatchRequestManager is IHubRequestManager {
         uint32 nowIssueEpochId,
         D18 navPoolPerShare,
         uint128 extraGasLimit
-    ) external returns (uint256 cost);
+    ) external payable;
 
     function revokeShares(
         PoolId poolId,
@@ -259,15 +259,15 @@ interface IBatchRequestManager is IHubRequestManager {
         uint32 nowRevokeEpochId,
         D18 navPoolPerShare,
         uint128 extraGasLimit
-    ) external returns (uint256 cost);
+    ) external payable;
 
     function forceCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external
-        returns (uint256 cost);
+        payable;
 
     function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external
-        returns (uint256 cost);
+        payable;
 
     //----------------------------------------------------------------------------------------------
     // Claiming methods
@@ -280,13 +280,12 @@ interface IBatchRequestManager is IHubRequestManager {
         AssetId depositAssetId,
         bytes32 investor,
         uint32 maxClaims
-    ) external payable returns (uint256 cost);
+    ) external payable;
 
     /// @notice Notify a redemption for an investor address located in the chain where the asset belongs
     function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, bytes32 investor, uint32 maxClaims)
         external
-        payable
-        returns (uint256 cost);
+        payable;
 
     //----------------------------------------------------------------------------------------------
     // View methods
