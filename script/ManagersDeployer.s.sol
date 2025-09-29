@@ -26,6 +26,9 @@ contract ManagersActionBatcher is SpokeActionBatcher {
 
         // rely Root
         report.queueManager.rely(address(report.spoke.common.root));
+
+        // rely crosschainBatcher
+        report.queueManager.rely(address(report.spoke.common.crosschainBatcher));
     }
 
     function revokeManagers(ManagersReport memory report) public onlyDeployer {
@@ -52,7 +55,8 @@ contract ManagersDeployer is SpokeDeployer {
             create3(
                 generateSalt("queueManager"),
                 abi.encodePacked(
-                    type(QueueManager).creationCode, abi.encode(contractUpdater, balanceSheet, address(batcher))
+                    type(QueueManager).creationCode,
+                    abi.encode(contractUpdater, balanceSheet, crosschainBatcher, address(batcher))
                 )
             )
         );
