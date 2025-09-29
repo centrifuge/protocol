@@ -112,8 +112,8 @@ contract NAVManagerIntegrationTest is BaseTest {
 
         uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
         uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
-        (uint128 navHub2, uint128 issuanceHub) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
-        (uint128 navSpoke2, uint128 issuanceSpoke) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (uint128 navHub2, uint128 issuanceHub,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+        (uint128 navSpoke2, uint128 issuanceSpoke,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
         (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         assertEq(navHub, 500e18);
@@ -140,8 +140,8 @@ contract NAVManagerIntegrationTest is BaseTest {
 
         navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
         navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
-        (navHub2, issuanceHub) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
-        (navSpoke2, issuanceSpoke) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (navHub2, issuanceHub,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+        (navSpoke2, issuanceSpoke,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
         (globalNAV, globalIssuance) = simplePriceManager.metrics(POOL_A);
         (bool spokeGainIsPositive, uint128 spokeGain) =
             accounting.accountValue(POOL_A, navManager.gainAccount(CHAIN_CV));
@@ -166,8 +166,8 @@ contract NAVManagerIntegrationTest is BaseTest {
 
         navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
         navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
-        (navHub2, issuanceHub) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
-        (navSpoke2, issuanceSpoke) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (navHub2, issuanceHub,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+        (navSpoke2, issuanceSpoke,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
         (globalNAV, globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         // NAV and global issuance should remain unchanged, only issuance per network changes
@@ -190,8 +190,8 @@ contract NAVManagerIntegrationTest is BaseTest {
 
         navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
         navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
-        (navHub2, issuanceHub) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
-        (navSpoke2, issuanceSpoke) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (navHub2, issuanceHub,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+        (navSpoke2, issuanceSpoke,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
         (globalNAV, globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         // Liability reduces the NAV
@@ -214,8 +214,8 @@ contract NAVManagerIntegrationTest is BaseTest {
 
         navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
         navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
-        (navHub2, issuanceHub) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
-        (navSpoke2, issuanceSpoke) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (navHub2, issuanceHub,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+        (navSpoke2, issuanceSpoke,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
         (globalNAV, globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         // NAV should remain unchanged

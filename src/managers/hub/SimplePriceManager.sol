@@ -84,6 +84,11 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
 
     /// @inheritdoc INAVHook
     function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) external auth {
+        NetworkMetrics memory networkMetrics_ = networkMetrics[poolId][centrifugeId];
+
+        // If there are pending epochs to be issued or revoked, skip updating the share price, as it will likely be off
+        if (networkMetrics_.issueEpochsBehind > 0 || networkMetrics_.revokeEpochsBehind > 0) return;
+
         crosschainBatcher.execute(
             abi.encodeWithSelector(
                 SimplePriceManager.onUpdateCallback.selector, poolId, scId, centrifugeId, netAssetValue
@@ -136,6 +141,76 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     //----------------------------------------------------------------------------------------------
     // Manager actions
     //----------------------------------------------------------------------------------------------
+
+    function approveDeposits(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint128 approvedAssetAmount)
+        external
+        onlyManager(poolId)
+    {
+        IBatchRequestManager requestManager =
+            IBatchRequestManager(address(hubRegistry.hubRequestManager(poolId, depositAssetId.centrifugeId())));
+        uint32 nowDepositEpochId = requestManager.nowDepositEpoch(scId, depositAssetId);
+
+        NetworkMetrics storage networkMetrics_ = networkMetrics[poolId][depositAssetId.centrifugeId()];
+
+        networkMetrics_.issueEpochsBehind++;
+
+        D18 pricePoolPerAsset = hub.pricePoolPerAsset(poolId, scId, depositAssetId);
+        requestManager.approveDeposits(
+            poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset
+        );
+    }
+
+    function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint128 extraGasLimit)
+        external
+        onlyManager(poolId)
+    {
+        IBatchRequestManager requestManager =
+            IBatchRequestManager(address(hubRegistry.hubRequestManager(poolId, depositAssetId.centrifugeId())));
+        uint32 nowIssueEpochId = requestManager.nowIssueEpoch(scId, depositAssetId);
+
+        NetworkMetrics storage networkMetrics_ = networkMetrics[poolId][depositAssetId.centrifugeId()];
+
+        require(networkMetrics_.issueEpochsBehind > 0, MismatchedEpochs());
+        networkMetrics_.issueEpochsBehind--;
+
+        D18 navPoolPerShare = _navPerShare(poolId);
+        requestManager.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare, extraGasLimit);
+    }
+
+    function approveRedeems(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint128 approvedShareAmount)
+        external
+        onlyManager(poolId)
+    {
+        IBatchRequestManager requestManager =
+            IBatchRequestManager(address(hubRegistry.hubRequestManager(poolId, payoutAssetId.centrifugeId())));
+        uint32 nowRedeemEpochId = requestManager.nowRedeemEpoch(scId, payoutAssetId);
+
+        NetworkMetrics storage networkMetrics_ = networkMetrics[poolId][payoutAssetId.centrifugeId()];
+
+        networkMetrics_.revokeEpochsBehind++;
+
+        D18 pricePoolPerAsset = hub.pricePoolPerAsset(poolId, scId, payoutAssetId);
+        requestManager.approveRedeems(
+            poolId, scId, payoutAssetId, nowRedeemEpochId, approvedShareAmount, pricePoolPerAsset
+        );
+    }
+
+    function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint128 extraGasLimit)
+        external
+        onlyManager(poolId)
+    {
+        IBatchRequestManager requestManager =
+            IBatchRequestManager(address(hubRegistry.hubRequestManager(poolId, payoutAssetId.centrifugeId())));
+        uint32 nowRevokeEpochId = requestManager.nowRevokeEpoch(scId, payoutAssetId);
+
+        NetworkMetrics storage networkMetrics_ = networkMetrics[poolId][payoutAssetId.centrifugeId()];
+
+        require(networkMetrics_.revokeEpochsBehind > 0, MismatchedEpochs());
+        networkMetrics_.revokeEpochsBehind--;
+
+        D18 navPoolPerShare = _navPerShare(poolId);
+        requestManager.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, navPoolPerShare, extraGasLimit);
+    }
 
     /// @inheritdoc ISimplePriceManager
     function approveDepositsAndIssueShares(

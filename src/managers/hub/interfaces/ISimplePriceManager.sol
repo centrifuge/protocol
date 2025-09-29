@@ -30,6 +30,8 @@ interface ISimplePriceManager is INAVHook {
     struct NetworkMetrics {
         uint128 netAssetValue;
         uint128 issuance;
+        uint32 issueEpochsBehind;
+        uint32 revokeEpochsBehind;
     }
 
     function metrics(PoolId poolId) external view returns (uint128 netAssetValue, uint128 issuance);
@@ -37,7 +39,7 @@ interface ISimplePriceManager is INAVHook {
     function networkMetrics(PoolId poolId, uint16 centrifugeId)
         external
         view
-        returns (uint128 netAssetValue, uint128 issuance);
+        returns (uint128 netAssetValue, uint128 issuance, uint32 issueEpochsBehind, uint32 revokeEpochsBehind);
     function manager(PoolId poolId, address manager_) external view returns (bool);
 
     //----------------------------------------------------------------------------------------------
@@ -67,7 +69,7 @@ interface ISimplePriceManager is INAVHook {
     /// @param scId The share class ID
     /// @param depositAssetId The asset ID for deposits
     /// @param approvedAssetAmount Amount of assets to approve
-    /// @param extraGasLimit Extra gas limit for cross-chain operations
+    /// @param extraGasLimit Extra gas limit for some computation that may need to happen on the remote chain
     function approveDepositsAndIssueShares(
         PoolId poolId,
         ShareClassId scId,
@@ -76,12 +78,27 @@ interface ISimplePriceManager is INAVHook {
         uint128 extraGasLimit
     ) external;
 
+    /// @notice Approve redemption requests for a given share amount
+    /// @param poolId The pool ID
+    /// @param scId The share class ID
+    /// @param payoutAssetId The asset ID for payouts
+    /// @param approvedShareAmount Amount of shares to approve for redemption
+    function approveRedeems(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint128 approvedShareAmount)
+        external;
+
+    /// @notice Revoke shares from approved redemption requests
+    /// @param poolId The pool ID
+    /// @param scId The share class ID
+    /// @param payoutAssetId The asset ID for payouts
+    /// @param extraGasLimit Extra gas limit for some computation that may need to happen on the remote chain
+    function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint128 extraGasLimit) external;
+
     /// @notice Approve redeems and revoke shares in sequence using current NAV per share
     /// @param poolId The pool ID
     /// @param scId The share class ID
     /// @param payoutAssetId The asset ID for payouts
     /// @param approvedShareAmount Amount of shares to approve for redemption
-    /// @param extraGasLimit Extra gas limit for cross-chain operations
+    /// @param extraGasLimit Extra gas limit for some computation that may need to happen on the remote chain
     function approveRedeemsAndRevokeShares(
         PoolId poolId,
         ShareClassId scId,
