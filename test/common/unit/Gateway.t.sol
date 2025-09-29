@@ -640,8 +640,9 @@ contract GatewayTestEndBatching is GatewayTest {
         _mockAdapter(REMOTE_CENT_ID, message1, MESSAGE_GAS_LIMIT, REFUND);
         _mockAdapter(REMOTE_CENT_ID + 1, message2, MESSAGE_GAS_LIMIT, REFUND);
 
-        gateway.endBatching{value: cost}(REFUND);
+        gateway.endBatching{value: cost + 1234}(REFUND);
 
+        assertEq(REFUND.balance, 1234);
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
         assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), new bytes(0));
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID + 1, POOL_A), 0);
@@ -663,8 +664,9 @@ contract GatewayTestEndBatching is GatewayTest {
         _mockAdapter(REMOTE_CENT_ID, message1, MESSAGE_GAS_LIMIT, REFUND);
         _mockAdapter(REMOTE_CENT_ID, message2, MESSAGE_GAS_LIMIT, REFUND);
 
-        gateway.endBatching{value: cost * 2}(REFUND);
+        gateway.endBatching{value: cost * 2 + 1234}(REFUND);
 
+        assertEq(REFUND.balance, 1234);
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
         assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), new bytes(0));
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_0), 0);

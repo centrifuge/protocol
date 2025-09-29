@@ -163,16 +163,20 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             TransientBytesLib.append(batchSlot, message);
         } else {
-            _send(centrifugeId, message, gasLimit, refund);
+            uint256 cost = _send(centrifugeId, message, gasLimit, refund, msg.value);
+            _refund(refund, msg.value - cost);
         }
     }
 
-    function _send(uint16 centrifugeId, bytes memory batch, uint128 batchGasLimit, address refund) internal {
+    function _send(uint16 centrifugeId, bytes memory batch, uint128 batchGasLimit, address refund, uint256 fuel)
+        internal
+        returns (uint256 cost)
+    {
         PoolId adapterPoolId = processor.messagePoolId(batch);
         require(!isOutgoingBlocked[centrifugeId][adapterPoolId], OutgoingBlocked());
 
-        uint256 cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
-        if (msg.value >= cost) {
+        cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
+        if (fuel >= cost) {
             adapter.send{value: cost}(centrifugeId, batch, batchGasLimit, refund);
         } else if (unpaidMode) {
             _addUnpaidBatch(centrifugeId, batch, batchGasLimit);
@@ -180,9 +184,11 @@ contract Gateway is Auth, Recoverable, IGateway {
         } else {
             revert NotEnoughGas();
         }
+    }
 
-        if (msg.value > cost) {
-            (bool success,) = payable(refund).call{value: msg.value - cost}("");
+    function _refund(address refund, uint256 fuel) internal {
+        if (fuel > 0) {
+            (bool success,) = payable(refund).call{value: fuel}("");
             require(success, CannotRefund());
         }
     }
@@ -210,7 +216,8 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         underpaid_.counter--;
 
-        _send(centrifugeId, batch, underpaid_.gasLimit, refund);
+        uint256 cost = _send(centrifugeId, batch, underpaid_.gasLimit, refund, msg.value);
+        _refund(refund, msg.value - cost);
 
         if (underpaid_.counter == 0) delete underpaid[centrifugeId][batchHash];
 
@@ -230,17 +237,20 @@ contract Gateway is Auth, Recoverable, IGateway {
         isBatching = false;
         TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
 
+        uint256 cost;
         for (uint256 i; i < locators.length; i++) {
             (uint16 centrifugeId, PoolId poolId) = _parseLocator(locators[i]);
             bytes32 outboundBatchSlot = _outboundBatchSlot(centrifugeId, poolId);
             uint128 gasLimit = _gasLimitSlot(centrifugeId, poolId).tloadUint128();
             bytes memory batch = TransientBytesLib.get(outboundBatchSlot);
 
-            _send(centrifugeId, batch, gasLimit, refund);
+            cost += _send(centrifugeId, batch, gasLimit, refund, msg.value);
 
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
         }
+
+        _refund(refund, msg.value - cost);
     }
 
     /// @inheritdoc IGateway
