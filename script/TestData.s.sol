@@ -105,6 +105,8 @@ contract TestData is FullDeployer {
     function _deployAsyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
         VaultState memory state;
         state.poolId = hubRegistry.poolId(centrifugeId, 1);
+        asyncRequestManager.depositSubsidy{value: 0.5 ether}(state.poolId);
+
         guardian.createPool(state.poolId, msg.sender, USD_ID);
         hub.updateHubManager(state.poolId, admin, true);
         state.scId = shareClassManager.previewNextShareClassId(state.poolId);
@@ -248,7 +250,7 @@ contract TestData is FullDeployer {
         calls[1] =
             abi.encodeWithSelector(balanceSheet.deposit.selector, state.poolId, state.scId, address(wBtc), 0, 10e18);
         calls[2] = abi.encodeWithSelector(
-            balanceSheet.submitQueuedAssets.selector, state.poolId, state.scId, wBtcId, DEFAULT_EXTRA_GAS
+            balanceSheet.submitQueuedAssets.selector, state.poolId, state.scId, wBtcId, DEFAULT_EXTRA_GAS, msg.sender
         );
         balanceSheet.multicall(calls);
 
@@ -268,6 +270,8 @@ contract TestData is FullDeployer {
 
     function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
         PoolId poolId = hubRegistry.poolId(centrifugeId, 2);
+        asyncRequestManager.depositSubsidy{value: 0.5 ether}(poolId);
+
         guardian.createPool(poolId, msg.sender, USD_ID);
         hub.updateHubManager(poolId, admin, true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
