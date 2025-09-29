@@ -12,8 +12,8 @@ import {SyncManager} from "../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../src/vaults/VaultRouter.sol";
 import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 import {RefundEscrowFactory} from "../src/vaults/factories/RefundEscrowFactory.sol";
+import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import "forge-std/Script.sol";
 

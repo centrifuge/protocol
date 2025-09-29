@@ -8,6 +8,7 @@ import {IAsyncRedeemManager} from "./interfaces/IVaultManagers.sol";
 import {IAsyncDepositManager} from "./interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "./interfaces/IBaseRequestManager.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "./interfaces/IAsyncVault.sol";
+import {IRefundEscrowFactory, IRefundEscrow} from "./factories/RefundEscrowFactory.sol";
 import {IAsyncRequestManager, AsyncInvestmentState} from "./interfaces/IVaultManagers.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -32,8 +33,6 @@ import {IVault} from "../spoke/interfaces/IVault.sol";
 import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
-
-import {IRefundEscrowFactory, IRefundEscrow} from "./factories/RefundEscrowFactory.sol";
 
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for

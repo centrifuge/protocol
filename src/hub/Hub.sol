@@ -27,7 +27,6 @@ import {ISnapshotHook} from "../common/interfaces/ISnapshotHook.sol";
 import {IHubMessageSender} from "../common/interfaces/IGatewaySenders.sol";
 import {IHubGuardianActions} from "../common/interfaces/IGuardianActions.sol";
 import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
-import {IPoolEscrow, IPoolEscrowFactory} from "../common/factories/interfaces/IPoolEscrowFactory.sol";
 
 /// @title  Hub
 /// @notice Central pool management contract, that brings together all functions in one place.

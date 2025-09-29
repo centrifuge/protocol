@@ -8,9 +8,9 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../common/types/PoolId.sol";
 import {AssetId} from "../../common/types/AssetId.sol";
 import {IRoot} from "../../common/interfaces/IRoot.sol";
+import {IGateway} from "../../common/interfaces/IGateway.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
 import {IPoolEscrow} from "../../common/interfaces/IPoolEscrow.sol";
-import {IGateway} from "../../common/interfaces/IGateway.sol";
 import {ISpokeMessageSender} from "../../common/interfaces/IGatewaySenders.sol";
 import {IPoolEscrowProvider} from "../../common/factories/interfaces/IPoolEscrowFactory.sol";
 

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "../misc/Auth.sol";
-
 import {IRefundEscrow} from "./interfaces/IRefundEscrow.sol";
+
+import {Auth} from "../misc/Auth.sol";
 
 contract RefundEscrow is Auth, IRefundEscrow {
     constructor(address owner) Auth(owner) {}
@@ -17,4 +17,3 @@ contract RefundEscrow is Auth, IRefundEscrow {
         require(success, CannotWithdraw());
     }
 }
-

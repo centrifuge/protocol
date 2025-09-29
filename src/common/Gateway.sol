@@ -10,12 +10,12 @@ import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 
 import {Auth} from "../misc/Auth.sol";
+import {Recoverable} from "../misc/Recoverable.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 import {TransientArrayLib} from "../misc/libraries/TransientArrayLib.sol";
 import {TransientBytesLib} from "../misc/libraries/TransientBytesLib.sol";
 import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
-import {Recoverable, IRecoverable, ETH_ADDRESS} from "../misc/Recoverable.sol";
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages through an adapter

@@ -16,8 +16,8 @@ import {VaultDetails} from "../../../src/spoke/interfaces/ISpoke.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 import {IBaseRequestManager} from "../../../src/vaults/interfaces/IBaseRequestManager.sol";
-import {IRefundEscrowFactory} from "../../../src/vaults/factories/interfaces/IRefundEscrowFactory.sol";
 import {AsyncRequestManager, IAsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
+import {IRefundEscrowFactory} from "../../../src/vaults/factories/interfaces/IRefundEscrowFactory.sol";
 
 interface VaultLike {
     function priceComputedAt() external view returns (uint64);

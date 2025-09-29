@@ -2,6 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {PoolId} from "../../../common/types/PoolId.sol";
+
 import {IRefundEscrow} from "../../interfaces/IRefundEscrow.sol";
 
 interface IRefundEscrowFactory {
@@ -19,4 +20,3 @@ interface IRefundEscrowFactory {
     /// @notice Returns the escrow
     function get(PoolId poolId) external view returns (IRefundEscrow);
 }
-

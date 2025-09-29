@@ -519,9 +519,10 @@ library MessageLib {
         require(messageType(data) == MessageType.UpdateRestriction, UnknownMessageType());
 
         uint16 payloadLength = data.toUint16(25);
-        return UpdateRestriction({
-            poolId: data.toUint64(1), scId: data.toBytes16(9), payload: data.slice(27, payloadLength)
-        });
+        return
+            UpdateRestriction({
+                poolId: data.toUint64(1), scId: data.toBytes16(9), payload: data.slice(27, payloadLength)
+            });
     }
 
     function serialize(UpdateRestriction memory t) internal pure returns (bytes memory) {

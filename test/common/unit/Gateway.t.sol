@@ -2,8 +2,8 @@
 pragma solidity 0.8.28;
 
 import {Auth, IAuth} from "../../../src/misc/Auth.sol";
+import {Recoverable} from "../../../src/misc/Recoverable.sol";
 import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
-import {Recoverable, IRecoverable} from "../../../src/misc/Recoverable.sol";
 import {TransientArrayLib} from "../../../src/misc/libraries/TransientArrayLib.sol";
 import {TransientBytesLib} from "../../../src/misc/libraries/TransientBytesLib.sol";
 import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageLib.sol";

@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
+
 import {IRefundEscrow} from "../../../src/vaults/interfaces/IRefundEscrow.sol";
 import {RefundEscrowFactory, IRefundEscrowFactory} from "../../../src/vaults/factories/RefundEscrowFactory.sol";
 
@@ -58,4 +59,3 @@ contract RefundEscrowFactoryTestNewEscrow is RefundEscrowFactoryTest {
         assertEq(IAuth(address(escrow)).wards(CONTROLLER), 1);
     }
 }
-
