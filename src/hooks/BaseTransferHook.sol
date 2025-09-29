@@ -11,7 +11,6 @@ import {CastLib} from "../misc/libraries/CastLib.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 import {IERC165} from "../misc/interfaces/IERC7575.sol";
 import {BitmapLib} from "../misc/libraries/BitmapLib.sol";
-import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 
 import {PoolId} from "../common/types/PoolId.sol";
 import {IRoot} from "../common/interfaces/IRoot.sol";
