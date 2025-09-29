@@ -5,6 +5,7 @@ import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
+import {IERC165} from "../../../src/misc/interfaces/IERC165.sol";
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {AssetId} from "../../../src/common/types/AssetId.sol";
@@ -14,6 +15,7 @@ import {IHubGatewayHandler} from "../../../src/common/interfaces/IGatewayHandler
 
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
 import {IHubRequestManagerCallback} from "../../../src/hub/interfaces/IHubRequestManagerCallback.sol";
+import {IHubRequestManager, IHubRequestManagerNotifications} from "../../../src/hub/interfaces/IHubRequestManager.sol";
 
 import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
 import {
@@ -2770,5 +2772,32 @@ contract BatchRequestManagerRoundingEdgeCasesRedeem is BatchRequestManagerBaseTe
         );
 
         assertApproxEqAbs(payoutAssetA + payoutAssetB, actualAssetPayout, 2, "Asset payout dust should be at most 2");
+    }
+}
+
+contract BatchRequestManagerERC165Support is BatchRequestManagerBaseTest {
+    function testERC165SupportBRM(bytes4 unsupportedInterfaceId) public view {
+        bytes4 erc165 = 0x01ffc9a7;
+        bytes4 hubRequestManager = 0x2f6c33bf;
+        bytes4 hubRequestManagerNotifications = 0x02a3e7b8;
+        bytes4 batchRequestManagerID = 0x825331a0;
+
+        vm.assume(
+            unsupportedInterfaceId != erc165 && unsupportedInterfaceId != hubRequestManager
+                && unsupportedInterfaceId != hubRequestManagerNotifications
+                && unsupportedInterfaceId != batchRequestManagerID
+        );
+
+        assertEq(type(IERC165).interfaceId, erc165);
+        assertEq(type(IHubRequestManager).interfaceId, hubRequestManager);
+        assertEq(type(IHubRequestManagerNotifications).interfaceId, hubRequestManagerNotifications);
+        assertEq(type(IBatchRequestManager).interfaceId, batchRequestManagerID);
+
+        assertEq(batchRequestManager.supportsInterface(erc165), true);
+        assertEq(batchRequestManager.supportsInterface(hubRequestManager), true);
+        assertEq(batchRequestManager.supportsInterface(hubRequestManagerNotifications), true);
+        assertEq(batchRequestManager.supportsInterface(batchRequestManagerID), true);
+
+        assertEq(batchRequestManager.supportsInterface(unsupportedInterfaceId), false);
     }
 }
