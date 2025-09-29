@@ -16,6 +16,7 @@ import {D18, d18} from "../misc/types/D18.sol";
 import {IAuth} from "../misc/interfaces/IAuth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
+import {IERC165} from "../misc/interfaces/IERC165.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 import {ReentrancyProtection} from "../misc/ReentrancyProtection.sol";
 
@@ -28,8 +29,8 @@ import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMess
 import {RequestMessageLib, RequestType as RequestMessageType} from "../common/libraries/RequestMessageLib.sol";
 
 import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
-import {IHubRequestManager} from "../hub/interfaces/IHubRequestManager.sol";
 import {IHubRequestManagerCallback} from "../hub/interfaces/IHubRequestManagerCallback.sol";
+import {IHubRequestManager, IHubRequestManagerNotifications} from "../hub/interfaces/IHubRequestManager.sol";
 
 /// @title  Batch Request Manager
 /// @notice Manager for handling deposit/redeem requests, epochs, and fulfillment logic for share classes
@@ -425,7 +426,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     // Claiming methods
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IBatchRequestManager
+    /// @inheritdoc IHubRequestManagerNotifications
     function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
         external
         payable
@@ -537,7 +538,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         }
     }
 
-    /// @inheritdoc IBatchRequestManager
+    /// @inheritdoc IHubRequestManagerNotifications
     function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
         external
         payable
@@ -646,6 +647,18 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
             cancelledShareAmount =
                 _postClaimUpdateQueued(poolId, scId_, investor, payoutAssetId, userOrder, RequestType.Redeem);
         }
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // ERC-165
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
+        return interfaceId == type(IBatchRequestManager).interfaceId
+            || interfaceId == type(IHubRequestManager).interfaceId
+            || interfaceId == type(IHubRequestManagerNotifications).interfaceId
+            || interfaceId == type(IERC165).interfaceId;
     }
 
     //----------------------------------------------------------------------------------------------
