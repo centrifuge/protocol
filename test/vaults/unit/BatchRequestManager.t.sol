@@ -76,39 +76,6 @@ contract HubRegistryMock {
     }
 }
 
-contract HubMock is IHubRequestManagerCallback {
-    uint256 public totalCost;
-
-    function requestCallback(PoolId, ShareClassId, AssetId, bytes calldata, uint128, address refund) external payable {}
-
-    /*
-    // Required implementations for IHubGatewayHandler
-    function registerAsset(AssetId, uint8) external override {}
-
-    function request(PoolId, ShareClassId, AssetId, bytes calldata) external override {}
-
-    function updateHoldingAmount(uint16, PoolId, ShareClassId, AssetId, uint128, D18, bool, bool, uint64)
-        external
-        override
-    {}
-
-    function initiateTransferShares(uint16, uint16, PoolId, ShareClassId, bytes32, uint128, uint128)
-        external
-        override
-    {}
-
-    function updateShares(uint16, PoolId, ShareClassId, uint128, bool, bool, uint64) external override {}
-    */
-}
-
-contract GatewayMock {
-    function depositSubsidy(PoolId) external payable {}
-
-    function withdrawSubsidy(PoolId, address recipient, uint256 amount) external {
-        payable(recipient).transfer(amount);
-    }
-}
-
 contract BatchRequestManagerHarness is BatchRequestManager {
     constructor(IHubRegistry hubRegistry_, address deployer) BatchRequestManager(hubRegistry_, deployer) {}
 
@@ -137,6 +104,9 @@ contract BatchRequestManagerHarness is BatchRequestManager {
     }
 }
 
+// Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
+contract IsContract {}
+
 abstract contract BatchRequestManagerBaseTest is Test {
     using MathLib for uint128;
     using MathLib for uint256;
@@ -147,14 +117,13 @@ abstract contract BatchRequestManagerBaseTest is Test {
 
     BatchRequestManagerHarness public batchRequestManager;
     HubRegistryMock public hubRegistryMock;
-    HubMock public hubMock;
-    GatewayMock public gatewayMock;
 
     uint16 centrifugeId = 1;
     PoolId poolId = PoolId.wrap(POOL_ID);
     ShareClassId scId = SC_ID;
     bytes32 investor = bytes32("investor");
     address immutable REFUND = makeAddr("refund");
+    IHubRequestManagerCallback immutable hub = IHubRequestManagerCallback(address(new IsContract()));
 
     modifier notThisContract(address addr) {
         vm.assume(address(this) != addr);
@@ -163,13 +132,14 @@ abstract contract BatchRequestManagerBaseTest is Test {
 
     function setUp() public virtual {
         hubRegistryMock = new HubRegistryMock();
-        hubMock = new HubMock();
-        gatewayMock = new GatewayMock();
         batchRequestManager = new BatchRequestManagerHarness(IHubRegistry(address(hubRegistryMock)), address(this));
 
-        // Set the hub and gateway addresses
-        batchRequestManager.file("hub", address(hubMock));
-        batchRequestManager.file("gateway", address(gatewayMock));
+        vm.mockCall(
+            address(hub),
+            COST,
+            abi.encodeWithSelector(IHubRequestManagerCallback.requestCallback.selector),
+            abi.encode()
+        );
 
         assertEq(IHubRegistry(address(hubRegistryMock)).decimals(poolId), DECIMALS_POOL);
         assertEq(IHubRegistry(address(hubRegistryMock)).decimals(USDC), DECIMALS_USDC);
@@ -2011,7 +1981,7 @@ contract BatchRequestManagerAuthTest is BatchRequestManagerBaseTest {
     function testFileUnauthorized() public {
         vm.prank(unauthorized);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        batchRequestManager.file("hub", address(hubMock));
+        batchRequestManager.file("hub", address(123));
     }
 
     function testFileInvalidParam() public {
@@ -2057,9 +2027,9 @@ contract BatchRequestManagerAuthTest is BatchRequestManagerBaseTest {
     function testApproveDepositsUnauthorized() public {
         vm.prank(unauthorized);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        batchRequestManager.approveDeposits(
-            poolId, scId, USDC, 1, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, 1, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND);
     }
 
     function testApproveRedeemsUnauthorized() public {
@@ -2071,33 +2041,25 @@ contract BatchRequestManagerAuthTest is BatchRequestManagerBaseTest {
     function testIssueSharesUnauthorized() public {
         vm.prank(unauthorized);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        batchRequestManager.issueShares(poolId, scId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
+        batchRequestManager.issueShares{value: COST}(poolId, scId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
     }
 
     function testRevokeSharesUnauthorized() public {
         vm.prank(unauthorized);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        batchRequestManager.revokeShares(poolId, scId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
+        batchRequestManager.revokeShares{value: COST}(poolId, scId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
     }
 
     function testForceCancelDepositRequestUnauthorized() public {
         vm.prank(unauthorized);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        batchRequestManager.forceCancelDepositRequest(poolId, scId, investor, USDC, REFUND);
+        batchRequestManager.forceCancelDepositRequest{value: COST}(poolId, scId, investor, USDC, REFUND);
     }
 
     function testForceCancelRedeemRequestUnauthorized() public {
         vm.prank(unauthorized);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        batchRequestManager.forceCancelRedeemRequest(poolId, scId, investor, USDC, REFUND);
-    }
-
-    function testFileGateway() public {
-        address newGateway = makeAddr("newGateway");
-        vm.expectEmit();
-        emit IBatchRequestManager.File("gateway", newGateway);
-        batchRequestManager.file("gateway", newGateway);
-        assertEq(address(batchRequestManager.gateway()), newGateway);
+        batchRequestManager.forceCancelRedeemRequest{value: COST}(poolId, scId, investor, USDC, REFUND);
     }
 }
 

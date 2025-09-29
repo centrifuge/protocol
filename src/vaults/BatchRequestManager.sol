@@ -42,9 +42,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     using RequestCallbackMessageLib for *;
 
     IHubRegistry public immutable hubRegistry;
-
     IHubRequestManagerCallback public hub;
-    IGateway public gateway;
 
     // Epochs
     mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) public epochId;
@@ -85,7 +83,6 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     /// Accepts a `bytes32` representation of 'hub'
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubRequestManagerCallback(data);
-        else if (what == "gateway") gateway = IGateway(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
