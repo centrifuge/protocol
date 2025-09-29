@@ -11,8 +11,8 @@ import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
 import {IGateway} from "../common/interfaces/IGateway.sol";
-import {ICrosschainBatcher} from "../common/interfaces/ICrosschainBatcher.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {ICrosschainBatcher} from "../common/interfaces/ICrosschainBatcher.sol";
 
 import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
