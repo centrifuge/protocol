@@ -787,17 +787,6 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         _assertDepositRequestEq(USDC, investor, UserOrder(0, 2));
     }
 
-    function testNotifyDepositExactCost() public {
-        _depositAndApproveWithFuzzBounds(MIN_REQUEST_AMOUNT_USDC, MIN_REQUEST_AMOUNT_USDC);
-        batchRequestManager.issueShares{value: COST}(poolId, scId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
-
-        uint256 balanceBefore = address(this).balance;
-
-        batchRequestManager.notifyDeposit{value: COST}(poolId, scId, USDC, investor, 10, REFUND);
-
-        _assertDepositRequestEq(USDC, investor, UserOrder(0, 2));
-    }
-
     function testNotifyDepositWithQueuedCancellation() public {
         _depositAndApprove(MIN_REQUEST_AMOUNT_USDC, MIN_REQUEST_AMOUNT_USDC);
         batchRequestManager.issueShares{value: COST}(poolId, scId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
@@ -1264,7 +1253,7 @@ contract BatchRequestManagerQueuedDepositsTest is BatchRequestManagerBaseTest {
         // Initial deposit request
         batchRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
         batchRequestManager.approveDeposits{
-            value: msg.value
+            value: COST
         }(poolId, scId, USDC, _nowDeposit(USDC), approvedAssetAmount, _pricePoolPerAsset(USDC), REFUND);
         epochId = 2;
 

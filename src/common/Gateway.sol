@@ -182,7 +182,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         }
 
         if (msg.value > cost) {
-            (bool success,) = payable(refund).call{value: msg.value - cost}(new bytes(0));
+            (bool success,) = payable(refund).call{value: msg.value - cost}("");
             require(success, CannotRefund());
         }
     }

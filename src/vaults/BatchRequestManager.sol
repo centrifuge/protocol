@@ -119,7 +119,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
                     assetId,
                     RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount)
                         .serialize(),
-                    0
+                    0,
+                    address(0)
                 );
             }
         } else if (kind == uint8(RequestMessageType.CancelRedeemRequest)) {
@@ -134,7 +135,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
                     assetId,
                     RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount)
                         .serialize(),
-                    0
+                    0,
+                    address(0)
                 );
             }
         } else {
