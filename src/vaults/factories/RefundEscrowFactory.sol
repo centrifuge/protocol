@@ -32,7 +32,7 @@ contract RefundEscrowFactory is Auth, IRefundEscrowFactory {
                 bytes1(0xff),
                 address(this),
                 salt,
-                keccak256(abi.encodePacked(type(RefundEscrow).creationCode, abi.encode(poolId, address(this))))
+                keccak256(abi.encodePacked(type(RefundEscrow).creationCode, abi.encode(address(controller))))
             )
         );
 

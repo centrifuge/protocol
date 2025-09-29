@@ -41,7 +41,7 @@ contract GuardianTest is Test {
     Guardian guardian = new Guardian(SAFE, root, gateway, multiAdapter, sender);
 
     function setUp() external {
-        vm.deal(UNAUTHORIZED, 1 ether);
+        vm.deal(address(SAFE), 1 ether);
     }
 
     function testGuardian() public view {

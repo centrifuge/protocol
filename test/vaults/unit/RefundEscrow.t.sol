@@ -8,10 +8,13 @@ import {RefundEscrow, IRefundEscrow} from "../../../src/vaults/RefundEscrow.sol"
 
 import "forge-std/Test.sol";
 
+contract NoReceivable {}
+
 contract RefundEscrowTest is Test {
     address immutable ANY = makeAddr("any");
     address immutable AUTH = makeAddr("auth");
     address immutable RECEIVER = makeAddr("receiver");
+    address immutable NO_RECEIVER = address(new NoReceivable());
 
     RefundEscrow escrow = new RefundEscrow(AUTH);
 
@@ -47,15 +50,16 @@ contract RefundEscrowTestWithdrawFunds is RefundEscrowTest {
         vm.prank(AUTH);
         escrow.depositFunds{value: 100}();
 
-        vm.prank(address(this)); // Not receiveable
+        vm.prank(AUTH);
         vm.expectRevert(IRefundEscrow.CannotWithdraw.selector);
-        escrow.withdrawFunds(RECEIVER, 50);
+        escrow.withdrawFunds(NO_RECEIVER, 50);
     }
 
     function testWithdrawFunds() external {
         vm.prank(AUTH);
         escrow.depositFunds{value: 100}();
 
+        vm.prank(AUTH);
         escrow.withdrawFunds(RECEIVER, 50);
 
         assertEq(address(escrow).balance, 50);

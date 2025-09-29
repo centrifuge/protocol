@@ -51,8 +51,7 @@ contract RefundEscrowFactoryTestNewEscrow is RefundEscrowFactoryTest {
         vm.prank(AUTH);
         factory.file("controller", CONTROLLER);
 
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(AUTH);
         IRefundEscrow escrow = factory.newEscrow(POOL_A);
 
         assertEq(address(escrow), address(factory.get(POOL_A)));
