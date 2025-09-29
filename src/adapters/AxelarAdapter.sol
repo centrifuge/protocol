@@ -76,7 +76,13 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapter
-    function send(uint16 centrifugeId, bytes calldata payload, uint256, /* gasLimit */ address refund)
+    function send(
+        uint16 centrifugeId,
+        bytes calldata payload,
+        uint256,
+        /* gasLimit */
+        address refund
+    )
         external
         payable
         returns (bytes32 adapterData)
@@ -85,9 +91,9 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         AxelarDestination memory destination = destinations[centrifugeId];
         require(bytes(destination.axelarId).length != 0, UnknownChainId());
 
-        axelarGasService.payNativeGasForContractCall{value: msg.value}(
-            address(this), destination.axelarId, destination.addr, payload, refund
-        );
+        axelarGasService.payNativeGasForContractCall{
+            value: msg.value
+        }(address(this), destination.axelarId, destination.addr, payload, refund);
 
         axelarGateway.callContract(destination.axelarId, destination.addr, payload);
 
