@@ -44,25 +44,23 @@ contract MockVaults is Test, Auth, IAdapter {
         handler.handle(
             sourceChainId,
             MessageLib.Request(
-                poolId.raw(),
-                scId.raw(),
-                assetId.raw(),
-                RequestMessageLib.DepositRequest({investor: investor, amount: amount}).serialize()
-            ).serialize()
+                    poolId.raw(),
+                    scId.raw(),
+                    assetId.raw(),
+                    RequestMessageLib.DepositRequest({investor: investor, amount: amount}).serialize()
+                ).serialize()
         );
     }
 
-    function requestRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint128 amount)
-        public
-    {
+    function requestRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint128 amount) public {
         handler.handle(
             sourceChainId,
             MessageLib.Request(
-                poolId.raw(),
-                scId.raw(),
-                assetId.raw(),
-                RequestMessageLib.RedeemRequest({investor: investor, amount: amount}).serialize()
-            ).serialize()
+                    poolId.raw(),
+                    scId.raw(),
+                    assetId.raw(),
+                    RequestMessageLib.RedeemRequest({investor: investor, amount: amount}).serialize()
+                ).serialize()
         );
     }
 
@@ -70,11 +68,11 @@ contract MockVaults is Test, Auth, IAdapter {
         handler.handle(
             sourceChainId,
             MessageLib.Request(
-                poolId.raw(),
-                scId.raw(),
-                assetId.raw(),
-                RequestMessageLib.CancelDepositRequest({investor: investor}).serialize()
-            ).serialize()
+                    poolId.raw(),
+                    scId.raw(),
+                    assetId.raw(),
+                    RequestMessageLib.CancelDepositRequest({investor: investor}).serialize()
+                ).serialize()
         );
     }
 
@@ -82,11 +80,11 @@ contract MockVaults is Test, Auth, IAdapter {
         handler.handle(
             sourceChainId,
             MessageLib.Request(
-                poolId.raw(),
-                scId.raw(),
-                assetId.raw(),
-                RequestMessageLib.CancelRedeemRequest({investor: investor}).serialize()
-            ).serialize()
+                    poolId.raw(),
+                    scId.raw(),
+                    assetId.raw(),
+                    RequestMessageLib.CancelRedeemRequest({investor: investor}).serialize()
+                ).serialize()
         );
     }
 
@@ -116,16 +114,16 @@ contract MockVaults is Test, Auth, IAdapter {
         handler.handle(
             sourceChainId,
             MessageLib.UpdateHoldingAmount({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                assetId: assetId.raw(),
-                amount: amount,
-                pricePerUnit: pricePoolPerAsset.raw(),
-                timestamp: 0,
-                isIncrease: isIncrease,
-                isSnapshot: isSnapshot,
-                nonce: nonce
-            }).serialize()
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    amount: amount,
+                    pricePerUnit: pricePoolPerAsset.raw(),
+                    timestamp: 0,
+                    isIncrease: isIncrease,
+                    isSnapshot: isSnapshot,
+                    nonce: nonce
+                }).serialize()
         );
     }
 
@@ -140,14 +138,14 @@ contract MockVaults is Test, Auth, IAdapter {
         handler.handle(
             sourceChainId,
             MessageLib.UpdateShares({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                shares: amount,
-                timestamp: 0,
-                isIssuance: isIssuance,
-                isSnapshot: isSnapshot,
-                nonce: nonce
-            }).serialize()
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    shares: amount,
+                    timestamp: 0,
+                    isIssuance: isIssuance,
+                    isSnapshot: isSnapshot,
+                    nonce: nonce
+                }).serialize()
         );
     }
 

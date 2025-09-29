@@ -123,9 +123,7 @@ interface IHub {
         returns (uint256 cost);
 
     /// @notice Notify to a CV instance that share metadata has updated
-    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId)
-        external
-        returns (uint256 cost);
+    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external returns (uint256 cost);
 
     /// @notice Update on a CV instance the hook of a share token
     function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook)
@@ -336,9 +334,7 @@ interface IHub {
     /// @param centrifugeId The centrifuge chain ID
     /// @param data The encoded function call data
     /// @return cost The gas cost for the operation
-    function callRequestManager(PoolId poolId, uint16 centrifugeId, bytes calldata data)
-        external
-        returns (uint256 cost);
+    function callRequestManager(PoolId poolId, uint16 centrifugeId, bytes calldata data) external returns (uint256 cost);
 
     function updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
         external;

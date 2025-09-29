@@ -81,9 +81,9 @@ contract CrosschainBatcherTestWithBatch is CrosschainBatcherTest {
     function testWithCallback() public {
         vm.prank(ANY);
         vm.deal(ANY, PAYMENT);
-        uint256 cost = batcher.execute{value: PAYMENT}(
-            abi.encodeWithSelector(CrosschainBatcherTestWithBatch._success.selector, true, 1)
-        );
+        uint256 cost = batcher.execute{
+            value: PAYMENT
+        }(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._success.selector, true, 1));
         assertEq(cost, COST);
         assertEq(batcher.caller(), address(0));
     }

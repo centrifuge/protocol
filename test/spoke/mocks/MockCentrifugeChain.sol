@@ -52,12 +52,12 @@ contract MockCentrifugeChain is Test {
 
         execute(
             MessageLib.UpdateVault({
-                poolId: poolId,
-                scId: scId,
-                assetId: vaultDetails.assetId.raw(),
-                vaultOrFactory: bytes32(bytes20(vault)),
-                kind: uint8(VaultUpdateKind.Unlink)
-            }).serialize()
+                    poolId: poolId,
+                    scId: scId,
+                    assetId: vaultDetails.assetId.raw(),
+                    vaultOrFactory: bytes32(bytes20(vault)),
+                    kind: uint8(VaultUpdateKind.Unlink)
+                }).serialize()
         );
     }
 
@@ -66,12 +66,12 @@ contract MockCentrifugeChain is Test {
 
         execute(
             MessageLib.UpdateVault({
-                poolId: poolId,
-                scId: scId,
-                vaultOrFactory: bytes32(bytes20(vault)),
-                assetId: vaultDetails.assetId.raw(),
-                kind: uint8(VaultUpdateKind.Link)
-            }).serialize()
+                    poolId: poolId,
+                    scId: scId,
+                    vaultOrFactory: bytes32(bytes20(vault)),
+                    assetId: vaultDetails.assetId.raw(),
+                    kind: uint8(VaultUpdateKind.Link)
+                }).serialize()
         );
     }
 
@@ -80,14 +80,13 @@ contract MockCentrifugeChain is Test {
 
         execute(
             MessageLib.UpdateContract({
-                poolId: poolId,
-                scId: scId,
-                target: bytes32(bytes20(address(syncManager))),
-                payload: UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
-                    assetId: vaultDetails.assetId.raw(),
-                    maxReserve: maxReserve
+                    poolId: poolId,
+                    scId: scId,
+                    target: bytes32(bytes20(address(syncManager))),
+                    payload: UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
+                            assetId: vaultDetails.assetId.raw(), maxReserve: maxReserve
+                        }).serialize()
                 }).serialize()
-            }).serialize()
         );
     }
 
@@ -103,14 +102,14 @@ contract MockCentrifugeChain is Test {
     ) public {
         execute(
             MessageLib.NotifyShareClass({
-                poolId: poolId,
-                scId: scId,
-                name: tokenName,
-                symbol: tokenSymbol.toBytes32(),
-                decimals: decimals,
-                salt: salt,
-                hook: bytes32(bytes20(hook))
-            }).serialize()
+                    poolId: poolId,
+                    scId: scId,
+                    name: tokenName,
+                    symbol: tokenSymbol.toBytes32(),
+                    decimals: decimals,
+                    salt: salt,
+                    hook: bytes32(bytes20(hook))
+                }).serialize()
         );
 
         updateMemberPoolEscrow(poolId, scId);
@@ -135,14 +134,14 @@ contract MockCentrifugeChain is Test {
     ) public {
         execute(
             MessageLib.NotifyShareClass({
-                poolId: poolId,
-                scId: scId,
-                name: tokenName,
-                symbol: tokenSymbol.toBytes32(),
-                decimals: decimals,
-                salt: keccak256(abi.encodePacked(poolId, scId)),
-                hook: bytes32(bytes20(hook))
-            }).serialize()
+                    poolId: poolId,
+                    scId: scId,
+                    name: tokenName,
+                    symbol: tokenSymbol.toBytes32(),
+                    decimals: decimals,
+                    salt: keccak256(abi.encodePacked(poolId, scId)),
+                    hook: bytes32(bytes20(hook))
+                }).serialize()
         );
 
         updateMemberPoolEscrow(poolId, scId);
@@ -151,10 +150,11 @@ contract MockCentrifugeChain is Test {
     function updateMember(uint64 poolId, bytes16 scId, address user, uint64 validUntil) public {
         execute(
             MessageLib.UpdateRestriction({
-                poolId: poolId,
-                scId: scId,
-                payload: UpdateRestrictionMessageLib.UpdateRestrictionMember(user.toBytes32(), validUntil).serialize()
-            }).serialize()
+                    poolId: poolId,
+                    scId: scId,
+                    payload: UpdateRestrictionMessageLib.UpdateRestrictionMember(user.toBytes32(), validUntil)
+                        .serialize()
+                }).serialize()
         );
     }
 
@@ -163,11 +163,8 @@ contract MockCentrifugeChain is Test {
     {
         execute(
             MessageLib.NotifyShareMetadata({
-                poolId: poolId,
-                scId: scId,
-                name: tokenName,
-                symbol: tokenSymbol.toBytes32()
-            }).serialize()
+                    poolId: poolId, scId: scId, name: tokenName, symbol: tokenSymbol.toBytes32()
+                }).serialize()
         );
     }
 
@@ -187,12 +184,8 @@ contract MockCentrifugeChain is Test {
     {
         execute(
             MessageLib.NotifyPricePoolPerAsset({
-                poolId: poolId,
-                scId: scId,
-                assetId: assetId,
-                price: price,
-                timestamp: computedAt
-            }).serialize()
+                    poolId: poolId, scId: scId, assetId: assetId, price: price, timestamp: computedAt
+                }).serialize()
         );
     }
 
@@ -207,32 +200,32 @@ contract MockCentrifugeChain is Test {
     function freeze(uint64 poolId, bytes16 scId, address user) public {
         execute(
             MessageLib.UpdateRestriction({
-                poolId: poolId,
-                scId: scId,
-                payload: UpdateRestrictionMessageLib.UpdateRestrictionFreeze(user.toBytes32()).serialize()
-            }).serialize()
+                    poolId: poolId,
+                    scId: scId,
+                    payload: UpdateRestrictionMessageLib.UpdateRestrictionFreeze(user.toBytes32()).serialize()
+                }).serialize()
         );
     }
 
     function unfreeze(uint64 poolId, bytes16 scId, address user) public {
         execute(
             MessageLib.UpdateRestriction({
-                poolId: poolId,
-                scId: scId,
-                payload: UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(user.toBytes32()).serialize()
-            }).serialize()
+                    poolId: poolId,
+                    scId: scId,
+                    payload: UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(user.toBytes32()).serialize()
+                }).serialize()
         );
     }
 
     function recoverTokens(address target, address token, uint256 tokenId, address to, uint256 amount) public {
         execute(
             MessageLib.RecoverTokens({
-                target: bytes32(bytes20(target)),
-                token: bytes32(bytes20(token)),
-                tokenId: tokenId,
-                to: bytes32(bytes20(to)),
-                amount: amount
-            }).serialize()
+                    target: bytes32(bytes20(target)),
+                    token: bytes32(bytes20(token)),
+                    tokenId: tokenId,
+                    to: bytes32(bytes20(to)),
+                    amount: amount
+                }).serialize()
         );
     }
 
@@ -252,16 +245,16 @@ contract MockCentrifugeChain is Test {
 
         execute(
             MessageLib.RequestCallback(
-                poolId,
-                scId,
-                assetId,
-                RequestCallbackMessageLib.FulfilledDepositRequest({
-                    investor: investor,
-                    fulfilledAssetAmount: fulfilledAssetAmount,
-                    fulfilledShareAmount: fulfilledShareAmount,
-                    cancelledAssetAmount: cancelledAssetAmount
-                }).serialize()
-            ).serialize()
+                    poolId,
+                    scId,
+                    assetId,
+                    RequestCallbackMessageLib.FulfilledDepositRequest({
+                            investor: investor,
+                            fulfilledAssetAmount: fulfilledAssetAmount,
+                            fulfilledShareAmount: fulfilledShareAmount,
+                            cancelledAssetAmount: cancelledAssetAmount
+                        }).serialize()
+                ).serialize()
         );
     }
 
@@ -279,16 +272,16 @@ contract MockCentrifugeChain is Test {
         isRevokedShares(poolId, scId, assetId, fulfilledAssetAmount, fulfilledShareAmount, d18(1, 1));
         execute(
             MessageLib.RequestCallback(
-                poolId,
-                scId,
-                assetId,
-                RequestCallbackMessageLib.FulfilledRedeemRequest({
-                    investor: investor,
-                    fulfilledAssetAmount: fulfilledAssetAmount,
-                    fulfilledShareAmount: fulfilledShareAmount,
-                    cancelledShareAmount: cancelledShareAmount
-                }).serialize()
-            ).serialize()
+                    poolId,
+                    scId,
+                    assetId,
+                    RequestCallbackMessageLib.FulfilledRedeemRequest({
+                            investor: investor,
+                            fulfilledAssetAmount: fulfilledAssetAmount,
+                            fulfilledShareAmount: fulfilledShareAmount,
+                            cancelledShareAmount: cancelledShareAmount
+                        }).serialize()
+                ).serialize()
         );
     }
 
@@ -298,14 +291,13 @@ contract MockCentrifugeChain is Test {
     {
         execute(
             MessageLib.RequestCallback(
-                poolId,
-                scId,
-                assetId,
-                RequestCallbackMessageLib.ApprovedDeposits({
-                    assetAmount: assets,
-                    pricePoolPerAsset: pricePoolPerAsset.raw()
-                }).serialize()
-            ).serialize()
+                    poolId,
+                    scId,
+                    assetId,
+                    RequestCallbackMessageLib.ApprovedDeposits({
+                            assetAmount: assets, pricePoolPerAsset: pricePoolPerAsset.raw()
+                        }).serialize()
+                ).serialize()
         );
     }
 
@@ -315,12 +307,13 @@ contract MockCentrifugeChain is Test {
     {
         execute(
             MessageLib.RequestCallback(
-                poolId,
-                scId,
-                assetId,
-                RequestCallbackMessageLib.IssuedShares({shareAmount: shares, pricePoolPerShare: pricePoolPerShare.raw()})
-                    .serialize()
-            ).serialize()
+                    poolId,
+                    scId,
+                    assetId,
+                    RequestCallbackMessageLib.IssuedShares({
+                            shareAmount: shares, pricePoolPerShare: pricePoolPerShare.raw()
+                        }).serialize()
+                ).serialize()
         );
     }
 
@@ -335,15 +328,13 @@ contract MockCentrifugeChain is Test {
     ) public {
         execute(
             MessageLib.RequestCallback(
-                poolId,
-                scId,
-                assetId,
-                RequestCallbackMessageLib.RevokedShares({
-                    assetAmount: assets,
-                    shareAmount: shareAmount,
-                    pricePoolPerShare: pricePoolPerShare.raw()
-                }).serialize()
-            ).serialize()
+                    poolId,
+                    scId,
+                    assetId,
+                    RequestCallbackMessageLib.RevokedShares({
+                            assetAmount: assets, shareAmount: shareAmount, pricePoolPerShare: pricePoolPerShare.raw()
+                        }).serialize()
+                ).serialize()
         );
     }
 
