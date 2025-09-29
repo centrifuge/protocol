@@ -291,6 +291,8 @@ contract EndToEndDeployment is Test {
         // Initialize default values
         s_.usdc.file("name", "USD Coin");
         s_.usdc.file("symbol", "USDC");
+
+        s.asyncRequestManager.depositSubsidy{value: 0.5 ether}(POOL_A);
     }
 
     function _setSpoke(bool sameChain) internal {
