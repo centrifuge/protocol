@@ -74,10 +74,13 @@ interface IGateway is IMessageHandler, IRecoverable {
     error OutgoingBlocked();
 
     /// @notice Dispatched when an account is not valid to withdraw subsidized pool funds
-    error CannotWithdraw();
+    error CannotRefund();
 
-    /// @notice Dispatched when an account is not valid to withdraw subsidized pool funds
-    error NotEnoughTransactionGas();
+    /// @notice Dispatched when there is not enough gas to send the message
+    error NotEnoughGas();
+
+    /// @notice Dispatched when a the message is not send but there is a payment
+    error NotPayable();
 
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @dev    Currently used to update addresses of contract instances.
@@ -97,7 +100,8 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @param  canSend If can send messages or not
     function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool canSend) external;
 
-    /// @notice Sets the gateway in unpaid mode where any call to send will store the message as unpaid.
+    /// @notice Sets the gateway in unpaid mode where any call to send will store the message as unpaid
+    /// if not enough funds instead of sending the actual message.
     function setUnpaidMode(bool enabled) external;
 
     /// @notice Repay an underpaid batch.

@@ -148,6 +148,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         uint128 gasLimit = gasService.messageGasLimit(centrifugeId, message) + extraGasLimit;
         if (isBatching) {
+            require(msg.value == 0, NotPayable());
             bytes32 batchSlot = _outboundBatchSlot(centrifugeId, poolId);
             bytes memory previousMessage = TransientBytesLib.get(batchSlot);
 
@@ -161,8 +162,6 @@ contract Gateway is Auth, Recoverable, IGateway {
             }
 
             TransientBytesLib.append(batchSlot, message);
-        } else if (unpaidMode) {
-            _addUnpaidBatch(centrifugeId, message, gasLimit);
         } else {
             _send(centrifugeId, message, gasLimit, refund);
         }
@@ -173,12 +172,17 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(!isOutgoingBlocked[centrifugeId][adapterPoolId], OutgoingBlocked());
 
         uint256 cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
-        require(msg.value >= cost, NotEnoughTransactionGas());
-
-        adapter.send{value: cost}(centrifugeId, batch, batchGasLimit, refund);
+        if (msg.value >= cost) {
+            adapter.send{value: cost}(centrifugeId, batch, batchGasLimit, refund);
+        } else if (unpaidMode) {
+            _addUnpaidBatch(centrifugeId, batch, batchGasLimit);
+            cost = 0;
+        } else {
+            revert NotEnoughGas();
+        }
 
         (bool success,) = payable(refund).call{value: msg.value - cost}(new bytes(0));
-        require(success, CannotWithdraw());
+        require(success, CannotRefund());
     }
 
     /// @inheritdoc IGateway
@@ -230,11 +234,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             uint128 gasLimit = _gasLimitSlot(centrifugeId, poolId).tloadUint128();
             bytes memory batch = TransientBytesLib.get(outboundBatchSlot);
 
-            if (unpaidMode) {
-                _addUnpaidBatch(centrifugeId, batch, gasLimit);
-            } else {
-                _send(centrifugeId, batch, gasLimit, refund);
-            }
+            _send(centrifugeId, batch, gasLimit, refund);
 
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));

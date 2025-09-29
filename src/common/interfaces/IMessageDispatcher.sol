@@ -10,6 +10,9 @@ interface IMessageDispatcher is IRootMessageSender, ISpokeMessageSender, IHubMes
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
 
+    /// @notice Dispatched when an account is not valid to withdraw funds
+    error CannotRefund();
+
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
     /// Accepts a `bytes32` representation of 'hubRegistry' string value.

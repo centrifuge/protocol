@@ -83,6 +83,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function sendNotifyPool(uint16 centrifugeId, PoolId poolId, address refund) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             spoke.addPool(poolId);
+            _refund(refund);
         } else {
             _send(centrifugeId, MessageLib.NotifyPool({poolId: poolId.raw()}).serialize(), 0, refund);
         }
@@ -102,6 +103,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             spoke.addShareClass(poolId, scId, name, symbol, decimals, salt, hook.toAddress());
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -131,6 +133,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             spoke.updateShareMetadata(poolId, scId, name, symbol);
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -151,6 +154,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     {
         if (centrifugeId == localCentrifugeId) {
             spoke.updateShareHook(poolId, scId, hook.toAddress());
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -170,6 +174,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint64 timestamp = block.timestamp.toUint64();
         if (chainId == localCentrifugeId) {
             spoke.updatePricePoolPerShare(poolId, scId, price, timestamp);
+            _refund(refund);
         } else {
             _send(
                 chainId,
@@ -191,6 +196,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint64 timestamp = block.timestamp.toUint64();
         if (assetId.centrifugeId() == localCentrifugeId) {
             spoke.updatePricePoolPerAsset(poolId, scId, assetId, price, timestamp);
+            _refund(refund);
         } else {
             _send(
                 assetId.centrifugeId(),
@@ -218,6 +224,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             spoke.updateRestriction(poolId, scId, payload);
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -240,6 +247,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             contractUpdater.execute(poolId, scId, target.toAddress(), payload);
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -263,6 +271,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
             spoke.updateVault(poolId, scId, assetId, vaultOrFactory.toAddress(), kind);
+            _refund(refund);
         } else {
             _send(
                 assetId.centrifugeId(),
@@ -287,6 +296,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     {
         if (centrifugeId == localCentrifugeId) {
             spoke.setRequestManager(poolId, IRequestManager(manager.toAddress()));
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -307,6 +317,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             balanceSheet.updateManager(poolId, who.toAddress(), canManage);
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -328,6 +339,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
             spoke.setMaxAssetPriceAge(poolId, scId, assetId, maxPriceAge);
+            _refund(refund);
         } else {
             _send(
                 assetId.centrifugeId(),
@@ -350,6 +362,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             spoke.setMaxSharePriceAge(poolId, scId, maxPriceAge);
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -365,6 +378,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target, address refund) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             root.scheduleRely(target.toAddress());
+            _refund(refund);
         } else {
             _send(centrifugeId, MessageLib.ScheduleUpgrade({target: target}).serialize(), 0, refund);
         }
@@ -374,6 +388,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function sendCancelUpgrade(uint16 centrifugeId, bytes32 target, address refund) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             root.cancelRely(target.toAddress());
+            _refund(refund);
         } else {
             _send(centrifugeId, MessageLib.CancelUpgrade({target: target}).serialize(), 0, refund);
         }
@@ -393,6 +408,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             tokenRecoverer.recoverTokens(
                 IRecoverable(target.toAddress()), token.toAddress(), tokenId, to.toAddress(), amount
             );
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -449,6 +465,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         if (targetCentrifugeId == localCentrifugeId) {
             // Spoke chain X => Hub chain Y => Spoke chain Y
             spoke.executeTransferShares(poolId, scId, receiver, amount);
+            _refund(refund);
         } else {
             _send(
                 targetCentrifugeId,
@@ -483,6 +500,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 data.isSnapshot,
                 data.nonce
             );
+            _refund(refund);
         } else {
             _send(
                 poolId.centrifugeId(),
@@ -515,6 +533,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             hubHandler.updateShares(
                 localCentrifugeId, poolId, scId, data.netAmount, data.isIncrease, data.isSnapshot, data.nonce
             );
+            _refund(refund);
         } else {
             _send(
                 poolId.centrifugeId(),
@@ -541,6 +560,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     {
         if (centrifugeId == localCentrifugeId) {
             hubHandler.registerAsset(assetId, decimals);
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -559,6 +579,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     {
         if (poolId.centrifugeId() == localCentrifugeId) {
             hubHandler.request(poolId, scId, assetId, payload);
+            _refund(refund);
         } else {
             _send(
                 poolId.centrifugeId(),
@@ -581,6 +602,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
             spoke.requestCallback(poolId, scId, assetId, payload);
+            _refund(refund);
         } else {
             _send(
                 assetId.centrifugeId(),
@@ -623,6 +645,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     {
         if (centrifugeId == localCentrifugeId) {
             gateway.updateManager(poolId, who.toAddress(), canManage);
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -635,5 +658,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     function _send(uint16 centrifugeId, bytes memory message, uint128 extraGasLimit, address refund) internal {
         gateway.send{value: msg.value}(centrifugeId, message, extraGasLimit, refund);
+    }
+
+    function _refund(address refund) internal {
+        if (msg.value > 0) {
+            (bool success,) = payable(refund).call{value: msg.value}(new bytes(0));
+            require(success, CannotRefund());
+        }
     }
 }
