@@ -17,6 +17,7 @@ import "forge-std/Test.sol";
 
 contract FullRestrictionsTest is Test {
     MockRoot root;
+    address spoke = makeAddr("MockSpoke");
     ShareToken token;
     FullRestrictions fullRestrictionsHook;
 
@@ -25,6 +26,7 @@ contract FullRestrictionsTest is Test {
         token = new ShareToken(18);
         fullRestrictionsHook = new FullRestrictions(
             address(root),
+            spoke,
             makeAddr("redeemSource"),
             makeAddr("depositTarget"),
             makeAddr("crosschainSource"),

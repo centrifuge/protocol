@@ -63,7 +63,14 @@ contract HooksDeployer is VaultsDeployer {
                 generateSalt("freezeOnlyHook-2"),
                 abi.encodePacked(
                     type(FreezeOnly).creationCode,
-                    abi.encode(address(root), address(balanceSheet), address(globalEscrow), address(spoke), batcher)
+                    abi.encode(
+                        address(root),
+                        address(spoke),
+                        address(balanceSheet),
+                        address(globalEscrow),
+                        address(spoke),
+                        batcher
+                    )
                 )
             )
         );
@@ -73,7 +80,14 @@ contract HooksDeployer is VaultsDeployer {
                 generateSalt("fullRestrictionsHook-2"),
                 abi.encodePacked(
                     type(FullRestrictions).creationCode,
-                    abi.encode(address(root), address(balanceSheet), address(globalEscrow), address(spoke), batcher)
+                    abi.encode(
+                        address(root),
+                        address(spoke),
+                        address(balanceSheet),
+                        address(globalEscrow),
+                        address(spoke),
+                        batcher
+                    )
                 )
             )
         );
@@ -83,7 +97,14 @@ contract HooksDeployer is VaultsDeployer {
                 generateSalt("freelyTransferableHook-2"),
                 abi.encodePacked(
                     type(FreelyTransferable).creationCode,
-                    abi.encode(address(root), address(balanceSheet), address(globalEscrow), address(spoke), batcher)
+                    abi.encode(
+                        address(root),
+                        address(spoke),
+                        address(balanceSheet),
+                        address(globalEscrow),
+                        address(spoke),
+                        batcher
+                    )
                 )
             )
         );
@@ -93,7 +114,14 @@ contract HooksDeployer is VaultsDeployer {
                 generateSalt("redemptionRestrictionsHook-2"),
                 abi.encodePacked(
                     type(RedemptionRestrictions).creationCode,
-                    abi.encode(address(root), address(balanceSheet), address(globalEscrow), address(spoke), batcher)
+                    abi.encode(
+                        address(root),
+                        address(spoke),
+                        address(balanceSheet),
+                        address(globalEscrow),
+                        address(spoke),
+                        batcher
+                    )
                 )
             )
         );
