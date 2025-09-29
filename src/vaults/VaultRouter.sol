@@ -55,16 +55,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     /// @inheritdoc IMulticall
     /// @notice performs a multicall but all message sent in the process will be batched
     function multicall(bytes[] calldata data) public payable override(Multicall, IMulticall) {
-        bool wasBatching = gateway.isBatching();
-        if (!wasBatching) {
-            gateway.startBatching();
-        }
-
-        super.multicall(data);
-
-        if (!wasBatching) {
-            gateway.endBatching{value: msg.value}(msg.sender);
-        }
+        gateway.withBatch{value: msg.value}(abi.encodeWithSelector(super.multicall.selector, data), msg.sender);
     }
 
     //----------------------------------------------------------------------------------------------

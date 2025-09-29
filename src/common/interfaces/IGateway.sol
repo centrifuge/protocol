@@ -73,6 +73,13 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when a the message was batched but there was a payment for it
     error NotPayable();
 
+    /// @notice Dispatched when withBatch is called but the system is already batching
+    ///         (it's inside of another withBatch level)
+    error AlreadyBatching();
+
+    /// @notice Dispatched when the callback fails with no error
+    error CallFailedWithEmptyRevert();
+
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @dev    Currently used to update addresses of contract instances.
     /// @param  what The name of the variable to be updated.
@@ -110,6 +117,28 @@ interface IGateway is IMessageHandler, IRecoverable {
 
     /// @notice Finalize batching messages and send the resulting batch message
     function endBatching(address refund) external payable;
+
+    /// @notice Calls a method that should be in the same contract as the caller, as a callback.
+    ///         The method called will be wrapped inside startBatching and endBatching,
+    ///         so any method call inside that requires messaging will be batched.
+    /// @param  data encoding data for the callback method
+    /// @dev    Helper contract that enables integrations to automatically batch multiple cross-chain transactions.
+    ///         Should be used like:
+    ///         ```
+    ///         contract Integration {
+    ///             ICrosschainBatcher batcher;
+    ///
+    ///             function doSomething(PoolId poolId) external {
+    ///                 batcher.withBatch(abi.encodeWithSelector(Integration.callback.selector, poolId));
+    ///             }
+    ///
+    ///             function callback(PoolId poolId) external {
+    ///                 require(batcher.sender() == address(this));
+    ///                 // Call several hub, balance sheet, or spoke methods that trigger cross-chain transactions
+    ///             }
+    ///         }
+    ///         ```
+    function withBatch(bytes memory data, address refund) external payable;
 
     /// @notice Returns the current gateway batching level.
     function isBatching() external view returns (bool);

@@ -44,6 +44,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     mapping(PoolId => mapping(address => bool)) public manager;
 
     // Outbound & payments
+    address public transient batcher;
     bool public transient isBatching;
     bool public transient unpaidMode;
     mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
@@ -223,12 +224,12 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function startBatching() external auth {
+    function startBatching() public auth {
         isBatching = true;
     }
 
     /// @inheritdoc IGateway
-    function endBatching(address refund) external payable auth {
+    function endBatching(address refund) public payable auth {
         require(isBatching, NoBatched());
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
 
@@ -249,6 +250,27 @@ contract Gateway is Auth, Recoverable, IGateway {
         }
 
         _refund(refund, msg.value - cost);
+    }
+
+    /// @inheritdoc IGateway
+    function withBatch(bytes memory data, address refund) external payable {
+        require(batcher == address(0), AlreadyBatching());
+
+        startBatching();
+        batcher = msg.sender;
+
+        (bool success, bytes memory returnData) = msg.sender.call(data);
+        if (!success) {
+            uint256 length = returnData.length;
+            require(length != 0, CallFailedWithEmptyRevert());
+
+            assembly ("memory-safe") {
+                revert(add(32, returnData), length)
+            }
+        }
+
+        batcher = address(0);
+        endBatching(refund);
     }
 
     /// @inheritdoc IGateway

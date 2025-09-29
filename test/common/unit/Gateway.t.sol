@@ -847,3 +847,39 @@ contract GatewayTestBlockOutgoing is GatewayTest {
         assertEq(gateway.isOutgoingBlocked(REMOTE_CENT_ID, POOL_A), true);
     }
 }
+
+contract CrosschainBatcherTestWithBatch is GatewayTest {
+    uint256 constant PAYMENT = 1000;
+    bool wasCalled;
+
+    function _success(bool, uint256) external payable {
+        require(gateway.batcher() == address(this));
+        wasCalled = true;
+    }
+
+    function _nested() external payable {
+        gateway.withBatch(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._nested.selector), REFUND);
+    }
+
+    function _emptyError() external payable {
+        revert();
+    }
+
+    function testErrAlreadyBatching() public {
+        vm.expectRevert(IGateway.AlreadyBatching.selector);
+        gateway.withBatch(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._nested.selector), REFUND);
+    }
+
+    function testErrCallFailedWithEmptyRevert() public {
+        vm.expectRevert(IGateway.CallFailedWithEmptyRevert.selector);
+        gateway.withBatch(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._emptyError.selector), REFUND);
+    }
+
+    function testWithCallback() public {
+        gateway.withBatch{
+            value: PAYMENT
+        }(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._success.selector, true, 1), REFUND);
+        assertEq(gateway.batcher(), address(0));
+        assertEq(REFUND.balance, PAYMENT);
+    }
+}
