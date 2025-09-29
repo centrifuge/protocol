@@ -36,11 +36,12 @@ contract TestableBaseTransferHook is BaseTransferHook {
 
     constructor(
         address root_,
+        address spoke_,
         address redeemSource_,
         address depositTarget_,
         address crosschainSource_,
         address deployer
-    ) BaseTransferHook(root_, redeemSource_, depositTarget_, crosschainSource_, deployer) {}
+    ) BaseTransferHook(root_, spoke_, redeemSource_, depositTarget_, crosschainSource_, deployer) {}
 
     function checkERC20Transfer(
         address from,

@@ -17,25 +17,29 @@ import {IRoot} from "../common/interfaces/IRoot.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../common/interfaces/ITransferHook.sol";
 
+import {ISpoke} from "../spoke/interfaces/ISpoke.sol";
 import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
+import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
 import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
 import {UpdateContractType, UpdateContractMessageLib} from "../spoke/libraries/UpdateContractMessageLib.sol";
 
 /// @title  BaseTransferHook
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
 ///         the last bit is used to denote whether the account is frozen.
-abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHook {
+abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHook, IUpdateContract {
     using BitmapLib for *;
     using UpdateRestrictionMessageLib for *;
     using BytesLib for bytes;
     using CastLib for bytes32;
 
     error InvalidInputs();
+    error ShareTokenDoesNotExist();
 
     /// @dev Least significant bit
     uint8 public constant FREEZE_BIT = 0;
 
     IRoot public immutable root;
+    ISpoke public immutable spoke;
     address public immutable redeemSource;
     address public immutable depositTarget;
     address public immutable crosschainSource;
@@ -44,6 +48,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
 
     constructor(
         address root_,
+        address spoke_,
         address redeemSource_,
         address depositTarget_,
         address crosschainSource_,
@@ -56,6 +61,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         );
 
         root = IRoot(root_);
+        spoke = ISpoke(spoke_);
         redeemSource = redeemSource_;
         depositTarget = depositTarget_;
         crosschainSource = crosschainSource_;
