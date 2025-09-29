@@ -97,9 +97,6 @@ interface IHub {
     /// @notice TODO
     error RequestManagerCallFailed();
 
-    /// @notice Dispatched when there is not enough gas for payment methods
-    error NotEnoughGas();
-
     function gateway() external view returns (IGateway);
     function holdings() external view returns (IHoldings);
     function accounting() external view returns (IAccounting);
