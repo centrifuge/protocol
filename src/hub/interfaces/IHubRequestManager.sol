@@ -27,4 +27,18 @@ interface IHubRequestManagerNotifications is IERC165 {
         external
         payable
         returns (uint256 cost);
+
+    /// @notice Claims a cancelled deposit request
+    /// @dev Only works for immediate cancellations. Queued cancellations use notifyDeposit
+    function notifyCancelDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        payable
+        returns (uint256 cost);
+
+    /// @notice Claims a cancelled redeem request
+    /// @dev Only works for immediate cancellations. Queued cancellations use notifyRedeem
+    function notifyCancelRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        payable
+        returns (uint256 cost);
 }

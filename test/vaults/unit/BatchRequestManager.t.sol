@@ -138,6 +138,36 @@ contract BatchRequestManagerHarness is BatchRequestManager {
     {
         return _claimRedeem(poolId, scId_, investor, payoutAssetId);
     }
+
+    function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
+        public
+        returns (uint128 cancelledAssetAmount)
+    {
+        return _cancelDepositRequest(poolId, scId, investor, depositAssetId);
+    }
+
+    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
+        public
+        returns (uint128 cancelledShareAmount)
+    {
+        return _cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
+    }
+
+    function unclaimedDepositCancellation(ShareClassId scId, AssetId depositAssetId, bytes32 investor)
+        public
+        view
+        returns (uint128)
+    {
+        return pendingDepositCancellation[scId][depositAssetId][investor];
+    }
+
+    function unclaimedRedeemCancellation(ShareClassId scId, AssetId payoutAssetId, bytes32 investor)
+        public
+        view
+        returns (uint128)
+    {
+        return pendingRedeemCancellation[scId][payoutAssetId][investor];
+    }
 }
 
 abstract contract BatchRequestManagerBaseTest is Test {
@@ -487,6 +517,9 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         assertEq(cancelledShares, amount);
         assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0);
         _assertDepositRequestEq(USDC, investor, UserOrder(0, 1));
+        assertEq(
+            batchRequestManager.unclaimedDepositCancellation(scId, USDC, investor), amount, "Should store cancellation"
+        );
     }
 
     function testApproveDepositsSingleAssetManyInvestors(
@@ -728,7 +761,7 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         vm.expectEmit();
         emit IBatchRequestManager.UpdateDepositRequest(poolId, scId, USDC, _nowDeposit(USDC), investor, 0, 0, 0, false);
         uint256 cost = batchRequestManager.forceCancelDepositRequest(poolId, scId, investor, USDC);
-        assertEq(cost, 1000, "Should return callback cost for immediate cancellation");
+        assertEq(cost, 0, "Should return 0 cost as no immediate callback");
 
         (uint128 pendingAfter,) = batchRequestManager.depositRequest(scId, USDC, investor);
         uint128 totalPendingAfter = batchRequestManager.pendingDeposit(scId, USDC);
@@ -745,6 +778,12 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         );
         assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0, "Pending deposit should be zero after force cancel");
         _assertDepositRequestEq(USDC, investor, UserOrder(0, 1));
+
+        assertEq(
+            batchRequestManager.unclaimedDepositCancellation(scId, USDC, investor),
+            depositAmount,
+            "Should store cancellation"
+        );
 
         // Verify the investor can make new requests after force cancellation
         batchRequestManager.requestDeposit(poolId, scId, depositAmount, investor, USDC);
@@ -779,6 +818,12 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0, "Pending should be cleared");
         assertEq(
             batchRequestManager.allowForceDepositCancel(scId, USDC, investor), true, "Force cancel should be enabled"
+        );
+
+        assertEq(
+            batchRequestManager.unclaimedDepositCancellation(scId, USDC, investor),
+            MIN_REQUEST_AMOUNT_USDC,
+            "Should store cancellation"
         );
     }
 
@@ -863,6 +908,24 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
 
         assertEq(cost, 0);
     }
+
+    function testNotifyCancelDepositSuccess() public {
+        uint128 amount = MIN_REQUEST_AMOUNT_USDC;
+        batchRequestManager.requestDeposit(poolId, scId, amount, investor, USDC);
+        batchRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
+
+        assertEq(
+            batchRequestManager.unclaimedDepositCancellation(scId, USDC, investor),
+            amount,
+            "Should have unclaimed cancellation"
+        );
+
+        uint256 gasSent = 0.1 ether;
+        uint256 cost = batchRequestManager.notifyCancelDeposit{value: gasSent}(poolId, scId, USDC, investor);
+
+        assertEq(batchRequestManager.unclaimedDepositCancellation(scId, USDC, investor), 0, "Should clear unclaimed");
+        assertGt(cost, 0, "Should have gas cost");
+    }
 }
 
 ///@dev Contains all redeem related tests which are expected to succeed and don't make use of transient storage
@@ -898,6 +961,10 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         assertEq(cancelledShares, amount);
         assertEq(batchRequestManager.pendingRedeem(scId, USDC), 0);
         _assertRedeemRequestEq(USDC, investor, UserOrder(0, 1));
+
+        assertEq(
+            batchRequestManager.unclaimedRedeemCancellation(scId, USDC, investor), amount, "Should store cancellation"
+        );
     }
 
     function testApproveRedeemsSingleAssetManyInvestors(
@@ -1064,7 +1131,7 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         vm.expectEmit();
         emit IBatchRequestManager.UpdateRedeemRequest(poolId, scId, USDC, _nowRedeem(USDC), investor, 0, 0, 0, false);
         uint256 cost = batchRequestManager.forceCancelRedeemRequest(poolId, scId, investor, USDC);
-        assertEq(cost, 1000, "Should return callback cost for immediate cancellation");
+        assertEq(cost, 0, "Should return 0 cost as no immediate callback");
 
         (uint128 pendingAfter,) = batchRequestManager.redeemRequest(scId, USDC, investor);
         uint128 totalPendingAfter = batchRequestManager.pendingRedeem(scId, USDC);
@@ -1081,6 +1148,11 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         );
         assertEq(batchRequestManager.pendingRedeem(scId, USDC), 0, "Pending redeem should be zero after force cancel");
         _assertRedeemRequestEq(USDC, investor, UserOrder(0, 1));
+        assertEq(
+            batchRequestManager.unclaimedRedeemCancellation(scId, USDC, investor),
+            redeemAmount,
+            "Should store cancellation"
+        );
 
         // Verify the investor can make new requests after force cancellation
         batchRequestManager.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
@@ -1113,6 +1185,11 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         assertEq(batchRequestManager.pendingRedeem(scId, USDC), 0, "Pending should be cleared");
         assertEq(
             batchRequestManager.allowForceRedeemCancel(scId, USDC, investor), true, "Force cancel should be enabled"
+        );
+        assertEq(
+            batchRequestManager.unclaimedRedeemCancellation(scId, USDC, investor),
+            MIN_REQUEST_AMOUNT_SHARES,
+            "Should store cancellation"
         );
     }
 
@@ -1195,6 +1272,24 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         assertEq(finalPending, initialPending);
         assertEq(finalLastUpdate, initialLastUpdate);
         assertEq(cost, 0);
+    }
+
+    function testNotifyCancelRedeemSuccess() public {
+        uint128 amount = MIN_REQUEST_AMOUNT_SHARES;
+        batchRequestManager.requestRedeem(poolId, scId, amount, investor, USDC);
+        batchRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
+
+        assertEq(
+            batchRequestManager.unclaimedRedeemCancellation(scId, USDC, investor),
+            amount,
+            "Should have unclaimed cancellation"
+        );
+
+        uint256 gasSent = 0.1 ether;
+        uint256 cost = batchRequestManager.notifyCancelRedeem{value: gasSent}(poolId, scId, USDC, investor);
+
+        assertEq(batchRequestManager.unclaimedRedeemCancellation(scId, USDC, investor), 0, "Should clear unclaimed");
+        assertGt(cost, 0, "Should have gas cost");
     }
 }
 
@@ -1961,7 +2056,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
 
         uint256 callbackCost = batchRequestManager.forceCancelDepositRequest(poolId, scId, investor, USDC);
-        assertEq(callbackCost, 1000, "Should return callback cost for immediate cancellation");
+        assertEq(callbackCost, 0, "Should return 0 cost as no immediate callback, amount stored for claiming");
 
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
         batchRequestManager.approveDeposits(
@@ -2025,13 +2120,7 @@ contract BatchRequestManagerAuthTest is BatchRequestManagerBaseTest {
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
     }
 
-    function testCancelDepositRequestUnauthorized() public {
-        batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
-
-        vm.prank(unauthorized);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        batchRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
-    }
+    // Note: testCancelDepositRequestUnauthorized removed - cancelDepositRequest is now internal
 
     function testRequestRedeemUnauthorized() public {
         vm.prank(unauthorized);
@@ -2039,13 +2128,7 @@ contract BatchRequestManagerAuthTest is BatchRequestManagerBaseTest {
         batchRequestManager.requestRedeem(poolId, scId, MIN_REQUEST_AMOUNT_SHARES, investor, USDC);
     }
 
-    function testCancelRedeemRequestUnauthorized() public {
-        batchRequestManager.requestRedeem(poolId, scId, MIN_REQUEST_AMOUNT_SHARES, investor, USDC);
-
-        vm.prank(unauthorized);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        batchRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
-    }
+    // Note: testCancelRedeemRequestUnauthorized removed - cancelRedeemRequest is now internal
 
     function testApproveDepositsUnauthorized() public {
         vm.prank(unauthorized);
@@ -2243,6 +2326,37 @@ contract BatchRequestManagerErrorTest is BatchRequestManagerBaseTest {
         // Call notifyRedeem with insufficient gas (0 value when cost > 0)
         vm.expectRevert(IBatchRequestManager.NotEnoughGas.selector);
         batchRequestManager.notifyRedeem{value: 0}(poolId, scId, USDC, investor, 10);
+    }
+
+    function testNotifyCancelDepositNoCancel() public {
+        vm.expectRevert(IBatchRequestManager.NoUnclaimedCancellation.selector);
+        batchRequestManager.notifyCancelDeposit{value: 0.1 ether}(poolId, scId, USDC, investor);
+    }
+
+    function testNotifyCancelRedeemNoCancel() public {
+        vm.expectRevert(IBatchRequestManager.NoUnclaimedCancellation.selector);
+        batchRequestManager.notifyCancelRedeem{value: 0.1 ether}(poolId, scId, USDC, investor);
+    }
+
+    function testNotifyCancelDepositDoubleClaim() public {
+        batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
+        batchRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
+        batchRequestManager.notifyCancelDeposit{value: 0.1 ether}(poolId, scId, USDC, investor);
+
+        // Second claim should fail
+        vm.expectRevert(IBatchRequestManager.NoUnclaimedCancellation.selector);
+        batchRequestManager.notifyCancelDeposit{value: 0.1 ether}(poolId, scId, USDC, investor);
+    }
+
+    function testNotifyCancelRedeemDoubleClaim() public {
+        uint128 amount = MIN_REQUEST_AMOUNT_SHARES;
+        batchRequestManager.requestRedeem(poolId, scId, MIN_REQUEST_AMOUNT_SHARES, investor, USDC);
+        batchRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
+        batchRequestManager.notifyCancelRedeem{value: 0.1 ether}(poolId, scId, USDC, investor);
+
+        // Second claim should fail
+        vm.expectRevert(IBatchRequestManager.NoUnclaimedCancellation.selector);
+        batchRequestManager.notifyCancelRedeem{value: 0.1 ether}(poolId, scId, USDC, investor);
     }
 }
 
@@ -2779,8 +2893,8 @@ contract BatchRequestManagerERC165Support is BatchRequestManagerBaseTest {
     function testERC165SupportBRM(bytes4 unsupportedInterfaceId) public view {
         bytes4 erc165 = 0x01ffc9a7;
         bytes4 hubRequestManager = 0x2f6c33bf;
-        bytes4 hubRequestManagerNotifications = 0x02a3e7b8;
-        bytes4 batchRequestManagerID = 0x825331a0;
+        bytes4 hubRequestManagerNotifications = 0x260efff8;
+        bytes4 batchRequestManagerID = 0x5f64b1fa;
 
         vm.assume(
             unsupportedInterfaceId != erc165 && unsupportedInterfaceId != hubRequestManager

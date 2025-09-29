@@ -198,6 +198,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     error RevocationRequired();
     error CancellationInitializationRequired();
     error CancellationQueued();
+    error NoUnclaimedCancellation();
 
     //----------------------------------------------------------------------------------------------
     // Incoming requests
@@ -206,16 +207,8 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     function requestDeposit(PoolId poolId, ShareClassId scId, uint128 amount, bytes32 investor, AssetId depositAssetId)
         external;
 
-    function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
-        external
-        returns (uint128 cancelledAssetAmount);
-
     function requestRedeem(PoolId poolId, ShareClassId scId, uint128 amount, bytes32 investor, AssetId payoutAssetId)
         external;
-
-    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
-        external
-        returns (uint128 cancelledShareAmount);
 
     //----------------------------------------------------------------------------------------------
     // Manager actions

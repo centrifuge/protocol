@@ -74,6 +74,12 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     mapping(ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => bool cancelled))) public
         allowForceRedeemCancel;
 
+    // Unclaimed immediate cancellations which need to be claimed manually via notifyCancel
+    mapping(ShareClassId scId => mapping(AssetId depositAssetId => mapping(bytes32 investor => uint128 amount))) public
+        pendingDepositCancellation;
+    mapping(ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => uint128 amount))) public
+        pendingRedeemCancellation;
+
     constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
         hubRegistry = hubRegistry_;
     }
@@ -112,34 +118,10 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
             requestRedeem(poolId, scId, m.amount, m.investor, assetId);
         } else if (kind == uint8(RequestMessageType.CancelDepositRequest)) {
             RequestMessageLib.CancelDepositRequest memory m = payload.deserializeCancelDepositRequest();
-            uint128 cancelledAssetAmount = cancelDepositRequest(poolId, scId, m.investor, assetId);
-
-            // Cancellation might have been queued such that it will be executed in the future during claiming
-            if (cancelledAssetAmount > 0) {
-                hub.requestCallback(
-                    poolId,
-                    scId,
-                    assetId,
-                    RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount)
-                        .serialize(),
-                    0
-                );
-            }
+            _cancelDepositRequest(poolId, scId, m.investor, assetId);
         } else if (kind == uint8(RequestMessageType.CancelRedeemRequest)) {
             RequestMessageLib.CancelRedeemRequest memory m = payload.deserializeCancelRedeemRequest();
-            uint128 cancelledShareAmount = cancelRedeemRequest(poolId, scId, m.investor, assetId);
-
-            // Cancellation might have been queued such that it will be executed in the future during claiming
-            if (cancelledShareAmount > 0) {
-                hub.requestCallback(
-                    poolId,
-                    scId,
-                    assetId,
-                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount)
-                        .serialize(),
-                    0
-                );
-            }
+            _cancelRedeemRequest(poolId, scId, m.investor, assetId);
         } else {
             revert UnknownRequestType();
         }
@@ -158,18 +140,6 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     }
 
     /// @inheritdoc IBatchRequestManager
-    function cancelDepositRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
-        public
-        auth
-        returns (uint128 cancelledAssetAmount)
-    {
-        allowForceDepositCancel[scId_][depositAssetId][investor] = true;
-        uint128 cancellingAmount = depositRequest[scId_][depositAssetId][investor].pending;
-
-        return _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, RequestType.Deposit);
-    }
-
-    /// @inheritdoc IBatchRequestManager
     function requestRedeem(PoolId poolId, ShareClassId scId_, uint128 amount, bytes32 investor, AssetId payoutAssetId)
         public
         auth
@@ -178,16 +148,68 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         _updatePending(poolId, scId_, amount, true, investor, payoutAssetId, RequestType.Redeem);
     }
 
-    /// @inheritdoc IBatchRequestManager
-    function cancelRedeemRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
-        public
-        auth
+    function _cancelDepositRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
+        internal
+        returns (uint128 cancelledAssetAmount)
+    {
+        allowForceDepositCancel[scId_][depositAssetId][investor] = true;
+
+        UserOrder storage userOrder = depositRequest[scId_][depositAssetId][investor];
+        uint128 cancellingAmount = userOrder.pending;
+
+        uint32 currentEpoch = nowDepositEpoch(scId_, depositAssetId);
+        if (_canMutatePending(userOrder, currentEpoch)) {
+            pendingDepositCancellation[scId_][depositAssetId][investor] = cancellingAmount;
+
+            userOrder.pending = 0;
+            userOrder.lastUpdate = currentEpoch;
+            pendingDeposit[scId_][depositAssetId] -= cancellingAmount;
+
+            emit UpdateDepositRequest(
+                poolId,
+                scId_,
+                depositAssetId,
+                currentEpoch,
+                investor,
+                0,
+                pendingDeposit[scId_][depositAssetId],
+                0,
+                false
+            );
+
+            return cancellingAmount;
+        } else {
+            // Queue cancellation
+            return _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, RequestType.Deposit);
+        }
+    }
+
+    function _cancelRedeemRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
+        internal
         returns (uint128 cancelledShareAmount)
     {
         allowForceRedeemCancel[scId_][payoutAssetId][investor] = true;
-        uint128 cancellingAmount = redeemRequest[scId_][payoutAssetId][investor].pending;
 
-        return _updatePending(poolId, scId_, cancellingAmount, false, investor, payoutAssetId, RequestType.Redeem);
+        UserOrder storage userOrder = redeemRequest[scId_][payoutAssetId][investor];
+        uint128 cancellingAmount = userOrder.pending;
+
+        uint32 currentEpoch = nowRedeemEpoch(scId_, payoutAssetId);
+        if (_canMutatePending(userOrder, currentEpoch)) {
+            pendingRedeemCancellation[scId_][payoutAssetId][investor] = cancellingAmount;
+
+            userOrder.pending = 0;
+            userOrder.lastUpdate = currentEpoch;
+            pendingRedeem[scId_][payoutAssetId] -= cancellingAmount;
+
+            emit UpdateRedeemRequest(
+                poolId, scId_, payoutAssetId, currentEpoch, investor, 0, pendingRedeem[scId_][payoutAssetId], 0, false
+            );
+
+            return cancellingAmount;
+        } else {
+            // Queue cancellation
+            return _updatePending(poolId, scId_, cancellingAmount, false, investor, payoutAssetId, RequestType.Redeem);
+        }
     }
 
     //----------------------------------------------------------------------------------------------
@@ -390,16 +412,21 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     {
         require(allowForceDepositCancel[scId_][depositAssetId][investor], CancellationInitializationRequired());
 
+        if (pendingDepositCancellation[scId_][depositAssetId][investor] > 0) {
+            return 0;
+        }
+
         uint128 cancellingAmount = depositRequest[scId_][depositAssetId][investor].pending;
         uint128 cancelledAssetAmount =
             _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, RequestType.Deposit);
 
-        // Cancellation might have been queued such that it will be executed in the future during claiming
+        // Store immediate cancellation which must be claimed by the user
         if (cancelledAssetAmount > 0) {
-            bytes memory callback =
-                RequestCallbackMessageLib.FulfilledDepositRequest(investor, 0, 0, cancelledAssetAmount).serialize();
-            return hub.requestCallback(poolId, scId_, depositAssetId, callback, 0);
+            pendingDepositCancellation[scId_][depositAssetId][investor] = cancelledAssetAmount;
+            return 0;
         }
+
+        return 0;
     }
 
     /// @inheritdoc IBatchRequestManager
@@ -410,21 +437,77 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     {
         require(allowForceRedeemCancel[scId_][payoutAssetId][investor], CancellationInitializationRequired());
 
+        if (pendingRedeemCancellation[scId_][payoutAssetId][investor] > 0) {
+            return 0;
+        }
+
         uint128 cancellingAmount = redeemRequest[scId_][payoutAssetId][investor].pending;
         uint128 cancelledShareAmount =
             _updatePending(poolId, scId_, cancellingAmount, false, investor, payoutAssetId, RequestType.Redeem);
 
-        // Cancellation might have been queued such that it will be executed in the future during claiming
+        // Store immediate cancellation which must be claimed by the user
         if (cancelledShareAmount > 0) {
-            bytes memory callback =
-                RequestCallbackMessageLib.FulfilledRedeemRequest(investor, 0, 0, cancelledShareAmount).serialize();
-            return hub.requestCallback(poolId, scId_, payoutAssetId, callback, 0);
+            pendingRedeemCancellation[scId_][payoutAssetId][investor] = cancelledShareAmount;
+            return 0;
         }
+
+        return 0;
     }
 
     //----------------------------------------------------------------------------------------------
     // Claiming methods
     //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IHubRequestManagerNotifications
+    function notifyCancelDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        payable
+        protected
+        returns (uint256 cost)
+    {
+        uint128 cancelledAmount = pendingDepositCancellation[scId][assetId][investor];
+        require(cancelledAmount > 0, NoUnclaimedCancellation());
+
+        pendingDepositCancellation[scId][assetId][investor] = 0;
+
+        gateway.depositSubsidy{value: msg.value}(poolId);
+
+        cost = hub.requestCallback(
+            poolId,
+            scId,
+            assetId,
+            RequestCallbackMessageLib.FulfilledDepositRequest(investor, 0, 0, cancelledAmount).serialize(),
+            0
+        );
+
+        require(msg.value >= cost, NotEnoughGas());
+        if (msg.value > cost) gateway.withdrawSubsidy(poolId, msg.sender, msg.value - cost);
+    }
+
+    /// @inheritdoc IHubRequestManagerNotifications
+    function notifyCancelRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        payable
+        protected
+        returns (uint256 cost)
+    {
+        uint128 cancelledAmount = pendingRedeemCancellation[scId][assetId][investor];
+        require(cancelledAmount > 0, NoUnclaimedCancellation());
+
+        pendingRedeemCancellation[scId][assetId][investor] = 0;
+
+        gateway.depositSubsidy{value: msg.value}(poolId);
+        cost = hub.requestCallback(
+            poolId,
+            scId,
+            assetId,
+            RequestCallbackMessageLib.FulfilledRedeemRequest(investor, 0, 0, cancelledAmount).serialize(),
+            0
+        );
+
+        require(msg.value >= cost, NotEnoughGas());
+        if (msg.value > cost) gateway.withdrawSubsidy(poolId, msg.sender, msg.value - cost);
+    }
 
     /// @inheritdoc IHubRequestManagerNotifications
     function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)

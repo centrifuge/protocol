@@ -374,6 +374,11 @@ contract EndToEndUtils is EndToEndDeployment {
     function _getLastUnpaidMessage() internal returns (bytes memory message) {
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
+        if (logs.length == 0) {
+            vm.recordLogs();
+            return message;
+        }
+
         for (uint256 i = logs.length - 1; i >= 0; i--) {
             if (logs[i].topics[0] == bytes32(IGateway.UnderpaidBatch.selector)) {
                 return abi.decode(logs[i].data, (bytes));
@@ -870,8 +875,12 @@ contract EndToEndFlows is EndToEndUtils {
         vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A);
         vault.cancelRedeemRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A);
 
-        if (!sameChain) h.gateway.repay{value: GAS}(s.centrifugeId, _getLastUnpaidMessage());
+        vm.startPrank(ANY);
+        vm.deal(ANY, GAS);
+        h.batchRequestManager.notifyCancelRedeem{value: GAS}(POOL_A, SC_1, s.usdcId, INVESTOR_A.toBytes32());
+        vm.stopPrank();
 
+        vm.startPrank(INVESTOR_A);
         vault.claimCancelRedeemRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A, INVESTOR_A);
 
         // CHECKS
@@ -1111,11 +1120,14 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vault.requestDeposit(USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
         vault.cancelDepositRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A);
 
-        if (!sameChain) h.gateway.repay{value: GAS}(s.centrifugeId, _getLastUnpaidMessage());
+        vm.startPrank(ANY);
+        vm.deal(ANY, GAS);
+        h.batchRequestManager.notifyCancelDeposit{value: GAS}(POOL_A, SC_1, s.usdcId, INVESTOR_A.toBytes32());
+        vm.stopPrank();
 
+        vm.startPrank(INVESTOR_A);
         vault.claimCancelDepositRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A, INVESTOR_A);
 
-        // CHECKS
         assertEq(s.usdc.balanceOf(INVESTOR_A), USDC_AMOUNT_1, "expected assets");
     }
 
