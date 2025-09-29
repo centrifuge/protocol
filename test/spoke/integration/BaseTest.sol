@@ -113,6 +113,8 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
             OTHER_CHAIN_ID, PoolId.wrap(0), testAdapters, uint8(testAdapters.length), uint8(testAdapters.length)
         );
 
+        asyncRequestManager.depositSubsidy{value: 0.5 ether}(POOL_A);
+
         // We should not use the block ChainID
         vm.chainId(BLOCK_CHAIN_ID);
     }

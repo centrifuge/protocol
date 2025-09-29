@@ -24,6 +24,13 @@ contract RefundEscrowTest is Test {
     }
 }
 
+contract RefundEscrowTestReceive is RefundEscrowTest {
+    function testErrNotAuthorized() external {
+        (bool success,) = address(escrow).call{value: 100}("");
+        assert(success);
+    }
+}
+
 contract RefundEscrowTestDepositFunds is RefundEscrowTest {
     function testErrNotAuthorized() external {
         vm.prank(ANY);

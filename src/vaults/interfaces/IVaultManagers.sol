@@ -299,6 +299,9 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
     error VaultNotLinked();
     error RefundEscrowNotDeployed();
 
+    /// @notice Deposit funds to subsidy vault actions through the gateway
+    function depositSubsidy(PoolId poolId) external payable;
+
     /// @notice Returns the investment state
     function investments(IBaseVault vaultAddr, address investor)
         external

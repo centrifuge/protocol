@@ -8,6 +8,8 @@ import {IRefundEscrow} from "./interfaces/IRefundEscrow.sol";
 contract RefundEscrow is Auth, IRefundEscrow {
     constructor(address owner) Auth(owner) {}
 
+    receive() external payable {}
+
     function depositFunds() external payable auth {}
 
     function withdrawFunds(address to, uint256 value) external auth {

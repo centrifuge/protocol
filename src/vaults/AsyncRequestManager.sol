@@ -72,14 +72,15 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         emit File(what, data);
     }
 
-    function depositSubsidy(PoolId poolId, uint256 value) external payable {
+    /// @inheritdoc IAsyncRequestManager
+    function depositSubsidy(PoolId poolId) external payable {
         IRefundEscrow escrow = refundEscrowFactory.get(poolId);
         if (address(escrow).code.length == 0) {
             escrow = refundEscrowFactory.newEscrow(poolId);
         }
 
         escrow.depositFunds{value: msg.value}();
-        emit DepositSubsidy(poolId, msg.sender, value);
+        emit DepositSubsidy(poolId, msg.sender, msg.value);
     }
 
     //----------------------------------------------------------------------------------------------
