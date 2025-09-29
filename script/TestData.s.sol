@@ -30,7 +30,6 @@ import {IAsyncVault} from "../src/vaults/interfaces/IAsyncVault.sol";
 import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
-import {IBatchRequestManager} from "../src/vaults/interfaces/IBatchRequestManager.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
