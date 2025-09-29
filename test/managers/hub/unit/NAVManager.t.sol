@@ -607,25 +607,25 @@ contract NAVManagerCloseGainLossTest is NAVManagerTest {
 
 contract NAVManagerHelperFunctionsTest is NAVManagerTest {
     function testEquityAccount() public view {
-        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, 1);
+        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, uint16(AccountType.Equity));
         AccountId actual = navManager.equityAccount(CENTRIFUGE_ID_1);
         assertEq(actual.raw(), expected.raw());
     }
 
     function testLiabilityAccount() public view {
-        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, 2);
+        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, uint16(AccountType.Liability));
         AccountId actual = navManager.liabilityAccount(CENTRIFUGE_ID_1);
         assertEq(actual.raw(), expected.raw());
     }
 
     function testGainAccount() public view {
-        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, 3);
+        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, uint16(AccountType.Gain));
         AccountId actual = navManager.gainAccount(CENTRIFUGE_ID_1);
         assertEq(actual.raw(), expected.raw());
     }
 
     function testLossAccount() public view {
-        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, 4);
+        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, uint16(AccountType.Loss));
         AccountId actual = navManager.lossAccount(CENTRIFUGE_ID_1);
         assertEq(actual.raw(), expected.raw());
     }

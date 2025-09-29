@@ -168,9 +168,8 @@ contract NAVManager is INAVManager, Auth {
         external
         onlyManager(poolId)
     {
+        // TODO: Should we have this funtion at all? Seems like this can only mess up the accounting.
         hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
-        // TODO: update assetIdToAccountId mapping and update value?
-        // Do we need to do something with the old account/value?
     }
 
     /// @inheritdoc INAVManager
@@ -236,22 +235,22 @@ contract NAVManager is INAVManager, Auth {
 
     /// @inheritdoc INAVManager
     function equityAccount(uint16 centrifugeId) public pure returns (AccountId) {
-        return withCentrifugeId(centrifugeId, 1);
+        return withCentrifugeId(centrifugeId, uint16(AccountType.Equity));
     }
 
     /// @inheritdoc INAVManager
     function liabilityAccount(uint16 centrifugeId) public pure returns (AccountId) {
-        return withCentrifugeId(centrifugeId, 2);
+        return withCentrifugeId(centrifugeId, uint16(AccountType.Liability));
     }
 
     /// @inheritdoc INAVManager
     function gainAccount(uint16 centrifugeId) public pure returns (AccountId) {
-        return withCentrifugeId(centrifugeId, 3);
+        return withCentrifugeId(centrifugeId, uint16(AccountType.Gain));
     }
 
     /// @inheritdoc INAVManager
     function lossAccount(uint16 centrifugeId) public pure returns (AccountId) {
-        return withCentrifugeId(centrifugeId, 4);
+        return withCentrifugeId(centrifugeId, uint16(AccountType.Loss));
     }
 
     //----------------------------------------------------------------------------------------------
