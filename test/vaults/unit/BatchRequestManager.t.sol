@@ -264,60 +264,6 @@ abstract contract BatchRequestManagerBaseTest is Test {
         return (approvedShareAmount, pendingShareAmount);
     }
 
-    // ============ Event Parsing Helpers ============
-
-    /// @dev Generic helper to extract event data by selector
-    function _extractEventData(bytes32 eventSig) internal returns (bytes memory) {
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        for (uint256 i = 0; i < logs.length; i++) {
-            if (logs[i].topics[0] == eventSig) {
-                return logs[i].data;
-            }
-        }
-        revert(string.concat("Event not found: ", vm.toString(eventSig)));
-    }
-
-    function _extractIssueSharesEvent()
-        internal
-        returns (uint128 issuedShares, D18 navPoolPerShare, D18 priceAssetPerShare)
-    {
-        bytes memory data = _extractEventData(IBatchRequestManager.IssueShares.selector);
-        (, navPoolPerShare, priceAssetPerShare, issuedShares) = abi.decode(data, (uint32, D18, D18, uint128));
-        return (issuedShares, navPoolPerShare, priceAssetPerShare);
-    }
-
-    function _extractRevokeSharesEvent()
-        internal
-        returns (
-            uint128 revokedShares,
-            uint128 payoutAssetAmount,
-            uint128 payoutPoolAmount,
-            D18 navPoolPerShare,
-            D18 priceAssetPerShare
-        )
-    {
-        bytes memory data = _extractEventData(IBatchRequestManager.RevokeShares.selector);
-        (, navPoolPerShare, priceAssetPerShare, revokedShares, payoutAssetAmount, payoutPoolAmount) =
-            abi.decode(data, (uint32, D18, D18, uint128, uint128, uint128));
-        return (revokedShares, payoutAssetAmount, payoutPoolAmount, navPoolPerShare, priceAssetPerShare);
-    }
-
-    function _extractApproveDepositsEvent()
-        internal
-        returns (uint128 approvedPoolAmount, uint128 approvedAssetAmount, uint128 pendingAssetAmount)
-    {
-        bytes memory data = _extractEventData(IBatchRequestManager.ApproveDeposits.selector);
-        (, approvedPoolAmount, approvedAssetAmount, pendingAssetAmount) =
-            abi.decode(data, (uint32, uint128, uint128, uint128));
-        return (approvedPoolAmount, approvedAssetAmount, pendingAssetAmount);
-    }
-
-    function _extractApproveRedeemsEvent() internal returns (uint128 approvedShareAmount, uint128 pendingShareAmount) {
-        bytes memory data = _extractEventData(IBatchRequestManager.ApproveRedeems.selector);
-        (, approvedShareAmount, pendingShareAmount) = abi.decode(data, (uint32, uint128, uint128));
-        return (approvedShareAmount, pendingShareAmount);
-    }
-
     function _pricePoolPerAsset(AssetId assetId) internal pure returns (D18) {
         if (assetId == USDC) {
             return d18(1, 1);

@@ -633,9 +633,8 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(poolManager);
         uint32 depositEpochId = hub.batchRequestManager.nowDepositEpoch(shareClassId, assetId);
         D18 pricePoolPerAsset = hub.hub.pricePoolPerAsset(poolId, shareClassId, assetId);
-        hub.batchRequestManager.approveDeposits(
-            poolId, shareClassId, assetId, depositEpochId, amount, pricePoolPerAsset
-        );
+        hub.batchRequestManager
+        .approveDeposits(poolId, shareClassId, assetId, depositEpochId, amount, pricePoolPerAsset);
 
         vm.startPrank(poolManager);
         uint32 issueEpochId = hub.batchRequestManager.nowIssueEpoch(shareClassId, assetId);

@@ -376,8 +376,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         );
 
         bytes memory callback = RequestCallbackMessageLib.RevokedShares(
-            payoutAssetAmount, revokedShareAmount, navPoolPerShare.raw()
-        ).serialize();
+                payoutAssetAmount, revokedShareAmount, navPoolPerShare.raw()
+            ).serialize();
         return hub.requestCallback(poolId, scId_, payoutAssetId, callback, extraGasLimit);
     }
 
