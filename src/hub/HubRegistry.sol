@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
+import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
@@ -19,8 +20,9 @@ contract HubRegistry is Auth, IHubRegistry {
 
     mapping(PoolId => bytes) public metadata;
     mapping(PoolId => AssetId) public currency;
-    mapping(bytes32 => address) public dependency;
     mapping(PoolId => mapping(address => bool)) public manager;
+    mapping(PoolId => mapping(bytes32 => address)) public dependency;
+    mapping(PoolId => mapping(uint16 centrifugeId => IHubRequestManager)) public hubRequestManager;
 
     constructor(address deployer) Auth(deployer) {}
 
@@ -73,10 +75,12 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     /// @inheritdoc IHubRegistry
-    function updateDependency(bytes32 what, address dependency_) external auth {
-        dependency[what] = dependency_;
+    function updateDependency(PoolId poolId_, bytes32 what, address dependency_) external auth {
+        require(exists(poolId_), NonExistingPool(poolId_));
 
-        emit UpdateDependency(what, dependency_);
+        dependency[poolId_][what] = dependency_;
+
+        emit UpdateDependency(poolId_, what, dependency_);
     }
 
     /// @inheritdoc IHubRegistry
@@ -87,6 +91,15 @@ contract HubRegistry is Auth, IHubRegistry {
         currency[poolId_] = currency_;
 
         emit UpdateCurrency(poolId_, currency_);
+    }
+
+    /// @inheritdoc IHubRegistry
+    function setHubRequestManager(PoolId poolId_, uint16 centrifugeId, IHubRequestManager manager_) external auth {
+        require(exists(poolId_), NonExistingPool(poolId_));
+
+        hubRequestManager[poolId_][centrifugeId] = manager_;
+
+        emit SetHubRequestManager(poolId_, centrifugeId, manager_);
     }
 
     //----------------------------------------------------------------------------------------------

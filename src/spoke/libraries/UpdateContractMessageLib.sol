@@ -87,10 +87,7 @@ library UpdateContractMessageLib {
         require(updateContractType(data) == UpdateContractType.UpdateAddress, UnknownMessageType());
 
         return UpdateContractUpdateAddress({
-            kind: data.toBytes32(1),
-            assetId: data.toUint128(33),
-            what: data.toBytes32(49),
-            isEnabled: data.toBool(81)
+            kind: data.toBytes32(1), assetId: data.toUint128(33), what: data.toBytes32(49), isEnabled: data.toBool(81)
         });
     }
 

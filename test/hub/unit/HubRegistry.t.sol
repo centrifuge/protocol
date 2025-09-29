@@ -125,16 +125,20 @@ contract HubRegistryTest is Test {
     }
 
     function testUpdateDependency(bytes32 what, address dependency) public nonZero(dependency) {
-        assertEq(address(registry.dependency(what)), address(0));
+        // First register asset and pool to use for dependency testing
+        registry.registerAsset(USD, 18);
+        registry.registerPool(POOL_A, address(this), USD);
+
+        assertEq(address(registry.dependency(POOL_A, what)), address(0));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.updateDependency(what, dependency);
+        registry.updateDependency(POOL_A, what, dependency);
 
         vm.expectEmit();
-        emit IHubRegistry.UpdateDependency(what, dependency);
-        registry.updateDependency(what, dependency);
-        assertEq(address(registry.dependency(what)), address(dependency));
+        emit IHubRegistry.UpdateDependency(POOL_A, what, dependency);
+        registry.updateDependency(POOL_A, what, dependency);
+        assertEq(address(registry.dependency(POOL_A, what)), address(dependency));
     }
 
     function testUpdateCurrency(AssetId currency) public nonZero(address(uint160(currency.raw()))) {

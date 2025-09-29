@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
+import {MockHubRequestManager} from "./mocks/MockHubRequestManager.sol";
+
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 
 import {MockValuation} from "../../common/mocks/MockValuation.sol";
@@ -10,6 +12,8 @@ import {AccountId} from "../../../src/common/types/AccountId.sol";
 import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
 import {AssetId, newAssetId} from "../../../src/common/types/AssetId.sol";
 import {MAX_MESSAGE_COST} from "../../../src/common/interfaces/IGasService.sol";
+
+import {IHubRequestManager} from "../../../src/hub/interfaces/IHubRequestManager.sol";
 
 import {HubDeployer, HubActionBatcher, CommonInput} from "../../../script/HubDeployer.s.sol";
 
@@ -55,6 +59,7 @@ contract BaseTest is HubDeployer, Test {
 
     MockVaults cv;
     MockValuation valuation;
+    IHubRequestManager hubRequestManager;
 
     function _mockStuff(HubActionBatcher batcher) private {
         vm.startPrank(address(batcher));
@@ -72,16 +77,14 @@ contract BaseTest is HubDeployer, Test {
     function setUp() public virtual {
         // Deployment
         CommonInput memory input = CommonInput({
-            centrifugeId: CHAIN_CP,
-            adminSafe: adminSafe,
-            maxBatchGasLimit: uint128(GAS) * 100,
-            version: bytes32(0)
+            centrifugeId: CHAIN_CP, adminSafe: adminSafe, maxBatchGasLimit: uint128(GAS) * 100, version: bytes32(0)
         });
 
         HubActionBatcher batcher = new HubActionBatcher();
         labelAddresses("");
         deployHub(input, batcher);
         _mockStuff(batcher);
+        hubRequestManager = IHubRequestManager(address(new MockHubRequestManager(address(hub))));
         removeHubDeployerAccess(batcher);
 
         // Initialize accounts

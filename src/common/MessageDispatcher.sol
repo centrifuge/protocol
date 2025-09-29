@@ -40,9 +40,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     uint16 public immutable localCentrifugeId;
 
     IGateway public gateway;
-    IHubGatewayHandler public hub;
     ISpokeGatewayHandler public spoke;
     IMultiAdapter public multiAdapter;
+    IHubGatewayHandler public hubHandler;
     IBalanceSheetGatewayHandler public balanceSheet;
     IUpdateContractGatewayHandler public contractUpdater;
 
@@ -65,7 +65,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     /// @inheritdoc IMessageDispatcher
     function file(bytes32 what, address data) external auth {
-        if (what == "hub") hub = IHubGatewayHandler(data);
+        if (what == "hubHandler") hubHandler = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
@@ -105,14 +105,14 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 centrifugeId,
                 MessageLib.NotifyShareClass({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    name: name,
-                    symbol: symbol.toBytes32(),
-                    decimals: decimals,
-                    salt: salt,
-                    hook: hook
-                }).serialize(),
+                        poolId: poolId.raw(),
+                        scId: scId.raw(),
+                        name: name,
+                        symbol: symbol.toBytes32(),
+                        decimals: decimals,
+                        salt: salt,
+                        hook: hook
+                    }).serialize(),
                 0
             );
         }
@@ -132,11 +132,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 centrifugeId,
                 MessageLib.NotifyShareMetadata({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    name: name,
-                    symbol: symbol.toBytes32()
-                }).serialize(),
+                        poolId: poolId.raw(), scId: scId.raw(), name: name, symbol: symbol.toBytes32()
+                    }).serialize(),
                 0
             );
         }
@@ -172,11 +169,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 chainId,
                 MessageLib.NotifyPricePoolPerShare({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    price: price.raw(),
-                    timestamp: timestamp
-                }).serialize(),
+                        poolId: poolId.raw(), scId: scId.raw(), price: price.raw(), timestamp: timestamp
+                    }).serialize(),
                 0
             );
         }
@@ -195,12 +189,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 assetId.centrifugeId(),
                 MessageLib.NotifyPricePoolPerAsset({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId.raw(),
-                    price: price.raw(),
-                    timestamp: timestamp
-                }).serialize(),
+                        poolId: poolId.raw(),
+                        scId: scId.raw(),
+                        assetId: assetId.raw(),
+                        price: price.raw(),
+                        timestamp: timestamp
+                    }).serialize(),
                 0
             );
         }
@@ -261,12 +255,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 assetId.centrifugeId(),
                 MessageLib.UpdateVault({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId.raw(),
-                    vaultOrFactory: vaultOrFactory,
-                    kind: uint8(kind)
-                }).serialize(),
+                        poolId: poolId.raw(),
+                        scId: scId.raw(),
+                        assetId: assetId.raw(),
+                        vaultOrFactory: vaultOrFactory,
+                        kind: uint8(kind)
+                    }).serialize(),
                 extraGasLimit
             );
         }
@@ -298,7 +292,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         } else {
             return gateway.send(
                 centrifugeId,
-                MessageLib.UpdateBalanceSheetManager({poolId: poolId.raw(), who: who, canManage: canManage}).serialize(),
+                MessageLib.UpdateBalanceSheetManager({poolId: poolId.raw(), who: who, canManage: canManage})
+                    .serialize(),
                 0
             );
         }
@@ -316,11 +311,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 assetId.centrifugeId(),
                 MessageLib.MaxAssetPriceAge({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId.raw(),
-                    maxPriceAge: maxPriceAge
-                }).serialize(),
+                        poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw(), maxPriceAge: maxPriceAge
+                    }).serialize(),
                 0
             );
         }
@@ -396,20 +388,20 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint128 remoteExtraGasLimit
     ) external auth returns (uint256 cost) {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            return hub.initiateTransferShares(
+            return hubHandler.initiateTransferShares(
                 localCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit
             );
         } else {
             return gateway.send(
                 poolId.centrifugeId(),
                 MessageLib.InitiateTransferShares({
-                    centrifugeId: targetCentrifugeId,
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    receiver: receiver,
-                    amount: amount,
-                    extraGasLimit: remoteExtraGasLimit
-                }).serialize(),
+                        centrifugeId: targetCentrifugeId,
+                        poolId: poolId.raw(),
+                        scId: scId.raw(),
+                        receiver: receiver,
+                        amount: amount,
+                        extraGasLimit: remoteExtraGasLimit
+                    }).serialize(),
                 extraGasLimit
             );
         }
@@ -430,11 +422,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             spoke.executeTransferShares(poolId, scId, receiver, amount);
         } else {
             bytes memory message = MessageLib.ExecuteTransferShares({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                receiver: receiver,
-                amount: amount
-            }).serialize();
+                    poolId: poolId.raw(), scId: scId.raw(), receiver: receiver, amount: amount
+                }).serialize();
 
             if (originCentrifugeId == localCentrifugeId) {
                 // Spoke chain X => Hub chain X => Spoke chain Y: payment done directly on X
@@ -456,7 +445,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint128 extraGasLimit
     ) external auth returns (uint256 cost) {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.updateHoldingAmount(
+            hubHandler.updateHoldingAmount(
                 localCentrifugeId,
                 poolId,
                 scId,
@@ -471,16 +460,16 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 poolId.centrifugeId(),
                 MessageLib.UpdateHoldingAmount({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId.raw(),
-                    amount: data.netAmount,
-                    pricePerUnit: pricePoolPerAsset.raw(),
-                    timestamp: uint64(block.timestamp),
-                    isIncrease: data.isIncrease,
-                    isSnapshot: data.isSnapshot,
-                    nonce: data.nonce
-                }).serialize(),
+                        poolId: poolId.raw(),
+                        scId: scId.raw(),
+                        assetId: assetId.raw(),
+                        amount: data.netAmount,
+                        pricePerUnit: pricePoolPerAsset.raw(),
+                        timestamp: uint64(block.timestamp),
+                        isIncrease: data.isIncrease,
+                        isSnapshot: data.isSnapshot,
+                        nonce: data.nonce
+                    }).serialize(),
                 extraGasLimit
             );
         }
@@ -493,21 +482,21 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         returns (uint256 cost)
     {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.updateShares(
+            hubHandler.updateShares(
                 localCentrifugeId, poolId, scId, data.netAmount, data.isIncrease, data.isSnapshot, data.nonce
             );
         } else {
             return gateway.send(
                 poolId.centrifugeId(),
                 MessageLib.UpdateShares({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    shares: data.netAmount,
-                    timestamp: uint64(block.timestamp),
-                    isIssuance: data.isIncrease,
-                    isSnapshot: data.isSnapshot,
-                    nonce: data.nonce
-                }).serialize(),
+                        poolId: poolId.raw(),
+                        scId: scId.raw(),
+                        shares: data.netAmount,
+                        timestamp: uint64(block.timestamp),
+                        isIssuance: data.isIncrease,
+                        isSnapshot: data.isSnapshot,
+                        nonce: data.nonce
+                    }).serialize(),
                 extraGasLimit
             );
         }
@@ -520,7 +509,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         returns (uint256 cost)
     {
         if (centrifugeId == localCentrifugeId) {
-            hub.registerAsset(assetId, decimals);
+            hubHandler.registerAsset(assetId, decimals);
         } else {
             return gateway.send(
                 centrifugeId, MessageLib.RegisterAsset({assetId: assetId.raw(), decimals: decimals}).serialize(), 0
@@ -535,7 +524,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         returns (uint256 cost)
     {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.request(poolId, scId, assetId, payload);
+            hubHandler.request(poolId, scId, assetId, payload);
         } else {
             return gateway.send(
                 poolId.centrifugeId(),
@@ -560,11 +549,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 assetId.centrifugeId(),
                 MessageLib.RequestCallback({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId.raw(),
-                    payload: payload
-                }).serialize(),
+                        poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw(), payload: payload
+                    }).serialize(),
                 extraGasLimit
             );
         }
@@ -584,11 +570,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 centrifugeId,
                 MessageLib.SetPoolAdapters({
-                    poolId: poolId.raw(),
-                    threshold: threshold,
-                    recoveryIndex: recoveryIndex,
-                    adapterList: adapters
-                }).serialize(),
+                        poolId: poolId.raw(), threshold: threshold, recoveryIndex: recoveryIndex, adapterList: adapters
+                    }).serialize(),
                 0
             );
         }

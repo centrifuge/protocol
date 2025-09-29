@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {HubReport} from "./HubDeployer.s.sol";
 import {CommonInput} from "./CommonDeployer.s.sol";
 import {ExtendedHubDeployer, ExtendedHubActionBatcher} from "./ExtendedHubDeployer.s.sol";
 import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "./ExtendedSpokeDeployer.s.sol";
@@ -15,15 +16,44 @@ import {
 
 import {ISafe} from "../src/common/interfaces/IGuardian.sol";
 
+import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
+
 import "forge-std/Script.sol";
 
-contract FullActionBatcher is ExtendedHubActionBatcher, ExtendedSpokeActionBatcher, AdaptersActionBatcher {}
+struct FullReport {
+    HubReport hub;
+    BatchRequestManager batchRequestManager;
+}
+
+contract FullActionBatcher is ExtendedHubActionBatcher, ExtendedSpokeActionBatcher, AdaptersActionBatcher {
+    function engageFull(FullReport memory report) public onlyDeployer {
+        // TODO: should be re-organized
+
+        // Rely Root
+        report.batchRequestManager.rely(address(report.hub.common.root));
+
+        // Rely others
+        report.batchRequestManager.rely(address(report.hub.hub));
+        report.batchRequestManager.rely(address(report.hub.hubHandler));
+
+        // File methods
+        report.batchRequestManager.file("hub", address(report.hub.hub));
+        report.batchRequestManager.file("gateway", address(report.hub.common.gateway));
+    }
+
+    function revokeFull(FullReport memory report) public onlyDeployer {
+        // TODO: should be re-organized
+        report.batchRequestManager.deny(address(this));
+    }
+}
 
 /**
  * @title FullDeployer
  * @notice Deploys the complete Centrifuge protocol stack (hub + spoke + adapters + base integrations)
  */
 contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
+    BatchRequestManager public batchRequestManager;
+
     function deployFull(CommonInput memory commonInput, AdaptersInput memory adaptersInput, FullActionBatcher batcher)
         public
     {
@@ -39,6 +69,21 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
         _preDeployExtendedHub(commonInput, batcher);
         _preDeployExtendedSpoke(commonInput, batcher);
         _preDeployAdapters(commonInput, adaptersInput, batcher);
+
+        batchRequestManager = BatchRequestManager(
+            create3(
+                generateSalt("batchRequestManager"),
+                abi.encodePacked(type(BatchRequestManager).creationCode, abi.encode(hubRegistry, batcher))
+            )
+        );
+
+        batcher.engageFull(_fullReport());
+
+        register("batchRequestManager", address(batchRequestManager));
+    }
+
+    function _fullReport() internal view returns (FullReport memory) {
+        return FullReport(_hubReport(), batchRequestManager);
     }
 
     function _postDeployFull(FullActionBatcher batcher) internal {
@@ -51,6 +96,8 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
         removeExtendedHubDeployerAccess(batcher);
         removeExtendedSpokeDeployerAccess(batcher);
         removeAdaptersDeployerAccess(batcher);
+
+        batcher.revokeFull(_fullReport());
     }
 
     function run() public virtual {
@@ -240,8 +287,8 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
             "ShareClassManager address mismatch with mainnet"
         );
         require(
-            address(hubHelpers) == 0xA30D9E76a80675A719d835a74d09683AD2CB71EE,
-            "HubHelpers address mismatch with mainnet"
+            address(hubHandler) == 0xA30D9E76a80675A719d835a74d09683AD2CB71EE,
+            "HubHandler address mismatch with mainnet"
         );
         require(address(hub) == 0x9c8454A506263549f07c80698E276e3622077098, "Hub address mismatch with mainnet");
         require(

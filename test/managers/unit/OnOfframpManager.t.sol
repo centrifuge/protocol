@@ -89,8 +89,9 @@ contract OnOfframpManagerTest is Test {
     }
 
     function _mockBalanceSheetDeposit(uint128 amount, bool shouldRevert, bytes memory revertData) internal {
-        bytes memory callData =
-            abi.encodeWithSelector(IBalanceSheet.deposit.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, amount);
+        bytes memory callData = abi.encodeWithSelector(
+            IBalanceSheet.deposit.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, amount
+        );
 
         if (shouldRevert) {
             vm.mockCallRevert(address(balanceSheet), callData, revertData);
@@ -135,10 +136,7 @@ contract OnOfframpManagerTest is Test {
             SC_1,
             UpdateContractMessageLib.serialize(
                 UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("onramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: bytes32(""),
-                    isEnabled: true
+                    kind: bytes32("onramp"), assetId: DEFAULT_ASSET_ID, what: bytes32(""), isEnabled: true
                 })
             )
         );
@@ -151,10 +149,7 @@ contract OnOfframpManagerTest is Test {
             SC_1,
             UpdateContractMessageLib.serialize(
                 UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("relayer"),
-                    assetId: 0,
-                    what: relayer_.toBytes32(),
-                    isEnabled: true
+                    kind: bytes32("relayer"), assetId: 0, what: relayer_.toBytes32(), isEnabled: true
                 })
             )
         );
@@ -167,10 +162,7 @@ contract OnOfframpManagerTest is Test {
             SC_1,
             UpdateContractMessageLib.serialize(
                 UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("offramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: receiver_.toBytes32(),
-                    isEnabled: true
+                    kind: bytes32("offramp"), assetId: DEFAULT_ASSET_ID, what: receiver_.toBytes32(), isEnabled: true
                 })
             )
         );
@@ -183,10 +175,7 @@ contract OnOfframpManagerTest is Test {
             SC_1,
             UpdateContractMessageLib.serialize(
                 UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("offramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: receiver_.toBytes32(),
-                    isEnabled: false
+                    kind: bytes32("offramp"), assetId: DEFAULT_ASSET_ID, what: receiver_.toBytes32(), isEnabled: false
                 })
             )
         );
@@ -206,10 +195,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
             SC_1,
             UpdateContractMessageLib.serialize(
                 UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("onramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: bytes32(""),
-                    isEnabled: true
+                    kind: bytes32("onramp"), assetId: DEFAULT_ASSET_ID, what: bytes32(""), isEnabled: true
                 })
             )
         );
@@ -223,10 +209,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
             SC_1,
             UpdateContractMessageLib.serialize(
                 UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("onramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: bytes32(""),
-                    isEnabled: true
+                    kind: bytes32("onramp"), assetId: DEFAULT_ASSET_ID, what: bytes32(""), isEnabled: true
                 })
             )
         );
@@ -242,10 +225,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
             wrongScId,
             UpdateContractMessageLib.serialize(
                 UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("onramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: bytes32(""),
-                    isEnabled: true
+                    kind: bytes32("onramp"), assetId: DEFAULT_ASSET_ID, what: bytes32(""), isEnabled: true
                 })
             )
         );
@@ -264,10 +244,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
             SC_1,
             UpdateContractMessageLib.serialize(
                 UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("onramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: bytes32(""),
-                    isEnabled: true
+                    kind: bytes32("onramp"), assetId: DEFAULT_ASSET_ID, what: bytes32(""), isEnabled: true
                 })
             )
         );
@@ -286,10 +263,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
             SC_1,
             UpdateContractMessageLib.serialize(
                 UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("offramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: receiver.toBytes32(),
-                    isEnabled: true
+                    kind: bytes32("offramp"), assetId: DEFAULT_ASSET_ID, what: receiver.toBytes32(), isEnabled: true
                 })
             )
         );
@@ -303,10 +277,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
             SC_1,
             UpdateContractMessageLib.serialize(
                 UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("unknown"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: bytes32(""),
-                    isEnabled: true
+                    kind: bytes32("unknown"), assetId: DEFAULT_ASSET_ID, what: bytes32(""), isEnabled: true
                 })
             )
         );
@@ -383,10 +354,7 @@ contract OnOfframpManagerDepositSuccessTests is OnOfframpManagerTest {
             SC_1,
             UpdateContractMessageLib.serialize(
                 UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("onramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: bytes32(""),
-                    isEnabled: false
+                    kind: bytes32("onramp"), assetId: DEFAULT_ASSET_ID, what: bytes32(""), isEnabled: false
                 })
             )
         );
