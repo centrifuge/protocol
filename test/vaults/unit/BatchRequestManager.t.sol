@@ -49,6 +49,8 @@ uint128 constant SHARE_HOOK_GAS = 100000;
 uint256 constant CB_GAS_COST = 1000;
 
 contract HubRegistryMock {
+    mapping(PoolId => mapping(address user => bool)) public manager;
+
     function decimals(PoolId) external pure returns (uint8) {
         return DECIMALS_POOL;
     }
@@ -65,6 +67,10 @@ contract HubRegistryMock {
 
     function hubRequestManager(PoolId, uint16) external pure returns (address) {
         return address(0);
+    }
+
+    function updateManager(PoolId poolId, address user, bool isManager) external {
+        manager[poolId][user] = isManager;
     }
 }
 

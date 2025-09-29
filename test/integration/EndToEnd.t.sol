@@ -47,7 +47,6 @@ import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
-import {IBatchRequestManager} from "../../src/vaults/interfaces/IBatchRequestManager.sol";
 
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
 
@@ -633,27 +632,13 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(poolManager);
         uint32 depositEpochId = hub.batchRequestManager.nowDepositEpoch(shareClassId, assetId);
         D18 pricePoolPerAsset = hub.hub.pricePoolPerAsset(poolId, shareClassId, assetId);
-        hub.hub
-        .callRequestManager(
-            poolId,
-            assetId.centrifugeId(),
-            abi.encodeCall(
-                IBatchRequestManager.approveDeposits,
-                (poolId, shareClassId, assetId, depositEpochId, amount, pricePoolPerAsset)
-            )
-        );
+        hub.batchRequestManager
+        .approveDeposits(poolId, shareClassId, assetId, depositEpochId, amount, pricePoolPerAsset);
 
         vm.startPrank(poolManager);
         uint32 issueEpochId = hub.batchRequestManager.nowIssueEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub
-        .callRequestManager(
-            poolId,
-            assetId.centrifugeId(),
-            abi.encodeCall(
-                IBatchRequestManager.issueShares, (poolId, shareClassId, assetId, issueEpochId, sharePrice, HOOK_GAS)
-            )
-        );
+        hub.batchRequestManager.issueShares(poolId, shareClassId, assetId, issueEpochId, sharePrice, HOOK_GAS);
     }
 
     function _processAsyncDepositClaim(
@@ -821,26 +806,11 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(poolManager);
         uint32 redeemEpochId = hub.batchRequestManager.nowRedeemEpoch(shareClassId, assetId);
         D18 pricePoolPerAsset = hub.hub.pricePoolPerAsset(poolId, shareClassId, assetId);
-        hub.hub
-        .callRequestManager(
-            poolId,
-            assetId.centrifugeId(),
-            abi.encodeCall(
-                IBatchRequestManager.approveRedeems,
-                (poolId, shareClassId, assetId, redeemEpochId, shares, pricePoolPerAsset)
-            )
-        );
+        hub.batchRequestManager.approveRedeems(poolId, shareClassId, assetId, redeemEpochId, shares, pricePoolPerAsset);
 
         uint32 revokeEpochId = hub.batchRequestManager.nowRevokeEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub
-        .callRequestManager(
-            poolId,
-            assetId.centrifugeId(),
-            abi.encodeCall(
-                IBatchRequestManager.revokeShares, (poolId, shareClassId, assetId, revokeEpochId, sharePrice, HOOK_GAS)
-            )
-        );
+        hub.batchRequestManager.revokeShares(poolId, shareClassId, assetId, revokeEpochId, sharePrice, HOOK_GAS);
     }
 
     function _processAsyncRedeemClaim(
