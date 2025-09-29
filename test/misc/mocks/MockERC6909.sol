@@ -12,11 +12,11 @@ contract MockERC6909 is IERC6909MetadataExt, IERC6909Fungible {
         return uint8(tokenId);
     }
 
-    function name(uint256 /*tokenId*/ ) external pure returns (string memory) {
+    function name(uint256 /*tokenId*/) external pure returns (string memory) {
         return "mocked name";
     }
 
-    function symbol(uint256 /*tokenId*/ ) external pure returns (string memory) {
+    function symbol(uint256 /*tokenId*/) external pure returns (string memory) {
         return "mocked symbol";
     }
 

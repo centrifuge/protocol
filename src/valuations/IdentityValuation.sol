@@ -21,7 +21,7 @@ contract IdentityValuation is IIdentityValuation {
     }
 
     /// @inheritdoc IValuation
-    function getPrice(PoolId poolId, ShareClassId scId, AssetId assetId) external pure returns (D18) {
+    function getPrice(PoolId, ShareClassId, AssetId) external pure returns (D18) {
         return d18(1e18);
     }
 

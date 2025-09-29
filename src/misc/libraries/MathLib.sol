@@ -6,7 +6,6 @@ library MathLib {
         Down, // Toward negative infinity
         Up, // Toward infinity
         Zero // Toward zero
-
     }
 
     error MulDiv_Overflow();
@@ -145,6 +144,7 @@ library MathLib {
             return result;
         }
     }
+
     // slither-disable-end divide-before-multiply
 
     /// @notice Calculates x * y / denominator with full precision, following the selected rounding direction.

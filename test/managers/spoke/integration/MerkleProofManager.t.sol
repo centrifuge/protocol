@@ -63,9 +63,8 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
             POOL_A,
             defaultTypedShareClassId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: address(this).toBytes32(),
-                validUntil: MAX_UINT64
-            }).serialize()
+                    user: address(this).toBytes32(), validUntil: MAX_UINT64
+                }).serialize()
         );
 
         manager = new MerkleProofManager(POOL_A, address(spoke));
@@ -368,7 +367,9 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
                     decoder: address(decoder),
                     target: address(balanceSheet),
                     selector: BalanceSheet.withdraw.selector,
-                    addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, address(erc20), makeAddr("otherTarget")),
+                    addresses: abi.encodePacked(
+                        POOL_A, defaultTypedShareClassId, address(erc20), makeAddr("otherTarget")
+                    ),
                     valueNonZero: false
                 }),
                 proofs[0]
@@ -475,7 +476,12 @@ contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
             decoder: address(decoder),
             target: address(balanceSheet),
             targetData: abi.encodeWithSelector(
-                BalanceSheet.deposit.selector, POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, depositAmount
+                BalanceSheet.deposit.selector,
+                POOL_A,
+                defaultTypedShareClassId,
+                address(erc20),
+                erc20TokenId,
+                depositAmount
             ),
             value: 0,
             proof: proofs[2]

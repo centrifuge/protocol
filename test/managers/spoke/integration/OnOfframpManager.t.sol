@@ -59,9 +59,8 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
             POOL_A,
             defaultTypedShareClassId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: address(this).toBytes32(),
-                validUntil: MAX_UINT64
-            }).serialize()
+                    user: address(this).toBytes32(), validUntil: MAX_UINT64
+                }).serialize()
         );
 
         factory = new OnOfframpManagerFactory(address(contractUpdater), balanceSheet);
@@ -88,11 +87,8 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
             POOL_A,
             defaultTypedShareClassId,
             UpdateContractMessageLib.UpdateContractUpdateAddress({
-                kind: bytes32("onramp"),
-                assetId: defaultAssetId,
-                what: bytes32(""),
-                isEnabled: true
-            }).serialize()
+                    kind: bytes32("onramp"), assetId: defaultAssetId, what: bytes32(""), isEnabled: true
+                }).serialize()
         );
 
         // Enable relayer
@@ -101,11 +97,8 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
             POOL_A,
             defaultTypedShareClassId,
             UpdateContractMessageLib.UpdateContractUpdateAddress({
-                kind: bytes32("relayer"),
-                assetId: 0,
-                what: relayer.toBytes32(),
-                isEnabled: true
-            }).serialize()
+                    kind: bytes32("relayer"), assetId: 0, what: relayer.toBytes32(), isEnabled: true
+                }).serialize()
         );
 
         // Enable offramp destination
@@ -114,11 +107,8 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
             POOL_A,
             defaultTypedShareClassId,
             UpdateContractMessageLib.UpdateContractUpdateAddress({
-                kind: bytes32("offramp"),
-                assetId: defaultAssetId,
-                what: receiver.toBytes32(),
-                isEnabled: true
-            }).serialize()
+                    kind: bytes32("offramp"), assetId: defaultAssetId, what: receiver.toBytes32(), isEnabled: true
+                }).serialize()
         );
 
         // Set manager permissions
