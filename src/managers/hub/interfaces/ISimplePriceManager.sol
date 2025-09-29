@@ -19,6 +19,7 @@ interface ISimplePriceManager is INAVHook {
     event File(bytes32 indexed what, address data);
 
     error InvalidShareClassCount();
+    error InvalidShareClass();
     error MismatchedEpochs();
     error FileUnrecognizedParam();
 

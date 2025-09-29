@@ -34,10 +34,6 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         crosschainBatcher = crosschainBatcher_;
         hubRegistry = hub_.hubRegistry();
         shareClassManager = hub_.shareClassManager();
-
-        // TODO: where to check share class count?
-        // require(shareClassManager.shareClassCount(poolId) == 1, InvalidShareClassCount());
-        // scId = shareClassManager.previewShareClassId(poolId, 1);
     }
 
     modifier onlyManager(PoolId poolId) {
@@ -68,6 +64,8 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
 
     /// @inheritdoc ISimplePriceManager
     function setNetworks(PoolId poolId, uint16[] calldata centrifugeIds) external onlyHubManager(poolId) {
+        require(shareClassManager.shareClassCount(poolId) == 1, InvalidShareClassCount());
+
         metrics[poolId].networks = centrifugeIds;
         emit SetNetworks(poolId, centrifugeIds);
     }
@@ -85,6 +83,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
 
     /// @inheritdoc INAVHook
     function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) external auth {
+        require(scId.index() == 1, InvalidShareClass());
         NetworkMetrics memory networkMetrics_ = networkMetrics[poolId][centrifugeId];
 
         // If there are pending epochs to be issued or revoked, skip updating the share price, as it will likely be off
@@ -126,11 +125,12 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     /// @inheritdoc INAVHook
     function onTransfer(
         PoolId poolId,
-        ShareClassId,
+        ShareClassId scId,
         uint16 fromCentrifugeId,
         uint16 toCentrifugeId,
         uint128 sharesTransferred
     ) external auth {
+        require(scId.index() == 1, InvalidShareClass());
         NetworkMetrics storage fromMetrics = networkMetrics[poolId][fromCentrifugeId];
         NetworkMetrics storage toMetrics = networkMetrics[poolId][toCentrifugeId];
         fromMetrics.issuance -= sharesTransferred;
@@ -147,6 +147,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         external
         onlyManager(poolId)
     {
+        require(scId.index() == 1, InvalidShareClass());
         IBatchRequestManager requestManager =
             IBatchRequestManager(address(hubRegistry.hubRequestManager(poolId, depositAssetId.centrifugeId())));
         uint32 nowDepositEpochId = requestManager.nowDepositEpoch(scId, depositAssetId);
@@ -165,6 +166,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         external
         onlyManager(poolId)
     {
+        require(scId.index() == 1, InvalidShareClass());
         IBatchRequestManager requestManager =
             IBatchRequestManager(address(hubRegistry.hubRequestManager(poolId, depositAssetId.centrifugeId())));
         uint32 nowIssueEpochId = requestManager.nowIssueEpoch(scId, depositAssetId);
@@ -182,6 +184,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         external
         onlyManager(poolId)
     {
+        require(scId.index() == 1, InvalidShareClass());
         IBatchRequestManager requestManager =
             IBatchRequestManager(address(hubRegistry.hubRequestManager(poolId, payoutAssetId.centrifugeId())));
         uint32 nowRedeemEpochId = requestManager.nowRedeemEpoch(scId, payoutAssetId);
@@ -200,6 +203,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         external
         onlyManager(poolId)
     {
+        require(scId.index() == 1, InvalidShareClass());
         IBatchRequestManager requestManager =
             IBatchRequestManager(address(hubRegistry.hubRequestManager(poolId, payoutAssetId.centrifugeId())));
         uint32 nowRevokeEpochId = requestManager.nowRevokeEpoch(scId, payoutAssetId);
@@ -221,6 +225,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         uint128 approvedAssetAmount,
         uint128 extraGasLimit
     ) external onlyManager(poolId) {
+        require(scId.index() == 1, InvalidShareClass());
         IBatchRequestManager requestManager =
             IBatchRequestManager(address(hubRegistry.hubRequestManager(poolId, depositAssetId.centrifugeId())));
         uint32 nowDepositEpochId = requestManager.nowDepositEpoch(scId, depositAssetId);
@@ -244,6 +249,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         uint128 approvedShareAmount,
         uint128 extraGasLimit
     ) external onlyManager(poolId) {
+        require(scId.index() == 1, InvalidShareClass());
         IBatchRequestManager requestManager =
             IBatchRequestManager(address(hubRegistry.hubRequestManager(poolId, payoutAssetId.centrifugeId())));
         uint32 nowRedeemEpochId = requestManager.nowRedeemEpoch(scId, payoutAssetId);

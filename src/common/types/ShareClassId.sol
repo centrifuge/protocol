@@ -9,6 +9,10 @@ function isNull(ShareClassId scId) pure returns (bool) {
     return ShareClassId.unwrap(scId) == 0;
 }
 
+function index(ShareClassId scId) pure returns (uint32) {
+    return uint32(uint128(ShareClassId.unwrap(scId)));
+}
+
 function equals(ShareClassId left, ShareClassId right) pure returns (bool) {
     return ShareClassId.unwrap(left) == ShareClassId.unwrap(right);
 }
@@ -17,8 +21,8 @@ function raw(ShareClassId scId) pure returns (bytes16) {
     return ShareClassId.unwrap(scId);
 }
 
-function newShareClassId(PoolId poolId, uint32 index) pure returns (ShareClassId scId) {
-    return ShareClassId.wrap(bytes16((uint128(PoolId.unwrap(poolId)) << 64) + index));
+function newShareClassId(PoolId poolId, uint32 index_) pure returns (ShareClassId scId) {
+    return ShareClassId.wrap(bytes16((uint128(PoolId.unwrap(poolId)) << 64) + index_));
 }
 
-using {isNull, raw, equals as ==} for ShareClassId global;
+using {isNull, index, raw, equals as ==} for ShareClassId global;
