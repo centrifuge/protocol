@@ -121,7 +121,6 @@ interface IVaultRouter is IMulticall {
     /// @param  controller Check IERC7540Deposit.mint.owner
     function claimDeposit(IAsyncVault vault, address receiver, address controller) external;
 
-    // --- Redeem ---
     /// @notice Check `IERC7887Deposit.cancelDepositRequest`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
     ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
@@ -169,6 +168,19 @@ interface IVaultRouter is IMulticall {
     /// @param  receiver Check  IERC7887Redeem.claimCancelRedeemRequest.receiver
     /// @param  controller Check  IERC7887Redeem.claimCancelRedeemRequest.controller
     function claimCancelRedeemRequest(IAsyncVault vault, address receiver, address controller) external;
+
+    // --- Cross-chain transfers ---
+    /// @notice Intended to be used in a batch with `deposit` or `claimRedeem`,
+    ///         with `receiver=address(this)`
+    function crosschainTransferShares(
+        BaseSyncDepositVault vault,
+        uint128 shares,
+        uint16 centrifugeId,
+        bytes32 receiver,
+        address owner,
+        uint128 extraGasLimit,
+        uint128 remoteExtraGasLimit
+    ) external;
 
     // --- ERC20 permit ---
     /// @notice Check IERC20.permit
