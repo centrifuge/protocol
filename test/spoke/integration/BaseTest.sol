@@ -24,7 +24,11 @@ import {IVaultFactory} from "../../../src/spoke/factories/interfaces/IVaultFacto
 
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
 
-import { ExtendedSpokeDeployer, ExtendedSpokeActionBatcher, CommonInput } from "../../../script/ExtendedSpokeDeployer.s.sol";
+import {
+    ExtendedSpokeDeployer,
+    ExtendedSpokeActionBatcher,
+    CommonInput
+} from "../../../script/ExtendedSpokeDeployer.s.sol";
 
 import {MockCentrifugeChain} from "../mocks/MockCentrifugeChain.sol";
 

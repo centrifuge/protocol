@@ -16,7 +16,15 @@ import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
 import {IHubRequestManagerCallback} from "../../../src/hub/interfaces/IHubRequestManagerCallback.sol";
 
 import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
-import { IBatchRequestManager, EpochInvestAmounts, EpochRedeemAmounts, UserOrder, QueuedOrder, RequestType, EpochId } from "../../../src/vaults/interfaces/IBatchRequestManager.sol";
+import {
+    IBatchRequestManager,
+    EpochInvestAmounts,
+    EpochRedeemAmounts,
+    UserOrder,
+    QueuedOrder,
+    RequestType,
+    EpochId
+} from "../../../src/vaults/interfaces/IBatchRequestManager.sol";
 
 import "forge-std/Test.sol";
 

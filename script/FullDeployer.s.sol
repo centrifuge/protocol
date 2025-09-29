@@ -5,7 +5,14 @@ import {HubReport} from "./HubDeployer.s.sol";
 import {CommonInput} from "./CommonDeployer.s.sol";
 import {ExtendedHubDeployer, ExtendedHubActionBatcher} from "./ExtendedHubDeployer.s.sol";
 import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "./ExtendedSpokeDeployer.s.sol";
-import { WormholeInput, AxelarInput, LayerZeroInput, AdaptersInput, AdaptersDeployer, AdaptersActionBatcher } from "./AdaptersDeployer.s.sol";
+import {
+    WormholeInput,
+    AxelarInput,
+    LayerZeroInput,
+    AdaptersInput,
+    AdaptersDeployer,
+    AdaptersActionBatcher
+} from "./AdaptersDeployer.s.sol";
 
 import {ISafe} from "../src/common/interfaces/IGuardian.sol";
 

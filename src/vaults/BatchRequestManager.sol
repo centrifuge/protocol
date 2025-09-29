@@ -1,7 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import { IBatchRequestManager, EpochInvestAmounts, EpochRedeemAmounts, UserOrder, QueuedOrder, RequestType, EpochId } from "./interfaces/IBatchRequestManager.sol";
+import {
+    IBatchRequestManager,
+    EpochInvestAmounts,
+    EpochRedeemAmounts,
+    UserOrder,
+    QueuedOrder,
+    RequestType,
+    EpochId
+} from "./interfaces/IBatchRequestManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";

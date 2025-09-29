@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import { RequestCallbackType, RequestCallbackMessageLib } from "../../../../src/common/libraries/RequestCallbackMessageLib.sol";
+import {
+    RequestCallbackType,
+    RequestCallbackMessageLib
+} from "../../../../src/common/libraries/RequestCallbackMessageLib.sol";
 
 import "forge-std/Test.sol";
 
