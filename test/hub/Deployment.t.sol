@@ -142,6 +142,7 @@ contract HubDeploymentCommonExtTest is HubDeploymentTest {
         vm.assume(nonWard != address(messageDispatcher)); // From common
         vm.assume(nonWard != address(messageProcessor)); // From common
         vm.assume(nonWard != address(multiAdapter)); // From common
+        vm.assume(nonWard != address(crosschainBatcher)); // From common
         vm.assume(nonWard != address(hub));
 
         assertEq(gateway.wards(address(hub)), 1);
