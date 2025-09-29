@@ -168,7 +168,7 @@ contract NAVManager is INAVManager, Auth {
         external
         onlyManager(poolId)
     {
-        // TODO: Should we have this funtion at all? Seems like this can only mess up the accounting.
+        // TODO: Should we have this function at all? Seems like this can only mess up the accounting.
         hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
     }
 
