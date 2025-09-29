@@ -104,9 +104,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external returns (uint256 cost);
 
     /// @notice Creates and send the message
-    function sendSetRequestManager(uint16 centrifugeId, PoolId poolId, bytes32 manager)
-        external
-        returns (uint256 cost);
+    function sendSetRequestManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external returns (uint256 cost);
 
     /// @notice Creates and send the message
     function sendUpdateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
@@ -115,7 +113,6 @@ interface IHubMessageSender is ILocalCentrifugeId {
 
     /// @notice Creates and send the message
     function sendExecuteTransferShares(
-        uint16 originCentrifugeId,
         uint16 targetCentrifugeId,
         PoolId poolId,
         ShareClassId scId,

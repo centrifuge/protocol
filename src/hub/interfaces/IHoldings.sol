@@ -145,11 +145,9 @@ interface IHoldings {
     function updateIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability) external;
 
     /// @notice Sets an account id for an specific kind
-    function setAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
-        external;
+    function setAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId) external;
 
-    function setSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bool isSnapshot, uint64 nonce)
-        external;
+    function setSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bool isSnapshot, uint64 nonce) external;
 
     function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external;
 
@@ -175,10 +173,7 @@ interface IHoldings {
     function isLiability(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool);
 
     /// @notice Returns an account id for an specific kind
-    function accountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind)
-        external
-        view
-        returns (AccountId);
+    function accountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind) external view returns (AccountId);
 
     /// @notice Tells if the holding was initialized for an asset in a share class
     function isInitialized(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool);

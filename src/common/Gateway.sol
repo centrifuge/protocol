@@ -46,6 +46,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     // Outbound & payments
     bool public transient isBatching;
+    bool public transient unpaidMode;
     mapping(PoolId => Funds) public subsidy;
     mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Underpaid)) public underpaid;
@@ -168,6 +169,9 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             TransientBytesLib.append(batchSlot, message);
             return 0;
+        } else if (unpaidMode) {
+            _addUnpaidBatch(centrifugeId, message, gasLimit);
+            return 0;
         } else {
             return _send(centrifugeId, message, gasLimit);
         }
@@ -195,10 +199,8 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function addUnpaidMessage(uint16 centrifugeId, bytes memory message, uint128 extraGasLimit) external auth {
-        uint128 gasLimit = gasService.messageGasLimit(centrifugeId, message) + extraGasLimit;
-        emit PrepareMessage(centrifugeId, processor.messagePoolId(message), message);
-        _addUnpaidBatch(centrifugeId, message, gasLimit);
+    function setUnpaidMode(bool enabled) external auth {
+        unpaidMode = enabled;
     }
 
     function _addUnpaidBatch(uint16 centrifugeId, bytes memory message, uint128 gasLimit) internal {
@@ -280,7 +282,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function endBatching() external auth {
+    function endBatching() external auth returns (uint256 cost) {
         require(isBatching, NoBatched());
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
 
@@ -291,8 +293,13 @@ contract Gateway is Auth, Recoverable, IGateway {
             (uint16 centrifugeId, PoolId poolId) = _parseLocator(locators[i]);
             bytes32 outboundBatchSlot = _outboundBatchSlot(centrifugeId, poolId);
             uint128 gasLimit = _gasLimitSlot(centrifugeId, poolId).tloadUint128();
+            bytes memory batch = TransientBytesLib.get(outboundBatchSlot);
 
-            _send(centrifugeId, TransientBytesLib.get(outboundBatchSlot), gasLimit);
+            if (unpaidMode) {
+                _addUnpaidBatch(centrifugeId, batch, gasLimit);
+            } else {
+                cost += _send(centrifugeId, batch, gasLimit);
+            }
 
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
