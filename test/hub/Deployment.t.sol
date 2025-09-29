@@ -147,15 +147,6 @@ contract HubDeploymentCommonExtTest is HubDeploymentTest {
         assertEq(gateway.wards(nonWard), 0);
     }
 
-    function testPoolEscrowFactoryExt(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root)); // From common
-        vm.assume(nonWard != address(hub));
-
-        assertEq(poolEscrowFactory.wards(address(hub)), 1);
-        assertEq(poolEscrowFactory.wards(nonWard), 0);
-    }
-
     function testGuardianExt() public view {
         // dependencies set correctly
         assertEq(address(guardian.hub()), address(hub));

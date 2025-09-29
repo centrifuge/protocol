@@ -69,7 +69,7 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         report.syncManager.file("spoke", address(report.spoke.spoke));
         report.syncManager.file("balanceSheet", address(report.spoke.balanceSheet));
 
-        report.refundEscrowFactory.file("controller", address(report.asyncRequestManager));
+        report.refundEscrowFactory.file(bytes32("controller"), address(report.asyncRequestManager));
 
         // Endorse methods
         report.spoke.common.root.endorse(address(report.asyncRequestManager));
@@ -85,6 +85,7 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         report.routerEscrow.deny(address(this));
         report.globalEscrow.deny(address(this));
         report.vaultRouter.deny(address(this));
+        report.refundEscrowFactory.deny(address(this));
     }
 }
 
@@ -116,7 +117,8 @@ contract VaultsDeployer is SpokeDeployer {
 
         refundEscrowFactory = RefundEscrowFactory(
             create3(
-                generateSalt("refundEscrowFactory"), abi.encodePacked(type(Escrow).creationCode, abi.encode(batcher))
+                generateSalt("refundEscrowFactory"),
+                abi.encodePacked(type(RefundEscrowFactory).creationCode, abi.encode(batcher))
             )
         );
 
