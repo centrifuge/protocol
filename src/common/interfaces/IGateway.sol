@@ -55,20 +55,11 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when a batch that has not been underpaid is repaid.
     error NotUnderpaidBatch();
 
-    /// @notice Dispatched when a batch is repaid with insufficient funds.
-    error CannotBeRepaid();
-
     /// @notice Dispatched when a message is added to a batch that causes it to exceed the max batch size.
     error ExceedsMaxGasLimit();
 
-    /// @notice Dispatched when a refund address is not set.
-    error RefundAddressNotSet();
-
     /// @notice Dispatched when a handle is called without enough gas to process the message.
     error NotEnoughGasToProcess();
-
-    /// @notice Dispatched when a recovery message is not executed from the manager.
-    error ManagerNotAllowed();
 
     /// @notice Dispatched when a message is sent but the gateway is blocked for sending messages
     error OutgoingBlocked();
@@ -79,7 +70,7 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when there is not enough gas to send the message
     error NotEnoughGas();
 
-    /// @notice Dispatched when a the message is not send but there is a payment
+    /// @notice Dispatched when a the message was batched but there was a payment for it
     error NotPayable();
 
     /// @notice Used to update an address ( state variable ) on very rare occasions.
