@@ -374,11 +374,6 @@ contract EndToEndUtils is EndToEndDeployment {
     function _getLastUnpaidMessage() internal returns (bytes memory message) {
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
-        if (logs.length == 0) {
-            vm.recordLogs();
-            return message;
-        }
-
         for (uint256 i = logs.length - 1; i >= 0; i--) {
             if (logs[i].topics[0] == bytes32(IGateway.UnderpaidBatch.selector)) {
                 return abi.decode(logs[i].data, (bytes));
@@ -876,7 +871,6 @@ contract EndToEndFlows is EndToEndUtils {
         vault.cancelRedeemRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A);
 
         vm.startPrank(ANY);
-        vm.deal(ANY, GAS);
         h.batchRequestManager.notifyCancelRedeem{value: GAS}(POOL_A, SC_1, s.usdcId, INVESTOR_A.toBytes32());
         vm.stopPrank();
 
@@ -1121,7 +1115,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vault.cancelDepositRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A);
 
         vm.startPrank(ANY);
-        vm.deal(ANY, GAS);
         h.batchRequestManager.notifyCancelDeposit{value: GAS}(POOL_A, SC_1, s.usdcId, INVESTOR_A.toBytes32());
         vm.stopPrank();
 
