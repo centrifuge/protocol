@@ -84,7 +84,13 @@ contract MaliciousVaultAttackTest is EndToEndFlows {
         vm.startPrank(FM);
         h.hub
         .updateVault(
-            POOL_A, SC_1, s.usdcId, bytes32(bytes20(address(maliciousFactory))), VaultUpdateKind.DeployAndLink, 0
+            POOL_A,
+            SC_1,
+            s.usdcId,
+            bytes32(bytes20(address(maliciousFactory))),
+            VaultUpdateKind.DeployAndLink,
+            0,
+            address(0)
         );
 
         MaliciousVault maliciousVault = maliciousFactory.vault();

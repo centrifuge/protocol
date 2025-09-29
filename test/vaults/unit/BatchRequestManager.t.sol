@@ -2594,11 +2594,10 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
 
         vm.prank(poolManager);
-        uint256 cost = batchRequestManager.approveDeposits(
-            poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC)
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND);
 
-        assertEq(cost, CB_GAS_COST, "Should return callback cost");
         assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0, "Pending should be cleared");
 
         (, uint128 approvedAssetAmount,,,,) = batchRequestManager.epochInvestAmounts(scId, USDC, 1);
@@ -2622,9 +2621,10 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
         _depositAndApprove(MIN_REQUEST_AMOUNT_USDC, MIN_REQUEST_AMOUNT_USDC);
 
         vm.prank(poolManager);
-        uint256 cost = batchRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS);
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND);
 
-        assertEq(cost, CB_GAS_COST, "Should return callback cost");
         assertEq(_nowIssue(USDC), 2, "Issue epoch should advance");
     }
 
@@ -2632,9 +2632,10 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
         _redeemAndApprove(MIN_REQUEST_AMOUNT_SHARES, MIN_REQUEST_AMOUNT_SHARES, 1e18);
 
         vm.prank(poolManager);
-        uint256 cost = batchRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), d18(1), SHARE_HOOK_GAS);
+        batchRequestManager.revokeShares{
+            value: COST
+        }(poolId, scId, USDC, _nowRevoke(USDC), d18(1), SHARE_HOOK_GAS, REFUND);
 
-        assertEq(cost, CB_GAS_COST, "Should return callback cost");
         assertEq(_nowRevoke(USDC), 2, "Revoke epoch should advance");
     }
 
@@ -2644,9 +2645,8 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
 
         vm.prank(poolManager);
-        uint256 cost = batchRequestManager.forceCancelDepositRequest(poolId, scId, investor, USDC);
+        batchRequestManager.forceCancelDepositRequest{value: COST}(poolId, scId, investor, USDC, REFUND);
 
-        assertEq(cost, CB_GAS_COST, "Should return callback cost");
         (uint128 pending,) = batchRequestManager.depositRequest(scId, USDC, investor);
         assertEq(pending, 0, "Request should be cancelled");
     }
@@ -2657,9 +2657,8 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
         batchRequestManager.requestRedeem(poolId, scId, MIN_REQUEST_AMOUNT_SHARES, investor, USDC);
 
         vm.prank(poolManager);
-        uint256 cost = batchRequestManager.forceCancelRedeemRequest(poolId, scId, investor, USDC);
+        batchRequestManager.forceCancelRedeemRequest{value: COST}(poolId, scId, investor, USDC, REFUND);
 
-        assertEq(cost, CB_GAS_COST, "Should return callback cost");
         (uint128 pending,) = batchRequestManager.redeemRequest(scId, USDC, investor);
         assertEq(pending, 0, "Request should be cancelled");
     }
@@ -2671,10 +2670,9 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
 
         vm.prank(poolManager2);
-        uint256 cost = batchRequestManager.approveDeposits(
-            poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC)
-        );
-        assertEq(cost, CB_GAS_COST, "Manager 2 should be able to approve");
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND);
     }
 
     function testManagerPermissionRevocation() public {
@@ -2684,7 +2682,7 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
 
         vm.prank(poolManager);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        batchRequestManager.approveDeposits(poolId, scId, USDC, 1, 1, d18(1));
+        batchRequestManager.approveDeposits(poolId, scId, USDC, 1, 1, d18(1), REFUND);
     }
 }
 

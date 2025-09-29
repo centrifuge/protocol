@@ -16,7 +16,7 @@ contract RefundEscrowFactoryTest is Test {
 
     PoolId constant POOL_A = PoolId.wrap(1);
 
-    RefundEscrowFactory factory = new RefundEscrowFactory(CONTROLLER, AUTH);
+    RefundEscrowFactory factory = new RefundEscrowFactory(AUTH);
 }
 
 contract RefundEscrowFactoryTestFile is RefundEscrowFactoryTest {
@@ -48,6 +48,9 @@ contract RefundEscrowFactoryTestNewEscrow is RefundEscrowFactoryTest {
     }
 
     function testNewEscrow() external {
+        vm.prank(AUTH);
+        factory.file("controller", CONTROLLER);
+
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         IRefundEscrow escrow = factory.newEscrow(POOL_A);

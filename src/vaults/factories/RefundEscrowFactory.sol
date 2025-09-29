@@ -12,9 +12,7 @@ import {IRefundEscrowFactory} from "./interfaces/IRefundEscrowFactory.sol";
 contract RefundEscrowFactory is Auth, IRefundEscrowFactory {
     address public controller;
 
-    constructor(address controller_, address deployer) Auth(deployer) {
-        controller = controller_;
-    }
+    constructor(address deployer) Auth(deployer) {}
 
     function file(bytes32 what, address data) external auth {
         if (what == "controller") controller = data;

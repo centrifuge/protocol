@@ -28,6 +28,8 @@ contract TestCommon is Test {
     JournalEntry[] EMPTY;
     address immutable AUTH = makeAddr("auth");
     address immutable ANY = makeAddr("any");
+    address immutable REFUND = makeAddr("refund");
+    uint256 constant COST = 123;
 
     IHubRegistry immutable hubRegistry = IHubRegistry(makeAddr("HubRegistry"));
     IHub immutable hub = IHub(makeAddr("Hub"));
@@ -57,7 +59,9 @@ contract TestMainMethodsChecks is TestCommon {
         hubHandler.updateShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), 0, true, true, 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hubHandler.initiateTransferShares(CHAIN_A, CHAIN_B, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""), 0, 0);
+        hubHandler.initiateTransferShares{
+            value: COST
+        }(CHAIN_A, CHAIN_B, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""), 0, 0, REFUND);
 
         vm.stopPrank();
     }
