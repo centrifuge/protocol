@@ -27,7 +27,7 @@ contract RedemptionRestrictions is BaseTransferHook {
         returns (bool)
     {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
-        if (isRedeemRequest(from, to)) return isAuthorized(from) || isSourceMember(from, hookData);
+        if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
 
         // Else, it's a deposit request, redemption fulfillment or claiming, or transfer
         return true;

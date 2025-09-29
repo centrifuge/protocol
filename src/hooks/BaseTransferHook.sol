@@ -225,21 +225,6 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         isValid = validUntil >= block.timestamp;
     }
 
-    function authorizeTransaction(address token, address user, bool isAuthorized_) public authOrManager(token) {
-        TransientStorageLib.tstore(keccak256(abi.encode("isAuthorized", token, user)), isAuthorized_);
-        emit AuthorizeTransaction(token, user, isAuthorized_);
-    }
-
-    function isAuthorized(address token, address user) internal view returns (bool) {
-        return TransientStorageLib.tloadBool(keccak256(abi.encode("isAuthorized", token, user)));
-    }
-
-    /// @dev When called within context of the hook, the msg.sender is the token
-    function isAuthorized(address user) internal view returns (bool) {
-        address token = msg.sender;
-        return TransientStorageLib.tloadBool(keccak256(abi.encode("isAuthorized", token, user)));
-    }
-
     //----------------------------------------------------------------------------------------------
     // ERC-165
     //----------------------------------------------------------------------------------------------
