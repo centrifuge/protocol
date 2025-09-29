@@ -94,6 +94,9 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @param  canSend If can send messages or not
     function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool canSend) external;
 
+    /// @notice Sets the gateway in unpaid mode where any call to send will store the message as unpaid.
+    function setUnpaidMode(bool enabled) external;
+
     /// @notice Repay an underpaid batch.
     function repay(uint16 centrifugeId, bytes memory batch) external payable;
 
@@ -112,11 +115,6 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Handling outgoing messages.
     /// @param centrifugeId Destination chain
     function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit) external returns (uint256 cost);
-
-    /// @notice Add a message to the underpaid storage to be repay and send later.
-    /// @dev It only supports one message, not a batch
-    /// @param extraGasLimit Adds an extra cost for the message
-    function addUnpaidMessage(uint16 centrifugeId, bytes memory message, uint128 extraGasLimit) external;
 
     /// @notice Initialize batching message
     function startBatching() external;

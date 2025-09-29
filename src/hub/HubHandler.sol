@@ -125,8 +125,6 @@ contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
 
         emit ForwardTransferShares(originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount);
 
-        return sender.sendExecuteTransferShares(
-            originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, extraGasLimit
-        );
+        return sender.sendExecuteTransferShares(targetCentrifugeId, poolId, scId, receiver, amount, extraGasLimit);
     }
 }

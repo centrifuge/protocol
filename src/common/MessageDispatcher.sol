@@ -409,7 +409,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     /// @inheritdoc IHubMessageSender
     function sendExecuteTransferShares(
-        uint16 originCentrifugeId,
         uint16 targetCentrifugeId,
         PoolId poolId,
         ShareClassId scId,
@@ -421,17 +420,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             // Spoke chain X => Hub chain Y => Spoke chain Y
             spoke.executeTransferShares(poolId, scId, receiver, amount);
         } else {
-            bytes memory message = MessageLib.ExecuteTransferShares({
-                    poolId: poolId.raw(), scId: scId.raw(), receiver: receiver, amount: amount
-                }).serialize();
-
-            if (originCentrifugeId == localCentrifugeId) {
-                // Spoke chain X => Hub chain X => Spoke chain Y: payment done directly on X
-                return gateway.send(targetCentrifugeId, message, extraGasLimit);
-            } else {
-                // Spoke chain X => Hub chain Y => Spoke chain Z
-                gateway.addUnpaidMessage(targetCentrifugeId, message, extraGasLimit);
-            }
+            return gateway.send(
+                targetCentrifugeId,
+                MessageLib.ExecuteTransferShares({
+                        poolId: poolId.raw(), scId: scId.raw(), receiver: receiver, amount: amount
+                    }).serialize(),
+                extraGasLimit
+            );
         }
     }
 

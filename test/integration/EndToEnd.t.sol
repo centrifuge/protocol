@@ -12,11 +12,11 @@ import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
 
 import {Root} from "../../src/common/Root.sol";
-import {Gateway} from "../../src/common/Gateway.sol";
 import {Guardian} from "../../src/common/Guardian.sol";
 import {PoolId} from "../../src/common/types/PoolId.sol";
 import {GasService} from "../../src/common/GasService.sol";
 import {AccountId} from "../../src/common/types/AccountId.sol";
+import {IGateway, Gateway} from "../../src/common/Gateway.sol";
 import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
 import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";
 import {PricingLib} from "../../src/common/libraries/PricingLib.sol";
@@ -233,6 +233,8 @@ contract EndToEndDeployment is Test {
 
         vm.label(address(adapterAToB), "AdapterAToB");
         vm.label(address(adapterBToA), "AdapterBToA");
+
+        vm.recordLogs();
     }
 
     function _setAdapter(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
@@ -368,6 +370,18 @@ contract EndToEndUtils is EndToEndDeployment {
             vaultAddr = address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
         }
         assertNotEq(vaultAddr, address(0));
+    }
+
+    function _getLastUnpaidMessage() internal returns (bytes memory message) {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        for (uint256 i = logs.length - 1; i >= 0; i--) {
+            if (logs[i].topics[0] == bytes32(IGateway.UnderpaidBatch.selector)) {
+                return abi.decode(logs[i].data, (bytes));
+            }
+        }
+
+        vm.recordLogs();
     }
 }
 
@@ -885,6 +899,9 @@ contract EndToEndFlows is EndToEndUtils {
         uint128 shares = uint128(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A));
         vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A);
         vault.cancelRedeemRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A);
+
+        if (!sameChain) h.gateway.repay{value: GAS}(s.centrifugeId, _getLastUnpaidMessage());
+
         vault.claimCancelRedeemRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A, INVESTOR_A);
 
         // CHECKS
@@ -1123,6 +1140,9 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         s.usdc.approve(address(vault), USDC_AMOUNT_1);
         vault.requestDeposit(USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
         vault.cancelDepositRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A);
+
+        if (!sameChain) h.gateway.repay{value: GAS}(s.centrifugeId, _getLastUnpaidMessage());
+
         vault.claimCancelDepositRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A, INVESTOR_A);
 
         // CHECKS
