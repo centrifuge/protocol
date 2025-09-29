@@ -69,6 +69,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     /// @inheritdoc ISimplePriceManager
     function setNetworks(PoolId poolId, uint16[] calldata centrifugeIds) external onlyHubManager(poolId) {
         metrics[poolId].networks = centrifugeIds;
+        emit SetNetworks(poolId, centrifugeIds);
     }
 
     /// @inheritdoc ISimplePriceManager

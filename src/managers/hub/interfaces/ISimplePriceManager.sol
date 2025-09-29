@@ -15,6 +15,7 @@ interface ISimplePriceManager is INAVHook {
         PoolId indexed poolId, uint16 indexed fromCentrifugeId, uint16 indexed toCentrifugeId, uint128 sharesTransferred
     );
     event UpdateManager(PoolId indexed poolId, address indexed manager, bool canManage);
+    event SetNetworks(PoolId indexed poolId, uint16[] networks);
     event File(bytes32 indexed what, address data);
 
     error InvalidShareClassCount();
