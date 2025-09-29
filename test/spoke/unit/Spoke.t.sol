@@ -89,7 +89,9 @@ contract SpokeTest is Test {
     SpokeExt spoke = new SpokeExt(tokenFactory, AUTH);
 
     function setUp() public virtual {
-        vm.deal(ANY, COST);
+        vm.deal(ANY, 1 ether);
+        vm.deal(AUTH, 1 ether);
+        vm.deal(address(requestManager), 1 ether);
 
         vm.startPrank(AUTH);
         spoke.file("gateway", address(gateway));
@@ -284,7 +286,7 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
         vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
         spoke.crosschainTransferShares{
             value: COST
-        }(LOCAL_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0, 0, ANY);
+        }(LOCAL_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0, 0, REFUND);
     }
 
     function testErrLocalTransferNotAllowed() public {
@@ -294,7 +296,7 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
         vm.expectRevert(ISpoke.LocalTransferNotAllowed.selector);
         spoke.crosschainTransferShares{
             value: COST
-        }(LOCAL_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0, 0, ANY);
+        }(LOCAL_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0, 0, REFUND);
     }
 
     function testErrCrossChainTransferNotAllowed() public {
@@ -306,7 +308,7 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
         vm.expectRevert(ISpoke.CrossChainTransferNotAllowed.selector);
         spoke.crosschainTransferShares{
             value: COST
-        }(REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0, 0, ANY);
+        }(REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0, 0, REFUND);
     }
 
     function testCrossChainTransfer() public {
@@ -335,7 +337,7 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
         emit ISpoke.InitiateTransferShares(REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, ANY, RECEIVER.toBytes32(), AMOUNT);
         spoke.crosschainTransferShares{
             value: COST
-        }(REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0, 0, ANY);
+        }(REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0, 0, REFUND);
     }
 }
 
@@ -346,13 +348,13 @@ contract SpokeTestRegisterAsset is SpokeTest {
     function testErrAssetMissingDecimalsERC20() public {
         vm.prank(ANY);
         vm.expectRevert(ISpoke.AssetMissingDecimals.selector);
-        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, address(0xbeef), 0, ANY);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, address(0xbeef), 0, REFUND);
     }
 
     function testErrAssetMissingDecimalsERC6909() public {
         vm.prank(ANY);
         vm.expectRevert(ISpoke.AssetMissingDecimals.selector);
-        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, address(0xbeef), TOKEN_1, ANY);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, address(0xbeef), TOKEN_1, REFUND);
     }
 
     function testErrTooFewDecimalsERC20() public {
@@ -360,7 +362,7 @@ contract SpokeTestRegisterAsset is SpokeTest {
 
         vm.prank(ANY);
         vm.expectRevert(ISpoke.TooFewDecimals.selector);
-        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc20, 0, ANY);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc20, 0, REFUND);
     }
 
     function testErrTooFewDecimalsERC6909() public {
@@ -368,7 +370,7 @@ contract SpokeTestRegisterAsset is SpokeTest {
 
         vm.prank(ANY);
         vm.expectRevert(ISpoke.TooFewDecimals.selector);
-        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1, ANY);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1, REFUND);
     }
 
     function testErrTooManyDecimalsERC20() public {
@@ -376,7 +378,7 @@ contract SpokeTestRegisterAsset is SpokeTest {
 
         vm.prank(ANY);
         vm.expectRevert(ISpoke.TooManyDecimals.selector);
-        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc20, 0, ANY);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc20, 0, REFUND);
     }
 
     function testErrTooManyDecimalsERC6909() public {
@@ -384,7 +386,7 @@ contract SpokeTestRegisterAsset is SpokeTest {
 
         vm.prank(ANY);
         vm.expectRevert(ISpoke.TooManyDecimals.selector);
-        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1, ANY);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1, REFUND);
     }
 
     function testRegisterAssetERC20() public {
@@ -394,7 +396,7 @@ contract SpokeTestRegisterAsset is SpokeTest {
         vm.prank(ANY);
         vm.expectEmit();
         emit ISpoke.RegisterAsset(REMOTE_CENTRIFUGE_ID, ASSET_ID_20, erc20, 0, NAME, SYMBOL, DECIMALS, true);
-        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc20, 0, ANY);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc20, 0, REFUND);
 
         assertEq(spoke.assetCounter(), 1);
         assertEq(spoke.assetToId(erc20, 0).raw(), ASSET_ID_20.raw());
@@ -411,7 +413,7 @@ contract SpokeTestRegisterAsset is SpokeTest {
         vm.prank(ANY);
         vm.expectEmit();
         emit ISpoke.RegisterAsset(REMOTE_CENTRIFUGE_ID, ASSET_ID_6909_1, erc6909, TOKEN_1, NAME, SYMBOL, DECIMALS, true);
-        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1, ANY);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1, REFUND);
 
         assertEq(spoke.assetCounter(), 1);
         assertEq(spoke.assetToId(erc6909, TOKEN_1).raw(), ASSET_ID_6909_1.raw());
@@ -426,14 +428,14 @@ contract SpokeTestRegisterAsset is SpokeTest {
         _mockSendRegisterAsset(ASSET_ID_6909_1);
 
         vm.prank(ANY);
-        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1, ANY);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1, REFUND);
 
         vm.prank(ANY);
         vm.expectEmit();
         emit ISpoke.RegisterAsset(
             REMOTE_CENTRIFUGE_ID, ASSET_ID_6909_1, erc6909, TOKEN_1, NAME, SYMBOL, DECIMALS, false
         );
-        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1, ANY);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1, REFUND);
 
         assertEq(spoke.assetCounter(), 1);
     }
@@ -442,12 +444,12 @@ contract SpokeTestRegisterAsset is SpokeTest {
         _mockERC6909(DECIMALS, TOKEN_1);
         _mockSendRegisterAsset(ASSET_ID_6909_1);
         vm.prank(ANY);
-        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1, ANY);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1, REFUND);
 
         _mockERC6909(DECIMALS, TOKEN_2);
         _mockSendRegisterAsset(ASSET_ID_6909_2);
         vm.prank(ANY);
-        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_2, ANY);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_2, REFUND);
 
         assertEq(spoke.assetCounter(), 2);
     }
@@ -477,12 +479,12 @@ contract SpokeTestRequest is SpokeTest {
         vm.prank(AUTH);
         spoke.setRequestManager(POOL_A, requestManager);
 
-        vm.expectCall(address(gateway), abi.encodeWithSelector(gateway.setUnpaidMode.selector, false), 2);
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.setUnpaidMode.selector, false), abi.encode());
         vm.mockCall(
             address(sender),
             COST,
             abi.encodeWithSelector(
-                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND, false
+                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND
             ),
             abi.encode()
         );
@@ -497,18 +499,19 @@ contract SpokeTestRequest is SpokeTest {
         vm.prank(AUTH);
         spoke.setRequestManager(POOL_A, requestManager);
 
-        vm.expectCall(address(gateway), abi.encodeWithSelector(gateway.setUnpaidMode.selector, true), 1);
-        vm.expectCall(address(gateway), abi.encodeWithSelector(gateway.setUnpaidMode.selector, false), 1);
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.setUnpaidMode.selector, true), abi.encode());
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.setUnpaidMode.selector, false), abi.encode());
         vm.mockCall(
             address(sender),
+            COST,
             abi.encodeWithSelector(
-                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND, true
+                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND
             ),
             abi.encode()
         );
 
         vm.prank(address(requestManager));
-        spoke.request(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND, true);
+        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND, true);
     }
 }
 
