@@ -12,11 +12,11 @@ import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
 
 import {Root} from "../../src/common/Root.sol";
-import {Gateway} from "../../src/common/Gateway.sol";
 import {Guardian} from "../../src/common/Guardian.sol";
 import {PoolId} from "../../src/common/types/PoolId.sol";
 import {GasService} from "../../src/common/GasService.sol";
 import {AccountId} from "../../src/common/types/AccountId.sol";
+import {IGateway, Gateway} from "../../src/common/Gateway.sol";
 import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
 import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";
 import {PricingLib} from "../../src/common/libraries/PricingLib.sol";
@@ -47,7 +47,6 @@ import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
-import {IBatchRequestManager} from "../../src/vaults/interfaces/IBatchRequestManager.sol";
 
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
 
@@ -233,6 +232,8 @@ contract EndToEndDeployment is Test {
 
         vm.label(address(adapterAToB), "AdapterAToB");
         vm.label(address(adapterBToA), "AdapterBToA");
+
+        vm.recordLogs();
     }
 
     function _setAdapter(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
@@ -360,13 +361,26 @@ contract EndToEndUtils is EndToEndDeployment {
         vaultAddr = address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
         if (vaultAddr == address(0)) {
             vm.startPrank(poolManager);
-            hub.hub.updateVault(
+            hub.hub
+            .updateVault(
                 poolId, shareClassId, assetId, spoke.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
             );
             vm.stopPrank();
             vaultAddr = address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
         }
         assertNotEq(vaultAddr, address(0));
+    }
+
+    function _getLastUnpaidMessage() internal returns (bytes memory message) {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        for (uint256 i = logs.length - 1; i >= 0; i--) {
+            if (logs[i].topics[0] == bytes32(IGateway.UnderpaidBatch.selector)) {
+                return abi.decode(logs[i].data, (bytes));
+            }
+        }
+
+        vm.recordLogs();
     }
 }
 
@@ -379,9 +393,8 @@ contract EndToEndFlows is EndToEndUtils {
 
     function _updateRestrictionMemberMsg(address addr) internal pure returns (bytes memory) {
         return UpdateRestrictionMessageLib.UpdateRestrictionMember({
-            user: addr.toBytes32(),
-            validUntil: type(uint64).max
-        }).serialize();
+                user: addr.toBytes32(), validUntil: type(uint64).max
+            }).serialize();
     }
 
     function _updateContractSyncDepositMaxReserveMsg(AssetId assetId, uint128 maxReserve)
@@ -390,9 +403,8 @@ contract EndToEndFlows is EndToEndUtils {
         returns (bytes memory)
     {
         return UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
-            assetId: assetId.raw(),
-            maxReserve: maxReserve
-        }).serialize();
+                assetId: assetId.raw(), maxReserve: maxReserve
+            }).serialize();
     }
 
     //----------------------------------------------------------------------------------------------
@@ -443,7 +455,8 @@ contract EndToEndFlows is EndToEndUtils {
         hub.hub.notifyPool(poolId, spoke.centrifugeId);
         hub.hub.notifyShareClass(poolId, shareClassId, spoke.centrifugeId, hookAddress.toBytes32());
 
-        hub.hub.initializeHolding(
+        hub.hub
+        .initializeHolding(
             poolId,
             shareClassId,
             assetId,
@@ -453,15 +466,15 @@ contract EndToEndFlows is EndToEndUtils {
             GAIN_ACCOUNT,
             LOSS_ACCOUNT
         );
-        hub.hub.setRequestManager(
+        hub.hub
+        .setRequestManager(
             poolId,
             spoke.centrifugeId,
             IHubRequestManager(hub.batchRequestManager),
             address(spoke.asyncRequestManager).toBytes32()
         );
-        hub.hub.updateBalanceSheetManager(
-            spoke.centrifugeId, poolId, address(spoke.asyncRequestManager).toBytes32(), true
-        );
+        hub.hub
+        .updateBalanceSheetManager(spoke.centrifugeId, poolId, address(spoke.asyncRequestManager).toBytes32(), true);
         hub.hub.updateBalanceSheetManager(spoke.centrifugeId, poolId, address(spoke.syncManager).toBytes32(), true);
         hub.hub.updateBalanceSheetManager(spoke.centrifugeId, poolId, BSM.toBytes32(), true);
 
@@ -619,9 +632,8 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(poolManager);
         uint32 depositEpochId = hub.batchRequestManager.nowDepositEpoch(shareClassId, assetId);
         D18 pricePoolPerAsset = hub.hub.pricePoolPerAsset(poolId, shareClassId, assetId);
-        hub.batchRequestManager.approveDeposits(
-            poolId, shareClassId, assetId, depositEpochId, amount, pricePoolPerAsset
-        );
+        hub.batchRequestManager
+        .approveDeposits(poolId, shareClassId, assetId, depositEpochId, amount, pricePoolPerAsset);
 
         vm.startPrank(poolManager);
         uint32 issueEpochId = hub.batchRequestManager.nowIssueEpoch(shareClassId, assetId);
@@ -641,7 +653,10 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.batchRequestManager.notifyDeposit{value: GAS}(
+        hub.batchRequestManager
+        .notifyDeposit{
+            value: GAS
+        }(
             poolId,
             shareClassId,
             assetId,
@@ -695,11 +710,13 @@ contract EndToEndFlows is EndToEndUtils {
         // Check if vault already exists (for live tests)
         address existingVault = _getAsyncVault(spoke, poolId, shareClassId, assetId);
         if (existingVault == address(0)) {
-            hub.hub.updateVault(
+            hub.hub
+            .updateVault(
                 poolId, shareClassId, assetId, spoke.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
             );
         }
-        hub.hub.updateContract(
+        hub.hub
+        .updateContract(
             poolId,
             shareClassId,
             spoke.centrifugeId,
@@ -774,9 +791,8 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager
     ) internal {
         vm.startPrank(poolManager);
-        hub.hub.updateRestriction(
-            poolId, shareClassId, spoke.centrifugeId, _updateRestrictionMemberMsg(investor), EXTRA_GAS
-        );
+        hub.hub
+        .updateRestriction(poolId, shareClassId, spoke.centrifugeId, _updateRestrictionMemberMsg(investor), EXTRA_GAS);
     }
 
     function _processAsyncRedeemApproval(
@@ -809,7 +825,10 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.batchRequestManager.notifyRedeem{value: GAS}(
+        hub.batchRequestManager
+        .notifyRedeem{
+            value: GAS
+        }(
             poolId,
             shareClassId,
             assetId,
@@ -850,6 +869,9 @@ contract EndToEndFlows is EndToEndUtils {
         uint128 shares = uint128(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A));
         vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A);
         vault.cancelRedeemRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A);
+
+        if (!sameChain) h.gateway.repay{value: GAS}(s.centrifugeId, _getLastUnpaidMessage());
+
         vault.claimCancelRedeemRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A, INVESTOR_A);
 
         // CHECKS
@@ -1088,6 +1110,9 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         s.usdc.approve(address(vault), USDC_AMOUNT_1);
         vault.requestDeposit(USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
         vault.cancelDepositRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A);
+
+        if (!sameChain) h.gateway.repay{value: GAS}(s.centrifugeId, _getLastUnpaidMessage());
+
         vault.claimCancelDepositRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A, INVESTOR_A);
 
         // CHECKS

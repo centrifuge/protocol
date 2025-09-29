@@ -20,7 +20,13 @@ contract FreelyTransferable is BaseTransferHook {
     ) BaseTransferHook(root_, redeemSource_, depositTarget_, crosschainSource_, deployer) {}
 
     /// @inheritdoc ITransferHook
-    function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)
+    function checkERC20Transfer(
+        address from,
+        address to,
+        uint256,
+        /* value */
+        HookData calldata hookData
+    )
         public
         view
         override

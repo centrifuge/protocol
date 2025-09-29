@@ -105,12 +105,14 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         vm.assume(nonWard != address(multiAdapter));
         vm.assume(nonWard != address(messageDispatcher));
         vm.assume(nonWard != address(messageProcessor));
+        vm.assume(nonWard != address(crosschainBatcher));
 
         assertEq(gateway.wards(address(root)), 1);
         assertEq(gateway.wards(address(guardian)), 1);
         assertEq(gateway.wards(address(multiAdapter)), 1);
         assertEq(gateway.wards(address(messageDispatcher)), 1);
         assertEq(gateway.wards(address(messageProcessor)), 1);
+        assertEq(gateway.wards(address(crosschainBatcher)), 1);
         assertEq(gateway.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -150,5 +152,16 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         // dependencies set correctly
         assertEq(address(poolEscrowFactory.root()), address(root));
         assertEq(address(poolEscrowFactory.gateway()), address(gateway));
+    }
+
+    function testCrosschainBatcher(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+
+        assertEq(crosschainBatcher.wards(address(root)), 1);
+        assertEq(crosschainBatcher.wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(address(crosschainBatcher.gateway()), address(gateway));
     }
 }

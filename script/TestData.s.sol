@@ -30,7 +30,6 @@ import {IAsyncVault} from "../src/vaults/interfaces/IAsyncVault.sol";
 import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
-import {IBatchRequestManager} from "../src/vaults/interfaces/IBatchRequestManager.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
@@ -186,9 +185,8 @@ contract TestData is FullDeployer {
             state.scId,
             centrifugeId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: bytes32(bytes20(msg.sender)),
-                validUntil: type(uint64).max
-            }).serialize(),
+                    user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max
+                }).serialize(),
             0
         );
 
@@ -297,9 +295,8 @@ contract TestData is FullDeployer {
             centrifugeId,
             address(syncManager).toBytes32(),
             UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
-                assetId: assetId.raw(),
-                maxReserve: type(uint128).max
-            }).serialize(),
+                    assetId: assetId.raw(), maxReserve: type(uint128).max
+                }).serialize(),
             0
         );
 
