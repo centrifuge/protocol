@@ -20,5 +20,5 @@ interface IHubRequestManagerCallback {
         bytes calldata payload,
         uint128 extraGasLimit,
         address refund
-    ) external payable returns (uint256 cost);
+    ) external payable;
 }

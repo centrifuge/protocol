@@ -107,10 +107,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         emit InitiateTransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
 
-        gateway.setPayment{value: msg.value}(refund);
-        sender.sendInitiateTransferShares(
-            centrifugeId, poolId, scId, receiver, amount, extraGasLimit, remoteExtraGasLimit
-        );
+        sender.sendInitiateTransferShares{
+            value: msg.value
+        }(centrifugeId, poolId, scId, receiver, amount, extraGasLimit, remoteExtraGasLimit, refund);
     }
 
     /// @inheritdoc ISpoke
@@ -161,9 +160,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         }
 
         emit RegisterAsset(centrifugeId, assetId, asset, tokenId, name, symbol, decimals, isInitialization);
-
-        gateway.setPayment{value: msg.value}(refund);
-        sender.sendRegisterAsset(centrifugeId, assetId, decimals);
+        sender.sendRegisterAsset{value: msg.value}(centrifugeId, assetId, decimals, refund);
     }
 
     /// @inheritdoc ISpoke
@@ -174,14 +171,13 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         bytes memory payload,
         address refund,
         bool unpaid
-    ) external payable returns (uint256 cost) {
+    ) external payable {
         IRequestManager manager = requestManager[poolId];
         require(address(manager) != address(0), InvalidRequestManager());
         require(msg.sender == address(manager), NotAuthorized());
 
-        gateway.setPayment{value: msg.value}(refund);
         gateway.setUnpaidMode(unpaid);
-        cost = sender.sendRequest(poolId, scId, assetId, payload);
+        sender.sendRequest{value: msg.value}(poolId, scId, assetId, payload, refund);
         gateway.setUnpaidMode(false);
     }
 

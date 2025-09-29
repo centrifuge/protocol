@@ -211,7 +211,7 @@ interface ISpoke {
         bytes memory payload,
         address refund,
         bool unpaid
-    ) external payable returns (uint256 cost);
+    ) external payable;
 
     /// @notice Deploys a new vault
     ///

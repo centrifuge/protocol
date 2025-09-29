@@ -44,8 +44,6 @@ contract Gateway is Auth, Recoverable, IGateway {
     mapping(PoolId => mapping(address => bool)) public manager;
 
     // Outbound & payments
-    uint256 public transient fuel;
-    address public transient transactionRefund;
     bool public transient isBatching;
     bool public transient unpaidMode;
     mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
@@ -137,11 +135,11 @@ contract Gateway is Auth, Recoverable, IGateway {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IGateway
-    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit)
+    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit, address refund)
         external
+        payable
         pauseable
         auth
-        returns (uint256)
     {
         require(message.length > 0, EmptyMessage());
 
@@ -163,28 +161,24 @@ contract Gateway is Auth, Recoverable, IGateway {
             }
 
             TransientBytesLib.append(batchSlot, message);
-            return 0;
         } else if (unpaidMode) {
             _addUnpaidBatch(centrifugeId, message, gasLimit);
-            return 0;
         } else {
-            return _send(centrifugeId, message, gasLimit);
+            _send(centrifugeId, message, gasLimit, refund);
         }
     }
 
-    function _send(uint16 centrifugeId, bytes memory batch, uint128 batchGasLimit) internal returns (uint256) {
+    function _send(uint16 centrifugeId, bytes memory batch, uint128 batchGasLimit, address refund) internal {
         PoolId adapterPoolId = processor.messagePoolId(batch);
         require(!isOutgoingBlocked[centrifugeId][adapterPoolId], OutgoingBlocked());
 
         uint256 cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
-        require(fuel >= cost, NotEnoughTransactionGas());
+        require(msg.value >= cost, NotEnoughTransactionGas());
 
-        adapter.send{value: cost}(centrifugeId, batch, batchGasLimit, transactionRefund);
+        adapter.send{value: cost}(centrifugeId, batch, batchGasLimit, refund);
 
-        (bool success,) = payable(transactionRefund).call{value: fuel - cost}(new bytes(0));
+        (bool success,) = payable(refund).call{value: msg.value - cost}(new bytes(0));
         require(success, CannotWithdraw());
-
-        return cost;
     }
 
     /// @inheritdoc IGateway
@@ -210,8 +204,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         underpaid_.counter--;
 
-        _setPayment(refund);
-        _send(centrifugeId, batch, underpaid_.gasLimit);
+        _send(centrifugeId, batch, underpaid_.gasLimit, refund);
 
         if (underpaid_.counter == 0) delete underpaid[centrifugeId][batchHash];
 
@@ -224,7 +217,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function endBatching() external auth returns (uint256 cost) {
+    function endBatching(address refund) external payable auth {
         require(isBatching, NoBatched());
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
 
@@ -240,21 +233,12 @@ contract Gateway is Auth, Recoverable, IGateway {
             if (unpaidMode) {
                 _addUnpaidBatch(centrifugeId, batch, gasLimit);
             } else {
-                cost += _send(centrifugeId, batch, gasLimit);
+                _send(centrifugeId, batch, gasLimit, refund);
             }
 
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
         }
-    }
-
-    function setPayment(address refund) external payable auth {
-        _setPayment(refund);
-    }
-
-    function _setPayment(address refund) internal {
-        transactionRefund = refund;
-        fuel += msg.value;
     }
 
     /// @inheritdoc IGateway

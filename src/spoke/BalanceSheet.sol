@@ -78,7 +78,6 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IMulticall
     /// @notice performs a multicall but all messages sent in the process will be batched
     function multicall(bytes[] calldata data) public payable override {
-        require(msg.value == 0, NotPayable()); // Not payable by now
         bool wasBatching = gateway.isBatching();
         if (!wasBatching) {
             gateway.startBatching();
@@ -87,7 +86,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         super.multicall(data);
 
         if (!wasBatching) {
-            gateway.endBatching();
+            gateway.endBatching{value: msg.value}(msg.sender);
         }
     }
 
@@ -202,11 +201,13 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     }
 
     /// @inheritdoc IBalanceSheet
-    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 extraGasLimit)
-        external
-        authOrManager(poolId)
-        returns (uint256 cost)
-    {
+    function submitQueuedAssets(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable authOrManager(poolId) {
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
 
@@ -228,14 +229,16 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         shareQueue.queuedAssetCounter -= assetCounter;
 
         emit SubmitQueuedAssets(poolId, scId, assetId, data, pricePoolPerAsset);
-        return sender.sendUpdateHoldingAmount(poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit);
+        sender.sendUpdateHoldingAmount{
+            value: msg.value
+        }(poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit, refund);
     }
 
     /// @inheritdoc IBalanceSheet
-    function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit)
+    function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit, address refund)
         external
+        payable
         authOrManager(poolId)
-        returns (uint256 cost)
     {
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
 
@@ -251,7 +254,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         shareQueue.nonce++;
 
         emit SubmitQueuedShares(poolId, scId, data);
-        return sender.sendUpdateShares(poolId, scId, data, extraGasLimit);
+        sender.sendUpdateShares{value: msg.value}(poolId, scId, data, extraGasLimit, refund);
     }
 
     /// @inheritdoc IBalanceSheet

@@ -147,7 +147,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 ShareClassId.wrap(m.scId),
                 m.receiver,
                 m.amount,
-                m.extraGasLimit
+                m.extraGasLimit,
+                address(0) // Refund is not used because we're in unpaid mode
             );
         } else if (kind == MessageType.ExecuteTransferShares) {
             MessageLib.ExecuteTransferShares memory m = MessageLib.deserializeExecuteTransferShares(message);
@@ -226,10 +227,5 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageProperties
     function messagePoolId(bytes calldata message) external pure returns (PoolId) {
         return message.messagePoolId();
-    }
-
-    /// @inheritdoc IMessageProperties
-    function messagePoolIdPayment(bytes calldata message) external pure returns (PoolId) {
-        return message.messagePoolIdPayment();
     }
 }

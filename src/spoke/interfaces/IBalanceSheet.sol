@@ -129,12 +129,18 @@ interface IBalanceSheet {
     function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external;
 
     /// @notice Sends the queued updated holding amount to the Hub
-    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 extraGasLimit)
-        external
-        returns (uint256 cost);
+    function submitQueuedAssets(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 
     /// @notice Sends the queued updated shares changed to the Hub
-    function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit) external returns (uint256 cost);
+    function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit, address refund)
+        external
+        payable;
 
     /// @notice Force-transfers share tokens.
     function transferSharesFrom(

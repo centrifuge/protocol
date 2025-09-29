@@ -82,13 +82,6 @@ contract MockProcessor is IMessageProperties {
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA2)) return POOL_A;
         revert("Unreachable: message never asked for pool");
     }
-
-    function messagePoolIdPayment(bytes calldata message) external pure returns (PoolId) {
-        if (message.toUint8(0) == uint8(MessageKind.WithPool0)) return POOL_A;
-        if (message.toUint8(0) == uint8(MessageKind.WithPoolA1)) return POOL_A;
-        if (message.toUint8(0) == uint8(MessageKind.WithPoolA2)) return POOL_A;
-        revert("Unreachable: message never asked for pool");
-    }
 }
 
 contract MockPoolRefund is Recoverable {
