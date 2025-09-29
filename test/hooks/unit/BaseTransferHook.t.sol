@@ -23,6 +23,8 @@ contract MockRoot {
     }
 }
 
+contract MockSpoke {}
+
 contract MockShareToken {
     mapping(address => bytes16) public hookDataOf;
 
@@ -71,6 +73,7 @@ contract BaseTransferHookTestBase is Test {
 
     TestableBaseTransferHook hook;
     MockRoot mockRoot;
+    MockSpoke mockSpoke;
     MockShareToken mockShareToken;
 
     address deployer = makeAddr("deployer");
@@ -91,9 +94,12 @@ contract BaseTransferHookTestBase is Test {
 
     function setUp() public virtual {
         mockRoot = new MockRoot();
+        mockSpoke = new MockSpoke();
 
         vm.prank(deployer);
-        hook = new TestableBaseTransferHook(address(mockRoot), redeemSource, depositTarget, crosschainSource, deployer);
+        hook = new TestableBaseTransferHook(
+            address(mockRoot), address(mockSpoke), redeemSource, depositTarget, crosschainSource, deployer
+        );
 
         mockShareToken = new MockShareToken();
 
@@ -164,6 +170,7 @@ contract BaseTransferHookTestConstructor is BaseTransferHookTestBase {
         vm.prank(deployer);
         new TestableBaseTransferHook(
             address(mockRoot),
+            address(mockSpoke),
             redeemSource,
             redeemSource, // Same as redeemSource
             crosschainSource,

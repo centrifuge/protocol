@@ -20,7 +20,6 @@ import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../common/interfaces/ITra
 import {ISpoke} from "../spoke/interfaces/ISpoke.sol";
 import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
-import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
 import {UpdateContractType, UpdateContractMessageLib} from "../spoke/libraries/UpdateContractMessageLib.sol";
 
 /// @title  BaseTransferHook

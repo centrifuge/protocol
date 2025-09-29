@@ -26,6 +26,7 @@ contract ShareTokenTest is Test {
     MockFullRestrictions fullRestrictionsHook;
 
     address self;
+    address spoke = makeAddr("spoke");
     address escrow = makeAddr("escrow");
     address targetUser = makeAddr("targetUser");
     address randomUser = makeAddr("random");
@@ -39,6 +40,7 @@ contract ShareTokenTest is Test {
 
         fullRestrictionsHook = new MockFullRestrictions(
             address(new MockRoot()),
+            spoke,
             makeAddr("redeemSource"),
             makeAddr("depositTarget"),
             makeAddr("crosschainSource"),
