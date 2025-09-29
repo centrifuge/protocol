@@ -72,8 +72,9 @@ contract ManagersDeployer is SpokeDeployer {
     }
 
     function _managersReport() internal view returns (ManagersReport memory) {
-        return ManagersReport(
-            _spokeReport(), onOfframpManagerFactory, merkleProofManagerFactory, vaultDecoder, circleDecoder
-        );
+        return
+            ManagersReport(
+                _spokeReport(), onOfframpManagerFactory, merkleProofManagerFactory, vaultDecoder, circleDecoder
+            );
     }
 }

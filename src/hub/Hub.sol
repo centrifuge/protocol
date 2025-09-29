@@ -166,6 +166,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     /// @inheritdoc IHub
     function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) public returns (uint256 cost) {
         _isManager(poolId);
+
         D18 pricePoolPerAsset_ = pricePoolPerAsset(poolId, scId, assetId);
         emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset_);
         return sender.sendNotifyPricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset_);
@@ -231,6 +232,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
         _isManager(poolId);
 
         hubRegistry.setHubRequestManager(poolId, centrifugeId, hubManager);
+
+        emit SetSpokeRequestManager(centrifugeId, poolId, spokeManager);
         return sender.sendSetRequestManager(centrifugeId, poolId, spokeManager);
     }
 
@@ -241,6 +244,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     {
         _isManager(poolId);
 
+        emit UpdateBalanceSheetManager(centrifugeId, poolId, who, canManage);
         return sender.sendUpdateBalanceSheetManager(centrifugeId, poolId, who, canManage);
     }
 
@@ -479,12 +483,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
         ShareClassId scId,
         AssetId assetId,
         bytes calldata payload,
-        uint128 extraGasLimit
-    ) external returns (uint256 cost) {
+        uint128 extraGasLimit,
+        address refund
+    ) external payable returns (uint256 cost) {
         IHubRequestManager manager = hubRegistry.hubRequestManager(poolId, assetId.centrifugeId());
         require(address(manager) != address(0), InvalidRequestManager());
         require(msg.sender == address(manager), NotAuthorized());
 
+        gateway.setPayment{value: msg.value}(refund);
         return sender.sendRequestCallback(poolId, scId, assetId, payload, extraGasLimit);
     }
 
