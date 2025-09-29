@@ -188,4 +188,8 @@ contract MockHubRequestManager is IHubRequestManager {
         // Mock implementation
         return (0, 0, D18.wrap(0), D18.wrap(0), 0, 0);
     }
+
+    function supportsInterface(bytes4) public pure returns (bool) {
+        return true;
+    }
 }
