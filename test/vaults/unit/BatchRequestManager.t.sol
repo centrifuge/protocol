@@ -140,6 +140,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
             abi.encodeWithSelector(IHubRequestManagerCallback.requestCallback.selector),
             abi.encode()
         );
+        batchRequestManager.file("hub", address(hub));
 
         assertEq(IHubRegistry(address(hubRegistryMock)).decimals(poolId), DECIMALS_POOL);
         assertEq(IHubRegistry(address(hubRegistryMock)).decimals(USDC), DECIMALS_USDC);
@@ -745,6 +746,10 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
 
     /// @dev Tests request() function with CancelDepositRequest message
     function testCancelDepositRequestMessageSerialization() public {
+        vm.mockCall(
+            address(hub), 0, abi.encodeWithSelector(IHubRequestManagerCallback.requestCallback.selector), abi.encode()
+        );
+
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
 
         // Cancel via request() function using serialized message
@@ -1052,6 +1057,10 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
 
     /// @dev Tests request() function with CancelRedeemRequest message
     function testCancelRedeemRequestMessageSerialization() public {
+        vm.mockCall(
+            address(hub), 0, abi.encodeWithSelector(IHubRequestManagerCallback.requestCallback.selector), abi.encode()
+        );
+
         batchRequestManager.requestRedeem(poolId, scId, MIN_REQUEST_AMOUNT_SHARES, investor, USDC);
 
         bytes memory payload = abi.encodePacked(uint8(4), abi.encode(investor));
@@ -1963,6 +1972,7 @@ contract BatchRequestManagerAuthTest is BatchRequestManagerBaseTest {
     function setUp() public override {
         super.setUp();
         unauthorized = makeAddr("unauthorized");
+        vm.deal(unauthorized, 1 ether);
 
         assertEq(batchRequestManager.wards(unauthorized), 0, "Should have no authorization");
     }
@@ -2538,6 +2548,7 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
         super.setUp();
 
         poolManager = makeAddr("poolManager");
+        vm.deal(poolManager, 1 ether);
         hubRegistryMock.updateManager(poolId, poolManager, true);
     }
 
@@ -2616,6 +2627,7 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
 
     function testMultipleManagersCanManageSamePool() public {
         address poolManager2 = makeAddr("poolManager2");
+        vm.deal(poolManager2, 1 ether);
         hubRegistryMock.updateManager(poolId, poolManager2, true);
 
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
@@ -2847,8 +2859,8 @@ contract BatchRequestManagerERC165Support is BatchRequestManagerBaseTest {
     function testERC165SupportBRM(bytes4 unsupportedInterfaceId) public view {
         bytes4 erc165 = 0x01ffc9a7;
         bytes4 hubRequestManager = 0x2f6c33bf;
-        bytes4 hubRequestManagerNotifications = 0x02a3e7b8;
-        bytes4 batchRequestManagerID = 0x825331a0;
+        bytes4 hubRequestManagerNotifications = 0x3a2d9da4;
+        bytes4 batchRequestManagerID = 0x0645ca38;
 
         vm.assume(
             unsupportedInterfaceId != erc165 && unsupportedInterfaceId != hubRequestManager
