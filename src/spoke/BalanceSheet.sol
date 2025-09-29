@@ -97,6 +97,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         external
+        payable
         authOrManager(poolId)
     {
         noteDeposit(poolId, scId, asset, tokenId, amount);
@@ -113,6 +114,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function noteDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         public
+        payable
         authOrManager(poolId)
     {
         AssetId assetId = spoke.assetToId(asset, tokenId);
@@ -132,7 +134,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         uint256 tokenId,
         address receiver,
         uint128 amount
-    ) external authOrManager(poolId) {
+    ) external payable authOrManager(poolId) {
         AssetId assetId = spoke.assetToId(asset, tokenId);
         IPoolEscrow escrow_ = escrow(poolId);
         escrow_.withdraw(scId, asset, tokenId, amount);
@@ -148,6 +150,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         public
+        payable
         authOrManager(poolId)
     {
         escrow(poolId).reserve(scId, asset, tokenId, amount);
@@ -156,13 +159,18 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function unreserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         public
+        payable
         authOrManager(poolId)
     {
         escrow(poolId).unreserve(scId, asset, tokenId, amount);
     }
 
     /// @inheritdoc IBalanceSheet
-    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external authOrManager(poolId) {
+    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares)
+        external
+        payable
+        authOrManager(poolId)
+    {
         emit Issue(poolId, scId, to, _pricePoolPerShare(poolId, scId), shares);
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
@@ -182,7 +190,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     }
 
     /// @inheritdoc IBalanceSheet
-    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external authOrManager(poolId) {
+    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external payable authOrManager(poolId) {
         emit Revoke(poolId, scId, msg.sender, _pricePoolPerShare(poolId, scId), shares);
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
@@ -230,7 +238,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
 
         emit SubmitQueuedAssets(poolId, scId, assetId, data, pricePoolPerAsset);
         sender.sendUpdateHoldingAmount{
-            value: msg.value
+            value: _payment()
         }(poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit, refund);
     }
 
@@ -254,7 +262,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         shareQueue.nonce++;
 
         emit SubmitQueuedShares(poolId, scId, data);
-        sender.sendUpdateShares{value: msg.value}(poolId, scId, data, extraGasLimit, refund);
+        sender.sendUpdateShares{value: _payment()}(poolId, scId, data, extraGasLimit, refund);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -265,7 +273,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         address from,
         address to,
         uint256 amount
-    ) external authOrManager(poolId) {
+    ) external payable authOrManager(poolId) {
         require(!root.endorsed(from), CannotTransferFromEndorsedContract());
         IShareToken token = spoke.shareToken(poolId, scId);
         token.authTransferFrom(sender_, from, to, amount);
@@ -275,6 +283,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function overridePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 value)
         external
+        payable
         authOrManager(poolId)
     {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAsset", poolId, scId, assetId)), value.raw());
@@ -282,18 +291,26 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     }
 
     /// @inheritdoc IBalanceSheet
-    function resetPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external authOrManager(poolId) {
+    function resetPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        payable
+        authOrManager(poolId)
+    {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAssetIsSet", poolId, scId, assetId)), false);
     }
 
     /// @inheritdoc IBalanceSheet
-    function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external authOrManager(poolId) {
+    function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value)
+        external
+        payable
+        authOrManager(poolId)
+    {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShare", poolId, scId)), value.raw());
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), true);
     }
 
     /// @inheritdoc IBalanceSheet
-    function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
+    function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external payable authOrManager(poolId) {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), false);
     }
 
@@ -357,5 +374,9 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
 
         D18 pricePoolPerShare = spoke.pricePoolPerShare(poolId, scId, true);
         return pricePoolPerShare;
+    }
+
+    function _payment() internal view returns (uint256 value) {
+        return gateway.isBatching() ? 0 : msg.value;
     }
 }

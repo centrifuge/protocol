@@ -235,7 +235,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         uint32 nowRedeemEpochId,
         uint128 approvedShareAmount,
         D18 pricePoolPerAsset
-    ) external;
+    ) external payable;
 
     function issueShares(
         PoolId poolId,

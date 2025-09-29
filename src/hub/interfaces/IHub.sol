@@ -163,17 +163,18 @@ interface IHub {
     ) external payable;
 
     /// @notice Attach custom data to a pool
-    function setPoolMetadata(PoolId poolId, bytes calldata metadata) external;
+    function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable;
 
     /// @notice Set snapshot hook for a pool
-    function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external;
+    function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external payable;
 
     /// @notice Update name & symbol of share class
     function updateShareClassMetadata(PoolId poolId, ShareClassId scId, string calldata name, string calldata symbol)
-        external;
+        external
+        payable;
 
     /// @notice Allow/disallow an account to interact as hub manager this pool
-    function updateHubManager(PoolId poolId, address who, bool canManage) external;
+    function updateHubManager(PoolId poolId, address who, bool canManage) external payable;
 
     /// @notice Allow/disallow an account to interact as request manager
     function setRequestManager(
@@ -245,7 +246,7 @@ interface IHub {
     /// @notice Update the price per share of a share class
     /// @param scId The share class identifier
     /// @param pricePoolPerShare The new price per share
-    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external;
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
     /// It will register the different accounts used for holdings.
@@ -268,7 +269,7 @@ interface IHub {
         AccountId equityAccount,
         AccountId gainAccount,
         AccountId lossAccount
-    ) external;
+    ) external payable;
 
     /// @notice Create a new liablity associated to the asset in a share class.
     /// It will register the different accounts used for holdings.
@@ -283,32 +284,37 @@ interface IHub {
         IValuation valuation,
         AccountId expenseAccount,
         AccountId liabilityAccount
-    ) external;
+    ) external payable;
 
     /// @notice Updates the pool currency value of this holding based of the associated valuation.
-    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) external;
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
 
     /// @notice Updates whether the holding represents a liability or not.
-    function updateHoldingIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability) external;
+    function updateHoldingIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability)
+        external
+        payable;
 
     /// @notice Updates the valuation used by a holding
     /// @param valuation Used to transform between the holding asset and pool currency
-    function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation) external;
+    function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation)
+        external
+        payable;
 
     /// @notice Set an account of a holding
     function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
-        external;
+        external
+        payable;
 
     /// @notice Creates an account
     /// @param accountId Then new AccountId used
     /// @param isDebitNormal Determines if the account should be used as debit-normal or credit-normal
-    function createAccount(PoolId poolId, AccountId accountId, bool isDebitNormal) external;
+    function createAccount(PoolId poolId, AccountId accountId, bool isDebitNormal) external payable;
 
     /// @notice Attach custom data to an account
-    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external;
+    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external payable;
 
     /// @notice Perform an accounting entries update.
-    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external;
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external payable;
 
     /// @notice Set adapters for a pool in another chain. Pool related message will go by these adapters.
     ///         The adapters should already be deployed and wired.
@@ -347,10 +353,12 @@ interface IHub {
     function callRequestManager(PoolId poolId, uint16 centrifugeId, bytes calldata data) external payable;
 
     function updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
-        external;
+        external
+        payable;
 
     function updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
-        external;
+        external
+        payable;
 
     function holdingAccounts(
         AccountId assetAccount,

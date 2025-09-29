@@ -93,7 +93,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     }
 
     /// @inheritdoc IHubGuardianActions
-    function createPool(PoolId poolId, address admin, AssetId currency) external {
+    function createPool(PoolId poolId, address admin, AssetId currency) external payable {
         _auth();
 
         require(poolId.centrifugeId() == sender.localCentrifugeId(), InvalidPoolId());
@@ -196,14 +196,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     }
 
     /// @inheritdoc IHub
-    function setPoolMetadata(PoolId poolId, bytes calldata metadata) external {
+    function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable {
         _isManager(poolId);
 
         hubRegistry.setMetadata(poolId, metadata);
     }
 
     /// @inheritdoc IHub
-    function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external {
+    function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external payable {
         _isManager(poolId);
 
         holdings.setSnapshotHook(poolId, hook);
@@ -212,6 +212,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     /// @inheritdoc IHub
     function updateShareClassMetadata(PoolId poolId, ShareClassId scId, string calldata name, string calldata symbol)
         external
+        payable
     {
         _isManager(poolId);
 
@@ -219,7 +220,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     }
 
     /// @inheritdoc IHub
-    function updateHubManager(PoolId poolId, address who, bool canManage) external {
+    function updateHubManager(PoolId poolId, address who, bool canManage) external payable {
         _isManager(poolId);
 
         hubRegistry.updateManager(poolId, who, canManage);
@@ -266,7 +267,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     function callRequestManager(PoolId poolId, uint16 centrifugeId, bytes calldata data) external payable {
         _isManager(poolId);
         (bool success, bytes memory returnData) =
-            address(hubRegistry.hubRequestManager(poolId, centrifugeId)).call(data);
+            address(hubRegistry.hubRequestManager(poolId, centrifugeId)).call{value: _payment()}(data);
         if (!success) {
             uint256 length = returnData.length;
             require(length != 0, CallFailedWithEmptyRevert());
@@ -331,7 +332,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     }
 
     /// @inheritdoc IHub
-    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 navPoolPerShare) public {
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 navPoolPerShare) public payable {
         _isManager(poolId);
 
         shareClassManager.updateSharePrice(poolId, scId, navPoolPerShare);
@@ -347,7 +348,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
         AccountId equityAccount,
         AccountId gainAccount,
         AccountId lossAccount
-    ) external {
+    ) external payable {
         _isManager(poolId);
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
@@ -382,7 +383,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
         IValuation valuation,
         AccountId expenseAccount,
         AccountId liabilityAccount
-    ) external {
+    ) external payable {
         _isManager(poolId);
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
@@ -399,7 +400,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     }
 
     /// @inheritdoc IHub
-    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) public {
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
         _isManager(poolId);
 
         (bool isPositive, uint128 diff) = holdings.update(poolId, scId, assetId);
@@ -407,14 +408,20 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     }
 
     /// @inheritdoc IHub
-    function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation) external {
+    function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation)
+        external
+        payable
+    {
         _isManager(poolId);
 
         holdings.updateValuation(poolId, scId, assetId, valuation);
     }
 
     /// @inheritdoc IHub
-    function updateHoldingIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability) external {
+    function updateHoldingIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability)
+        external
+        payable
+    {
         _isManager(poolId);
 
         holdings.updateIsLiability(poolId, scId, assetId, isLiability);
@@ -423,6 +430,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     /// @inheritdoc IHub
     function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
         external
+        payable
     {
         _isManager(poolId);
 
@@ -432,21 +440,24 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     }
 
     /// @inheritdoc IHub
-    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) public {
+    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) public payable {
         _isManager(poolId);
 
         accounting.createAccount(poolId, account, isDebitNormal);
     }
 
     /// @inheritdoc IHub
-    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external {
+    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external payable {
         _isManager(poolId);
 
         accounting.setAccountMetadata(poolId, account, metadata);
     }
 
     /// @inheritdoc IHub
-    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external {
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits)
+        external
+        payable
+    {
         _isManager(poolId);
 
         accounting.unlock(poolId);
@@ -512,6 +523,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     ///         This updates the asset/expense as well as the equity/liability accounts.
     function updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
         external
+        payable
         auth
     {
         _updateAccountingAmount(poolId, scId, assetId, isPositive, diff);
@@ -544,6 +556,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     ///         This updates the asset/expense as well as the gain/loss accounts.
     function updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
         external
+        payable
         auth
     {
         _updateAccountingValue(poolId, scId, assetId, isPositive, diff);
