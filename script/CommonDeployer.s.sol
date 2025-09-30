@@ -132,11 +132,9 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             // Special handling for v3.0.1 contracts that were deployed with version "3" instead of keccak256("3")
             if (
                 version == keccak256(abi.encodePacked("3"))
-                    && (
-                        contractNameHash == keccak256(bytes("asyncRequestManager-2"))
-                            || contractNameHash == keccak256(bytes("syncDepositVaultFactory-2"))
-                            || contractNameHash == keccak256(bytes("asyncVaultFactory-2"))
-                    )
+                    && (contractNameHash == keccak256(bytes("asyncRequestManager-2"))
+                        || contractNameHash == keccak256(bytes("syncDepositVaultFactory-2"))
+                        || contractNameHash == keccak256(bytes("asyncVaultFactory-2")))
             ) {
                 baseHash = keccak256(abi.encodePacked(contractName, bytes32(bytes("3"))));
             } else {
@@ -190,14 +188,12 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         );
 
         gateway = Gateway(
-            payable(
-                create3(
+            payable(create3(
                     generateSalt("gateway"),
                     abi.encodePacked(
                         type(Gateway).creationCode, abi.encode(input.centrifugeId, root, gasService, batcher)
                     )
-                )
-            )
+                ))
         );
 
         multiAdapter = MultiAdapter(

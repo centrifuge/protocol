@@ -48,8 +48,9 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     bytes32 private immutable versionHash;
     uint256 public immutable deploymentChainId;
     bytes32 private immutable _DOMAIN_SEPARATOR;
-    bytes32 public constant AUTHORIZE_OPERATOR_TYPEHASH =
-        keccak256("AuthorizeOperator(address controller,address operator,bool approved,bytes32 nonce,uint256 deadline)");
+    bytes32 public constant AUTHORIZE_OPERATOR_TYPEHASH = keccak256(
+        "AuthorizeOperator(address controller,address operator,bool approved,bytes32 nonce,uint256 deadline)"
+    );
 
     /// @inheritdoc IERC7741
     mapping(address controller => mapping(bytes32 nonce => bool used)) public authorizations;
@@ -275,10 +276,7 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     }
 
     /// @inheritdoc IERC7887Redeem
-    function claimCancelRedeemRequest(uint256, address receiver, address controller)
-        external
-        returns (uint256 shares)
-    {
+    function claimCancelRedeemRequest(uint256, address receiver, address controller) external returns (uint256 shares) {
         _validateController(controller);
         shares = asyncRedeemManager.claimCancelRedeemRequest(this, receiver, controller);
         emit CancelRedeemClaim(controller, receiver, REQUEST_ID, msg.sender, shares);

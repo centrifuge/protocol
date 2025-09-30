@@ -203,9 +203,8 @@ contract TestData is FullDeployer {
             state.scId,
             centrifugeId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: bytes32(bytes20(msg.sender)),
-                validUntil: type(uint64).max
-            }).serialize(),
+                    user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max
+                }).serialize(),
             0,
             msg.sender
         );
@@ -329,9 +328,8 @@ contract TestData is FullDeployer {
             centrifugeId,
             address(syncManager).toBytes32(),
             UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
-                assetId: assetId.raw(),
-                maxReserve: type(uint128).max
-            }).serialize(),
+                    assetId: assetId.raw(), maxReserve: type(uint128).max
+                }).serialize(),
             0,
             msg.sender
         );

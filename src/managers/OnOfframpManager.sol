@@ -99,7 +99,9 @@ contract OnOfframpManager is IOnOfframpManager {
         /* tokenId */
         uint128 amount,
         address /* owner */
-    ) external {
+    )
+        external
+    {
         require(onramp[asset], NotAllowedOnrampAsset());
 
         balanceSheet.deposit(poolId, scId, asset, 0, amount);
@@ -112,7 +114,9 @@ contract OnOfframpManager is IOnOfframpManager {
         /* tokenId */
         uint128 amount,
         address receiver
-    ) external {
+    )
+        external
+    {
         require(relayer[msg.sender], NotRelayer());
         require(receiver != address(0) && offramp[asset][receiver], InvalidOfframpDestination());
 
@@ -143,9 +147,9 @@ contract OnOfframpManagerFactory is IOnOfframpManagerFactory {
     function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOfframpManager) {
         balanceSheet.spoke().shareToken(poolId, scId); // Check for existence
 
-        OnOfframpManager manager = new OnOfframpManager{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
-            poolId, scId, contractUpdater, balanceSheet
-        );
+        OnOfframpManager manager = new OnOfframpManager{
+            salt: keccak256(abi.encode(poolId.raw(), scId.raw()))
+        }(poolId, scId, contractUpdater, balanceSheet);
 
         emit DeployOnOfframpManager(poolId, scId, address(manager));
         return IOnOfframpManager(manager);

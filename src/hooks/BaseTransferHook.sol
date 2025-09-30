@@ -54,7 +54,8 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         address deployer
     ) Auth(deployer) {
         require(
-            redeemSource_ != depositTarget_ && depositTarget_ != crosschainSource_ && redeemSource_ != crosschainSource_,
+            redeemSource_ != depositTarget_ && depositTarget_ != crosschainSource_
+                && redeemSource_ != crosschainSource_,
             InvalidInputs()
         );
 
@@ -92,7 +93,12 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         address, /* to */
         uint256, /* value */
         HookData calldata /* hookData */
-    ) external pure virtual returns (bytes4) {
+    )
+        external
+        pure
+        virtual
+        returns (bytes4)
+    {
         return ITransferHook.onERC20AuthTransfer.selector;
     }
 
@@ -102,7 +108,11 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         uint256,
         /* value */
         HookData calldata hookData
-    ) public view virtual returns (bool);
+    )
+        public
+        view
+        virtual
+        returns (bool);
 
     function isDepositRequestOrIssuance(address from, address to) public view returns (bool) {
         return from == address(0) && to != depositTarget;

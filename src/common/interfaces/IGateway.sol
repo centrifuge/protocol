@@ -103,9 +103,7 @@ interface IGateway is IMessageHandler, IRecoverable {
 
     /// @notice Handling outgoing messages.
     /// @param centrifugeId Destination chain
-    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit, address refund)
-        external
-        payable;
+    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit, address refund) external payable;
 
     /// @notice Initialize batching message
     function startBatching() external;

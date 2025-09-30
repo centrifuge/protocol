@@ -51,7 +51,12 @@ contract TestableBaseTransferHook is BaseTransferHook {
         uint256,
         /* value */
         HookData calldata hookData
-    ) public view override returns (bool) {
+    )
+        public
+        view
+        override
+        returns (bool)
+    {
         // Simple implementation for testing - allow transfer if not frozen
         return !isSourceOrTargetFrozen(from, to, hookData);
     }
@@ -407,8 +412,10 @@ contract BaseTransferHookTestMember is BaseTransferHookTestBase {
 
 contract BaseTransferHookTestUpdateRestriction is BaseTransferHookTestBase {
     function testUpdateRestrictionMember() public {
-        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate = UpdateRestrictionMessageLib
-            .UpdateRestrictionMember({user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP});
+        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate =
+            UpdateRestrictionMessageLib.UpdateRestrictionMember({
+                user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP
+            });
 
         bytes memory payload = UpdateRestrictionMessageLib.serialize(memberUpdate);
 
@@ -458,8 +465,10 @@ contract BaseTransferHookTestUpdateRestriction is BaseTransferHookTestBase {
     }
 
     function testUpdateRestrictionUnauthorized() public {
-        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate = UpdateRestrictionMessageLib
-            .UpdateRestrictionMember({user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP});
+        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate =
+            UpdateRestrictionMessageLib.UpdateRestrictionMember({
+                user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP
+            });
 
         bytes memory payload = UpdateRestrictionMessageLib.serialize(memberUpdate);
 

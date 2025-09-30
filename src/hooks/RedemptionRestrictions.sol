@@ -27,7 +27,12 @@ contract RedemptionRestrictions is BaseTransferHook {
         uint256,
         /* value */
         HookData calldata hookData
-    ) public view override returns (bool) {
+    )
+        public
+        view
+        override
+        returns (bool)
+    {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
         if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
 

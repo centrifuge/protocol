@@ -170,14 +170,14 @@ abstract contract BatchRequestManagerBaseTest is Test {
         returns (uint128)
     {
         return pricePoolPerShare.reciprocalMulUint256(
-            PricingLib.convertWithPrice(
-                depositAmountAsset,
-                IHubRegistry(address(hubRegistryMock)).decimals(assetId),
-                IHubRegistry(address(hubRegistryMock)).decimals(poolId),
-                _pricePoolPerAsset(assetId)
-            ),
-            MathLib.Rounding.Down
-        ).toUint128();
+                PricingLib.convertWithPrice(
+                    depositAmountAsset,
+                    IHubRegistry(address(hubRegistryMock)).decimals(assetId),
+                    IHubRegistry(address(hubRegistryMock)).decimals(poolId),
+                    _pricePoolPerAsset(assetId)
+                ),
+                MathLib.Rounding.Down
+            ).toUint128();
     }
 
     // ============ Event Parsing Helpers ============
@@ -268,10 +268,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
         assertEq(lastUpdate, expected.lastUpdate, "Mismatch: Redeem UserOrder.lastUpdate");
     }
 
-    function _assertQueuedRedeemRequestEq(AssetId asset, bytes32 investor_, QueuedOrder memory expected)
-        internal
-        view
-    {
+    function _assertQueuedRedeemRequestEq(AssetId asset, bytes32 investor_, QueuedOrder memory expected) internal view {
         (bool isCancelling, uint128 amount) = batchRequestManager.queuedRedeemRequest(scId, asset, investor_);
 
         assertEq(isCancelling, expected.isCancelling, "isCancelling redeem mismatch");
@@ -343,9 +340,9 @@ abstract contract BatchRequestManagerBaseTest is Test {
     /// @dev Helper function for deposit and approval - direct calls
     function _depositAndApprove(uint128 depositAmount, uint128 approvedAmount) internal {
         batchRequestManager.requestDeposit(poolId, scId, depositAmount, investor, USDC);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), approvedAmount, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), approvedAmount, _pricePoolPerAsset(USDC), REFUND);
     }
 
     /// @dev Helper function for deposit and approval with bounds checking for fuzz testing
@@ -357,13 +354,13 @@ abstract contract BatchRequestManagerBaseTest is Test {
         approvedAmountUsdc = uint128(bound(approvedAmountUsdc_, MIN_REQUEST_AMOUNT_USDC - 1, depositAmountUsdc));
         approvedPool = _intoPoolAmount(USDC, approvedAmountUsdc);
         batchRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), approvedAmountUsdc, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), approvedAmountUsdc, _pricePoolPerAsset(USDC), REFUND);
     }
 
     /// @dev Helper function for redeem and approval - direct calls
-    function _redeemAndApprove(uint128 redeemShares, uint128 approvedShares, uint128 /* navPerShare */ ) internal {
+    function _redeemAndApprove(uint128 redeemShares, uint128 approvedShares, uint128 /* navPerShare */) internal {
         batchRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
         batchRequestManager.approveRedeems(
             poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC)
@@ -489,9 +486,9 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         emit IBatchRequestManager.ApproveDeposits(
             poolId, scId, USDC, _nowDeposit(USDC), expectedPoolAmount, approvedUsdc, expectedPendingAfter
         );
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), approvedUsdc, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), approvedUsdc, _pricePoolPerAsset(USDC), REFUND);
 
         (uint128 eventPoolAmount, uint128 eventAssetAmount, uint128 eventPending) = _extractApproveDepositsEvent();
         assertEq(eventPoolAmount, expectedPoolAmount, "Event pool amount mismatch");
@@ -530,10 +527,12 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         assertEq(_nowDeposit(USDC), 1);
         assertEq(_nowDeposit(OTHER_STABLE), 1);
 
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), approvedUsdc, _pricePoolPerAsset(USDC), REFUND
-        );
-        batchRequestManager.approveDeposits{value: COST}(
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), approvedUsdc, _pricePoolPerAsset(USDC), REFUND);
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(
             poolId,
             scId,
             OTHER_STABLE,
@@ -560,9 +559,9 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         uint128 expectedIssuedShares = _calcSharesIssued(USDC, approvedAmount, navPoolPerShare);
 
         vm.recordLogs();
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND);
 
         (uint128 actualIssuedShares, D18 eventNav,) = _extractIssueSharesEvent();
         assertEq(actualIssuedShares, expectedIssuedShares, "Issued shares mismatch");
@@ -582,9 +581,9 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         batchRequestManager.requestDeposit(poolId, scId, 10, bytes32("investorOther"), USDC);
         batchRequestManager.approveDeposits{value: COST}(poolId, scId, USDC, _nowDeposit(USDC), 1, d18(1), REFUND);
 
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND);
 
         vm.expectEmit();
         emit IBatchRequestManager.ClaimDeposit(poolId, scId, 1, investor, USDC, 0, 1, 0, block.timestamp.toUint64());
@@ -603,9 +602,9 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         batchRequestManager.claimDeposit(poolId, scId, investor, USDC);
 
         D18 navPoolPerShare = d18(11, 10);
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND);
 
         uint128 expectedShares = _calcSharesIssued(USDC, approvedAmountUsdc, navPoolPerShare);
 
@@ -644,9 +643,9 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         vm.expectRevert(IBatchRequestManager.IssuanceRequired.selector);
         batchRequestManager.claimDeposit(poolId, scId, investor, USDC);
 
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND);
 
         uint128 expectedShares = _calcSharesIssued(USDC, approvedAmountUsdc, navPoolPerShare);
 
@@ -890,17 +889,19 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         // Note: Epoch state is tracked internally and tested through other assertions
     }
 
-    function testRevokeSharesSingleEpoch(uint128 navPoolPerShare_, uint128 fuzzRedeemShares, uint128 fuzzApprovedShares)
-        public
-    {
+    function testRevokeSharesSingleEpoch(
+        uint128 navPoolPerShare_,
+        uint128 fuzzRedeemShares,
+        uint128 fuzzApprovedShares
+    ) public {
         D18 navPoolPerShare = d18(uint128(bound(navPoolPerShare_, 1e14, type(uint128).max / 1e18)));
         (, uint128 approvedShares,,) =
             _redeemAndApproveWithFuzzBounds(fuzzRedeemShares, fuzzApprovedShares, navPoolPerShare.raw());
 
         vm.recordLogs();
-        batchRequestManager.revokeShares{value: COST}(
-            poolId, scId, USDC, _nowRevoke(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.revokeShares{
+            value: COST
+        }(poolId, scId, USDC, _nowRevoke(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND);
 
         (uint128 revokedShares, uint128 payoutAsset, uint128 payoutPool, D18 eventNav,) = _extractRevokeSharesEvent();
 
@@ -927,9 +928,9 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         batchRequestManager.requestRedeem(poolId, scId, 10, bytes32("investorOther"), USDC);
         batchRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), 1, d18(1));
 
-        batchRequestManager.revokeShares{value: COST}(
-            poolId, scId, USDC, _nowRevoke(USDC), d18(1), SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.revokeShares{
+            value: COST
+        }(poolId, scId, USDC, _nowRevoke(USDC), d18(1), SHARE_HOOK_GAS, REFUND);
 
         vm.expectEmit();
         emit IBatchRequestManager.ClaimRedeem(poolId, scId, 1, investor, USDC, 0, 1, 0, block.timestamp.toUint64());
@@ -949,9 +950,9 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         vm.expectRevert(IBatchRequestManager.RevocationRequired.selector);
         batchRequestManager.claimRedeem(poolId, scId, investor, USDC);
 
-        batchRequestManager.revokeShares{value: COST}(
-            poolId, scId, USDC, _nowRevoke(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.revokeShares{
+            value: COST
+        }(poolId, scId, USDC, _nowRevoke(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND);
 
         uint128 expectedAssetAmount =
             _intoAssetAmount(USDC, navPoolPerShare.mulUint128(approvedShares, MathLib.Rounding.Down));
@@ -1140,9 +1141,9 @@ contract BatchRequestManagerQueuedDepositsTest is BatchRequestManagerBaseTest {
         batchRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
         _assertDepositRequestEq(USDC, investor, UserOrder(depositAmountUsdc, epochId));
         assertEq(batchRequestManager.pendingDeposit(scId, USDC), depositAmountUsdc);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), depositAmountUsdc, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), depositAmountUsdc, _pricePoolPerAsset(USDC), REFUND);
         epochId = 2;
 
         // Expect queued increment due to approval
@@ -1167,9 +1168,9 @@ contract BatchRequestManagerQueuedDepositsTest is BatchRequestManagerBaseTest {
         _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
 
         // Issue shares + claim -> expect queued to move to pending
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND);
         vm.expectEmit();
         emit IBatchRequestManager.ClaimDeposit(
             poolId, scId, 1, investor, USDC, depositAmountUsdc, 0, claimedShares, block.timestamp.toUint64()
@@ -1197,9 +1198,9 @@ contract BatchRequestManagerQueuedDepositsTest is BatchRequestManagerBaseTest {
 
         // Initial deposit request
         batchRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), approvedAssetAmount, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), approvedAssetAmount, _pricePoolPerAsset(USDC), REFUND);
 
         // Expect queued increment due to approval
         epochId = 2;
@@ -1219,9 +1220,9 @@ contract BatchRequestManagerQueuedDepositsTest is BatchRequestManagerBaseTest {
         batchRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
 
         // Issue shares + claim -> expect cancel fulfillment
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND);
         vm.expectEmit();
         emit IBatchRequestManager.ClaimDeposit(
             poolId,
@@ -1259,9 +1260,9 @@ contract BatchRequestManagerQueuedDepositsTest is BatchRequestManagerBaseTest {
 
         // Initial deposit request
         batchRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), approvedAssetAmount, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), approvedAssetAmount, _pricePoolPerAsset(USDC), REFUND);
         epochId = 2;
 
         // Expect queued increment due to approval
@@ -1273,9 +1274,9 @@ contract BatchRequestManagerQueuedDepositsTest is BatchRequestManagerBaseTest {
         assertEq(cancelledPending, 0, "Cancellation queued (returns cancelled amount, 0 when queued)");
 
         // Issue shares + claim -> expect cancel fulfillment
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND);
         vm.expectEmit();
         emit IBatchRequestManager.ClaimDeposit(
             poolId,
@@ -1311,12 +1312,12 @@ contract BatchRequestManagerQueuedDepositsTest is BatchRequestManagerBaseTest {
         batchRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
 
         batchRequestManager.requestDeposit(poolId, scId, depositAmount, investor, USDC);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), approvedAmount, _pricePoolPerAsset(USDC), REFUND
-        );
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), d18(1, 1), SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), approvedAmount, _pricePoolPerAsset(USDC), REFUND);
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), d18(1, 1), SHARE_HOOK_GAS, REFUND);
 
         vm.expectEmit();
         emit IBatchRequestManager.UpdateDepositRequest(
@@ -1394,9 +1395,9 @@ contract BatchRequestManagerQueuedRedeemsTest is BatchRequestManagerBaseTest {
         _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
 
         // Revoke shares + claim -> expect queued to move to pending
-        batchRequestManager.revokeShares{value: COST}(
-            poolId, scId, USDC, _nowRevoke(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.revokeShares{
+            value: COST
+        }(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND);
         pendingShareAmount = queuedAmount;
         vm.expectEmit();
         emit IBatchRequestManager.ClaimRedeem(
@@ -1448,9 +1449,9 @@ contract BatchRequestManagerQueuedRedeemsTest is BatchRequestManagerBaseTest {
         batchRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
 
         // Revoke shares + claim -> expect cancel fulfillment
-        batchRequestManager.revokeShares{value: COST}(
-            poolId, scId, USDC, _nowRevoke(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.revokeShares{
+            value: COST
+        }(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND);
         vm.expectEmit();
         emit IBatchRequestManager.ClaimRedeem(
             poolId,
@@ -1502,9 +1503,9 @@ contract BatchRequestManagerQueuedRedeemsTest is BatchRequestManagerBaseTest {
         assertEq(cancelledPending, 0, "Cancellation queued (returns cancelled amount, 0 when queued)");
 
         // Revoke shares + claim -> expect cancel fulfillment
-        batchRequestManager.revokeShares{value: COST}(
-            poolId, scId, USDC, _nowRevoke(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.revokeShares{
+            value: COST
+        }(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND);
         vm.expectEmit();
         emit IBatchRequestManager.ClaimRedeem(
             poolId,
@@ -1543,9 +1544,9 @@ contract BatchRequestManagerQueuedRedeemsTest is BatchRequestManagerBaseTest {
         batchRequestManager.approveRedeems(
             poolId, scId, USDC, _nowRedeem(USDC), approvedAmount, _pricePoolPerAsset(USDC)
         );
-        batchRequestManager.revokeShares{value: COST}(
-            poolId, scId, USDC, _nowRevoke(USDC), d18(1, 1), SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.revokeShares{
+            value: COST
+        }(poolId, scId, USDC, _nowRevoke(USDC), d18(1, 1), SHARE_HOOK_GAS, REFUND);
 
         vm.expectEmit();
         emit IBatchRequestManager.UpdateRedeemRequest(
@@ -1597,12 +1598,12 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
 
         // Approve a few epochs without payout
         for (uint256 i = 0; i < skippedEpochs; i++) {
-            batchRequestManager.approveDeposits{value: COST}(
-                poolId, scId, USDC, _nowDeposit(USDC), approvedAmountUsdc, _pricePoolPerAsset(USDC), REFUND
-            );
-            batchRequestManager.issueShares{value: COST}(
-                poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND
-            );
+            batchRequestManager.approveDeposits{
+                value: COST
+            }(poolId, scId, USDC, _nowDeposit(USDC), approvedAmountUsdc, _pricePoolPerAsset(USDC), REFUND);
+            batchRequestManager.issueShares{
+                value: COST
+            }(poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND);
         }
 
         // Claim all epochs without expected payout due to low deposit amount
@@ -1631,24 +1632,24 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
 
         // Approve one epoch with full payout and a few subsequent ones without payout
         batchRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), depositAmountUsdc, nonZeroPrice, REFUND
-        );
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), nonZeroPrice, SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), depositAmountUsdc, nonZeroPrice, REFUND);
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), nonZeroPrice, SHARE_HOOK_GAS, REFUND);
 
         // Request deposit with another investors to enable approvals after first epoch
         batchRequestManager.requestDeposit(poolId, scId, MAX_REQUEST_AMOUNT_USDC, bytes32("bigPockets"), USDC);
 
         // Approve more epochs which should all be skipped when investor claims first epoch
         for (uint256 i = 0; i < skippedEpochs; i++) {
-            batchRequestManager.approveDeposits{value: COST}(
-                poolId, scId, USDC, _nowDeposit(USDC), 1, nonZeroPrice, REFUND
-            );
-            batchRequestManager.issueShares{value: COST}(
-                poolId, scId, USDC, _nowIssue(USDC), nonZeroPrice, SHARE_HOOK_GAS, REFUND
-            );
+            batchRequestManager.approveDeposits{
+                value: COST
+            }(poolId, scId, USDC, _nowDeposit(USDC), 1, nonZeroPrice, REFUND);
+            batchRequestManager.issueShares{
+                value: COST
+            }(poolId, scId, USDC, _nowIssue(USDC), nonZeroPrice, SHARE_HOOK_GAS, REFUND);
         }
 
         // Expect only single claim to be required
@@ -1680,14 +1681,14 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
 
         // Approve + issue shares for each epoch
         for (uint256 i = 0; i < epochs; i++) {
-            batchRequestManager.approveDeposits{value: COST}(
-                poolId, scId, USDC, _nowDeposit(USDC), epochApprovedAmountUsdc, _pricePoolPerAsset(USDC), REFUND
-            );
+            batchRequestManager.approveDeposits{
+                value: COST
+            }(poolId, scId, USDC, _nowDeposit(USDC), epochApprovedAmountUsdc, _pricePoolPerAsset(USDC), REFUND);
 
             uint128 issuedShares = _calcSharesIssued(USDC, epochApprovedAmountUsdc, poolPerShare);
-            batchRequestManager.issueShares{value: COST}(
-                poolId, scId, USDC, _nowIssue(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND
-            );
+            batchRequestManager.issueShares{
+                value: COST
+            }(poolId, scId, USDC, _nowIssue(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND);
             totalShares += issuedShares;
         }
 
@@ -1726,9 +1727,9 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
             batchRequestManager.approveRedeems(
                 poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC)
             );
-            batchRequestManager.revokeShares{value: COST}(
-                poolId, scId, USDC, _nowRevoke(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND
-            );
+            batchRequestManager.revokeShares{
+                value: COST
+            }(poolId, scId, USDC, _nowRevoke(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND);
         }
 
         // Claim all epochs without expected payout due to low redeem amount
@@ -1758,9 +1759,9 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         // Other investor should eat up the single approved asset amount
         batchRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
         batchRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), redeemShares, nonZeroPrice);
-        batchRequestManager.revokeShares{value: COST}(
-            poolId, scId, USDC, _nowRevoke(USDC), nonZeroPrice, SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.revokeShares{
+            value: COST
+        }(poolId, scId, USDC, _nowRevoke(USDC), nonZeroPrice, SHARE_HOOK_GAS, REFUND);
 
         // Request redeem with another investors to enable approvals after first epoch
         batchRequestManager.requestRedeem(poolId, scId, MAX_REQUEST_AMOUNT_USDC, bytes32("bigPockets"), USDC);
@@ -1768,9 +1769,9 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         // Approve more epochs which should all be skipped when investor claims first epoch
         for (uint256 i = 0; i < skippedEpochs; i++) {
             batchRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), 1, nonZeroPrice);
-            batchRequestManager.revokeShares{value: COST}(
-                poolId, scId, USDC, _nowRevoke(USDC), nonZeroPrice, SHARE_HOOK_GAS, REFUND
-            );
+            batchRequestManager.revokeShares{
+                value: COST
+            }(poolId, scId, USDC, _nowRevoke(USDC), nonZeroPrice, SHARE_HOOK_GAS, REFUND);
         }
 
         // Expect only single claim to be required
@@ -1806,9 +1807,9 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
 
             uint128 revokedAssetAmount =
                 _intoAssetAmount(USDC, poolPerShare.mulUint128(epochApprovedShares, MathLib.Rounding.Down));
-            batchRequestManager.revokeShares{value: COST}(
-                poolId, scId, USDC, _nowRevoke(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND
-            );
+            batchRequestManager.revokeShares{
+                value: COST
+            }(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare, SHARE_HOOK_GAS, REFUND);
             totalAssets += revokedAssetAmount;
         }
 
@@ -1842,24 +1843,24 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         );
 
         // Test normal calculation: lastEpoch - userOrder.lastUpdate + 1
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
-        );
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND);
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND);
 
         assertEq(batchRequestManager.maxDepositClaims(scId, investor, USDC), 1, "Should have 1 claimable epoch");
 
         // Create multiple epochs to test calculation
         for (uint256 i = 0; i < 3; i++) {
             batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, bytes32(uint256(i + 100)), USDC);
-            batchRequestManager.approveDeposits{value: COST}(
-                poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
-            );
-            batchRequestManager.issueShares{value: COST}(
-                poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND
-            );
+            batchRequestManager.approveDeposits{
+                value: COST
+            }(poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND);
+            batchRequestManager.issueShares{
+                value: COST
+            }(poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND);
         }
 
         // Original investor should still have 1+3=4 claimable epochs
@@ -1885,9 +1886,9 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         _assertDepositRequestEq(USDC, investor, UserOrder(amount, 1));
 
         // Move to epoch 2 by approving
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), amount, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), amount, _pricePoolPerAsset(USDC), REFUND);
         assertEq(_nowDeposit(USDC), 2, "Should be epoch 2");
 
         // Condition 3: userOrder.lastUpdate >= currentEpoch (user is current, allows direct mutation)
@@ -1899,9 +1900,9 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         // Should queue instead of direct mutation when no conditions are met
         bytes32 otherInvestor = bytes32("laggingInvestor");
         batchRequestManager.requestDeposit(poolId, scId, amount, otherInvestor, USDC);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), amount, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), amount, _pricePoolPerAsset(USDC), REFUND);
         assertEq(_nowDeposit(USDC), 3, "Should be epoch 3");
 
         // otherInvestor's lastUpdate is 2, currentEpoch is 3, has pending > 0
@@ -1909,15 +1910,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         uint128 newAmount = amount * 2;
         vm.expectEmit();
         emit IBatchRequestManager.UpdateDepositRequest(
-            poolId,
-            scId,
-            USDC,
-            3,
-            otherInvestor,
-            amount,
-            0,
-            newAmount,
-            false // Queued, not pending
+            poolId, scId, USDC, 3, otherInvestor, amount, 0, newAmount, false // Queued, not pending
         );
         batchRequestManager.requestDeposit(poolId, scId, newAmount, otherInvestor, USDC);
 
@@ -1939,12 +1932,12 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         batchRequestManager.forceCancelDepositRequest{value: COST}(poolId, scId, investor, USDC, REFUND);
 
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC / 2, _pricePoolPerAsset(USDC), REFUND
-        );
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC / 2, _pricePoolPerAsset(USDC), REFUND);
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND);
 
         // This should queue the cancellation
         batchRequestManager.forceCancelDepositRequest(poolId, scId, investor, USDC, REFUND);
@@ -1955,12 +1948,12 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         uint128 amount = MIN_REQUEST_AMOUNT_USDC;
 
         batchRequestManager.requestDeposit(poolId, scId, amount, investor, USDC);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), amount, _pricePoolPerAsset(USDC), REFUND
-        );
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), amount, _pricePoolPerAsset(USDC), REFUND);
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND);
 
         assertEq(batchRequestManager.maxDepositClaims(scId, investor, USDC), 1, "Should have 1 claim");
         (,,, bool canClaimAgain) = batchRequestManager.claimDeposit(poolId, scId, investor, USDC);
@@ -2032,9 +2025,9 @@ contract BatchRequestManagerAuthTest is BatchRequestManagerBaseTest {
     function testApproveDepositsUnauthorized() public {
         vm.prank(unauthorized);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, 1, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, 1, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND);
     }
 
     function testApproveRedeemsUnauthorized() public {
@@ -2078,9 +2071,9 @@ contract BatchRequestManagerErrorTest is BatchRequestManagerBaseTest {
 
     function testApproveDepositsEpochNotInSequence() public {
         vm.expectRevert(abi.encodeWithSelector(IBatchRequestManager.EpochNotInSequence.selector, 2, 1));
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, 2, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, 2, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND);
     }
 
     function testApproveDepositsInsufficientPending() public {
@@ -2089,9 +2082,9 @@ contract BatchRequestManagerErrorTest is BatchRequestManagerBaseTest {
         uint32 currentEpoch = _nowDeposit(USDC);
 
         vm.expectRevert(IBatchRequestManager.InsufficientPending.selector);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, currentEpoch, pendingAmount + 1, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, currentEpoch, pendingAmount + 1, _pricePoolPerAsset(USDC), REFUND);
     }
 
     function testApproveDepositsZeroAmount() public {
@@ -2099,9 +2092,9 @@ contract BatchRequestManagerErrorTest is BatchRequestManagerBaseTest {
 
         uint32 currentEpoch = _nowDeposit(USDC);
         vm.expectRevert(IBatchRequestManager.ZeroApprovalAmount.selector);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, currentEpoch, 0, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, currentEpoch, 0, _pricePoolPerAsset(USDC), REFUND);
     }
 
     function testApproveRedeemsEpochNotInSequence() public {
@@ -2137,15 +2130,15 @@ contract BatchRequestManagerErrorTest is BatchRequestManagerBaseTest {
 
     function testIssueSharesEpochNotInSequence() public {
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, 1, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, 1, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND);
         batchRequestManager.issueShares{value: COST}(poolId, scId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
 
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, bytes32("investor2"), USDC);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, 2, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, 2, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND);
 
         // Current issue epoch is 2, test issuing epoch 1
         vm.expectRevert(abi.encodeWithSelector(IBatchRequestManager.EpochNotInSequence.selector, 1, 2));
@@ -2215,9 +2208,9 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
 
         vm.expectEmit();
         emit IBatchRequestManager.IssueShares(poolId, scId, USDC, 1, d18(0), d18(0), 0);
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), d18(0), SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), d18(0), SHARE_HOOK_GAS, REFUND);
 
         (,, uint128 approvedPoolAmount,, D18 navPoolPerShare, uint64 issuedAt) =
             batchRequestManager.epochInvestAmounts(scId, USDC, 1);
@@ -2235,19 +2228,11 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
         // Revoke shares with zero NAV
         vm.expectEmit();
         emit IBatchRequestManager.RevokeShares(
-            poolId,
-            scId,
-            USDC,
-            1,
-            d18(0),
-            d18(0),
-            MIN_REQUEST_AMOUNT_SHARES,
-            0,
-            0 // Zero payout
+            poolId, scId, USDC, 1, d18(0), d18(0), MIN_REQUEST_AMOUNT_SHARES, 0, 0 // Zero payout
         );
-        batchRequestManager.revokeShares{value: COST}(
-            poolId, scId, USDC, _nowRevoke(USDC), d18(0), SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.revokeShares{
+            value: COST
+        }(poolId, scId, USDC, _nowRevoke(USDC), d18(0), SHARE_HOOK_GAS, REFUND);
 
         (,,, D18 navPoolPerShare, uint128 payoutAssetAmount, uint64 revokedAt) =
             batchRequestManager.epochRedeemAmounts(scId, USDC, 1);
@@ -2259,7 +2244,9 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
     /// @dev Tests issueShares() with zero price
     function testIssueSharesZeroPrice() public {
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
-        batchRequestManager.approveDeposits{value: COST}(
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(
             poolId,
             scId,
             USDC,
@@ -2272,17 +2259,11 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
         // Issue shares with non-zero NAV but zero price
         vm.expectEmit();
         emit IBatchRequestManager.IssueShares(
-            poolId,
-            scId,
-            USDC,
-            1,
-            d18(1),
-            d18(0),
-            0 // d18(0) from zero price calculation
+            poolId, scId, USDC, 1, d18(1), d18(0), 0 // d18(0) from zero price calculation
         );
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND);
 
         (,,, D18 pricePoolPerAsset, D18 navPoolPerShare, uint64 issuedAt) =
             batchRequestManager.epochInvestAmounts(scId, USDC, 1);
@@ -2316,9 +2297,9 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
             0,
             1 // Pool payout = NAV * shares = 1 * 1e18 = 1
         );
-        batchRequestManager.revokeShares{value: COST}(
-            poolId, scId, USDC, _nowRevoke(USDC), d18(1), SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.revokeShares{
+            value: COST
+        }(poolId, scId, USDC, _nowRevoke(USDC), d18(1), SHARE_HOOK_GAS, REFUND);
 
         (,, D18 pricePoolPerAsset,, uint128 payoutAssetAmount, uint64 revokedAt) =
             batchRequestManager.epochRedeemAmounts(scId, USDC, 1);
@@ -2342,7 +2323,9 @@ contract BatchRequestManagerRoundingEdgeCasesDeposit is BatchRequestManagerBaseT
         private
         returns (uint128 issuedShares)
     {
-        batchRequestManager.approveDeposits{value: COST}(
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(
             poolId,
             scId,
             OTHER_STABLE,
@@ -2353,9 +2336,9 @@ contract BatchRequestManagerRoundingEdgeCasesDeposit is BatchRequestManagerBaseT
         );
 
         vm.recordLogs();
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, OTHER_STABLE, _nowIssue(OTHER_STABLE), navPerShare, 0, REFUND
-        );
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, OTHER_STABLE, _nowIssue(OTHER_STABLE), navPerShare, 0, REFUND);
 
         (issuedShares,,) = _extractIssueSharesEvent();
         (,,,, D18 storedNav, uint64 issuedAt) =
@@ -2572,9 +2555,9 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
 
         vm.prank(poolManager);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND);
 
         assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0, "Pending should be cleared");
 
@@ -2599,9 +2582,9 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
         _depositAndApprove(MIN_REQUEST_AMOUNT_USDC, MIN_REQUEST_AMOUNT_USDC);
 
         vm.prank(poolManager);
-        batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND);
 
         assertEq(_nowIssue(USDC), 2, "Issue epoch should advance");
     }
@@ -2610,9 +2593,9 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
         _redeemAndApprove(MIN_REQUEST_AMOUNT_SHARES, MIN_REQUEST_AMOUNT_SHARES, 1e18);
 
         vm.prank(poolManager);
-        batchRequestManager.revokeShares{value: COST}(
-            poolId, scId, USDC, _nowRevoke(USDC), d18(1), SHARE_HOOK_GAS, REFUND
-        );
+        batchRequestManager.revokeShares{
+            value: COST
+        }(poolId, scId, USDC, _nowRevoke(USDC), d18(1), SHARE_HOOK_GAS, REFUND);
 
         assertEq(_nowRevoke(USDC), 2, "Revoke epoch should advance");
     }
@@ -2649,9 +2632,9 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
 
         vm.prank(poolManager2);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
-        );
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND);
     }
 
     function testManagerPermissionRevocation() public {
@@ -2689,9 +2672,9 @@ contract BatchRequestManagerRoundingEdgeCasesRedeem is BatchRequestManagerBaseTe
 
         // Record logs and revoke shares
         vm.recordLogs();
-        batchRequestManager.revokeShares{value: COST}(
-            poolId, scId, OTHER_STABLE, _nowRevoke(OTHER_STABLE), navPerShare, 0, REFUND
-        );
+        batchRequestManager.revokeShares{
+            value: COST
+        }(poolId, scId, OTHER_STABLE, _nowRevoke(OTHER_STABLE), navPerShare, 0, REFUND);
 
         // Extract payout from event
         (, actualAssetPayout,,,) = _extractRevokeSharesEvent();

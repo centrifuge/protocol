@@ -25,7 +25,6 @@ enum CrossChainDirection {
     WithIntermediaryHub, // C -> A -> B (Hub is on A)
     FromHub, // C => A -> B (Hub is on A)
     ToHub // C -> A => B (Hub is on A)
-
 }
 
 /// @title  Three Chain End-to-End Test
@@ -127,9 +126,10 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         }
 
         vm.prank(INVESTOR_A);
-        sB.spoke.crosschainTransferShares{value: GAS}(
-            sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount, HOOK_GAS, HOOK_GAS, INVESTOR_A
-        );
+        sB.spoke
+        .crosschainTransferShares{
+            value: GAS
+        }(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount, HOOK_GAS, HOOK_GAS, INVESTOR_A);
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should be burned on chain B");
         assertEq(
             h.snapshotHook.transfers(POOL_A, SC_1, sB.centrifugeId, sC.centrifugeId), amount, "Snapshot hook not called"

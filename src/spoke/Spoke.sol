@@ -106,9 +106,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         emit InitiateTransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
 
-        sender.sendInitiateTransferShares{value: msg.value}(
-            centrifugeId, poolId, scId, receiver, amount, extraGasLimit, remoteExtraGasLimit, refund
-        );
+        sender.sendInitiateTransferShares{
+            value: msg.value
+        }(centrifugeId, poolId, scId, receiver, amount, extraGasLimit, remoteExtraGasLimit, refund);
     }
 
     /// @inheritdoc ISpoke

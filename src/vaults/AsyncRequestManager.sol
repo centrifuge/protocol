@@ -181,9 +181,9 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         }
 
         // It use all funds for the message, and the rest is refunded again to the RefundEscrow
-        spoke.request{value: payment}(
-            vault_.poolId(), vault_.scId(), spoke.vaultDetails(vault_).assetId, payload, address(refund), true
-        );
+        spoke.request{
+            value: payment
+        }(vault_.poolId(), vault_.scId(), spoke.vaultDetails(vault_).assetId, payload, address(refund), true);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -587,7 +587,13 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         return pricePoolPerShare.isZero()
             ? 0
             : PricingLib.assetToShareAmount(
-                vault_.share(), vd.asset, vd.tokenId, assets_, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
+                vault_.share(),
+                vd.asset,
+                vd.tokenId,
+                assets_,
+                pricePoolPerAsset,
+                pricePoolPerShare,
+                MathLib.Rounding.Down
             );
     }
 
@@ -601,7 +607,13 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         return pricePoolPerAsset.isZero()
             ? 0
             : PricingLib.shareToAssetAmount(
-                vault_.share(), shares_, vd.asset, vd.tokenId, pricePoolPerShare, pricePoolPerAsset, MathLib.Rounding.Down
+                vault_.share(),
+                shares_,
+                vd.asset,
+                vd.tokenId,
+                pricePoolPerShare,
+                pricePoolPerAsset,
+                MathLib.Rounding.Down
             );
     }
 

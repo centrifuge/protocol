@@ -78,10 +78,7 @@ contract BaseTest is HubDeployer, Test {
     function setUp() public virtual {
         // Deployment
         CommonInput memory input = CommonInput({
-            centrifugeId: CHAIN_CP,
-            adminSafe: adminSafe,
-            maxBatchGasLimit: uint128(GAS) * 100,
-            version: bytes32(0)
+            centrifugeId: CHAIN_CP, adminSafe: adminSafe, maxBatchGasLimit: uint128(GAS) * 100, version: bytes32(0)
         });
 
         HubActionBatcher batcher = new HubActionBatcher();
