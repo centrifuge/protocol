@@ -181,9 +181,9 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         }
 
         // It use all funds for the message, and the rest is refunded again to the RefundEscrow
-        spoke.request{
-            value: payment
-        }(vault_.poolId(), vault_.scId(), spoke.vaultDetails(vault_).assetId, payload, address(refund), true);
+        spoke.request{value: payment}(
+            vault_.poolId(), vault_.scId(), spoke.vaultDetails(vault_).assetId, payload, address(refund), true
+        );
     }
 
     //----------------------------------------------------------------------------------------------
@@ -515,7 +515,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     /// @inheritdoc IDepositManager
     function maxDeposit(IBaseVault vault_, address user) public view returns (uint256 assets) {
         assets = _maxDeposit(vault_, user);
-        if (!_canTransfer(vault_, ESCROW_HOOK_ID, user, investments[vault_][user].maxMint)) return 0;
+        if (!_canTransfer(vault_, address(globalEscrow), user, investments[vault_][user].maxMint)) return 0;
     }
 
     function _maxDeposit(IBaseVault vault_, address user) internal view returns (uint128 assets) {
@@ -526,7 +526,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     /// @inheritdoc IDepositManager
     function maxMint(IBaseVault vault_, address user) public view returns (uint256 shares) {
         shares = uint256(investments[vault_][user].maxMint);
-        if (!_canTransfer(vault_, ESCROW_HOOK_ID, user, shares)) return 0;
+        if (!_canTransfer(vault_, address(globalEscrow), user, shares)) return 0;
     }
 
     /// @inheritdoc IRedeemManager
@@ -587,13 +587,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         return pricePoolPerShare.isZero()
             ? 0
             : PricingLib.assetToShareAmount(
-                vault_.share(),
-                vd.asset,
-                vd.tokenId,
-                assets_,
-                pricePoolPerAsset,
-                pricePoolPerShare,
-                MathLib.Rounding.Down
+                vault_.share(), vd.asset, vd.tokenId, assets_, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
             );
     }
 
@@ -607,13 +601,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         return pricePoolPerAsset.isZero()
             ? 0
             : PricingLib.shareToAssetAmount(
-                vault_.share(),
-                shares_,
-                vd.asset,
-                vd.tokenId,
-                pricePoolPerShare,
-                pricePoolPerAsset,
-                MathLib.Rounding.Down
+                vault_.share(), shares_, vd.asset, vd.tokenId, pricePoolPerShare, pricePoolPerAsset, MathLib.Rounding.Down
             );
     }
 

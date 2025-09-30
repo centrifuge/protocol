@@ -26,12 +26,7 @@ contract FullRestrictions is BaseTransferHook {
         uint256,
         /* value */
         HookData calldata hookData
-    )
-        public
-        view
-        override
-        returns (bool)
-    {
+    ) public view override returns (bool) {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
 
         if (isDepositRequestOrIssuance(from, to)) return isTargetMember(to, hookData);
@@ -41,6 +36,7 @@ contract FullRestrictions is BaseTransferHook {
         if (isRedeemFulfillment(from, to)) return true;
         if (isRedeemClaimOrRevocation(from, to)) return true;
         if (isCrosschainTransfer(from, to)) return true;
+        if (isCrosschainTransferExecution(from, to)) return isTargetMember(to, hookData);
 
         // Else, it's a transfer
         return isTargetMember(to, hookData);
