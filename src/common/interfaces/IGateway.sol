@@ -144,4 +144,7 @@ interface IGateway is IMessageHandler, IRecoverable {
 
     /// @notice Returns the current gateway batching level.
     function isBatching() external view returns (bool);
+
+    /// @notice Returns the current caller to withBatch method.
+    function batcher() external view returns (address);
 }

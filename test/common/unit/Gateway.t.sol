@@ -183,7 +183,7 @@ contract GatewayTest is Test {
         vm.mockCall(address(root), abi.encodeWithSelector(IRoot.paused.selector), abi.encode(isPaused));
     }
 
-    function setUp() public {
+    function setUp() public virtual {
         gateway.file("adapter", address(adapter));
         gateway.file("processor", address(processor));
 
@@ -861,38 +861,67 @@ contract GatewayTestBlockOutgoing is GatewayTest {
     }
 }
 
-contract CrosschainBatcherTestWithBatch is GatewayTest {
-    uint256 constant PAYMENT = 1000;
-    bool wasCalled;
+contract IntegrationMock is Test {
+    bool public wasCalled;
+    IGateway public gateway;
+
+    constructor(IGateway gateway_) {
+        gateway = gateway_;
+    }
 
     function _success(bool, uint256) external payable {
-        require(gateway.batcher() == address(this));
+        assertEq(gateway.batcher(), address(this));
         wasCalled = true;
     }
 
     function _nested() external payable {
-        gateway.withBatch(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._nested.selector), REFUND);
+        gateway.withBatch(abi.encodeWithSelector(this._nested.selector), address(0));
     }
 
     function _emptyError() external payable {
         revert();
     }
 
+    function callNested(address refund) external {
+        gateway.withBatch(abi.encodeWithSelector(this._nested.selector), refund);
+    }
+
+    function callEmptyError(address refund) external {
+        gateway.withBatch(abi.encodeWithSelector(this._emptyError.selector), refund);
+    }
+
+    function callSuccess(address refund) external payable {
+        gateway.withBatch{value: msg.value}(abi.encodeWithSelector(this._success.selector, true, 1), refund);
+    }
+}
+
+contract GatewayTestWithBatch is GatewayTest {
+    IntegrationMock integration;
+
+    function setUp() public override {
+        super.setUp();
+        integration = new IntegrationMock(gateway);
+    }
+
     function testErrAlreadyBatching() public {
+        vm.prank(ANY);
         vm.expectRevert(IGateway.AlreadyBatching.selector);
-        gateway.withBatch(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._nested.selector), REFUND);
+        integration.callNested(REFUND);
     }
 
     function testErrCallFailedWithEmptyRevert() public {
+        vm.prank(ANY);
         vm.expectRevert(IGateway.CallFailedWithEmptyRevert.selector);
-        gateway.withBatch(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._emptyError.selector), REFUND);
+        integration.callEmptyError(REFUND);
     }
 
     function testWithCallback() public {
-        gateway.withBatch{value: PAYMENT}(
-            abi.encodeWithSelector(CrosschainBatcherTestWithBatch._success.selector, true, 1), REFUND
-        );
+        vm.prank(ANY);
+        vm.deal(ANY, 1234);
+        integration.callSuccess{value: 1234}(REFUND);
+
+        assertEq(integration.wasCalled(), true);
         assertEq(gateway.batcher(), address(0));
-        assertEq(REFUND.balance, PAYMENT);
+        assertEq(REFUND.balance, 1234);
     }
 }
