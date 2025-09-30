@@ -44,7 +44,7 @@ contract AsyncRequestManagerHarness is AsyncRequestManager {
             );
         }
 
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
         address shareToken = vault.share();
         return PricingLib.calculatePriceAssetPerShare(
             shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets, MathLib.Rounding.Down

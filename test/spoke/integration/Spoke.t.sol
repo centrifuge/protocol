@@ -120,14 +120,14 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
 
         assert(spoke.isPoolActive(poolId));
 
-        VaultDetails memory vaultDetails = spoke.vaultDetails(IBaseVault(vaultAddress));
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(IBaseVault(vaultAddress));
         assertEq(assetId.raw(), vaultDetails.assetId.raw(), "vault assetId mismatch");
         assertEq(asset, vaultDetails.asset, "vault asset mismatch");
         assertEq(tokenId, vaultDetails.tokenId, "vault asset mismatch");
         assertEq(isLinked, vaultDetails.isLinked, "vault isLinked mismatch");
 
         if (isLinked) {
-            assert(spoke.isLinked(IBaseVault(vaultAddress)));
+            assert(vaultRegistry.isLinked(IBaseVault(vaultAddress)));
 
             // check vault state
             assertEq(vaultAddress, vault_, "vault address mismatch");
@@ -141,7 +141,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
             assertEq(vault.wards(address(this)), 0);
             assertEq(asyncRequestManager.wards(vaultAddress), 1);
         } else {
-            assert(!spoke.isLinked(IBaseVault(vaultAddress)));
+            assert(!vaultRegistry.isLinked(IBaseVault(vaultAddress)));
 
             // Check missing link
             assertEq(vault_, address(0), "Share link to vault requires linkVault");

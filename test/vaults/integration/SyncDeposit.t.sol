@@ -53,7 +53,7 @@ contract SyncDepositTestHelper is BaseTest {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
 
         vm.expectEmit();
         emit IBalanceSheet.Issue(poolId, scId, self, pricePoolPerShare, shares);
@@ -130,7 +130,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
 
         // Retrieve async vault
         IVault asyncVault_ =
-            spoke.vault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault.asyncRedeemManager());
+            vaultRegistry.vault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault.asyncRedeemManager());
         assertNotEq(address(syncVault), address(0), "Failed to retrieve async vault");
         IAsyncRedeemVault asyncVault = IAsyncRedeemVault(address(asyncVault_));
 

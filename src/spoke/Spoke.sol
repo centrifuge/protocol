@@ -413,24 +413,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         validUntil = poolPerAsset.validUntil();
     }
 
-    /// @inheritdoc ISpoke
-    function vaultDetails(IVault vault_) public view returns (VaultDetails memory details) {
-        return vaultRegistry.vaultDetails(vault_);
-    }
 
-    /// @inheritdoc ISpoke
-    function isLinked(IVault vault_) public view returns (bool) {
-        return vaultRegistry.isLinked(vault_);
-    }
-
-    /// @inheritdoc ISpoke
-    function vault(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager)
-        public
-        view
-        returns (IVault)
-    {
-        return vaultRegistry.vault(poolId, scId, assetId, manager);
-    }
 
     //----------------------------------------------------------------------------------------------
     // Internal methods

@@ -223,18 +223,7 @@ interface ISpoke {
     /// @return address The address of the share token
     function shareToken(PoolId poolId, ShareClassId scId) external view returns (IShareToken);
 
-    /// @notice Function to get the details of a vault
-    /// @dev    Reverts if vault does not exist
-    ///
-    /// @param vault The address of the vault to be checked for
-    /// @return details The details of the vault including the underlying asset address, token id, asset id
-    function vaultDetails(IVault vault) external view returns (VaultDetails memory details);
 
-    /// @notice Checks whether a given vault is eligible for investing into a share class of a pool
-    ///
-    /// @param vault The address of the vault
-    /// @return bool Whether vault is to a share class
-    function isLinked(IVault vault) external view returns (bool);
 
     /// @notice Returns the price per share for a given pool and share class. The Provided price is defined as
     /// POOL_UNIT/SHARE_UNIT.
@@ -303,12 +292,7 @@ interface ISpoke {
         view
         returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
 
-    /// @notice Returns the address of the vault for a given pool, share class asset and requestManager
-    /// @param manager the request manager associated to the vault, if 0, then it correspond to a full sync vault.
-    function vault(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager)
-        external
-        view
-        returns (IVault vault);
+
 
     /// @notice Returns the request manager for a given pool
     /// @param poolId The pool id

@@ -103,7 +103,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         testAdapters.push(adapter2);
         testAdapters.push(adapter3);
 
-        centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, syncManager);
+        centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, vaultRegistry, syncManager);
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 

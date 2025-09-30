@@ -20,6 +20,7 @@ import {ShareClassId} from "../common/types/ShareClassId.sol";
 
 import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
+import {IVaultRegistry} from "../spoke/interfaces/IVaultRegistry.sol";
 import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
 import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/UpdateContractMessageLib.sol";
 
@@ -32,6 +33,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     using UpdateContractMessageLib for *;
 
     ISpoke public spoke;
+    IVaultRegistry public vaultRegistry;
     IBalanceSheet public balanceSheet;
 
     mapping(PoolId => mapping(ShareClassId scId => ISyncDepositValuation)) public valuation;
@@ -47,6 +49,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     /// @inheritdoc ISyncManager
     function file(bytes32 what, address data) external auth {
         if (what == "spoke") spoke = ISpoke(data);
+        else if (what == "vaultRegistry") vaultRegistry = IVaultRegistry(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -147,7 +150,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
 
     /// @inheritdoc IDepositManager
     function maxMint(IBaseVault vault_, address /* owner */ ) public view returns (uint256) {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
         uint128 maxAssets =
             _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
         return convertToShares(vault_, maxAssets);
@@ -155,13 +158,13 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
 
     /// @inheritdoc IDepositManager
     function maxDeposit(IBaseVault vault_, address /* owner */ ) public view returns (uint256) {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
         return _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
     }
 
     /// @inheritdoc ISyncManager
     function convertToShares(IBaseVault vault_, uint256 assets) public view returns (uint256 shares) {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
 
         D18 poolPerShare = pricePoolPerShare(vault_.poolId(), vault_.scId());
         D18 poolPerAsset = spoke.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
@@ -204,7 +207,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     function _issueShares(IBaseVault vault_, uint128 shares, address receiver, uint128 assets) internal {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
 
         // Note deposit into the pool escrow, to make assets available for managers of the balance sheet.
         // ERC-20 transfer is handled by the vault to the pool escrow afterwards.
@@ -221,7 +224,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         view
         returns (uint128 maxDeposit_)
     {
-        if (!spoke.isLinked(vault_)) return 0;
+        if (!vaultRegistry.isLinked(vault_)) return 0;
 
         uint128 availableBalance = balanceSheet.availableBalanceOf(poolId, scId, asset, tokenId);
         uint128 maxReserve_ = maxReserve[poolId][scId][asset][tokenId];
@@ -238,7 +241,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         view
         returns (uint256 assets)
     {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
 
         D18 poolPerShare = pricePoolPerShare(vault_.poolId(), vault_.scId());
         D18 poolPerAsset = spoke.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
