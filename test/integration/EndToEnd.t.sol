@@ -459,16 +459,16 @@ contract EndToEndFlows is EndToEndUtils {
         hub.hub.notifyShareClass{value: GAS}(poolId, shareClassId, spoke.centrifugeId, hookAddress.toBytes32(), REFUND);
 
         hub.hub
-        .initializeHolding(
-            poolId,
-            shareClassId,
-            assetId,
-            hub.oracleValuation,
-            ASSET_ACCOUNT,
-            EQUITY_ACCOUNT,
-            GAIN_ACCOUNT,
-            LOSS_ACCOUNT
-        );
+            .initializeHolding(
+                poolId,
+                shareClassId,
+                assetId,
+                hub.oracleValuation,
+                ASSET_ACCOUNT,
+                EQUITY_ACCOUNT,
+                GAIN_ACCOUNT,
+                LOSS_ACCOUNT
+            );
         hub.hub
         .setRequestManager{
             value: GAS
