@@ -179,8 +179,9 @@ interface IVaultRouter is IMulticall {
         bytes32 receiver,
         address owner,
         uint128 extraGasLimit,
-        uint128 remoteExtraGasLimit
-    ) external;
+        uint128 remoteExtraGasLimit,
+        address refund
+    ) external payable;
 
     // --- ERC20 permit ---
     /// @notice Check IERC20.permit

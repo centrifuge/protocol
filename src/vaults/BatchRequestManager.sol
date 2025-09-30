@@ -805,8 +805,9 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         //       We keep subtraction of amount over setting to zero on purpose to not limit future higher level logic
         userOrder.pending = isIncrement ? userOrder.pending + amount : userOrder.pending - amount;
 
-        userOrder.lastUpdate =
-            requestType == RequestType.Deposit ? nowDepositEpoch(scId_, assetId) : nowRedeemEpoch(scId_, assetId);
+        userOrder.lastUpdate = requestType == RequestType.Deposit
+            ? nowDepositEpoch(scId_, assetId)
+            : nowRedeemEpoch(scId_, assetId);
 
         if (requestType == RequestType.Deposit) {
             _updatePendingDeposit(poolId, scId_, amount, isIncrement, investor, assetId, userOrder, queued);

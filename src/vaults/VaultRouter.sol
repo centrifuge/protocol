@@ -116,7 +116,6 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
-<<<<<<< HEAD
     function crosschainTransferShares(
         BaseSyncDepositVault vault,
         uint128 shares,
@@ -124,27 +123,25 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         bytes32 receiver,
         address owner,
         uint128 extraGasLimit,
-        uint128 remoteExtraGasLimit
-    ) external protected {
+        uint128 remoteExtraGasLimit,
+        address refund
+    ) external payable protected {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
 
         spoke.vaultDetails(vault); // Ensure vault is valid
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vault.share(), owner, address(this), shares);
 
         spoke.crosschainTransferShares(
-            centrifugeId, vault.poolId(), vault.scId(), receiver, shares, extraGasLimit, remoteExtraGasLimit
+            centrifugeId, vault.poolId(), vault.scId(), receiver, shares, extraGasLimit, remoteExtraGasLimit, refund
         );
     }
 
     /// @inheritdoc IVaultRouter
-    function lockDepositRequest(IBaseVault vault, uint256 amount, address controller, address owner) public protected {
-=======
     function lockDepositRequest(IBaseVault vault, uint256 amount, address controller, address owner)
         public
         payable
         protected
     {
->>>>>>> 8fd280af011c82644b32e25a239799228b4a113a
         require(owner == msg.sender || owner == address(this), InvalidOwner());
         require(vault.supportsInterface(type(IERC7540Deposit).interfaceId), NonAsyncVault());
 
