@@ -134,7 +134,9 @@ interface IBalanceSheet {
         returns (uint256 cost);
 
     /// @notice Sends the queued updated shares changed to the Hub
-    function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit) external returns (uint256 cost);
+    function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit)
+        external
+        returns (uint256 cost);
 
     /// @notice Force-transfers share tokens.
     function transferSharesFrom(

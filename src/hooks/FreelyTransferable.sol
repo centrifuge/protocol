@@ -27,12 +27,7 @@ contract FreelyTransferable is BaseTransferHook {
         uint256,
         /* value */
         HookData calldata hookData
-    )
-        public
-        view
-        override
-        returns (bool)
-    {
+    ) public view override returns (bool) {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
         if (isDepositRequestOrIssuance(from, to)) return isTargetMember(to, hookData);
         if (isDepositClaim(from, to)) return isTargetMember(to, hookData);

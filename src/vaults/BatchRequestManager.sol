@@ -64,9 +64,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     // Queued requests
     mapping(ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => QueuedOrder queued)))
         public queuedRedeemRequest;
-    mapping(
-        ShareClassId scId => mapping(AssetId depositAssetId => mapping(bytes32 investor => QueuedOrder queued))
-    ) public queuedDepositRequest;
+    mapping(ShareClassId scId => mapping(AssetId depositAssetId => mapping(bytes32 investor => QueuedOrder queued)))
+        public queuedDepositRequest;
 
     // Force cancel request safeguards
     mapping(ShareClassId scId => mapping(AssetId depositAssetId => mapping(bytes32 investor => bool cancelled))) public
@@ -120,8 +119,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
                     poolId,
                     scId,
                     assetId,
-                    RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount)
-                        .serialize(),
+                    RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount).serialize(
+                    ),
                     0
                 );
             }
@@ -135,8 +134,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
                     poolId,
                     scId,
                     assetId,
-                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount)
-                        .serialize(),
+                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount).serialize(),
                     0
                 );
             }
@@ -146,13 +144,10 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     }
 
     /// @inheritdoc IBatchRequestManager
-    function requestDeposit(
-        PoolId poolId,
-        ShareClassId scId_,
-        uint128 amount,
-        bytes32 investor,
-        AssetId depositAssetId
-    ) public auth {
+    function requestDeposit(PoolId poolId, ShareClassId scId_, uint128 amount, bytes32 investor, AssetId depositAssetId)
+        public
+        auth
+    {
         // NOTE: Vaults ensure amount > 0
         _updatePending(poolId, scId_, amount, true, investor, depositAssetId, RequestType.Deposit);
     }
@@ -377,8 +372,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         );
 
         bytes memory callback = RequestCallbackMessageLib.RevokedShares(
-                payoutAssetAmount, revokedShareAmount, navPoolPerShare.raw()
-            ).serialize();
+            payoutAssetAmount, revokedShareAmount, navPoolPerShare.raw()
+        ).serialize();
         return hub.requestCallback(poolId, scId_, payoutAssetId, callback, extraGasLimit);
     }
 
@@ -463,8 +458,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
                 scId,
                 assetId,
                 RequestCallbackMessageLib.FulfilledDepositRequest(
-                        investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
-                    ).serialize(),
+                    investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
+                ).serialize(),
                 0
             );
         }
@@ -574,8 +569,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
                 scId,
                 assetId,
                 RequestCallbackMessageLib.FulfilledRedeemRequest(
-                        investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
-                    ).serialize(),
+                    investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
+                ).serialize(),
                 0
             );
         }
@@ -657,8 +652,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
         return interfaceId == type(IBatchRequestManager).interfaceId
             || interfaceId == type(IHubRequestManager).interfaceId
-            || interfaceId == type(IHubRequestManagerNotifications).interfaceId
-            || interfaceId == type(IERC165).interfaceId;
+            || interfaceId == type(IHubRequestManagerNotifications).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -695,7 +689,11 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     }
 
     /// @inheritdoc IBatchRequestManager
-    function maxRedeemClaims(ShareClassId scId_, bytes32 investor, AssetId payoutAssetId) public view returns (uint32) {
+    function maxRedeemClaims(ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
+        public
+        view
+        returns (uint32)
+    {
         return _maxClaims(redeemRequest[scId_][payoutAssetId][investor], epochId[scId_][payoutAssetId].revoke);
     }
 
@@ -798,9 +796,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         //       We keep subtraction of amount over setting to zero on purpose to not limit future higher level logic
         userOrder.pending = isIncrement ? userOrder.pending + amount : userOrder.pending - amount;
 
-        userOrder.lastUpdate = requestType == RequestType.Deposit
-            ? nowDepositEpoch(scId_, assetId)
-            : nowRedeemEpoch(scId_, assetId);
+        userOrder.lastUpdate =
+            requestType == RequestType.Deposit ? nowDepositEpoch(scId_, assetId) : nowRedeemEpoch(scId_, assetId);
 
         if (requestType == RequestType.Deposit) {
             _updatePendingDeposit(poolId, scId_, amount, isIncrement, investor, assetId, userOrder, queued);
@@ -832,9 +829,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         QueuedOrder storage queued,
         RequestType requestType
     ) internal returns (bool skipPendingUpdate) {
-        uint32 currentEpoch = requestType == RequestType.Deposit
-            ? nowDepositEpoch(scId_, assetId)
-            : nowRedeemEpoch(scId_, assetId);
+        uint32 currentEpoch =
+            requestType == RequestType.Deposit ? nowDepositEpoch(scId_, assetId) : nowRedeemEpoch(scId_, assetId);
 
         // Short circuit if user can mutate pending, i.e. last update happened after latest approval or is first update
         if (_canMutatePending(userOrder, currentEpoch)) {

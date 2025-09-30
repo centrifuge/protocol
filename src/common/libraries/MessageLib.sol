@@ -373,7 +373,10 @@ library MessageLib {
     {
         require(messageType(data) == MessageType.NotifyPricePoolPerShare, UnknownMessageType());
         return NotifyPricePoolPerShare({
-            poolId: data.toUint64(1), scId: data.toBytes16(9), price: data.toUint128(25), timestamp: data.toUint64(41)
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            price: data.toUint128(25),
+            timestamp: data.toUint64(41)
         });
     }
 
@@ -507,7 +510,10 @@ library MessageLib {
     function deserializeExecuteTransferShares(bytes memory data) internal pure returns (ExecuteTransferShares memory) {
         require(messageType(data) == MessageType.ExecuteTransferShares, UnknownMessageType());
         return ExecuteTransferShares({
-            poolId: data.toUint64(1), scId: data.toBytes16(9), receiver: data.toBytes32(25), amount: data.toUint128(57)
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            receiver: data.toBytes32(25),
+            amount: data.toUint128(57)
         });
     }
 
@@ -529,10 +535,11 @@ library MessageLib {
         require(messageType(data) == MessageType.UpdateRestriction, UnknownMessageType());
 
         uint16 payloadLength = data.toUint16(25);
-        return
-            UpdateRestriction({
-                poolId: data.toUint64(1), scId: data.toBytes16(9), payload: data.slice(27, payloadLength)
-            });
+        return UpdateRestriction({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            payload: data.slice(27, payloadLength)
+        });
     }
 
     function serialize(UpdateRestriction memory t) internal pure returns (bytes memory) {

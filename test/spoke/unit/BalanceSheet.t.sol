@@ -164,7 +164,10 @@ contract BalanceSheetTest is Test {
                 SC_1,
                 assetId,
                 ISpokeMessageSender.UpdateData({
-                    netAmount: amount, isIncrease: isDeposit, isSnapshot: isSnapshot, nonce: nonce
+                    netAmount: amount,
+                    isIncrease: isDeposit,
+                    isSnapshot: isSnapshot,
+                    nonce: nonce
                 }),
                 price,
                 EXTRA_GAS
@@ -181,7 +184,10 @@ contract BalanceSheetTest is Test {
                 POOL_A,
                 SC_1,
                 ISpokeMessageSender.UpdateData({
-                    netAmount: delta, isIncrease: isPositive, isSnapshot: isSnapshot, nonce: nonce
+                    netAmount: delta,
+                    isIncrease: isPositive,
+                    isSnapshot: isSnapshot,
+                    nonce: nonce
                 }),
                 EXTRA_GAS
             ),

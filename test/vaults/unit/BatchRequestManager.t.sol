@@ -202,14 +202,14 @@ abstract contract BatchRequestManagerBaseTest is Test {
         returns (uint128)
     {
         return pricePoolPerShare.reciprocalMulUint256(
-                PricingLib.convertWithPrice(
-                    depositAmountAsset,
-                    IHubRegistry(address(hubRegistryMock)).decimals(assetId),
-                    IHubRegistry(address(hubRegistryMock)).decimals(poolId),
-                    _pricePoolPerAsset(assetId)
-                ),
-                MathLib.Rounding.Down
-            ).toUint128();
+            PricingLib.convertWithPrice(
+                depositAmountAsset,
+                IHubRegistry(address(hubRegistryMock)).decimals(assetId),
+                IHubRegistry(address(hubRegistryMock)).decimals(poolId),
+                _pricePoolPerAsset(assetId)
+            ),
+            MathLib.Rounding.Down
+        ).toUint128();
     }
 
     // ============ Event Parsing Helpers ============
@@ -300,7 +300,10 @@ abstract contract BatchRequestManagerBaseTest is Test {
         assertEq(lastUpdate, expected.lastUpdate, "Mismatch: Redeem UserOrder.lastUpdate");
     }
 
-    function _assertQueuedRedeemRequestEq(AssetId asset, bytes32 investor_, QueuedOrder memory expected) internal view {
+    function _assertQueuedRedeemRequestEq(AssetId asset, bytes32 investor_, QueuedOrder memory expected)
+        internal
+        view
+    {
         (bool isCancelling, uint128 amount) = batchRequestManager.queuedRedeemRequest(scId, asset, investor_);
 
         assertEq(isCancelling, expected.isCancelling, "isCancelling redeem mismatch");
@@ -392,7 +395,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
     }
 
     /// @dev Helper function for redeem and approval - direct calls
-    function _redeemAndApprove(uint128 redeemShares, uint128 approvedShares, uint128 /* navPerShare */) internal {
+    function _redeemAndApprove(uint128 redeemShares, uint128 approvedShares, uint128 /* navPerShare */ ) internal {
         batchRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
         batchRequestManager.approveRedeems(
             poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC)
@@ -937,11 +940,9 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         // Note: Epoch state is tracked internally and tested through other assertions
     }
 
-    function testRevokeSharesSingleEpoch(
-        uint128 navPoolPerShare_,
-        uint128 fuzzRedeemShares,
-        uint128 fuzzApprovedShares
-    ) public {
+    function testRevokeSharesSingleEpoch(uint128 navPoolPerShare_, uint128 fuzzRedeemShares, uint128 fuzzApprovedShares)
+        public
+    {
         D18 navPoolPerShare = d18(uint128(bound(navPoolPerShare_, 1e14, type(uint128).max / 1e18)));
         (, uint128 approvedShares,,) =
             _redeemAndApproveWithFuzzBounds(fuzzRedeemShares, fuzzApprovedShares, navPoolPerShare.raw());
@@ -1941,7 +1942,15 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         uint128 newAmount = amount * 2;
         vm.expectEmit();
         emit IBatchRequestManager.UpdateDepositRequest(
-            poolId, scId, USDC, 3, otherInvestor, amount, 0, newAmount, false // Queued, not pending
+            poolId,
+            scId,
+            USDC,
+            3,
+            otherInvestor,
+            amount,
+            0,
+            newAmount,
+            false // Queued, not pending
         );
         batchRequestManager.requestDeposit(poolId, scId, newAmount, otherInvestor, USDC);
 
@@ -2273,7 +2282,15 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
         // Revoke shares with zero NAV
         vm.expectEmit();
         emit IBatchRequestManager.RevokeShares(
-            poolId, scId, USDC, 1, d18(0), d18(0), MIN_REQUEST_AMOUNT_SHARES, 0, 0 // Zero payout
+            poolId,
+            scId,
+            USDC,
+            1,
+            d18(0),
+            d18(0),
+            MIN_REQUEST_AMOUNT_SHARES,
+            0,
+            0 // Zero payout
         );
         uint256 cost = batchRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), d18(0), SHARE_HOOK_GAS);
         assertEq(cost, CB_GAS_COST, "Should return callback cost");
@@ -2300,7 +2317,13 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
         // Issue shares with non-zero NAV but zero price
         vm.expectEmit();
         emit IBatchRequestManager.IssueShares(
-            poolId, scId, USDC, 1, d18(1), d18(0), 0 // d18(0) from zero price calculation
+            poolId,
+            scId,
+            USDC,
+            1,
+            d18(1),
+            d18(0),
+            0 // d18(0) from zero price calculation
         );
         batchRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS);
 

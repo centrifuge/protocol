@@ -105,14 +105,14 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 centrifugeId,
                 MessageLib.NotifyShareClass({
-                        poolId: poolId.raw(),
-                        scId: scId.raw(),
-                        name: name,
-                        symbol: symbol.toBytes32(),
-                        decimals: decimals,
-                        salt: salt,
-                        hook: hook
-                    }).serialize(),
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    name: name,
+                    symbol: symbol.toBytes32(),
+                    decimals: decimals,
+                    salt: salt,
+                    hook: hook
+                }).serialize(),
                 0
             );
         }
@@ -132,8 +132,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 centrifugeId,
                 MessageLib.NotifyShareMetadata({
-                        poolId: poolId.raw(), scId: scId.raw(), name: name, symbol: symbol.toBytes32()
-                    }).serialize(),
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    name: name,
+                    symbol: symbol.toBytes32()
+                }).serialize(),
                 0
             );
         }
@@ -169,8 +172,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 chainId,
                 MessageLib.NotifyPricePoolPerShare({
-                        poolId: poolId.raw(), scId: scId.raw(), price: price.raw(), timestamp: timestamp
-                    }).serialize(),
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    price: price.raw(),
+                    timestamp: timestamp
+                }).serialize(),
                 0
             );
         }
@@ -189,12 +195,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 assetId.centrifugeId(),
                 MessageLib.NotifyPricePoolPerAsset({
-                        poolId: poolId.raw(),
-                        scId: scId.raw(),
-                        assetId: assetId.raw(),
-                        price: price.raw(),
-                        timestamp: timestamp
-                    }).serialize(),
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    price: price.raw(),
+                    timestamp: timestamp
+                }).serialize(),
                 0
             );
         }
@@ -255,12 +261,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 assetId.centrifugeId(),
                 MessageLib.UpdateVault({
-                        poolId: poolId.raw(),
-                        scId: scId.raw(),
-                        assetId: assetId.raw(),
-                        vaultOrFactory: vaultOrFactory,
-                        kind: uint8(kind)
-                    }).serialize(),
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    vaultOrFactory: vaultOrFactory,
+                    kind: uint8(kind)
+                }).serialize(),
                 extraGasLimit
             );
         }
@@ -292,8 +298,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         } else {
             return gateway.send(
                 centrifugeId,
-                MessageLib.UpdateBalanceSheetManager({poolId: poolId.raw(), who: who, canManage: canManage})
-                    .serialize(),
+                MessageLib.UpdateBalanceSheetManager({poolId: poolId.raw(), who: who, canManage: canManage}).serialize(),
                 0
             );
         }
@@ -311,8 +316,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 assetId.centrifugeId(),
                 MessageLib.MaxAssetPriceAge({
-                        poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw(), maxPriceAge: maxPriceAge
-                    }).serialize(),
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    maxPriceAge: maxPriceAge
+                }).serialize(),
                 0
             );
         }
@@ -395,13 +403,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 poolId.centrifugeId(),
                 MessageLib.InitiateTransferShares({
-                        centrifugeId: targetCentrifugeId,
-                        poolId: poolId.raw(),
-                        scId: scId.raw(),
-                        receiver: receiver,
-                        amount: amount,
-                        extraGasLimit: remoteExtraGasLimit
-                    }).serialize(),
+                    centrifugeId: targetCentrifugeId,
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    receiver: receiver,
+                    amount: amount,
+                    extraGasLimit: remoteExtraGasLimit
+                }).serialize(),
                 extraGasLimit
             );
         }
@@ -423,8 +431,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 targetCentrifugeId,
                 MessageLib.ExecuteTransferShares({
-                        poolId: poolId.raw(), scId: scId.raw(), receiver: receiver, amount: amount
-                    }).serialize(),
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    receiver: receiver,
+                    amount: amount
+                }).serialize(),
                 extraGasLimit
             );
         }
@@ -455,16 +466,16 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 poolId.centrifugeId(),
                 MessageLib.UpdateHoldingAmount({
-                        poolId: poolId.raw(),
-                        scId: scId.raw(),
-                        assetId: assetId.raw(),
-                        amount: data.netAmount,
-                        pricePerUnit: pricePoolPerAsset.raw(),
-                        timestamp: uint64(block.timestamp),
-                        isIncrease: data.isIncrease,
-                        isSnapshot: data.isSnapshot,
-                        nonce: data.nonce
-                    }).serialize(),
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    amount: data.netAmount,
+                    pricePerUnit: pricePoolPerAsset.raw(),
+                    timestamp: uint64(block.timestamp),
+                    isIncrease: data.isIncrease,
+                    isSnapshot: data.isSnapshot,
+                    nonce: data.nonce
+                }).serialize(),
                 extraGasLimit
             );
         }
@@ -484,14 +495,14 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 poolId.centrifugeId(),
                 MessageLib.UpdateShares({
-                        poolId: poolId.raw(),
-                        scId: scId.raw(),
-                        shares: data.netAmount,
-                        timestamp: uint64(block.timestamp),
-                        isIssuance: data.isIncrease,
-                        isSnapshot: data.isSnapshot,
-                        nonce: data.nonce
-                    }).serialize(),
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    shares: data.netAmount,
+                    timestamp: uint64(block.timestamp),
+                    isIssuance: data.isIncrease,
+                    isSnapshot: data.isSnapshot,
+                    nonce: data.nonce
+                }).serialize(),
                 extraGasLimit
             );
         }
@@ -544,8 +555,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 assetId.centrifugeId(),
                 MessageLib.RequestCallback({
-                        poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw(), payload: payload
-                    }).serialize(),
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    payload: payload
+                }).serialize(),
                 extraGasLimit
             );
         }
@@ -565,8 +579,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             return gateway.send(
                 centrifugeId,
                 MessageLib.SetPoolAdapters({
-                        poolId: poolId.raw(), threshold: threshold, recoveryIndex: recoveryIndex, adapterList: adapters
-                    }).serialize(),
+                    poolId: poolId.raw(),
+                    threshold: threshold,
+                    recoveryIndex: recoveryIndex,
+                    adapterList: adapters
+                }).serialize(),
                 0
             );
         }

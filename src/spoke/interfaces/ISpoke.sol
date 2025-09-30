@@ -274,7 +274,10 @@ interface ISpoke {
     /// @param scId The share class id
     /// @param checkValidity Whether to check if the price is valid
     /// @return price The pool price per share
-    function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity) external view returns (D18 price);
+    function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity)
+        external
+        view
+        returns (D18 price);
 
     /// @notice Returns the price per asset for a given pool, share class and the underlying asset id. The Provided
     /// price is defined as POOL_UNIT/ASSET_UNIT.

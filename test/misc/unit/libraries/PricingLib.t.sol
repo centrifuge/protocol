@@ -192,9 +192,8 @@ contract ConvertWithReciprocalPriceTest is PricingLibBaseTest {
         uint256 expectedUp = MathLib.mulDiv(
             baseAmount * 10 ** quoteDecimals, 1e18, 10 ** baseDecimals * price.raw(), MathLib.Rounding.Up
         );
-        uint256 result = PricingLib.convertWithReciprocalPrice(
-            baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down
-        );
+        uint256 result =
+            PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
         assertGe(result, underestimate, "convertWithReciprocalPrice should be at least as large as underestimate");
         assertEq(result, expectedDown, "convertWithReciprocalPrice failed");
         assertApproxEqAbs(expectedDown, expectedUp, 1, "Rounding diff should be at most one");
@@ -209,9 +208,8 @@ contract ConvertWithReciprocalPriceEdgeCasesTest is PricingLibBaseTest {
 
     function testEdgeCaseWithReciprocalPriceMinBaseAmount() public view {
         D18 price = d18(1e18 - 1);
-        uint256 result = PricingLib.convertWithReciprocalPrice(
-            baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down
-        );
+        uint256 result =
+            PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
         uint256 expected = price.reciprocalMulUint256(amountWithoutPrice, MathLib.Rounding.Down);
         assertEq(result, expected);
         assertEq(expected, amountWithoutPrice);
@@ -219,9 +217,8 @@ contract ConvertWithReciprocalPriceEdgeCasesTest is PricingLibBaseTest {
 
     function testEdgeCaseWithReciprocalPriceSmallestPrice() public view {
         D18 price = d18(1);
-        uint256 result = PricingLib.convertWithReciprocalPrice(
-            baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down
-        );
+        uint256 result =
+            PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
         uint256 expected = price.reciprocalMulUint256(amountWithoutPrice, MathLib.Rounding.Down);
         assertEq(result, expected);
         assertEq(expected, 1e28);
@@ -229,15 +226,13 @@ contract ConvertWithReciprocalPriceEdgeCasesTest is PricingLibBaseTest {
 
     function testEdgeCaseWithReciprocalPriceSmallestPriceToZero() public view {
         D18 price = d18(1e28 + 1);
-        uint256 result = PricingLib.convertWithReciprocalPrice(
-            baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down
-        );
+        uint256 result =
+            PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
         assertEq(result, 0, "Reciprocal rounding edge case (smallest price to result in 0) failed");
 
         price = d18(1e28);
-        result = PricingLib.convertWithReciprocalPrice(
-            baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down
-        );
+        result =
+            PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
         assertEq(result, 1, "Reciprocal rounding edge case (smallest price to result in 1) failed");
     }
 
@@ -620,10 +615,12 @@ contract PoolToAssetAmountTest is PricingLibBaseTest {
             uint256(poolAmount).mulDiv(10 ** assetDecimals, 10 ** POOL_DECIMALS, MathLib.Rounding.Down),
             MathLib.Rounding.Down
         );
-        uint256 expectedDown = uint256(poolAmount)
-            .mulDiv(10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.raw(), MathLib.Rounding.Down);
-        uint256 expectedUp = uint256(poolAmount)
-            .mulDiv(10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.raw(), MathLib.Rounding.Up);
+        uint256 expectedDown = uint256(poolAmount).mulDiv(
+            10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.raw(), MathLib.Rounding.Down
+        );
+        uint256 expectedUp = uint256(poolAmount).mulDiv(
+            10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.raw(), MathLib.Rounding.Up
+        );
 
         uint256 result = PricingLib.poolToAssetAmount(
             poolAmount, POOL_DECIMALS, assetDecimals, pricePoolPerAsset, MathLib.Rounding.Down
@@ -675,9 +672,7 @@ contract CalcPriceAssetPerShareTest is Test {
     function _assertPrice(uint256 shares, uint256 assets, uint128 expected, MathLib.Rounding rounding) internal view {
         D18 calculated = shares == 0
             ? d18(0)
-            : PricingLib.calculatePriceAssetPerShare(
-                shareToken, shares.toUint128(), asset, 0, assets.toUint128(), rounding
-            );
+            : PricingLib.calculatePriceAssetPerShare(shareToken, shares.toUint128(), asset, 0, assets.toUint128(), rounding);
         assertEq(calculated.raw(), expected);
     }
 

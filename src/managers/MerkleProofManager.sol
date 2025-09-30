@@ -41,9 +41,7 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
         ShareClassId,
         /* scId */
         bytes calldata payload
-    )
-        external
-    {
+    ) external {
         require(poolId == poolId_, InvalidPoolId());
         require(msg.sender == contractUpdater, NotAuthorized());
 

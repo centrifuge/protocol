@@ -282,7 +282,10 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         view
         returns (uint32);
 
-    function maxRedeemClaims(ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external view returns (uint32);
+    function maxRedeemClaims(ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
+        external
+        view
+        returns (uint32);
 
     //----------------------------------------------------------------------------------------------
     // Epoch data access
