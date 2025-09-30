@@ -104,7 +104,6 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             require(gasleft() > GAS_FAIL_MESSAGE_STORAGE, NotEnoughGasToProcess());
 
-            // This "catch" branch below code must be computed in GAS_FAIL_MESSAGE_STORAGE gas units
             try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
                 emit ExecuteMessage(centrifugeId, message, messageHash);
             } catch (bytes memory err) {
