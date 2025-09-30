@@ -52,7 +52,7 @@ contract SpokeTestHelper is BaseTest {
 
     function registerAssetErc20() public {
         assetErc20 = address(_newErc20(tokenName, tokenSymbol, decimals));
-        assetIdErc20 = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, assetErc20, 0);
+        assetIdErc20 = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, assetErc20, 0, address(this));
     }
 }
 
@@ -180,7 +180,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         address asset = address(erc20);
 
         // Check event except for vault address which cannot be known
-        AssetId assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, erc20TokenId);
+        AssetId assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, erc20TokenId, address(this));
         spoke.setRequestManager(poolId, asyncRequestManager);
         IVault vault = spoke.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
@@ -198,7 +198,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
 
         address asset = address(erc20);
 
-        AssetId assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, erc20TokenId);
+        AssetId assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, erc20TokenId, address(this));
         spoke.setRequestManager(poolId, asyncRequestManager);
         IVault vault = spoke.deployVault(poolId, scId, assetId, asyncVaultFactory);
 

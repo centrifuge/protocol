@@ -178,9 +178,8 @@ contract Holdings is Auth, IHoldings {
         uint128 currentAmountValue = holding_.valuation.getQuote(poolId, scId, assetId, holding_.assetAmount);
 
         isPositive = currentAmountValue >= holding_.assetAmountValue;
-        diffValue = isPositive
-            ? currentAmountValue - holding_.assetAmountValue
-            : holding_.assetAmountValue - currentAmountValue;
+        diffValue =
+            isPositive ? currentAmountValue - holding_.assetAmountValue : holding_.assetAmountValue - currentAmountValue;
 
         holding_.assetAmountValue = currentAmountValue;
 

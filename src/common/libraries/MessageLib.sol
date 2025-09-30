@@ -150,23 +150,13 @@ library MessageLib {
         return PoolId.wrap(0);
     }
 
-    function messagePoolIdPayment(bytes memory message) internal pure returns (PoolId poolId) {
-        uint8 kind = message.toUint8(0);
-
-        if (kind == uint8(MessageType.SetPoolAdapters)) {
-            return PoolId.wrap(message.toUint64(1));
-        }
-
-        return messagePoolId(message);
-    }
-
     function messageSourceCentrifugeId(bytes memory message) internal pure returns (uint16) {
         uint8 kind = message.toUint8(0);
 
         if (kind <= uint8(MessageType.RecoverTokens)) {
             return 0; // Non centrifugeId associated
         } else if (kind == uint8(MessageType.SetPoolAdapters)) {
-            return message.messagePoolIdPayment().centrifugeId();
+            return PoolId.wrap(message.toUint64(1)).centrifugeId();
         } else if (kind == uint8(MessageType.UpdateShares) || kind == uint8(MessageType.InitiateTransferShares)) {
             return 0; // Non centrifugeId associated
         } else if (kind == uint8(MessageType.RegisterAsset)) {

@@ -115,8 +115,9 @@ contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
         ShareClassId scId,
         bytes32 receiver,
         uint128 amount,
-        uint128 extraGasLimit
-    ) external auth returns (uint256 cost) {
+        uint128 extraGasLimit,
+        address refund
+    ) external payable auth {
         shareClassManager.updateShares(originCentrifugeId, poolId, scId, amount, false);
         shareClassManager.updateShares(targetCentrifugeId, poolId, scId, amount, true);
 
@@ -125,6 +126,8 @@ contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
 
         emit ForwardTransferShares(originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount);
 
-        return sender.sendExecuteTransferShares(targetCentrifugeId, poolId, scId, receiver, amount, extraGasLimit);
+        return sender.sendExecuteTransferShares{
+            value: msg.value
+        }(targetCentrifugeId, poolId, scId, receiver, amount, extraGasLimit, refund);
     }
 }
