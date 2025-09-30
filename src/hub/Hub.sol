@@ -13,7 +13,7 @@ import {Auth} from "../misc/Auth.sol";
 import {d18, D18} from "../misc/types/D18.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
-import {Multicall, IMulticall} from "../misc/Multicall.sol";
+import {BatchedMulticall} from "../common/BatchedMulticall.sol";
 
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
@@ -31,11 +31,10 @@ import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMess
 /// @title  Hub
 /// @notice Central pool management contract, that brings together all functions in one place.
 ///         Pools can assign hub managers which have full rights over all actions.
-contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, IHubGuardianActions {
+contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCallback, IHubGuardianActions {
     using MathLib for uint256;
     using RequestCallbackMessageLib for *;
 
-    IGateway public gateway;
     IHoldings public holdings;
     IAccounting public accounting;
     IHubRegistry public hubRegistry;
@@ -51,8 +50,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
         IMultiAdapter multiAdapter_,
         IShareClassManager shareClassManager_,
         address deployer
-    ) Auth(deployer) {
-        gateway = gateway_;
+    ) Auth(deployer) BatchedMulticall(gateway_) {
         holdings = holdings_;
         accounting = accounting_;
         hubRegistry = hubRegistry_;
@@ -74,12 +72,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
         else if (what == "gateway") gateway = IGateway(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
-    }
-
-    /// @inheritdoc IMulticall
-    /// @notice performs a multicall but all messages sent in the process will be batched
-    function multicall(bytes[] calldata data) public payable override {
-        gateway.withBatch{value: msg.value}(abi.encodeWithSelector(super.multicall.selector, data), msg.sender);
     }
 
     /// @inheritdoc IHubGuardianActions
@@ -631,9 +623,5 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     /// @dev Ensure the sender is a pool admin
     function _isManager(PoolId poolId) internal view {
         require(hubRegistry.manager(poolId, msg.sender), IHub.NotManager());
-    }
-
-    function _payment() internal view returns (uint256 value) {
-        return gateway.isBatching() ? 0 : msg.value;
     }
 }

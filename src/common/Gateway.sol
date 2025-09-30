@@ -225,11 +225,19 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IGateway
     function startBatching() public auth {
+        _startBatching();
+    }
+
+    function _startBatching() internal {
         isBatching = true;
     }
 
     /// @inheritdoc IGateway
     function endBatching(address refund) public payable auth {
+        _endBatching(refund);
+    }
+
+    function _endBatching(address refund) internal {
         require(isBatching, NoBatched());
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
 

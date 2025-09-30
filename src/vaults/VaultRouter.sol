@@ -10,7 +10,7 @@ import {Auth} from "../misc/Auth.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {IEscrow} from "../misc/interfaces/IEscrow.sol";
-import {Multicall, IMulticall} from "../misc/Multicall.sol";
+import {BatchedMulticall} from "../common/BatchedMulticall.sol";
 import {IERC7540Deposit} from "../misc/interfaces/IERC7540.sol";
 import {IERC20, IERC20Permit} from "../misc/interfaces/IERC20.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
@@ -29,7 +29,7 @@ import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
 ///         the multicall functionality which batches message calls into a single one.
 /// @dev    It is critical to ensure that at the end of any transaction, no funds remain in the
 ///         VaultRouter. Any funds that do remain are at risk of being taken by other users.
-contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
+contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
     using CastLib for address;
 
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
@@ -37,25 +37,17 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
     ISpoke public immutable spoke;
     IEscrow public immutable escrow;
-    IGateway public immutable gateway;
 
     /// @inheritdoc IVaultRouter
     mapping(address controller => mapping(IBaseVault vault => uint256 amount)) public lockedRequests;
 
-    constructor(address escrow_, IGateway gateway_, ISpoke spoke_, address deployer) Auth(deployer) {
+    constructor(address escrow_, IGateway gateway_, ISpoke spoke_, address deployer)
+        Auth(deployer)
+        BatchedMulticall(gateway)
+    {
         escrow = IEscrow(escrow_);
         gateway = gateway_;
         spoke = spoke_;
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Administration
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IMulticall
-    /// @notice performs a multicall but all message sent in the process will be batched
-    function multicall(bytes[] calldata data) public payable override(Multicall, IMulticall) {
-        gateway.withBatch{value: msg.value}(abi.encodeWithSelector(super.multicall.selector, data), msg.sender);
     }
 
     //----------------------------------------------------------------------------------------------
