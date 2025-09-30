@@ -101,13 +101,13 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
 
         vm.startPrank(FM);
         h.hub.updateSharePrice(POOL_A, SC_1, d18(1, 1));
-        h.hub.notifySharePrice(POOL_A, SC_1, sB.centrifugeId);
+        h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, sB.centrifugeId, REFUND);
 
         // B: Mint shares
         vm.startPrank(BSM);
         IShareToken shareTokenB = IShareToken(sB.spoke.shareToken(POOL_A, SC_1));
         sB.balanceSheet.issue(POOL_A, SC_1, INVESTOR_A, amount);
-        sB.balanceSheet.submitQueuedShares(POOL_A, SC_1, 0);
+        sB.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, 0, REFUND);
         vm.stopPrank();
         assertEq(shareTokenB.balanceOf(INVESTOR_A), amount, "Investor should have minted shares on chain B");
 
@@ -127,9 +127,10 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         }
 
         vm.prank(INVESTOR_A);
-        sB.spoke.crosschainTransferShares{value: GAS}(
-            sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount, HOOK_GAS, HOOK_GAS
-        );
+        sB.spoke
+        .crosschainTransferShares{
+            value: GAS
+        }(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount, HOOK_GAS, HOOK_GAS, INVESTOR_A);
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should be burned on chain B");
         assertEq(
             h.snapshotHook.transfers(POOL_A, SC_1, sB.centrifugeId, sC.centrifugeId), amount, "Snapshot hook not called"
@@ -142,9 +143,10 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         if (direction == CrossChainDirection.WithIntermediaryHub) {
             assertEq(shareTokenC.balanceOf(INVESTOR_A), 0, "Share transfer not executed due to unpaid message");
 
+            vm.prank(ANY);
             vm.expectEmit();
             emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, amount);
-            h.gateway.repay{value: GAS}(sC.centrifugeId, _getLastUnpaidMessage());
+            h.gateway.repay{value: GAS}(sC.centrifugeId, _getLastUnpaidMessage(), REFUND);
         }
 
         // C: Verify shares were minted

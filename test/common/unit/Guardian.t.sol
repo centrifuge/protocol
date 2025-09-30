@@ -27,6 +27,7 @@ contract GuardianTest is Test {
     address immutable OWNER = makeAddr("owner");
     address immutable UNAUTHORIZED = makeAddr("unauthorized");
     address immutable MANAGER = makeAddr("manager");
+    address immutable REFUND = makeAddr("refund");
 
     uint16 constant CENTRIFUGE_ID = 1;
     PoolId constant POOL_0 = PoolId.wrap(0);
@@ -35,8 +36,13 @@ contract GuardianTest is Test {
     address immutable TARGET = makeAddr("target");
     IAdapter immutable ADAPTER = IAdapter(makeAddr("adapter"));
     bytes32 immutable HASH = bytes32("hash");
+    uint256 immutable COST = 123;
 
     Guardian guardian = new Guardian(SAFE, root, gateway, multiAdapter, sender);
+
+    function setUp() external {
+        vm.deal(address(SAFE), 1 ether);
+    }
 
     function testGuardian() public view {
         assertEq(address(guardian.safe()), address(SAFE));
@@ -178,18 +184,19 @@ contract GuardianTestScheduleUpgrade is GuardianTest {
     function testScheduleUpgrade() public {
         vm.mockCall(
             address(sender),
-            abi.encodeWithSelector(sender.sendScheduleUpgrade.selector, CENTRIFUGE_ID, TARGET.toBytes32()),
-            abi.encode(0)
+            COST,
+            abi.encodeWithSelector(sender.sendScheduleUpgrade.selector, CENTRIFUGE_ID, TARGET.toBytes32(), REFUND),
+            abi.encode()
         );
 
         vm.prank(address(SAFE));
-        guardian.scheduleUpgrade(CENTRIFUGE_ID, TARGET);
+        guardian.scheduleUpgrade{value: COST}(CENTRIFUGE_ID, TARGET, REFUND);
     }
 
     function testScheduleUpgradeOnlySafe() public {
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.scheduleUpgrade(CENTRIFUGE_ID, TARGET);
+        guardian.scheduleUpgrade(CENTRIFUGE_ID, TARGET, REFUND);
     }
 }
 
@@ -199,18 +206,19 @@ contract GuardianTestCancelUpgrade is GuardianTest {
     function testCancelUpgrade() public {
         vm.mockCall(
             address(sender),
-            abi.encodeWithSelector(sender.sendCancelUpgrade.selector, CENTRIFUGE_ID, TARGET.toBytes32()),
-            abi.encode(0)
+            COST,
+            abi.encodeWithSelector(sender.sendCancelUpgrade.selector, CENTRIFUGE_ID, TARGET.toBytes32(), REFUND),
+            abi.encode()
         );
 
         vm.prank(address(SAFE));
-        guardian.cancelUpgrade(CENTRIFUGE_ID, TARGET);
+        guardian.cancelUpgrade{value: COST}(CENTRIFUGE_ID, TARGET, REFUND);
     }
 
     function testCancelUpgradeOnlySafe() public {
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.cancelUpgrade(CENTRIFUGE_ID, TARGET);
+        guardian.cancelUpgrade(CENTRIFUGE_ID, TARGET, REFUND);
     }
 }
 
@@ -225,6 +233,7 @@ contract GuardianTestRecoverTokens is GuardianTest {
     function testRecoverTokens() public {
         vm.mockCall(
             address(sender),
+            COST,
             abi.encodeWithSelector(
                 sender.sendRecoverTokens.selector,
                 CENTRIFUGE_ID,
@@ -232,19 +241,20 @@ contract GuardianTestRecoverTokens is GuardianTest {
                 TOKEN.toBytes32(),
                 TOKEN_ID,
                 TO.toBytes32(),
-                AMOUNT
+                AMOUNT,
+                REFUND
             ),
-            abi.encode(0)
+            abi.encode()
         );
 
         vm.prank(address(SAFE));
-        guardian.recoverTokens(CENTRIFUGE_ID, TARGET, TOKEN, TOKEN_ID, TO, AMOUNT);
+        guardian.recoverTokens{value: COST}(CENTRIFUGE_ID, TARGET, TOKEN, TOKEN_ID, TO, AMOUNT, REFUND);
     }
 
     function testRecoverTokensOnlySafe() public {
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.recoverTokens(CENTRIFUGE_ID, TARGET, TOKEN, TOKEN_ID, TO, AMOUNT);
+        guardian.recoverTokens(CENTRIFUGE_ID, TARGET, TOKEN, TOKEN_ID, TO, AMOUNT, REFUND);
     }
 }
 

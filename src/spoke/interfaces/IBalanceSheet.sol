@@ -8,6 +8,7 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../common/types/PoolId.sol";
 import {AssetId} from "../../common/types/AssetId.sol";
 import {IRoot} from "../../common/interfaces/IRoot.sol";
+import {IGateway} from "../../common/interfaces/IGateway.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
 import {IPoolEscrow} from "../../common/interfaces/IPoolEscrow.sol";
 import {ISpokeMessageSender} from "../../common/interfaces/IGatewaySenders.sol";
@@ -71,13 +72,13 @@ interface IBalanceSheet {
     );
 
     // --- Errors ---
-    error NotPayable();
     error FileUnrecognizedParam();
     error CannotTransferFromEndorsedContract();
 
     function root() external view returns (IRoot);
     function spoke() external view returns (ISpoke);
     function sender() external view returns (ISpokeMessageSender);
+    function gateway() external view returns (IGateway);
     function poolEscrowProvider() external view returns (IPoolEscrowProvider);
 
     function manager(PoolId poolId, address manager) external view returns (bool);
@@ -94,13 +95,15 @@ interface IBalanceSheet {
 
     /// @notice Deposit assets into the escrow of the pool.
     /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
-    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external;
+    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external payable;
 
     /// @notice Note a deposit of assets into the escrow of the pool.
     /// @dev    Must be followed by a transfer of the equivalent amount of assets to `IBalanceSheet.escrow(poolId)`
     ///         This function is mostly useful to keep higher level integrations CEI adherent.
     /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
-    function noteDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external;
+    function noteDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
+        external
+        payable;
 
     /// @notice Withdraw assets from the escrow of the pool.
     /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
@@ -111,32 +114,38 @@ interface IBalanceSheet {
         uint256 tokenId,
         address receiver,
         uint128 amount
-    ) external;
+    ) external payable;
 
     /// @notice Increase the reserved balance of the pool. These assets are removed from the available balance
     ///         and cannot be withdrawn before they are unreserved.
     ///
     ///         It is possible to reserve more than the current balance, to lock future expected assets.
-    function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external;
+    function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external payable;
 
     /// @notice Decrease the reserved balance of the pool. These assets are re-added to the available balance.
-    function unreserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external;
+    function unreserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
+        external
+        payable;
 
     /// @notice Issue new share tokens. Increases the total issuance.
-    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
+    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external payable;
 
     /// @notice Revoke share tokens. Decreases the total issuance.
-    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external;
+    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external payable;
 
     /// @notice Sends the queued updated holding amount to the Hub
-    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 extraGasLimit)
-        external
-        returns (uint256 cost);
+    function submitQueuedAssets(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 
     /// @notice Sends the queued updated shares changed to the Hub
-    function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit)
+    function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit, address refund)
         external
-        returns (uint256 cost);
+        payable;
 
     /// @notice Force-transfers share tokens.
     function transferSharesFrom(
@@ -146,23 +155,23 @@ interface IBalanceSheet {
         address from,
         address to,
         uint256 amount
-    ) external;
+    ) external payable;
 
     /// @notice Override the price pool per asset, to be used for any other balance sheet interactions.
     /// @dev    This can be used to note an interaction at a lower/higher price than the current one.
     ///         resetPricePoolPerAsset MUST be called after the balance sheet interactions using this price.
-    function overridePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 value) external;
+    function overridePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 value) external payable;
 
     /// @notice Reset the price pool per asset.
-    function resetPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external;
+    function resetPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
 
     /// @notice Override the price pool per share, to be used for any other balance sheet interactions.
     /// @dev    This can be used to note an interaction at a lower/higher price than the current one.
     ///         resetPricePoolPerShare MUST be called after the balance sheet interactions using this price.
-    function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external;
+    function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external payable;
 
     /// @notice Reset the price pool per share.
-    function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external;
+    function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external payable;
 
     /// @notice Returns the pool escrow.
     /// @dev    Assets for pending deposit requests are not held by the pool escrow.

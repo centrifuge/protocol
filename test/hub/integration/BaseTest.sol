@@ -37,6 +37,7 @@ contract BaseTest is HubDeployer, Test {
     bytes32 immutable INVESTOR = bytes32("Investor");
     address immutable ASYNC_REQUEST_MANAGER = makeAddr("AsyncRequestManager");
     address immutable SYNC_REQUEST_MANAGER = makeAddr("SyncManager");
+    address immutable REFUND = makeAddr("Refund");
 
     AssetId immutable USDC_C2 = newAssetId(CHAIN_CV, 1);
     AssetId immutable EUR_STABLE_C2 = newAssetId(CHAIN_CV, 2);
@@ -95,8 +96,6 @@ contract BaseTest is HubDeployer, Test {
 
         // We should not use the block ChainID
         vm.chainId(0xDEAD);
-
-        gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
     }
 
     function _assertEqAccountValue(PoolId poolId, AccountId accountId, bool expectedIsPositive, uint128 expectedValue)

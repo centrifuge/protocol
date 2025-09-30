@@ -60,9 +60,10 @@ contract BalanceSheetTest is Test {
     address immutable FROM = makeAddr("FROM");
     address immutable TO = makeAddr("TO");
     address immutable MANAGER = makeAddr("MANAGER");
+    address immutable REFUND = makeAddr("REFUND");
 
     uint128 constant AMOUNT = 100;
-    uint128 constant COST = 123;
+    uint256 constant COST = 123;
     PoolId constant POOL_A = PoolId.wrap(1);
     ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("scId"));
     AssetId constant ASSET_20 = AssetId.wrap(3);
@@ -107,6 +108,7 @@ contract BalanceSheetTest is Test {
             abi.encodeWithSelector(IPoolEscrowProvider.escrow.selector, POOL_A),
             abi.encode(escrow)
         );
+        vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.isBatching.selector), abi.encode(false));
 
         vm.startPrank(AUTH);
         balanceSheet.file("spoke", address(spoke));
@@ -115,6 +117,10 @@ contract BalanceSheetTest is Test {
         balanceSheet.file("gateway", address(gateway));
         balanceSheet.updateManager(POOL_A, MANAGER, true);
         vm.stopPrank();
+
+        vm.deal(ANY, 1 ether);
+        vm.deal(MANAGER, 1 ether);
+        vm.deal(AUTH, 1 ether);
     }
 
     function _mockEscrowDeposit(address asset, uint256 tokenId, uint128 amount) internal {
@@ -158,6 +164,7 @@ contract BalanceSheetTest is Test {
     ) internal {
         vm.mockCall(
             address(sender),
+            COST,
             abi.encodeWithSelector(
                 ISpokeMessageSender.sendUpdateHoldingAmount.selector,
                 POOL_A,
@@ -170,15 +177,17 @@ contract BalanceSheetTest is Test {
                     nonce: nonce
                 }),
                 price,
-                EXTRA_GAS
+                EXTRA_GAS,
+                REFUND
             ),
-            abi.encode(COST)
+            abi.encode()
         );
     }
 
     function _mockSendUpdateShares(uint128 delta, bool isPositive, bool isSnapshot, uint64 nonce) internal {
         vm.mockCall(
             address(sender),
+            COST,
             abi.encodeWithSelector(
                 ISpokeMessageSender.sendUpdateShares.selector,
                 POOL_A,
@@ -189,9 +198,10 @@ contract BalanceSheetTest is Test {
                     isSnapshot: isSnapshot,
                     nonce: nonce
                 }),
-                EXTRA_GAS
+                EXTRA_GAS,
+                REFUND
             ),
-            abi.encode(COST)
+            abi.encode()
         );
     }
 }
@@ -219,15 +229,7 @@ contract BalanceSheetTestFile is BalanceSheetTest {
 }
 
 contract BalanceSheetTestMulticall is BalanceSheetTest {
-    function testErrNotPayable() public {
-        vm.deal(AUTH, 1);
-        vm.startPrank(AUTH);
-        vm.expectRevert(IBalanceSheet.NotPayable.selector);
-        balanceSheet.multicall{value: 1}(new bytes[](0));
-    }
-
     function testMulticall() public {
-        vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.isBatching.selector), abi.encode(false));
         vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.startBatching.selector), abi.encode());
         vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.endBatching.selector), abi.encode(0));
         _mockEscrowDeposit(erc20, 0, AMOUNT);
@@ -654,14 +656,14 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
+        balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
     }
 
     function testSubmitQueuedAssets(bool managerOrAuth) public {
         _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
 
         vm.prank(managerOrAuth ? MANAGER : AUTH);
-        assertEq(balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS), COST);
+        balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
 
         (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(nonce, 1);
@@ -677,7 +679,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         emit IBalanceSheet.SubmitQueuedAssets(
             POOL_A, SC_1, ASSET_20, ISpokeMessageSender.UpdateData(0, !IS_DEPOSIT, IS_SNAPSHOT, 0), IDENTITY_PRICE
         );
-        balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
+        balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
     }
 
     function testSubmitQueuedAssetsWithMoreDepositAmount() public {
@@ -693,7 +695,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         emit IBalanceSheet.SubmitQueuedAssets(
             POOL_A, SC_1, ASSET_20, ISpokeMessageSender.UpdateData(AMOUNT * 2, IS_DEPOSIT, IS_SNAPSHOT, 0), ASSET_PRICE
         );
-        balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
+        balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
 
         (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
         assertEq(deposits, 0);
@@ -712,7 +714,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         vm.startPrank(AUTH);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
         balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT * 3);
-        balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
+        balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
 
         (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
         assertEq(deposits, 0);
@@ -731,7 +733,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         vm.startPrank(AUTH);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
         balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT);
-        balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
+        balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
 
         (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
         assertEq(deposits, 0);
@@ -750,7 +752,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         vm.startPrank(AUTH);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc6909, TOKEN_ID, AMOUNT);
-        balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
+        balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
 
         (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
         assertEq(deposits, 0);
@@ -764,10 +766,10 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     function testSubmitQueuedAssetsTwice() public {
         vm.startPrank(AUTH);
         _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
-        balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
+        balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
 
         _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 1);
-        balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
+        balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
 
         (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(nonce, 2);
@@ -778,14 +780,14 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        balanceSheet.submitQueuedShares{value: COST}(POOL_A, SC_1, EXTRA_GAS, REFUND);
     }
 
     function testSubmitQueuedShares(bool managerOrAuth) public {
         _mockSendUpdateShares(0, !IS_ISSUANCE, IS_SNAPSHOT, 0);
 
         vm.prank(managerOrAuth ? MANAGER : AUTH);
-        assertEq(balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS), COST);
+        balanceSheet.submitQueuedShares{value: COST}(POOL_A, SC_1, EXTRA_GAS, REFUND);
 
         (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(nonce, 1);
@@ -802,7 +804,7 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
         emit IBalanceSheet.SubmitQueuedShares(
             POOL_A, SC_1, ISpokeMessageSender.UpdateData(AMOUNT, IS_ISSUANCE, IS_SNAPSHOT, 0)
         );
-        balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        balanceSheet.submitQueuedShares{value: COST}(POOL_A, SC_1, EXTRA_GAS, REFUND);
 
         (uint128 delta, bool isPositive,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(delta, 0);
@@ -817,7 +819,7 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
 
         vm.startPrank(AUTH);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
-        balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        balanceSheet.submitQueuedShares{value: COST}(POOL_A, SC_1, EXTRA_GAS, REFUND);
     }
 
     function testSubmitQueuedSharesAfterUpdateAssets() public {
@@ -828,7 +830,7 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
         vm.startPrank(AUTH);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
-        balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        balanceSheet.submitQueuedShares{value: COST}(POOL_A, SC_1, EXTRA_GAS, REFUND);
     }
 
     function testSubmitQueuedSharesTwice() public {
@@ -836,9 +838,9 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
 
         vm.startPrank(AUTH);
         _mockSendUpdateShares(0, !IS_ISSUANCE, IS_SNAPSHOT, 0);
-        balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        balanceSheet.submitQueuedShares{value: COST}(POOL_A, SC_1, EXTRA_GAS, REFUND);
         _mockSendUpdateShares(0, !IS_ISSUANCE, IS_SNAPSHOT, 1);
-        balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        balanceSheet.submitQueuedShares{value: COST}(POOL_A, SC_1, EXTRA_GAS, REFUND);
 
         (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(nonce, 2);

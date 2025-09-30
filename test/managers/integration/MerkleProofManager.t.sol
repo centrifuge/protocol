@@ -43,7 +43,7 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
         defaultPricePoolPerAsset = d18(1, 1);
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
-        assetId = spoke.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId);
+        assetId = spoke.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId, address(this));
         spoke.addPool(POOL_A);
         spoke.addShareClass(
             POOL_A,

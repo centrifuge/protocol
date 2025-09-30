@@ -17,10 +17,10 @@ interface ILocalCentrifugeId {
 /// @notice Interface for dispatch-only gateway
 interface IRootMessageSender {
     /// @notice Creates and send the message
-    function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target) external returns (uint256 cost);
+    function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target, address refund) external payable;
 
     /// @notice Creates and send the message
-    function sendCancelUpgrade(uint16 centrifugeId, bytes32 target) external returns (uint256 cost);
+    function sendCancelUpgrade(uint16 centrifugeId, bytes32 target, address refund) external payable;
 
     /// @notice Creates and send the message
     function sendRecoverTokens(
@@ -29,14 +29,15 @@ interface IRootMessageSender {
         bytes32 token,
         uint256 tokenId,
         bytes32 to,
-        uint256 amount
-    ) external returns (uint256 cost);
+        uint256 amount,
+        address refund
+    ) external payable;
 }
 
 /// @notice Interface for dispatch-only gateway
 interface IHubMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
-    function sendNotifyPool(uint16 centrifugeId, PoolId poolId) external returns (uint256 cost);
+    function sendNotifyPool(uint16 centrifugeId, PoolId poolId, address refund) external payable;
 
     /// @notice Creates and send the message
     function sendNotifyShareClass(
@@ -47,8 +48,9 @@ interface IHubMessageSender is ILocalCentrifugeId {
         string memory symbol,
         uint8 decimals,
         bytes32 salt,
-        bytes32 hook
-    ) external returns (uint256 cost);
+        bytes32 hook,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
     function sendNotifyShareMetadata(
@@ -56,23 +58,32 @@ interface IHubMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         ShareClassId scId,
         string memory name,
-        string memory symbol
-    ) external returns (uint256 cost);
+        string memory symbol,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
-    function sendUpdateShareHook(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 hook)
+    function sendUpdateShareHook(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 hook, address refund)
         external
-        returns (uint256 cost);
+        payable;
 
     /// @notice Creates and send the message
-    function sendNotifyPricePoolPerShare(uint16 chainId, PoolId poolId, ShareClassId scId, D18 pricePerShare)
-        external
-        returns (uint256 cost);
+    function sendNotifyPricePoolPerShare(
+        uint16 chainId,
+        PoolId poolId,
+        ShareClassId scId,
+        D18 pricePerShare,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
-    function sendNotifyPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerShare)
-        external
-        returns (uint256 cost);
+    function sendNotifyPricePoolPerAsset(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        D18 pricePerShare,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
     function sendUpdateRestriction(
@@ -80,8 +91,9 @@ interface IHubMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         ShareClassId scId,
         bytes calldata payload,
-        uint128 extraGasLimit
-    ) external returns (uint256 cost);
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
     function sendUpdateContract(
@@ -90,8 +102,9 @@ interface IHubMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         bytes32 target,
         bytes calldata payload,
-        uint128 extraGasLimit
-    ) external returns (uint256 cost);
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
     function sendUpdateVault(
@@ -100,18 +113,21 @@ interface IHubMessageSender is ILocalCentrifugeId {
         AssetId assetId,
         bytes32 vaultOrFactory,
         VaultUpdateKind kind,
-        uint128 extraGasLimit
-    ) external returns (uint256 cost);
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
-    function sendSetRequestManager(uint16 centrifugeId, PoolId poolId, bytes32 manager)
-        external
-        returns (uint256 cost);
+    function sendSetRequestManager(uint16 centrifugeId, PoolId poolId, bytes32 manager, address refund) external payable;
 
     /// @notice Creates and send the message
-    function sendUpdateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
-        external
-        returns (uint256 cost);
+    function sendUpdateBalanceSheetManager(
+        uint16 centrifugeId,
+        PoolId poolId,
+        bytes32 who,
+        bool canManage,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
     function sendExecuteTransferShares(
@@ -120,18 +136,27 @@ interface IHubMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         bytes32 receiver,
         uint128 amount,
-        uint128 extraGasLimit
-    ) external returns (uint256 cost);
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
-    function sendMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge)
-        external
-        returns (uint256 cost);
+    function sendMaxAssetPriceAge(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint64 maxPriceAge,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
-    function sendMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge)
-        external
-        returns (uint256 cost);
+    function sendMaxSharePriceAge(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        uint64 maxPriceAge,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
     function sendRequestCallback(
@@ -139,8 +164,9 @@ interface IHubMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         AssetId assetId,
         bytes calldata payload,
-        uint128 extraGasLimit
-    ) external returns (uint256 cost);
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
     function sendSetPoolAdapters(
@@ -148,13 +174,14 @@ interface IHubMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         bytes32[] memory adapters,
         uint8 threshold,
-        uint8 recoveryIndex
-    ) external returns (uint256 cost);
+        uint8 recoveryIndex,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
-    function sendUpdateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
+    function sendUpdateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage, address refund)
         external
-        returns (uint256 cost);
+        payable;
 }
 
 /// @notice Interface for dispatch-only gateway
@@ -174,11 +201,12 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         bytes32 receiver,
         uint128 amount,
         uint128 extraGasLimit,
-        uint128 remoteExtraGasLimit
-    ) external returns (uint256 cost);
+        uint128 remoteExtraGasLimit,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
-    function sendRegisterAsset(uint16 centrifugeId, AssetId assetId, uint8 decimals) external returns (uint256 cost);
+    function sendRegisterAsset(uint16 centrifugeId, AssetId assetId, uint8 decimals, address refund) external payable;
 
     /// @notice Creates and send the message
     function sendUpdateHoldingAmount(
@@ -187,16 +215,21 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         AssetId assetId,
         UpdateData calldata data,
         D18 pricePoolPerAsset,
-        uint128 extraGasLimit
-    ) external returns (uint256 cost);
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
-    function sendUpdateShares(PoolId poolId, ShareClassId scId, UpdateData calldata data, uint128 extraGasLimit)
-        external
-        returns (uint256 cost);
+    function sendUpdateShares(
+        PoolId poolId,
+        ShareClassId scId,
+        UpdateData calldata data,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
-    function sendRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload)
+    function sendRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload, address refund)
         external
-        returns (uint256 cost);
+        payable;
 }
