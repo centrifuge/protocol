@@ -50,6 +50,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     address nonMember = makeAddr("nonMember");
     address randomUser = makeAddr("randomUser");
     address immutable ADMIN = address(adminSafe);
+    address immutable REFUND = makeAddr("REFUND");
 
     uint128 constant MAX_UINT128 = type(uint128).max;
     uint64 constant MAX_UINT64 = type(uint64).max;
