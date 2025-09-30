@@ -131,7 +131,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         spoke.vaultDetails(vault); // Ensure vault is valid
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vault.share(), owner, address(this), shares);
 
-        spoke.crosschainTransferShares{value: msg.value}(
+        spoke.crosschainTransferShares{value: _payment()}(
             centrifugeId, vault.poolId(), vault.scId(), receiver, shares, extraGasLimit, remoteExtraGasLimit, refund
         );
     }
@@ -287,5 +287,9 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     ///         on behalf of the controller.
     function _canClaim(IBaseVault vault, address receiver, address controller) internal view {
         require(controller == msg.sender || (controller == receiver && isEnabled(vault, controller)), InvalidSender());
+    }
+
+    function _payment() internal view returns (uint256 value) {
+        return gateway.isBatching() ? 0 : msg.value;
     }
 }
