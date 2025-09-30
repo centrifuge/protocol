@@ -122,7 +122,9 @@ interface IHub {
         payable;
 
     /// @notice Notify to a CV instance that share metadata has updated
-    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) external payable;
+    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund)
+        external
+        payable;
 
     /// @notice Update on a CV instance the hook of a share token
     function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook, address refund)
@@ -314,7 +316,9 @@ interface IHub {
     function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external payable;
 
     /// @notice Perform an accounting entries update.
-    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external payable;
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits)
+        external
+        payable;
 
     /// @notice Set adapters for a pool in another chain. Pool related message will go by these adapters.
     ///         The adapters should already be deployed and wired.

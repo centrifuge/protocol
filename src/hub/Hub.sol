@@ -124,13 +124,16 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
         uint8 decimals = hubRegistry.decimals(poolId);
 
         emit NotifyShareClass(centrifugeId, poolId, scId);
-        sender.sendNotifyShareClass{
-            value: _payment()
-        }(centrifugeId, poolId, scId, name, symbol, decimals, salt, hook, refund);
+        sender.sendNotifyShareClass{value: _payment()}(
+            centrifugeId, poolId, scId, name, symbol, decimals, salt, hook, refund
+        );
     }
 
     /// @inheritdoc IHub
-    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) public payable {
+    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund)
+        public
+        payable
+    {
         _isManager(poolId);
 
         (string memory name, string memory symbol,) = shareClassManager.metadata(scId);
@@ -478,9 +481,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
 
         multiAdapter.setAdapters(centrifugeId, poolId, localAdapters, threshold, recoveryIndex);
 
-        sender.sendSetPoolAdapters{
-            value: _payment()
-        }(centrifugeId, poolId, remoteAdapters, threshold, recoveryIndex, refund);
+        sender.sendSetPoolAdapters{value: _payment()}(
+            centrifugeId, poolId, remoteAdapters, threshold, recoveryIndex, refund
+        );
     }
 
     /// @inheritdoc IHub
