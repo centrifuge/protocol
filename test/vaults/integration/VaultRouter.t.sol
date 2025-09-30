@@ -349,7 +349,9 @@ contract VaultRouterTest is BaseTest {
         // multicall
         bytes[] memory calls = new bytes[](1);
         calls[0] = abi.encodeWithSelector(vaultRouter.executeLockedDepositRequest.selector, vault_, self);
-        vaultRouter.multicall{value: GAS}(calls);
+        gateway.withBatch{
+            value: GAS
+        }(address(vaultRouter), abi.encodeWithSelector(vaultRouter.multicall.selector, calls), REFUND);
 
         (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, 0, self);
 
@@ -383,7 +385,9 @@ contract VaultRouterTest is BaseTest {
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(vaultRouter.claimDeposit.selector, vault_, self, self);
         calls[1] = abi.encodeWithSelector(vaultRouter.requestRedeem.selector, vault_, sharePayout, self, self, fuel);
-        vaultRouter.multicall{value: GAS}(calls);
+        gateway.withBatch{
+            value: GAS
+        }(address(vaultRouter), abi.encodeWithSelector(vaultRouter.multicall.selector, calls), REFUND);
 
         (uint128 assetPayout) = fulfillRedeemRequest(vault, assetId, sharePayout, self);
         assertApproxEqAbs(shareToken.balanceOf(self), 0, 1);
@@ -406,7 +410,9 @@ contract VaultRouterTest is BaseTest {
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault1, amount1, self, self);
         calls[1] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault2, amount2, self, self);
-        vaultRouter.multicall{value: GAS}(calls);
+        gateway.withBatch{
+            value: GAS
+        }(address(vaultRouter), abi.encodeWithSelector(vaultRouter.multicall.selector, calls), REFUND);
 
         // trigger - deposit order fulfillment
         AssetId assetId1 = spoke.assetToId(address(erc20X), erc20TokenId);
@@ -445,7 +451,9 @@ contract VaultRouterTest is BaseTest {
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(vaultRouter.lockDepositRequest.selector, vault_, amount, investor, investor);
         calls[1] = abi.encodeWithSelector(vaultRouter.executeLockedDepositRequest.selector, vault_, investor);
-        vaultRouter.multicall{value: GAS}(calls);
+        gateway.withBatch{
+            value: GAS
+        }(address(vaultRouter), abi.encodeWithSelector(vaultRouter.multicall.selector, calls), REFUND);
 
         (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, 0, investor);
 
@@ -475,9 +483,9 @@ contract VaultRouterTest is BaseTest {
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault_, amount / 2, self, self);
         calls[1] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault_, amount / 2, self, self);
-
-        assertEq(address(vaultRouter).balance, 0);
-        vaultRouter.multicall{value: GAS}(calls);
+        gateway.withBatch{
+            value: GAS
+        }(address(vaultRouter), abi.encodeWithSelector(vaultRouter.multicall.selector, calls), REFUND);
     }
 
     // --- helpers ---

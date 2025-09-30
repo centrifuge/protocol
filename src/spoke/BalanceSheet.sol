@@ -56,10 +56,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
 
     /// @dev Check if the msg.sender is ward or a manager
     modifier authOrManager(PoolId poolId) {
-        require(
-            wards[msg.sender] == 1 || manager[poolId][msg.sender] || manager[poolId][gateway.batcher()],
-            IAuth.NotAuthorized()
-        );
+        require(wards[_sender()] == 1 || manager[poolId][_sender()], IAuth.NotAuthorized());
         _;
     }
 
@@ -362,5 +359,10 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
 
         D18 pricePoolPerShare = spoke.pricePoolPerShare(poolId, scId, true);
         return pricePoolPerShare;
+    }
+
+    function _sender() internal view returns (address) {
+        address batcher = gateway.batcher();
+        return address(batcher) != address(0) ? batcher : msg.sender;
     }
 }
