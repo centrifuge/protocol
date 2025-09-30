@@ -30,6 +30,7 @@ contract TestCommon is Test {
     ShareClassId constant SC_A = ShareClassId.wrap(bytes16(uint128(2)));
     AssetId constant ASSET_A = AssetId.wrap(3);
     address constant ADMIN = address(1);
+    address immutable REFUND = makeAddr("REFUND");
     JournalEntry[] EMPTY;
 
     IHubRegistry immutable hubRegistry = IHubRegistry(makeAddr("HubRegistry"));
@@ -55,7 +56,7 @@ contract TestCommon is Test {
 }
 
 contract TestMainMethodsChecks is TestCommon {
-    function testErrNotAuthotized() public {
+    function testErrNotAuthorized() public {
         vm.startPrank(makeAddr("noGateway"));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -76,28 +77,28 @@ contract TestMainMethodsChecks is TestCommon {
         );
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.notifyPool(POOL_A, 0);
+        hub.notifyPool(POOL_A, 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.notifyShareClass(POOL_A, ShareClassId.wrap(0), 0, bytes32(""));
+        hub.notifyShareClass(POOL_A, ShareClassId.wrap(0), 0, bytes32(""), REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.notifyShareMetadata(POOL_A, ShareClassId.wrap(0), 0);
+        hub.notifyShareMetadata(POOL_A, ShareClassId.wrap(0), 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateShareHook(POOL_A, ShareClassId.wrap(0), 0, bytes32(""));
+        hub.updateShareHook(POOL_A, ShareClassId.wrap(0), 0, bytes32(""), REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.notifySharePrice(POOL_A, ShareClassId.wrap(0), 0);
+        hub.notifySharePrice(POOL_A, ShareClassId.wrap(0), 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.notifyAssetPrice(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
+        hub.notifyAssetPrice(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.setMaxAssetPriceAge(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0);
+        hub.setMaxAssetPriceAge(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.setMaxSharePriceAge(0, POOL_A, ShareClassId.wrap(0), 0);
+        hub.setMaxSharePriceAge(0, POOL_A, ShareClassId.wrap(0), 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.setPoolMetadata(POOL_A, bytes(""));
@@ -109,19 +110,21 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateHubManager(POOL_A, address(0), false);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateBalanceSheetManager(0, POOL_A, bytes32(0), false);
+        hub.updateBalanceSheetManager(0, POOL_A, bytes32(0), false, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.addShareClass(POOL_A, "", "", bytes32(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateRestriction(POOL_A, ShareClassId.wrap(0), 0, bytes(""), 0);
+        hub.updateRestriction(POOL_A, ShareClassId.wrap(0), 0, bytes(""), 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateVault(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), VaultUpdateKind.DeployAndLink, 0);
+        hub.updateVault(
+            POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), VaultUpdateKind.DeployAndLink, 0, REFUND
+        );
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateContract(POOL_A, ShareClassId.wrap(0), 0, bytes32(0), bytes(""), 0);
+        hub.updateContract(POOL_A, ShareClassId.wrap(0), 0, bytes32(0), bytes(""), 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateSharePrice(POOL_A, ShareClassId.wrap(0), D18.wrap(0));
@@ -165,10 +168,10 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateJournal(POOL_A, EMPTY, EMPTY);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.setAdapters(0, POOL_A, new IAdapter[](0), new bytes32[](0), 0, 0);
+        hub.setAdapters(0, POOL_A, new IAdapter[](0), new bytes32[](0), 0, 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateGatewayManager(0, POOL_A, bytes32(0), false);
+        hub.updateGatewayManager(0, POOL_A, bytes32(0), false, REFUND);
 
         vm.stopPrank();
     }
@@ -180,7 +183,7 @@ contract TestNotifyShareClass is TestCommon {
 
         vm.prank(ADMIN);
         vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        hub.notifyShareClass(POOL_A, SC_A, 23, bytes32(""));
+        hub.notifyShareClass(POOL_A, SC_A, 23, bytes32(""), REFUND);
     }
 }
 

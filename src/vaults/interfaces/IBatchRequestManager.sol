@@ -186,9 +186,6 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     /// @notice Dispatched when unknown request type is encountered.
     error UnknownRequestType();
 
-    /// @notice Dispatched when there is not enough gas for payment methods
-    error NotEnoughGas();
-
     error InsufficientPending();
     error ZeroApprovalAmount();
     error EpochNotFound();
@@ -227,8 +224,9 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         AssetId depositAssetId,
         uint32 nowDepositEpochId,
         uint128 approvedAssetAmount,
-        D18 pricePoolPerAsset
-    ) external returns (uint256 cost);
+        D18 pricePoolPerAsset,
+        address refund
+    ) external payable;
 
     function approveRedeems(
         PoolId poolId,
@@ -237,7 +235,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         uint32 nowRedeemEpochId,
         uint128 approvedShareAmount,
         D18 pricePoolPerAsset
-    ) external;
+    ) external payable;
 
     function issueShares(
         PoolId poolId,
@@ -245,8 +243,9 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         AssetId depositAssetId,
         uint32 nowIssueEpochId,
         D18 navPoolPerShare,
-        uint128 extraGasLimit
-    ) external returns (uint256 cost);
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 
     function revokeShares(
         PoolId poolId,
@@ -254,16 +253,25 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         AssetId payoutAssetId,
         uint32 nowRevokeEpochId,
         D18 navPoolPerShare,
-        uint128 extraGasLimit
-    ) external returns (uint256 cost);
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 
-    function forceCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
-        external
-        returns (uint256 cost);
+    function forceCancelDepositRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 investor,
+        AssetId depositAssetId,
+        address refund
+    ) external payable;
 
-    function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
-        external
-        returns (uint256 cost);
+    function forceCancelRedeemRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 investor,
+        AssetId payoutAssetId,
+        address refund
+    ) external payable;
 
     //----------------------------------------------------------------------------------------------
     // View methods

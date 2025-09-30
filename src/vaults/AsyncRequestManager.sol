@@ -8,6 +8,7 @@ import {IAsyncRedeemManager} from "./interfaces/IVaultManagers.sol";
 import {IAsyncDepositManager} from "./interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "./interfaces/IBaseRequestManager.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "./interfaces/IAsyncVault.sol";
+import {IRefundEscrowFactory, IRefundEscrow} from "./factories/RefundEscrowFactory.sol";
 import {IAsyncRequestManager, AsyncInvestmentState} from "./interfaces/IVaultManagers.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -47,12 +48,16 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     ISpoke public spoke;
     IBalanceSheet public balanceSheet;
+    IRefundEscrowFactory public refundEscrowFactory;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
 
-    constructor(IEscrow globalEscrow_, address deployer) Auth(deployer) {
+    constructor(IEscrow globalEscrow_, IRefundEscrowFactory refundEscrowFactory_, address deployer) Auth(deployer) {
         globalEscrow = globalEscrow_;
+        refundEscrowFactory = refundEscrowFactory_;
     }
+
+    receive() external payable {}
 
     //----------------------------------------------------------------------------------------------
     // Administration
@@ -61,8 +66,20 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     function file(bytes32 what, address data) external auth {
         if (what == "spoke") spoke = ISpoke(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
+        else if (what == "refundEscrowFactory") refundEscrowFactory = IRefundEscrowFactory(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
+    }
+
+    /// @inheritdoc IAsyncRequestManager
+    function depositSubsidy(PoolId poolId) external payable {
+        IRefundEscrow escrow = refundEscrowFactory.get(poolId);
+        if (address(escrow).code.length == 0) {
+            escrow = refundEscrowFactory.newEscrow(poolId);
+        }
+
+        escrow.depositFunds{value: msg.value}();
+        emit DepositSubsidy(poolId, msg.sender, msg.value);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -151,7 +168,22 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     }
 
     function _sendRequest(IBaseVault vault_, bytes memory payload) internal {
-        spoke.request(vault_.poolId(), vault_.scId(), spoke.vaultDetails(vault_).assetId, payload);
+        IRefundEscrow refund;
+        uint256 payment;
+
+        if (!balanceSheet.gateway().isBatching()) {
+            refund = refundEscrowFactory.get(vault_.poolId());
+            require(address(refund).code.length > 0, RefundEscrowNotDeployed());
+
+            uint256 availableSubsidy = address(refund).balance;
+            refund.withdrawFunds(address(this), availableSubsidy); // All funds goes to this contract
+            payment = availableSubsidy;
+        }
+
+        // It use all funds for the message, and the rest is refunded again to the RefundEscrow
+        spoke.request{
+            value: payment
+        }(vault_.poolId(), vault_.scId(), spoke.vaultDetails(vault_).assetId, payload, address(refund), true);
     }
 
     //----------------------------------------------------------------------------------------------

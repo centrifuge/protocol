@@ -48,9 +48,6 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
         valuation = new MockValuation(hubRegistry);
         vm.label(address(valuation), "mockValuation");
 
-        // Subsidizing guardian actions
-        gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
-
         // Accounts
         vm.deal(FUNDED, 100 ether);
     }
@@ -85,7 +82,7 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
 
     function _registerUSDC() internal {
         vm.prank(FUNDED);
-        usdcId = spoke.registerAsset{value: GAS}(LOCAL_CENTRIFUGE_ID, address(usdc), 0);
+        usdcId = spoke.registerAsset{value: GAS}(LOCAL_CENTRIFUGE_ID, address(usdc), 0, FUNDED);
     }
 
     function _mintUSDC(address receiver, uint256 amount) internal {
@@ -99,9 +96,6 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
 
         vm.prank(FM);
         hub.addShareClass(POOL_A, "ShareClass1", "sc1", bytes32("salt"));
-
-        vm.prank(FUNDED);
-        gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(POOL_A);
     }
 
     function _updateContractSyncDepositMaxReserveMsg(AssetId assetId, uint128 maxReserve)
