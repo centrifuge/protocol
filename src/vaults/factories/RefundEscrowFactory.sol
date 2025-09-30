@@ -14,17 +14,20 @@ contract RefundEscrowFactory is Auth, IRefundEscrowFactory {
 
     constructor(address deployer) Auth(deployer) {}
 
+    /// @inheritdoc IRefundEscrowFactory
     function file(bytes32 what, address data) external auth {
         if (what == "controller") controller = data;
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 
+    /// @inheritdoc IRefundEscrowFactory
     function newEscrow(PoolId poolId) external auth returns (IRefundEscrow escrow) {
         escrow = new RefundEscrow{salt: bytes32(uint256(poolId.raw()))}(address(controller));
         emit DeployRefundEscrow(poolId, address(escrow));
     }
 
+    /// @inheritdoc IRefundEscrowFactory
     function get(PoolId poolId) public view returns (IRefundEscrow) {
         bytes32 salt = bytes32(uint256(poolId.raw()));
         bytes32 hash = keccak256(

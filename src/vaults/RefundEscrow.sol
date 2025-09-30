@@ -10,8 +10,10 @@ contract RefundEscrow is Auth, IRefundEscrow {
 
     receive() external payable {}
 
+    /// @inheritdoc IRefundEscrow
     function depositFunds() external payable auth {}
 
+    /// @inheritdoc IRefundEscrow
     function withdrawFunds(address to, uint256 value) external auth {
         (bool success,) = to.call{value: value}("");
         require(success, CannotWithdraw());

@@ -270,7 +270,7 @@ contract TestData is FullDeployer {
 
     function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
         PoolId poolId = hubRegistry.poolId(centrifugeId, 2);
-        asyncRequestManager.depositSubsidy{value: 0.5 ether}(poolId);
+        asyncRequestManager.depositSubsidy(poolId);
 
         guardian.createPool(poolId, msg.sender, USD_ID);
         hub.updateHubManager(poolId, admin, true);

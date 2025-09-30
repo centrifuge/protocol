@@ -88,8 +88,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         emit UpdateManager(poolId, who, canManage);
     }
 
-    receive() external payable {}
-
     //----------------------------------------------------------------------------------------------
     // Incoming
     //----------------------------------------------------------------------------------------------

@@ -175,8 +175,9 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
             refund = refundEscrowFactory.get(vault_.poolId());
             require(address(refund).code.length > 0, RefundEscrowNotDeployed());
 
-            refund.withdrawFunds(address(this), address(refund).balance); // All funds goes to this contract
-            payment = address(this).balance;
+            uint256 availableSubsidy = address(refund).balance;
+            refund.withdrawFunds(address(this), availableSubsidy); // All funds goes to this contract
+            payment = availableSubsidy;
         }
 
         // It use all funds for the message, and the rest is refunded again to the RefundEscrow
