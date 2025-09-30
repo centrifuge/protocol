@@ -6,17 +6,18 @@ import {IGateway} from "../../../src/common/interfaces/IGateway.sol";
 
 import "forge-std/Test.sol";
 
-contract BatchedMulticallImpl is BatchedMulticall {
+contract BatchedMulticallImpl is BatchedMulticall, Test {
     uint256 total;
 
     constructor(IGateway gateway) BatchedMulticall(gateway) {}
 
-    function add(uint256 i) external {
-        total += i;
+    function isBatching() external view returns (bool) {
+        return _isBatching;
     }
 
-    function nested(bytes[] calldata data) external {
-        multicall(data);
+    function add(uint256 i) external {
+        assertEq(_payment(), 0);
+        total += i;
     }
 }
 
@@ -35,11 +36,12 @@ contract BatchedMulticallTestMulticall is BatchedMulticallTest {
     function _foo() external {}
 
     function testErrAlreadyBatching() external {
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.isBatching.selector), abi.encode(true));
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatching.selector), abi.encode());
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatching.selector), abi.encode());
 
         bytes[] memory calls = new bytes[](1);
-        calls[0] = abi.encodeWithSelector(multicall.nested.selector, calls);
+        calls[0] = abi.encodeWithSelector(multicall.add.selector, 1);
 
         vm.prank(ANY);
         vm.expectRevert(IGateway.AlreadyBatching.selector);
@@ -47,6 +49,7 @@ contract BatchedMulticallTestMulticall is BatchedMulticallTest {
     }
 
     function testMulticall() external {
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.isBatching.selector), abi.encode(false));
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatching.selector), abi.encode());
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatching.selector), abi.encode());
 
@@ -56,6 +59,8 @@ contract BatchedMulticallTestMulticall is BatchedMulticallTest {
 
         vm.prank(ANY);
         multicall.multicall(calls);
+
+        assertEq(multicall.isBatching(), false);
     }
 }
 

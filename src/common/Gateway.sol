@@ -241,7 +241,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(isBatching, NoBatched());
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
 
-        isBatching = false;
         TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
 
         uint256 cost;
@@ -256,6 +255,8 @@ contract Gateway is Auth, Recoverable, IGateway {
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
         }
+
+        isBatching = false;
 
         _refund(refund, msg.value - cost);
     }
