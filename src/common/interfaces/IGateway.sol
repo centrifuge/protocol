@@ -123,7 +123,6 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Calls a method that should be in the same contract as the caller, as a callback.
     ///         The method called will be wrapped inside startBatching and endBatching,
     ///         so any method call inside that requires messaging will be batched.
-    /// @param  data encoding data for the callback method
     /// @dev    Helper contract that enables integrations to automatically batch multiple cross-chain transactions.
     ///         Should be used like:
     ///         ```
@@ -140,6 +139,7 @@ interface IGateway is IMessageHandler, IRecoverable {
     ///             }
     ///         }
     ///         ```
+    /// @param  data encoding data for the callback method
     function withBatch(bytes memory data, address refund) external payable;
 
     /// @notice Returns the current gateway batching level.
