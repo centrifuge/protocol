@@ -26,7 +26,6 @@ contract MultiAdapter is Auth, IMultiAdapter {
     IMessageHandler public gateway;
     IMessageProperties public messageProperties;
 
-    /// @notice Each time adapters are updated, a new session starts which invalidates old votes
     uint64 globalSessionId;
 
     mapping(uint16 centrifugeId => mapping(PoolId => IAdapter[])) public adapters;
@@ -93,6 +92,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
         adapters[centrifugeId][poolId] = addresses;
         if (poolId == GLOBAL_ID) globalSessionId = sessionId;
+
         emit SetAdapters(centrifugeId, poolId, addresses, threshold_, recoveryIndex_);
     }
 

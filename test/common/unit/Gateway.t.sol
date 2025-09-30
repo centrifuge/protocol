@@ -117,7 +117,13 @@ contract GatewayExt is Gateway {
     }
 
     function process(uint16 centrifugeId, bytes memory message, bytes32 messageHash) public {
-        _process(centrifugeId, message, messageHash);
+        // Copied only the try catch from `handle`, to be able to measure the gas cost
+        try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
+            emit ExecuteMessage(centrifugeId, message, messageHash);
+        } catch (bytes memory err) {
+            failedMessages[centrifugeId][messageHash]++;
+            emit FailMessage(centrifugeId, message, messageHash, err);
+        }
     }
 }
 
@@ -183,7 +189,7 @@ contract GatewayTest is Test {
         vm.mockCall(address(root), abi.encodeWithSelector(IRoot.paused.selector), abi.encode(isPaused));
     }
 
-    function setUp() public {
+    function setUp() public virtual {
         gateway.file("adapter", address(adapter));
         gateway.file("processor", address(processor));
 
@@ -249,12 +255,12 @@ contract GatewayTestHandle is GatewayTest {
 
     function testErrNotEnoughGasToProcess() public {
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        uint256 gas = MESSAGE_GAS_LIMIT + gateway.GAS_FAIL_MESSAGE_STORAGE();
+        uint256 notEnough = gateway.GAS_FAIL_MESSAGE_STORAGE();
 
         vm.expectRevert(IGateway.NotEnoughGasToProcess.selector);
 
         // NOTE: The own handle() also consume some gas, so passing gas + <small value> can also make it fails
-        gateway.handle{gas: gas - 1}(REMOTE_CENT_ID, batch);
+        gateway.handle{gas: notEnough}(REMOTE_CENT_ID, batch);
     }
 
     function testMessage() public {
@@ -379,6 +385,19 @@ contract GatewayTestRetry is GatewayTest {
 }
 
 contract GatewayTestStartBatching is GatewayTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.startBatching();
+    }
+
+    function testErrAlreadyBatching() public {
+        gateway.startBatching();
+
+        vm.expectRevert(IGateway.AlreadyBatching.selector);
+        gateway.startBatching();
+    }
+
     function testStartBatching() public {
         gateway.startBatching();
 
@@ -845,5 +864,70 @@ contract GatewayTestBlockOutgoing is GatewayTest {
         gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
 
         assertEq(gateway.isOutgoingBlocked(REMOTE_CENT_ID, POOL_A), true);
+    }
+}
+
+contract IntegrationMock is Test {
+    bool public wasCalled;
+    IGateway public gateway;
+
+    constructor(IGateway gateway_) {
+        gateway = gateway_;
+    }
+
+    function _success(bool, uint256) external payable {
+        assertEq(gateway.batcher(), address(this));
+        wasCalled = true;
+    }
+
+    function _nested() external payable {
+        gateway.withBatch(abi.encodeWithSelector(this._nested.selector), address(0));
+    }
+
+    function _emptyError() external payable {
+        revert();
+    }
+
+    function callNested(address refund) external {
+        gateway.withBatch(abi.encodeWithSelector(this._nested.selector), refund);
+    }
+
+    function callEmptyError(address refund) external {
+        gateway.withBatch(abi.encodeWithSelector(this._emptyError.selector), refund);
+    }
+
+    function callSuccess(address refund) external payable {
+        gateway.withBatch{value: msg.value}(abi.encodeWithSelector(this._success.selector, true, 1), refund);
+    }
+}
+
+contract GatewayTestWithBatch is GatewayTest {
+    IntegrationMock integration;
+
+    function setUp() public override {
+        super.setUp();
+        integration = new IntegrationMock(gateway);
+    }
+
+    function testErrAlreadyBatching() public {
+        vm.prank(ANY);
+        vm.expectRevert(IGateway.AlreadyBatching.selector);
+        integration.callNested(REFUND);
+    }
+
+    function testErrCallFailedWithEmptyRevert() public {
+        vm.prank(ANY);
+        vm.expectRevert(IGateway.CallFailedWithEmptyRevert.selector);
+        integration.callEmptyError(REFUND);
+    }
+
+    function testWithCallback() public {
+        vm.prank(ANY);
+        vm.deal(ANY, 1234);
+        integration.callSuccess{value: 1234}(REFUND);
+
+        assertEq(integration.wasCalled(), true);
+        assertEq(gateway.batcher(), address(0));
+        assertEq(REFUND.balance, 1234);
     }
 }

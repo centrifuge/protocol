@@ -10,7 +10,6 @@ import {Auth} from "../misc/Auth.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {IEscrow} from "../misc/interfaces/IEscrow.sol";
-import {Multicall, IMulticall} from "../misc/Multicall.sol";
 import {IERC7540Deposit} from "../misc/interfaces/IERC7540.sol";
 import {IERC20, IERC20Permit} from "../misc/interfaces/IERC20.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
@@ -18,6 +17,7 @@ import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 import {PoolId} from "../common/types/PoolId.sol";
 import {IGateway} from "../common/interfaces/IGateway.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {BatchedMulticall} from "../common/BatchedMulticall.sol";
 
 import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
 
@@ -29,7 +29,7 @@ import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
 ///         the multicall functionality which batches message calls into a single one.
 /// @dev    It is critical to ensure that at the end of any transaction, no funds remain in the
 ///         VaultRouter. Any funds that do remain are at risk of being taken by other users.
-contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
+contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
     using CastLib for address;
 
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
@@ -37,34 +37,17 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
     ISpoke public immutable spoke;
     IEscrow public immutable escrow;
-    IGateway public immutable gateway;
 
     /// @inheritdoc IVaultRouter
     mapping(address controller => mapping(IBaseVault vault => uint256 amount)) public lockedRequests;
 
-    constructor(address escrow_, IGateway gateway_, ISpoke spoke_, address deployer) Auth(deployer) {
+    constructor(address escrow_, IGateway gateway_, ISpoke spoke_, address deployer)
+        Auth(deployer)
+        BatchedMulticall(gateway)
+    {
         escrow = IEscrow(escrow_);
         gateway = gateway_;
         spoke = spoke_;
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Administration
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IMulticall
-    /// @notice performs a multicall but all message sent in the process will be batched
-    function multicall(bytes[] calldata data) public payable override(Multicall, IMulticall) {
-        bool wasBatching = gateway.isBatching();
-        if (!wasBatching) {
-            gateway.startBatching();
-        }
-
-        super.multicall(data);
-
-        if (!wasBatching) {
-            gateway.endBatching{value: msg.value}(msg.sender);
-        }
     }
 
     //----------------------------------------------------------------------------------------------
@@ -113,6 +96,27 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         _approveMax(vaultDetails.asset, address(vault));
 
         vault.deposit(assets, receiver);
+    }
+
+    /// @inheritdoc IVaultRouter
+    function crosschainTransferShares(
+        BaseSyncDepositVault vault,
+        uint128 shares,
+        uint16 centrifugeId,
+        bytes32 receiver,
+        address owner,
+        uint128 extraGasLimit,
+        uint128 remoteExtraGasLimit,
+        address refund
+    ) external payable protected {
+        require(owner == msg.sender || owner == address(this), InvalidOwner());
+
+        spoke.vaultDetails(vault); // Ensure vault is valid
+        if (owner != address(this)) SafeTransferLib.safeTransferFrom(vault.share(), owner, address(this), shares);
+
+        spoke.crosschainTransferShares{value: gateway.isBatching() ? 0 : msg.value}(
+            centrifugeId, vault.poolId(), vault.scId(), receiver, shares, extraGasLimit, remoteExtraGasLimit, refund
+        );
     }
 
     /// @inheritdoc IVaultRouter
@@ -168,8 +172,6 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     function claimDeposit(IAsyncVault vault, address receiver, address controller) external payable protected {
         _canClaim(vault, receiver, controller);
         uint256 maxMint = vault.maxMint(controller);
-
-        spoke.vaultDetails(vault); // Ensure vault is valid
         vault.mint(maxMint, receiver, controller);
     }
 
@@ -206,8 +208,6 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     function claimRedeem(IBaseVault vault, address receiver, address controller) external payable protected {
         _canClaim(vault, receiver, controller);
         uint256 maxWithdraw = vault.maxWithdraw(controller);
-
-        spoke.vaultDetails(vault); // Ensure vault is valid
         vault.withdraw(maxWithdraw, receiver, controller);
     }
 

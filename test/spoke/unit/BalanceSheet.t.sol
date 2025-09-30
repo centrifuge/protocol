@@ -228,24 +228,6 @@ contract BalanceSheetTestFile is BalanceSheetTest {
     }
 }
 
-contract BalanceSheetTestMulticall is BalanceSheetTest {
-    function testMulticall() public {
-        vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.startBatching.selector), abi.encode());
-        vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.endBatching.selector), abi.encode(0));
-        _mockEscrowDeposit(erc20, 0, AMOUNT);
-
-        bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeWithSelector(IBalanceSheet.noteDeposit.selector, POOL_A, SC_1, erc20, 0, AMOUNT);
-        calls[1] = abi.encodeWithSelector(IBalanceSheet.noteDeposit.selector, POOL_A, SC_1, erc20, 0, AMOUNT);
-
-        vm.startPrank(AUTH);
-        balanceSheet.multicall(calls);
-
-        (uint128 deposits,) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
-        assertEq(deposits, AMOUNT * 2);
-    }
-}
-
 contract BalanceSheetTestUpdateManager is BalanceSheetTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
