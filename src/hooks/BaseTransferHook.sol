@@ -142,6 +142,10 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         return from == crosschainSource && to == address(0);
     }
 
+    function isCrosschainTransferExecution(address from, address to) public view returns (bool) {
+        return from == crosschainSource && to != address(0);
+    }
+
     function isSourceOrTargetFrozen(address from, address to, HookData calldata hookData) public view returns (bool) {
         return (uint128(hookData.from).getBit(FREEZE_BIT) == true && !root.endorsed(from))
             || (uint128(hookData.to).getBit(FREEZE_BIT) == true && !root.endorsed(to));
