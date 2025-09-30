@@ -612,7 +612,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
     }
 
     function testRouterSyncDeposit() public {
-        (uint64 poolId, address vault_,) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        (, address vault_,) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
         vm.label(vault_, "vault");
         SyncDepositVault vault = SyncDepositVault(vault_);
         uint256 amount = 100 * 10 ** 18;
