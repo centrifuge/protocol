@@ -117,7 +117,12 @@ contract GatewayExt is Gateway {
     }
 
     function process(uint16 centrifugeId, bytes memory message, bytes32 messageHash) public {
-        _process(centrifugeId, message, messageHash);
+        try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
+            emit ExecuteMessage(centrifugeId, message, messageHash);
+        } catch (bytes memory err) {
+            failedMessages[centrifugeId][messageHash]++;
+            emit FailMessage(centrifugeId, message, messageHash, err);
+        }
     }
 }
 
