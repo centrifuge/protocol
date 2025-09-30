@@ -131,7 +131,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         spoke.vaultDetails(vault); // Ensure vault is valid
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vault.share(), owner, address(this), shares);
 
-        spoke.crosschainTransferShares(
+        spoke.crosschainTransferShares{value: msg.value}(
             centrifugeId, vault.poolId(), vault.scId(), receiver, shares, extraGasLimit, remoteExtraGasLimit, refund
         );
     }
