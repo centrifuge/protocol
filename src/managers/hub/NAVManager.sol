@@ -150,7 +150,7 @@ contract NAVManager is INAVManager, Auth {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc INAVManager
-    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) external onlyManager(poolId) {
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) external {
         hub.updateHoldingValue(poolId, scId, assetId);
     }
 
