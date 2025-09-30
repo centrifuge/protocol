@@ -639,19 +639,25 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
         erc20.approve(address(vaultRouter), assets);
         uint256 shares = vault.previewDeposit(assets);
 
+        uint16 centrifugeId = 2;
+        centrifugeChain.updateMember(
+            vault.poolId().raw(), vault.scId().raw(), address(uint160(centrifugeId)), type(uint64).max
+        );
+
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(vaultRouter.deposit.selector, vault, assets, address(vaultRouter), self);
         calls[1] = abi.encodeWithSelector(
             vaultRouter.crosschainTransferShares.selector,
             vault,
             shares,
-            2,
+            centrifugeId,
             bytes32(""),
             address(vaultRouter),
             0,
             0,
             address(0)
         );
+        vaultRouter.multicall{value: GAS * 2}(calls);
     }
 
     function testLockDepositRequests() public {
