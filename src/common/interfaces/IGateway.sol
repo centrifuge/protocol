@@ -55,26 +55,23 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when a batch that has not been underpaid is repaid.
     error NotUnderpaidBatch();
 
-    /// @notice Dispatched when a batch is repaid with insufficient funds.
-    error CannotBeRepaid();
-
     /// @notice Dispatched when a message is added to a batch that causes it to exceed the max batch size.
     error ExceedsMaxGasLimit();
 
-    /// @notice Dispatched when a refund address is not set.
-    error RefundAddressNotSet();
-
     /// @notice Dispatched when a handle is called without enough gas to process the message.
     error NotEnoughGasToProcess();
-
-    /// @notice Dispatched when a recovery message is not executed from the manager.
-    error ManagerNotAllowed();
 
     /// @notice Dispatched when a message is sent but the gateway is blocked for sending messages
     error OutgoingBlocked();
 
     /// @notice Dispatched when an account is not valid to withdraw subsidized pool funds
-    error CannotWithdraw();
+    error CannotRefund();
+
+    /// @notice Dispatched when there is not enough gas to send the message
+    error NotEnoughGas();
+
+    /// @notice Dispatched when a the message was batched but there was a payment for it
+    error NotPayable();
 
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @dev    Currently used to update addresses of contract instances.
@@ -94,37 +91,26 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @param  canSend If can send messages or not
     function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool canSend) external;
 
-    /// @notice Sets the gateway in unpaid mode where any call to send will store the message as unpaid.
+    /// @notice Sets the gateway in unpaid mode where any call to send will store the message as unpaid
+    /// if not enough funds instead of sending the actual message.
     function setUnpaidMode(bool enabled) external;
 
     /// @notice Repay an underpaid batch.
-    function repay(uint16 centrifugeId, bytes memory batch) external payable;
+    function repay(uint16 centrifugeId, bytes memory batch, address refund) external payable;
 
     /// @notice Retry a failed message.
     function retry(uint16 centrifugeId, bytes memory message) external;
 
-    /// @notice Set the refund address for message associated to a poolId
-    function setRefundAddress(PoolId poolId, IRecoverable refund) external;
-
-    /// @notice Pay upfront to later be able to subsidize messages associated to a pool
-    function depositSubsidy(PoolId poolId) external payable;
-
-    /// @notice Withdraw the funds associated to the pool
-    function withdrawSubsidy(PoolId poolId, address to, uint256 amount) external;
-
     /// @notice Handling outgoing messages.
     /// @param centrifugeId Destination chain
-    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit) external returns (uint256 cost);
+    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit, address refund) external payable;
 
     /// @notice Initialize batching message
     function startBatching() external;
 
     /// @notice Finalize batching messages and send the resulting batch message
-    function endBatching() external returns (uint256 cost);
+    function endBatching(address refund) external payable;
 
     /// @notice Returns the current gateway batching level.
     function isBatching() external view returns (bool);
-
-    /// @notice Returns the current gateway batching level.
-    function subsidizedValue(PoolId poolId) external view returns (uint256);
 }

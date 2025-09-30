@@ -28,6 +28,8 @@ contract TestCommon is Test {
     JournalEntry[] EMPTY;
     address immutable AUTH = makeAddr("auth");
     address immutable ANY = makeAddr("any");
+    address immutable REFUND = makeAddr("refund");
+    uint256 constant COST = 123;
 
     IHubRegistry immutable hubRegistry = IHubRegistry(makeAddr("HubRegistry"));
     IHub immutable hub = IHub(makeAddr("Hub"));
@@ -35,11 +37,15 @@ contract TestCommon is Test {
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
 
     HubHandler hubHandler = new HubHandler(hub, holdings, hubRegistry, scm, AUTH);
+
+    function setUp() external {
+        vm.deal(ANY, 1 ether);
+    }
 }
 
 contract TestMainMethodsChecks is TestCommon {
-    function testErrNotAuthotized() public {
-        vm.startPrank(makeAddr("noGateway"));
+    function testErrNotAuthorized() public {
+        vm.startPrank(ANY);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         hubHandler.registerAsset(AssetId.wrap(0), 0);
@@ -57,7 +63,9 @@ contract TestMainMethodsChecks is TestCommon {
         hubHandler.updateShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), 0, true, true, 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hubHandler.initiateTransferShares(CHAIN_A, CHAIN_B, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""), 0, 0);
+        hubHandler.initiateTransferShares{
+            value: COST
+        }(CHAIN_A, CHAIN_B, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""), 0, 0, REFUND);
 
         vm.stopPrank();
     }

@@ -21,10 +21,6 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
         poolId = poolId_;
     }
 
-    receive() external payable {
-        emit ReceiveNativeTokens(msg.sender, msg.value);
-    }
-
     /// @inheritdoc IPoolEscrow
     function deposit(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external auth {
         holding[scId][asset][tokenId].total += value;

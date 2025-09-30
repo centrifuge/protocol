@@ -69,7 +69,6 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
         report.common.messageDispatcher.file("hubHandler", address(report.hubHandler));
 
         report.hub.file("sender", address(report.common.messageDispatcher));
-        report.hub.file("poolEscrowFactory", address(report.common.poolEscrowFactory));
 
         report.common.guardian.file("hub", address(report.hub));
 

@@ -94,13 +94,13 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function scheduleUpgrade(uint16 centrifugeId, address target) external onlySafe {
-        sender.sendScheduleUpgrade(centrifugeId, target.toBytes32());
+    function scheduleUpgrade(uint16 centrifugeId, address target, address refund) external payable onlySafe {
+        sender.sendScheduleUpgrade{value: msg.value}(centrifugeId, target.toBytes32(), refund);
     }
 
     /// @inheritdoc IGuardian
-    function cancelUpgrade(uint16 centrifugeId, address target) external onlySafe {
-        sender.sendCancelUpgrade(centrifugeId, target.toBytes32());
+    function cancelUpgrade(uint16 centrifugeId, address target, address refund) external payable onlySafe {
+        sender.sendCancelUpgrade{value: msg.value}(centrifugeId, target.toBytes32(), refund);
     }
 
     /// @inheritdoc IGuardian
@@ -110,9 +110,12 @@ contract Guardian is IGuardian {
         address token,
         uint256 tokenId,
         address to,
-        uint256 amount
-    ) external onlySafe {
-        sender.sendRecoverTokens(centrifugeId, target.toBytes32(), token.toBytes32(), tokenId, to.toBytes32(), amount);
+        uint256 amount,
+        address refund
+    ) external payable onlySafe {
+        sender.sendRecoverTokens{
+            value: msg.value
+        }(centrifugeId, target.toBytes32(), token.toBytes32(), tokenId, to.toBytes32(), amount, refund);
     }
 
     /// @inheritdoc IGuardian
