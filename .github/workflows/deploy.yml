@@ -73,12 +73,7 @@ jobs:
             VERSION: ${{ steps.set-vars.outputs.version }}
           run: |
             python3 script/deploy/deploy.py ${{ steps.set-vars.outputs.network }} deploy:protocol 
-        - name: Deploy adapters to ${{ steps.set-vars.outputs.network }}
-          env:
-            VERSION: ${{ steps.set-vars.outputs.version }}
-          run: |
-            python3 script/deploy/deploy.py ${{ steps.set-vars.outputs.network }} deploy:adapters 
-        - name: Deploy adapters to ${{ steps.set-vars.outputs.network }}
+        - name: Wire adapters to ${{ steps.set-vars.outputs.network }}
           env:
             VERSION: ${{ steps.set-vars.outputs.version }}
           run: |
