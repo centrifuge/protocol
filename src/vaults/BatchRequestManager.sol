@@ -115,8 +115,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
                     poolId,
                     scId,
                     assetId,
-                    RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount)
-                        .serialize(),
+                    RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount).serialize(
+                    ),
                     0,
                     address(0) // Refund is not used because we're in unpaid mode with no payment
                 );
@@ -131,8 +131,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
                     poolId,
                     scId,
                     assetId,
-                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount)
-                        .serialize(),
+                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount).serialize(),
                     0,
                     address(0) // Refund is not used because we're in unpaid mode with no payment
                 );
@@ -374,8 +373,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         );
 
         bytes memory callback = RequestCallbackMessageLib.RevokedShares(
-                payoutAssetAmount, revokedShareAmount, navPoolPerShare.raw()
-            ).serialize();
+            payoutAssetAmount, revokedShareAmount, navPoolPerShare.raw()
+        ).serialize();
         hub.requestCallback{value: msg.value}(poolId, scId_, payoutAssetId, callback, extraGasLimit, refund);
     }
 
@@ -460,15 +459,13 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         }
 
         if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
-            hub.requestCallback{
-                value: msg.value
-            }(
+            hub.requestCallback{value: msg.value}(
                 poolId,
                 scId,
                 assetId,
                 RequestCallbackMessageLib.FulfilledDepositRequest(
-                        investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
-                    ).serialize(),
+                    investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
+                ).serialize(),
                 0,
                 refund
             );
@@ -572,15 +569,13 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
             }
         }
         if (totalPaymentShareAmount > 0 || cancelledShareAmount > 0) {
-            hub.requestCallback{
-                value: msg.value
-            }(
+            hub.requestCallback{value: msg.value}(
                 poolId,
                 scId,
                 assetId,
                 RequestCallbackMessageLib.FulfilledRedeemRequest(
-                        investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
-                    ).serialize(),
+                    investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
+                ).serialize(),
                 0,
                 refund
             );

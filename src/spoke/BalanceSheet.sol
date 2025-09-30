@@ -237,9 +237,9 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         shareQueue.queuedAssetCounter -= assetCounter;
 
         emit SubmitQueuedAssets(poolId, scId, assetId, data, pricePoolPerAsset);
-        sender.sendUpdateHoldingAmount{
-            value: _payment()
-        }(poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit, refund);
+        sender.sendUpdateHoldingAmount{value: _payment()}(
+            poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit, refund
+        );
     }
 
     /// @inheritdoc IBalanceSheet

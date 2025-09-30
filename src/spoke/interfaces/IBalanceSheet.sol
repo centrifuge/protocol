@@ -95,7 +95,9 @@ interface IBalanceSheet {
 
     /// @notice Deposit assets into the escrow of the pool.
     /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
-    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external payable;
+    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
+        external
+        payable;
 
     /// @notice Note a deposit of assets into the escrow of the pool.
     /// @dev    Must be followed by a transfer of the equivalent amount of assets to `IBalanceSheet.escrow(poolId)`
@@ -120,7 +122,9 @@ interface IBalanceSheet {
     ///         and cannot be withdrawn before they are unreserved.
     ///
     ///         It is possible to reserve more than the current balance, to lock future expected assets.
-    function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external payable;
+    function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
+        external
+        payable;
 
     /// @notice Decrease the reserved balance of the pool. These assets are re-added to the available balance.
     function unreserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
