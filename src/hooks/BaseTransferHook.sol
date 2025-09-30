@@ -6,37 +6,48 @@ import {IMemberlist} from "./interfaces/IMemberlist.sol";
 import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "./libraries/UpdateRestrictionMessageLib.sol";
 
 import {Auth} from "../misc/Auth.sol";
+import {IAuth} from "../misc/interfaces/IAuth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 import {IERC165} from "../misc/interfaces/IERC7575.sol";
 import {BitmapLib} from "../misc/libraries/BitmapLib.sol";
 
+import {PoolId} from "../common/types/PoolId.sol";
 import {IRoot} from "../common/interfaces/IRoot.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../common/interfaces/ITransferHook.sol";
 
+import {ISpoke} from "../spoke/interfaces/ISpoke.sol";
 import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
+import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
+import {UpdateContractType, UpdateContractMessageLib} from "../spoke/libraries/UpdateContractMessageLib.sol";
 
 /// @title  BaseTransferHook
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
 ///         the last bit is used to denote whether the account is frozen.
-abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHook {
+abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHook, IUpdateContract {
     using BitmapLib for *;
     using UpdateRestrictionMessageLib for *;
     using BytesLib for bytes;
     using CastLib for bytes32;
 
     error InvalidInputs();
+    error ShareTokenDoesNotExist();
 
     /// @dev Least significant bit
     uint8 public constant FREEZE_BIT = 0;
 
     IRoot public immutable root;
+    ISpoke public immutable spoke;
     address public immutable redeemSource;
     address public immutable depositTarget;
     address public immutable crosschainSource;
 
+    mapping(address token => mapping(address => bool)) public manager;
+
     constructor(
         address root_,
+        address spoke_,
         address redeemSource_,
         address depositTarget_,
         address crosschainSource_,
@@ -49,9 +60,16 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         );
 
         root = IRoot(root_);
+        spoke = ISpoke(spoke_);
         redeemSource = redeemSource_;
         depositTarget = depositTarget_;
         crosschainSource = crosschainSource_;
+    }
+
+    /// @dev Check if the msg.sender is ward or a manager
+    modifier authOrManager(address token) {
+        require(wards[msg.sender] == 1 || manager[token][msg.sender], IAuth.NotAuthorized());
+        _;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -138,6 +156,27 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
     }
 
     //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IUpdateContract
+    function update(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
+        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
+
+        if (kind == uint8(UpdateContractType.UpdateAddress)) {
+            UpdateContractMessageLib.UpdateContractUpdateAddress memory m =
+                UpdateContractMessageLib.deserializeUpdateContractUpdateAddress(payload);
+
+            address token = address(spoke.shareToken(poolId, scId));
+            require(token != address(0), ShareTokenDoesNotExist());
+
+            manager[token][m.what.toAddress()] = m.isEnabled;
+        } else {
+            revert UnknownUpdateContractType();
+        }
+    }
+
+    //----------------------------------------------------------------------------------------------
     // Restriction updates
     //----------------------------------------------------------------------------------------------
 
@@ -161,7 +200,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
     }
 
     /// @inheritdoc IFreezable
-    function freeze(address token, address user) public auth {
+    function freeze(address token, address user) public authOrManager(token) {
         require(user != address(0), CannotFreezeZeroAddress());
         require(!root.endorsed(user), EndorsedUserCannotBeFrozen());
 
@@ -172,7 +211,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
     }
 
     /// @inheritdoc IFreezable
-    function unfreeze(address token, address user) public auth {
+    function unfreeze(address token, address user) public authOrManager(token) {
         uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
         IShareToken(token).setHookData(user, bytes16(hookData.withBit(FREEZE_BIT, false)));
 
@@ -185,7 +224,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
     }
 
     /// @inheritdoc IMemberlist
-    function updateMember(address token, address user, uint64 validUntil) public auth {
+    function updateMember(address token, address user, uint64 validUntil) public authOrManager(token) {
         require(block.timestamp <= validUntil, InvalidValidUntil());
         require(!root.endorsed(user), EndorsedUserCannotBeUpdated());
 

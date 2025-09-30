@@ -32,8 +32,6 @@ import {IPoolEscrow, IPoolEscrowFactory} from "../common/factories/interfaces/IP
 /// @title  Hub
 /// @notice Central pool management contract, that brings together all functions in one place.
 ///         Pools can assign hub managers which have full rights over all actions.
-///
-///         Also acts as the central contract that routes messages from other chains to the Hub contracts.
 contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, IHubGuardianActions {
     using MathLib for uint256;
     using RequestCallbackMessageLib for *;
@@ -169,6 +167,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     /// @inheritdoc IHub
     function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) public returns (uint256 cost) {
         _isManager(poolId);
+
         D18 pricePoolPerAsset_ = pricePoolPerAsset(poolId, scId, assetId);
         emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset_);
         return sender.sendNotifyPricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset_);
@@ -234,6 +233,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
         _isManager(poolId);
 
         hubRegistry.setHubRequestManager(poolId, centrifugeId, hubManager);
+
+        emit SetSpokeRequestManager(centrifugeId, poolId, spokeManager);
         return sender.sendSetRequestManager(centrifugeId, poolId, spokeManager);
     }
 
@@ -244,6 +245,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     {
         _isManager(poolId);
 
+        emit UpdateBalanceSheetManager(centrifugeId, poolId, who, canManage);
         return sender.sendUpdateBalanceSheetManager(centrifugeId, poolId, who, canManage);
     }
 

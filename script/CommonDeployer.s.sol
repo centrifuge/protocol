@@ -11,7 +11,6 @@ import {Guardian, ISafe} from "../src/common/Guardian.sol";
 import {MultiAdapter} from "../src/common/MultiAdapter.sol";
 import {TokenRecoverer} from "../src/common/TokenRecoverer.sol";
 import {MessageProcessor} from "../src/common/MessageProcessor.sol";
-import {CrosschainBatcher} from "../src/common/CrosschainBatcher.sol";
 import {MessageDispatcher} from "../src/common/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/common/factories/PoolEscrowFactory.sol";
 
@@ -35,7 +34,6 @@ struct CommonReport {
     MessageProcessor messageProcessor;
     MessageDispatcher messageDispatcher;
     PoolEscrowFactory poolEscrowFactory;
-    CrosschainBatcher crosschainBatcher;
 }
 
 contract CommonActionBatcher {
@@ -70,7 +68,6 @@ contract CommonActionBatcher {
         report.gateway.rely(address(report.messageProcessor));
         report.gateway.rely(address(report.guardian));
         report.gateway.rely(address(report.multiAdapter));
-        report.gateway.rely(address(report.crosschainBatcher));
         report.multiAdapter.rely(address(report.root));
         report.multiAdapter.rely(address(report.guardian));
         report.multiAdapter.rely(address(report.gateway));
@@ -83,7 +80,6 @@ contract CommonActionBatcher {
         report.tokenRecoverer.rely(address(report.messageDispatcher));
         report.tokenRecoverer.rely(address(report.messageProcessor));
         report.poolEscrowFactory.rely(address(report.root));
-        report.crosschainBatcher.rely(address(report.root));
 
         report.gateway.file("processor", address(report.messageProcessor));
         report.gateway.file("adapter", address(report.multiAdapter));
@@ -123,7 +119,6 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
     PoolEscrowFactory public poolEscrowFactory;
-    CrosschainBatcher public crosschainBatcher;
 
     /**
      * @dev Generates a salt for contract deployment
@@ -237,13 +232,6 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             )
         );
 
-        crosschainBatcher = CrosschainBatcher(
-            create3(
-                generateSalt("crosschainBatcher"),
-                abi.encodePacked(type(CrosschainBatcher).creationCode, abi.encode(gateway, batcher))
-            )
-        );
-
         batcher.engageCommon(_commonReport());
 
         register("root", address(root));
@@ -255,7 +243,6 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         register("messageDispatcher", address(messageDispatcher));
         register("poolEscrowFactory", address(poolEscrowFactory));
         register("tokenRecoverer", address(tokenRecoverer));
-        register("crosschainBatcher", address(crosschainBatcher));
     }
 
     function _postDeployCommon(CommonActionBatcher batcher) internal {
@@ -285,8 +272,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             multiAdapter,
             messageProcessor,
             messageDispatcher,
-            poolEscrowFactory,
-            crosschainBatcher
+            poolEscrowFactory
         );
     }
 }
