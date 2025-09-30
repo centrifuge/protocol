@@ -249,12 +249,12 @@ contract GatewayTestHandle is GatewayTest {
 
     function testErrNotEnoughGasToProcess() public {
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        uint256 gas = MESSAGE_GAS_LIMIT + gateway.GAS_FAIL_MESSAGE_STORAGE();
+        uint256 notEnough = gateway.GAS_FAIL_MESSAGE_STORAGE();
 
         vm.expectRevert(IGateway.NotEnoughGasToProcess.selector);
 
         // NOTE: The own handle() also consume some gas, so passing gas + <small value> can also make it fails
-        gateway.handle{gas: gas - 1}(REMOTE_CENT_ID, batch);
+        gateway.handle{gas: notEnough}(REMOTE_CENT_ID, batch);
     }
 
     function testMessage() public {
