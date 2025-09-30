@@ -14,6 +14,7 @@ import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {MessageType, MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
+import {IVaultRegistryGatewayHandler} from "./interfaces/IVaultRegistryGatewayHandler.sol";
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
@@ -43,6 +44,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IHubGatewayHandler public hubHandler;
     IBalanceSheetGatewayHandler public balanceSheet;
     IUpdateContractGatewayHandler public contractUpdater;
+    IVaultRegistryGatewayHandler public vaultRegistry;
 
     constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, address deployer) Auth(deployer) {
         root = root_;
@@ -61,6 +63,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
+        else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -164,7 +167,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             spoke.requestCallback(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
         } else if (kind == MessageType.UpdateVault) {
             MessageLib.UpdateVault memory m = MessageLib.deserializeUpdateVault(message);
-            spoke.updateVault(
+            vaultRegistry.updateVault(
                 PoolId.wrap(m.poolId),
                 ShareClassId.wrap(m.scId),
                 AssetId.wrap(m.assetId),

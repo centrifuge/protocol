@@ -191,7 +191,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         asyncVault.requestRedeem(shareBalance, self, self);
         assertEq(asyncVault.pendingRedeemRequest(0, self), shareBalance);
 
-        spoke.unlinkVault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault);
+        vaultRegistry.unlinkVault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault);
         assertEq(syncVault.maxDeposit(address(this)), 0);
         assertEq(syncVault.maxMint(address(this)), 0);
 

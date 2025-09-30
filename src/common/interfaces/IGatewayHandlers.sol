@@ -8,7 +8,6 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {VaultUpdateKind} from "../libraries/MessageLib.sol";
 
 /// -----------------------------------------------------
 ///  Hub Handlers
@@ -124,20 +123,6 @@ interface ISpokeGatewayHandler {
 
     /// @notice Mints share class tokens to a recipient
     function executeTransferShares(PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount) external;
-
-    /// @notice Updates a vault based on VaultUpdateKind
-    /// @param  poolId The centrifuge pool id
-    /// @param  scId The share class id
-    /// @param  assetId The asset id
-    /// @param  vaultOrFactory The address of the vault or the factory, depending on the kind value
-    /// @param  kind The kind of action applied
-    function updateVault(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        address vaultOrFactory,
-        VaultUpdateKind kind
-    ) external;
 
     /// @notice Updates the max price age of an asset
     /// @param  poolId The centrifuge pool id

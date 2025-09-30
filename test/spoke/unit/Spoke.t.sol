@@ -19,6 +19,7 @@ import {ISpokeMessageSender} from "../../../src/common/interfaces/IGatewaySender
 import {IPoolEscrowFactory} from "../../../src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
 import {Spoke, ISpoke} from "../../../src/spoke/Spoke.sol";
+import {VaultRegistry} from "../../../src/spoke/VaultRegistry.sol";
 import {IShareToken} from "../../../src/spoke/interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "../../../src/spoke/interfaces/IVault.sol";
 import {ITokenFactory} from "../../../src/spoke/factories/interfaces/ITokenFactory.sol";
@@ -87,6 +88,7 @@ contract SpokeTest is Test {
     uint256 constant COST = 123;
 
     SpokeExt spoke = new SpokeExt(tokenFactory, AUTH);
+    VaultRegistry vaultRegistry = new VaultRegistry(AUTH);
 
     function setUp() public virtual {
         vm.deal(ANY, 1 ether);
@@ -97,6 +99,9 @@ contract SpokeTest is Test {
         spoke.file("gateway", address(gateway));
         spoke.file("sender", address(sender));
         spoke.file("poolEscrowFactory", address(poolEscrowFactory));
+        spoke.file("vaultRegistry", address(vaultRegistry));
+
+        vaultRegistry.file("spoke", address(spoke));
 
         vm.stopPrank();
         vm.warp(MAX_AGE);
@@ -223,7 +228,7 @@ contract SpokeTest is Test {
         spoke.setRequestManager(POOL_A, requestManager);
 
         vm.prank(AUTH);
-        spoke.deployVault(POOL_A, SC_1, assetId, vaultFactory);
+        vaultRegistry.deployVault(POOL_A, SC_1, assetId, vaultFactory);
     }
 
     function testConstructor() public view {
@@ -942,13 +947,13 @@ contract SpokeTestDeployVault is SpokeTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
+        vaultRegistry.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
     }
 
     function testErrShareTokenDoesNotExists() public {
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
+        vaultRegistry.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
     }
 
     function testErrUnknownAsset() public {
@@ -956,7 +961,7 @@ contract SpokeTestDeployVault is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.UnknownAsset.selector);
-        spoke.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
+        vaultRegistry.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
     }
 
     function testErrInvalidRequestManager() public {
@@ -967,7 +972,7 @@ contract SpokeTestDeployVault is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.InvalidRequestManager.selector);
-        spoke.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
+        vaultRegistry.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
     }
 
     function testDeployVault() public {
@@ -982,13 +987,13 @@ contract SpokeTestDeployVault is SpokeTest {
         vm.prank(AUTH);
         vm.expectEmit();
         emit ISpoke.DeployVault(POOL_A, SC_1, erc6909, TOKEN_1, vaultFactory, vault, VaultKind.Async);
-        IVault returnedVault = spoke.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
+        IVault returnedVault = vaultRegistry.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
 
         assertEq(address(returnedVault), address(vault));
-        assertEq(spoke.vaultDetails(vault).assetId.raw(), ASSET_ID_6909_1.raw());
-        assertEq(spoke.vaultDetails(vault).asset, erc6909);
-        assertEq(spoke.vaultDetails(vault).tokenId, TOKEN_1);
-        assertEq(spoke.vaultDetails(vault).isLinked, false);
+        assertEq(vaultRegistry.vaultDetails(vault).assetId.raw(), ASSET_ID_6909_1.raw());
+        assertEq(vaultRegistry.vaultDetails(vault).asset, erc6909);
+        assertEq(vaultRegistry.vaultDetails(vault).tokenId, TOKEN_1);
+        assertEq(vaultRegistry.vaultDetails(vault).isLinked, false);
     }
 }
 
@@ -996,7 +1001,7 @@ contract SpokeTestRegisterVault is SpokeTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault);
+        vaultRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault);
     }
 
     // Successful case tested under SpokeTestDeployVault
@@ -1006,7 +1011,7 @@ contract SpokeTestLinkVault is SpokeTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
     function testErrInvalidVaultByPoolId() public {
@@ -1014,7 +1019,7 @@ contract SpokeTestLinkVault is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.InvalidVault.selector);
-        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
     function testErrInvalidVaultByShareClassId() public {
@@ -1022,13 +1027,13 @@ contract SpokeTestLinkVault is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.InvalidVault.selector);
-        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
     function testErrUnknownAsset() public {
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.UnknownAsset.selector);
-        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
     function testErrShareTokenDoesNotExists() public {
@@ -1036,7 +1041,7 @@ contract SpokeTestLinkVault is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
     function testErrUnknownVault() public {
@@ -1045,7 +1050,7 @@ contract SpokeTestLinkVault is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.UnknownVault.selector);
-        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
     function testErrAlreadyLinkedVault() public {
@@ -1054,11 +1059,11 @@ contract SpokeTestLinkVault is SpokeTest {
         _utilDeployVault(erc6909);
 
         vm.prank(AUTH);
-        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.AlreadyLinkedVault.selector);
-        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
     function testLinkVaultERC6909() public {
@@ -1069,9 +1074,9 @@ contract SpokeTestLinkVault is SpokeTest {
         vm.prank(AUTH);
         vm.expectEmit();
         emit ISpoke.LinkVault(POOL_A, SC_1, erc6909, TOKEN_1, vault);
-        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
 
-        assertEq(spoke.isLinked(vault), true);
+        assertEq(vaultRegistry.isLinked(vault), true);
         assertEq(address(spoke.vault(POOL_A, SC_1, ASSET_ID_6909_1, requestManager)), address(vault));
     }
 
@@ -1085,7 +1090,7 @@ contract SpokeTestLinkVault is SpokeTest {
         vm.prank(AUTH);
         vm.expectEmit();
         emit ISpoke.LinkVault(POOL_A, SC_1, erc20, 0, vault);
-        spoke.linkVault(POOL_A, SC_1, ASSET_ID_20, vault);
+        vaultRegistry.linkVault(POOL_A, SC_1, ASSET_ID_20, vault);
     }
 }
 
@@ -1093,7 +1098,7 @@ contract SpokeTestUnlinkVault is SpokeTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
     function testErrInvalidVaultByPoolId() public {
@@ -1101,7 +1106,7 @@ contract SpokeTestUnlinkVault is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.InvalidVault.selector);
-        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
     function testErrInvalidVaultByShareClassId() public {
@@ -1109,13 +1114,13 @@ contract SpokeTestUnlinkVault is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.InvalidVault.selector);
-        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
     function testErrUnknownAsset() public {
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.UnknownAsset.selector);
-        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
     function testErrShareTokenDoesNotExists() public {
@@ -1123,7 +1128,7 @@ contract SpokeTestUnlinkVault is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
     function testErrUnknownVault() public {
@@ -1132,7 +1137,7 @@ contract SpokeTestUnlinkVault is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.UnknownVault.selector);
-        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
     function testErrAlreadyUnlinkedVault() public {
@@ -1142,7 +1147,7 @@ contract SpokeTestUnlinkVault is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.AlreadyUnlinkedVault.selector);
-        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
     function testUnlinkVaultERC6909() public {
@@ -1151,14 +1156,14 @@ contract SpokeTestUnlinkVault is SpokeTest {
         _utilDeployVault(erc6909);
 
         vm.prank(AUTH);
-        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
 
         vm.prank(AUTH);
         vm.expectEmit();
         emit ISpoke.UnlinkVault(POOL_A, SC_1, erc6909, TOKEN_1, vault);
-        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+        vaultRegistry.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
 
-        assertEq(spoke.isLinked(vault), false);
+        assertEq(vaultRegistry.isLinked(vault), false);
         assertEq(address(spoke.vault(POOL_A, SC_1, ASSET_ID_6909_1, requestManager)), address(0));
     }
 
@@ -1170,14 +1175,14 @@ contract SpokeTestUnlinkVault is SpokeTest {
         vm.mockCall(address(share), abi.encodeWithSelector(share.updateVault.selector, erc20, vault), abi.encode());
 
         vm.prank(AUTH);
-        spoke.linkVault(POOL_A, SC_1, ASSET_ID_20, vault);
+        vaultRegistry.linkVault(POOL_A, SC_1, ASSET_ID_20, vault);
 
         vm.mockCall(address(share), abi.encodeWithSelector(share.updateVault.selector, erc20, address(0)), abi.encode());
 
         vm.prank(AUTH);
         vm.expectEmit();
         emit ISpoke.UnlinkVault(POOL_A, SC_1, erc20, 0, vault);
-        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_20, vault);
+        vaultRegistry.unlinkVault(POOL_A, SC_1, ASSET_ID_20, vault);
     }
 }
 
@@ -1185,7 +1190,7 @@ contract SpokeTestUpdateVault is SpokeTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vaultFactory), VaultUpdateKind.DeployAndLink);
+        vaultRegistry.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vaultFactory), VaultUpdateKind.DeployAndLink);
     }
 
     function testDeployAndLinkAndUnlinkAndLink() public {
@@ -1198,19 +1203,19 @@ contract SpokeTestUpdateVault is SpokeTest {
         spoke.setRequestManager(POOL_A, requestManager);
 
         vm.prank(AUTH);
-        spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vaultFactory), VaultUpdateKind.DeployAndLink);
+        vaultRegistry.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vaultFactory), VaultUpdateKind.DeployAndLink);
 
-        assertEq(spoke.isLinked(vault), true, "deploy and linked");
-
-        vm.prank(AUTH);
-        spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vault), VaultUpdateKind.Unlink);
-
-        assertEq(spoke.isLinked(vault), false, "unlinked");
+        assertEq(vaultRegistry.isLinked(vault), true, "deploy and linked");
 
         vm.prank(AUTH);
-        spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vault), VaultUpdateKind.Link);
+        vaultRegistry.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vault), VaultUpdateKind.Unlink);
 
-        assertEq(spoke.isLinked(vault), true, "linked again");
+        assertEq(vaultRegistry.isLinked(vault), false, "unlinked");
+
+        vm.prank(AUTH);
+        vaultRegistry.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vault), VaultUpdateKind.Link);
+
+        assertEq(vaultRegistry.isLinked(vault), true, "linked again");
     }
 }
 
@@ -1351,6 +1356,6 @@ contract SpokeTestVaultDetails is SpokeTest {
     function testErrUnknownVault() public {
         vm.prank(ANY);
         vm.expectRevert(ISpoke.UnknownVault.selector);
-        spoke.vaultDetails(vault);
+        vaultRegistry.vaultDetails(vault);
     }
 }

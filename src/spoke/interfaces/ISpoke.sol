@@ -212,44 +212,6 @@ interface ISpoke {
         bool unpaid
     ) external payable;
 
-    /// @notice Deploys a new vault
-    ///
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id for which we want to deploy a vault
-    /// @param factory The address of the corresponding vault factory
-    /// @return address The address of the deployed vault
-    function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVaultFactory factory)
-        external
-        returns (IVault);
-
-    /// @dev Used only for migrations
-    function registerVault(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        address asset,
-        uint256 tokenId,
-        IVaultFactory factory,
-        IVault vault
-    ) external;
-
-    /// @notice Links a deployed vault to the given pool, share class and asset.
-    ///
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id for which we want to deploy a vault
-    /// @param vault The address of the deployed vault
-    function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) external;
-
-    /// @notice Removes the link between a vault and the given pool, share class and asset.
-    ///
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id for which we want to deploy a vault
-    /// @param vault The address of the deployed vault
-    function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) external;
-
     /// @notice Returns whether the given pool id is active
     function isPoolActive(PoolId poolId) external view returns (bool);
 
@@ -347,4 +309,9 @@ interface ISpoke {
         external
         view
         returns (IVault vault);
+
+    /// @notice Returns the request manager for a given pool
+    /// @param poolId The pool id
+    /// @return manager The request manager for the pool
+    function requestManager(PoolId poolId) external view returns (IRequestManager manager);
 }

@@ -11,6 +11,7 @@ import {IRequestManager} from "./interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
+import {IVaultRegistryGatewayHandler} from "./interfaces/IVaultRegistryGatewayHandler.sol";
 import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "./interfaces/IGatewaySenders.sol";
 import {
     ISpokeGatewayHandler,
@@ -45,6 +46,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     IHubGatewayHandler public hubHandler;
     IBalanceSheetGatewayHandler public balanceSheet;
     IUpdateContractGatewayHandler public contractUpdater;
+    IVaultRegistryGatewayHandler public vaultRegistry;
 
     constructor(
         uint16 localCentrifugeId_,
@@ -70,6 +72,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
+        else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -276,7 +279,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address refund
     ) external payable auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            spoke.updateVault(poolId, scId, assetId, vaultOrFactory.toAddress(), kind);
+            vaultRegistry.updateVault(poolId, scId, assetId, vaultOrFactory.toAddress(), kind);
             _refund(refund);
         } else {
             _send(

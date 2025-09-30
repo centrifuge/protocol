@@ -156,7 +156,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
 
         IVaultFactory vaultFactory = _vaultKindToVaultFactory(vaultKind);
 
-        spoke.updateVault(
+        vaultRegistry.updateVault(
             POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(vaultFactory), VaultUpdateKind.DeployAndLink
         );
 
