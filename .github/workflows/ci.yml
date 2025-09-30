@@ -18,7 +18,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: v1.3.6
 
       - name: Run tests
         run: forge test --deny-warnings
@@ -34,7 +34,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: v1.3.6
 
       - name: Build contracts
         run: |
@@ -152,7 +152,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@82dee4ba654bd2146511f85f0d013af94670c4de # 1.4.0
         with:
-          version: v1.2.3
+          version: v1.3.6
       #Make sure all tools are installed and with proper versions
       - name: Setup deployer tools
         env:
@@ -177,7 +177,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: v1.3.6
 
       - name: Run coverage
         run: forge coverage --report summary --report lcov

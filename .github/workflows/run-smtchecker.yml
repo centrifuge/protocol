@@ -13,6 +13,8 @@ jobs:
 
       - name: "Install Foundry"
         uses: "foundry-rs/foundry-toolchain@v1"
+        with:
+          version: v1.3.6
 
       - name: "Run SMTChecker and pipe the output to a file"
         run: "FOUNDRY_PROFILE=smt forge build > smtchecker-report.txt"
