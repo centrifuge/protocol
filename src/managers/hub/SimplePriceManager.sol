@@ -63,11 +63,35 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     }
 
     /// @inheritdoc ISimplePriceManager
-    function setNetworks(PoolId poolId, uint16[] calldata centrifugeIds) external onlyHubManager(poolId) {
+    function addNetwork(PoolId poolId, uint16 centrifugeId) external onlyHubManager(poolId) {
         require(shareClassManager.shareClassCount(poolId) == 1, InvalidShareClassCount());
 
-        metrics[poolId].networks = centrifugeIds;
-        emit SetNetworks(poolId, centrifugeIds);
+        metrics[poolId].networks.push(centrifugeId);
+        emit UpdateNetworks(poolId, metrics[poolId].networks);
+    }
+
+    /// @inheritdoc ISimplePriceManager
+    function removeNetwork(PoolId poolId, uint16 centrifugeId) external onlyHubManager(poolId) {
+        uint16[] storage networks_ = metrics[poolId].networks;
+        uint256 length = networks_.length;
+        for (uint256 i; i < length; i++) {
+            if (networks_[i] == centrifugeId) {
+                NetworkMetrics storage networkMetrics_ = networkMetrics[poolId][centrifugeId];
+                Metrics storage metrics_ = metrics[poolId];
+
+                metrics_.netAssetValue -= networkMetrics_.netAssetValue;
+                metrics_.issuance -= networkMetrics_.issuance;
+
+                delete networkMetrics[poolId][centrifugeId];
+
+                networks_[i] = networks_[length - 1];
+                networks_.pop();
+
+                emit UpdateNetworks(poolId, networks_);
+                return;
+            }
+        }
+        revert NetworkNotFound();
     }
 
     /// @inheritdoc ISimplePriceManager
@@ -119,7 +143,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
             hub.notifySharePrice(poolId, scId, metrics_.networks[i]);
         }
 
-        emit Update(poolId, metrics_.netAssetValue, metrics_.issuance, price);
+        emit Update(poolId, scId, metrics_.netAssetValue, metrics_.issuance, price);
     }
 
     /// @inheritdoc INAVHook
@@ -136,7 +160,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         fromMetrics.issuance -= sharesTransferred;
         toMetrics.issuance += sharesTransferred;
 
-        emit Transfer(poolId, fromCentrifugeId, toCentrifugeId, sharesTransferred);
+        emit Transfer(poolId, scId, fromCentrifugeId, toCentrifugeId, sharesTransferred);
     }
 
     //----------------------------------------------------------------------------------------------

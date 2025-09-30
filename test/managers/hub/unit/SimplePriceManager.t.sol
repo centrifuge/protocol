@@ -185,42 +185,43 @@ contract SimplePriceManagerConstructorTest is SimplePriceManagerTest {
 }
 
 contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
-    function testSetNetworksSuccess() public {
-        uint16[] memory networks = new uint16[](3);
-        networks[0] = CENTRIFUGE_ID_1;
-        networks[1] = CENTRIFUGE_ID_2;
-        networks[2] = CENTRIFUGE_ID_3;
-
-        vm.expectEmit(true, true, true, true);
-        emit ISimplePriceManager.SetNetworks(POOL_A, networks);
-
-        vm.prank(hubManager);
-        priceManager.setNetworks(POOL_A, networks);
-
-        uint16[] memory storedNetworks = priceManager.networks(POOL_A);
-
-        assertEq(storedNetworks[0], CENTRIFUGE_ID_1);
-        assertEq(storedNetworks[1], CENTRIFUGE_ID_2);
-        assertEq(storedNetworks[2], CENTRIFUGE_ID_3);
-    }
-
-    function testSetNetworksUnauthorized() public {
+    function testAddNetworkSuccess() public {
         uint16[] memory networks = new uint16[](1);
         networks[0] = CENTRIFUGE_ID_1;
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(unauthorized);
-        priceManager.setNetworks(POOL_A, networks);
-    }
-
-    function testSetNetworksEmpty() public {
-        uint16[] memory networks = new uint16[](0);
+        vm.expectEmit(true, true, true, true);
+        emit ISimplePriceManager.UpdateNetworks(POOL_A, networks);
 
         vm.prank(hubManager);
-        priceManager.setNetworks(POOL_A, networks);
+        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+
+        uint16[] memory storedNetworks = priceManager.networks(POOL_A);
+        assertEq(storedNetworks.length, 1);
+        assertEq(storedNetworks[0], CENTRIFUGE_ID_1);
+
+        uint16[] memory networks2 = new uint16[](2);
+        networks2[0] = CENTRIFUGE_ID_1;
+        networks2[1] = CENTRIFUGE_ID_2;
+
+        vm.expectEmit(true, true, true, true);
+        emit ISimplePriceManager.UpdateNetworks(POOL_A, networks2);
+
+        vm.prank(hubManager);
+        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_2);
+
+        storedNetworks = priceManager.networks(POOL_A);
+        assertEq(storedNetworks.length, 2);
+        assertEq(storedNetworks[0], CENTRIFUGE_ID_1);
+        assertEq(storedNetworks[1], CENTRIFUGE_ID_2);
     }
 
-    function testSetNetworksInvalidShareClassCount() public {
+    function testAddNetworkUnauthorized() public {
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+    }
+
+    function testAddNetworkInvalidShareClassCount() public {
         vm.mockCall(
             shareClassManager,
             abi.encodeWithSelector(IShareClassManager.shareClassCount.selector, POOL_B),
@@ -230,12 +231,68 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
             hubRegistry, abi.encodeWithSelector(IHubRegistry.manager.selector, POOL_B, hubManager), abi.encode(true)
         );
 
-        uint16[] memory networks = new uint16[](1);
-        networks[0] = CENTRIFUGE_ID_1;
-
         vm.expectRevert(ISimplePriceManager.InvalidShareClassCount.selector);
         vm.prank(hubManager);
-        priceManager.setNetworks(POOL_B, networks);
+        priceManager.addNetwork(POOL_B, CENTRIFUGE_ID_1);
+    }
+
+    function testRemoveNetworkSuccess() public {
+        vm.prank(hubManager);
+        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+        vm.prank(hubManager);
+        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_2);
+        vm.prank(hubManager);
+        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_3);
+
+        uint16[] memory storedNetworks = priceManager.networks(POOL_A);
+        assertEq(storedNetworks.length, 3);
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_2, 2000);
+
+        (uint128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
+        assertEq(globalNAV, 3000);
+        assertEq(globalIssuance, 300);
+
+        (uint128 network2NAV, uint128 network2Issuance,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
+        assertEq(network2NAV, 2000);
+        assertEq(network2Issuance, 200);
+
+        vm.prank(hubManager);
+        priceManager.removeNetwork(POOL_A, CENTRIFUGE_ID_2);
+
+        storedNetworks = priceManager.networks(POOL_A);
+        assertEq(storedNetworks.length, 2);
+        assertEq(storedNetworks[0], CENTRIFUGE_ID_1);
+        assertEq(storedNetworks[1], CENTRIFUGE_ID_3);
+
+        (globalNAV, globalIssuance) = priceManager.metrics(POOL_A);
+        assertEq(globalNAV, 1000);
+        assertEq(globalIssuance, 100);
+
+        (network2NAV, network2Issuance,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
+        assertEq(network2NAV, 0);
+        assertEq(network2Issuance, 0);
+    }
+
+    function testRemoveNetworkUnauthorized() public {
+        vm.prank(hubManager);
+        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        priceManager.removeNetwork(POOL_A, CENTRIFUGE_ID_1);
+    }
+
+    function testRemoveNetworkNotFound() public {
+        vm.prank(hubManager);
+        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+
+        vm.expectRevert(ISimplePriceManager.NetworkNotFound.selector);
+        vm.prank(hubManager);
+        priceManager.removeNetwork(POOL_A, CENTRIFUGE_ID_2);
     }
 
     function testUpdateManagerSuccess() public {
@@ -309,12 +366,10 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
     function setUp() public override {
         super.setUp();
 
-        uint16[] memory networks = new uint16[](2);
-        networks[0] = CENTRIFUGE_ID_1;
-        networks[1] = CENTRIFUGE_ID_2;
-
         vm.prank(hubManager);
-        priceManager.setNetworks(POOL_A, networks);
+        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+        vm.prank(hubManager);
+        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_2);
     }
 
     function testOnUpdateFirstUpdate() public {
@@ -332,7 +387,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         );
 
         vm.expectEmit(true, true, true, true);
-        emit ISimplePriceManager.Update(POOL_A, netAssetValue, 100, d18(10, 1));
+        emit ISimplePriceManager.Update(POOL_A, SC_1, netAssetValue, 100, d18(10, 1));
 
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, netAssetValue);
@@ -356,7 +411,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         vm.expectCall(address(hub), abi.encodeWithSelector(IHub.updateSharePrice.selector, POOL_A, SC_1, d18(9, 1)));
 
         vm.expectEmit(true, true, true, true);
-        emit ISimplePriceManager.Update(POOL_A, 2700, 300, d18(9, 1)); // total NAV=2700, total issuance=300
+        emit ISimplePriceManager.Update(POOL_A, SC_1, 2700, 300, d18(9, 1)); // total NAV=2700, total issuance=300
 
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_2, netAssetValue2);
@@ -379,7 +434,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         uint128 newNetAssetValue = 1200;
 
         vm.expectEmit(true, true, true, true);
-        emit ISimplePriceManager.Update(POOL_A, 1200, 150, d18(8, 1)); // 1200/150 = 8
+        emit ISimplePriceManager.Update(POOL_A, SC_1, 1200, 150, d18(8, 1)); // 1200/150 = 8
 
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, newNetAssetValue);
@@ -434,7 +489,7 @@ contract SimplePriceManagerOnTransferTest is SimplePriceManagerTest {
         uint128 sharesTransferred = 50;
 
         vm.expectEmit(true, true, false, true);
-        emit ISimplePriceManager.Transfer(POOL_A, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, sharesTransferred);
+        emit ISimplePriceManager.Transfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, sharesTransferred);
 
         vm.prank(caller);
         priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, sharesTransferred);

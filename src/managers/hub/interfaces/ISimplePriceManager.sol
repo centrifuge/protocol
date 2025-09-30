@@ -10,18 +10,23 @@ import {AssetId} from "../../../common/types/AssetId.sol";
 import {ShareClassId} from "../../../common/types/ShareClassId.sol";
 
 interface ISimplePriceManager is INAVHook {
-    event Update(PoolId indexed poolId, uint128 newNAV, uint128 newIssuance, D18 newSharePrice);
+    event Update(PoolId indexed poolId, ShareClassId scId, uint128 newNAV, uint128 newIssuance, D18 newSharePrice);
     event Transfer(
-        PoolId indexed poolId, uint16 indexed fromCentrifugeId, uint16 indexed toCentrifugeId, uint128 sharesTransferred
+        PoolId indexed poolId,
+        ShareClassId scId,
+        uint16 indexed fromCentrifugeId,
+        uint16 indexed toCentrifugeId,
+        uint128 sharesTransferred
     );
     event UpdateManager(PoolId indexed poolId, address indexed manager, bool canManage);
-    event SetNetworks(PoolId indexed poolId, uint16[] networks);
+    event UpdateNetworks(PoolId indexed poolId, uint16[] networks);
     event File(bytes32 indexed what, address data);
 
     error InvalidShareClassCount();
     error InvalidShareClass();
     error MismatchedEpochs();
     error FileUnrecognizedParam();
+    error NetworkNotFound();
 
     struct Metrics {
         uint128 netAssetValue;
@@ -48,11 +53,15 @@ interface ISimplePriceManager is INAVHook {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Update the list of networks the pool is active on
-    /// @dev Ensure the number of network updates can fit in a single block
+    /// @notice Add a network to the pool
     /// @param poolId The pool ID
-    /// @param centrifugeIds Array of Centrifuge IDs for networks
-    function setNetworks(PoolId poolId, uint16[] calldata centrifugeIds) external;
+    /// @param centrifugeId Centrifuge ID for the network to add
+    function addNetwork(PoolId poolId, uint16 centrifugeId) external;
+
+    /// @notice Remove a network from the pool
+    /// @param poolId The pool ID
+    /// @param centrifugeId Centrifuge ID for the network to remove
+    function removeNetwork(PoolId poolId, uint16 centrifugeId) external;
 
     /// @notice Update whether an address can manage the NAV manager
     /// @param poolId The pool ID
@@ -66,19 +75,20 @@ interface ISimplePriceManager is INAVHook {
     // Manager actions
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Approve deposits and issue shares in sequence using current NAV per share
+    /// @notice Approve deposit requests for a given asset amount
     /// @param poolId The pool ID
     /// @param scId The share class ID
     /// @param depositAssetId The asset ID for deposits
-    /// @param approvedAssetAmount Amount of assets to approve
+    /// @param approvedAssetAmount Amount of assets to approve for deposit
+    function approveDeposits(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint128 approvedAssetAmount)
+        external;
+
+    /// @notice Issue shares from approved deposit requests
+    /// @param poolId The pool ID
+    /// @param scId The share class ID
+    /// @param depositAssetId The asset ID for deposits
     /// @param extraGasLimit Extra gas limit for some computation that may need to happen on the remote chain
-    function approveDepositsAndIssueShares(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId depositAssetId,
-        uint128 approvedAssetAmount,
-        uint128 extraGasLimit
-    ) external;
+    function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint128 extraGasLimit) external;
 
     /// @notice Approve redemption requests for a given share amount
     /// @param poolId The pool ID
@@ -94,6 +104,20 @@ interface ISimplePriceManager is INAVHook {
     /// @param payoutAssetId The asset ID for payouts
     /// @param extraGasLimit Extra gas limit for some computation that may need to happen on the remote chain
     function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint128 extraGasLimit) external;
+
+    /// @notice Approve deposits and issue shares in sequence using current NAV per share
+    /// @param poolId The pool ID
+    /// @param scId The share class ID
+    /// @param depositAssetId The asset ID for deposits
+    /// @param approvedAssetAmount Amount of assets to approve
+    /// @param extraGasLimit Extra gas limit for some computation that may need to happen on the remote chain
+    function approveDepositsAndIssueShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId depositAssetId,
+        uint128 approvedAssetAmount,
+        uint128 extraGasLimit
+    ) external;
 
     /// @notice Approve redeems and revoke shares in sequence using current NAV per share
     /// @param poolId The pool ID
