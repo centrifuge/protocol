@@ -628,6 +628,38 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
         assertEq(erc20.balanceOf(address(balanceSheet.poolEscrowProvider().escrow(PoolId.wrap(poolId)))), amount);
     }
 
+    function testRouterSyncDepositAndTransfer() public {
+        (, address vault_,) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        vm.label(vault_, "vault");
+        SyncDepositVault vault = SyncDepositVault(vault_);
+        uint256 assets = 100 * 10 ** 18;
+        erc20.mint(self, assets);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
+
+        erc20.approve(address(vaultRouter), assets);
+        uint256 shares = vault.previewDeposit(assets);
+
+        uint16 centrifugeId = 2;
+        centrifugeChain.updateMember(
+            vault.poolId().raw(), vault.scId().raw(), address(uint160(centrifugeId)), type(uint64).max
+        );
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(vaultRouter.deposit.selector, vault, assets, address(vaultRouter), self);
+        calls[1] = abi.encodeWithSelector(
+            vaultRouter.crosschainTransferShares.selector,
+            vault,
+            shares,
+            centrifugeId,
+            bytes32(""),
+            address(vaultRouter),
+            0,
+            0,
+            address(0)
+        );
+        vaultRouter.multicall{value: GAS * 2}(calls);
+    }
+
     function testLockDepositRequests() public {
         (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
