@@ -117,7 +117,13 @@ contract GatewayExt is Gateway {
     }
 
     function process(uint16 centrifugeId, bytes memory message, bytes32 messageHash) public {
-        _process(centrifugeId, message, messageHash);
+        // Copied only the try catch from `handle`, to be able to measure the gas cost
+        try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
+            emit ExecuteMessage(centrifugeId, message, messageHash);
+        } catch (bytes memory err) {
+            failedMessages[centrifugeId][messageHash]++;
+            emit FailMessage(centrifugeId, message, messageHash, err);
+        }
     }
 }
 
@@ -249,12 +255,12 @@ contract GatewayTestHandle is GatewayTest {
 
     function testErrNotEnoughGasToProcess() public {
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        uint256 gas = MESSAGE_GAS_LIMIT + gateway.GAS_FAIL_MESSAGE_STORAGE();
+        uint256 notEnough = gateway.GAS_FAIL_MESSAGE_STORAGE();
 
         vm.expectRevert(IGateway.NotEnoughGasToProcess.selector);
 
         // NOTE: The own handle() also consume some gas, so passing gas + <small value> can also make it fails
-        gateway.handle{gas: gas - 1}(REMOTE_CENT_ID, batch);
+        gateway.handle{gas: notEnough}(REMOTE_CENT_ID, batch);
     }
 
     function testMessage() public {
