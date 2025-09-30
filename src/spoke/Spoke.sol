@@ -106,9 +106,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         emit InitiateTransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
 
-        sender.sendInitiateTransferShares{
-            value: msg.value
-        }(centrifugeId, poolId, scId, receiver, amount, extraGasLimit, remoteExtraGasLimit, refund);
+        sender.sendInitiateTransferShares{value: msg.value}(
+            centrifugeId, poolId, scId, receiver, amount, extraGasLimit, remoteExtraGasLimit, refund
+        );
     }
 
     /// @inheritdoc ISpoke
@@ -261,7 +261,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     /// @inheritdoc ISpokeGatewayHandler
     function executeTransferShares(PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount) public auth {
         IShareToken shareToken_ = shareToken(poolId, scId);
-        shareToken_.mint(receiver.toAddress(), amount);
+        shareToken_.mint(address(this), amount);
+        shareToken_.transfer(receiver.toAddress(), amount);
         emit ExecuteTransferShares(poolId, scId, receiver.toAddress(), amount);
     }
 

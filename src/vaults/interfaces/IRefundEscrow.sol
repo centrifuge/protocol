@@ -12,4 +12,3 @@ interface IRefundEscrow {
     /// @notice Withdraw `value` funds to `to` address
     function withdrawFunds(address to, uint256 value) external;
 }
-
