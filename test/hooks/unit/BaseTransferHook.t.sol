@@ -221,6 +221,11 @@ contract BaseTransferHookTestTransferTypes is BaseTransferHookTestBase {
         assertFalse(hook.isCrosschainTransfer(user1, address(0)));
         assertFalse(hook.isCrosschainTransfer(crosschainSource, user1));
     }
+
+    function testIsCrosschainTransferExecution() public view {
+        assertTrue(hook.isCrosschainTransferExecution(crosschainSource, user1));
+        assertFalse(hook.isCrosschainTransferExecution(user1, address(0)));
+    }
 }
 
 contract BaseTransferHookTestFreeze is BaseTransferHookTestBase {

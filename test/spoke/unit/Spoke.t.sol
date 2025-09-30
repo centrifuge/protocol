@@ -768,7 +768,8 @@ contract SpokeTestExecuteTransferShares is SpokeTest {
     function testExecuteTransferShares() public {
         _utilAddPoolAndShareClass(NO_HOOK);
 
-        vm.mockCall(address(share), abi.encodeWithSelector(share.mint.selector, RECEIVER, AMOUNT), abi.encode());
+        vm.mockCall(address(share), abi.encodeWithSelector(share.mint.selector, address(spoke), AMOUNT), abi.encode());
+        vm.mockCall(address(share), abi.encodeWithSelector(share.transfer.selector, RECEIVER, AMOUNT), abi.encode());
 
         vm.prank(AUTH);
         vm.expectEmit();
