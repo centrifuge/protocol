@@ -112,12 +112,6 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @param centrifugeId Destination chain
     function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit, address refund) external payable;
 
-    /// @notice Initialize batching message
-    function startBatching() external;
-
-    /// @notice Finalize batching messages and send the resulting batch message
-    function endBatching(address refund) external payable;
-
     /// @notice Calls a method that should be in the same contract as the caller, as a callback.
     ///         The method called will be wrapped inside startBatching and endBatching,
     ///         so any method call inside that requires messaging will be batched.
@@ -138,8 +132,11 @@ interface IGateway is IMessageHandler, IRecoverable {
     ///             }
     ///         }
     ///         ```
-    function withBatch(bytes memory data, address refund) external payable;
+    function withBatch(address target, bytes memory data, address refund) external payable;
 
     /// @notice Returns the current gateway batching level.
     function isBatching() external view returns (bool);
+
+    /// @notice Returns the current gateway batching level.
+    function batcher() external view returns (address);
 }

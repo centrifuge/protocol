@@ -1,9 +1,4 @@
 {
-<<<<<<< HEAD
-  "fulfillDepositRequest": "806525",
-  "requestDeposit": "725355"
-=======
-  "fulfillDepositRequest": "806921",
-  "requestDeposit": "725558"
->>>>>>> 7c04f5d3 (base implementation)
+  "fulfillDepositRequest": "806693",
+  "requestDeposit": "725405"
 }

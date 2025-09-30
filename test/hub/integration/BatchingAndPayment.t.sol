@@ -20,11 +20,15 @@ contract TestBatchingAndPayment is BaseTest {
         vm.startPrank(FM);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
-        cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, CHAIN_CV, REFUND);
-        cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, CHAIN_CV, REFUND);
+        cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, CHAIN_CV, address(0));
+        cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, CHAIN_CV, address(0));
         assertEq(c, cs.length);
 
-        hub.multicall{value: GAS * 2}(cs);
+        gateway.withBatch{
+            value: GAS * 2 + 123
+        }(address(hub), abi.encodeWithSelector(hub.multicall.selector, cs), REFUND);
+
+        assertEq(cv.batchCount(), 1);
     }
 
     /// Test the following:
@@ -50,6 +54,10 @@ contract TestBatchingAndPayment is BaseTest {
         cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolB, CHAIN_CV, REFUND);
         assertEq(c, cs.length);
 
-        hub.multicall{value: GAS * 2}(cs);
+        gateway.withBatch{
+            value: GAS * 2 + 123
+        }(address(hub), abi.encodeWithSelector(hub.multicall.selector, cs), REFUND);
+
+        assertEq(cv.batchCount(), 2);
     }
 }

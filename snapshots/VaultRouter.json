@@ -1,11 +1,7 @@
 {
-<<<<<<< HEAD
-  "claimDeposit": "972248",
+  "claimDeposit": "972416",
   "enable": "60931",
   "lockDepositRequest": "95560",
-  "requestDeposit": "734758",
-  "requestRedeem": "2188743"
-=======
-  "lockDepositRequest": "95560"
->>>>>>> 7c04f5d3 (base implementation)
+  "requestDeposit": "734808",
+  "requestRedeem": "2189028"
 }

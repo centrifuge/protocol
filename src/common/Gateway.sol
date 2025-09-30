@@ -223,13 +223,11 @@ contract Gateway is Auth, Recoverable, IGateway {
         emit RepayBatch(centrifugeId, batch);
     }
 
-    /// @inheritdoc IGateway
-    function startBatching() public auth {
+    function _startBatching() internal {
         isBatching = true;
     }
 
-    /// @inheritdoc IGateway
-    function endBatching(address refund) public payable auth {
+    function _endBatching(address refund) internal {
         require(isBatching, NoBatched());
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
 
@@ -253,13 +251,13 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function withBatch(bytes memory data, address refund) external payable {
+    function withBatch(address target, bytes memory data, address refund) external payable {
         require(batcher == address(0), AlreadyBatching());
 
-        startBatching();
+        _startBatching();
         batcher = msg.sender;
 
-        (bool success, bytes memory returnData) = msg.sender.call(data);
+        (bool success, bytes memory returnData) = target.call(data);
         if (!success) {
             uint256 length = returnData.length;
             require(length != 0, CallFailedWithEmptyRevert());
@@ -270,7 +268,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         }
 
         batcher = address(0);
-        endBatching(refund);
+        _endBatching(refund);
     }
 
     /// @inheritdoc IGateway

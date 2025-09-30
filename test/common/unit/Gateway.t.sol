@@ -119,6 +119,14 @@ contract GatewayExt is Gateway {
     function process(uint16 centrifugeId, bytes memory message, bytes32 messageHash) public {
         _process(centrifugeId, message, messageHash);
     }
+
+    function startBatching() external {
+        _startBatching();
+    }
+
+    function endBatching(address refund) external payable {
+        _endBatching(refund);
+    }
 }
 
 // -----------------------------------------
@@ -596,12 +604,6 @@ contract GatewayTestSend is GatewayTest {
 }
 
 contract GatewayTestEndBatching is GatewayTest {
-    function testErrNotAuthorized() public {
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.endBatching(REFUND);
-    }
-
     function testErrNoBatched() public {
         vm.expectRevert(IGateway.NoBatched.selector);
         gateway.endBatching(REFUND);
@@ -858,7 +860,9 @@ contract CrosschainBatcherTestWithBatch is GatewayTest {
     }
 
     function _nested() external payable {
-        gateway.withBatch(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._nested.selector), REFUND);
+        gateway.withBatch(
+            address(this), abi.encodeWithSelector(CrosschainBatcherTestWithBatch._nested.selector), REFUND
+        );
     }
 
     function _emptyError() external payable {
@@ -867,18 +871,22 @@ contract CrosschainBatcherTestWithBatch is GatewayTest {
 
     function testErrAlreadyBatching() public {
         vm.expectRevert(IGateway.AlreadyBatching.selector);
-        gateway.withBatch(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._nested.selector), REFUND);
+        gateway.withBatch(
+            address(this), abi.encodeWithSelector(CrosschainBatcherTestWithBatch._nested.selector), REFUND
+        );
     }
 
     function testErrCallFailedWithEmptyRevert() public {
         vm.expectRevert(IGateway.CallFailedWithEmptyRevert.selector);
-        gateway.withBatch(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._emptyError.selector), REFUND);
+        gateway.withBatch(
+            address(this), abi.encodeWithSelector(CrosschainBatcherTestWithBatch._emptyError.selector), REFUND
+        );
     }
 
     function testWithCallback() public {
         gateway.withBatch{
             value: PAYMENT
-        }(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._success.selector, true, 1), REFUND);
+        }(address(this), abi.encodeWithSelector(CrosschainBatcherTestWithBatch._success.selector, true, 1), REFUND);
         assertEq(gateway.batcher(), address(0));
         assertEq(REFUND.balance, PAYMENT);
     }

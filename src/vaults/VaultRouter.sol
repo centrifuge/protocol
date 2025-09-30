@@ -7,10 +7,10 @@ import {IAsyncVault} from "./interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "./interfaces/IVaultRouter.sol";
 
 import {Auth} from "../misc/Auth.sol";
+import {Multicall} from "../misc/Multicall.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {IEscrow} from "../misc/interfaces/IEscrow.sol";
-import {Multicall, IMulticall} from "../misc/Multicall.sol";
 import {IERC7540Deposit} from "../misc/interfaces/IERC7540.sol";
 import {IERC20, IERC20Permit} from "../misc/interfaces/IERC20.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
@@ -46,16 +46,6 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         escrow = IEscrow(escrow_);
         gateway = gateway_;
         spoke = spoke_;
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Administration
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IMulticall
-    /// @notice performs a multicall but all message sent in the process will be batched
-    function multicall(bytes[] calldata data) public payable override(Multicall, IMulticall) {
-        gateway.withBatch{value: msg.value}(abi.encodeWithSelector(super.multicall.selector, data), msg.sender);
     }
 
     //----------------------------------------------------------------------------------------------

@@ -26,6 +26,7 @@ contract MockVaults is Test, Auth, IAdapter {
     uint16 public sourceChainId;
 
     bytes[] public lastMessages;
+    uint256 public batchCount;
 
     constructor(uint16 centrifugeId, IMessageHandler handler_) Auth(msg.sender) {
         handler = handler_;
@@ -98,6 +99,7 @@ contract MockVaults is Test, Auth, IAdapter {
             data = data.slice(messageLength, data.length - messageLength);
         }
 
+        batchCount += 1;
         adapterData = bytes32("");
     }
 

@@ -7,12 +7,12 @@ import {IBalanceSheet, ShareQueueAmount, AssetQueueAmount} from "./interfaces/IB
 
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
+import {Multicall} from "../misc/Multicall.sol";
 import {IAuth} from "../misc/interfaces/IAuth.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {IERC6909} from "../misc/interfaces/IERC6909.sol";
-import {Multicall, IMulticall} from "../misc/Multicall.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 
@@ -56,7 +56,10 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
 
     /// @dev Check if the msg.sender is ward or a manager
     modifier authOrManager(PoolId poolId) {
-        require(wards[msg.sender] == 1 || manager[poolId][msg.sender], IAuth.NotAuthorized());
+        require(
+            wards[msg.sender] == 1 || manager[poolId][msg.sender] || manager[poolId][gateway.batcher()],
+            IAuth.NotAuthorized()
+        );
         _;
     }
 
@@ -73,12 +76,6 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
-    }
-
-    /// @inheritdoc IMulticall
-    /// @notice performs a multicall but all messages sent in the process will be batched
-    function multicall(bytes[] calldata data) public payable override {
-        gateway.withBatch{value: msg.value}(abi.encodeWithSelector(super.multicall.selector, data), msg.sender);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -229,7 +226,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
 
         emit SubmitQueuedAssets(poolId, scId, assetId, data, pricePoolPerAsset);
         sender.sendUpdateHoldingAmount{
-            value: _payment()
+            value: msg.value
         }(poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit, refund);
     }
 
@@ -253,7 +250,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         shareQueue.nonce++;
 
         emit SubmitQueuedShares(poolId, scId, data);
-        sender.sendUpdateShares{value: _payment()}(poolId, scId, data, extraGasLimit, refund);
+        sender.sendUpdateShares{value: msg.value}(poolId, scId, data, extraGasLimit, refund);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -365,9 +362,5 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
 
         D18 pricePoolPerShare = spoke.pricePoolPerShare(poolId, scId, true);
         return pricePoolPerShare;
-    }
-
-    function _payment() internal view returns (uint256 value) {
-        return gateway.isBatching() ? 0 : msg.value;
     }
 }
