@@ -33,8 +33,8 @@ library SignatureLib {
         if (signer.code.length > 0) {
             (bool success, bytes memory result) =
                 signer.staticcall(abi.encodeCall(IERC1271.isValidSignature, (digest, signature)));
-            valid =
-                (success && result.length == 32 && abi.decode(result, (bytes4)) == IERC1271.isValidSignature.selector);
+            valid = (success && result.length == 32
+                    && abi.decode(result, (bytes4)) == IERC1271.isValidSignature.selector);
         }
     }
 }
