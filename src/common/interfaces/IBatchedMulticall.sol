@@ -3,7 +3,7 @@ pragma solidity >=0.5.0;
 
 import {IGateway} from "./IGateway.sol";
 
-/// @notice Simple escrow that can be used to deposit and withdraw native tokens
+/// @notice A multicall that batches the messages using the gateway
 interface IBatchedMulticall {
     function gateway() external view returns (IGateway);
 }

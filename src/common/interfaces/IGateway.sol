@@ -128,14 +128,14 @@ interface IGateway is IMessageHandler, IRecoverable {
     ///         Should be used like:
     ///         ```
     ///         contract Integration {
-    ///             ICrosschainBatcher batcher;
+    ///             IGateway gateway;
     ///
     ///             function doSomething(PoolId poolId) external {
-    ///                 batcher.withBatch(abi.encodeWithSelector(Integration.callback.selector, poolId));
+    ///                 gateway.withBatch(abi.encodeWithSelector(Integration.callback.selector, poolId));
     ///             }
     ///
     ///             function callback(PoolId poolId) external {
-    ///                 require(batcher.sender() == address(this));
+    ///                 require(gateway.batcher() == address(this));
     ///                 // Call several hub, balance sheet, or spoke methods that trigger cross-chain transactions
     ///             }
     ///         }

@@ -18,8 +18,8 @@ abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
     /// @notice With extra support for batching
     function multicall(bytes[] calldata data) public payable override protected {
         require(!gateway.isBatching(), IGateway.AlreadyBatching());
-        _isBatching = true;
 
+        _isBatching = true;
         gateway.startBatching();
 
         super.multicall(data);

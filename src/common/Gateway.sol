@@ -229,6 +229,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     function _startBatching() internal {
+        require(!isBatching, AlreadyBatching());
         isBatching = true;
     }
 
@@ -265,7 +266,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     function withBatch(bytes memory data, address refund) external payable {
         require(batcher == address(0), AlreadyBatching());
 
-        startBatching();
+        _startBatching();
         batcher = msg.sender;
 
         (bool success, bytes memory returnData) = msg.sender.call(data);
@@ -279,7 +280,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         }
 
         batcher = address(0);
-        endBatching(refund);
+        _endBatching(refund);
     }
 
     /// @inheritdoc IGateway

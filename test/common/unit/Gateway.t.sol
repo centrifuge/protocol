@@ -379,6 +379,19 @@ contract GatewayTestRetry is GatewayTest {
 }
 
 contract GatewayTestStartBatching is GatewayTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.startBatching();
+    }
+
+    function testErrAlreadyBatching() public {
+        gateway.startBatching();
+
+        vm.expectRevert(IGateway.AlreadyBatching.selector);
+        gateway.startBatching();
+    }
+
     function testStartBatching() public {
         gateway.startBatching();
 

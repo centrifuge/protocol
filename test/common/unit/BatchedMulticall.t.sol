@@ -7,7 +7,7 @@ import {BatchedMulticall} from "../../../src/common/BatchedMulticall.sol";
 import "forge-std/Test.sol";
 
 contract BatchedMulticallImpl is BatchedMulticall, Test {
-    uint256 total;
+    uint256 public total;
 
     constructor(IGateway gateway) BatchedMulticall(gateway) {}
 
@@ -15,7 +15,11 @@ contract BatchedMulticallImpl is BatchedMulticall, Test {
         return _isBatching;
     }
 
-    function add(uint256 i) external {
+    function nonZeroPayment() external payable {
+        assertNotEq(_payment(), 0);
+    }
+
+    function add(uint256 i) external payable {
         assertEq(_payment(), 0);
         total += i;
     }
@@ -24,8 +28,6 @@ contract BatchedMulticallImpl is BatchedMulticall, Test {
 contract IsContract {}
 
 contract BatchedMulticallTest is Test {
-    address immutable ANY = makeAddr("any");
-
     IGateway immutable gateway = IGateway(address(new IsContract()));
     BatchedMulticallImpl multicall = new BatchedMulticallImpl(gateway);
 
@@ -35,6 +37,10 @@ contract BatchedMulticallTest is Test {
 contract BatchedMulticallTestMulticall is BatchedMulticallTest {
     function _foo() external {}
 
+    function testPaymentIsNonZeroWithoutMulticall() external {
+        multicall.nonZeroPayment{value: 1}();
+    }
+
     function testErrAlreadyBatching() external {
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.isBatching.selector), abi.encode(true));
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatching.selector), abi.encode());
@@ -43,7 +49,6 @@ contract BatchedMulticallTestMulticall is BatchedMulticallTest {
         bytes[] memory calls = new bytes[](1);
         calls[0] = abi.encodeWithSelector(multicall.add.selector, 1);
 
-        vm.prank(ANY);
         vm.expectRevert(IGateway.AlreadyBatching.selector);
         multicall.multicall(calls);
     }
@@ -57,9 +62,9 @@ contract BatchedMulticallTestMulticall is BatchedMulticallTest {
         calls[0] = abi.encodeWithSelector(multicall.add.selector, 2);
         calls[1] = abi.encodeWithSelector(multicall.add.selector, 3);
 
-        vm.prank(ANY);
-        multicall.multicall(calls);
+        multicall.multicall{value: 1}(calls);
 
         assertEq(multicall.isBatching(), false);
+        assertEq(multicall.total(), 5);
     }
 }
