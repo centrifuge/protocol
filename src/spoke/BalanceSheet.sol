@@ -12,7 +12,6 @@ import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {IERC6909} from "../misc/interfaces/IERC6909.sol";
-import {BatchedMulticall} from "../common/BatchedMulticall.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 
@@ -21,6 +20,7 @@ import {AssetId} from "../common/types/AssetId.sol";
 import {IRoot} from "../common/interfaces/IRoot.sol";
 import {IGateway} from "../common/interfaces/IGateway.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {BatchedMulticall} from "../common/BatchedMulticall.sol";
 import {IPoolEscrow} from "../common/interfaces/IPoolEscrow.sol";
 import {ISpokeMessageSender} from "../common/interfaces/IGatewaySenders.sol";
 import {IBalanceSheetGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";

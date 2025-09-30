@@ -13,7 +13,6 @@ import {Auth} from "../misc/Auth.sol";
 import {d18, D18} from "../misc/types/D18.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
-import {BatchedMulticall} from "../common/BatchedMulticall.sol";
 
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
@@ -22,6 +21,7 @@ import {IAdapter} from "../common/interfaces/IAdapter.sol";
 import {IGateway} from "../common/interfaces/IGateway.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IValuation} from "../common/interfaces/IValuation.sol";
+import {BatchedMulticall} from "../common/BatchedMulticall.sol";
 import {IMultiAdapter} from "../common/interfaces/IMultiAdapter.sol";
 import {ISnapshotHook} from "../common/interfaces/ISnapshotHook.sol";
 import {IHubMessageSender} from "../common/interfaces/IGatewaySenders.sol";

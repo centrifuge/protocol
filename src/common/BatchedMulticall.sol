@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.28;
 
-import {Multicall, IMulticall} from "../misc/Multicall.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
 import {IBatchedMulticall} from "./interfaces/IBatchedMulticall.sol";
+
+import {Multicall, IMulticall} from "../misc/Multicall.sol";
 
 abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
     IGateway public gateway;

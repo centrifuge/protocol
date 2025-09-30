@@ -7,4 +7,3 @@ import {IGateway} from "./IGateway.sol";
 interface IBatchedMulticall {
     function gateway() external view returns (IGateway);
 }
-

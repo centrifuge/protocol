@@ -10,7 +10,6 @@ import {Auth} from "../misc/Auth.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {IEscrow} from "../misc/interfaces/IEscrow.sol";
-import {BatchedMulticall} from "../common/BatchedMulticall.sol";
 import {IERC7540Deposit} from "../misc/interfaces/IERC7540.sol";
 import {IERC20, IERC20Permit} from "../misc/interfaces/IERC20.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
@@ -18,6 +17,7 @@ import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 import {PoolId} from "../common/types/PoolId.sol";
 import {IGateway} from "../common/interfaces/IGateway.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {BatchedMulticall} from "../common/BatchedMulticall.sol";
 
 import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
 

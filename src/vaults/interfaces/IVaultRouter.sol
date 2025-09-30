@@ -6,9 +6,9 @@ import {IAsyncVault} from "./IAsyncVault.sol";
 
 import {PoolId} from "../../common/types/PoolId.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
+import {IBatchedMulticall} from "../../common/interfaces/IBatchedMulticall.sol";
 
 import {BaseSyncDepositVault} from "../BaseVaults.sol";
-import {IBatchedMulticall} from "../../common/interfaces/IBatchedMulticall.sol";
 
 interface IVaultRouter is IBatchedMulticall {
     // --- Events ---

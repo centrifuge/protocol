@@ -876,9 +876,9 @@ contract CrosschainBatcherTestWithBatch is GatewayTest {
     }
 
     function testWithCallback() public {
-        gateway.withBatch{
-            value: PAYMENT
-        }(abi.encodeWithSelector(CrosschainBatcherTestWithBatch._success.selector, true, 1), REFUND);
+        gateway.withBatch{value: PAYMENT}(
+            abi.encodeWithSelector(CrosschainBatcherTestWithBatch._success.selector, true, 1), REFUND
+        );
         assertEq(gateway.batcher(), address(0));
         assertEq(REFUND.balance, PAYMENT);
     }

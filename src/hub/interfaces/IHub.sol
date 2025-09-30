@@ -13,7 +13,6 @@ import {PoolId} from "../../common/types/PoolId.sol";
 import {AssetId} from "../../common/types/AssetId.sol";
 import {AccountId} from "../../common/types/AccountId.sol";
 import {IAdapter} from "../../common/interfaces/IAdapter.sol";
-import {IGateway} from "../../common/interfaces/IGateway.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
 import {IValuation} from "../../common/interfaces/IValuation.sol";
 import {VaultUpdateKind} from "../../common/libraries/MessageLib.sol";
