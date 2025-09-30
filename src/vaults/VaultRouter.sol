@@ -99,6 +99,27 @@ contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
+    function crosschainTransferShares(
+        BaseSyncDepositVault vault,
+        uint128 shares,
+        uint16 centrifugeId,
+        bytes32 receiver,
+        address owner,
+        uint128 extraGasLimit,
+        uint128 remoteExtraGasLimit,
+        address refund
+    ) external payable protected {
+        require(owner == msg.sender || owner == address(this), InvalidOwner());
+
+        spoke.vaultDetails(vault); // Ensure vault is valid
+        if (owner != address(this)) SafeTransferLib.safeTransferFrom(vault.share(), owner, address(this), shares);
+
+        spoke.crosschainTransferShares{value: gateway.isBatching() ? 0 : msg.value}(
+            centrifugeId, vault.poolId(), vault.scId(), receiver, shares, extraGasLimit, remoteExtraGasLimit, refund
+        );
+    }
+
+    /// @inheritdoc IVaultRouter
     function lockDepositRequest(IBaseVault vault, uint256 amount, address controller, address owner)
         public
         payable
@@ -151,8 +172,6 @@ contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
     function claimDeposit(IAsyncVault vault, address receiver, address controller) external payable protected {
         _canClaim(vault, receiver, controller);
         uint256 maxMint = vault.maxMint(controller);
-
-        spoke.vaultDetails(vault); // Ensure vault is valid
         vault.mint(maxMint, receiver, controller);
     }
 
@@ -189,8 +208,6 @@ contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
     function claimRedeem(IBaseVault vault, address receiver, address controller) external payable protected {
         _canClaim(vault, receiver, controller);
         uint256 maxWithdraw = vault.maxWithdraw(controller);
-
-        spoke.vaultDetails(vault); // Ensure vault is valid
         vault.withdraw(maxWithdraw, receiver, controller);
     }
 
