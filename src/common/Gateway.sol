@@ -244,7 +244,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             uint128 gasLimit = _gasLimitSlot(centrifugeId, poolId).tloadUint128();
             bytes memory batch = TransientBytesLib.get(outboundBatchSlot);
 
-            cost += _send(centrifugeId, batch, gasLimit, refund, msg.value);
+            cost += _send(centrifugeId, batch, gasLimit, refund, msg.value - cost);
 
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
