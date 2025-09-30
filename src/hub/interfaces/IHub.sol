@@ -13,12 +13,12 @@ import {PoolId} from "../../common/types/PoolId.sol";
 import {AssetId} from "../../common/types/AssetId.sol";
 import {AccountId} from "../../common/types/AccountId.sol";
 import {IAdapter} from "../../common/interfaces/IAdapter.sol";
-import {IGateway} from "../../common/interfaces/IGateway.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
 import {IValuation} from "../../common/interfaces/IValuation.sol";
 import {VaultUpdateKind} from "../../common/libraries/MessageLib.sol";
 import {ISnapshotHook} from "../../common/interfaces/ISnapshotHook.sol";
 import {IHubMessageSender} from "../../common/interfaces/IGatewaySenders.sol";
+import {IBatchedMulticall} from "../../common/interfaces/IBatchedMulticall.sol";
 
 /// @notice Account types used by Hub
 enum AccountType {
@@ -37,7 +37,7 @@ enum AccountType {
 }
 
 /// @notice Interface with all methods available in the system used by actors
-interface IHub {
+interface IHub is IBatchedMulticall {
     event NotifyPool(uint16 indexed centrifugeId, PoolId indexed poolId);
     event NotifyShareClass(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId);
     event NotifyShareMetadata(
@@ -97,7 +97,6 @@ interface IHub {
     /// @notice TODO
     error RequestManagerCallFailed();
 
-    function gateway() external view returns (IGateway);
     function holdings() external view returns (IHoldings);
     function accounting() external view returns (IAccounting);
     function hubRegistry() external view returns (IHubRegistry);

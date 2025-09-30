@@ -4,14 +4,13 @@ pragma solidity >=0.5.0;
 import {IBaseVault} from "./IBaseVault.sol";
 import {IAsyncVault} from "./IAsyncVault.sol";
 
-import {IMulticall} from "../../misc/interfaces/IMulticall.sol";
-
 import {PoolId} from "../../common/types/PoolId.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
+import {IBatchedMulticall} from "../../common/interfaces/IBatchedMulticall.sol";
 
 import {BaseSyncDepositVault} from "../BaseVaults.sol";
 
-interface IVaultRouter is IMulticall {
+interface IVaultRouter is IBatchedMulticall {
     // --- Events ---
     event LockDepositRequest(
         IBaseVault indexed vault, address indexed controller, address indexed owner, address sender, uint256 amount
