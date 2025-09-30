@@ -164,15 +164,6 @@ contract NAVManager is INAVManager, Auth {
     }
 
     /// @inheritdoc INAVManager
-    function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
-        external
-        onlyManager(poolId)
-    {
-        // TODO: Should we have this function at all? Seems like this can only mess up the accounting.
-        hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
-    }
-
-    /// @inheritdoc INAVManager
     function closeGainLoss(PoolId poolId, uint16 centrifugeId) external onlyManager(poolId) {
         require(initialized[poolId][centrifugeId], NotInitialized());
 

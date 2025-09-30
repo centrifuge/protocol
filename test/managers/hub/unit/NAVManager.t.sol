@@ -64,7 +64,6 @@ contract NAVManagerTest is Test {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.initializeLiability.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateHoldingValue.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateHoldingValuation.selector), abi.encode());
-        vm.mockCall(hub, abi.encodeWithSelector(IHub.setHoldingAccountId.selector), abi.encode());
 
         vm.mockCall(holdings, abi.encodeWithSelector(IHoldings.snapshot.selector), abi.encode(false, uint64(0)));
 
@@ -442,27 +441,6 @@ contract NAVManagerUpdateHoldingTest is NAVManagerTest {
         navManager.updateHoldingValuation(POOL_A, SC_1, asset1, mockValuation);
     }
 
-    function testSetHoldingAccountId() public {
-        AccountId accountId = withCentrifugeId(CENTRIFUGE_ID_1, 10);
-        uint8 kind = 1;
-
-        vm.expectCall(
-            address(hub),
-            abi.encodeWithSelector(IHub.setHoldingAccountId.selector, POOL_A, SC_1, asset1, kind, accountId)
-        );
-
-        vm.prank(manager);
-        navManager.setHoldingAccountId(POOL_A, SC_1, asset1, kind, accountId);
-    }
-
-    function testSetHoldingAccountIdUnauthorized() public {
-        AccountId accountId = withCentrifugeId(CENTRIFUGE_ID_1, 10);
-        uint8 kind = 1;
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(unauthorized);
-        navManager.setHoldingAccountId(POOL_A, SC_1, asset1, kind, accountId);
-    }
 }
 
 contract NAVManagerCloseGainLossTest is NAVManagerTest {

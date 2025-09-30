@@ -122,15 +122,6 @@ interface INAVManager is ISnapshotHook {
     /// @param valuation The new valuation contract
     function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation) external;
 
-    /// @notice Set the account ID for a specific asset holding
-    /// @param poolId The pool ID
-    /// @param scId The share class ID
-    /// @param assetId The asset ID
-    /// @param kind The account kind
-    /// @param accountId The account ID to set
-    function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
-        external;
-
     /// @notice close gain/loss accounts by moving balances to equity account
     /// @param poolId The pool ID
     /// @param centrifugeId The Centrifuge ID of the network
