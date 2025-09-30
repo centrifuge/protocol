@@ -168,14 +168,20 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     }
 
     function _sendRequest(IBaseVault vault_, bytes memory payload) internal {
-        IRefundEscrow refund = refundEscrowFactory.get(vault_.poolId());
-        require(address(refund).code.length > 0, RefundEscrowNotDeployed());
+        IRefundEscrow refund;
+        uint256 payment;
 
-        refund.withdrawFunds(address(this), address(refund).balance); // All funds goes to this contract
+        if (!balanceSheet.gateway().isBatching()) {
+            refund = refundEscrowFactory.get(vault_.poolId());
+            require(address(refund).code.length > 0, RefundEscrowNotDeployed());
+
+            refund.withdrawFunds(address(this), address(refund).balance); // All funds goes to this contract
+            payment = address(this).balance;
+        }
 
         // It use all funds for the message, and the rest is refunded again to the RefundEscrow
         spoke.request{
-            value: balanceSheet.gateway().isBatching() ? 0 : address(this).balance
+            value: payment
         }(vault_.poolId(), vault_.scId(), spoke.vaultDetails(vault_).assetId, payload, address(refund), true);
     }
 
