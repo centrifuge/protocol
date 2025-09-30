@@ -148,7 +148,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 m.receiver,
                 m.amount,
                 m.extraGasLimit,
-                address(0) // Refund is not used because we're in unpaid mode
+                address(0) // Refund is not used because we're in unpaid mode with no payment
             );
         } else if (kind == MessageType.ExecuteTransferShares) {
             MessageLib.ExecuteTransferShares memory m = MessageLib.deserializeExecuteTransferShares(message);

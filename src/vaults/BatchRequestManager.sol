@@ -119,7 +119,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
                     RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount)
                         .serialize(),
                     0,
-                    address(0)
+                    address(0) // Refund is not used because we're in unpaid mode with no payment
                 );
             }
         } else if (kind == uint8(RequestMessageType.CancelRedeemRequest)) {
@@ -135,7 +135,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
                     RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount)
                         .serialize(),
                     0,
-                    address(0)
+                    address(0) // Refund is not used because we're in unpaid mode with no payment
                 );
             }
         } else {
