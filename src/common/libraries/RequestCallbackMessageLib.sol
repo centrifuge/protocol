@@ -77,7 +77,9 @@ library RequestCallbackMessageLib {
         require(requestCallbackType(data) == RequestCallbackType.RevokedShares, UnknownRequestCallbackType());
 
         return RevokedShares({
-            assetAmount: data.toUint128(1), shareAmount: data.toUint128(17), pricePoolPerShare: data.toUint128(33)
+            assetAmount: data.toUint128(1),
+            shareAmount: data.toUint128(17),
+            pricePoolPerShare: data.toUint128(33)
         });
     }
 

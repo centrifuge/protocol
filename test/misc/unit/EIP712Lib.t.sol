@@ -10,9 +10,8 @@ contract EIP712LibTest is Test {
         bytes32 nameHash = keccak256(bytes("TestContract"));
         bytes32 versionHash = keccak256(bytes("1"));
 
-        bytes32 expectedDomainSeparator = keccak256(
-            abi.encode(EIP712Lib.EIP712_DOMAIN_TYPEHASH, nameHash, versionHash, block.chainid, address(this))
-        );
+        bytes32 expectedDomainSeparator =
+            keccak256(abi.encode(EIP712Lib.EIP712_DOMAIN_TYPEHASH, nameHash, versionHash, block.chainid, address(this)));
 
         bytes32 calculatedDomainSeparator = EIP712Lib.calculateDomainSeparator(nameHash, versionHash);
         assertEq(calculatedDomainSeparator, expectedDomainSeparator);
