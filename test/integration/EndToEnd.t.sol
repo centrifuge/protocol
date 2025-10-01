@@ -1267,5 +1267,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
             EXTRA_GAS,
             REFUND
         );
+
+        assertEq(RECEIVER.balance, VALUE);
     }
 }

@@ -191,7 +191,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         AssetId assetId = spoke.vaultDetails(vault_).assetId;
         bool isLocal = poolId.centrifugeId() == assetId.centrifugeId();
 
-        if (!balanceSheet.gateway().isBatching() || isLocal) {
+        if (!balanceSheet.gateway().isBatching() && !isLocal) {
             refund = refundEscrowFactory.get(poolId);
             require(address(refund).code.length > 0, RefundEscrowNotDeployed());
 
