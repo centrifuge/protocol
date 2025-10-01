@@ -6,9 +6,9 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {IBatchedMulticall} from "../../../src/common/interfaces/IBatchedMulticall.sol";
 import {IGateway} from "../../../src/common/interfaces/IGateway.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+import {IBatchedMulticall} from "../../../src/common/interfaces/IBatchedMulticall.sol";
 
 import {IBalanceSheet} from "../../../src/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../../../src/spoke/interfaces/IUpdateContract.sol";
