@@ -156,9 +156,9 @@ interface IHub is IBatchedMulticall {
     /// @param  scId The share class id
     /// @param  maxPriceAge timestamp until the price become invalid
     function setMaxSharePriceAge(
-        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
+        uint16 centrifugeId,
         uint64 maxPriceAge,
         address refund
     ) external payable;

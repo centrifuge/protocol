@@ -97,7 +97,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.setMaxAssetPriceAge(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.setMaxSharePriceAge(0, POOL_A, ShareClassId.wrap(0), 0, REFUND);
+        hub.setMaxSharePriceAge(POOL_A, ShareClassId.wrap(0), 0, 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.setPoolMetadata(POOL_A, bytes(""));

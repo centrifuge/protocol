@@ -168,9 +168,9 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @inheritdoc IHub
     function setMaxSharePriceAge(
-        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
+        uint16 centrifugeId,
         uint64 maxPriceAge,
         address refund
     ) external payable {
