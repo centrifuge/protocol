@@ -152,6 +152,10 @@ interface IGateway is IMessageHandler, IRecoverable {
     function withBatch(bytes memory callbackData, address refund) external payable;
 
     /// @notice Returns the current caller used to call withBatch and block any reentrancy.
+    /// @dev calling this at the very beginning inside the multicall means:
+    /// - The callback that uses this can only be called once.
+    /// - The callback is called from the gateway under `withBatch`.
+    /// - The callback is called from the same contract, because withBatch uses `msg.sender` as target for the callback
     function lockCallback() external returns (address);
 
     /// @notice Returns the current gateway batching level.
