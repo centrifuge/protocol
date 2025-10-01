@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {IERC20Metadata} from "../../../src/misc/interfaces/IERC20.sol";
 import {IERC6909MetadataExt} from "../../../src/misc/interfaces/IERC6909.sol";
