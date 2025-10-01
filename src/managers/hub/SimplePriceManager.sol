@@ -10,7 +10,7 @@ import {D18, d18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../common/types/PoolId.sol";
 import {AssetId} from "../../common/types/AssetId.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
-import {ICrosschainBatcher} from "../../common/interfaces/ICrosschainBatcher.sol";
+import {IGateway} from "../../common/interfaces/IGateway.sol";
 
 import {IHub} from "../../hub/interfaces/IHub.sol";
 import {IHubRegistry} from "../../hub/interfaces/IHubRegistry.sol";
@@ -18,7 +18,7 @@ import {IShareClassManager} from "../../hub/interfaces/IShareClassManager.sol";
 
 /// @notice Base share price calculation manager for single share class pools.
 contract SimplePriceManager is ISimplePriceManager, Auth {
-    ICrosschainBatcher public crosschainBatcher;
+    IGateway public gateway;
     IHub public immutable hub;
     IHubRegistry public immutable hubRegistry;
     IShareClassManager public immutable shareClassManager;
@@ -27,9 +27,9 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     mapping(PoolId poolId => mapping(uint16 centrifugeId => NetworkMetrics)) public networkMetrics;
     mapping(PoolId poolId => mapping(address => bool)) public manager;
 
-    constructor(IHub hub_, ICrosschainBatcher crosschainBatcher_, address deployer) Auth(deployer) {
+    constructor(IHub hub_, address deployer) Auth(deployer) {
         hub = hub_;
-        crosschainBatcher = crosschainBatcher_;
+        gateway = hub_.gateway();
         hubRegistry = hub_.hubRegistry();
         shareClassManager = hub_.shareClassManager();
     }
@@ -50,7 +50,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
 
     /// @inheritdoc ISimplePriceManager
     function file(bytes32 what, address data) external auth {
-        if (what == "crosschainBatcher") crosschainBatcher = ICrosschainBatcher(data);
+        if (what == "gateway") gateway = IGateway(data);
         else revert ISimplePriceManager.FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -111,17 +111,16 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     {
         require(scId.index() == 1, InvalidShareClass());
 
-        crosschainBatcher.execute(
+        gateway.withBatch(
             abi.encodeWithSelector(
                 SimplePriceManager.onUpdateCallback.selector, poolId, scId, centrifugeId, netAssetValue
-            )
+            ),
+            address(0)
         );
     }
 
-    function onUpdateCallback(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue)
-        external
-        auth
-    {
+    function onUpdateCallback(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) external {
+        require(msg.sender == address(gateway), NotAuthorized());
         NetworkMetrics storage networkMetrics_ = networkMetrics[poolId][centrifugeId];
         Metrics storage metrics_ = metrics[poolId];
         uint128 issuance = shareClassManager.issuance(scId, centrifugeId);
@@ -138,7 +137,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         hub.updateSharePrice(poolId, scId, price);
 
         for (uint256 i; i < networkCount; i++) {
-            hub.notifySharePrice(poolId, scId, metrics_.networks[i]);
+            hub.notifySharePrice(poolId, scId, metrics_.networks[i], address(0));
         }
 
         emit Update(poolId, scId, metrics_.netAssetValue, metrics_.issuance, price);

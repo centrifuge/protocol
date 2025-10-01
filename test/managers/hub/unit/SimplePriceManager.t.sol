@@ -7,8 +7,8 @@ import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../../../src/common/types/PoolId.sol";
 import {IGateway} from "../../../../src/common/interfaces/IGateway.sol";
+import {IBatchedMulticall} from "../../../../src/common/interfaces/IBatchedMulticall.sol";
 import {AssetId, newAssetId} from "../../../../src/common/types/AssetId.sol";
-import {ICrosschainBatcher} from "../../../../src/common/interfaces/ICrosschainBatcher.sol";
 import {ShareClassId, newShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 
 import {IHub} from "../../../../src/hub/interfaces/IHub.sol";
@@ -21,8 +21,8 @@ import "forge-std/Test.sol";
 
 contract IsContract {}
 
-contract MockCrosschainBatcher {
-    function execute(bytes memory data) external payable returns (uint256 cost) {
+contract MockGateway {
+    function withBatch(bytes memory data, address) external payable returns (uint256 cost) {
         (bool success, bytes memory returnData) = msg.sender.call{value: msg.value}(data);
         if (!success) {
             uint256 length = returnData.length;
@@ -53,11 +53,10 @@ contract SimplePriceManagerTest is Test {
     AssetId asset2 = newAssetId(2, 1);
 
     address hub = address(new MockHub());
-    address gateway = address(new IsContract());
+    address gateway = address(new MockGateway());
     address hubRegistry = address(new IsContract());
     address shareClassManager = address(new IsContract());
     address hubHelpers = address(new IsContract());
-    address crosschainBatcher = address(new MockCrosschainBatcher());
 
     address unauthorized = makeAddr("unauthorized");
     address hubManager = makeAddr("hubManager");
@@ -75,12 +74,9 @@ contract SimplePriceManagerTest is Test {
     function _setupMocks() internal {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.shareClassManager.selector), abi.encode(shareClassManager));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.hubRegistry.selector), abi.encode(hubRegistry));
-        vm.mockCall(hub, abi.encodeWithSelector(IHub.gateway.selector), abi.encode(gateway));
+        vm.mockCall(hub, abi.encodeWithSelector(IBatchedMulticall.gateway.selector), abi.encode(gateway));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateSharePrice.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.notifySharePrice.selector), abi.encode(uint256(0)));
-
-        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.startBatching.selector), abi.encode());
-        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.endBatching.selector), abi.encode());
 
         vm.mockCall(hubRegistry, abi.encodeWithSelector(IHubRegistry.manager.selector), abi.encode(false));
         vm.mockCall(
@@ -110,11 +106,11 @@ contract SimplePriceManagerTest is Test {
     }
 
     function _deployManager() internal {
-        priceManager = new SimplePriceManager(IHub(hub), ICrosschainBatcher(crosschainBatcher), auth);
+        priceManager = new SimplePriceManager(IHub(hub), auth);
         vm.prank(auth);
         priceManager.rely(caller);
         vm.prank(auth);
-        priceManager.rely(crosschainBatcher);
+        priceManager.rely(gateway);
 
         vm.prank(hubManager);
         priceManager.updateManager(POOL_A, manager, true);
@@ -283,16 +279,16 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
 }
 
 contract SimplePriceManagerFileTests is SimplePriceManagerTest {
-    function testFileCrosschainBatcher() public {
-        address newCrosschainBatcher = makeAddr("newCrosschainBatcher");
+    function testFileGateway() public {
+        address newGateway = makeAddr("newGateway");
 
         vm.expectEmit(true, false, true, true);
-        emit ISimplePriceManager.File("crosschainBatcher", newCrosschainBatcher);
+        emit ISimplePriceManager.File("gateway", newGateway);
 
         vm.prank(auth);
-        priceManager.file("crosschainBatcher", newCrosschainBatcher);
+        priceManager.file("gateway", newGateway);
 
-        assertEq(address(priceManager.crosschainBatcher()), newCrosschainBatcher);
+        assertEq(address(priceManager.gateway()), newGateway);
     }
 
     function testFileUnrecognizedParam() public {
@@ -304,11 +300,11 @@ contract SimplePriceManagerFileTests is SimplePriceManagerTest {
     }
 
     function testFileUnauthorized() public {
-        address newCrosschainBatcher = makeAddr("newCrosschainBatcher");
+        address newGateway = makeAddr("newGateway");
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(unauthorized);
-        priceManager.file("gateway", newCrosschainBatcher);
+        priceManager.file("gateway", newGateway);
     }
 }
 
@@ -421,6 +417,12 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         vm.expectRevert(ISimplePriceManager.InvalidShareClass.selector);
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_2, CENTRIFUGE_ID_1, 1000);
+    }
+
+    function testCallbackNotAuthorised() public {
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(auth);
+        priceManager.onUpdateCallback(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
     }
 }
 

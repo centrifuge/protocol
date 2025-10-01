@@ -6,9 +6,9 @@ import {Multicall} from "../../../../src/misc/Multicall.sol";
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../../../src/common/types/PoolId.sol";
+import {IBatchedMulticall} from "../../../../src/common/interfaces/IBatchedMulticall.sol";
 import {IGateway} from "../../../../src/common/interfaces/IGateway.sol";
 import {AssetId, newAssetId} from "../../../../src/common/types/AssetId.sol";
-import {ICrosschainBatcher} from "../../../../src/common/interfaces/ICrosschainBatcher.sol";
 import {ShareClassId, newShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 
 import {IHub} from "../../../../src/hub/interfaces/IHub.sol";
@@ -24,9 +24,9 @@ import "forge-std/Test.sol";
 
 contract IsContract {}
 
-contract MockCrosschainBatcher {
-    function execute(bytes memory data) external payable returns (uint256 cost) {
-        (bool success, bytes memory returnData) = msg.sender.call{value: msg.value}(data);
+contract MockGateway {
+    function withBatch(bytes memory data, address) external payable returns (uint256 cost) {
+        (bool success, bytes memory returnData) = msg.sender.call(data);
         if (!success) {
             uint256 length = returnData.length;
             require(length != 0, "Empty revert");
@@ -52,10 +52,10 @@ contract BatchSimplePriceManagerTest is Test {
     AssetId asset1 = newAssetId(1, 1);
 
     address hub = address(new MockHub());
+    address gateway = address(new MockGateway());
     address hubRegistry = address(new IsContract());
     address shareClassManager = address(new IsContract());
     address batchRequestManager = address(new IsContract());
-    address crosschainBatcher = address(new MockCrosschainBatcher());
 
     address unauthorized = makeAddr("unauthorized");
     address hubManager = makeAddr("hubManager");
@@ -73,6 +73,7 @@ contract BatchSimplePriceManagerTest is Test {
     function _setupMocks() internal {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.shareClassManager.selector), abi.encode(shareClassManager));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.hubRegistry.selector), abi.encode(hubRegistry));
+        vm.mockCall(hub, abi.encodeWithSelector(IBatchedMulticall.gateway.selector), abi.encode(gateway));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateSharePrice.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.notifySharePrice.selector), abi.encode(uint256(0)));
         vm.mockCall(
@@ -136,11 +137,9 @@ contract BatchSimplePriceManagerTest is Test {
     }
 
     function _deployManager() internal {
-        priceManager = new BatchSimplePriceManager(IHub(hub), ICrosschainBatcher(crosschainBatcher), auth);
+        priceManager = new BatchSimplePriceManager(IHub(hub), auth);
         vm.prank(auth);
         priceManager.rely(caller);
-        vm.prank(auth);
-        priceManager.rely(crosschainBatcher);
 
         vm.prank(hubManager);
         priceManager.updateManager(POOL_A, manager, true);

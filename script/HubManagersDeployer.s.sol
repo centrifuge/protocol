@@ -26,7 +26,6 @@ contract HubManagersActionBatcher is HubActionBatcher {
         report.navManager.rely(address(report.hub.hubHandler));
         report.navManager.rely(address(report.hub.holdings));
         report.simplePriceManager.rely(address(report.navManager));
-        report.simplePriceManager.rely(address(report.hub.common.crosschainBatcher));
     }
 
     function revokeManagers(HubManagersReport memory report) public onlyDeployer {
@@ -57,9 +56,7 @@ contract HubManagersDeployer is HubDeployer {
         simplePriceManager = SimplePriceManager(
             create3(
                 generateSalt("simplePriceManager"),
-                abi.encodePacked(
-                    type(SimplePriceManager).creationCode, abi.encode(hub, crosschainBatcher, address(batcher))
-                )
+                abi.encodePacked(type(SimplePriceManager).creationCode, abi.encode(hub, address(batcher)))
             )
         );
 

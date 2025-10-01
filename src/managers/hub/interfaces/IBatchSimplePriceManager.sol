@@ -18,14 +18,14 @@ interface IBatchSimplePriceManager is ISimplePriceManager {
     /// @param depositAssetId The asset ID for deposits
     /// @param approvedAssetAmount Amount of assets to approve for deposit
     function approveDeposits(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint128 approvedAssetAmount)
-        external;
+        external payable;
 
     /// @notice Issue shares for approved deposit epochs
     /// @param poolId The pool ID
     /// @param scId The share class ID
     /// @param depositAssetId The asset ID for deposits
     /// @param extraGasLimit Extra gas limit for some computation that may need to happen on the remote chain
-    function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint128 extraGasLimit) external;
+    function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint128 extraGasLimit) external payable;
 
     /// @notice Approve redemption requests for a given share amount
     /// @param poolId The pool ID
@@ -40,7 +40,7 @@ interface IBatchSimplePriceManager is ISimplePriceManager {
     /// @param scId The share class ID
     /// @param payoutAssetId The asset ID for payouts
     /// @param extraGasLimit Extra gas limit for some computation that may need to happen on the remote chain
-    function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint128 extraGasLimit) external;
+    function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint128 extraGasLimit) external payable;
 
     /// @notice Approve deposits and issue shares in sequence using current NAV per share
     /// @param poolId The pool ID
@@ -54,7 +54,7 @@ interface IBatchSimplePriceManager is ISimplePriceManager {
         AssetId depositAssetId,
         uint128 approvedAssetAmount,
         uint128 extraGasLimit
-    ) external;
+    ) external payable;
 
     /// @notice Approve redeems and revoke shares in sequence using current NAV per share
     /// @param poolId The pool ID
@@ -68,5 +68,5 @@ interface IBatchSimplePriceManager is ISimplePriceManager {
         AssetId payoutAssetId,
         uint128 approvedShareAmount,
         uint128 extraGasLimit
-    ) external;
+    ) external payable;
 }

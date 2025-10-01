@@ -10,17 +10,18 @@ import {D18, d18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../common/types/PoolId.sol";
 import {AssetId} from "../../common/types/AssetId.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
-import {ICrosschainBatcher} from "../../common/interfaces/ICrosschainBatcher.sol";
-
 import {IHub} from "../../hub/interfaces/IHub.sol";
 
 import {IBatchRequestManager} from "../../vaults/interfaces/IBatchRequestManager.sol";
 
 /// @notice Simple price manager for single share class pools with async request management.
 contract BatchSimplePriceManager is SimplePriceManager, IBatchSimplePriceManager {
-    constructor(IHub hub_, ICrosschainBatcher crosschainBatcher_, address deployer)
-        SimplePriceManager(hub_, crosschainBatcher_, deployer)
-    {}
+    constructor(IHub hub_, address deployer) SimplePriceManager(hub_, deployer) {}
+
+    modifier onlyGateway() {
+        require(msg.sender == address(gateway), NotAuthorized());
+        _;
+    }
 
     //----------------------------------------------------------------------------------------------
     // Updates
@@ -46,7 +47,7 @@ contract BatchSimplePriceManager is SimplePriceManager, IBatchSimplePriceManager
 
     /// @inheritdoc IBatchSimplePriceManager
     function approveDeposits(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint128 approvedAssetAmount)
-        external
+        external payable
         onlyManager(poolId)
     {
         require(scId.index() == 1, InvalidShareClass());
@@ -59,14 +60,14 @@ contract BatchSimplePriceManager is SimplePriceManager, IBatchSimplePriceManager
         networkMetrics_.issueEpochsBehind++;
 
         D18 pricePoolPerAsset = hub.pricePoolPerAsset(poolId, scId, depositAssetId);
-        requestManager.approveDeposits(
-            poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset
+        requestManager.approveDeposits{value: msg.value}(
+            poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset, msg.sender
         );
     }
 
     /// @inheritdoc IBatchSimplePriceManager
     function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint128 extraGasLimit)
-        external
+        external payable
         onlyManager(poolId)
     {
         require(scId.index() == 1, InvalidShareClass());
@@ -80,7 +81,7 @@ contract BatchSimplePriceManager is SimplePriceManager, IBatchSimplePriceManager
         networkMetrics_.issueEpochsBehind--;
 
         D18 navPoolPerShare = _navPerShare(poolId);
-        requestManager.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare, extraGasLimit);
+        requestManager.issueShares{value: msg.value}(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare, extraGasLimit, msg.sender);
     }
 
     /// @inheritdoc IBatchSimplePriceManager
@@ -105,7 +106,7 @@ contract BatchSimplePriceManager is SimplePriceManager, IBatchSimplePriceManager
 
     /// @inheritdoc IBatchSimplePriceManager
     function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint128 extraGasLimit)
-        external
+        external payable
         onlyManager(poolId)
     {
         require(scId.index() == 1, InvalidShareClass());
@@ -119,7 +120,7 @@ contract BatchSimplePriceManager is SimplePriceManager, IBatchSimplePriceManager
         networkMetrics_.revokeEpochsBehind--;
 
         D18 navPoolPerShare = _navPerShare(poolId);
-        requestManager.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, navPoolPerShare, extraGasLimit);
+        requestManager.revokeShares{value: msg.value}(poolId, scId, payoutAssetId, nowRevokeEpochId, navPoolPerShare, extraGasLimit, msg.sender);
     }
 
     /// @inheritdoc IBatchSimplePriceManager
@@ -129,7 +130,28 @@ contract BatchSimplePriceManager is SimplePriceManager, IBatchSimplePriceManager
         AssetId depositAssetId,
         uint128 approvedAssetAmount,
         uint128 extraGasLimit
-    ) external onlyManager(poolId) {
+    ) external payable onlyManager(poolId) {
+        gateway.withBatch{value: msg.value}(
+            abi.encodeWithSelector(
+                BatchSimplePriceManager.approveDepositsAndIssueSharesCallback.selector,
+                poolId,
+                scId,
+                depositAssetId,
+                approvedAssetAmount,
+                extraGasLimit
+            ),
+            msg.sender
+        );
+    }
+
+    
+    function approveDepositsAndIssueSharesCallback(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId depositAssetId,
+        uint128 approvedAssetAmount,
+        uint128 extraGasLimit
+    ) external onlyGateway {
         require(scId.index() == 1, InvalidShareClass());
         IBatchRequestManager requestManager =
             IBatchRequestManager(address(hubRegistry.hubRequestManager(poolId, depositAssetId.centrifugeId())));
@@ -141,9 +163,9 @@ contract BatchSimplePriceManager is SimplePriceManager, IBatchSimplePriceManager
         D18 pricePoolPerAsset = hub.pricePoolPerAsset(poolId, scId, depositAssetId);
         D18 navPoolPerShare = _navPerShare(poolId);
         requestManager.approveDeposits(
-            poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset
+            poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset, address(0)
         );
-        requestManager.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare, extraGasLimit);
+        requestManager.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare, extraGasLimit, address(0));
     }
 
     /// @inheritdoc IBatchSimplePriceManager
@@ -153,7 +175,7 @@ contract BatchSimplePriceManager is SimplePriceManager, IBatchSimplePriceManager
         AssetId payoutAssetId,
         uint128 approvedShareAmount,
         uint128 extraGasLimit
-    ) external onlyManager(poolId) {
+    ) external payable onlyManager(poolId) {
         require(scId.index() == 1, InvalidShareClass());
         IBatchRequestManager requestManager =
             IBatchRequestManager(address(hubRegistry.hubRequestManager(poolId, payoutAssetId.centrifugeId())));
@@ -167,6 +189,6 @@ contract BatchSimplePriceManager is SimplePriceManager, IBatchSimplePriceManager
         requestManager.approveRedeems(
             poolId, scId, payoutAssetId, nowRedeemEpochId, approvedShareAmount, pricePoolPerAsset
         );
-        requestManager.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, navPoolPerShare, extraGasLimit);
+        requestManager.revokeShares{value: msg.value}(poolId, scId, payoutAssetId, nowRevokeEpochId, navPoolPerShare, extraGasLimit, msg.sender);
     }
 }
