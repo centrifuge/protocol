@@ -173,9 +173,9 @@ contract NAVManagerIntegrationTest is BaseTest {
         (globalNAV, globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         // NAV and global issuance should remain unchanged, only issuance per network changes
-        assertEq(navHub, 250e18, "navHub3");
+        assertEq(navHub, 250e18);
         assertEq(navSpoke, 3400e18);
-        assertEq(navHub2, navHub, "navHub v navHub3");
+        assertEq(navHub2, navHub);
         assertEq(navSpoke2, navSpoke);
         assertEq(issuanceHub, 370e18);
         assertEq(issuanceSpoke, 3430e18);
