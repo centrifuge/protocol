@@ -875,17 +875,17 @@ contract IntegrationMock is Test {
         gateway = gateway_;
     }
 
-    function _success(bool, uint256) external payable {
-        assertEq(gateway.batcher(), address(this));
-        wasCalled = true;
-    }
-
     function _nested() external payable {
         gateway.withBatch(abi.encodeWithSelector(this._nested.selector), address(0));
     }
 
     function _emptyError() external payable {
         revert();
+    }
+
+    function _success(bool, uint256) external payable {
+        assertEq(gateway.lockCallback(), address(this));
+        wasCalled = true;
     }
 
     function callNested(address refund) external {
@@ -927,7 +927,14 @@ contract GatewayTestWithBatch is GatewayTest {
         integration.callSuccess{value: 1234}(REFUND);
 
         assertEq(integration.wasCalled(), true);
-        assertEq(gateway.batcher(), address(0));
+
         assertEq(REFUND.balance, 1234);
+    }
+}
+
+contract GatewayTestLockCallback is GatewayTest {
+    function testErrCallbackIsLocked() public {
+        vm.expectRevert(IGateway.CallbackIsLocked.selector);
+        assertEq(gateway.lockCallback(), address(0));
     }
 }
