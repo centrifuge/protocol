@@ -930,6 +930,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     using CastLib for *;
     using MathLib for *;
     using MessageLib for *;
+    using UpdateContractMessageLib for *;
 
     function setUp() public virtual override {
         super.setUp();
@@ -1247,5 +1248,24 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         IMessageHandler(remoteAdapters[1].toAddress()).handle(h.centrifugeId, message);
 
         assertEq(s.spoke.pool(POOL_A), block.timestamp); // 2 of 2 received and processed
+    }
+
+    /// forge-config: default.isolate = true
+    function testWithdrawSubsidyFromVaults(bool sameChain) public {
+        _configurePool(sameChain);
+
+        address RECEIVER = makeAddr("Receiver");
+        uint256 VALUE = 123;
+
+        vm.startPrank(FM);
+        h.hub.updateContract{value: GAS}(
+            POOL_A,
+            SC_1,
+            s.centrifugeId,
+            address(s.asyncRequestManager).toBytes32(),
+            UpdateContractMessageLib.UpdateContractWithdraw({who: RECEIVER.toBytes32(), value: VALUE}).serialize(),
+            EXTRA_GAS,
+            REFUND
+        );
     }
 }

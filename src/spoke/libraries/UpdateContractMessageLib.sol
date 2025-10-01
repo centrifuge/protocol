@@ -10,7 +10,8 @@ enum UpdateContractType {
     Valuation,
     SyncDepositMaxReserve,
     UpdateAddress,
-    Policy
+    Policy,
+    Withdraw
 }
 
 library UpdateContractMessageLib {
@@ -114,5 +115,28 @@ library UpdateContractMessageLib {
 
     function serialize(UpdateContractPolicy memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(UpdateContractType.Policy, t.who, t.what);
+    }
+
+    //---------------------------------------
+    //   UpdateContract.Withdraw (submsg)
+    //---------------------------------------
+
+    struct UpdateContractWithdraw {
+        bytes32 who;
+        uint256 value;
+    }
+
+    function deserializeUpdateContractWithdraw(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractWithdraw memory)
+    {
+        require(updateContractType(data) == UpdateContractType.Withdraw, UnknownMessageType());
+
+        return UpdateContractWithdraw({who: data.toBytes32(1), value: data.toUint256(33)});
+    }
+
+    function serialize(UpdateContractWithdraw memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.Withdraw, t.who, t.value);
     }
 }

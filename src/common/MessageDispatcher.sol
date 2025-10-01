@@ -677,7 +677,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     function _refund(address refund) internal {
         if (msg.value > 0) {
-            (bool success,) = payable(refund).call{value: msg.value}(new bytes(0));
+            (bool success,) = payable(refund).call{value: msg.value}("");
             require(success, CannotRefund());
         }
     }
