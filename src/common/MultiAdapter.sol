@@ -26,6 +26,8 @@ contract MultiAdapter is Auth, IMultiAdapter {
     IMessageHandler public gateway;
     IMessageProperties public messageProperties;
 
+    uint64 globalSessionId;
+
     mapping(uint16 centrifugeId => mapping(PoolId => IAdapter[])) public adapters;
     mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => Inbound)) public inbound;
     mapping(uint16 centrifugeId => mapping(PoolId => mapping(IAdapter adapter => Adapter))) internal _adapterDetails;
@@ -72,7 +74,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         uint256 numAdapters = adapters[centrifugeId][poolId].length;
         uint64 sessionId = numAdapters > 0
             ? _adapterDetails[centrifugeId][poolId][adapters[centrifugeId][poolId][0]].activeSessionId + 1
-            : 0;
+            : globalSessionId + 1;
 
         // Disable old adapters
         for (uint8 i; i < numAdapters; i++) {
@@ -89,6 +91,8 @@ contract MultiAdapter is Auth, IMultiAdapter {
         }
 
         adapters[centrifugeId][poolId] = addresses;
+        if (poolId == GLOBAL_ID) globalSessionId = sessionId;
+
         emit SetAdapters(centrifugeId, poolId, addresses, threshold_, recoveryIndex_);
     }
 
