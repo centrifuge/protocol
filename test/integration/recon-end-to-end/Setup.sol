@@ -132,39 +132,20 @@ abstract contract Setup is
     AccountId[] internal createdAccountIds;
     AssetId[] internal createdAssetIds;
     D18 internal INITIAL_PRICE = d18(1e18); // set the initial price that gets used when creating an asset via a pool's
-        // shortcut to avoid stack too deep errors
-    bool internal IS_LIABILITY = true;
-    /// @dev see toggle_IsLiability
-    bool internal IS_INCREASE = true;
-    /// @dev see toggle_IsIncrease
+    AccountId internal ACCOUNT_TO_UPDATE = AccountId.wrap(0); /// @dev see toggle_AccountToUpdate
+
+    // shortcut to avoid stack too deep errors
+    bool internal IS_LIABILITY = true; /// @dev see toggle_IsLiability
+    bool internal IS_INCREASE = true; /// @dev see toggle_IsIncrease
     bool internal IS_DEBIT_NORMAL = true;
     uint32 internal MAX_CLAIMS = 20;
-    AccountId internal ACCOUNT_TO_UPDATE = AccountId.wrap(0);
-    /// @dev see toggle_AccountToUpdate
     uint32 internal ASSET_ACCOUNT = 1;
     uint32 internal EQUITY_ACCOUNT = 2;
     uint32 internal LOSS_ACCOUNT = 3;
     uint32 internal GAIN_ACCOUNT = 4;
     uint64 internal POOL_ID_COUNTER = 1;
 
-    /// === GHOST === ///
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRequestDeposited;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userDepositProcessed;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userCancelledDeposits;
-
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRequestRedeemed;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRequestRedeemedAssets;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRedemptionsProcessed;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userCancelledRedeems;
-
-    mapping(ShareClassId scId => mapping(AssetId assetId => uint256)) approvedDeposits;
-    mapping(ShareClassId scId => mapping(AssetId assetId => uint256)) approvedRedemptions;
-
-    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint256))) issuedHubShares;
-    mapping(PoolId poolId => mapping(ShareClassId scId => uint256)) issuedBalanceSheetShares;
-    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint256))) revokedHubShares;
-    mapping(PoolId poolId => mapping(ShareClassId scId => uint256)) revokedBalanceSheetShares;
-
+    /// === OPTIMIZATION === ///
     int256 maxDepositGreater;
     int256 maxDepositLess;
     int256 maxRedeemGreater;
@@ -218,17 +199,36 @@ abstract contract Setup is
 
         balanceSheet = new BalanceSheet(root, address(this));
         fullRestrictions = new FullRestrictions(
-            address(root), address(balanceSheet), address(globalEscrow), address(spoke), address(this)
+            address(root),
+            address(balanceSheet),
+            address(globalEscrow),
+            address(spoke),
+            address(this)
         );
-        asyncRequestManager = new AsyncRequestManager(globalEscrow, address(this));
+        asyncRequestManager = new AsyncRequestManager(
+            globalEscrow,
+            address(this)
+        );
         syncManager = new SyncManager(address(this));
-        asyncVaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
-        syncVaultFactory = new SyncDepositVaultFactory(address(root), syncManager, asyncRequestManager, address(this));
+        asyncVaultFactory = new AsyncVaultFactory(
+            address(this),
+            asyncRequestManager,
+            address(this)
+        );
+        syncVaultFactory = new SyncDepositVaultFactory(
+            address(root),
+            syncManager,
+            asyncRequestManager,
+            address(this)
+        );
         tokenFactory = new TokenFactory(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
         spoke = new Spoke(tokenFactory, address(this));
 
-        tokenRecoverer = new TokenRecoverer(IRoot(address(root)), address(this));
+        tokenRecoverer = new TokenRecoverer(
+            IRoot(address(root)),
+            address(this)
+        );
         Root(address(root)).rely(address(tokenRecoverer));
         tokenRecoverer.rely(address(root));
         tokenRecoverer.rely(address(messageDispatcher));
@@ -273,13 +273,22 @@ abstract contract Setup is
         hubRegistry = new HubRegistry(address(this));
         transientValuation = new MockValuation(hubRegistry);
         identityValuation = new IdentityValuation(hubRegistry);
-        mockAdapter = new MockAdapter(CENTRIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
+        mockAdapter = new MockAdapter(
+            CENTRIFUGE_CHAIN_ID,
+            IMessageHandler(address(gateway))
+        );
         mockAccountValue = new MockAccountValue();
 
         // Core Hub Contracts
         accounting = new Accounting(address(this));
-        holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
-        shareClassManager = new ShareClassManager(IHubRegistry(address(hubRegistry)), address(this));
+        holdings = new Holdings(
+            IHubRegistry(address(hubRegistry)),
+            address(this)
+        );
+        shareClassManager = new ShareClassManager(
+            IHubRegistry(address(hubRegistry)),
+            address(this)
+        );
         hubHelpers = new HubHelpers(
             IHoldings(address(holdings)),
             IAccounting(address(accounting)),
@@ -356,7 +365,9 @@ abstract contract Setup is
     /// @dev Returns a random actor from the list of actors
     /// @dev This is useful for cases where we want to have caller and recipient be different actors
     /// @param entropy The determines which actor is chosen from the array
-    function _getRandomActor(uint256 entropy) internal view returns (address randomActor) {
+    function _getRandomActor(
+        uint256 entropy
+    ) internal view returns (address randomActor) {
         address[] memory actorsArray = _getActors();
         randomActor = actorsArray[entropy % actorsArray.length];
     }
