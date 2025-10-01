@@ -73,6 +73,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes calldata message) external auth {
         MessageType kind = message.messageType();
+        gateway.setUnpaidMode(true);
 
         uint16 sourceCentrifugeId = message.messageSourceCentrifugeId();
         require(sourceCentrifugeId == 0 || sourceCentrifugeId == centrifugeId, InvalidSourceChain());
@@ -146,7 +147,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 ShareClassId.wrap(m.scId),
                 m.receiver,
                 m.amount,
-                m.extraGasLimit
+                m.extraGasLimit,
+                address(0) // Refund is not used because we're in unpaid mode with no payment
             );
         } else if (kind == MessageType.ExecuteTransferShares) {
             MessageLib.ExecuteTransferShares memory m = MessageLib.deserializeExecuteTransferShares(message);
@@ -213,6 +215,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else {
             revert InvalidMessage(uint8(kind));
         }
+
+        gateway.setUnpaidMode(false);
     }
 
     /// @inheritdoc IMessageProperties
@@ -223,10 +227,5 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageProperties
     function messagePoolId(bytes calldata message) external pure returns (PoolId) {
         return message.messagePoolId();
-    }
-
-    /// @inheritdoc IMessageProperties
-    function messagePoolIdPayment(bytes calldata message) external pure returns (PoolId) {
-        return message.messagePoolIdPayment();
     }
 }

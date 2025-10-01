@@ -10,11 +10,8 @@ interface IMessageDispatcher is IRootMessageSender, ISpokeMessageSender, IHubMes
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
 
-    /// @notice Dispatched when a there is not enough gas to pay for message.
-    error NotEnoughGasToSendMessage();
-
-    /// @notice Dispatched when the message can not be batched
-    error CannotBeBatched();
+    /// @notice Dispatched when an account is not valid to withdraw funds
+    error CannotRefund();
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.

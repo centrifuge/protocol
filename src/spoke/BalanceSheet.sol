@@ -12,7 +12,6 @@ import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {IERC6909} from "../misc/interfaces/IERC6909.sol";
-import {Multicall, IMulticall} from "../misc/Multicall.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 
@@ -21,6 +20,7 @@ import {AssetId} from "../common/types/AssetId.sol";
 import {IRoot} from "../common/interfaces/IRoot.sol";
 import {IGateway} from "../common/interfaces/IGateway.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {BatchedMulticall} from "../common/BatchedMulticall.sol";
 import {IPoolEscrow} from "../common/interfaces/IPoolEscrow.sol";
 import {ISpokeMessageSender} from "../common/interfaces/IGatewaySenders.sol";
 import {IBalanceSheetGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
@@ -34,7 +34,7 @@ import {IPoolEscrowProvider} from "../common/factories/interfaces/IPoolEscrowFac
 ///
 ///         Share and asset updates to the Hub are optionally queued, to reduce the cost
 ///         per transaction. Dequeuing can be triggered locally by the manager or from the Hub.
-contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler {
+contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler {
     using MathLib for *;
     using CastLib for bytes32;
 
@@ -43,14 +43,13 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     ISpoke public spoke;
     ISpokeMessageSender public sender;
     IPoolEscrowProvider public poolEscrowProvider;
-    IGateway public gateway;
 
     mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId poolId => mapping(ShareClassId scId => ShareQueueAmount)) public queuedShares;
     mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => AssetQueueAmount))) public
         queuedAssets;
 
-    constructor(IRoot root_, address deployer) Auth(deployer) {
+    constructor(IRoot root_, address deployer) Auth(deployer) BatchedMulticall(gateway) {
         root = root_;
     }
 
@@ -75,22 +74,6 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         emit File(what, data);
     }
 
-    /// @inheritdoc IMulticall
-    /// @notice performs a multicall but all messages sent in the process will be batched
-    function multicall(bytes[] calldata data) public payable override {
-        require(msg.value == 0, NotPayable()); // Not payable by now
-        bool wasBatching = gateway.isBatching();
-        if (!wasBatching) {
-            gateway.startBatching();
-        }
-
-        super.multicall(data);
-
-        if (!wasBatching) {
-            gateway.endBatching();
-        }
-    }
-
     //----------------------------------------------------------------------------------------------
     // Management functions
     //----------------------------------------------------------------------------------------------
@@ -98,6 +81,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         external
+        payable
         authOrManager(poolId)
     {
         noteDeposit(poolId, scId, asset, tokenId, amount);
@@ -114,6 +98,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function noteDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         public
+        payable
         authOrManager(poolId)
     {
         AssetId assetId = spoke.assetToId(asset, tokenId);
@@ -133,7 +118,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         uint256 tokenId,
         address receiver,
         uint128 amount
-    ) external authOrManager(poolId) {
+    ) external payable authOrManager(poolId) {
         AssetId assetId = spoke.assetToId(asset, tokenId);
         IPoolEscrow escrow_ = escrow(poolId);
         escrow_.withdraw(scId, asset, tokenId, amount);
@@ -149,6 +134,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         public
+        payable
         authOrManager(poolId)
     {
         escrow(poolId).reserve(scId, asset, tokenId, amount);
@@ -157,13 +143,18 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function unreserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         public
+        payable
         authOrManager(poolId)
     {
         escrow(poolId).unreserve(scId, asset, tokenId, amount);
     }
 
     /// @inheritdoc IBalanceSheet
-    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external authOrManager(poolId) {
+    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares)
+        external
+        payable
+        authOrManager(poolId)
+    {
         emit Issue(poolId, scId, to, _pricePoolPerShare(poolId, scId), shares);
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
@@ -183,7 +174,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     }
 
     /// @inheritdoc IBalanceSheet
-    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external authOrManager(poolId) {
+    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external payable authOrManager(poolId) {
         emit Revoke(poolId, scId, msg.sender, _pricePoolPerShare(poolId, scId), shares);
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
@@ -202,11 +193,13 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     }
 
     /// @inheritdoc IBalanceSheet
-    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 extraGasLimit)
-        external
-        authOrManager(poolId)
-        returns (uint256 cost)
-    {
+    function submitQueuedAssets(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable authOrManager(poolId) {
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
 
@@ -228,14 +221,16 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         shareQueue.queuedAssetCounter -= assetCounter;
 
         emit SubmitQueuedAssets(poolId, scId, assetId, data, pricePoolPerAsset);
-        return sender.sendUpdateHoldingAmount(poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit);
+        sender.sendUpdateHoldingAmount{value: _payment()}(
+            poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit, refund
+        );
     }
 
     /// @inheritdoc IBalanceSheet
-    function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit)
+    function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit, address refund)
         external
+        payable
         authOrManager(poolId)
-        returns (uint256 cost)
     {
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
 
@@ -251,7 +246,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         shareQueue.nonce++;
 
         emit SubmitQueuedShares(poolId, scId, data);
-        return sender.sendUpdateShares(poolId, scId, data, extraGasLimit);
+        sender.sendUpdateShares{value: _payment()}(poolId, scId, data, extraGasLimit, refund);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -262,7 +257,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         address from,
         address to,
         uint256 amount
-    ) external authOrManager(poolId) {
+    ) external payable authOrManager(poolId) {
         require(!root.endorsed(from), CannotTransferFromEndorsedContract());
         IShareToken token = spoke.shareToken(poolId, scId);
         token.authTransferFrom(sender_, from, to, amount);
@@ -272,6 +267,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function overridePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 value)
         external
+        payable
         authOrManager(poolId)
     {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAsset", poolId, scId, assetId)), value.raw());
@@ -279,18 +275,26 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     }
 
     /// @inheritdoc IBalanceSheet
-    function resetPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external authOrManager(poolId) {
+    function resetPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        payable
+        authOrManager(poolId)
+    {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAssetIsSet", poolId, scId, assetId)), false);
     }
 
     /// @inheritdoc IBalanceSheet
-    function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external authOrManager(poolId) {
+    function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value)
+        external
+        payable
+        authOrManager(poolId)
+    {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShare", poolId, scId)), value.raw());
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), true);
     }
 
     /// @inheritdoc IBalanceSheet
-    function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
+    function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external payable authOrManager(poolId) {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), false);
     }
 
@@ -326,7 +330,9 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     // Internal
     //----------------------------------------------------------------------------------------------
 
-    function _updateAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, bool isDeposit) internal {
+    function _updateAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, bool isDeposit)
+        internal
+    {
         if (amount == 0) return;
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];

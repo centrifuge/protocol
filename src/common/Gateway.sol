@@ -10,12 +10,12 @@ import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 
 import {Auth} from "../misc/Auth.sol";
+import {Recoverable} from "../misc/Recoverable.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 import {TransientArrayLib} from "../misc/libraries/TransientArrayLib.sol";
 import {TransientBytesLib} from "../misc/libraries/TransientBytesLib.sol";
 import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
-import {Recoverable, IRecoverable, ETH_ADDRESS} from "../misc/Recoverable.sol";
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages through an adapter
@@ -29,7 +29,6 @@ contract Gateway is Auth, Recoverable, IGateway {
     using BytesLib for bytes;
     using TransientStorageLib for bytes32;
 
-    PoolId public constant GLOBAL_POT = PoolId.wrap(0);
     uint256 public constant GAS_FAIL_MESSAGE_STORAGE = 40_000; // check testMessageFailBenchmark
     bytes32 public constant BATCH_LOCATORS_SLOT = bytes32(uint256(keccak256("Centrifuge/batch-locators")) - 1);
 
@@ -45,8 +44,9 @@ contract Gateway is Auth, Recoverable, IGateway {
     mapping(PoolId => mapping(address => bool)) public manager;
 
     // Outbound & payments
+    address public transient batcher;
     bool public transient isBatching;
-    mapping(PoolId => Funds) public subsidy;
+    bool public transient unpaidMode;
     mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Underpaid)) public underpaid;
 
@@ -57,9 +57,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         localCentrifugeId = localCentrifugeId_;
         root = root_;
         gasService = gasService_;
-
-        subsidy[GLOBAL_POT].refund = IRecoverable(address(this));
-        emit SetRefundAddress(GLOBAL_POT, IRecoverable(address(this)));
     }
 
     modifier pauseable() {
@@ -92,10 +89,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         emit UpdateManager(poolId, who, canManage);
     }
 
-    receive() external payable {
-        _depositSubsidy(GLOBAL_POT, msg.sender, msg.value);
-    }
-
     //----------------------------------------------------------------------------------------------
     // Incoming
     //----------------------------------------------------------------------------------------------
@@ -108,20 +101,16 @@ contract Gateway is Auth, Recoverable, IGateway {
             uint256 length = processor.messageLength(remaining);
             bytes memory message = remaining.slice(0, length);
             remaining = remaining.slice(length, remaining.length - length);
+            bytes32 messageHash = keccak256(message);
 
-            uint256 executionGas = gasService.messageGasLimit(localCentrifugeId, message);
-            require(gasleft() >= executionGas + GAS_FAIL_MESSAGE_STORAGE, NotEnoughGasToProcess());
+            require(gasleft() > GAS_FAIL_MESSAGE_STORAGE, NotEnoughGasToProcess());
 
-            _process(centrifugeId, message, keccak256(message));
-        }
-    }
-
-    function _process(uint16 centrifugeId, bytes memory message, bytes32 messageHash) internal {
-        try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
-            emit ExecuteMessage(centrifugeId, message, messageHash);
-        } catch (bytes memory err) {
-            failedMessages[centrifugeId][messageHash]++;
-            emit FailMessage(centrifugeId, message, messageHash, err);
+            try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
+                emit ExecuteMessage(centrifugeId, message, messageHash);
+            } catch (bytes memory err) {
+                failedMessages[centrifugeId][messageHash]++;
+                emit FailMessage(centrifugeId, message, messageHash, err);
+            }
         }
     }
 
@@ -141,11 +130,11 @@ contract Gateway is Auth, Recoverable, IGateway {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IGateway
-    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit)
+    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit, address refund)
         external
+        payable
         pauseable
         auth
-        returns (uint256)
     {
         require(message.length > 0, EmptyMessage());
 
@@ -154,6 +143,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         uint128 gasLimit = gasService.messageGasLimit(centrifugeId, message) + extraGasLimit;
         if (isBatching) {
+            require(msg.value == 0, NotPayable());
             bytes32 batchSlot = _outboundBatchSlot(centrifugeId, poolId);
             bytes memory previousMessage = TransientBytesLib.get(batchSlot);
 
@@ -167,38 +157,40 @@ contract Gateway is Auth, Recoverable, IGateway {
             }
 
             TransientBytesLib.append(batchSlot, message);
-            return 0;
         } else {
-            return _send(centrifugeId, message, gasLimit);
+            uint256 cost = _send(centrifugeId, message, gasLimit, refund, msg.value);
+            _refund(refund, msg.value - cost);
         }
     }
 
-    function _send(uint16 centrifugeId, bytes memory batch, uint128 batchGasLimit) internal returns (uint256) {
+    function _send(uint16 centrifugeId, bytes memory batch, uint128 batchGasLimit, address refund, uint256 fuel)
+        internal
+        returns (uint256 cost)
+    {
         PoolId adapterPoolId = processor.messagePoolId(batch);
         require(!isOutgoingBlocked[centrifugeId][adapterPoolId], OutgoingBlocked());
 
-        PoolId paymentPoolId = processor.messagePoolIdPayment(batch);
-        uint256 cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
-
-        if (cost > subsidy[paymentPoolId].value) _requestPoolFunding(paymentPoolId);
-
-        if (cost <= subsidy[paymentPoolId].value) {
-            subsidy[paymentPoolId].value -= cost.toUint96();
-        } else {
+        cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
+        if (fuel >= cost) {
+            adapter.send{value: cost}(centrifugeId, batch, batchGasLimit, refund);
+        } else if (unpaidMode) {
             _addUnpaidBatch(centrifugeId, batch, batchGasLimit);
-            return 0;
+            cost = 0;
+        } else {
+            revert NotEnoughGas();
         }
+    }
 
-        adapter.send{value: cost}(centrifugeId, batch, batchGasLimit, address(subsidy[paymentPoolId].refund));
-
-        return cost;
+    function _refund(address refund, uint256 fuel) internal {
+        if (fuel > 0) {
+            (bool success,) = payable(refund).call{value: fuel}("");
+            require(success, CannotRefund());
+        }
     }
 
     /// @inheritdoc IGateway
-    function addUnpaidMessage(uint16 centrifugeId, bytes memory message, uint128 extraGasLimit) external auth {
-        uint128 gasLimit = gasService.messageGasLimit(centrifugeId, message) + extraGasLimit;
-        emit PrepareMessage(centrifugeId, processor.messagePoolId(message), message);
-        _addUnpaidBatch(centrifugeId, message, gasLimit);
+    function setUnpaidMode(bool enabled) external auth {
+        unpaidMode = enabled;
     }
 
     function _addUnpaidBatch(uint16 centrifugeId, bytes memory message, uint128 gasLimit) internal {
@@ -212,91 +204,79 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function repay(uint16 centrifugeId, bytes memory batch) external payable pauseable {
+    function repay(uint16 centrifugeId, bytes memory batch, address refund) external payable pauseable {
         bytes32 batchHash = keccak256(batch);
         Underpaid storage underpaid_ = underpaid[centrifugeId][batchHash];
         require(underpaid_.counter > 0, NotUnderpaidBatch());
 
         underpaid_.counter--;
 
-        depositSubsidy(processor.messagePoolIdPayment(batch));
-
-        uint256 cost = _send(centrifugeId, batch, underpaid_.gasLimit);
-        require(cost > 0 && msg.value >= cost, CannotBeRepaid());
+        uint256 cost = _send(centrifugeId, batch, underpaid_.gasLimit, refund, msg.value);
+        _refund(refund, msg.value - cost);
 
         if (underpaid_.counter == 0) delete underpaid[centrifugeId][batchHash];
 
         emit RepayBatch(centrifugeId, batch);
     }
 
-    function _requestPoolFunding(PoolId poolId) internal {
-        // NOTE: refund will never be shared across pools
-        IRecoverable refund = subsidy[poolId].refund;
-        if (!poolId.isNull()) {
-            uint256 refundBalance = address(refund).balance;
-            if (refundBalance == 0) return;
-
-            // Send to the gateway GLOBAL_POT
-            refund.recoverTokens(ETH_ADDRESS, address(this), refundBalance);
-
-            // Extract from the GLOBAL_POT
-            subsidy[GLOBAL_POT].value -= refundBalance.toUint96();
-            _depositSubsidy(poolId, address(refund), refundBalance);
-        }
-    }
-
     /// @inheritdoc IGateway
-    function setRefundAddress(PoolId poolId, IRecoverable refund) public auth {
-        subsidy[poolId].refund = refund;
-        emit SetRefundAddress(poolId, refund);
+    function startBatching() public auth {
+        _startBatching();
     }
 
-    /// @inheritdoc IGateway
-    function depositSubsidy(PoolId poolId) public payable {
-        _depositSubsidy(poolId, msg.sender, msg.value);
-    }
-
-    function _depositSubsidy(PoolId poolId, address who, uint256 value) internal {
-        require(address(subsidy[poolId].refund) != address(0), RefundAddressNotSet());
-        subsidy[poolId].value += value.toUint96();
-        emit DepositSubsidy(poolId, who, value);
-    }
-
-    /// @inheritdoc IGateway
-    function withdrawSubsidy(PoolId poolId, address to, uint256 amount) external onlyAuthOrManager(poolId) {
-        if (amount > subsidy[poolId].value) _requestPoolFunding(poolId);
-
-        subsidy[poolId].value -= amount.toUint96();
-
-        (bool success,) = payable(to).call{value: amount}(new bytes(0));
-        require(success, CannotWithdraw());
-
-        emit WithdrawSubsidy(poolId, to, amount);
-    }
-
-    /// @inheritdoc IGateway
-    function startBatching() external auth {
+    function _startBatching() internal {
+        require(!isBatching, AlreadyBatching());
         isBatching = true;
     }
 
     /// @inheritdoc IGateway
-    function endBatching() external auth returns (uint256 cost) {
+    function endBatching(address refund) public payable auth {
+        _endBatching(refund);
+    }
+
+    function _endBatching(address refund) internal {
         require(isBatching, NoBatched());
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
 
-        isBatching = false;
         TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
 
+        uint256 cost;
         for (uint256 i; i < locators.length; i++) {
             (uint16 centrifugeId, PoolId poolId) = _parseLocator(locators[i]);
             bytes32 outboundBatchSlot = _outboundBatchSlot(centrifugeId, poolId);
             uint128 gasLimit = _gasLimitSlot(centrifugeId, poolId).tloadUint128();
+            bytes memory batch = TransientBytesLib.get(outboundBatchSlot);
 
-            cost += _send(centrifugeId, TransientBytesLib.get(outboundBatchSlot), gasLimit);
+            cost += _send(centrifugeId, batch, gasLimit, refund, msg.value - cost);
 
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
         }
+
+        isBatching = false;
+
+        _refund(refund, msg.value - cost);
+    }
+
+    /// @inheritdoc IGateway
+    function withBatch(bytes memory data, address refund) external payable {
+        require(batcher == address(0), AlreadyBatching());
+
+        _startBatching();
+        batcher = msg.sender;
+
+        (bool success, bytes memory returnData) = msg.sender.call(data);
+        if (!success) {
+            uint256 length = returnData.length;
+            require(length != 0, CallFailedWithEmptyRevert());
+
+            assembly ("memory-safe") {
+                revert(add(32, returnData), length)
+            }
+        }
+
+        batcher = address(0);
+        _endBatching(refund);
     }
 
     /// @inheritdoc IGateway
@@ -324,9 +304,5 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     function _outboundBatchSlot(uint16 centrifugeId, PoolId poolId) internal pure returns (bytes32) {
         return keccak256(abi.encode("outboundBatch", centrifugeId, poolId));
-    }
-
-    function subsidizedValue(PoolId poolId) external view returns (uint256) {
-        return subsidy[poolId].value;
     }
 }

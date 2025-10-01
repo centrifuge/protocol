@@ -13,11 +13,12 @@ import {ITransferHook, HookData} from "../common/interfaces/ITransferHook.sol";
 contract RedemptionRestrictions is BaseTransferHook {
     constructor(
         address root_,
+        address spoke_,
         address redeemSource_,
         address depositTarget_,
         address crosschainSource_,
         address deployer
-    ) BaseTransferHook(root_, redeemSource_, depositTarget_, crosschainSource_, deployer) {}
+    ) BaseTransferHook(root_, spoke_, redeemSource_, depositTarget_, crosschainSource_, deployer) {}
 
     /// @inheritdoc ITransferHook
     function checkERC20Transfer(
@@ -26,12 +27,7 @@ contract RedemptionRestrictions is BaseTransferHook {
         uint256,
         /* value */
         HookData calldata hookData
-    )
-        public
-        view
-        override
-        returns (bool)
-    {
+    ) public view override returns (bool) {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
         if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
 

@@ -131,11 +131,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         address,
         /* sender */
         uint256 shares
-    )
-        public
-        view
-        returns (uint256 assets)
-    {
+    ) public view returns (uint256 assets) {
         return _shareToAssetAmount(vault_, shares, MathLib.Rounding.Up);
     }
 
@@ -145,16 +141,12 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         address,
         /* sender */
         uint256 assets
-    )
-        public
-        view
-        returns (uint256 shares)
-    {
+    ) public view returns (uint256 shares) {
         return convertToShares(vault_, assets);
     }
 
     /// @inheritdoc IDepositManager
-    function maxMint(IBaseVault vault_, address /* owner */) public view returns (uint256) {
+    function maxMint(IBaseVault vault_, address /* owner */ ) public view returns (uint256) {
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         uint128 maxAssets =
             _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
@@ -162,7 +154,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     }
 
     /// @inheritdoc IDepositManager
-    function maxDeposit(IBaseVault vault_, address /* owner */) public view returns (uint256) {
+    function maxDeposit(IBaseVault vault_, address /* owner */ ) public view returns (uint256) {
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         return _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
     }
