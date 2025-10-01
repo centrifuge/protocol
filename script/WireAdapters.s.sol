@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IAdapter} from "../src/common/interfaces/IAdapter.sol";
-import {IAdapterGuardian} from "../src/common/interfaces/IAdapterGuardian.sol";
+import {IOpsGuardian} from "../src/common/interfaces/IOpsGuardian.sol";
 
 import "forge-std/Script.sol";
 
@@ -66,11 +66,8 @@ contract WireAdapters is Script {
             uint16 remoteCentrifugeId = uint16(vm.parseJsonUint(remoteConfig, "$.network.centrifugeId"));
 
             // Register ALL adapters for this destination chain
-            IAdapterGuardian adapterGuardian =
-                IAdapterGuardian(vm.parseJsonAddress(localConfig, "$.contracts.adapterGuardian"));
-            adapterGuardian.setAdapters{value: 0.1 ether}(
-                remoteCentrifugeId, adapters, uint8(adapters.length), uint8(adapters.length), msg.sender
-            );
+            IOpsGuardian opsGuardian = IOpsGuardian(vm.parseJsonAddress(localConfig, "$.contracts.opsGuardian"));
+            opsGuardian.initAdapters(remoteCentrifugeId, adapters, uint8(adapters.length), uint8(adapters.length));
             console.log("Registered MultiAdapter(", localNetwork, ") for", remoteNetwork);
 
             // Wire WormholeAdapter

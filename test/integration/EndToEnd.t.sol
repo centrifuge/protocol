@@ -12,20 +12,19 @@ import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
 
 import {Root} from "../../src/common/Root.sol";
-import {ProtocolGuardian} from "../../src/common/ProtocolGuardian.sol";
-import {AdapterGuardian} from "../../src/common/AdapterGuardian.sol";
 import {PoolId} from "../../src/common/types/PoolId.sol";
 import {GasService} from "../../src/common/GasService.sol";
+import {ISafe} from "../../src/common/interfaces/ISafe.sol";
+import {OpsGuardian} from "../../src/common/OpsGuardian.sol";
 import {AccountId} from "../../src/common/types/AccountId.sol";
 import {IGateway, Gateway} from "../../src/common/Gateway.sol";
-import {ISafe} from "../../src/common/interfaces/ISafe.sol";
 import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";
 import {PricingLib} from "../../src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/common/types/AssetId.sol";
+import {ProtocolGuardian} from "../../src/common/ProtocolGuardian.sol";
 import {IMessageHandler} from "../../src/common/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/common/MultiAdapter.sol";
-import {ILocalCentrifugeId} from "../../src/common/interfaces/IGatewaySenders.sol";
 import {VaultUpdateKind, MessageType, MessageLib} from "../../src/common/libraries/MessageLib.sol";
 
 import {Hub} from "../../src/hub/Hub.sol";
@@ -92,7 +91,7 @@ contract EndToEndDeployment is Test {
         // Common
         Root root;
         ProtocolGuardian protocolGuardian;
-        AdapterGuardian adapterGuardian;
+        OpsGuardian opsGuardian;
         Gateway gateway;
         MultiAdapter multiAdapter;
         GasService gasService;
@@ -115,7 +114,7 @@ contract EndToEndDeployment is Test {
         // Common
         Root root;
         ProtocolGuardian protocolGuardian;
-        AdapterGuardian adapterGuardian;
+        OpsGuardian opsGuardian;
         Gateway gateway;
         MultiAdapter multiAdapter;
         // Vaults
@@ -216,7 +215,7 @@ contract EndToEndDeployment is Test {
             centrifugeId: CENTRIFUGE_ID_A,
             root: deployA.root(),
             protocolGuardian: deployA.protocolGuardian(),
-            adapterGuardian: deployA.adapterGuardian(),
+            opsGuardian: deployA.opsGuardian(),
             gateway: deployA.gateway(),
             multiAdapter: deployA.multiAdapter(),
             gasService: deployA.gasService(),
@@ -246,13 +245,13 @@ contract EndToEndDeployment is Test {
     function _setAdapter(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
-        vm.startPrank(address(deploy.adapterGuardian()));
+        vm.startPrank(address(deploy.protocolGuardian()));
         deploy.multiAdapter().setAdapters(
             remoteCentrifugeId, GLOBAL_POOL, adapters, uint8(adapters.length), uint8(adapters.length)
         );
 
-        vm.startPrank(address(deploy.adapterGuardian().safe()));
-        deploy.adapterGuardian().updateGatewayManager(GATEWAY_MANAGER, true);
+        vm.startPrank(address(deploy.protocolGuardian()));
+        deploy.gateway().updateManager(GLOBAL_POOL, GATEWAY_MANAGER, true);
         vm.stopPrank();
     }
 
@@ -285,7 +284,7 @@ contract EndToEndDeployment is Test {
         s_.centrifugeId = centrifugeId;
         s_.root = deploy.root();
         s_.protocolGuardian = deploy.protocolGuardian();
-        s_.adapterGuardian = deploy.adapterGuardian();
+        s_.opsGuardian = deploy.opsGuardian();
         s_.gateway = deploy.gateway();
         s_.multiAdapter = deploy.multiAdapter();
         s_.balanceSheet = deploy.balanceSheet();
@@ -444,7 +443,7 @@ contract EndToEndFlows is EndToEndUtils {
 
     function _createPool() internal {
         vm.startPrank(address(h.protocolGuardian.safe()));
-        h.protocolGuardian.createPool(POOL_A, FM, USD_ID);
+        h.opsGuardian.createPool(POOL_A, FM, USD_ID);
 
         vm.startPrank(FM);
         h.hub.setPoolMetadata(POOL_A, bytes("Testing pool"));

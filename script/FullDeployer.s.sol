@@ -247,8 +247,8 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
             "ProtocolGuardian address mismatch with mainnet"
         );
         require(
-            address(adapterGuardian) == 0xFEE13c017693a4706391D516ACAbF6789D5c3157,
-            "AdapterGuardian address mismatch with mainnet"
+            address(opsGuardian) == 0xFEE13c017693a4706391D516ACAbF6789D5c3157,
+            "OpsGuardian address mismatch with mainnet"
         );
         require(
             address(gasService) == 0x295262f96186505Ce67c67B9d29e36ad1f9EAe88,

@@ -2,12 +2,14 @@
 pragma solidity 0.8.28;
 
 import {PoolId} from "./types/PoolId.sol";
-import {AssetId} from "./types/AssetId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
 import {ISafe} from "./interfaces/ISafe.sol";
-import {IProtocolGuardian} from "./interfaces/IProtocolGuardian.sol";
+import {IAdapter} from "./interfaces/IAdapter.sol";
+import {IGateway} from "./interfaces/IGateway.sol";
+import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IRootMessageSender} from "./interfaces/IGatewaySenders.sol";
-import {IHubGuardianActions} from "./interfaces/IGuardianActions.sol";
+import {IProtocolGuardian} from "./interfaces/IProtocolGuardian.sol";
+
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
 contract ProtocolGuardian is IProtocolGuardian {
@@ -15,12 +17,15 @@ contract ProtocolGuardian is IProtocolGuardian {
 
     IRoot public immutable root;
     ISafe public safe;
-    IHubGuardianActions public hub;
+    IGateway public gateway;
+    IMultiAdapter public multiAdapter;
     IRootMessageSender public sender;
 
-    constructor(ISafe safe_, IRoot root_, IRootMessageSender sender_) {
+    constructor(ISafe safe_, IRoot root_, IGateway gateway_, IMultiAdapter multiAdapter_, IRootMessageSender sender_) {
         safe = safe_;
         root = root_;
+        gateway = gateway_;
+        multiAdapter = multiAdapter_;
         sender = sender_;
     }
 
@@ -92,12 +97,20 @@ contract ProtocolGuardian is IProtocolGuardian {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Pool Management
+    // Adapter Management
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IProtocolGuardian
-    function createPool(PoolId poolId, address admin, AssetId currency) external onlySafe {
-        hub.createPool(poolId, admin, currency);
+    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
+        external
+        onlySafe
+    {
+        multiAdapter.setAdapters(centrifugeId, PoolId.wrap(0), adapters, threshold, recoveryIndex);
+    }
+
+    /// @inheritdoc IProtocolGuardian
+    function blockOutgoing(uint16 centrifugeId, bool isBlocked) external onlySafe {
+        gateway.blockOutgoing(centrifugeId, PoolId.wrap(0), isBlocked);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -107,7 +120,8 @@ contract ProtocolGuardian is IProtocolGuardian {
     /// @inheritdoc IProtocolGuardian
     function file(bytes32 what, address data) external onlySafe {
         if (what == "safe") safe = ISafe(data);
-        else if (what == "hub") hub = IHubGuardianActions(data);
+        else if (what == "gateway") gateway = IGateway(data);
+        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "sender") sender = IRootMessageSender(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);

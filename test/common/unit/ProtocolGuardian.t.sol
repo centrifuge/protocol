@@ -2,13 +2,16 @@
 pragma solidity 0.8.28;
 
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+
 import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {IProtocolGuardian, ISafe} from "../../../src/common/interfaces/IProtocolGuardian.sol";
-import {IHubGuardianActions} from "../../../src/common/interfaces/IGuardianActions.sol";
 import {IRoot} from "../../../src/common/interfaces/IRoot.sol";
-import {IRootMessageSender} from "../../../src/common/interfaces/IGatewaySenders.sol";
+import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
+import {IGateway} from "../../../src/common/interfaces/IGateway.sol";
 import {ProtocolGuardian} from "../../../src/common/ProtocolGuardian.sol";
+import {IMultiAdapter} from "../../../src/common/interfaces/IMultiAdapter.sol";
+import {IRootMessageSender} from "../../../src/common/interfaces/IGatewaySenders.sol";
+import {IProtocolGuardian, ISafe} from "../../../src/common/interfaces/IProtocolGuardian.sol";
+
 import "forge-std/Test.sol";
 
 contract IsContract {}
@@ -18,38 +21,37 @@ contract ProtocolGuardianTest is Test {
 
     IRoot immutable root = IRoot(address(new IsContract()));
     ISafe immutable SAFE = ISafe(address(new IsContract()));
+    IGateway immutable gateway = IGateway(address(new IsContract()));
+    IMultiAdapter immutable multiAdapter = IMultiAdapter(address(new IsContract()));
     IRootMessageSender immutable sender = IRootMessageSender(address(new IsContract()));
-    IHubGuardianActions immutable hub = IHubGuardianActions(address(new IsContract()));
 
     address immutable OWNER = makeAddr("owner");
     address immutable UNAUTHORIZED = makeAddr("unauthorized");
     address immutable TARGET = makeAddr("target");
     address immutable TOKEN = makeAddr("token");
     address immutable TO = makeAddr("to");
-    address immutable POOL_ADMIN = makeAddr("poolAdmin");
     address immutable REFUND = makeAddr("refund");
+    IAdapter immutable ADAPTER = IAdapter(makeAddr("adapter"));
 
     uint16 constant CENTRIFUGE_ID = 1;
     uint256 constant TOKEN_ID = 1;
     uint256 constant AMOUNT = 100;
     uint256 constant COST = 123;
-    PoolId constant POOL_A = PoolId.wrap(1);
-    AssetId constant ASSET_ID_A = AssetId.wrap(1);
+    PoolId constant POOL_0 = PoolId.wrap(0);
 
     ProtocolGuardian protocolGuardian;
 
     function setUp() public {
-        protocolGuardian = new ProtocolGuardian(SAFE, root, sender);
+        protocolGuardian = new ProtocolGuardian(SAFE, root, gateway, multiAdapter, sender);
         vm.deal(address(SAFE), 1 ether);
-        vm.prank(address(SAFE));
-        protocolGuardian.file("hub", address(hub));
     }
 
     function testProtocolGuardian() public view {
         assertEq(address(protocolGuardian.safe()), address(SAFE));
         assertEq(address(protocolGuardian.root()), address(root));
+        assertEq(address(protocolGuardian.gateway()), address(gateway));
+        assertEq(address(protocolGuardian.multiAdapter()), address(multiAdapter));
         assertEq(address(protocolGuardian.sender()), address(sender));
-        assertEq(address(protocolGuardian.hub()), address(hub));
     }
 }
 
@@ -224,21 +226,75 @@ contract ProtocolGuardianTestRecoverTokens is ProtocolGuardianTest {
     }
 }
 
-contract ProtocolGuardianTestCreatePool is ProtocolGuardianTest {
-    function testCreatePoolSuccess() public {
+contract ProtocolGuardianTestSetAdapters is ProtocolGuardianTest {
+    function testSetAdaptersSuccess() public {
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = ADAPTER;
+        uint8 threshold = 1;
+        uint8 recoveryIndex = 2;
+
         vm.mockCall(
-            address(hub), abi.encodeWithSelector(hub.createPool.selector, POOL_A, POOL_ADMIN, ASSET_ID_A), abi.encode()
+            address(multiAdapter),
+            abi.encodeWithSelector(
+                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, POOL_0, adapters, threshold, recoveryIndex
+            ),
+            abi.encode()
         );
-        vm.expectCall(address(hub), abi.encodeWithSelector(hub.createPool.selector, POOL_A, POOL_ADMIN, ASSET_ID_A));
+
+        vm.expectCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(
+                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, POOL_0, adapters, threshold, recoveryIndex
+            )
+        );
 
         vm.prank(address(SAFE));
-        protocolGuardian.createPool(POOL_A, POOL_ADMIN, ASSET_ID_A);
+        protocolGuardian.setAdapters(CENTRIFUGE_ID, adapters, threshold, recoveryIndex);
     }
 
-    function testCreatePoolRevertWhenNotSafe() public {
+    function testSetAdaptersRevertWhenNotSafe() public {
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = ADAPTER;
+
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
-        protocolGuardian.createPool(POOL_A, POOL_ADMIN, ASSET_ID_A);
+        protocolGuardian.setAdapters(CENTRIFUGE_ID, adapters, 1, 2);
+    }
+}
+
+contract ProtocolGuardianTestBlockOutgoing is ProtocolGuardianTest {
+    function testBlockOutgoingBlockSuccess() public {
+        vm.mockCall(
+            address(gateway),
+            abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, POOL_0, true),
+            abi.encode()
+        );
+        vm.expectCall(
+            address(gateway), abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, POOL_0, true)
+        );
+
+        vm.prank(address(SAFE));
+        protocolGuardian.blockOutgoing(CENTRIFUGE_ID, true);
+    }
+
+    function testBlockOutgoingUnblockSuccess() public {
+        vm.mockCall(
+            address(gateway),
+            abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, POOL_0, false),
+            abi.encode()
+        );
+        vm.expectCall(
+            address(gateway), abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, POOL_0, false)
+        );
+
+        vm.prank(address(SAFE));
+        protocolGuardian.blockOutgoing(CENTRIFUGE_ID, false);
+    }
+
+    function testBlockOutgoingRevertWhenNotSafe() public {
+        vm.prank(UNAUTHORIZED);
+        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
+        protocolGuardian.blockOutgoing(CENTRIFUGE_ID, true);
     }
 }
 
@@ -273,11 +329,28 @@ contract ProtocolGuardianTestFile is ProtocolGuardianTest {
         protocolGuardian.file("invalid", makeAddr("address"));
     }
 
-    function testFileRevertWhenAdapterSpecificParam() public {
-        // Protocol guardian should not accept adapter-specific params
+    function testFileGatewaySuccess() public {
+        address newGateway = makeAddr("newGateway");
+
+        vm.expectEmit();
+        emit IProtocolGuardian.File("gateway", newGateway);
+
         vm.prank(address(SAFE));
-        vm.expectRevert(IProtocolGuardian.FileUnrecognizedParam.selector);
-        protocolGuardian.file("gateway", makeAddr("address"));
+        protocolGuardian.file("gateway", newGateway);
+
+        assertEq(address(protocolGuardian.gateway()), newGateway);
+    }
+
+    function testFileMultiAdapterSuccess() public {
+        address newMultiAdapter = makeAddr("newMultiAdapter");
+
+        vm.expectEmit();
+        emit IProtocolGuardian.File("multiAdapter", newMultiAdapter);
+
+        vm.prank(address(SAFE));
+        protocolGuardian.file("multiAdapter", newMultiAdapter);
+
+        assertEq(address(protocolGuardian.multiAdapter()), newMultiAdapter);
     }
 
     function testFileRevertWhenNotSafe() public {

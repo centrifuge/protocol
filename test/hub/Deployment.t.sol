@@ -17,14 +17,14 @@ contract HubDeploymentTest is HubDeployer, CommonDeploymentInputTest {
     function testHub(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(protocolGuardian));
+        vm.assume(nonWard != address(opsGuardian));
         vm.assume(nonWard != address(hubHandler));
         vm.assume(nonWard != address(messageProcessor));
         vm.assume(nonWard != address(messageDispatcher));
 
         assertEq(hub.wards(address(root)), 1);
         assertEq(hub.wards(address(hubHandler)), 1);
-        assertEq(hub.wards(address(protocolGuardian)), 1);
+        assertEq(hub.wards(address(opsGuardian)), 1);
         assertEq(hub.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -138,7 +138,7 @@ contract HubDeploymentCommonExtTest is HubDeploymentTest {
         // permissions set correctly
         vm.assume(nonWard != address(root)); // From common
         vm.assume(nonWard != address(protocolGuardian)); // From common
-        vm.assume(nonWard != address(adapterGuardian)); // From common
+        vm.assume(nonWard != address(opsGuardian)); // From common
         vm.assume(nonWard != address(messageDispatcher)); // From common
         vm.assume(nonWard != address(messageProcessor)); // From common
         vm.assume(nonWard != address(multiAdapter)); // From common
@@ -150,7 +150,7 @@ contract HubDeploymentCommonExtTest is HubDeploymentTest {
 
     function testProtocolGuardianExt() public view {
         // dependencies set correctly
-        assertEq(address(protocolGuardian.hub()), address(hub));
+        assertEq(address(opsGuardian.hub()), address(hub));
     }
 
     function testMultiAdapterExt(address nonWard) public view {

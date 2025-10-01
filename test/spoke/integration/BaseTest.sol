@@ -10,8 +10,8 @@ import {IERC6909Fungible} from "../../../src/misc/interfaces/IERC6909.sol";
 import {MockAdapter} from "../../common/mocks/MockAdapter.sol";
 
 import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {newAssetId} from "../../../src/common/types/AssetId.sol";
 import {ISafe} from "../../../src/common/interfaces/ISafe.sol";
+import {newAssetId} from "../../../src/common/types/AssetId.sol";
 import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
 import {PoolId, newPoolId} from "../../../src/common/types/PoolId.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";

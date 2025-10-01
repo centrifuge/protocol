@@ -8,12 +8,11 @@ import {Root} from "../src/common/Root.sol";
 import {Gateway} from "../src/common/Gateway.sol";
 import {GasService} from "../src/common/GasService.sol";
 import {ISafe} from "../src/common/interfaces/ISafe.sol";
-import {PoolId} from "../src/common/types/PoolId.sol";
-import {ProtocolGuardian} from "../src/common/ProtocolGuardian.sol";
-import {AdapterGuardian} from "../src/common/AdapterGuardian.sol";
+import {OpsGuardian} from "../src/common/OpsGuardian.sol";
 import {MultiAdapter} from "../src/common/MultiAdapter.sol";
 import {TokenRecoverer} from "../src/common/TokenRecoverer.sol";
 import {MessageProcessor} from "../src/common/MessageProcessor.sol";
+import {ProtocolGuardian} from "../src/common/ProtocolGuardian.sol";
 import {MessageDispatcher} from "../src/common/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/common/factories/PoolEscrowFactory.sol";
 
@@ -31,7 +30,7 @@ struct CommonReport {
     Root root;
     TokenRecoverer tokenRecoverer;
     ProtocolGuardian protocolGuardian;
-    AdapterGuardian adapterGuardian;
+    OpsGuardian opsGuardian;
     GasService gasService;
     Gateway gateway;
     MultiAdapter multiAdapter;
@@ -65,14 +64,14 @@ contract CommonActionBatcher {
     function engageCommon(CommonReport memory report) public onlyDeployer {
         // Protocol Guardian permissions
         report.root.rely(address(report.protocolGuardian));
+        report.gateway.rely(address(report.protocolGuardian));
+        report.multiAdapter.rely(address(report.protocolGuardian));
         report.tokenRecoverer.rely(address(report.protocolGuardian));
         report.messageDispatcher.rely(address(report.protocolGuardian));
         report.poolEscrowFactory.rely(address(report.protocolGuardian));
 
-        // Adapter Guardian permissions
-        report.gateway.rely(address(report.adapterGuardian));
-        report.multiAdapter.rely(address(report.adapterGuardian));
-        report.messageDispatcher.rely(address(report.adapterGuardian));
+        // Ops Guardian permissions
+        report.multiAdapter.rely(address(report.opsGuardian));
 
         // Continue with existing non-guardian permissions
         report.root.rely(address(report.tokenRecoverer));
@@ -104,10 +103,7 @@ contract CommonActionBatcher {
     function postEngageCommon(CommonReport memory report) public onlyDeployer {
         // We override the deployer with the correct admin once everything is deployed
         report.protocolGuardian.file("safe", address(report.adminSafe));
-        report.adapterGuardian.file("safe", address(report.adminSafe));
-
-        // Set adapter guardian as manager of global pool for emergency blockOutgoing calls
-        report.gateway.updateManager(PoolId.wrap(0), address(report.adapterGuardian), true);
+        report.opsGuardian.file("safe", address(report.adminSafe));
     }
 
     function revokeCommon(CommonReport memory report) public onlyDeployer {
@@ -130,7 +126,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     Root public root;
     TokenRecoverer public tokenRecoverer;
     ProtocolGuardian public protocolGuardian;
-    AdapterGuardian public adapterGuardian;
+    OpsGuardian public opsGuardian;
     GasService public gasService;
     Gateway public gateway;
     MultiAdapter public multiAdapter;
@@ -241,17 +237,17 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             create3(
                 generateSalt("protocolGuardian"),
                 abi.encodePacked(
-                    type(ProtocolGuardian).creationCode, abi.encode(ISafe(address(batcher)), root, messageDispatcher)
+                    type(ProtocolGuardian).creationCode,
+                    abi.encode(ISafe(address(batcher)), root, gateway, multiAdapter, messageDispatcher)
                 )
             )
         );
 
-        adapterGuardian = AdapterGuardian(
+        opsGuardian = OpsGuardian(
             create3(
-                generateSalt("adapterGuardian"),
+                generateSalt("opsGuardian"),
                 abi.encodePacked(
-                    type(AdapterGuardian).creationCode,
-                    abi.encode(ISafe(address(batcher)), gateway, multiAdapter, messageDispatcher)
+                    type(OpsGuardian).creationCode, abi.encode(ISafe(address(batcher)), address(0), multiAdapter)
                 )
             )
         );
@@ -267,7 +263,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
 
         register("root", address(root));
         register("protocolGuardian", address(protocolGuardian));
-        register("adapterGuardian", address(adapterGuardian));
+        register("opsGuardian", address(opsGuardian));
         register("gasService", address(gasService));
         register("gateway", address(gateway));
         register("multiAdapter", address(multiAdapter));
@@ -299,7 +295,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             root,
             tokenRecoverer,
             protocolGuardian,
-            adapterGuardian,
+            opsGuardian,
             gasService,
             gateway,
             multiAdapter,

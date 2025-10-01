@@ -2,8 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {ISafe} from "./ISafe.sol";
-import {PoolId} from "../types/PoolId.sol";
-import {AssetId} from "../types/AssetId.sol";
+import {IAdapter} from "./IAdapter.sol";
 
 interface IProtocolGuardian {
     error NotTheAuthorizedSafe();
@@ -54,12 +53,24 @@ interface IProtocolGuardian {
         address refund
     ) external payable;
 
-    /// @notice Registers a new pool
-    function createPool(PoolId poolId, address admin, AssetId currency) external;
+    /// @notice Set adapters locally for global pool
+    /// @dev Local-only operation, does not send cross-chain message
+    /// @param centrifugeId Target chain ID to configure adapters on
+    /// @param adapters Array of adapter contract addresses
+    /// @param threshold Minimum number of adapters that must agree
+    /// @param recoveryIndex Index of the recovery adapter in the array
+    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
+        external;
+
+    /// @notice Block or unblock outgoing messages for global pool
+    /// @dev Local-only operation for fast emergency response
+    /// @param centrifugeId Target chain ID to block/unblock
+    /// @param isBlocked True to block outgoing messages, false to unblock
+    function blockOutgoing(uint16 centrifugeId, bool isBlocked) external;
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'safe', 'hub', or 'sender' string value.
+    /// Accepts a `bytes32` representation of 'safe', 'hub', 'sender', 'gateway', or 'multiAdapter' string value.
     /// @param data New value given to the `what` parameter
     function file(bytes32 what, address data) external;
 }
