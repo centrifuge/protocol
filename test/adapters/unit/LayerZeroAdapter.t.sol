@@ -197,6 +197,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         public
     {
         vm.assume(invalidOrigin != address(GATEWAY));
+        vm.assume(gasLimit < adapter.RECEIVE_COST());
 
         vm.deal(address(this), 0.1 ether);
         vm.expectRevert(IAdapter.NotEntrypoint.selector);
@@ -221,7 +222,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
             uint8(1), // WORKER_ID
             uint16(17), // uint128 gasLimit byte length + 1
             uint8(1), // OPTION_TYPE_LZ
-            uint128(gasLimit)
+            uint128(gasLimit + adapter.RECEIVE_COST())
         );
         assertEq(endpoint.values_bytes("params.options"), expectedOptions);
         assertEq(endpoint.values_bool("params.payInLzToken"), false);
