@@ -43,17 +43,17 @@ contract AdaptersActionBatcher is CommonActionBatcher {
     function engageAdapters(AdaptersReport memory report) public onlyDeployer {
         if (address(report.wormholeAdapter) != address(0)) {
             report.wormholeAdapter.rely(address(report.common.root));
-            report.wormholeAdapter.rely(address(report.common.guardian));
+            report.wormholeAdapter.rely(address(report.common.adapterGuardian));
             report.wormholeAdapter.rely(address(report.common.adminSafe));
         }
         if (address(report.axelarAdapter) != address(0)) {
             report.axelarAdapter.rely(address(report.common.root));
-            report.axelarAdapter.rely(address(report.common.guardian));
+            report.axelarAdapter.rely(address(report.common.adapterGuardian));
             report.axelarAdapter.rely(address(report.common.adminSafe));
         }
         if (address(report.layerZeroAdapter) != address(0)) {
             report.layerZeroAdapter.rely(address(report.common.root));
-            report.layerZeroAdapter.rely(address(report.common.guardian));
+            report.layerZeroAdapter.rely(address(report.common.adapterGuardian));
             report.layerZeroAdapter.rely(address(report.common.adminSafe));
         }
     }

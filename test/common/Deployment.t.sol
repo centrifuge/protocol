@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
+import {ISafe} from "../../src/common/interfaces/ISafe.sol";
+import {PoolId} from "../../src/common/types/PoolId.sol";
 
 import {CommonDeployer, CommonInput, CommonActionBatcher} from "../../script/CommonDeployer.s.sol";
 
@@ -26,34 +27,42 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
 
     function testRoot(address nonWard) public view {
         // permissions set correctly
-        vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(protocolGuardian));
         vm.assume(nonWard != address(tokenRecoverer));
         vm.assume(nonWard != address(messageProcessor));
         vm.assume(nonWard != address(messageDispatcher));
 
-        assertEq(root.wards(address(guardian)), 1);
+        assertEq(root.wards(address(protocolGuardian)), 1);
         assertEq(root.wards(address(tokenRecoverer)), 1);
         assertEq(root.wards(address(messageProcessor)), 1);
         assertEq(root.wards(address(messageDispatcher)), 1);
         assertEq(root.wards(nonWard), 0);
     }
 
-    function testGuardian() public view {
+    function testProtocolGuardian() public view {
         // dependencies set correctly
-        assertEq(address(guardian.root()), address(root));
-        assertEq(address(guardian.safe()), address(ADMIN_SAFE));
-        assertEq(address(guardian.gateway()), address(gateway));
-        assertEq(address(guardian.multiAdapter()), address(multiAdapter));
-        assertEq(address(guardian.sender()), address(messageDispatcher));
+        assertEq(address(protocolGuardian.root()), address(root));
+        assertEq(address(protocolGuardian.safe()), address(ADMIN_SAFE));
+        assertEq(address(protocolGuardian.sender()), address(messageDispatcher));
+    }
+
+    function testAdapterGuardian() public view {
+        // dependencies set correctly
+        assertEq(address(adapterGuardian.safe()), address(ADMIN_SAFE));
+        assertEq(address(adapterGuardian.gateway()), address(gateway));
+        assertEq(address(adapterGuardian.multiAdapter()), address(multiAdapter));
+        assertEq(address(adapterGuardian.sender()), address(messageDispatcher));
     }
 
     function testTokenRecoverer(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(protocolGuardian));
         vm.assume(nonWard != address(messageProcessor));
         vm.assume(nonWard != address(messageDispatcher));
 
         assertEq(tokenRecoverer.wards(address(root)), 1);
+        assertEq(tokenRecoverer.wards(address(protocolGuardian)), 1);
         assertEq(tokenRecoverer.wards(address(messageProcessor)), 1);
         assertEq(tokenRecoverer.wards(address(messageDispatcher)), 1);
         assertEq(tokenRecoverer.wards(nonWard), 0);
@@ -81,10 +90,12 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
     function testMessageDispatcher(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(protocolGuardian));
+        vm.assume(nonWard != address(adapterGuardian));
 
         assertEq(messageDispatcher.wards(address(root)), 1);
-        assertEq(messageDispatcher.wards(address(guardian)), 1);
+        assertEq(messageDispatcher.wards(address(protocolGuardian)), 1);
+        assertEq(messageDispatcher.wards(address(adapterGuardian)), 1);
         assertEq(messageDispatcher.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -101,13 +112,13 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
     function testGateway(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(adapterGuardian));
         vm.assume(nonWard != address(multiAdapter));
         vm.assume(nonWard != address(messageDispatcher));
         vm.assume(nonWard != address(messageProcessor));
 
         assertEq(gateway.wards(address(root)), 1);
-        assertEq(gateway.wards(address(guardian)), 1);
+        assertEq(gateway.wards(address(adapterGuardian)), 1);
         assertEq(gateway.wards(address(multiAdapter)), 1);
         assertEq(gateway.wards(address(messageDispatcher)), 1);
         assertEq(gateway.wards(address(messageProcessor)), 1);
@@ -119,17 +130,20 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         assertEq(address(gateway.processor()), address(messageProcessor));
         assertEq(address(gateway.adapter()), address(multiAdapter));
         assertEq(gateway.localCentrifugeId(), CENTRIFUGE_ID);
+
+        // adapter guardian is manager of global pool for emergency blockOutgoing
+        assertEq(gateway.manager(PoolId.wrap(0), address(adapterGuardian)), true);
     }
 
     function testMultiAdapter(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(adapterGuardian));
         vm.assume(nonWard != address(gateway));
         vm.assume(nonWard != address(messageProcessor));
 
         assertEq(multiAdapter.wards(address(root)), 1);
-        assertEq(multiAdapter.wards(address(guardian)), 1);
+        assertEq(multiAdapter.wards(address(adapterGuardian)), 1);
         assertEq(multiAdapter.wards(address(gateway)), 1);
         assertEq(multiAdapter.wards(address(messageProcessor)), 1);
         assertEq(multiAdapter.wards(nonWard), 0);
@@ -143,8 +157,10 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
     function testPoolEscrowFactory(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(protocolGuardian));
 
         assertEq(poolEscrowFactory.wards(address(root)), 1);
+        assertEq(poolEscrowFactory.wards(address(protocolGuardian)), 1);
         assertEq(poolEscrowFactory.wards(nonWard), 0);
 
         // dependencies set correctly

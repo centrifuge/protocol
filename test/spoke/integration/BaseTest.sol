@@ -11,7 +11,7 @@ import {MockAdapter} from "../../common/mocks/MockAdapter.sol";
 
 import {AssetId} from "../../../src/common/types/AssetId.sol";
 import {newAssetId} from "../../../src/common/types/AssetId.sol";
-import {ISafe} from "../../../src/common/interfaces/IGuardian.sol";
+import {ISafe} from "../../../src/common/interfaces/ISafe.sol";
 import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
 import {PoolId, newPoolId} from "../../../src/common/types/PoolId.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";

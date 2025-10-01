@@ -141,7 +141,8 @@ contract VaultsDeploymentSpokeExtTest is VaultsDeploymentTest {
         // permissions set correctly
         vm.assume(nonWard != address(root)); // From common
         vm.assume(nonWard != address(gateway)); // From common
-        vm.assume(nonWard != address(guardian)); // From common
+        vm.assume(nonWard != address(protocolGuardian)); // From common
+        vm.assume(nonWard != address(adapterGuardian)); // From common
         vm.assume(nonWard != address(messageDispatcher)); // From common
         vm.assume(nonWard != address(messageProcessor)); // From common
         vm.assume(nonWard != address(multiAdapter)); // From common

@@ -7,7 +7,7 @@ import {ERC20} from "../src/misc/ERC20.sol";
 import {D18, d18} from "../src/misc/types/D18.sol";
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
-import {Guardian} from "../src/common/Guardian.sol";
+import {ProtocolGuardian} from "../src/common/ProtocolGuardian.sol";
 import {PoolId} from "../src/common/types/PoolId.sol";
 import {AccountId} from "../src/common/types/AccountId.sol";
 import {ShareClassId} from "../src/common/types/ShareClassId.sol";
@@ -72,7 +72,7 @@ contract TestData is FullDeployer {
             AsyncRequestManager(payable(vm.parseJsonAddress(config, "$.contracts.asyncRequestManager")));
         batchRequestManager = BatchRequestManager(vm.parseJsonAddress(config, "$.contracts.batchRequestManager"));
         syncManager = SyncManager(vm.parseJsonAddress(config, "$.contracts.syncManager"));
-        guardian = Guardian(vm.parseJsonAddress(config, "$.contracts.guardian"));
+        protocolGuardian = ProtocolGuardian(vm.parseJsonAddress(config, "$.contracts.protocolGuardian"));
 
         vm.startBroadcast();
         _configureTestData(centrifugeId);
@@ -107,7 +107,7 @@ contract TestData is FullDeployer {
         state.poolId = hubRegistry.poolId(centrifugeId, 1);
         asyncRequestManager.depositSubsidy{value: 0.5 ether}(state.poolId);
 
-        guardian.createPool(state.poolId, msg.sender, USD_ID);
+        protocolGuardian.createPool(state.poolId, msg.sender, USD_ID);
         hub.updateHubManager(state.poolId, admin, true);
         state.scId = shareClassManager.previewNextShareClassId(state.poolId);
 
@@ -273,7 +273,7 @@ contract TestData is FullDeployer {
         PoolId poolId = hubRegistry.poolId(centrifugeId, 2);
         asyncRequestManager.depositSubsidy(poolId);
 
-        guardian.createPool(poolId, msg.sender, USD_ID);
+        protocolGuardian.createPool(poolId, msg.sender, USD_ID);
         hub.updateHubManager(poolId, admin, true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 

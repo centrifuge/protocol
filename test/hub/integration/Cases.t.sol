@@ -30,7 +30,7 @@ contract TestCases is BaseTest {
 
         poolId = hubRegistry.poolId(CHAIN_CP, 1);
         vm.prank(ADMIN);
-        guardian.createPool(poolId, FM, USD_ID);
+        protocolGuardian.createPool(poolId, FM, USD_ID);
 
         scId = shareClassManager.previewNextShareClassId(poolId);
 

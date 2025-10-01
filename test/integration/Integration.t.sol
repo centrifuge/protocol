@@ -92,7 +92,7 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
 
     function _createPool() internal {
         vm.prank(ADMIN);
-        guardian.createPool(POOL_A, FM, USD_ID);
+        protocolGuardian.createPool(POOL_A, FM, USD_ID);
 
         vm.prank(FM);
         hub.addShareClass(POOL_A, "ShareClass1", "sc1", bytes32("salt"));

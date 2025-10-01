@@ -637,7 +637,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address refund
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            revert CannotBeSentLocally();
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,

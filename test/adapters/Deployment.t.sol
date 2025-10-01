@@ -87,11 +87,11 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
     function testWormholeAdapter(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(adapterGuardian));
         vm.assume(nonWard != address(adminSafe));
 
         assertEq(wormholeAdapter.wards(address(root)), 1);
-        assertEq(wormholeAdapter.wards(address(guardian)), 1);
+        assertEq(wormholeAdapter.wards(address(adapterGuardian)), 1);
         assertEq(wormholeAdapter.wards(address(adminSafe)), 1);
         assertEq(wormholeAdapter.wards(nonWard), 0);
 
@@ -104,11 +104,11 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
     function testAxelarAdapter(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(adapterGuardian));
         vm.assume(nonWard != address(adminSafe));
 
         assertEq(axelarAdapter.wards(address(root)), 1);
-        assertEq(axelarAdapter.wards(address(guardian)), 1);
+        assertEq(axelarAdapter.wards(address(adapterGuardian)), 1);
         assertEq(axelarAdapter.wards(address(adminSafe)), 1);
         assertEq(axelarAdapter.wards(nonWard), 0);
 
@@ -121,11 +121,11 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
     function testLayerZeroAdapter(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(adapterGuardian));
         vm.assume(nonWard != address(adminSafe));
 
         assertEq(layerZeroAdapter.wards(address(root)), 1);
-        assertEq(layerZeroAdapter.wards(address(guardian)), 1);
+        assertEq(layerZeroAdapter.wards(address(adapterGuardian)), 1);
         assertEq(layerZeroAdapter.wards(address(adminSafe)), 1);
         assertEq(layerZeroAdapter.wards(nonWard), 0);
 

@@ -12,12 +12,13 @@ import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
 
 import {Root} from "../../src/common/Root.sol";
-import {Guardian} from "../../src/common/Guardian.sol";
+import {ProtocolGuardian} from "../../src/common/ProtocolGuardian.sol";
+import {AdapterGuardian} from "../../src/common/AdapterGuardian.sol";
 import {PoolId} from "../../src/common/types/PoolId.sol";
 import {GasService} from "../../src/common/GasService.sol";
 import {AccountId} from "../../src/common/types/AccountId.sol";
 import {IGateway, Gateway} from "../../src/common/Gateway.sol";
-import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
+import {ISafe} from "../../src/common/interfaces/ISafe.sol";
 import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";
 import {PricingLib} from "../../src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
@@ -90,7 +91,8 @@ contract EndToEndDeployment is Test {
         uint16 centrifugeId;
         // Common
         Root root;
-        Guardian guardian;
+        ProtocolGuardian protocolGuardian;
+        AdapterGuardian adapterGuardian;
         Gateway gateway;
         MultiAdapter multiAdapter;
         GasService gasService;
@@ -112,7 +114,8 @@ contract EndToEndDeployment is Test {
         uint16 centrifugeId;
         // Common
         Root root;
-        Guardian guardian;
+        ProtocolGuardian protocolGuardian;
+        AdapterGuardian adapterGuardian;
         Gateway gateway;
         MultiAdapter multiAdapter;
         // Vaults
@@ -212,7 +215,8 @@ contract EndToEndDeployment is Test {
         h = CHub({
             centrifugeId: CENTRIFUGE_ID_A,
             root: deployA.root(),
-            guardian: deployA.guardian(),
+            protocolGuardian: deployA.protocolGuardian(),
+            adapterGuardian: deployA.adapterGuardian(),
             gateway: deployA.gateway(),
             multiAdapter: deployA.multiAdapter(),
             gasService: deployA.gasService(),
@@ -240,11 +244,15 @@ contract EndToEndDeployment is Test {
     }
 
     function _setAdapter(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
-        vm.startPrank(address(deploy.guardian().safe()));
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
-        deploy.guardian().setAdapters(remoteCentrifugeId, adapters, uint8(adapters.length), uint8(adapters.length));
-        deploy.guardian().updateGatewayManager(GATEWAY_MANAGER, true);
+        vm.startPrank(address(deploy.adapterGuardian()));
+        deploy.multiAdapter().setAdapters(
+            remoteCentrifugeId, GLOBAL_POOL, adapters, uint8(adapters.length), uint8(adapters.length)
+        );
+
+        vm.startPrank(address(deploy.adapterGuardian().safe()));
+        deploy.adapterGuardian().updateGatewayManager(GATEWAY_MANAGER, true);
         vm.stopPrank();
     }
 
@@ -276,7 +284,8 @@ contract EndToEndDeployment is Test {
 
         s_.centrifugeId = centrifugeId;
         s_.root = deploy.root();
-        s_.guardian = deploy.guardian();
+        s_.protocolGuardian = deploy.protocolGuardian();
+        s_.adapterGuardian = deploy.adapterGuardian();
         s_.gateway = deploy.gateway();
         s_.multiAdapter = deploy.multiAdapter();
         s_.balanceSheet = deploy.balanceSheet();
@@ -434,8 +443,8 @@ contract EndToEndFlows is EndToEndUtils {
     }
 
     function _createPool() internal {
-        vm.startPrank(address(h.guardian.safe()));
-        h.guardian.createPool(POOL_A, FM, USD_ID);
+        vm.startPrank(address(h.protocolGuardian.safe()));
+        h.protocolGuardian.createPool(POOL_A, FM, USD_ID);
 
         vm.startPrank(FM);
         h.hub.setPoolMetadata(POOL_A, bytes("Testing pool"));
@@ -943,9 +952,9 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         _setSpoke(sameChain);
 
         vm.startPrank(address(SAFE_ADMIN_A));
-        h.guardian.scheduleUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
-        h.guardian.cancelUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
-        h.guardian.scheduleUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
+        h.protocolGuardian.scheduleUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
+        h.protocolGuardian.cancelUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
+        h.protocolGuardian.scheduleUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
 
         vm.warp(block.timestamp + deployA.DELAY() + 1000);
 
@@ -964,7 +973,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         require(success);
 
         vm.startPrank(address(SAFE_ADMIN_A));
-        h.guardian.recoverTokens{value: GAS}(
+        h.protocolGuardian.recoverTokens{value: GAS}(
             s.centrifugeId, address(s.asyncRequestManager), ETH_ADDRESS, 0, RECEIVER, VALUE, REFUND
         );
 
@@ -1190,7 +1199,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     }
 
     /// forge-config: default.isolate = true
-    function testErrSetAdaptersLocally() public {
+    function testSetAdaptersLocally() public {
         _setSpoke(IN_DIFFERENT_CHAINS);
         _createPool();
 
@@ -1203,9 +1212,18 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
             remoteAdapters[i] = address(adapter).toBytes32();
         }
 
-        vm.expectRevert(ILocalCentrifugeId.CannotBeSentLocally.selector);
+        // When setting adapters locally, no cross-chain message is sent
+        // Instead, local configuration succeeds and any gas sent is refunded
+        uint256 refundBalanceBefore = REFUND.balance;
+
         vm.startPrank(FM);
         h.hub.setAdapters{value: GAS}(h.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1, REFUND);
+
+        // Verify the gas was refunded
+        uint256 refundBalanceAfter = REFUND.balance;
+        assertEq(
+            refundBalanceAfter, refundBalanceBefore + GAS, "Gas should be refunded for local adapter configuration"
+        );
     }
 
     /// forge-config: default.isolate = true
