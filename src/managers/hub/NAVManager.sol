@@ -127,7 +127,12 @@ contract NAVManager is INAVManager, Auth {
 
     /// @inheritdoc ISnapshotHook
     function onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external auth {
-        _onSync(poolId, scId, centrifugeId);
+        require(address(navHook[poolId]) != address(0), InvalidNAVHook());
+
+        uint128 netAssetValue_ = netAssetValue(poolId, centrifugeId);
+        navHook[poolId].onUpdate(poolId, scId, centrifugeId, netAssetValue_);
+
+        emit Sync(poolId, scId, centrifugeId, netAssetValue_);
     }
 
     /// @inheritdoc ISnapshotHook
@@ -242,18 +247,5 @@ contract NAVManager is INAVManager, Auth {
     /// @inheritdoc INAVManager
     function lossAccount(uint16 centrifugeId) public pure returns (AccountId) {
         return withCentrifugeId(centrifugeId, uint16(AccountType.Loss));
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Internal methods
-    //----------------------------------------------------------------------------------------------
-
-    function _onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) internal {
-        require(address(navHook[poolId]) != address(0), InvalidNAVHook());
-
-        uint128 netAssetValue_ = netAssetValue(poolId, centrifugeId);
-        navHook[poolId].onUpdate(poolId, scId, centrifugeId, netAssetValue_);
-
-        emit Sync(poolId, scId, centrifugeId, netAssetValue_);
     }
 }
