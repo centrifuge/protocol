@@ -277,6 +277,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         _batcher = address(0);
     }
 
+    /// @inheritdoc IGateway
     function lockCallback() external returns (address caller) {
         require(address(_batcher) != address(0), CallbackIsLocked());
         caller = _batcher;
