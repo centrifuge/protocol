@@ -100,7 +100,7 @@ contract QueueManager is IQueueManager, IUpdateContract, Auth {
             }
         }
 
-        bool submitShares = delta > 0 && validCount >= queuedAssetCounter;
+        bool submitShares = delta > 0 && validCount == queuedAssetCounter;
 
         require(validCount > 0 || submitShares, NoUpdates());
 
