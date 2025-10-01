@@ -53,7 +53,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = AssetId.wrap(_getAssetId());
+        AssetId assetId = _getAssetId();
         
         // Set initial price to 1.0 (1e18)
         transientValuation_setPrice_clamped(1e18);

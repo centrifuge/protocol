@@ -26,16 +26,16 @@ abstract contract ReconAssetIdManager {
     error AssetIdNotAdded();
 
     /// @notice Returns the current active assetId
-    function _getAssetId() internal view returns (uint128) {
-        return __assetId;
+    function _getAssetId() internal view returns (AssetId) {
+        return AssetId.wrap(__assetId);
     }
 
     /// @notice Returns all assetIds being used
-    function _getAssetIds() internal view returns (uint128[] memory) {
+    function _getAssetIds() internal view returns (AssetId[] memory) {
         uint256[] memory rawValues = _assetIds.values();
-        uint128[] memory result = new uint128[](rawValues.length);
+        AssetId[] memory result = new AssetId[](rawValues.length);
         for (uint256 i = 0; i < rawValues.length; i++) {
-            result[i] = uint128(rawValues[i]);
+            result[i] = AssetId.wrap(uint128(rawValues[i]));
         }
         return result;
     }

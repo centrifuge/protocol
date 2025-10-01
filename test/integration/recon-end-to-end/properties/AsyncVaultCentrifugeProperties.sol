@@ -157,7 +157,7 @@ abstract contract AsyncVaultCentrifugeProperties is
             poolId,
             scEntropy
         );
-        AssetId assetId = AssetId.wrap(_getAssetId());
+        AssetId assetId = _getAssetId();
         // (uint32 latestDepositApproval,,,) = shareClassManager.epochPointers(scId, assetId);
         (uint256 pendingDepositBefore, ) = shareClassManager.depositRequest(
             scId,
@@ -279,7 +279,7 @@ abstract contract AsyncVaultCentrifugeProperties is
             poolId,
             scEntropy
         );
-        AssetId assetId = AssetId.wrap(_getAssetId());
+        AssetId assetId = _getAssetId();
 
         // === PoolEscrow State Analysis Before Mint ===
         PoolEscrowState memory escrowState = _analyzePoolEscrowState(
@@ -397,7 +397,7 @@ abstract contract AsyncVaultCentrifugeProperties is
             poolId,
             scEntropy
         );
-        AssetId assetId = AssetId.wrap(_getAssetId());
+        AssetId assetId = _getAssetId();
 
         vm.prank(_getActor());
         try
@@ -496,7 +496,7 @@ abstract contract AsyncVaultCentrifugeProperties is
             poolId,
             scEntropy
         );
-        AssetId assetId = AssetId.wrap(_getAssetId());
+        AssetId assetId = _getAssetId();
         (, uint32 latestRedeemApproval, , ) = shareClassManager.epochId(
             scId,
             assetId

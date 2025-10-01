@@ -126,7 +126,7 @@ abstract contract TargetFunctions is
         // 2. Deploy new pool and register it
         {
             _poolId = newPoolId(CENTRIFUGE_CHAIN_ID, uint48(POOL_ID_COUNTER));
-            hub_createPool(_poolId.raw(), _getActor(), _getAssetId());
+            hub_createPool(_poolId.raw(), _getActor(), _getAssetId().raw());
 
             spoke_addPool();
 
@@ -171,16 +171,16 @@ abstract contract TargetFunctions is
         // 4a. Register request manager on hub side BEFORE deploying vaults (critical for async operations)
         {
             hub_setRequestManager(
-                _getPool(),
+                _getPool().raw(),
                 _scId,
-                _getAssetId(),
+                _getAssetId().raw(),
                 address(asyncRequestManager)
             );
 
             // Update balance sheet manager for async request manager
             hub_updateBalanceSheetManager(
                 CENTRIFUGE_CHAIN_ID,
-                _getPool(),
+                _getPool().raw(),
                 address(asyncRequestManager),
                 true
             );
@@ -199,11 +199,11 @@ abstract contract TargetFunctions is
         // max deposit)
         if (!isAsyncVault) {
             (address asset, uint256 tokenId) = spoke.idToAsset(
-                AssetId.wrap(_getAssetId())
+                _getAssetId()
             );
             syncManager.setMaxReserve(
-                PoolId.wrap(_getPool()),
-                ShareClassId.wrap(_getShareClassId()),
+                _getPool(),
+                _getShareClassId(),
                 asset,
                 tokenId,
                 type(uint128).max
@@ -219,8 +219,8 @@ abstract contract TargetFunctions is
         _token = _getAsset();
         _shareToken = _getShareToken();
         _vault = address(_getVault());
-        _assetId = _getAssetId();
-        _scId = _getShareClassId();
+        _assetId = _getAssetId().raw();
+        _scId = _getShareClassId().raw();
 
         return (_token, _shareToken, _vault, _assetId, _scId);
     }
@@ -293,8 +293,8 @@ abstract contract TargetFunctions is
         );
 
         uint32 depositEpoch = shareClassManager.nowDepositEpoch(
-            ShareClassId.wrap(_getShareClassId()),
-            AssetId.wrap(_getAssetId())
+            _getShareClassId(),
+            _getAssetId()
         );
         shortcut_approve_and_issue_shares_safe(
             uint128(amount),
@@ -339,8 +339,8 @@ abstract contract TargetFunctions is
         );
 
         uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(
-            ShareClassId.wrap(_getShareClassId()),
-            AssetId.wrap(_getAssetId())
+            _getShareClassId(),
+            _getAssetId()
         );
         hub_approveDeposits(nowDepositEpoch, approveAmount);
         hub_issueShares(nowDepositEpoch, navPerShare);
@@ -383,8 +383,8 @@ abstract contract TargetFunctions is
         );
 
         uint32 redeemEpoch = shareClassManager.nowDepositEpoch(
-            ShareClassId.wrap(_getShareClassId()),
-            AssetId.wrap(_getAssetId())
+            _getShareClassId(),
+            _getAssetId()
         );
         shortcut_approve_and_revoke_shares_safe(
             shares,
@@ -414,8 +414,8 @@ abstract contract TargetFunctions is
         vault_requestRedeem(requestShares, toEntropy);
 
         uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(
-            ShareClassId.wrap(_getShareClassId()),
-            AssetId.wrap(_getAssetId())
+            _getShareClassId(),
+            _getAssetId()
         );
         shortcut_approve_and_revoke_shares_safe(
             uint128(shares),
@@ -505,14 +505,14 @@ abstract contract TargetFunctions is
 
         // After cancellation, check if there's still pending redeem to approve/revoke
         uint128 pendingRedeem = shareClassManager.pendingRedeem(
-            ShareClassId.wrap(_getShareClassId()),
-            AssetId.wrap(_getAssetId())
+            _getShareClassId(),
+            _getAssetId()
         );
 
         // Throw iff pending redeem == 0 to signal pruning
         uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(
-            ShareClassId.wrap(_getShareClassId()),
-            AssetId.wrap(_getAssetId())
+            _getShareClassId(),
+            _getAssetId()
         );
         // Use safe approval function that will revert if pendingRedeem becomes 0
         shortcut_approve_and_revoke_shares_safe(
@@ -566,8 +566,8 @@ abstract contract TargetFunctions is
         uint128 navPerShare
     ) public {
         uint128 pendingDeposit = shareClassManager.pendingDeposit(
-            ShareClassId.wrap(_getShareClassId()),
-            AssetId.wrap(_getAssetId())
+            _getShareClassId(),
+            _getAssetId()
         );
         require(pendingDeposit > 0, "InsufficientPending: pendingDeposit is 0");
         require(
@@ -585,8 +585,8 @@ abstract contract TargetFunctions is
         uint128 navPerShare
     ) public {
         uint128 pendingRedeem = shareClassManager.pendingRedeem(
-            ShareClassId.wrap(_getShareClassId()),
-            AssetId.wrap(_getAssetId())
+            _getShareClassId(),
+            _getAssetId()
         );
         require(pendingRedeem > 0, "InsufficientPending: pendingRedeem is 0");
         require(
@@ -617,11 +617,11 @@ abstract contract TargetFunctions is
 
     // set the price of the asset in the transient valuation for a given pool
     function transientValuation_setPrice_clamped(uint128 price) public {
-        AssetId assetId = AssetId.wrap(_getAssetId());
+        AssetId assetId = _getAssetId();
 
         transientValuation_setPrice(
             assetId,
-            AssetId.wrap(_getAssetId()),
+            _getAssetId(),
             price
         );
     }

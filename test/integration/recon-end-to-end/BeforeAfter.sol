@@ -172,10 +172,10 @@ abstract contract BeforeAfter is Setup {
     function _updateEpochId(bool before) internal {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = AssetId.wrap(_getAssetId());
+        AssetId assetId = _getAssetId();
 
         (
             uint32 depositEpochId,
@@ -197,7 +197,7 @@ abstract contract BeforeAfter is Setup {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = AssetId.wrap(_getAssetId());
+        AssetId assetId = _getAssetId();
 
         (, _structToUpdate.ghostHolding[poolId][scId][assetId], , ) = holdings
             .holding(poolId, scId, assetId);
@@ -209,7 +209,7 @@ abstract contract BeforeAfter is Setup {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = AssetId.wrap(_getAssetId());
+        AssetId assetId = _getAssetId();
 
         address[] memory _actors = _getActors();
         for (uint256 k = 0; k < _actors.length; k++) {
@@ -228,7 +228,7 @@ abstract contract BeforeAfter is Setup {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = AssetId.wrap(_getAssetId());
+        AssetId assetId = _getAssetId();
 
         for (uint8 kind = 0; kind < 6; kind++) {
             AccountId accountId = holdings.accountId(
@@ -250,9 +250,7 @@ abstract contract BeforeAfter is Setup {
                         accountId
                     ] = accountValue;
                 } catch {
-                    _structToUpdate.ghostAccountValue[poolId][
-                        accountId
-                    ] = 0;
+                    _structToUpdate.ghostAccountValue[poolId][accountId] = 0;
                 }
             }
         }
@@ -359,7 +357,7 @@ abstract contract BeforeAfter is Setup {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = AssetId.wrap(_getAssetId());
+        AssetId assetId = _getAssetId();
 
         try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (
             D18 _priceAsset
