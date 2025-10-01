@@ -25,7 +25,9 @@ enum OpType {
     NOTIFY,
     ADD,
     REMOVE,
-    UPDATE
+    UPDATE,
+    REQUEST_DEPOSIT,
+    REQUEST_REDEEM
 }
 
 abstract contract BeforeAfter is Setup {
@@ -47,9 +49,10 @@ abstract contract BeforeAfter is Setup {
         mapping(PoolId poolId => mapping(AccountId accountId => uint128 accountValue)) ghostAccountValue;
         mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) ghostEpochId;
         mapping(address vault => mapping(address investor => PriceVars)) investorsGlobals; // global ghost variable only updated as needed
+        mapping(address user => uint256 balance) shareTokenBalance;
         uint256 escrowAssetBalance;
-        uint256 poolEscrowAssetBalance;
         uint256 escrowTrancheTokenBalance;
+        uint256 poolEscrowAssetBalance;
         uint256 totalAssets;
         uint256 actualAssets;
         uint256 pricePerShare;
@@ -99,6 +102,10 @@ abstract contract BeforeAfter is Setup {
         // if the vault isn't deployed, values below can't be updated
         if (address(_getVault()) == address(0)) return;
 
+        _before.shareTokenBalance[_getActor()] = IShareToken(
+            _getVault().share()
+        ).balanceOf(_getActor());
+
         _updateEpochId(true);
         _updateHolding(true);
         _updateActorRedeemRequests(true);
@@ -121,6 +128,9 @@ abstract contract BeforeAfter is Setup {
 
         // if the vault isn't deployed, values below can't be updated
         if (address(_getVault()) == address(0)) return;
+
+        _after.shareTokenBalance[_getActor()] = IShareToken(_getVault().share())
+            .balanceOf(_getActor());
 
         _updateEpochId(false);
         _updateHolding(false);
