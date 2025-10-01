@@ -8,6 +8,7 @@ import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 import {PoolId} from "../../../../src/common/types/PoolId.sol";
 import {AssetId, newAssetId} from "../../../../src/common/types/AssetId.sol";
 import {IBatchedMulticall} from "../../../../src/common/interfaces/IBatchedMulticall.sol";
+import {IGateway} from "../../../../src/common/interfaces/IGateway.sol";
 import {ShareClassId, newShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 
 import {IHub} from "../../../../src/hub/interfaces/IHub.sol";
@@ -102,6 +103,7 @@ contract SimplePriceManagerTest is Test {
             abi.encodeWithSelector(IShareClassManager.issuance.selector, SC_1, CENTRIFUGE_ID_2),
             abi.encode(200)
         );
+        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.lockCallback.selector), abi.encode(address(this)));
     }
 
     function _deployManager() internal {
@@ -416,12 +418,6 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         vm.expectRevert(ISimplePriceManager.InvalidShareClass.selector);
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_2, CENTRIFUGE_ID_1, 1000);
-    }
-
-    function testCallbackNotAuthorised() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(auth);
-        priceManager.onUpdateCallback(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
     }
 }
 

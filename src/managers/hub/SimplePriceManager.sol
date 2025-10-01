@@ -56,11 +56,6 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     }
 
     /// @inheritdoc ISimplePriceManager
-    function networks(PoolId poolId) external view returns (uint16[] memory) {
-        return _networks[poolId];
-    }
-
-    /// @inheritdoc ISimplePriceManager
     function addNetwork(PoolId poolId, uint16 centrifugeId) external onlyHubManager(poolId) {
         require(shareClassManager.shareClassCount(poolId) == 1, InvalidShareClassCount());
 
@@ -119,7 +114,8 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     }
 
     function onUpdateCallback(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) external {
-        require(msg.sender == address(gateway), NotAuthorized());
+        gateway.lockCallback();
+
         NetworkMetrics storage networkMetrics_ = networkMetrics[poolId][centrifugeId];
         Metrics storage metrics_ = metrics[poolId];
         uint128 issuance = shareClassManager.issuance(scId, centrifugeId);
@@ -158,6 +154,15 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         toMetrics.issuance += sharesTransferred;
 
         emit Transfer(poolId, scId, fromCentrifugeId, toCentrifugeId, sharesTransferred);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc ISimplePriceManager
+    function networks(PoolId poolId) external view returns (uint16[] memory) {
+        return _networks[poolId];
     }
 
     //----------------------------------------------------------------------------------------------
