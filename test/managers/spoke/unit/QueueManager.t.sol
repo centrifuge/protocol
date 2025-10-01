@@ -10,12 +10,11 @@ import {IGateway} from "../../../../src/common/interfaces/IGateway.sol";
 import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 import {IBatchedMulticall} from "../../../../src/common/interfaces/IBatchedMulticall.sol";
 
+import {QueueManager} from "../../../../src/managers/spoke/QueueManager.sol";
 import {IBalanceSheet} from "../../../../src/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../../../../src/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib} from "../../../../src/spoke/libraries/UpdateContractMessageLib.sol";
-
-import {QueueManager} from "../../../../src/managers/spoke/QueueManager.sol";
 import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueManager.sol";
+import {UpdateContractMessageLib} from "../../../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import "forge-std/Test.sol";
 

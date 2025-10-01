@@ -8,9 +8,8 @@ import {Auth} from "../../misc/Auth.sol";
 import {D18, d18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../../common/types/PoolId.sol";
-import {AssetId} from "../../common/types/AssetId.sol";
-import {ShareClassId} from "../../common/types/ShareClassId.sol";
 import {IGateway} from "../../common/interfaces/IGateway.sol";
+import {ShareClassId} from "../../common/types/ShareClassId.sol";
 
 import {IHub} from "../../hub/interfaces/IHub.sol";
 import {IHubRegistry} from "../../hub/interfaces/IHubRegistry.sol";
