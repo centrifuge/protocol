@@ -24,8 +24,8 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     IShareClassManager public immutable shareClassManager;
 
     mapping(PoolId poolId => Metrics) public metrics;
-    mapping(PoolId poolId => mapping(uint16 centrifugeId => NetworkMetrics)) public networkMetrics;
     mapping(PoolId poolId => mapping(address => bool)) public manager;
+    mapping(PoolId poolId => mapping(uint16 centrifugeId => NetworkMetrics)) public networkMetrics;
 
     constructor(IHub hub_, address deployer) Auth(deployer) {
         hub = hub_;
