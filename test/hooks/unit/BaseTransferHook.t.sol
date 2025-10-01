@@ -23,6 +23,8 @@ contract MockRoot {
     }
 }
 
+contract MockSpoke {}
+
 contract MockShareToken {
     mapping(address => bytes16) public hookDataOf;
 
@@ -36,11 +38,12 @@ contract TestableBaseTransferHook is BaseTransferHook {
 
     constructor(
         address root_,
+        address spoke_,
         address redeemSource_,
         address depositTarget_,
         address crosschainSource_,
         address deployer
-    ) BaseTransferHook(root_, redeemSource_, depositTarget_, crosschainSource_, deployer) {}
+    ) BaseTransferHook(root_, spoke_, redeemSource_, depositTarget_, crosschainSource_, deployer) {}
 
     function checkERC20Transfer(
         address from,
@@ -48,12 +51,7 @@ contract TestableBaseTransferHook is BaseTransferHook {
         uint256,
         /* value */
         HookData calldata hookData
-    )
-        public
-        view
-        override
-        returns (bool)
-    {
+    ) public view override returns (bool) {
         // Simple implementation for testing - allow transfer if not frozen
         return !isSourceOrTargetFrozen(from, to, hookData);
     }
@@ -70,6 +68,7 @@ contract BaseTransferHookTestBase is Test {
 
     TestableBaseTransferHook hook;
     MockRoot mockRoot;
+    MockSpoke mockSpoke;
     MockShareToken mockShareToken;
 
     address deployer = makeAddr("deployer");
@@ -90,9 +89,12 @@ contract BaseTransferHookTestBase is Test {
 
     function setUp() public virtual {
         mockRoot = new MockRoot();
+        mockSpoke = new MockSpoke();
 
         vm.prank(deployer);
-        hook = new TestableBaseTransferHook(address(mockRoot), redeemSource, depositTarget, crosschainSource, deployer);
+        hook = new TestableBaseTransferHook(
+            address(mockRoot), address(mockSpoke), redeemSource, depositTarget, crosschainSource, deployer
+        );
 
         mockShareToken = new MockShareToken();
 
@@ -163,6 +165,7 @@ contract BaseTransferHookTestConstructor is BaseTransferHookTestBase {
         vm.prank(deployer);
         new TestableBaseTransferHook(
             address(mockRoot),
+            address(mockSpoke),
             redeemSource,
             redeemSource, // Same as redeemSource
             crosschainSource,
@@ -212,6 +215,11 @@ contract BaseTransferHookTestTransferTypes is BaseTransferHookTestBase {
         assertTrue(hook.isCrosschainTransfer(crosschainSource, address(0)));
         assertFalse(hook.isCrosschainTransfer(user1, address(0)));
         assertFalse(hook.isCrosschainTransfer(crosschainSource, user1));
+    }
+
+    function testIsCrosschainTransferExecution() public view {
+        assertTrue(hook.isCrosschainTransferExecution(crosschainSource, user1));
+        assertFalse(hook.isCrosschainTransferExecution(user1, address(0)));
     }
 }
 
@@ -399,10 +407,8 @@ contract BaseTransferHookTestMember is BaseTransferHookTestBase {
 
 contract BaseTransferHookTestUpdateRestriction is BaseTransferHookTestBase {
     function testUpdateRestrictionMember() public {
-        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate =
-            UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP
-            });
+        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate = UpdateRestrictionMessageLib
+            .UpdateRestrictionMember({user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP});
 
         bytes memory payload = UpdateRestrictionMessageLib.serialize(memberUpdate);
 
@@ -452,10 +458,8 @@ contract BaseTransferHookTestUpdateRestriction is BaseTransferHookTestBase {
     }
 
     function testUpdateRestrictionUnauthorized() public {
-        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate =
-            UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP
-            });
+        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate = UpdateRestrictionMessageLib
+            .UpdateRestrictionMember({user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP});
 
         bytes memory payload = UpdateRestrictionMessageLib.serialize(memberUpdate);
 

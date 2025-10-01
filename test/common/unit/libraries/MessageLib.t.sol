@@ -162,7 +162,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), 0);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), 0);
         assertEq(a.serialize().messageSourceCentrifugeId(), 0);
     }
 
@@ -174,11 +173,13 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), 0);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), 0);
         assertEq(a.serialize().messageSourceCentrifugeId(), 0);
     }
 
-    function testRecoverTokens(bytes32 target, bytes32 token, uint256 tokenId, bytes32 to, uint256 amount) public pure {
+    function testRecoverTokens(bytes32 target, bytes32 token, uint256 tokenId, bytes32 to, uint256 amount)
+        public
+        pure
+    {
         MessageLib.RecoverTokens memory a =
             MessageLib.RecoverTokens({target: target, token: token, tokenId: tokenId, to: to, amount: amount});
         MessageLib.RecoverTokens memory b = MessageLib.deserializeRecoverTokens(a.serialize());
@@ -191,7 +192,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length, "XXX");
         assertEq(a.serialize().messagePoolId().raw(), 0);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), 0);
         assertEq(a.serialize().messageSourceCentrifugeId(), 0);
     }
 
@@ -204,7 +204,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
         assertEq(a.serialize().messagePoolId().raw(), 0);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), 0);
         assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
     }
 
@@ -215,7 +214,10 @@ contract TestMessageLibIdentities is Test {
         vm.assume(adapterList.length <= 20);
 
         MessageLib.SetPoolAdapters memory a = MessageLib.SetPoolAdapters({
-            poolId: poolId, threshold: threshold, recoveryIndex: recoveryIndex, adapterList: adapterList
+            poolId: poolId,
+            threshold: threshold,
+            recoveryIndex: recoveryIndex,
+            adapterList: adapterList
         });
         MessageLib.SetPoolAdapters memory b = MessageLib.deserializeSetPoolAdapters(a.serialize());
 
@@ -226,7 +228,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
         assertEq(a.serialize().messagePoolId().raw(), 0);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
@@ -238,7 +239,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
@@ -252,7 +252,13 @@ contract TestMessageLibIdentities is Test {
         bytes32 hook
     ) public pure {
         MessageLib.NotifyShareClass memory a = MessageLib.NotifyShareClass({
-            poolId: poolId, scId: scId, name: name, symbol: symbol, decimals: decimals, salt: salt, hook: hook
+            poolId: poolId,
+            scId: scId,
+            name: name,
+            symbol: symbol,
+            decimals: decimals,
+            salt: salt,
+            hook: hook
         });
         MessageLib.NotifyShareClass memory b = MessageLib.deserializeNotifyShareClass(a.serialize());
 
@@ -268,7 +274,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
@@ -291,7 +296,11 @@ contract TestMessageLibIdentities is Test {
         pure
     {
         MessageLib.NotifyPricePoolPerAsset memory a = MessageLib.NotifyPricePoolPerAsset({
-            poolId: poolId, scId: scId, assetId: assetId, price: price, timestamp: timestamp
+            poolId: poolId,
+            scId: scId,
+            assetId: assetId,
+            price: price,
+            timestamp: timestamp
         });
         MessageLib.NotifyPricePoolPerAsset memory b = MessageLib.deserializeNotifyPricePoolPerAsset(a.serialize());
 
@@ -303,7 +312,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
@@ -321,7 +329,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
@@ -335,7 +342,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
@@ -366,7 +372,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), 0);
     }
 
@@ -382,7 +387,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
@@ -397,7 +401,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
 
         // Check the payload length is correctly encoded as little endian
@@ -416,7 +419,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
 
         // Check the payload length is correctly encoded as little endian
@@ -435,7 +437,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
 
         // Check the payload length is correctly encoded as little endian
@@ -454,7 +455,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
 
         // Check the payload length is correctly encoded as little endian
@@ -466,7 +466,11 @@ contract TestMessageLibIdentities is Test {
         pure
     {
         MessageLib.UpdateVault memory a = MessageLib.UpdateVault({
-            poolId: poolId, scId: scId, assetId: assetId, vaultOrFactory: vaultOrFactory, kind: kind
+            poolId: poolId,
+            scId: scId,
+            assetId: assetId,
+            vaultOrFactory: vaultOrFactory,
+            kind: kind
         });
         MessageLib.UpdateVault memory b = MessageLib.deserializeUpdateVault(a.serialize());
 
@@ -478,7 +482,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
@@ -491,7 +494,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
@@ -506,7 +508,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
@@ -547,7 +548,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
     }
 
@@ -582,7 +582,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), 0);
     }
 
@@ -598,7 +597,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
@@ -613,7 +611,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
@@ -628,7 +625,6 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messagePoolIdPayment().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 }

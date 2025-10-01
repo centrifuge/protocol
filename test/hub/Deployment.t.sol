@@ -35,7 +35,6 @@ contract HubDeploymentTest is HubDeployer, CommonDeploymentInputTest {
         assertEq(address(hub.multiAdapter()), address(multiAdapter));
         assertEq(address(hub.shareClassManager()), address(shareClassManager));
         assertEq(address(hub.sender()), address(messageDispatcher));
-        assertEq(address(hub.poolEscrowFactory()), address(poolEscrowFactory));
     }
 
     function testHubHandler(address nonWard) public view {
@@ -142,20 +141,10 @@ contract HubDeploymentCommonExtTest is HubDeploymentTest {
         vm.assume(nonWard != address(messageDispatcher)); // From common
         vm.assume(nonWard != address(messageProcessor)); // From common
         vm.assume(nonWard != address(multiAdapter)); // From common
-        vm.assume(nonWard != address(crosschainBatcher)); // From common
         vm.assume(nonWard != address(hub));
 
         assertEq(gateway.wards(address(hub)), 1);
         assertEq(gateway.wards(nonWard), 0);
-    }
-
-    function testPoolEscrowFactoryExt(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root)); // From common
-        vm.assume(nonWard != address(hub));
-
-        assertEq(poolEscrowFactory.wards(address(hub)), 1);
-        assertEq(poolEscrowFactory.wards(nonWard), 0);
     }
 
     function testGuardianExt() public view {

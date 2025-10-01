@@ -38,6 +38,7 @@ contract BaseTest is ExtendedHubDeployer, Test {
     bytes32 immutable INVESTOR = bytes32("Investor");
     address immutable ASYNC_REQUEST_MANAGER = makeAddr("AsyncRequestManager");
     address immutable SYNC_REQUEST_MANAGER = makeAddr("SyncManager");
+    address immutable REFUND = makeAddr("Refund");
 
     AssetId immutable USDC_C2 = newAssetId(CHAIN_CV, 1);
     AssetId immutable EUR_STABLE_C2 = newAssetId(CHAIN_CV, 2);
@@ -78,23 +79,24 @@ contract BaseTest is ExtendedHubDeployer, Test {
     function setUp() public virtual {
         // Deployment
         CommonInput memory input = CommonInput({
-            centrifugeId: CHAIN_CP, adminSafe: adminSafe, maxBatchGasLimit: uint128(GAS) * 100, version: bytes32(0)
+            centrifugeId: CHAIN_CP,
+            adminSafe: adminSafe,
+            maxBatchGasLimit: uint128(GAS) * 100,
+            version: bytes32(0)
         });
 
         ExtendedHubActionBatcher batcher = new ExtendedHubActionBatcher();
         labelAddresses("");
         deployExtendedHub(input, batcher);
         _mockStuff(batcher);
-        hubRequestManager = IHubRequestManager(address(new MockHubRequestManager(address(hub))));
         removeExtendedHubDeployerAccess(batcher);
+        hubRequestManager = new MockHubRequestManager();
 
         // Initialize accounts
         vm.deal(FM, 1 ether);
 
         // We should not use the block ChainID
         vm.chainId(0xDEAD);
-
-        gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
     }
 
     function _assertEqAccountValue(PoolId poolId, AccountId accountId, bool expectedIsPositive, uint128 expectedValue)

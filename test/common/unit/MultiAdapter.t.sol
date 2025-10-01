@@ -36,7 +36,6 @@ contract MockGateway is IMessageHandler {
 
 contract MockMessageProperties is IMessageProperties {
     function messageLength(bytes calldata message) external pure returns (uint16) {}
-    function messagePoolIdPayment(bytes calldata message) external pure returns (PoolId) {}
 
     function messagePoolId(bytes calldata message) external pure returns (PoolId) {
         if (message.length >= 6) {

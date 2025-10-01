@@ -117,7 +117,6 @@ contract SpokeDeploymentCommonExtTest is SpokeDeploymentTest {
         vm.assume(nonWard != address(messageDispatcher)); // From common
         vm.assume(nonWard != address(messageProcessor)); // From common
         vm.assume(nonWard != address(multiAdapter)); // From common
-        vm.assume(nonWard != address(crosschainBatcher)); // From common
         vm.assume(nonWard != address(spoke));
         vm.assume(nonWard != address(balanceSheet));
 
