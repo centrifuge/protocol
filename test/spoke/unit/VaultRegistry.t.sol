@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
-import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {IERC20Metadata} from "../../../src/misc/interfaces/IERC20.sol";
 import {IERC6909MetadataExt} from "../../../src/misc/interfaces/IERC6909.sol";
 
@@ -13,10 +12,9 @@ import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../src/common/types/AssetId.sol";
 import {IPoolEscrow} from "../../../src/common/interfaces/IPoolEscrow.sol";
 import {VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
-import {ITransferHook} from "../../../src/common/interfaces/ITransferHook.sol";
 import {IRequestManager} from "../../../src/common/interfaces/IRequestManager.sol";
-import {ISpokeMessageSender, ILocalCentrifugeId} from "../../../src/common/interfaces/IGatewaySenders.sol";
 import {IPoolEscrowFactory} from "../../../src/common/factories/interfaces/IPoolEscrowFactory.sol";
+import {ISpokeMessageSender, ILocalCentrifugeId} from "../../../src/common/interfaces/IGatewaySenders.sol";
 
 import {Spoke, ISpoke} from "../../../src/spoke/Spoke.sol";
 import {VaultRegistry} from "../../../src/spoke/VaultRegistry.sol";
@@ -100,7 +98,7 @@ contract VaultRegistryTest is Test {
         spoke.file("sender", address(sender));
         spoke.file("poolEscrowFactory", address(poolEscrowFactory));
         spoke.file("vaultRegistry", address(vaultRegistry));
-        
+
         vaultRegistry.file("spoke", address(spoke));
 
         vm.stopPrank();
@@ -110,26 +108,36 @@ contract VaultRegistryTest is Test {
         vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.setUnpaidMode.selector, true), abi.encode());
         vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.setUnpaidMode.selector, false), abi.encode());
 
-        // Mock sender call
+        // Mock sender calls
         vm.mockCall(
             address(sender),
             abi.encodeWithSelector(ILocalCentrifugeId.localCentrifugeId.selector),
             abi.encode(LOCAL_CENTRIFUGE_ID)
         );
 
-        // Mock tokenFactory call
+        // Mock sendRegisterAsset call
         vm.mockCall(
-            address(tokenFactory), abi.encodeWithSelector(ITokenFactory.newToken.selector), abi.encode(share)
+            address(sender), abi.encodeWithSelector(ISpokeMessageSender.sendRegisterAsset.selector), abi.encode()
         );
+
+        // Mock tokenFactory call
+        vm.mockCall(address(tokenFactory), abi.encodeWithSelector(ITokenFactory.newToken.selector), abi.encode(share));
 
         // Mock poolEscrowFactory call
         vm.mockCall(
-            address(poolEscrowFactory), abi.encodeWithSelector(IPoolEscrowFactory.newEscrow.selector), abi.encode(escrow)
+            address(poolEscrowFactory),
+            abi.encodeWithSelector(IPoolEscrowFactory.newEscrow.selector),
+            abi.encode(escrow)
         );
 
         // Mock share token calls
         vm.mockCall(address(share), abi.encodeWithSignature("file(bytes32,string)", bytes32(0), ""), abi.encode());
         vm.mockCall(address(share), abi.encodeWithSelector(IShareToken.updateVault.selector), abi.encode());
+
+        // Mock vault calls (for tests that don't call _mockVaultFactory)
+        vm.mockCall(address(vault), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(POOL_A));
+        vm.mockCall(address(vault), abi.encodeWithSelector(IVault.scId.selector), abi.encode(SC_1));
+        vm.mockCall(address(vault), abi.encodeWithSelector(IVault.vaultKind.selector), abi.encode(VaultKind.Async));
     }
 
     // Utility functions
@@ -144,18 +152,31 @@ contract VaultRegistryTest is Test {
     }
 
     function _utilRegisterAsset(address asset) internal {
-        vm.mockCall(asset, abi.encodeWithSelector(IERC6909MetadataExt.decimals.selector), abi.encode(DECIMALS));
-        vm.mockCall(asset, abi.encodeWithSelector(IERC6909MetadataExt.name.selector), abi.encode(NAME));
-        vm.mockCall(asset, abi.encodeWithSelector(IERC6909MetadataExt.symbol.selector), abi.encode(SYMBOL));
+        uint256 tokenId = asset == erc6909 ? TOKEN_1 : 0;
+
+        if (asset == erc6909) {
+            // ERC6909 mocks
+            vm.mockCall(
+                asset, abi.encodeWithSelector(IERC6909MetadataExt.decimals.selector, tokenId), abi.encode(DECIMALS)
+            );
+            vm.mockCall(asset, abi.encodeWithSelector(IERC6909MetadataExt.name.selector, tokenId), abi.encode(NAME));
+            vm.mockCall(asset, abi.encodeWithSelector(IERC6909MetadataExt.symbol.selector, tokenId), abi.encode(SYMBOL));
+        } else {
+            // ERC20 mocks
+            vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(DECIMALS));
+            vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.name.selector), abi.encode(NAME));
+            vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.symbol.selector), abi.encode(SYMBOL));
+        }
 
         vm.prank(AUTH);
-        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, asset, TOKEN_1, REFUND);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, asset, tokenId, REFUND);
     }
 
     function _mockVaultFactory(address asset, uint256 tokenId) internal {
+        address[] memory emptyArray = new address[](0);
         vm.mockCall(
             address(vaultFactory),
-            abi.encodeWithSelector(IVaultFactory.newVault.selector, POOL_A, SC_1, asset, tokenId, share),
+            abi.encodeWithSelector(IVaultFactory.newVault.selector, POOL_A, SC_1, asset, tokenId, share, emptyArray),
             abi.encode(vault)
         );
 
@@ -178,6 +199,8 @@ contract VaultRegistryTestDeployVault is VaultRegistryTest {
     }
 
     function testErrShareTokenDoesNotExists() public {
+        _utilRegisterAsset(erc6909); // Register asset so we pass the first check
+
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
         vaultRegistry.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
@@ -237,10 +260,10 @@ contract VaultRegistryTestRegisterVault is VaultRegistryTest {
 contract VaultRegistryTestLinkVault is VaultRegistryTest {
     function _utilDeployVault(address asset) internal {
         _mockVaultFactory(asset, asset == erc6909 ? TOKEN_1 : 0);
-        
+
         vm.prank(AUTH);
         spoke.setRequestManager(POOL_A, requestManager);
-        
+
         vm.prank(AUTH);
         vaultRegistry.deployVault(POOL_A, SC_1, asset == erc6909 ? ASSET_ID_6909_1 : ASSET_ID_20, vaultFactory);
     }
@@ -334,10 +357,10 @@ contract VaultRegistryTestLinkVault is VaultRegistryTest {
 contract VaultRegistryTestUnlinkVault is VaultRegistryTest {
     function _utilDeployVault(address asset) internal {
         _mockVaultFactory(asset, asset == erc6909 ? TOKEN_1 : 0);
-        
+
         vm.prank(AUTH);
         spoke.setRequestManager(POOL_A, requestManager);
-        
+
         vm.prank(AUTH);
         vaultRegistry.deployVault(POOL_A, SC_1, asset == erc6909 ? ASSET_ID_6909_1 : ASSET_ID_20, vaultFactory);
     }

@@ -90,6 +90,9 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         deployExtendedSpoke(input, this);
         // removeExtendedSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
 
+        // Ensure test contract has auth on vaultRegistry for testing
+        vaultRegistry.rely(address(this));
+
         // deploy mock adapters
         adapter1 = new MockAdapter(OTHER_CHAIN_ID, multiAdapter);
         adapter2 = new MockAdapter(OTHER_CHAIN_ID, multiAdapter);

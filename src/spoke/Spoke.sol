@@ -2,11 +2,10 @@
 pragma solidity 0.8.28;
 
 import {Price} from "./types/Price.sol";
-import {IVault} from "./interfaces/IVault.sol";
 import {IShareToken} from "./interfaces/IShareToken.sol";
 import {IVaultRegistry} from "./interfaces/IVaultRegistry.sol";
 import {ITokenFactory} from "./factories/interfaces/ITokenFactory.sol";
-import {AssetIdKey, Pool, ShareClassDetails, VaultDetails, ISpoke} from "./interfaces/ISpoke.sol";
+import {AssetIdKey, Pool, ShareClassDetails, ISpoke} from "./interfaces/ISpoke.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18} from "../misc/types/D18.sol";
@@ -413,7 +412,15 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         validUntil = poolPerAsset.validUntil();
     }
 
-
+    /// @notice Updates a share token's vault reference for a specific asset
+    /// @param poolId The pool ID
+    /// @param scId The share class ID
+    /// @param asset The asset address
+    /// @param vault The vault address to set (or address(0) to unset)
+    function setShareTokenVault(PoolId poolId, ShareClassId scId, address asset, address vault) external auth {
+        IShareToken token = shareToken(poolId, scId);
+        token.updateVault(asset, vault);
+    }
 
     //----------------------------------------------------------------------------------------------
     // Internal methods

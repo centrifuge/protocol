@@ -36,9 +36,9 @@ import {ShareClassManager} from "../../src/hub/ShareClassManager.sol";
 import {IHubRequestManager} from "../../src/hub/interfaces/IHubRequestManager.sol";
 
 import {Spoke} from "../../src/spoke/Spoke.sol";
-import {VaultRegistry} from "../../src/spoke/VaultRegistry.sol";
 import {IVault} from "../../src/spoke/interfaces/IVault.sol";
 import {BalanceSheet} from "../../src/spoke/BalanceSheet.sol";
+import {VaultRegistry} from "../../src/spoke/VaultRegistry.sol";
 import {UpdateContractMessageLib} from "../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {SyncManager} from "../../src/vaults/SyncManager.sol";

@@ -223,8 +223,6 @@ interface ISpoke {
     /// @return address The address of the share token
     function shareToken(PoolId poolId, ShareClassId scId) external view returns (IShareToken);
 
-
-
     /// @notice Returns the price per share for a given pool and share class. The Provided price is defined as
     /// POOL_UNIT/SHARE_UNIT.
     /// @dev Conditionally checks if price is valid.
@@ -292,10 +290,15 @@ interface ISpoke {
         view
         returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
 
-
-
     /// @notice Returns the request manager for a given pool
     /// @param poolId The pool id
     /// @return manager The request manager for the pool
     function requestManager(PoolId poolId) external view returns (IRequestManager manager);
+
+    /// @notice Updates a share token's vault reference for a specific asset
+    /// @param poolId The pool ID
+    /// @param scId The share class ID
+    /// @param asset The asset address
+    /// @param vault The vault address to set (or address(0) to unset)
+    function setShareTokenVault(PoolId poolId, ShareClassId scId, address asset, address vault) external;
 }

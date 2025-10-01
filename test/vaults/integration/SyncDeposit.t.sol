@@ -129,8 +129,9 @@ contract SyncDepositTest is SyncDepositTestHelper {
         IShareToken shareToken = IShareToken(address(syncVault.share()));
 
         // Retrieve async vault
-        IVault asyncVault_ =
-            vaultRegistry.vault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault.asyncRedeemManager());
+        IVault asyncVault_ = vaultRegistry.vault(
+            syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault.asyncRedeemManager()
+        );
         assertNotEq(address(syncVault), address(0), "Failed to retrieve async vault");
         IAsyncRedeemVault asyncVault = IAsyncRedeemVault(address(asyncVault_));
 

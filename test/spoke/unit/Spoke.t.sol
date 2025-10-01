@@ -12,7 +12,6 @@ import {IGateway} from "../../../src/common/interfaces/IGateway.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../src/common/types/AssetId.sol";
 import {IPoolEscrow} from "../../../src/common/interfaces/IPoolEscrow.sol";
-import {VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
 import {ITransferHook} from "../../../src/common/interfaces/ITransferHook.sol";
 import {IRequestManager} from "../../../src/common/interfaces/IRequestManager.sol";
 import {ISpokeMessageSender} from "../../../src/common/interfaces/IGatewaySenders.sol";
@@ -214,8 +213,6 @@ contract SpokeTest is Test {
         vm.prank(AUTH);
         spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, hook);
     }
-
-
 
     function testConstructor() public view {
         assertEq(address(spoke.tokenFactory()), address(tokenFactory));
@@ -1061,4 +1058,3 @@ contract SpokeTestPricesPoolPer is SpokeTest {
         assertEq(sharePrice.raw(), (PRICE + d18(1)).raw());
     }
 }
-

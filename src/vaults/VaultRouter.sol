@@ -44,7 +44,9 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     /// @inheritdoc IVaultRouter
     mapping(address controller => mapping(IBaseVault vault => uint256 amount)) public lockedRequests;
 
-    constructor(address escrow_, IGateway gateway_, ISpoke spoke_, IVaultRegistry vaultRegistry_, address deployer) Auth(deployer) {
+    constructor(address escrow_, IGateway gateway_, ISpoke spoke_, IVaultRegistry vaultRegistry_, address deployer)
+        Auth(deployer)
+    {
         escrow = IEscrow(escrow_);
         gateway = gateway_;
         spoke = spoke_;

@@ -49,6 +49,9 @@ contract SpokeActionBatcher is CommonActionBatcher {
         report.contractUpdater.rely(address(report.common.messageProcessor));
         report.vaultRegistry.rely(address(report.common.messageProcessor));
 
+        // Rely vaultRegistry
+        report.spoke.rely(address(report.vaultRegistry));
+
         // Rely messageDispatcher
         report.spoke.rely(address(report.common.messageDispatcher));
         report.balanceSheet.rely(address(report.common.messageDispatcher));
