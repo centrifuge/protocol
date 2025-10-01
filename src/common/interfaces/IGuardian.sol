@@ -50,11 +50,11 @@ interface IGuardian {
 
     /// @notice Schedule an upgrade (scheduled rely) on a specific chain
     /// @dev    Only supports EVM targets today
-    function scheduleUpgrade(uint16 centrifugeId, address target) external;
+    function scheduleUpgrade(uint16 centrifugeId, address target, address refund) external payable;
 
     /// @notice Cancel an upgrade (scheduled rely) on a specific chain
     /// @dev    Only supports EVM targets today
-    function cancelUpgrade(uint16 centrifugeId, address target) external;
+    function cancelUpgrade(uint16 centrifugeId, address target, address refund) external payable;
 
     /// @notice Recover tokens on a specific chain
     /// @dev    Only supports EVM targets today
@@ -64,8 +64,9 @@ interface IGuardian {
         address token,
         uint256 tokenId,
         address to,
-        uint256 amount
-    ) external;
+        uint256 amount,
+        address refund
+    ) external payable;
 
     /// @notice Set adapters into MultiAdapter. Check IMultiAdapter docs
     function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)

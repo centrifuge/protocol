@@ -51,12 +51,7 @@ contract TestableBaseTransferHook is BaseTransferHook {
         uint256,
         /* value */
         HookData calldata hookData
-    )
-        public
-        view
-        override
-        returns (bool)
-    {
+    ) public view override returns (bool) {
         // Simple implementation for testing - allow transfer if not frozen
         return !isSourceOrTargetFrozen(from, to, hookData);
     }
@@ -220,6 +215,11 @@ contract BaseTransferHookTestTransferTypes is BaseTransferHookTestBase {
         assertTrue(hook.isCrosschainTransfer(crosschainSource, address(0)));
         assertFalse(hook.isCrosschainTransfer(user1, address(0)));
         assertFalse(hook.isCrosschainTransfer(crosschainSource, user1));
+    }
+
+    function testIsCrosschainTransferExecution() public view {
+        assertTrue(hook.isCrosschainTransferExecution(crosschainSource, user1));
+        assertFalse(hook.isCrosschainTransferExecution(user1, address(0)));
     }
 }
 
@@ -407,10 +407,8 @@ contract BaseTransferHookTestMember is BaseTransferHookTestBase {
 
 contract BaseTransferHookTestUpdateRestriction is BaseTransferHookTestBase {
     function testUpdateRestrictionMember() public {
-        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate =
-            UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP
-            });
+        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate = UpdateRestrictionMessageLib
+            .UpdateRestrictionMember({user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP});
 
         bytes memory payload = UpdateRestrictionMessageLib.serialize(memberUpdate);
 
@@ -460,10 +458,8 @@ contract BaseTransferHookTestUpdateRestriction is BaseTransferHookTestBase {
     }
 
     function testUpdateRestrictionUnauthorized() public {
-        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate =
-            UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP
-            });
+        UpdateRestrictionMessageLib.UpdateRestrictionMember memory memberUpdate = UpdateRestrictionMessageLib
+            .UpdateRestrictionMember({user: bytes32(bytes20(user1)), validUntil: FUTURE_TIMESTAMP});
 
         bytes memory payload = UpdateRestrictionMessageLib.serialize(memberUpdate);
 

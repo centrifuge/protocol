@@ -10,9 +10,9 @@ contract MockSnapshotHook is ISnapshotHook {
     mapping(
         PoolId
             => mapping(
-            ShareClassId
-                => mapping(uint16 fromCentrifugeId => mapping(uint16 toCentrifugeId => uint256 amountTransferred))
-        )
+                ShareClassId
+                    => mapping(uint16 fromCentrifugeId => mapping(uint16 toCentrifugeId => uint256 amountTransferred))
+            )
     ) public transfers;
 
     function onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external {

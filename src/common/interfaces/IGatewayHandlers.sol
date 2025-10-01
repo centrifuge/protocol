@@ -47,8 +47,9 @@ interface IHubGatewayHandler {
         ShareClassId scId,
         bytes32 receiver,
         uint128 amount,
-        uint128 extraGasLimit
-    ) external returns (uint256 cost);
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 
     /// @notice Updates the total issuance of shares by request from vaults.
     function updateShares(
