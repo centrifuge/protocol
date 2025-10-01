@@ -12,7 +12,6 @@ import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {IERC6909} from "../misc/interfaces/IERC6909.sol";
-import {Multicall, IMulticall} from "../misc/Multicall.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 
@@ -21,6 +20,7 @@ import {AssetId} from "../common/types/AssetId.sol";
 import {IRoot} from "../common/interfaces/IRoot.sol";
 import {IGateway} from "../common/interfaces/IGateway.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {BatchedMulticall} from "../common/BatchedMulticall.sol";
 import {IPoolEscrow} from "../common/interfaces/IPoolEscrow.sol";
 import {ISpokeMessageSender} from "../common/interfaces/IGatewaySenders.sol";
 import {IBalanceSheetGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
@@ -34,14 +34,13 @@ import {IPoolEscrowProvider} from "../common/factories/interfaces/IPoolEscrowFac
 ///
 ///         Share and asset updates to the Hub are optionally queued, to reduce the cost
 ///         per transaction. Dequeuing can be triggered locally by the manager or from the Hub.
-contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler {
+contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler {
     using MathLib for *;
     using CastLib for bytes32;
 
     IRoot public immutable root;
 
     ISpoke public spoke;
-    IGateway public gateway;
     ISpokeMessageSender public sender;
     IPoolEscrowProvider public poolEscrowProvider;
 
@@ -50,7 +49,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => AssetQueueAmount))) public
         queuedAssets;
 
-    constructor(IRoot root_, address deployer) Auth(deployer) {
+    constructor(IRoot root_, address deployer) Auth(deployer) BatchedMulticall(gateway) {
         root = root_;
     }
 
@@ -73,21 +72,6 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
-    }
-
-    /// @inheritdoc IMulticall
-    /// @notice performs a multicall but all messages sent in the process will be batched
-    function multicall(bytes[] calldata data) public payable override {
-        bool wasBatching = gateway.isBatching();
-        if (!wasBatching) {
-            gateway.startBatching();
-        }
-
-        super.multicall(data);
-
-        if (!wasBatching) {
-            gateway.endBatching{value: msg.value}(msg.sender);
-        }
     }
 
     //----------------------------------------------------------------------------------------------
@@ -376,9 +360,5 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
 
         D18 pricePoolPerShare = spoke.pricePoolPerShare(poolId, scId, true);
         return pricePoolPerShare;
-    }
-
-    function _payment() internal view returns (uint256 value) {
-        return gateway.isBatching() ? 0 : msg.value;
     }
 }

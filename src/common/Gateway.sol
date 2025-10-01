@@ -44,6 +44,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     mapping(PoolId => mapping(address => bool)) public manager;
 
     // Outbound & payments
+    address public transient batcher;
     bool public transient isBatching;
     bool public transient unpaidMode;
     mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
@@ -100,20 +101,16 @@ contract Gateway is Auth, Recoverable, IGateway {
             uint256 length = processor.messageLength(remaining);
             bytes memory message = remaining.slice(0, length);
             remaining = remaining.slice(length, remaining.length - length);
+            bytes32 messageHash = keccak256(message);
 
-            uint256 executionGas = gasService.messageGasLimit(localCentrifugeId, message);
-            require(gasleft() >= executionGas + GAS_FAIL_MESSAGE_STORAGE, NotEnoughGasToProcess());
+            require(gasleft() > GAS_FAIL_MESSAGE_STORAGE, NotEnoughGasToProcess());
 
-            _process(centrifugeId, message, keccak256(message));
-        }
-    }
-
-    function _process(uint16 centrifugeId, bytes memory message, bytes32 messageHash) internal {
-        try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
-            emit ExecuteMessage(centrifugeId, message, messageHash);
-        } catch (bytes memory err) {
-            failedMessages[centrifugeId][messageHash]++;
-            emit FailMessage(centrifugeId, message, messageHash, err);
+            try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
+                emit ExecuteMessage(centrifugeId, message, messageHash);
+            } catch (bytes memory err) {
+                failedMessages[centrifugeId][messageHash]++;
+                emit FailMessage(centrifugeId, message, messageHash, err);
+            }
         }
     }
 
@@ -223,16 +220,24 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function startBatching() external auth {
+    function startBatching() public auth {
+        _startBatching();
+    }
+
+    function _startBatching() internal {
+        require(!isBatching, AlreadyBatching());
         isBatching = true;
     }
 
     /// @inheritdoc IGateway
-    function endBatching(address refund) external payable auth {
+    function endBatching(address refund) public payable auth {
+        _endBatching(refund);
+    }
+
+    function _endBatching(address refund) internal {
         require(isBatching, NoBatched());
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
 
-        isBatching = false;
         TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
 
         uint256 cost;
@@ -248,7 +253,30 @@ contract Gateway is Auth, Recoverable, IGateway {
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
         }
 
+        isBatching = false;
+
         _refund(refund, msg.value - cost);
+    }
+
+    /// @inheritdoc IGateway
+    function withBatch(bytes memory data, address refund) external payable {
+        require(batcher == address(0), AlreadyBatching());
+
+        _startBatching();
+        batcher = msg.sender;
+
+        (bool success, bytes memory returnData) = msg.sender.call(data);
+        if (!success) {
+            uint256 length = returnData.length;
+            require(length != 0, CallFailedWithEmptyRevert());
+
+            assembly ("memory-safe") {
+                revert(add(32, returnData), length)
+            }
+        }
+
+        batcher = address(0);
+        _endBatching(refund);
     }
 
     /// @inheritdoc IGateway
