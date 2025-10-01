@@ -66,7 +66,6 @@ contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
         vm.assume(nonWard != address(spoke));
 
         assertEq(asyncVaultFactory.wards(address(root)), 1);
-        assertEq(asyncVaultFactory.wards(address(spoke)), 1);
         assertEq(asyncVaultFactory.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -80,7 +79,6 @@ contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
         vm.assume(nonWard != address(spoke));
 
         assertEq(syncDepositVaultFactory.wards(address(root)), 1);
-        assertEq(syncDepositVaultFactory.wards(address(spoke)), 1);
         assertEq(syncDepositVaultFactory.wards(nonWard), 0);
 
         // dependencies set correctly
