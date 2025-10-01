@@ -33,6 +33,7 @@ import {IVault} from "../spoke/interfaces/IVault.sol";
 import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
+import {IVaultRegistry} from "../spoke/interfaces/IVaultRegistry.sol";
 
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for
@@ -48,6 +49,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     ISpoke public spoke;
     IBalanceSheet public balanceSheet;
+    IVaultRegistry public vaultRegistry;
     IRefundEscrowFactory public refundEscrowFactory;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
@@ -65,6 +67,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     function file(bytes32 what, address data) external auth {
         if (what == "spoke") spoke = ISpoke(data);
+        else if (what == "vaultRegistry") vaultRegistry = IVaultRegistry(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else if (what == "refundEscrowFactory") refundEscrowFactory = IRefundEscrowFactory(data);
         else revert FileUnrecognizedParam();
@@ -182,7 +185,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
         // It use all funds for the message, and the rest is refunded again to the RefundEscrow
         spoke.request{value: payment}(
-            vault_.poolId(), vault_.scId(), spoke.vaultDetails(vault_).assetId, payload, address(refund), true
+            vault_.poolId(), vault_.scId(), vaultRegistry.vaultDetails(vault_).assetId, payload, address(refund), true
         );
     }
 
@@ -284,7 +287,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         uint128 fulfilledShares,
         uint128 cancelledAssets
     ) public auth {
-        IAsyncVault vault_ = IAsyncVault(address(spoke.vault(poolId, scId, assetId, this)));
+        IAsyncVault vault_ = IAsyncVault(address(vaultRegistry.vault(poolId, scId, assetId, this)));
         AsyncInvestmentState storage state = investments[vault_][user];
 
         require(state.pendingDepositRequest != 0, NoPendingRequest());
@@ -317,7 +320,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         uint128 fulfilledShares,
         uint128 cancelledShares
     ) public auth {
-        IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(spoke.vault(poolId, scId, assetId, this)));
+        IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(vaultRegistry.vault(poolId, scId, assetId, this)));
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingRedeemRequest != 0, NoPendingRequest());
@@ -454,7 +457,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     /// @dev Transfer funds from escrow to receiver and update holdings
     function _withdraw(IBaseVault vault_, address receiver, uint128 assets) internal {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
 
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
@@ -486,7 +489,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         require(_canTransfer(vault_, receiver, address(0), shares), TransferNotAllowed());
 
         if (assets > 0) {
-            VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+            VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
             globalEscrow.authTransferTo(vaultDetails.asset, vaultDetails.tokenId, receiver, assets);
         }
     }
@@ -580,7 +583,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     /// @inheritdoc IBaseRequestManager
     function convertToShares(IBaseVault vault_, uint256 assets) public view virtual returns (uint256 shares) {
         uint128 assets_ = assets.toUint128();
-        VaultDetails memory vd = spoke.vaultDetails(vault_);
+        VaultDetails memory vd = vaultRegistry.vaultDetails(vault_);
         (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
             spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vd.assetId, false);
 
@@ -594,7 +597,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     /// @inheritdoc IBaseRequestManager
     function convertToAssets(IBaseVault vault_, uint256 shares) public view virtual returns (uint256 assets) {
         uint128 shares_ = shares.toUint128();
-        VaultDetails memory vd = spoke.vaultDetails(vault_);
+        VaultDetails memory vd = vaultRegistry.vaultDetails(vault_);
         (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
             spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vd.assetId, false);
 
@@ -607,7 +610,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     /// @inheritdoc IBaseRequestManager
     function priceLastUpdated(IBaseVault vault_) public view virtual returns (uint64 lastUpdated) {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
 
         (uint64 shareLastUpdated,,) = spoke.markersPricePoolPerShare(vault_.poolId(), vault_.scId());
         (uint64 assetLastUpdated,,) =
@@ -638,7 +641,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         view
         returns (uint128 shares)
     {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
         address shareToken = vault_.share();
 
         return priceAssetPerShare.isZero()
@@ -653,7 +656,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         view
         returns (uint128 assets)
     {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
         address shareToken = vault_.share();
 
         return priceAssetPerShare.isZero()
@@ -668,7 +671,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         view
         returns (D18 price)
     {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
         address shareToken = vault_.share();
 
         return shares == 0
@@ -680,6 +683,6 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     /// @dev Here to reduce contract bytesize
     function _checkIsLinked(IVault vault_) internal view {
-        require(spoke.isLinked(vault_), VaultNotLinked());
+        require(vaultRegistry.isLinked(vault_), VaultNotLinked());
     }
 }

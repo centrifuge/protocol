@@ -37,10 +37,12 @@ contract SpokeDeploymentTest is SpokeDeployer, CommonDeploymentInputTest {
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(messageProcessor));
         vm.assume(nonWard != address(messageDispatcher));
+        vm.assume(nonWard != address(vaultRegistry));
 
         assertEq(spoke.wards(address(root)), 1);
         assertEq(spoke.wards(address(messageProcessor)), 1);
         assertEq(spoke.wards(address(messageDispatcher)), 1);
+        assertEq(spoke.wards(address(vaultRegistry)), 1);
         assertEq(spoke.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -93,9 +95,11 @@ contract SpokeDeploymentCommonExtTest is SpokeDeploymentTest {
         vm.assume(nonWard != address(spoke));
         vm.assume(nonWard != address(balanceSheet));
         vm.assume(nonWard != address(contractUpdater));
+        vm.assume(nonWard != address(vaultRegistry));
 
         assertEq(messageDispatcher.wards(address(spoke)), 1);
         assertEq(messageDispatcher.wards(address(balanceSheet)), 1);
+        assertEq(messageDispatcher.wards(address(vaultRegistry)), 1);
         assertEq(messageDispatcher.wards(nonWard), 0);
 
         // dependencies set correctly

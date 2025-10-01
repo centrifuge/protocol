@@ -20,9 +20,9 @@ contract Guardian is IGuardian {
 
     ISafe public safe;
     IGateway public gateway;
-    IMultiAdapter public multiAdapter;
     IHubGuardianActions public hub;
     IRootMessageSender public sender;
+    IMultiAdapter public multiAdapter;
 
     constructor(
         ISafe safe_,

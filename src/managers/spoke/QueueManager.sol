@@ -68,14 +68,15 @@ contract QueueManager is Auth, IQueueManager, IUpdateContract {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IQueueManager
-    function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external payable {
+    function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds, address refund) external payable {
         gateway.withBatch{value: msg.value}(
-            abi.encodeWithSelector(QueueManager.syncCallback.selector, poolId, scId, assetIds), msg.sender
+            abi.encodeWithSelector(QueueManager.syncCallback.selector, poolId, scId, assetIds), refund
         );
     }
 
     function syncCallback(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external {
-        require(msg.sender == address(gateway), NotAuthorized());
+        gateway.lockCallback();
+
         ShareClassQueueState storage sc = scQueueState[poolId][scId];
         require(
             sc.lastSync == 0 || sc.minDelay == 0 || block.timestamp >= sc.lastSync + sc.minDelay, MinDelayNotElapsed()
