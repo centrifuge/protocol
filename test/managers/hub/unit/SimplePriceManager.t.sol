@@ -16,9 +16,6 @@ import {IHubRegistry} from "../../../../src/hub/interfaces/IHubRegistry.sol";
 import {SimplePriceManager} from "../../../../src/managers/hub/SimplePriceManager.sol";
 import {IShareClassManager} from "../../../../src/hub/interfaces/IShareClassManager.sol";
 import {ISimplePriceManager} from "../../../../src/managers/hub/interfaces/ISimplePriceManager.sol";
-import {ISimplePriceManagerBase} from "../../../../src/managers/hub/interfaces/ISimplePriceManagerBase.sol";
-
-import {IBatchRequestManager} from "../../../../src/vaults/interfaces/IBatchRequestManager.sol";
 
 import "forge-std/Test.sol";
 
@@ -59,7 +56,6 @@ contract SimplePriceManagerTest is Test {
     address gateway = address(new IsContract());
     address hubRegistry = address(new IsContract());
     address shareClassManager = address(new IsContract());
-    address batchRequestManager = address(new IsContract());
     address hubHelpers = address(new IsContract());
     address crosschainBatcher = address(new MockCrosschainBatcher());
 
@@ -82,18 +78,10 @@ contract SimplePriceManagerTest is Test {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.gateway.selector), abi.encode(gateway));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateSharePrice.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.notifySharePrice.selector), abi.encode(uint256(0)));
-        vm.mockCall(
-            hub, abi.encodeWithSelector(IHub.pricePoolPerAsset.selector, POOL_A, SC_1, asset1), abi.encode(d18(1, 1))
-        );
 
         vm.mockCall(gateway, abi.encodeWithSelector(IGateway.startBatching.selector), abi.encode());
         vm.mockCall(gateway, abi.encodeWithSelector(IGateway.endBatching.selector), abi.encode());
 
-        vm.mockCall(
-            hubRegistry,
-            abi.encodeWithSelector(IHubRegistry.hubRequestManager.selector),
-            abi.encode(batchRequestManager)
-        );
         vm.mockCall(hubRegistry, abi.encodeWithSelector(IHubRegistry.manager.selector), abi.encode(false));
         vm.mockCall(
             hubRegistry, abi.encodeWithSelector(IHubRegistry.manager.selector, POOL_A, hubManager), abi.encode(true)
@@ -118,45 +106,6 @@ contract SimplePriceManagerTest is Test {
             shareClassManager,
             abi.encodeWithSelector(IShareClassManager.issuance.selector, SC_1, CENTRIFUGE_ID_2),
             abi.encode(200)
-        );
-
-        vm.mockCall(
-            batchRequestManager,
-            abi.encodeWithSelector(IBatchRequestManager.nowDepositEpoch.selector, SC_1, asset1),
-            abi.encode(1)
-        );
-        vm.mockCall(
-            batchRequestManager,
-            abi.encodeWithSelector(IBatchRequestManager.nowIssueEpoch.selector, SC_1, asset1),
-            abi.encode(1)
-        );
-        vm.mockCall(
-            batchRequestManager,
-            abi.encodeWithSelector(IBatchRequestManager.nowRedeemEpoch.selector, SC_1, asset1),
-            abi.encode(2)
-        );
-        vm.mockCall(
-            batchRequestManager,
-            abi.encodeWithSelector(IBatchRequestManager.nowRevokeEpoch.selector, SC_1, asset1),
-            abi.encode(2)
-        );
-        vm.mockCall(
-            batchRequestManager,
-            abi.encodeWithSelector(IBatchRequestManager.approveDeposits.selector),
-            abi.encode(uint256(0))
-        );
-        vm.mockCall(
-            batchRequestManager,
-            abi.encodeWithSelector(IBatchRequestManager.issueShares.selector),
-            abi.encode(uint256(0))
-        );
-        vm.mockCall(
-            batchRequestManager, abi.encodeWithSelector(IBatchRequestManager.approveRedeems.selector), abi.encode()
-        );
-        vm.mockCall(
-            batchRequestManager,
-            abi.encodeWithSelector(IBatchRequestManager.revokeShares.selector),
-            abi.encode(uint256(0))
         );
     }
 
@@ -191,7 +140,7 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         networks[0] = CENTRIFUGE_ID_1;
 
         vm.expectEmit(true, true, true, true);
-        emit ISimplePriceManagerBase.UpdateNetworks(POOL_A, networks);
+        emit ISimplePriceManager.UpdateNetworks(POOL_A, networks);
 
         vm.prank(hubManager);
         priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
@@ -205,7 +154,7 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         networks2[1] = CENTRIFUGE_ID_2;
 
         vm.expectEmit(true, true, true, true);
-        emit ISimplePriceManagerBase.UpdateNetworks(POOL_A, networks2);
+        emit ISimplePriceManager.UpdateNetworks(POOL_A, networks2);
 
         vm.prank(hubManager);
         priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_2);
@@ -232,7 +181,7 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
             hubRegistry, abi.encodeWithSelector(IHubRegistry.manager.selector, POOL_B, hubManager), abi.encode(true)
         );
 
-        vm.expectRevert(ISimplePriceManagerBase.InvalidShareClassCount.selector);
+        vm.expectRevert(ISimplePriceManager.InvalidShareClassCount.selector);
         vm.prank(hubManager);
         priceManager.addNetwork(POOL_B, CENTRIFUGE_ID_1);
     }
@@ -291,7 +240,7 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         vm.prank(hubManager);
         priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
 
-        vm.expectRevert(ISimplePriceManagerBase.NetworkNotFound.selector);
+        vm.expectRevert(ISimplePriceManager.NetworkNotFound.selector);
         vm.prank(hubManager);
         priceManager.removeNetwork(POOL_A, CENTRIFUGE_ID_2);
     }
@@ -300,7 +249,7 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         address newManager = makeAddr("newManager");
 
         vm.expectEmit(true, true, false, false);
-        emit ISimplePriceManagerBase.UpdateManager(POOL_A, newManager, true);
+        emit ISimplePriceManager.UpdateManager(POOL_A, newManager, true);
 
         vm.prank(hubManager);
         priceManager.updateManager(POOL_A, newManager, true);
@@ -316,7 +265,7 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         assertTrue(priceManager.manager(POOL_A, managerAddr));
 
         vm.expectEmit(true, true, false, false);
-        emit ISimplePriceManagerBase.UpdateManager(POOL_A, managerAddr, false);
+        emit ISimplePriceManager.UpdateManager(POOL_A, managerAddr, false);
 
         vm.prank(hubManager);
         priceManager.updateManager(POOL_A, managerAddr, false);
@@ -338,7 +287,7 @@ contract SimplePriceManagerFileTests is SimplePriceManagerTest {
         address newCrosschainBatcher = makeAddr("newCrosschainBatcher");
 
         vm.expectEmit(true, false, true, true);
-        emit ISimplePriceManagerBase.File("crosschainBatcher", newCrosschainBatcher);
+        emit ISimplePriceManager.File("crosschainBatcher", newCrosschainBatcher);
 
         vm.prank(auth);
         priceManager.file("crosschainBatcher", newCrosschainBatcher);
@@ -349,7 +298,7 @@ contract SimplePriceManagerFileTests is SimplePriceManagerTest {
     function testFileUnrecognizedParam() public {
         address someAddress = makeAddr("someAddress");
 
-        vm.expectRevert(ISimplePriceManagerBase.FileUnrecognizedParam.selector);
+        vm.expectRevert(ISimplePriceManager.FileUnrecognizedParam.selector);
         vm.prank(auth);
         priceManager.file("invalid", someAddress);
     }
@@ -388,7 +337,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         );
 
         vm.expectEmit(true, true, true, true);
-        emit ISimplePriceManagerBase.Update(POOL_A, SC_1, netAssetValue, 100, d18(10, 1));
+        emit ISimplePriceManager.Update(POOL_A, SC_1, netAssetValue, 100, d18(10, 1));
 
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, netAssetValue);
@@ -412,7 +361,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         vm.expectCall(address(hub), abi.encodeWithSelector(IHub.updateSharePrice.selector, POOL_A, SC_1, d18(9, 1)));
 
         vm.expectEmit(true, true, true, true);
-        emit ISimplePriceManagerBase.Update(POOL_A, SC_1, 2700, 300, d18(9, 1)); // total NAV=2700, total issuance=300
+        emit ISimplePriceManager.Update(POOL_A, SC_1, 2700, 300, d18(9, 1)); // total NAV=2700, total issuance=300
 
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_2, netAssetValue2);
@@ -435,7 +384,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         uint128 newNetAssetValue = 1200;
 
         vm.expectEmit(true, true, true, true);
-        emit ISimplePriceManagerBase.Update(POOL_A, SC_1, 1200, 150, d18(8, 1)); // 1200/150 = 8
+        emit ISimplePriceManager.Update(POOL_A, SC_1, 1200, 150, d18(8, 1)); // 1200/150 = 8
 
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, newNetAssetValue);
@@ -469,7 +418,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
     }
 
     function testInvalidShareClass() public {
-        vm.expectRevert(ISimplePriceManagerBase.InvalidShareClass.selector);
+        vm.expectRevert(ISimplePriceManager.InvalidShareClass.selector);
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_2, CENTRIFUGE_ID_1, 1000);
     }
@@ -490,7 +439,7 @@ contract SimplePriceManagerOnTransferTest is SimplePriceManagerTest {
         uint128 sharesTransferred = 50;
 
         vm.expectEmit(true, true, false, true);
-        emit ISimplePriceManagerBase.Transfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, sharesTransferred);
+        emit ISimplePriceManager.Transfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, sharesTransferred);
 
         vm.prank(caller);
         priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, sharesTransferred);
@@ -524,271 +473,8 @@ contract SimplePriceManagerOnTransferTest is SimplePriceManagerTest {
     }
 
     function testInvalidShareClass() public {
-        vm.expectRevert(ISimplePriceManagerBase.InvalidShareClass.selector);
+        vm.expectRevert(ISimplePriceManager.InvalidShareClass.selector);
         vm.prank(caller);
         priceManager.onTransfer(POOL_A, SC_2, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 50);
-    }
-}
-
-contract SimplePriceManagerInvestorActionsTest is SimplePriceManagerTest {
-    D18 expectedNavPerShare = d18(10, 1); // 1000/100 = 10
-
-    function setUp() public override {
-        super.setUp();
-
-        vm.prank(caller);
-        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
-    }
-
-    function testApproveDepositsAndIssueSharesSuccess() public {
-        uint128 approvedAssetAmount = 500;
-        uint128 extraGasLimit = 100000;
-
-        vm.expectCall(
-            address(batchRequestManager),
-            abi.encodeWithSelector(
-                IBatchRequestManager.approveDeposits.selector, POOL_A, SC_1, asset1, 1, approvedAssetAmount, d18(1, 1)
-            )
-        );
-        vm.expectCall(
-            address(batchRequestManager),
-            abi.encodeWithSelector(
-                IBatchRequestManager.issueShares.selector,
-                POOL_A,
-                SC_1,
-                asset1,
-                uint32(1),
-                expectedNavPerShare,
-                extraGasLimit
-            )
-        );
-
-        vm.prank(manager);
-        priceManager.approveDepositsAndIssueShares(POOL_A, SC_1, asset1, approvedAssetAmount, extraGasLimit);
-    }
-
-    function testApproveDepositsAndIssueSharesUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(unauthorized);
-        priceManager.approveDepositsAndIssueShares(POOL_A, SC_1, asset1, 500, 100000);
-    }
-
-    function testApproveDepositsAndIssueSharesMismatchedEpochs() public {
-        vm.mockCall(
-            batchRequestManager,
-            abi.encodeWithSelector(IBatchRequestManager.nowDepositEpoch.selector, SC_1, asset1),
-            abi.encode(1)
-        );
-        vm.mockCall(
-            batchRequestManager,
-            abi.encodeWithSelector(IBatchRequestManager.nowIssueEpoch.selector, SC_1, asset1),
-            abi.encode(2)
-        );
-
-        vm.expectRevert(ISimplePriceManagerBase.MismatchedEpochs.selector);
-        vm.prank(manager);
-        priceManager.approveDepositsAndIssueShares(POOL_A, SC_1, asset1, 500, 100000);
-    }
-
-    function testApproveRedeemsAndRevokeSharesSuccess() public {
-        uint128 approvedShareAmount = 50;
-        uint128 extraGasLimit = 100000;
-
-        vm.expectCall(
-            address(batchRequestManager),
-            abi.encodeWithSelector(
-                IBatchRequestManager.approveRedeems.selector,
-                POOL_A,
-                SC_1,
-                asset1,
-                uint32(2),
-                approvedShareAmount,
-                d18(1, 1)
-            )
-        );
-        vm.expectCall(
-            address(batchRequestManager),
-            abi.encodeWithSelector(
-                IBatchRequestManager.revokeShares.selector,
-                POOL_A,
-                SC_1,
-                asset1,
-                uint32(2),
-                expectedNavPerShare,
-                extraGasLimit
-            )
-        );
-
-        vm.prank(manager);
-        priceManager.approveRedeemsAndRevokeShares(POOL_A, SC_1, asset1, approvedShareAmount, extraGasLimit);
-    }
-
-    function testApproveRedeemsAndRevokeSharesUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(unauthorized);
-        priceManager.approveRedeemsAndRevokeShares(POOL_A, SC_1, asset1, 50, 100000);
-    }
-
-    function testApproveRedeemsAndRevokeSharesMismatchedEpochs() public {
-        vm.mockCall(
-            batchRequestManager,
-            abi.encodeWithSelector(IBatchRequestManager.nowRedeemEpoch.selector, SC_1, asset1),
-            abi.encode(2)
-        );
-        vm.mockCall(
-            batchRequestManager,
-            abi.encodeWithSelector(IBatchRequestManager.nowRevokeEpoch.selector, SC_1, asset1),
-            abi.encode(3)
-        );
-
-        vm.expectRevert(ISimplePriceManagerBase.MismatchedEpochs.selector);
-        vm.prank(manager);
-        priceManager.approveRedeemsAndRevokeShares(POOL_A, SC_1, asset1, 50, 100000);
-    }
-
-    function testApproveRedeemsSuccess() public {
-        uint128 approvedShareAmount = 50;
-
-        vm.expectCall(
-            address(batchRequestManager),
-            abi.encodeWithSelector(
-                IBatchRequestManager.approveRedeems.selector,
-                POOL_A,
-                SC_1,
-                asset1,
-                uint32(2),
-                approvedShareAmount,
-                d18(1, 1)
-            )
-        );
-
-        vm.prank(manager);
-        priceManager.approveRedeems(POOL_A, SC_1, asset1, approvedShareAmount);
-
-        (,, uint32 issueEpochsBehind, uint32 revokeEpochsBehind) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
-        assertEq(revokeEpochsBehind, 1);
-        assertEq(issueEpochsBehind, 0);
-    }
-
-    function testApproveRedeemsUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(unauthorized);
-        priceManager.approveRedeems(POOL_A, SC_1, asset1, 50);
-    }
-
-    function testRevokeSharesSuccess() public {
-        uint128 extraGasLimit = 100000;
-
-        vm.prank(manager);
-        priceManager.approveRedeems(POOL_A, SC_1, asset1, 50);
-
-        vm.expectCall(
-            address(batchRequestManager),
-            abi.encodeWithSelector(
-                IBatchRequestManager.revokeShares.selector, POOL_A, SC_1, asset1, uint32(2), d18(10, 1), extraGasLimit
-            )
-        );
-
-        vm.prank(manager);
-        priceManager.revokeShares(POOL_A, SC_1, asset1, extraGasLimit);
-
-        (,, uint32 issueEpochsBehind, uint32 revokeEpochsBehind) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
-        assertEq(revokeEpochsBehind, 0);
-        assertEq(issueEpochsBehind, 0);
-    }
-
-    function testRevokeSharesUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(unauthorized);
-        priceManager.revokeShares(POOL_A, SC_1, asset1, 100000);
-    }
-
-    function testRevokeSharesWithoutPendingEpochs() public {
-        vm.expectRevert(ISimplePriceManagerBase.MismatchedEpochs.selector);
-        vm.prank(manager);
-        priceManager.revokeShares(POOL_A, SC_1, asset1, 100000);
-    }
-
-    function testApproveDepositsSuccess() public {
-        uint128 approvedAssetAmount = 500;
-
-        vm.expectCall(
-            address(batchRequestManager),
-            abi.encodeWithSelector(
-                IBatchRequestManager.approveDeposits.selector,
-                POOL_A,
-                SC_1,
-                asset1,
-                uint32(1),
-                approvedAssetAmount,
-                d18(1, 1)
-            )
-        );
-
-        vm.prank(manager);
-        priceManager.approveDeposits(POOL_A, SC_1, asset1, approvedAssetAmount);
-
-        (,, uint32 issueEpochsBehind, uint32 revokeEpochsBehind) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
-        assertEq(issueEpochsBehind, 1);
-        assertEq(revokeEpochsBehind, 0);
-    }
-
-    function testIssueSharesSuccess() public {
-        uint128 extraGasLimit = 100000;
-
-        vm.prank(manager);
-        priceManager.approveDeposits(POOL_A, SC_1, asset1, 500);
-
-        vm.expectCall(
-            address(batchRequestManager),
-            abi.encodeWithSelector(
-                IBatchRequestManager.issueShares.selector,
-                POOL_A,
-                SC_1,
-                asset1,
-                uint32(1),
-                expectedNavPerShare,
-                extraGasLimit
-            )
-        );
-
-        vm.prank(manager);
-        priceManager.issueShares(POOL_A, SC_1, asset1, extraGasLimit);
-
-        (,, uint32 issueEpochsBehind, uint32 revokeEpochsBehind) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
-        assertEq(issueEpochsBehind, 0);
-        assertEq(revokeEpochsBehind, 0);
-    }
-
-    function testIssueSharesWithoutPendingEpochs() public {
-        vm.expectRevert(ISimplePriceManagerBase.MismatchedEpochs.selector);
-        vm.prank(manager);
-        priceManager.issueShares(POOL_A, SC_1, asset1, 100000);
-    }
-
-    function testInvalidShareClass() public {
-        vm.expectRevert(ISimplePriceManagerBase.InvalidShareClass.selector);
-        vm.prank(manager);
-        priceManager.approveDeposits(POOL_A, SC_2, asset1, 1);
-
-        vm.expectRevert(ISimplePriceManagerBase.InvalidShareClass.selector);
-        vm.prank(manager);
-        priceManager.issueShares(POOL_A, SC_2, asset1, 1);
-
-        vm.expectRevert(ISimplePriceManagerBase.InvalidShareClass.selector);
-        vm.prank(manager);
-        priceManager.approveRedeems(POOL_A, SC_2, asset1, 1);
-
-        vm.expectRevert(ISimplePriceManagerBase.InvalidShareClass.selector);
-        vm.prank(manager);
-        priceManager.revokeShares(POOL_A, SC_2, asset1, 1);
-
-        vm.expectRevert(ISimplePriceManagerBase.InvalidShareClass.selector);
-        vm.prank(manager);
-        priceManager.approveDepositsAndIssueShares(POOL_A, SC_2, asset1, 1, 1);
-
-        vm.expectRevert(ISimplePriceManagerBase.InvalidShareClass.selector);
-        vm.prank(manager);
-        priceManager.approveRedeemsAndRevokeShares(POOL_A, SC_2, asset1, 1, 1);
     }
 }

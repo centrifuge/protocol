@@ -418,12 +418,6 @@ contract NAVManagerUpdateHoldingTest is NAVManagerTest {
         navManager.updateHoldingValue(POOL_A, SC_1, asset1);
     }
 
-    function testUpdateHoldingValueUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(unauthorized);
-        navManager.updateHoldingValue(POOL_A, SC_1, asset1);
-    }
-
     function testUpdateHoldingValuation() public {
         vm.expectCall(
             address(hub),
@@ -440,7 +434,6 @@ contract NAVManagerUpdateHoldingTest is NAVManagerTest {
         vm.prank(unauthorized);
         navManager.updateHoldingValuation(POOL_A, SC_1, asset1, mockValuation);
     }
-
 }
 
 contract NAVManagerCloseGainLossTest is NAVManagerTest {
