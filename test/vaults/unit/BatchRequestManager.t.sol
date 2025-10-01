@@ -22,9 +22,7 @@ import {
     EpochInvestAmounts,
     EpochRedeemAmounts,
     UserOrder,
-    QueuedOrder,
-    RequestType,
-    EpochId
+    QueuedOrder
 } from "../../../src/vaults/interfaces/IBatchRequestManager.sol";
 
 import "forge-std/Test.sol";
