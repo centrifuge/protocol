@@ -61,9 +61,7 @@ contract SpokeTest is Test {
     address NO_HOOK = address(0);
 
     PoolId constant POOL_A = PoolId.wrap(1);
-    PoolId constant POOL_B = PoolId.wrap(2);
     ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("sc1"));
-    ShareClassId constant SC_2 = ShareClassId.wrap(bytes16("sc2"));
 
     AssetId immutable ASSET_ID_20 = newAssetId(LOCAL_CENTRIFUGE_ID, 1);
     AssetId immutable ASSET_ID_6909_1 = newAssetId(LOCAL_CENTRIFUGE_ID, 1);
@@ -80,7 +78,6 @@ contract SpokeTest is Test {
     D18 immutable PRICE = d18(42e18);
     uint128 constant AMOUNT = 200;
     uint64 immutable MAX_AGE = 10_000;
-    uint64 immutable PAST_OLD = 0;
     uint64 immutable PRESENT = MAX_AGE;
     uint64 immutable FUTURE = MAX_AGE + 1;
 

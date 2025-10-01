@@ -42,7 +42,6 @@ contract VaultRegistryTest is Test {
 
     address immutable AUTH = makeAddr("AUTH");
     address immutable ANY = makeAddr("ANY");
-    address immutable RECEIVER = makeAddr("RECEIVER");
     address immutable REFUND = makeAddr("REFUND");
 
     ITokenFactory tokenFactory = ITokenFactory(makeAddr("tokenFactory"));
@@ -56,7 +55,6 @@ contract VaultRegistryTest is Test {
     IVault vault = IVault(address(new IsContract()));
 
     address HOOK = makeAddr("hook");
-    address HOOK2 = makeAddr("hook2");
     address NO_HOOK = address(0);
 
     PoolId constant POOL_A = PoolId.wrap(1);
@@ -74,15 +72,7 @@ contract VaultRegistryTest is Test {
     string constant NAME = "name";
     string constant SYMBOL = "symbol";
     bytes32 constant SALT = "salt";
-    bytes constant PAYLOAD = "payload";
-
-    D18 immutable PRICE = d18(42e18);
-    uint128 constant AMOUNT = 200;
     uint64 immutable MAX_AGE = 10_000;
-    uint64 immutable PAST_OLD = 0;
-    uint64 immutable PRESENT = MAX_AGE;
-    uint64 immutable FUTURE = MAX_AGE + 1;
-
     uint256 constant COST = 123;
 
     SpokeExt spoke = new SpokeExt(tokenFactory, AUTH);
