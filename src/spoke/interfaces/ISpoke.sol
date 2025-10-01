@@ -100,6 +100,14 @@ interface ISpoke {
     event UpdateMaxAssetPriceAge(
         PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, uint64 maxPriceAge
     );
+    event UpdateHubContract(
+        uint16 indexed centrifugeId,
+        PoolId indexed poolId,
+        ShareClassId scId,
+        bytes32 target,
+        address indexed sender,
+        bytes payload
+    );
 
     error FileUnrecognizedParam();
     error TooFewDecimals();
@@ -210,6 +218,23 @@ interface ISpoke {
         bytes memory payload,
         address refund,
         bool unpaid
+    ) external payable;
+
+    /// @notice Initiates an update to a hub-side contract from spoke
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param target The hub-side target contract (as bytes32 for cross-chain compatibility)
+    /// @param payload The update payload
+    /// @param extraGasLimit Additional gas for cross-chain execution
+    /// @param refund Address to refund excess payment
+    /// @dev Permissionless by choice, forwards caller's address to recipient for permission validation
+    function updateHubContract(
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 target,
+        bytes calldata payload,
+        uint128 extraGasLimit,
+        address refund
     ) external payable;
 
     /// @notice Deploys a new vault

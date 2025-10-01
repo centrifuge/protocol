@@ -230,4 +230,22 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
     function sendRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload, address refund)
         external
         payable;
+
+    /// @notice Creates and sends an UpdateHubContract message
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param target The hub-side target contract (as bytes32)
+    /// @param sender The spoke-side initiator (as bytes32)
+    /// @param payload The update payload
+    /// @param extraGasLimit Additional gas for cross-chain execution
+    /// @param refund Address to refund excess payment
+    function sendUpdateHubContract(
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 target,
+        bytes32 sender,
+        bytes calldata payload,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 }

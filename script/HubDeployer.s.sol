@@ -11,6 +11,7 @@ import {Accounting} from "../src/hub/Accounting.sol";
 import {HubHandler} from "../src/hub/HubHandler.sol";
 import {HubRegistry} from "../src/hub/HubRegistry.sol";
 import {ShareClassManager} from "../src/hub/ShareClassManager.sol";
+import {HubContractUpdater} from "../src/hub/HubContractUpdater.sol";
 
 import "forge-std/Script.sol";
 
@@ -28,6 +29,7 @@ struct HubReport {
     ShareClassManager shareClassManager;
     HubHandler hubHandler;
     Hub hub;
+    HubContractUpdater hubContractUpdater;
 }
 
 contract HubActionBatcher is CommonActionBatcher, HubConstants {
@@ -63,10 +65,17 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
         report.shareClassManager.rely(address(report.common.root));
         report.hub.rely(address(report.common.root));
         report.hubHandler.rely(address(report.common.root));
+        report.hubContractUpdater.rely(address(report.common.root));
+
+        // Rely HubContractUpdater
+        report.hubContractUpdater.rely(address(report.common.messageProcessor));
+        report.hubContractUpdater.rely(address(report.common.messageDispatcher));
 
         // File methods
         report.common.messageProcessor.file("hubHandler", address(report.hubHandler));
         report.common.messageDispatcher.file("hubHandler", address(report.hubHandler));
+        report.common.messageProcessor.file("hubContractUpdater", address(report.hubContractUpdater));
+        report.common.messageDispatcher.file("hubContractUpdater", address(report.hubContractUpdater));
 
         report.hub.file("sender", address(report.common.messageDispatcher));
 
@@ -86,6 +95,7 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
         report.shareClassManager.deny(address(this));
         report.hub.deny(address(this));
         report.hubHandler.deny(address(this));
+        report.hubContractUpdater.deny(address(this));
     }
 }
 
@@ -97,6 +107,7 @@ contract HubDeployer is CommonDeployer, HubConstants {
     ShareClassManager public shareClassManager;
     HubHandler public hubHandler;
     Hub public hub;
+    HubContractUpdater public hubContractUpdater;
 
     function deployHub(CommonInput memory input, HubActionBatcher batcher) public {
         _preDeployHub(input, batcher);
@@ -158,6 +169,13 @@ contract HubDeployer is CommonDeployer, HubConstants {
             )
         );
 
+        hubContractUpdater = HubContractUpdater(
+            create3(
+                generateSalt("hubContractUpdater"),
+                abi.encodePacked(type(HubContractUpdater).creationCode, abi.encode(batcher))
+            )
+        );
+
         batcher.engageHub(_hubReport());
 
         register("hubRegistry", address(hubRegistry));
@@ -166,6 +184,7 @@ contract HubDeployer is CommonDeployer, HubConstants {
         register("shareClassManager", address(shareClassManager));
         register("hubHandler", address(hubHandler));
         register("hub", address(hub));
+        register("hubContractUpdater", address(hubContractUpdater));
     }
 
     function _postDeployHub(HubActionBatcher batcher) internal {
@@ -178,6 +197,8 @@ contract HubDeployer is CommonDeployer, HubConstants {
     }
 
     function _hubReport() internal view returns (HubReport memory) {
-        return HubReport(_commonReport(), hubRegistry, accounting, holdings, shareClassManager, hubHandler, hub);
+        return HubReport(
+            _commonReport(), hubRegistry, accounting, holdings, shareClassManager, hubHandler, hub, hubContractUpdater
+        );
     }
 }

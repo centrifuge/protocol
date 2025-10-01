@@ -18,7 +18,8 @@ import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
-    IUpdateContractGatewayHandler
+    IUpdateContractGatewayHandler,
+    IUpdateHubContractGatewayHandler
 } from "./interfaces/IGatewayHandlers.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -43,6 +44,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IHubGatewayHandler public hubHandler;
     IBalanceSheetGatewayHandler public balanceSheet;
     IUpdateContractGatewayHandler public contractUpdater;
+    IUpdateHubContractGatewayHandler public hubContractUpdater;
 
     constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, address deployer) Auth(deployer) {
         root = root_;
@@ -61,6 +63,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
+        else if (what == "hubContractUpdater") hubContractUpdater = IUpdateHubContractGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -159,6 +162,11 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateContract) {
             MessageLib.UpdateContract memory m = MessageLib.deserializeUpdateContract(message);
             contractUpdater.execute(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload);
+        } else if (kind == MessageType.UpdateHubContract) {
+            MessageLib.UpdateHubContract memory m = MessageLib.deserializeUpdateHubContract(message);
+            hubContractUpdater.execute(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.sender.toAddress(), m.target.toAddress(), m.payload
+            );
         } else if (kind == MessageType.RequestCallback) {
             MessageLib.RequestCallback memory m = MessageLib.deserializeRequestCallback(message);
             spoke.requestCallback(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);

@@ -43,6 +43,7 @@ contract GasService is IGasService {
     uint128 public immutable maxAssetPriceAge;
     uint128 public immutable maxSharePriceAge;
     uint128 public immutable updateGatewayManager;
+    uint128 public immutable updateHubContract;
 
     constructor(uint128 maxBatchGasLimit_) {
         _maxBatchGasLimit = maxBatchGasLimit_;
@@ -75,6 +76,7 @@ contract GasService is IGasService {
         maxAssetPriceAge = BASE_COST + 27260;
         maxSharePriceAge = BASE_COST + 26032;
         updateGatewayManager = BASE_COST + 26287;
+        updateHubContract = BASE_COST + 50000;
     }
 
     /// @inheritdoc IGasService
@@ -117,6 +119,7 @@ contract GasService is IGasService {
         if (kind == MessageType.MaxAssetPriceAge) return maxAssetPriceAge;
         if (kind == MessageType.MaxSharePriceAge) return maxSharePriceAge;
         if (kind == MessageType.UpdateGatewayManager) return updateGatewayManager;
+        if (kind == MessageType.UpdateHubContract) return updateHubContract;
         revert InvalidMessageType(); // Unreachable
     }
 }

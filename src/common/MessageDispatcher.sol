@@ -16,7 +16,8 @@ import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
-    IUpdateContractGatewayHandler
+    IUpdateContractGatewayHandler,
+    IUpdateHubContractGatewayHandler
 } from "./interfaces/IGatewayHandlers.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -45,6 +46,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     IHubGatewayHandler public hubHandler;
     IBalanceSheetGatewayHandler public balanceSheet;
     IUpdateContractGatewayHandler public contractUpdater;
+    IUpdateHubContractGatewayHandler public hubContractUpdater;
 
     constructor(
         uint16 localCentrifugeId_,
@@ -70,6 +72,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
+        else if (what == "hubContractUpdater") hubContractUpdater = IUpdateHubContractGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -595,6 +598,37 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 MessageLib.Request({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw(), payload: payload})
                     .serialize(),
                 0,
+                refund
+            );
+        }
+    }
+
+    /// @inheritdoc ISpokeMessageSender
+    function sendUpdateHubContract(
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 target,
+        bytes32 sender,
+        bytes calldata payload,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable auth {
+        uint16 hubCentrifugeId = poolId.centrifugeId();
+
+        if (hubCentrifugeId == localCentrifugeId) {
+            hubContractUpdater.execute(poolId, scId, sender.toAddress(), target.toAddress(), payload);
+            _refund(refund);
+        } else {
+            _send(
+                hubCentrifugeId,
+                MessageLib.UpdateHubContract({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    target: target,
+                    sender: sender,
+                    payload: payload
+                }).serialize(),
+                extraGasLimit,
                 refund
             );
         }

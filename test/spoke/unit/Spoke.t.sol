@@ -1354,3 +1354,43 @@ contract SpokeTestVaultDetails is SpokeTest {
         spoke.vaultDetails(vault);
     }
 }
+
+contract SpokeTestUpdateHubContract is SpokeTest {
+    bytes32 TARGET = bytes32(uint256(uint160(makeAddr("target"))));
+
+    function testUpdateHubContract() public {
+        PoolId poolId = PoolId.wrap(uint64(LOCAL_CENTRIFUGE_ID) << 48 | 1);
+        address caller = makeAddr("caller");
+
+        vm.mockCall(address(sender), abi.encodeWithSelector(sender.sendUpdateHubContract.selector), abi.encode());
+
+        vm.expectEmit(true, true, true, true, address(spoke));
+        emit ISpoke.UpdateHubContract(LOCAL_CENTRIFUGE_ID, poolId, SC_1, TARGET, caller, PAYLOAD);
+
+        vm.expectCall(
+            address(sender),
+            abi.encodeWithSelector(
+                sender.sendUpdateHubContract.selector,
+                poolId,
+                SC_1,
+                TARGET,
+                CastLib.toBytes32(caller),
+                PAYLOAD,
+                100000,
+                REFUND
+            )
+        );
+
+        vm.prank(caller);
+        spoke.updateHubContract(poolId, SC_1, TARGET, PAYLOAD, 100000, REFUND);
+    }
+
+    function testUpdateHubContractPayable() public {
+        uint256 paymentAmount = 0.5 ether;
+        vm.mockCall(address(sender), abi.encodeWithSelector(sender.sendUpdateHubContract.selector), abi.encode());
+
+        vm.expectCall(address(sender), paymentAmount, abi.encodeWithSelector(sender.sendUpdateHubContract.selector));
+        vm.prank(ANY);
+        spoke.updateHubContract{value: paymentAmount}(POOL_A, SC_1, TARGET, PAYLOAD, 0, REFUND);
+    }
+}
