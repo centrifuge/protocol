@@ -32,9 +32,11 @@ struct VaultsReport {
 contract VaultsActionBatcher is SpokeActionBatcher {
     function engageVaults(VaultsReport memory report) public onlyDeployer {
         // Rely Spoke
-        report.asyncVaultFactory.rely(address(report.spoke.spoke));
-        report.syncDepositVaultFactory.rely(address(report.spoke.spoke));
         report.asyncRequestManager.rely(address(report.spoke.spoke));
+
+        // Rely VaultRegistry
+        report.asyncVaultFactory.rely(address(report.spoke.vaultRegistry));
+        report.syncDepositVaultFactory.rely(address(report.spoke.vaultRegistry));
 
         // Rely ContractUpdater
         report.syncManager.rely(address(report.spoke.contractUpdater));
@@ -65,9 +67,11 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         // File methods
         report.asyncRequestManager.file("spoke", address(report.spoke.spoke));
         report.asyncRequestManager.file("balanceSheet", address(report.spoke.balanceSheet));
+        report.asyncRequestManager.file("vaultRegistry", address(report.spoke.vaultRegistry));
 
         report.syncManager.file("spoke", address(report.spoke.spoke));
         report.syncManager.file("balanceSheet", address(report.spoke.balanceSheet));
+        report.syncManager.file("vaultRegistry", address(report.spoke.vaultRegistry));
 
         report.refundEscrowFactory.file(bytes32("controller"), address(report.asyncRequestManager));
 
@@ -141,7 +145,8 @@ contract VaultsDeployer is SpokeDeployer {
             create3(
                 generateSalt("vaultRouter"),
                 abi.encodePacked(
-                    type(VaultRouter).creationCode, abi.encode(address(routerEscrow), gateway, spoke, batcher)
+                    type(VaultRouter).creationCode,
+                    abi.encode(address(routerEscrow), gateway, spoke, vaultRegistry, batcher)
                 )
             )
         );

@@ -36,9 +36,9 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     // Dependencies
     IRoot public immutable root;
+    IAdapter public adapter;
     IGasService public gasService;
     IMessageProcessor public processor;
-    IAdapter public adapter;
 
     // Management
     mapping(PoolId => mapping(address => bool)) public manager;

@@ -16,7 +16,8 @@ import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
-    IUpdateContractGatewayHandler
+    IUpdateContractGatewayHandler,
+    IVaultRegistryGatewayHandler
 } from "./interfaces/IGatewayHandlers.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -40,10 +41,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     uint16 public immutable localCentrifugeId;
 
     IGateway public gateway;
-    ISpokeGatewayHandler public spoke;
     IMultiAdapter public multiAdapter;
+    ISpokeGatewayHandler public spoke;
     IHubGatewayHandler public hubHandler;
     IBalanceSheetGatewayHandler public balanceSheet;
+    IVaultRegistryGatewayHandler public vaultRegistry;
     IUpdateContractGatewayHandler public contractUpdater;
 
     constructor(
@@ -70,6 +72,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
+        else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -276,7 +279,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address refund
     ) external payable auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            spoke.updateVault(poolId, scId, assetId, vaultOrFactory.toAddress(), kind);
+            vaultRegistry.updateVault(poolId, scId, assetId, vaultOrFactory.toAddress(), kind);
             _refund(refund);
         } else {
             _send(

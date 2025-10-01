@@ -38,8 +38,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     IHoldings public holdings;
     IAccounting public accounting;
     IHubRegistry public hubRegistry;
-    IMultiAdapter public multiAdapter;
     IHubMessageSender public sender;
+    IMultiAdapter public multiAdapter;
     IShareClassManager public shareClassManager;
 
     constructor(

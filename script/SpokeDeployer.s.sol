@@ -5,6 +5,7 @@ import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "./
 
 import {Spoke} from "../src/spoke/Spoke.sol";
 import {BalanceSheet} from "../src/spoke/BalanceSheet.sol";
+import {VaultRegistry} from "../src/spoke/VaultRegistry.sol";
 import {ContractUpdater} from "../src/spoke/ContractUpdater.sol";
 import {TokenFactory} from "../src/spoke/factories/TokenFactory.sol";
 
@@ -16,6 +17,7 @@ struct SpokeReport {
     BalanceSheet balanceSheet;
     TokenFactory tokenFactory;
     ContractUpdater contractUpdater;
+    VaultRegistry vaultRegistry;
 }
 
 contract SpokeActionBatcher is CommonActionBatcher {
@@ -30,34 +32,48 @@ contract SpokeActionBatcher is CommonActionBatcher {
         report.common.messageDispatcher.rely(address(report.balanceSheet));
         report.common.gateway.rely(address(report.balanceSheet));
 
+        // Rely VaultRegistry
+        report.common.messageDispatcher.rely(address(report.vaultRegistry));
+        report.common.messageProcessor.rely(address(report.vaultRegistry));
+
         // Rely Root
         report.spoke.rely(address(report.common.root));
         report.balanceSheet.rely(address(report.common.root));
         report.tokenFactory.rely(address(report.common.root));
         report.contractUpdater.rely(address(report.common.root));
+        report.vaultRegistry.rely(address(report.common.root));
 
         // Rely messageProcessor
         report.spoke.rely(address(report.common.messageProcessor));
         report.balanceSheet.rely(address(report.common.messageProcessor));
         report.contractUpdater.rely(address(report.common.messageProcessor));
+        report.vaultRegistry.rely(address(report.common.messageProcessor));
+
+        // Rely vaultRegistry
+        report.spoke.rely(address(report.vaultRegistry));
 
         // Rely messageDispatcher
         report.spoke.rely(address(report.common.messageDispatcher));
         report.balanceSheet.rely(address(report.common.messageDispatcher));
         report.contractUpdater.rely(address(report.common.messageDispatcher));
+        report.vaultRegistry.rely(address(report.common.messageDispatcher));
 
         // File methods
         report.common.messageDispatcher.file("spoke", address(report.spoke));
         report.common.messageDispatcher.file("balanceSheet", address(report.balanceSheet));
         report.common.messageDispatcher.file("contractUpdater", address(report.contractUpdater));
+        report.common.messageDispatcher.file("vaultRegistry", address(report.vaultRegistry));
 
         report.common.messageProcessor.file("spoke", address(report.spoke));
         report.common.messageProcessor.file("balanceSheet", address(report.balanceSheet));
         report.common.messageProcessor.file("contractUpdater", address(report.contractUpdater));
+        report.common.messageProcessor.file("vaultRegistry", address(report.vaultRegistry));
 
         report.spoke.file("gateway", address(report.common.gateway));
         report.spoke.file("sender", address(report.common.messageDispatcher));
         report.spoke.file("poolEscrowFactory", address(report.common.poolEscrowFactory));
+
+        report.vaultRegistry.file("spoke", address(report.spoke));
 
         report.balanceSheet.file("spoke", address(report.spoke));
         report.balanceSheet.file("sender", address(report.common.messageDispatcher));
@@ -81,6 +97,7 @@ contract SpokeActionBatcher is CommonActionBatcher {
         report.spoke.deny(address(this));
         report.balanceSheet.deny(address(this));
         report.contractUpdater.deny(address(this));
+        report.vaultRegistry.deny(address(this));
     }
 }
 
@@ -89,6 +106,7 @@ contract SpokeDeployer is CommonDeployer {
     BalanceSheet public balanceSheet;
     TokenFactory public tokenFactory;
     ContractUpdater public contractUpdater;
+    VaultRegistry public vaultRegistry;
 
     function deploySpoke(CommonInput memory input, SpokeActionBatcher batcher) public {
         _preDeploySpoke(input, batcher);
@@ -129,12 +147,19 @@ contract SpokeDeployer is CommonDeployer {
             )
         );
 
+        vaultRegistry = VaultRegistry(
+            create3(
+                generateSalt("vaultRegistry"), abi.encodePacked(type(VaultRegistry).creationCode, abi.encode(batcher))
+            )
+        );
+
         batcher.engageSpoke(_spokeReport());
 
         register("tokenFactory", address(tokenFactory));
         register("spoke", address(spoke));
         register("balanceSheet", address(balanceSheet));
         register("contractUpdater", address(contractUpdater));
+        register("vaultRegistry", address(vaultRegistry));
     }
 
     function _postDeploySpoke(SpokeActionBatcher batcher) internal {
@@ -152,6 +177,6 @@ contract SpokeDeployer is CommonDeployer {
     }
 
     function _spokeReport() internal view returns (SpokeReport memory) {
-        return SpokeReport(_commonReport(), spoke, balanceSheet, tokenFactory, contractUpdater);
+        return SpokeReport(_commonReport(), spoke, balanceSheet, tokenFactory, contractUpdater, vaultRegistry);
     }
 }

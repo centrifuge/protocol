@@ -91,6 +91,9 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         deployExtendedSpoke(input, this);
         // removeExtendedSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
 
+        // Ensure test contract has auth on vaultRegistry for testing
+        vaultRegistry.rely(address(this));
+
         // deploy mock adapters
         adapter1 = new MockAdapter(OTHER_CHAIN_ID, multiAdapter);
         adapter2 = new MockAdapter(OTHER_CHAIN_ID, multiAdapter);
@@ -104,7 +107,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         testAdapters.push(adapter2);
         testAdapters.push(adapter3);
 
-        centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, syncManager);
+        centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, vaultRegistry, syncManager);
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
@@ -157,7 +160,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
 
         IVaultFactory vaultFactory = _vaultKindToVaultFactory(vaultKind);
 
-        spoke.updateVault(
+        vaultRegistry.updateVault(
             POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(vaultFactory), VaultUpdateKind.DeployAndLink
         );
 

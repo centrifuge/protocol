@@ -38,6 +38,7 @@ import {IHubRequestManager} from "../../src/hub/interfaces/IHubRequestManager.so
 import {Spoke} from "../../src/spoke/Spoke.sol";
 import {IVault} from "../../src/spoke/interfaces/IVault.sol";
 import {BalanceSheet} from "../../src/spoke/BalanceSheet.sol";
+import {VaultRegistry} from "../../src/spoke/VaultRegistry.sol";
 import {UpdateContractMessageLib} from "../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {SyncManager} from "../../src/vaults/SyncManager.sol";
@@ -118,6 +119,7 @@ contract EndToEndDeployment is Test {
         // Vaults
         BalanceSheet balanceSheet;
         Spoke spoke;
+        VaultRegistry vaultRegistry;
         VaultRouter router;
         bytes32 asyncVaultFactory;
         bytes32 syncDepositVaultFactory;
@@ -281,6 +283,7 @@ contract EndToEndDeployment is Test {
         s_.multiAdapter = deploy.multiAdapter();
         s_.balanceSheet = deploy.balanceSheet();
         s_.spoke = deploy.spoke();
+        s_.vaultRegistry = deploy.vaultRegistry();
         s_.router = deploy.vaultRouter();
         s_.freezeOnlyHook = deploy.freezeOnlyHook();
         s_.fullRestrictionsHook = deploy.fullRestrictionsHook();
@@ -351,7 +354,7 @@ contract EndToEndUtils is EndToEndDeployment {
         view
         returns (address vaultAddr)
     {
-        return address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
+        return address(spoke.vaultRegistry.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
     }
 
     function _getOrCreateAsyncVault(
@@ -362,14 +365,14 @@ contract EndToEndUtils is EndToEndDeployment {
         AssetId assetId,
         address poolManager
     ) internal returns (address vaultAddr) {
-        vaultAddr = address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
+        vaultAddr = address(spoke.vaultRegistry.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
         if (vaultAddr == address(0)) {
             vm.startPrank(poolManager);
             hub.hub.updateVault{value: GAS}(
                 poolId, shareClassId, assetId, spoke.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
             );
             vm.stopPrank();
-            vaultAddr = address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
+            vaultAddr = address(spoke.vaultRegistry.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
         }
         assertNotEq(vaultAddr, address(0));
     }
@@ -874,7 +877,7 @@ contract EndToEndFlows is EndToEndUtils {
         );
 
         IAsyncRedeemVault vault =
-            IAsyncRedeemVault(address(s.spoke.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
+            IAsyncRedeemVault(address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
 
         vm.startPrank(INVESTOR_A);
         uint128 shares = uint128(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A));
@@ -1054,19 +1057,19 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
             POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
         );
 
-        address vault = address(s.spoke.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager));
+        address vault = address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager));
 
         h.hub.updateVault{value: GAS}(
             POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Unlink, EXTRA_GAS, REFUND
         );
 
-        assertEq(s.spoke.isLinked(IVault(vault)), false);
+        assertEq(s.vaultRegistry.isLinked(IVault(vault)), false);
 
         h.hub.updateVault{value: GAS}(
             POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Link, EXTRA_GAS, REFUND
         );
 
-        assertEq(s.spoke.isLinked(IVault(vault)), true);
+        assertEq(s.vaultRegistry.isLinked(IVault(vault)), true);
     }
 
     /// forge-config: default.isolate = true
@@ -1091,7 +1094,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
             POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
         );
 
-        IAsyncVault vault = IAsyncVault(address(s.spoke.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
+        IAsyncVault vault = IAsyncVault(address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
 
         vm.startPrank(INVESTOR_A);
         s.usdc.approve(address(vault), USDC_AMOUNT_1);
