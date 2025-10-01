@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IAdapter} from "./IAdapter.sol";
-import {IGasService} from "./IGasService.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
 
 import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
@@ -82,8 +80,11 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when the callback fails with no error
     error CallFailedWithEmptyRevert();
 
-    function adapter() external view returns (IAdapter);
-    function gasService() external view returns (IGasService);
+    /// @notice Dispatcher when the callback is called inside the callback
+    error CallbackIsLocked();
+
+    /// @notice Dispatcher when the user doesn't call lockCallback()
+    error CallbackWasNotLocked();
 
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @dev    Currently used to update addresses of contract instances.
@@ -139,17 +140,25 @@ interface IGateway is IMessageHandler, IRecoverable {
     ///             }
     ///
     ///             function callback(PoolId poolId) external {
-    ///                 require(gateway.batcher() == address(this));
+    ///                 // Avoid reentrancy and ensure it's called from withBatch in the same contract:
+    ///                 address msgSender = gateway.lockCallback();
+    ///
     ///                 // Call several hub, balance sheet, or spoke methods that trigger cross-chain transactions
     ///             }
     ///         }
     ///         ```
-    /// @param  data encoding data for the callback method
-    function withBatch(bytes memory data, address refund) external payable;
+    ///
+    ///         NOTE: inside callback, `msgSender` should be used instead of msg.sender
+    /// @param  callbackData encoding data for the callback method
+    function withBatch(bytes memory callbackData, address refund) external payable;
+
+    /// @notice Returns the current caller used to call withBatch and block any reentrancy.
+    /// @dev calling this at the very beginning inside the multicall means:
+    /// - The callback that uses this can only be called once.
+    /// - The callback is called from the gateway under `withBatch`.
+    /// - The callback is called from the same contract, because withBatch uses `msg.sender` as target for the callback
+    function lockCallback() external returns (address);
 
     /// @notice Returns the current gateway batching level.
     function isBatching() external view returns (bool);
-
-    /// @notice Returns the current caller to withBatch method.
-    function batcher() external view returns (address);
 }

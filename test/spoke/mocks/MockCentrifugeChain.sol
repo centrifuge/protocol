@@ -10,6 +10,7 @@ import {MessageLib, VaultUpdateKind} from "../../../src/common/libraries/Message
 import {RequestCallbackMessageLib} from "../../../src/common/libraries/RequestCallbackMessageLib.sol";
 
 import {Spoke} from "../../../src/spoke/Spoke.sol";
+import {VaultRegistry} from "../../../src/spoke/VaultRegistry.sol";
 import {VaultDetails} from "../../../src/spoke/interfaces/ISpoke.sol";
 import {UpdateContractMessageLib} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
@@ -33,13 +34,15 @@ contract MockCentrifugeChain is Test {
 
     IAdapter[] public adapters;
     Spoke public spoke;
+    VaultRegistry public vaultRegistry;
     SyncManager public syncManager;
 
-    constructor(IAdapter[] memory adapters_, Spoke spoke_, SyncManager syncManager_) {
+    constructor(IAdapter[] memory adapters_, Spoke spoke_, VaultRegistry vaultRegistry_, SyncManager syncManager_) {
         for (uint256 i = 0; i < adapters_.length; i++) {
             adapters.push(adapters_[i]);
         }
         spoke = spoke_;
+        vaultRegistry = vaultRegistry_;
         syncManager = syncManager_;
     }
 
@@ -48,7 +51,7 @@ contract MockCentrifugeChain is Test {
     }
 
     function unlinkVault(uint64 poolId, bytes16 scId, address vault) public {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(IBaseVault(vault));
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(IBaseVault(vault));
 
         execute(
             MessageLib.UpdateVault({
@@ -62,7 +65,7 @@ contract MockCentrifugeChain is Test {
     }
 
     function linkVault(uint64 poolId, bytes16 scId, address vault) public {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(IBaseVault(vault));
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(IBaseVault(vault));
 
         execute(
             MessageLib.UpdateVault({
@@ -76,7 +79,7 @@ contract MockCentrifugeChain is Test {
     }
 
     function updateMaxReserve(uint64 poolId, bytes16 scId, address vault, uint128 maxReserve) public {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(IBaseVault(vault));
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(IBaseVault(vault));
 
         execute(
             MessageLib.UpdateContract({

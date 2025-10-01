@@ -21,6 +21,9 @@ import {IMessageHandler} from "../common/interfaces/IMessageHandler.sol";
 contract WormholeAdapter is Auth, IWormholeAdapter {
     using CastLib for bytes32;
 
+    /// @dev Cost of executing `receiveWormholeMessages()` except entrypoint.handle()
+    uint256 public constant RECEIVE_COST = 4000;
+
     uint16 public immutable localWormholeId;
     IMessageHandler public immutable entrypoint;
     IWormholeRelayer public immutable relayer;
@@ -81,7 +84,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         require(destination.wormholeId != 0, UnknownChainId());
 
         uint64 sequence = relayer.sendPayloadToEvm{value: msg.value}(
-            destination.wormholeId, destination.addr, payload, 0, gasLimit, localWormholeId, refund
+            destination.wormholeId, destination.addr, payload, 0, gasLimit + RECEIVE_COST, localWormholeId, refund
         );
 
         adapterData = bytes32(bytes8(sequence));
@@ -93,6 +96,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         view
         returns (uint256 nativePriceQuote)
     {
-        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(destinations[centrifugeId].wormholeId, 0, gasLimit);
+        (nativePriceQuote,) =
+            relayer.quoteEVMDeliveryPrice(destinations[centrifugeId].wormholeId, 0, gasLimit + RECEIVE_COST);
     }
 }

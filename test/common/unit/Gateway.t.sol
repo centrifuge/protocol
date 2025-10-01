@@ -875,17 +875,20 @@ contract IntegrationMock is Test {
         gateway = gateway_;
     }
 
-    function _success(bool, uint256) external payable {
-        assertEq(gateway.batcher(), address(this));
-        wasCalled = true;
-    }
-
     function _nested() external payable {
         gateway.withBatch(abi.encodeWithSelector(this._nested.selector), address(0));
     }
 
     function _emptyError() external payable {
+        assertEq(gateway.lockCallback(), address(this));
         revert();
+    }
+
+    function _notLocked() external payable {}
+
+    function _success(bool, uint256) external payable {
+        assertEq(gateway.lockCallback(), address(this));
+        wasCalled = true;
     }
 
     function callNested(address refund) external {
@@ -898,6 +901,10 @@ contract IntegrationMock is Test {
 
     function callSuccess(address refund) external payable {
         gateway.withBatch{value: msg.value}(abi.encodeWithSelector(this._success.selector, true, 1), refund);
+    }
+
+    function callNotLocked(address refund) external {
+        gateway.withBatch(abi.encodeWithSelector(this._notLocked.selector), refund);
     }
 }
 
@@ -921,13 +928,25 @@ contract GatewayTestWithBatch is GatewayTest {
         integration.callEmptyError(REFUND);
     }
 
+    function testErrCallbackWasNotLocked() public {
+        vm.prank(ANY);
+        vm.expectRevert(IGateway.CallbackWasNotLocked.selector);
+        integration.callNotLocked(REFUND);
+    }
+
     function testWithCallback() public {
         vm.prank(ANY);
         vm.deal(ANY, 1234);
         integration.callSuccess{value: 1234}(REFUND);
 
         assertEq(integration.wasCalled(), true);
-        assertEq(gateway.batcher(), address(0));
         assertEq(REFUND.balance, 1234);
+    }
+}
+
+contract GatewayTestLockCallback is GatewayTest {
+    function testErrCallbackIsLocked() public {
+        vm.expectRevert(IGateway.CallbackIsLocked.selector);
+        assertEq(gateway.lockCallback(), address(0));
     }
 }

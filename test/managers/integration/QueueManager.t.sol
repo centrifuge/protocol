@@ -91,7 +91,7 @@ contract QueueManagerSuccessTest is QueueManagerBaseTest {
             )
         );
 
-        queueManager.sync{value: 0.1 ether}(POOL_A, defaultTypedShareClassId, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, defaultTypedShareClassId, assetIds, address(this));
 
         (, uint64 lastSync,) = queueManager.scQueueState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, block.timestamp);

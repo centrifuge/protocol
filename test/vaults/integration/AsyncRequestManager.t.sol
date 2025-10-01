@@ -44,7 +44,7 @@ contract AsyncRequestManagerHarness is AsyncRequestManager {
             );
         }
 
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
         address shareToken = vault.share();
         return PricingLib.calculatePriceAssetPerShare(
             shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets, MathLib.Rounding.Down
@@ -78,7 +78,7 @@ contract AsyncRequestManagerTest is BaseTest {
         (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         IAsyncVault vault = IAsyncVault(vault_);
 
-        spoke.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
+        vaultRegistry.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
         vm.prank(address(vault));
         vm.expectRevert(IAsyncRequestManager.VaultNotLinked.selector);

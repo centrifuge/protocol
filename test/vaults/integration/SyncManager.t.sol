@@ -68,7 +68,7 @@ contract SyncManagerTest is SyncManagerBaseTest {
     // --- Simple Errors ---
     function testMintUnlinkedVault() public {
         (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(1), d18(1));
-        spoke.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
+        vaultRegistry.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
         vm.expectRevert(ISyncManager.ExceedsMaxMint.selector);
         syncManager.mint(vault, 1, address(0), address(0));
@@ -76,7 +76,7 @@ contract SyncManagerTest is SyncManagerBaseTest {
 
     function testDepositUnlinkedVault() public {
         (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(1), d18(1));
-        spoke.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
+        vaultRegistry.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
         vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
         syncManager.deposit(vault, 1, address(0), address(0));

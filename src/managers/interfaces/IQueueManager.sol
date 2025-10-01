@@ -31,7 +31,7 @@ interface IQueueManager {
     /// @dev It is the caller's responsibility to ensure all asset IDs have a non-zero delta,
     ///      and `sync` is called n times up until the moment all asset IDs are included, and the shares
     ///      get synced as well.
-    function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external payable;
+    function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds, address refund) external payable;
 
     function file(bytes32 what, address data) external;
 }
