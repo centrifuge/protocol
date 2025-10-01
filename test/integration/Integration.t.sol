@@ -23,8 +23,7 @@ import "forge-std/Test.sol";
 /// @dev NOTE. Use always LOCAL_CENTRIFUGE_ID when centrifugeId param is required
 contract CentrifugeIntegrationTest is FullDeployer, Test {
     uint16 constant LOCAL_CENTRIFUGE_ID = IntegrationConstants.LOCAL_CENTRIFUGE_ID;
-    address immutable ADMIN = address(adminSafe);
-    address immutable FUNDED = makeAddr("FUNDED");
+    address FUNDED = makeAddr("FUNDED");
     uint256 constant DEFAULT_SUBSIDY = IntegrationConstants.INTEGRATION_DEFAULT_SUBSIDY;
 
     // Helper contracts
@@ -72,12 +71,13 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
         SC_1 = shareClassManager.previewNextShareClassId(POOL_A);
 
         // Extra deployment
-        vm.startPrank(ADMIN);
         usdc = new ERC20(6);
+        usdc.rely(address(adminSafe));
+        vm.startPrank(address(adminSafe));
         usdc.file("name", "USD Coin");
         usdc.file("symbol", "USDC");
-        vm.label(address(usdc), "usdc");
         vm.stopPrank();
+        vm.label(address(usdc), "usdc");
     }
 
     function _registerUSDC() internal {
@@ -86,12 +86,12 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
     }
 
     function _mintUSDC(address receiver, uint256 amount) internal {
-        vm.prank(ADMIN);
+        vm.prank(address(adminSafe));
         usdc.mint(receiver, amount);
     }
 
     function _createPool() internal {
-        vm.prank(ADMIN);
+        vm.prank(address(adminSafe));
         guardian.createPool(POOL_A, FM, USD_ID);
 
         vm.prank(FM);
