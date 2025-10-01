@@ -141,14 +141,14 @@ interface IGateway is IMessageHandler, IRecoverable {
     ///
     ///             function callback(PoolId poolId) external {
     ///                 // Avoid reentrancy and ensure it's called from withBatch in the same contract:
-    ///                 address doSomethingSender = gateway.lockCallback();
+    ///                 address msgSender = gateway.lockCallback();
     ///
     ///                 // Call several hub, balance sheet, or spoke methods that trigger cross-chain transactions
     ///             }
     ///         }
     ///         ```
     ///
-    ///         NOTE: inside callback, `doSomethingSender` should be used instead of msg.sender
+    ///         NOTE: inside callback, `msgSender` should be used instead of msg.sender
     /// @param  callbackData encoding data for the callback method
     function withBatch(bytes memory callbackData, address refund) external payable;
 

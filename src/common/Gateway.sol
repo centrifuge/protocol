@@ -44,9 +44,9 @@ contract Gateway is Auth, Recoverable, IGateway {
     mapping(PoolId => mapping(address => bool)) public manager;
 
     // Outbound & payments
-    address internal transient _batcher;
     bool public transient isBatching;
     bool public transient unpaidMode;
+    address internal transient _batcher;
     mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Underpaid)) public underpaid;
 
