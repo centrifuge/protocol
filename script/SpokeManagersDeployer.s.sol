@@ -20,7 +20,7 @@ struct SpokeManagersReport {
 }
 
 contract SpokeManagersActionBatcher is SpokeActionBatcher {
-    function engageManagers(ManagersReport memory report) public onlyDeployer {
+    function engageManagers(SpokeManagersReport memory report) public onlyDeployer {
         // rely QueueManager on Gateway
         report.spoke.common.gateway.rely(address(report.queueManager));
 
@@ -28,7 +28,7 @@ contract SpokeManagersActionBatcher is SpokeActionBatcher {
         report.queueManager.rely(address(report.spoke.common.root));
     }
 
-    function revokeManagers(ManagersReport memory report) public onlyDeployer {
+    function revokeManagers(SpokeManagersReport memory report) public onlyDeployer {
         report.queueManager.deny(address(this));
     }
 }
@@ -79,7 +79,7 @@ contract SpokeManagersDeployer is SpokeDeployer {
         circleDecoder =
             CircleDecoder(create3(generateSalt("circleDecoder"), abi.encodePacked(type(CircleDecoder).creationCode)));
 
-        batcher.engageManagers(_managersReport());
+        batcher.engageManagers(_spokeManagersReport());
 
         register("queueManager", address(queueManager));
         register("onOfframpManagerFactory", address(onOfframpManagerFactory));
@@ -95,13 +95,17 @@ contract SpokeManagersDeployer is SpokeDeployer {
     function removeSpokeManagersDeployerAccess(SpokeManagersActionBatcher batcher) public {
         removeSpokeDeployerAccess(batcher);
 
-        batcher.revokeManagers(_managersReport());
+        batcher.revokeManagers(_spokeManagersReport());
     }
 
     function _spokeManagersReport() internal view returns (SpokeManagersReport memory) {
         return SpokeManagersReport(
-            _spokeReport(), 
-            queueManager, onOfframpManagerFactory, merkleProofManagerFactory, vaultDecoder, circleDecoder
+            _spokeReport(),
+            queueManager,
+            onOfframpManagerFactory,
+            merkleProofManagerFactory,
+            vaultDecoder,
+            circleDecoder
         );
     }
 }
