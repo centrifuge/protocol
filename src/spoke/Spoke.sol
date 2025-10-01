@@ -36,7 +36,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     using BytesLib for bytes;
     using MathLib for uint256;
 
-    PoolId public constant GLOBAL_POOL = PoolId.wrap(0);
     uint8 internal constant MIN_DECIMALS = 2;
     uint8 internal constant MAX_DECIMALS = 18;
 
