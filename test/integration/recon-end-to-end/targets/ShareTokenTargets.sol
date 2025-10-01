@@ -30,29 +30,28 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
         // Clamp
         value = between(value, 0, IShareToken(_getShareToken()).balanceOf(_getActor()));
 
-        bool hasReverted;
-
         vm.prank(_getActor());
         try IShareToken(_getShareToken()).transfer(to, value) {
-            // NOTE: We're not checking for specifics!
+            // NOTE: We're not checking for specifics! 
+            // Checks that should be made when there's no revert - success path validations would go here
         } catch {
-            // NOTE: May revert for a myriad of reasons!
+            // Checks that should be made if there's a revert
             hasReverted = true;
-        }
 
-        // TT-1 Always revert if one of them is frozen
-        if (
-            fullRestrictions.isFrozen(_getShareToken(), to) == true
-                || fullRestrictions.isFrozen(_getShareToken(), _getActor()) == true
-        ) {
-            t(hasReverted, "TT-1 Must Revert");
-        }
+            // TT-1 Always revert if one of them is frozen
+            if (
+                fullRestrictions.isFrozen(_getShareToken(), to) == true
+                    || fullRestrictions.isFrozen(_getShareToken(), _getActor()) == true
+            ) {
+                t(false, "TT-1 Must Revert");
+            }
 
-        // Not a member | NOTE: Non member actor and from can move tokens?
-        (bool isMember,) = fullRestrictions.isMember(_getShareToken(), to);
-        bool endorsed = root.endorsed(to);
-        if (!isMember && value > 0 && !endorsed) {
-            t(hasReverted, "TT-3 Must Revert");
+            // Not a member | NOTE: Non member actor and from can move tokens?
+            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), to);
+            bool endorsed = root.endorsed(to);
+            if (!isMember && value > 0 && !endorsed) {
+                t(false, "TT-3 Must Revert");
+            }
         }
     }
 
@@ -68,28 +67,28 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
 
         value = between(value, 0, IShareToken(_getShareToken()).balanceOf(_getActor()));
 
-        bool hasReverted;
         vm.prank(_getActor());
         try IShareToken(_getShareToken()).transferFrom(_getActor(), to, value) {
             // NOTE: We're not checking for specifics!
+            // Checks that should be made when there's no revert - success path validations would go here
         } catch {
-            // NOTE: May revert for a myriad of reasons!
+            // Checks that should be made if there's a revert
             hasReverted = true;
-        }
 
-        // TT-1 Always revert if one of them is frozen
-        if (
-            fullRestrictions.isFrozen(_getShareToken(), to) == true
-                || fullRestrictions.isFrozen(_getShareToken(), _getActor()) == true
-        ) {
-            t(hasReverted, "TT-1 Must Revert");
-        }
+            // TT-1 Always revert if one of them is frozen
+            if (
+                fullRestrictions.isFrozen(_getShareToken(), to) == true
+                    || fullRestrictions.isFrozen(_getShareToken(), _getActor()) == true
+            ) {
+                t(false, "TT-1 Must Revert");
+            }
 
-        // Recipient is not a member | NOTE: Non member actor and from can move tokens?
-        (bool isMember,) = fullRestrictions.isMember(_getShareToken(), to);
-        bool endorsed = root.endorsed(to);
-        if (!isMember && value > 0 && !endorsed) {
-            t(hasReverted, "TT-3 Must Revert");
+            // Recipient is not a member | NOTE: Non member actor and from can move tokens?
+            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), to);
+            bool endorsed = root.endorsed(to);
+            if (!isMember && value > 0 && !endorsed) {
+                t(false, "TT-3 Must Revert");
+            }
         }
     }
 
