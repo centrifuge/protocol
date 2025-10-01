@@ -25,4 +25,10 @@ contract ManagersDeploymentTest is SpokeManagersDeployer, CommonDeploymentInputT
         assertEq(address(merkleProofManagerFactory.contractUpdater()), address(contractUpdater));
         assertEq(address(merkleProofManagerFactory.balanceSheet()), address(balanceSheet));
     }
+
+    function testQueueManager() public view {
+        // dependencies set correctly
+        assertEq(address(queueManager.contractUpdater()), address(contractUpdater));
+        assertEq(address(queueManager.balanceSheet()), address(balanceSheet));
+    }
 }
