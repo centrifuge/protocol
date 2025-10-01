@@ -480,12 +480,12 @@ contract EndToEndFlows is EndToEndUtils {
             REFUND
         );
         hub.hub.updateBalanceSheetManager{value: GAS}(
-            spoke.centrifugeId, poolId, address(spoke.asyncRequestManager).toBytes32(), true, REFUND
+            poolId, spoke.centrifugeId, address(spoke.asyncRequestManager).toBytes32(), true, REFUND
         );
         hub.hub.updateBalanceSheetManager{value: GAS}(
-            spoke.centrifugeId, poolId, address(spoke.syncManager).toBytes32(), true, REFUND
+            poolId, spoke.centrifugeId, address(spoke.syncManager).toBytes32(), true, REFUND
         );
-        hub.hub.updateBalanceSheetManager{value: GAS}(spoke.centrifugeId, poolId, BSM.toBytes32(), true, REFUND);
+        hub.hub.updateBalanceSheetManager{value: GAS}(poolId, spoke.centrifugeId, BSM.toBytes32(), true, REFUND);
 
         vm.stopPrank();
     }
@@ -504,7 +504,7 @@ contract EndToEndFlows is EndToEndUtils {
         h.oracleValuation.updateFeeder(POOL_A, FEEDER, true);
         h.hub.updateHubManager(POOL_A, address(h.oracleValuation), true);
         h.hub.updateGatewayManager{value: GAS}(
-            h.centrifugeId, POOL_A, address(h.batchRequestManager).toBytes32(), true, REFUND
+            POOL_A, h.centrifugeId, address(h.batchRequestManager).toBytes32(), true, REFUND
         );
         vm.stopPrank();
     }
@@ -532,9 +532,9 @@ contract EndToEndFlows is EndToEndUtils {
         remoteAdapters[0] = address(poolAdapterBToA).toBytes32();
 
         vm.startPrank(FM);
-        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1, REFUND);
-        h.hub.updateGatewayManager{value: GAS}(h.centrifugeId, POOL_A, GATEWAY_MANAGER.toBytes32(), true, REFUND);
-        h.hub.updateGatewayManager{value: GAS}(s.centrifugeId, POOL_A, GATEWAY_MANAGER.toBytes32(), true, REFUND);
+        h.hub.setAdapters{value: GAS}(POOL_A, s.centrifugeId, localAdapters, remoteAdapters, 1, 1, REFUND);
+        h.hub.updateGatewayManager{value: GAS}(POOL_A, h.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
+        h.hub.updateGatewayManager{value: GAS}(POOL_A, s.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -1011,7 +1011,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.startPrank(FM);
 
         h.hub.setMaxAssetPriceAge{value: GAS}(POOL_A, SC_1, s.usdcId, uint64(block.timestamp), REFUND);
-        h.hub.setMaxSharePriceAge{value: GAS}(s.centrifugeId, POOL_A, SC_1, uint64(block.timestamp), REFUND);
+        h.hub.setMaxSharePriceAge{value: GAS}(POOL_A, SC_1, s.centrifugeId, uint64(block.timestamp), REFUND);
 
         (,, uint64 validUntil) = s.spoke.markersPricePoolPerAsset(POOL_A, SC_1, s.usdcId);
         assertEq(validUntil, uint64(block.timestamp));
@@ -1161,7 +1161,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         assertEq(uint8(poolAdapterAToB.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
         assertEq(s.spoke.pool(POOL_A), block.timestamp); // Message received and processed
 
-        h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true, REFUND);
+        h.hub.updateBalanceSheetManager{value: GAS}(POOL_A, s.centrifugeId, BSM.toBytes32(), true, REFUND);
 
         vm.startPrank(BSM);
         s.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
@@ -1189,7 +1189,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         }
 
         vm.startPrank(FM);
-        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1, REFUND);
+        h.hub.setAdapters{value: GAS}(POOL_A, s.centrifugeId, localAdapters, remoteAdapters, 1, 1, REFUND);
     }
 
     /// forge-config: default.isolate = true
@@ -1208,7 +1208,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         vm.expectRevert(ILocalCentrifugeId.CannotBeSentLocally.selector);
         vm.startPrank(FM);
-        h.hub.setAdapters{value: GAS}(h.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1, REFUND);
+        h.hub.setAdapters{value: GAS}(POOL_A, h.centrifugeId, localAdapters, remoteAdapters, 1, 1, REFUND);
     }
 
     /// forge-config: default.isolate = true
@@ -1236,7 +1236,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         uint8 threshold = 2;
         uint8 recoveryIndex = 1;
         h.hub.setAdapters{value: GAS}(
-            s.centrifugeId, POOL_A, localAdapters, remoteAdapters, threshold, recoveryIndex, REFUND
+            POOL_A, s.centrifugeId, localAdapters, remoteAdapters, threshold, recoveryIndex, REFUND
         );
 
         // Only local adapter will send the message, recovery adapter will skip it.

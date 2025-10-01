@@ -97,7 +97,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.setMaxAssetPriceAge(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.setMaxSharePriceAge(0, POOL_A, ShareClassId.wrap(0), 0, REFUND);
+        hub.setMaxSharePriceAge(POOL_A, ShareClassId.wrap(0), 0, 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.setPoolMetadata(POOL_A, bytes(""));
@@ -109,7 +109,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateHubManager(POOL_A, address(0), false);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateBalanceSheetManager(0, POOL_A, bytes32(0), false, REFUND);
+        hub.updateBalanceSheetManager(POOL_A, 0, bytes32(0), false, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.addShareClass(POOL_A, "", "", bytes32(0));
@@ -167,10 +167,10 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateJournal(POOL_A, EMPTY, EMPTY);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.setAdapters(0, POOL_A, new IAdapter[](0), new bytes32[](0), 0, 0, REFUND);
+        hub.setAdapters(POOL_A, 0, new IAdapter[](0), new bytes32[](0), 0, 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateGatewayManager(0, POOL_A, bytes32(0), false, REFUND);
+        hub.updateGatewayManager(POOL_A, 0, bytes32(0), false, REFUND);
 
         vm.stopPrank();
     }
