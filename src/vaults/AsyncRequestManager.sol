@@ -24,7 +24,6 @@ import {AssetId} from "../common/types/AssetId.sol";
 import {PricingLib} from "../common/libraries/PricingLib.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IPoolEscrow} from "../common/interfaces/IPoolEscrow.sol";
-import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
 import {ESCROW_HOOK_ID} from "../common/interfaces/ITransferHook.sol";
 import {IRequestManager} from "../common/interfaces/IRequestManager.sol";
 import {RequestMessageLib} from "../common/libraries/RequestMessageLib.sol";
@@ -34,6 +33,7 @@ import {IVault} from "../spoke/interfaces/IVault.sol";
 import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
+import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
 import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/UpdateContractMessageLib.sol";
 
 /// @title  Async Request Manager
