@@ -228,8 +228,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 eq(deltaUser, deltaEscrow, "7540-12");
             }
         } catch {
-            hasReverted = true;
-
             // Checks that should be made if there's a revert
             if (
                 fullRestrictions.isFrozen(vault.share(), _getActor()) == true ||

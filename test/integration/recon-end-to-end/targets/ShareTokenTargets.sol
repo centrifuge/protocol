@@ -28,26 +28,28 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
         require(_canDonate(to), "never donate to escrow");
 
         // Clamp
-        value = between(value, 0, IShareToken(_getShareToken()).balanceOf(_getActor()));
+        value = between(
+            value,
+            0,
+            IShareToken(_getShareToken()).balanceOf(_getActor())
+        );
 
         vm.prank(_getActor());
         try IShareToken(_getShareToken()).transfer(to, value) {
-            // NOTE: We're not checking for specifics! 
+            // NOTE: We're not checking for specifics!
             // Checks that should be made when there's no revert - success path validations would go here
         } catch {
             // Checks that should be made if there's a revert
-            hasReverted = true;
-
             // TT-1 Always revert if one of them is frozen
             if (
-                fullRestrictions.isFrozen(_getShareToken(), to) == true
-                    || fullRestrictions.isFrozen(_getShareToken(), _getActor()) == true
+                fullRestrictions.isFrozen(_getShareToken(), to) == true ||
+                fullRestrictions.isFrozen(_getShareToken(), _getActor()) == true
             ) {
                 t(false, "TT-1 Must Revert");
             }
 
             // Not a member | NOTE: Non member actor and from can move tokens?
-            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), to);
+            (bool isMember, ) = fullRestrictions.isMember(_getShareToken(), to);
             bool endorsed = root.endorsed(to);
             if (!isMember && value > 0 && !endorsed) {
                 t(false, "TT-3 Must Revert");
@@ -56,7 +58,10 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
     }
 
     // NOTE: We need this for transferFrom to work
-    function token_approve(address spender, uint256 value) public updateGhosts asActor {
+    function token_approve(
+        address spender,
+        uint256 value
+    ) public updateGhosts asActor {
         IShareToken(_getShareToken()).approve(spender, value);
     }
 
@@ -65,7 +70,11 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
     function token_transferFrom(address to, uint256 value) public updateGhosts {
         require(_canDonate(to), "never donate to escrow");
 
-        value = between(value, 0, IShareToken(_getShareToken()).balanceOf(_getActor()));
+        value = between(
+            value,
+            0,
+            IShareToken(_getShareToken()).balanceOf(_getActor())
+        );
 
         vm.prank(_getActor());
         try IShareToken(_getShareToken()).transferFrom(_getActor(), to, value) {
@@ -73,18 +82,16 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
             // Checks that should be made when there's no revert - success path validations would go here
         } catch {
             // Checks that should be made if there's a revert
-            hasReverted = true;
-
             // TT-1 Always revert if one of them is frozen
             if (
-                fullRestrictions.isFrozen(_getShareToken(), to) == true
-                    || fullRestrictions.isFrozen(_getShareToken(), _getActor()) == true
+                fullRestrictions.isFrozen(_getShareToken(), to) == true ||
+                fullRestrictions.isFrozen(_getShareToken(), _getActor()) == true
             ) {
                 t(false, "TT-1 Must Revert");
             }
 
             // Recipient is not a member | NOTE: Non member actor and from can move tokens?
-            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), to);
+            (bool isMember, ) = fullRestrictions.isMember(_getShareToken(), to);
             bool endorsed = root.endorsed(to);
             if (!isMember && value > 0 && !endorsed) {
                 t(false, "TT-3 Must Revert");
