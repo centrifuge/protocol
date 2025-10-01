@@ -6,9 +6,9 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {AssetId} from "../../../src/common/types/AssetId.sol";
+import {IBatchedMulticall} from "../../../src/common/interfaces/IBatchedMulticall.sol";
 import {IGateway} from "../../../src/common/interfaces/IGateway.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-import {ICrosschainBatcher} from "../../../src/common/interfaces/ICrosschainBatcher.sol";
 
 import {IBalanceSheet} from "../../../src/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../../../src/spoke/interfaces/IUpdateContract.sol";
@@ -21,9 +21,9 @@ import "forge-std/Test.sol";
 
 contract IsContract {}
 
-contract MockCrosschainBatcher {
-    function execute(bytes memory data) external payable returns (uint256 cost) {
-        (bool success, bytes memory returnData) = msg.sender.call{value: msg.value}(data);
+contract MockGateway {
+    function withBatch(bytes memory data, address) external payable returns (uint256 cost) {
+        (bool success, bytes memory returnData) = msg.sender.call(data);
         if (!success) {
             uint256 length = returnData.length;
             require(length != 0, "Empty revert");
@@ -53,8 +53,7 @@ contract QueueManagerTest is Test {
     uint128 constant DEFAULT_AMOUNT = 100_000_000;
 
     address balanceSheet = address(new IsContract());
-    address gateway = address(new IsContract());
-    address crosschainBatcher = address(new MockCrosschainBatcher());
+    address gateway = address(new MockGateway());
 
     address contractUpdater = makeAddr("contractUpdater");
     address unauthorized = makeAddr("unauthorized");
@@ -69,7 +68,9 @@ contract QueueManagerTest is Test {
 
     function _setupMocks() internal {
         vm.mockCall(
-            address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.gateway.selector), abi.encode(IGateway(gateway))
+            address(balanceSheet),
+            abi.encodeWithSelector(IBatchedMulticall.gateway.selector),
+            abi.encode(IGateway(gateway))
         );
         vm.mockCall(balanceSheet, abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector), abi.encode(0));
         vm.mockCall(balanceSheet, abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector), abi.encode(0));
@@ -77,16 +78,10 @@ contract QueueManagerTest is Test {
         vm.mockCall(
             balanceSheet, abi.encodeWithSelector(IBalanceSheet.queuedShares.selector), abi.encode(0, false, 0, 0)
         );
-
-        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.depositSubsidy.selector), abi.encode());
     }
 
     function _deployManager() internal {
-        queueManager = new QueueManager(
-            contractUpdater, IBalanceSheet(address(balanceSheet)), ICrosschainBatcher(crosschainBatcher), auth
-        );
-        vm.prank(auth);
-        queueManager.rely(crosschainBatcher);
+        queueManager = new QueueManager(contractUpdater, IBalanceSheet(address(balanceSheet)), auth);
     }
 
     function _mockQueuedShares(
@@ -116,13 +111,14 @@ contract QueueManagerTest is Test {
     function _expectSubmitAssets(PoolId poolId, ShareClassId scId, AssetId assetId) internal {
         vm.expectCall(
             address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, poolId, scId, assetId, 0)
+            abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, poolId, scId, assetId, 0, address(0))
         );
     }
 
     function _expectSubmitShares(PoolId poolId, ShareClassId scId) internal {
         vm.expectCall(
-            address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, poolId, scId, 0)
+            address(balanceSheet),
+            abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, poolId, scId, 0, address(0))
         );
     }
 }
@@ -157,20 +153,6 @@ contract QueueManagerFileTests is QueueManagerTest {
         queueManager.file("gateway", newGateway);
 
         assertEq(address(queueManager.gateway()), newGateway);
-        assertEq(address(queueManager.crosschainBatcher()), crosschainBatcher);
-    }
-
-    function testFileCrosschainBatcher() public {
-        vm.prank(auth);
-        address newCrosschainBatcher = makeAddr("newCrosschainBatcher");
-
-        vm.expectEmit(true, true, true, true);
-        emit IQueueManager.File("crosschainBatcher", newCrosschainBatcher);
-
-        queueManager.file("crosschainBatcher", newCrosschainBatcher);
-
-        assertEq(address(queueManager.crosschainBatcher()), newCrosschainBatcher);
-        assertEq(address(queueManager.gateway()), gateway);
     }
 }
 
@@ -319,7 +301,6 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         _expectSubmitAssets(POOL_A, SC_1, ASSET_2);
         _expectSubmitAssets(POOL_A, SC_1, ASSET_3);
         _expectSubmitShares(POOL_A, SC_1);
-        vm.expectCall(gateway, abi.encodeWithSelector(IGateway.depositSubsidy.selector, POOL_A));
 
         queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
 
@@ -350,7 +331,6 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         vm.expectCall(
             address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, POOL_A, SC_1, 0), 0
         );
-        vm.expectCall(gateway, abi.encodeWithSelector(IGateway.depositSubsidy.selector, POOL_A));
 
         queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
 
@@ -381,7 +361,6 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         _mockQueuedShares(POOL_A, SC_1, 100, true, 0);
 
         _expectSubmitShares(POOL_A, SC_1);
-        vm.expectCall(gateway, abi.encodeWithSelector(IGateway.depositSubsidy.selector, POOL_A));
 
         queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
 

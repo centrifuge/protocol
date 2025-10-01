@@ -79,7 +79,6 @@ interface IBalanceSheet is IBatchedMulticall {
     function root() external view returns (IRoot);
     function spoke() external view returns (ISpoke);
     function sender() external view returns (ISpokeMessageSender);
-    function gateway() external view returns (IGateway);
     function poolEscrowProvider() external view returns (IPoolEscrowProvider);
 
     function manager(PoolId poolId, address manager) external view returns (bool);
