@@ -11,13 +11,13 @@ import {IRequestManager} from "./interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
-import {IVaultRegistryGatewayHandler} from "./interfaces/IVaultRegistryGatewayHandler.sol";
 import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "./interfaces/IGatewaySenders.sol";
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
-    IUpdateContractGatewayHandler
+    IUpdateContractGatewayHandler,
+    IVaultRegistryGatewayHandler
 } from "./interfaces/IGatewayHandlers.sol";
 
 import {Auth} from "../misc/Auth.sol";

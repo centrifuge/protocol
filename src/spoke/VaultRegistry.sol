@@ -16,18 +16,17 @@ import {AssetId} from "../common/types/AssetId.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {VaultUpdateKind} from "../common/libraries/MessageLib.sol";
 import {IRequestManager} from "../common/interfaces/IRequestManager.sol";
-import {IVaultRegistryGatewayHandler} from "../common/interfaces/IVaultRegistryGatewayHandler.sol";
+import {IVaultRegistryGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
 
 /// @title  VaultRegistry
 /// @notice This contract manages vault deployment, linking, and unlinking operations for pools and share classes
 contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatewayHandler {
+    ISpoke public spoke;
+
+    mapping(IVault => VaultDetails) internal _vaultDetails;
     mapping(
         PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => mapping(IRequestManager => IVault)))
     ) public vault;
-
-    mapping(IVault => VaultDetails) internal _vaultDetails;
-
-    ISpoke public spoke;
 
     constructor(address initialWard) Auth(initialWard) {}
 

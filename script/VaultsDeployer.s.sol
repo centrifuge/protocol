@@ -32,8 +32,6 @@ struct VaultsReport {
 contract VaultsActionBatcher is SpokeActionBatcher {
     function engageVaults(VaultsReport memory report) public onlyDeployer {
         // Rely Spoke
-        report.asyncVaultFactory.rely(address(report.spoke.spoke));
-        report.syncDepositVaultFactory.rely(address(report.spoke.spoke));
         report.asyncRequestManager.rely(address(report.spoke.spoke));
 
         // Rely VaultRegistry

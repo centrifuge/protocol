@@ -14,12 +14,12 @@ import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {MessageType, MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
-import {IVaultRegistryGatewayHandler} from "./interfaces/IVaultRegistryGatewayHandler.sol";
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
-    IUpdateContractGatewayHandler
+    IUpdateContractGatewayHandler,
+    IVaultRegistryGatewayHandler
 } from "./interfaces/IGatewayHandlers.sol";
 
 import {Auth} from "../misc/Auth.sol";
