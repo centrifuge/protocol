@@ -8,11 +8,11 @@ import {D18, d18} from "../src/misc/types/D18.sol";
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../src/common/types/PoolId.sol";
+import {OpsGuardian} from "../src/common/OpsGuardian.sol";
 import {AccountId} from "../src/common/types/AccountId.sol";
 import {ShareClassId} from "../src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../src/common/types/AssetId.sol";
 import {ProtocolGuardian} from "../src/common/ProtocolGuardian.sol";
-import {OpsGuardian} from "../src/common/OpsGuardian.sol";
 import {VaultUpdateKind} from "../src/common/libraries/MessageLib.sol";
 
 import {Hub} from "../src/hub/Hub.sol";

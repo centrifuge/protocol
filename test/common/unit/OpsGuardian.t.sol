@@ -23,7 +23,7 @@ contract OpsGuardianTest is Test {
     IAdapter immutable ADAPTER = IAdapter(makeAddr("adapter"));
 
     uint16 constant CENTRIFUGE_ID = 1;
-    PoolId constant POOL_0 = PoolId.wrap(0);
+    PoolId constant GLOBAL_POOL = PoolId.wrap(0);
     PoolId constant POOL_1 = PoolId.wrap(1);
     AssetId constant CURRENCY = AssetId.wrap(1);
 
@@ -49,14 +49,14 @@ contract OpsGuardianTestInitAdapters is OpsGuardianTest {
 
         vm.mockCall(
             address(multiAdapter),
-            abi.encodeWithSelector(IMultiAdapter.quorum.selector, CENTRIFUGE_ID, POOL_0),
+            abi.encodeWithSelector(IMultiAdapter.quorum.selector, CENTRIFUGE_ID, GLOBAL_POOL),
             abi.encode(uint8(0))
         );
 
         vm.mockCall(
             address(multiAdapter),
             abi.encodeWithSelector(
-                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, POOL_0, adapters, threshold, recoveryIndex
+                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold, recoveryIndex
             ),
             abi.encode()
         );
@@ -64,7 +64,7 @@ contract OpsGuardianTestInitAdapters is OpsGuardianTest {
         vm.expectCall(
             address(multiAdapter),
             abi.encodeWithSelector(
-                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, POOL_0, adapters, threshold, recoveryIndex
+                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold, recoveryIndex
             )
         );
 
@@ -78,7 +78,7 @@ contract OpsGuardianTestInitAdapters is OpsGuardianTest {
 
         vm.mockCall(
             address(multiAdapter),
-            abi.encodeWithSelector(IMultiAdapter.quorum.selector, CENTRIFUGE_ID, POOL_0),
+            abi.encodeWithSelector(IMultiAdapter.quorum.selector, CENTRIFUGE_ID, GLOBAL_POOL),
             abi.encode(uint8(1))
         );
 

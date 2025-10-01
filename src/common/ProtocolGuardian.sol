@@ -15,6 +15,8 @@ import {CastLib} from "../misc/libraries/CastLib.sol";
 contract ProtocolGuardian is IProtocolGuardian {
     using CastLib for address;
 
+    PoolId public constant GLOBAL_POOL = PoolId.wrap(0);
+
     IRoot public immutable root;
     ISafe public safe;
     IGateway public gateway;
@@ -105,12 +107,12 @@ contract ProtocolGuardian is IProtocolGuardian {
         external
         onlySafe
     {
-        multiAdapter.setAdapters(centrifugeId, PoolId.wrap(0), adapters, threshold, recoveryIndex);
+        multiAdapter.setAdapters(centrifugeId, GLOBAL_POOL, adapters, threshold, recoveryIndex);
     }
 
     /// @inheritdoc IProtocolGuardian
     function blockOutgoing(uint16 centrifugeId, bool isBlocked) external onlySafe {
-        gateway.blockOutgoing(centrifugeId, PoolId.wrap(0), isBlocked);
+        gateway.blockOutgoing(centrifugeId, GLOBAL_POOL, isBlocked);
     }
 
     //----------------------------------------------------------------------------------------------

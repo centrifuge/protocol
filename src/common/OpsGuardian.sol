@@ -10,6 +10,8 @@ import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IHubGuardianActions} from "./interfaces/IGuardianActions.sol";
 
 contract OpsGuardian is IOpsGuardian {
+    PoolId public constant GLOBAL_POOL = PoolId.wrap(0);
+
     ISafe public safe;
     IHubGuardianActions public hub;
     IMultiAdapter public multiAdapter;
@@ -26,28 +28,6 @@ contract OpsGuardian is IOpsGuardian {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Adapter Management
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IOpsGuardian
-    function initAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
-        external
-        onlySafe
-    {
-        require(multiAdapter.quorum(centrifugeId, PoolId.wrap(0)) == 0, AdaptersAlreadyInitialized());
-        multiAdapter.setAdapters(centrifugeId, PoolId.wrap(0), adapters, threshold, recoveryIndex);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Pool Management
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IOpsGuardian
-    function createPool(PoolId poolId, address admin, AssetId currency) external onlySafe {
-        hub.createPool(poolId, admin, currency);
-    }
-
-    //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
 
@@ -58,5 +38,27 @@ contract OpsGuardian is IOpsGuardian {
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Adapter Management
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IOpsGuardian
+    function initAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
+        external
+        onlySafe
+    {
+        require(multiAdapter.quorum(centrifugeId, GLOBAL_POOL) == 0, AdaptersAlreadyInitialized());
+        multiAdapter.setAdapters(centrifugeId, GLOBAL_POOL, adapters, threshold, recoveryIndex);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Pool Management
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IOpsGuardian
+    function createPool(PoolId poolId, address admin, AssetId currency) external onlySafe {
+        hub.createPool(poolId, admin, currency);
     }
 }

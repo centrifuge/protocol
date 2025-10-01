@@ -37,7 +37,7 @@ contract ProtocolGuardianTest is Test {
     uint256 constant TOKEN_ID = 1;
     uint256 constant AMOUNT = 100;
     uint256 constant COST = 123;
-    PoolId constant POOL_0 = PoolId.wrap(0);
+    PoolId constant GLOBAL_POOL = PoolId.wrap(0);
 
     ProtocolGuardian protocolGuardian;
 
@@ -236,7 +236,7 @@ contract ProtocolGuardianTestSetAdapters is ProtocolGuardianTest {
         vm.mockCall(
             address(multiAdapter),
             abi.encodeWithSelector(
-                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, POOL_0, adapters, threshold, recoveryIndex
+                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold, recoveryIndex
             ),
             abi.encode()
         );
@@ -244,7 +244,7 @@ contract ProtocolGuardianTestSetAdapters is ProtocolGuardianTest {
         vm.expectCall(
             address(multiAdapter),
             abi.encodeWithSelector(
-                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, POOL_0, adapters, threshold, recoveryIndex
+                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold, recoveryIndex
             )
         );
 
@@ -266,11 +266,11 @@ contract ProtocolGuardianTestBlockOutgoing is ProtocolGuardianTest {
     function testBlockOutgoingBlockSuccess() public {
         vm.mockCall(
             address(gateway),
-            abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, POOL_0, true),
+            abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, GLOBAL_POOL, true),
             abi.encode()
         );
         vm.expectCall(
-            address(gateway), abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, POOL_0, true)
+            address(gateway), abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, GLOBAL_POOL, true)
         );
 
         vm.prank(address(SAFE));
@@ -280,11 +280,11 @@ contract ProtocolGuardianTestBlockOutgoing is ProtocolGuardianTest {
     function testBlockOutgoingUnblockSuccess() public {
         vm.mockCall(
             address(gateway),
-            abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, POOL_0, false),
+            abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, GLOBAL_POOL, false),
             abi.encode()
         );
         vm.expectCall(
-            address(gateway), abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, POOL_0, false)
+            address(gateway), abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, GLOBAL_POOL, false)
         );
 
         vm.prank(address(SAFE));
