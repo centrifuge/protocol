@@ -26,6 +26,7 @@ import {Properties} from "../properties/Properties.sol";
 import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 
 /// @dev Admin functions called by the admin actor
+/// @dev These explicitly clamp the investor to always be one of the actors
 abstract contract AdminTargets is BaseTargetFunctions, Properties {
     using CastLib for *;
 
@@ -33,9 +34,21 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
 
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
-    /// === STATE FUNCTIONS === ///
-    /// @dev These explicitly clamp the investor to always be one of the actors
+    /// === SyncManager === ///
+    function syncManager_setValuation(address valuation) public updateGhosts {
+        PoolId poolId = PoolId.wrap(_getPool());
+        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
+        syncManager.setValuation(poolId, scId, valuation);
+    }
 
+    function syncManager_setValuation_clamped(bool isIdentityValuation) public {
+        address valuation = isIdentityValuation
+            ? address(identityValuation)
+            : address(transientValuation);
+        syncManager_setValuation(valuation);
+    }
+
+    // === Hub === ///
     function hub_addShareClass(uint256 salt) public updateGhosts {
         PoolId poolId = PoolId.wrap(_getPool());
         string memory name = "Test ShareClass";
@@ -433,19 +446,6 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         hub_updateRestriction(CENTRIFUGE_CHAIN_ID, payloadAsUint);
     }
 
-    function syncManager_setValuation(address valuation) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        syncManager.setValuation(poolId, scId, valuation);
-    }
-
-    function syncManager_setValuation_clamped(bool isIdentityValuation) public {
-        address valuation = isIdentityValuation
-            ? address(identityValuation)
-            : address(transientValuation);
-        syncManager_setValuation(valuation);
-    }
-
     function hub_updateSharePrice(
         uint64,
         /* poolIdAsUint */ uint128,
@@ -542,6 +542,34 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         credits[0] = JournalEntry({value: creditAmount, accountId: accountId});
 
         hub.updateJournal(poolId, debits, credits);
+    }
+
+    // === RestrictedTransfers === ///
+    function restrictedTransfers_updateMemberBasic(
+        uint64 validUntil
+    ) public asAdmin {
+        fullRestrictions.updateMember(
+            _getShareToken(),
+            _getActor(),
+            validUntil
+        );
+    }
+
+    // TODO: We prob want to keep one generic
+    // And one with limited actors
+    function restrictedTransfers_updateMember(
+        address user,
+        uint64 validUntil
+    ) public asAdmin {
+        fullRestrictions.updateMember(_getShareToken(), user, validUntil);
+    }
+
+    function restrictedTransfers_freeze() public asAdmin {
+        fullRestrictions.freeze(_getShareToken(), _getActor());
+    }
+
+    function restrictedTransfers_unfreeze() public asAdmin {
+        fullRestrictions.unfreeze(_getShareToken(), _getActor());
     }
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
