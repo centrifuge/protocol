@@ -25,6 +25,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     mapping(PoolId poolId => Metrics) public metrics;
     mapping(PoolId poolId => mapping(address => bool)) public manager;
     mapping(PoolId poolId => mapping(uint16 centrifugeId => NetworkMetrics)) public networkMetrics;
+    mapping(PoolId poolId => uint16[]) internal _networks;
 
     constructor(IHub hub_, address deployer) Auth(deployer) {
         hub = hub_;
@@ -56,20 +57,20 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
 
     /// @inheritdoc ISimplePriceManager
     function networks(PoolId poolId) external view returns (uint16[] memory) {
-        return metrics[poolId].networks;
+        return _networks[poolId];
     }
 
     /// @inheritdoc ISimplePriceManager
     function addNetwork(PoolId poolId, uint16 centrifugeId) external onlyHubManager(poolId) {
         require(shareClassManager.shareClassCount(poolId) == 1, InvalidShareClassCount());
 
-        metrics[poolId].networks.push(centrifugeId);
-        emit UpdateNetworks(poolId, metrics[poolId].networks);
+        _networks[poolId].push(centrifugeId);
+        emit UpdateNetworks(poolId, _networks[poolId]);
     }
 
     /// @inheritdoc ISimplePriceManager
     function removeNetwork(PoolId poolId, uint16 centrifugeId) external onlyHubManager(poolId) {
-        uint16[] storage networks_ = metrics[poolId].networks;
+        uint16[] storage networks_ = _networks[poolId];
         uint256 length = networks_.length;
         for (uint256 i; i < length; i++) {
             if (networks_[i] == centrifugeId) {
@@ -94,7 +95,6 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     /// @inheritdoc ISimplePriceManager
     function updateManager(PoolId poolId, address manager_, bool canManage) external onlyHubManager(poolId) {
         manager[poolId][manager_] = canManage;
-
         emit UpdateManager(poolId, manager_, canManage);
     }
 
@@ -132,11 +132,12 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         networkMetrics_.netAssetValue = netAssetValue;
         networkMetrics_.issuance = issuance;
 
-        uint256 networkCount = metrics_.networks.length;
+        uint16[] storage networks_ = _networks[poolId];
+        uint256 networkCount = networks_.length;
         hub.updateSharePrice(poolId, scId, price);
 
         for (uint256 i; i < networkCount; i++) {
-            hub.notifySharePrice(poolId, scId, metrics_.networks[i], address(0));
+            hub.notifySharePrice(poolId, scId, networks_[i], address(0));
         }
 
         emit Update(poolId, scId, metrics_.netAssetValue, metrics_.issuance, price);

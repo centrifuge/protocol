@@ -30,7 +30,6 @@ interface ISimplePriceManager is INAVHook {
     struct Metrics {
         uint128 netAssetValue;
         uint128 issuance;
-        uint16[] networks;
     }
 
     struct NetworkMetrics {
@@ -41,7 +40,7 @@ interface ISimplePriceManager is INAVHook {
     }
 
     function metrics(PoolId poolId) external view returns (uint128 netAssetValue, uint128 issuance);
-    function networks(PoolId poolId) external view returns (uint16[] memory networks);
+    function networks(PoolId poolId) external view returns (uint16[] memory);
     function networkMetrics(PoolId poolId, uint16 centrifugeId)
         external
         view

@@ -58,7 +58,6 @@ contract NAVManager is INAVManager, Auth {
     /// @inheritdoc INAVManager
     function updateManager(PoolId poolId, address manager_, bool canManage) external onlyHubManager(poolId) {
         manager[poolId][manager_] = canManage;
-
         emit UpdateManager(poolId, manager_, canManage);
     }
 
@@ -146,7 +145,6 @@ contract NAVManager is INAVManager, Auth {
         require(address(navHook[poolId]) != address(0), InvalidNAVHook());
 
         navHook[poolId].onTransfer(poolId, scId, fromCentrifugeId, toCentrifugeId, sharesTransferred);
-
         emit Transfer(poolId, scId, fromCentrifugeId, toCentrifugeId, sharesTransferred);
     }
 
