@@ -44,9 +44,9 @@ contract Gateway is Auth, Recoverable, IGateway {
     mapping(PoolId => mapping(address => bool)) public manager;
 
     // Outbound & payments
-    address public transient batcher;
     bool public transient isBatching;
     bool public transient unpaidMode;
+    address internal transient _batcher;
     mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Underpaid)) public underpaid;
 
@@ -260,10 +260,8 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IGateway
     function withBatch(bytes memory data, address refund) external payable {
-        require(batcher == address(0), AlreadyBatching());
-
         _startBatching();
-        batcher = msg.sender;
+        _batcher = msg.sender;
 
         (bool success, bytes memory returnData) = msg.sender.call(data);
         if (!success) {
@@ -275,8 +273,17 @@ contract Gateway is Auth, Recoverable, IGateway {
             }
         }
 
-        batcher = address(0);
+        // Force the user to call lockCallback()
+        require(address(_batcher) == address(0), CallbackWasNotLocked());
+
         _endBatching(refund);
+    }
+
+    /// @inheritdoc IGateway
+    function lockCallback() external returns (address caller) {
+        require(address(_batcher) != address(0), CallbackIsLocked());
+        caller = _batcher;
+        _batcher = address(0);
     }
 
     /// @inheritdoc IGateway
