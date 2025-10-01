@@ -42,8 +42,8 @@ contract TestCases is BaseTest {
         hub.setRequestManager{value: GAS}(
             poolId, CHAIN_CV, IHubRequestManager(hubRequestManager), ASYNC_REQUEST_MANAGER.toBytes32(), REFUND
         );
-        hub.updateBalanceSheetManager{value: GAS}(CHAIN_CV, poolId, ASYNC_REQUEST_MANAGER.toBytes32(), true, REFUND);
-        hub.updateBalanceSheetManager{value: GAS}(CHAIN_CV, poolId, SYNC_REQUEST_MANAGER.toBytes32(), true, REFUND);
+        hub.updateBalanceSheetManager{value: GAS}(poolId, CHAIN_CV, ASYNC_REQUEST_MANAGER.toBytes32(), true, REFUND);
+        hub.updateBalanceSheetManager{value: GAS}(poolId, CHAIN_CV, SYNC_REQUEST_MANAGER.toBytes32(), true, REFUND);
 
         hub.createAccount(poolId, ASSET_USDC_ACCOUNT, true);
         hub.createAccount(poolId, EQUITY_ACCOUNT, false);

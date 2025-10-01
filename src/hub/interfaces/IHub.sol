@@ -187,7 +187,7 @@ interface IHub is IBatchedMulticall {
     ) external payable;
 
     /// @notice Allow/disallow an account to interact as balance sheet manager for this pool
-    function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage, address refund)
+    function updateBalanceSheetManager(PoolId poolId, uint16 centrifugeId, bytes32 who, bool canManage, address refund)
         external
         payable;
 
@@ -321,8 +321,8 @@ interface IHub is IBatchedMulticall {
 
     /// @notice Set adapters for a pool in another chain. Pool related message will go by these adapters.
     ///         The adapters should already be deployed and wired.
-    /// @param  centrifugeId chain where to perform the adapter configuration.
     /// @param  poolId pool associated to this configuration.
+    /// @param  centrifugeId chain where to perform the adapter configuration.
     /// @param  localAdapters Adapter addresses in this chain.
     /// @param  remoteAdapters Adapter addresses in the remote chain.
     /// @param  threshold Minimum number of adapters required to process the messages
@@ -330,8 +330,8 @@ interface IHub is IBatchedMulticall {
     /// @param  recoveryIndex Index in adapters array from where consider the adapter as recovery adapter.
     ///         If not wanted a recoveryIndex set `adapters.length` value
     function setAdapters(
-        uint16 centrifugeId,
         PoolId poolId,
+        uint16 centrifugeId,
         IAdapter[] memory localAdapters,
         bytes32[] memory remoteAdapters,
         uint8 threshold,
@@ -340,11 +340,11 @@ interface IHub is IBatchedMulticall {
     ) external payable;
 
     /// @notice Update a gateway manager for a pool. The manager can modify gateway-related things in the remote chain.
-    /// @param centrifugeId chain where to perform the gateway configuration.
     /// @param poolId pool associated to this configuration.
+    /// @param centrifugeId chain where to perform the gateway configuration.
     /// @param who address used as manager.
     /// @param canManage if enabled as manager
-    function updateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage, address refund)
+    function updateGatewayManager(PoolId poolId, uint16 centrifugeId, bytes32 who, bool canManage, address refund)
         external
         payable;
 
