@@ -19,7 +19,7 @@ import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/U
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified
 ///      (e.g. if the on/off ramp manager is used, or if sync deposits are enabled). This prevents spam.
-contract QueueManager is IQueueManager, IUpdateContract, Auth {
+contract QueueManager is Auth, IQueueManager, IUpdateContract {
     using CastLib for *;
     using BitmapLib for *;
 
@@ -82,14 +82,10 @@ contract QueueManager is IQueueManager, IUpdateContract, Auth {
         );
 
         (uint128 delta,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
-
         uint256 validCount = 0;
-
         for (uint256 i = 0; i < assetIds.length; i++) {
             bytes32 key = keccak256(abi.encode(scId.raw(), assetIds[i].raw()));
-            if (TransientStorageLib.tloadBool(key)) {
-                continue; // Skip duplicate
-            }
+            if (TransientStorageLib.tloadBool(key)) continue; // Skip duplicate
             TransientStorageLib.tstore(key, true);
 
             // Check if valid
@@ -101,7 +97,6 @@ contract QueueManager is IQueueManager, IUpdateContract, Auth {
         }
 
         bool submitShares = delta > 0 && validCount == queuedAssetCounter;
-
         require(validCount > 0 || submitShares, NoUpdates());
 
         if (submitShares) {
