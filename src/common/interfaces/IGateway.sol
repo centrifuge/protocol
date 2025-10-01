@@ -83,6 +83,9 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatcher when the callback is called inside the callback
     error CallbackIsLocked();
 
+    /// @notice Dispatcher when the user doesn't call lockCallback()
+    error CallbackWasNotLocked();
+
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @dev    Currently used to update addresses of contract instances.
     /// @param  what The name of the variable to be updated.

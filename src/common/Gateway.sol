@@ -44,7 +44,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     mapping(PoolId => mapping(address => bool)) public manager;
 
     // Outbound & payments
-    address transient _batcher;
+    address internal transient _batcher;
     bool public transient isBatching;
     bool public transient unpaidMode;
     mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
@@ -273,8 +273,10 @@ contract Gateway is Auth, Recoverable, IGateway {
             }
         }
 
+        // Force the user to call lockCallback()
+        require(address(_batcher) == address(0), CallbackWasNotLocked());
+
         _endBatching(refund);
-        _batcher = address(0);
     }
 
     /// @inheritdoc IGateway

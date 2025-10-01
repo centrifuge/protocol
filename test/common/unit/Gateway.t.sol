@@ -880,8 +880,11 @@ contract IntegrationMock is Test {
     }
 
     function _emptyError() external payable {
+        assertEq(gateway.lockCallback(), address(this));
         revert();
     }
+
+    function _notLocked() external payable {}
 
     function _success(bool, uint256) external payable {
         assertEq(gateway.lockCallback(), address(this));
@@ -898,6 +901,10 @@ contract IntegrationMock is Test {
 
     function callSuccess(address refund) external payable {
         gateway.withBatch{value: msg.value}(abi.encodeWithSelector(this._success.selector, true, 1), refund);
+    }
+
+    function callNotLocked(address refund) external {
+        gateway.withBatch(abi.encodeWithSelector(this._notLocked.selector), refund);
     }
 }
 
@@ -921,13 +928,18 @@ contract GatewayTestWithBatch is GatewayTest {
         integration.callEmptyError(REFUND);
     }
 
+    function testErrCallbackWasNotLocked() public {
+        vm.prank(ANY);
+        vm.expectRevert(IGateway.CallbackWasNotLocked.selector);
+        integration.callNotLocked(REFUND);
+    }
+
     function testWithCallback() public {
         vm.prank(ANY);
         vm.deal(ANY, 1234);
         integration.callSuccess{value: 1234}(REFUND);
 
         assertEq(integration.wasCalled(), true);
-
         assertEq(REFUND.balance, 1234);
     }
 }
