@@ -128,10 +128,10 @@ contract TestData is FullDeployer {
             msg.sender
         );
         hub.updateBalanceSheetManager(
-            centrifugeId, state.poolId, address(asyncRequestManager).toBytes32(), true, msg.sender
+            state.poolId, centrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender
         );
         // Add ADMIN as balance sheet manager to call submitQueuedAssets without going through the asyncRequestManager
-        hub.updateBalanceSheetManager(centrifugeId, state.poolId, address(admin).toBytes32(), true, msg.sender);
+        hub.updateBalanceSheetManager(state.poolId, centrifugeId, address(admin).toBytes32(), true, msg.sender);
 
         hub.createAccount(state.poolId, AccountId.wrap(0x01), true);
         hub.createAccount(state.poolId, AccountId.wrap(0x02), false);
@@ -291,8 +291,8 @@ contract TestData is FullDeployer {
             address(asyncRequestManager).toBytes32(),
             msg.sender
         );
-        hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true, msg.sender);
-        hub.updateBalanceSheetManager(centrifugeId, poolId, address(syncManager).toBytes32(), true, msg.sender);
+        hub.updateBalanceSheetManager(poolId, centrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender);
+        hub.updateBalanceSheetManager(poolId, centrifugeId, address(syncManager).toBytes32(), true, msg.sender);
 
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
