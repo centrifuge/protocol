@@ -199,7 +199,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         require(!root.endorsed(user), EndorsedUserCannotBeFrozen());
 
         uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
-        IShareToken(token).setHookData(user, bytes16(hookData.withBit(FREEZE_BIT, true)));
+        IShareToken(token).setHookData(user, bytes16(uint128(hookData.withBit(FREEZE_BIT, true))));
 
         emit Freeze(token, user);
     }
@@ -207,7 +207,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
     /// @inheritdoc IFreezable
     function unfreeze(address token, address user) public authOrManager(token) {
         uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
-        IShareToken(token).setHookData(user, bytes16(hookData.withBit(FREEZE_BIT, false)));
+        IShareToken(token).setHookData(user, bytes16(uint128(hookData.withBit(FREEZE_BIT, false))));
 
         emit Unfreeze(token, user);
     }
@@ -223,7 +223,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         require(!root.endorsed(user), EndorsedUserCannotBeUpdated());
 
         uint128 hookData = uint128(validUntil) << 64;
-        hookData = hookData.withBit(FREEZE_BIT, isFrozen(token, user));
+        hookData = uint128(uint256(hookData).withBit(FREEZE_BIT, isFrozen(token, user)));
         IShareToken(token).setHookData(user, bytes16(hookData));
 
         emit UpdateMember(token, user, validUntil);
