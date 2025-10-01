@@ -8,6 +8,7 @@ import "forge-std/Script.sol";
 
 import {IAxelarAdapter} from "../src/adapters/interfaces/IAxelarAdapter.sol";
 import {IWormholeAdapter} from "../src/adapters/interfaces/IWormholeAdapter.sol";
+import {ILayerZeroAdapter} from "../src/adapters/interfaces/ILayerZeroAdapter.sol";
 
 /// @dev Configures the local network's adapters to communicate with remote networks.
 ///      This script only sets up one-directional communication (local → remote).
