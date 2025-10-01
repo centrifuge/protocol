@@ -39,7 +39,7 @@ import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/U
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
+contract AsyncRequestManager is Auth, IAsyncRequestManager {
     using CastLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;

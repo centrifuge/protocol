@@ -961,15 +961,15 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         _setSpoke(sameChain);
 
-        (bool success,) = address(s.asyncRequestManager).call{value: VALUE}("");
-        require(success);
+        vm.startPrank(ERC20_DEPLOYER);
+        s.usdc.mint(address(s.gateway), VALUE);
 
         vm.startPrank(address(SAFE_ADMIN_A));
         h.guardian.recoverTokens{value: GAS}(
-            s.centrifugeId, address(s.asyncRequestManager), ETH_ADDRESS, 0, RECEIVER, VALUE, REFUND
+            s.centrifugeId, address(s.gateway), address(s.usdc), 0, RECEIVER, VALUE, REFUND
         );
 
-        assertEq(RECEIVER.balance, VALUE);
+        assertEq(s.usdc.balanceOf(RECEIVER), VALUE);
     }
 
     /// forge-config: default.isolate = true
