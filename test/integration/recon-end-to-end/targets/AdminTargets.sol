@@ -388,6 +388,20 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
     }
 
+    function hub_setHoldingAccountId_clamped(
+        uint128 assetIdAsUint,
+        uint8 kind,
+        uint32 accountIdAsInt
+    ) public updateGhosts {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
+
+        accountIdAsInt %= 5; // 4 possible accountId types in Setup
+        AccountId accountId = AccountId.wrap(accountIdAsInt);
+        hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
+    }
+
     function hub_setPoolMetadata(uint256 metadataAsUint) public updateGhosts {
         PoolId poolId = _getPool();
         bytes memory metadata = abi.encodePacked(metadataAsUint);
@@ -407,7 +421,6 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     function hub_updateHoldingValuation_clamped(
         bool isIdentityValuation
     ) public {
-        // PoolId poolId = _getPool(); // Unused
         AssetId assetId = _getAssetId();
         IValuation valuation = isIdentityValuation
             ? IValuation(address(identityValuation))
@@ -567,6 +580,50 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
 
     function restrictedTransfers_unfreeze() public asAdmin {
         fullRestrictions.unfreeze(_getShareToken(), _getActor());
+    }
+
+    /// === Hub === ///
+    function balanceSheet_submitQueuedAssets(
+        uint128 extraGasLimit
+    ) public asAdmin {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
+
+        balanceSheet.submitQueuedAssets(poolId, scId, assetId, extraGasLimit);
+    }
+
+    function balanceSheet_submitQueuedShares(
+        uint128 extraGasLimit
+    ) public asAdmin {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+
+        balanceSheet.submitQueuedShares(poolId, scId, extraGasLimit);
+    }
+
+    function balanceSheet_reserve(
+        uint256 tokenId,
+        uint128 amount
+    ) public asAdmin {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
+        (address asset, ) = spoke.idToAsset(assetId);
+
+        balanceSheet.reserve(poolId, scId, asset, tokenId, amount);
+    }
+
+    function balanceSheet_unreserve(
+        uint256 tokenId,
+        uint128 amount
+    ) public asAdmin {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
+        (address asset, ) = spoke.idToAsset(assetId);
+
+        balanceSheet.unreserve(poolId, scId, asset, tokenId, amount);
     }
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
