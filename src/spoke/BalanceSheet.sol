@@ -41,9 +41,9 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     IRoot public immutable root;
 
     ISpoke public spoke;
+    IGateway public gateway;
     ISpokeMessageSender public sender;
     IPoolEscrowProvider public poolEscrowProvider;
-    IGateway public gateway;
 
     mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId poolId => mapping(ShareClassId scId => ShareQueueAmount)) public queuedShares;

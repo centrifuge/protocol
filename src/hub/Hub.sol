@@ -39,8 +39,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubRequestManagerCallback, 
     IHoldings public holdings;
     IAccounting public accounting;
     IHubRegistry public hubRegistry;
-    IMultiAdapter public multiAdapter;
     IHubMessageSender public sender;
+    IMultiAdapter public multiAdapter;
     IShareClassManager public shareClassManager;
 
     constructor(

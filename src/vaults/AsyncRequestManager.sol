@@ -48,8 +48,8 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     IEscrow public immutable globalEscrow;
 
     ISpoke public spoke;
-    IVaultRegistry public vaultRegistry;
     IBalanceSheet public balanceSheet;
+    IVaultRegistry public vaultRegistry;
     IRefundEscrowFactory public refundEscrowFactory;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;

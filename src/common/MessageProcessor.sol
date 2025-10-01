@@ -43,8 +43,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
     ISpokeGatewayHandler public spoke;
     IHubGatewayHandler public hubHandler;
     IBalanceSheetGatewayHandler public balanceSheet;
-    IUpdateContractGatewayHandler public contractUpdater;
     IVaultRegistryGatewayHandler public vaultRegistry;
+    IUpdateContractGatewayHandler public contractUpdater;
 
     constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, address deployer) Auth(deployer) {
         root = root_;

@@ -33,8 +33,8 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     using UpdateContractMessageLib for *;
 
     ISpoke public spoke;
-    IVaultRegistry public vaultRegistry;
     IBalanceSheet public balanceSheet;
+    IVaultRegistry public vaultRegistry;
 
     mapping(PoolId => mapping(ShareClassId scId => ISyncDepositValuation)) public valuation;
     mapping(PoolId => mapping(ShareClassId scId => mapping(address asset => mapping(uint256 tokenId => uint128))))

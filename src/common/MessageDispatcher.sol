@@ -41,12 +41,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     uint16 public immutable localCentrifugeId;
 
     IGateway public gateway;
-    ISpokeGatewayHandler public spoke;
     IMultiAdapter public multiAdapter;
+    ISpokeGatewayHandler public spoke;
     IHubGatewayHandler public hubHandler;
     IBalanceSheetGatewayHandler public balanceSheet;
-    IUpdateContractGatewayHandler public contractUpdater;
     IVaultRegistryGatewayHandler public vaultRegistry;
+    IUpdateContractGatewayHandler public contractUpdater;
 
     constructor(
         uint16 localCentrifugeId_,

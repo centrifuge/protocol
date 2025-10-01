@@ -155,24 +155,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         sender.sendRegisterAsset{value: msg.value}(centrifugeId, assetId, decimals, refund);
     }
 
-    /// @inheritdoc ISpoke
-    function request(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes memory payload,
-        address refund,
-        bool unpaid
-    ) external payable {
-        IRequestManager manager = requestManager[poolId];
-        require(address(manager) != address(0), InvalidRequestManager());
-        require(msg.sender == address(manager), NotAuthorized());
-
-        gateway.setUnpaidMode(unpaid);
-        sender.sendRequest{value: msg.value}(poolId, scId, assetId, payload, refund);
-        gateway.setUnpaidMode(false);
-    }
-
     //----------------------------------------------------------------------------------------------
     // Pool & token management
     //----------------------------------------------------------------------------------------------
@@ -259,6 +241,12 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         emit ExecuteTransferShares(poolId, scId, receiver.toAddress(), amount);
     }
 
+    /// @inheritdoc ISpoke
+    function setShareTokenVault(PoolId poolId, ShareClassId scId, address asset, address vault) external auth {
+        IShareToken token = shareToken(poolId, scId);
+        token.updateVault(asset, vault);
+    }
+
     //----------------------------------------------------------------------------------------------
     // Price management
     //----------------------------------------------------------------------------------------------
@@ -311,8 +299,26 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     }
 
     //----------------------------------------------------------------------------------------------
-    // Vault management
+    // Request management
     //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc ISpoke
+    function request(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes memory payload,
+        address refund,
+        bool unpaid
+    ) external payable {
+        IRequestManager manager = requestManager[poolId];
+        require(address(manager) != address(0), InvalidRequestManager());
+        require(msg.sender == address(manager), NotAuthorized());
+
+        gateway.setUnpaidMode(unpaid);
+        sender.sendRequest{value: msg.value}(poolId, scId, assetId, payload, refund);
+        gateway.setUnpaidMode(false);
+    }
 
     /// @inheritdoc ISpokeGatewayHandler
     function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external auth {
@@ -407,16 +413,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         computedAt = poolPerAsset.computedAt;
         maxAge = poolPerAsset.maxAge;
         validUntil = poolPerAsset.validUntil();
-    }
-
-    /// @notice Updates a share token's vault reference for a specific asset
-    /// @param poolId The pool ID
-    /// @param scId The share class ID
-    /// @param asset The asset address
-    /// @param vault The vault address to set (or address(0) to unset)
-    function setShareTokenVault(PoolId poolId, ShareClassId scId, address asset, address vault) external auth {
-        IShareToken token = shareToken(poolId, scId);
-        token.updateVault(asset, vault);
     }
 
     //----------------------------------------------------------------------------------------------

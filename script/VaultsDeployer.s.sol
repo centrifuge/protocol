@@ -73,6 +73,7 @@ contract VaultsActionBatcher is SpokeActionBatcher {
 
         report.syncManager.file("spoke", address(report.spoke.spoke));
         report.syncManager.file("balanceSheet", address(report.spoke.balanceSheet));
+        report.syncManager.file("vaultRegistry", address(report.spoke.vaultRegistry));
 
         report.refundEscrowFactory.file(bytes32("controller"), address(report.asyncRequestManager));
 

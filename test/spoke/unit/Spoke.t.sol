@@ -98,7 +98,6 @@ contract SpokeTest is Test {
         spoke.file("gateway", address(gateway));
         spoke.file("sender", address(sender));
         spoke.file("poolEscrowFactory", address(poolEscrowFactory));
-        spoke.file("vaultRegistry", address(vaultRegistry));
 
         vaultRegistry.file("spoke", address(spoke));
 

@@ -31,10 +31,6 @@ contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatew
 
     constructor(address initialWard) Auth(initialWard) {}
 
-    event File(bytes32 indexed what, address data);
-
-    error FileUnrecognizedParam();
-
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------

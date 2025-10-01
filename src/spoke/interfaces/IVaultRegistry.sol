@@ -12,6 +12,7 @@ import {IRequestManager} from "../../common/interfaces/IRequestManager.sol";
 import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
 
 interface IVaultRegistry {
+    event File(bytes32 indexed what, address data);
     event DeployVault(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -34,6 +35,7 @@ interface IVaultRegistry {
     error InvalidVault();
     error AlreadyLinkedVault();
     error AlreadyUnlinkedVault();
+    error FileUnrecognizedParam();
 
     /// @notice Deploys a new vault
     ///
