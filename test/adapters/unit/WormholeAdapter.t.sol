@@ -101,7 +101,9 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
 
     function testEstimate(uint64 gasLimit) public view {
         bytes memory payload = "irrelevant";
-        assertEq(adapter.estimate(CENTRIFUGE_CHAIN_ID, payload, gasLimit), uint128(gasLimit) * 2);
+        assertEq(
+            adapter.estimate(CENTRIFUGE_CHAIN_ID, payload, gasLimit), uint128(gasLimit + adapter.RECEIVE_COST()) * 2
+        );
     }
 
     function testIncomingCalls(
@@ -162,6 +164,7 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
     function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund)
         public
     {
+        vm.assume(gasLimit < adapter.RECEIVE_COST());
         vm.assume(invalidOrigin != address(GATEWAY));
 
         vm.deal(address(this), 0.1 ether);
@@ -184,7 +187,7 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
         assertEq(relayer.values_address("targetAddress"), makeAddr("DestinationAdapter"));
         assertEq(relayer.values_bytes("payload"), payload);
         assertEq(relayer.values_uint256("receiverValue"), 0);
-        assertEq(relayer.values_uint256("gasLimit"), gasLimit);
+        assertEq(relayer.values_uint256("gasLimit"), gasLimit + adapter.RECEIVE_COST());
         assertEq(relayer.values_uint16("refundChain"), WORMHOLE_CHAIN_ID);
         assertEq(relayer.values_address("refundAddress"), refund);
     }
