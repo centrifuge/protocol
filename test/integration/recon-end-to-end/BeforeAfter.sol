@@ -194,7 +194,7 @@ abstract contract BeforeAfter is Setup {
     function _updateHolding(bool before) internal {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
@@ -206,7 +206,7 @@ abstract contract BeforeAfter is Setup {
     function _updateActorRedeemRequests(bool before) internal {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
@@ -225,7 +225,7 @@ abstract contract BeforeAfter is Setup {
     function _updateAccountValues(bool before) internal {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
@@ -330,21 +330,15 @@ abstract contract BeforeAfter is Setup {
         }
 
         if (address(_getVault()) != address(0)) {
-            _structToUpdate.escrowAssetBalance = MockERC20(
-                IBaseVault(_getVault()).asset()
-            ).balanceOf(address(globalEscrow));
+            _structToUpdate.escrowAssetBalance = MockERC20(_getVault().asset())
+                .balanceOf(address(globalEscrow));
             _structToUpdate.poolEscrowAssetBalance = MockERC20(
-                IBaseVault(_getVault()).asset()
+                _getVault().asset()
             ).balanceOf(
-                    address(
-                        poolEscrowFactory.escrow(
-                            IBaseVault(_getVault()).poolId()
-                        )
-                    )
+                    address(poolEscrowFactory.escrow(_getVault().poolId()))
                 );
-            _structToUpdate.actualAssets = MockERC20(
-                IBaseVault(_getVault()).asset()
-            ).balanceOf(address(_getVault()));
+            _structToUpdate.actualAssets = MockERC20(_getVault().asset())
+                .balanceOf(address(_getVault()));
         }
     }
 
@@ -354,7 +348,7 @@ abstract contract BeforeAfter is Setup {
         }
 
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
@@ -375,8 +369,7 @@ abstract contract BeforeAfter is Setup {
                 _structToUpdate.totalAssets = 0;
                 return;
             } else {
-                _structToUpdate.totalAssets = IBaseVault(_getVault())
-                    .totalAssets();
+                _structToUpdate.totalAssets = _getVault().totalAssets();
             }
         }
     }
@@ -387,7 +380,7 @@ abstract contract BeforeAfter is Setup {
         }
 
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
