@@ -97,9 +97,9 @@ contract VaultRegistryTest is Test {
         spoke.file("gateway", address(gateway));
         spoke.file("sender", address(sender));
         spoke.file("poolEscrowFactory", address(poolEscrowFactory));
-        spoke.file("vaultRegistry", address(vaultRegistry));
 
         vaultRegistry.file("spoke", address(spoke));
+        spoke.rely(address(vaultRegistry));
 
         vm.stopPrank();
         vm.warp(MAX_AGE);
@@ -300,7 +300,7 @@ contract VaultRegistryTestLinkVault is VaultRegistryTest {
         _utilRegisterAsset(erc6909);
 
         vm.prank(AUTH);
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        vm.expectRevert(ISpoke.UnknownVault.selector);
         vaultRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
@@ -345,7 +345,11 @@ contract VaultRegistryTestLinkVault is VaultRegistryTest {
         _utilAddPoolAndShareClass(NO_HOOK);
         _utilDeployVault(erc20);
 
-        vm.mockCall(address(share), abi.encodeWithSelector(share.updateVault.selector, erc20, vault), abi.encode());
+        vm.mockCall(
+            address(spoke),
+            abi.encodeWithSelector(spoke.setShareTokenVault.selector, POOL_A, SC_1, erc20, vault),
+            abi.encode()
+        );
 
         vm.prank(AUTH);
         vm.expectEmit();
@@ -397,7 +401,7 @@ contract VaultRegistryTestUnlinkVault is VaultRegistryTest {
         _utilRegisterAsset(erc6909);
 
         vm.prank(AUTH);
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        vm.expectRevert(ISpoke.UnknownVault.selector);
         vaultRegistry.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
@@ -442,12 +446,20 @@ contract VaultRegistryTestUnlinkVault is VaultRegistryTest {
         _utilAddPoolAndShareClass(NO_HOOK);
         _utilDeployVault(erc20);
 
-        vm.mockCall(address(share), abi.encodeWithSelector(share.updateVault.selector, erc20, vault), abi.encode());
+        vm.mockCall(
+            address(spoke),
+            abi.encodeWithSelector(spoke.setShareTokenVault.selector, POOL_A, SC_1, erc20, vault),
+            abi.encode()
+        );
 
         vm.prank(AUTH);
         vaultRegistry.linkVault(POOL_A, SC_1, ASSET_ID_20, vault);
 
-        vm.mockCall(address(share), abi.encodeWithSelector(share.updateVault.selector, erc20, address(0)), abi.encode());
+        vm.mockCall(
+            address(spoke),
+            abi.encodeWithSelector(spoke.setShareTokenVault.selector, POOL_A, SC_1, erc20, address(0)),
+            abi.encode()
+        );
 
         vm.prank(AUTH);
         vm.expectEmit();

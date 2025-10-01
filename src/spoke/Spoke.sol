@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {Price} from "./types/Price.sol";
 import {IShareToken} from "./interfaces/IShareToken.sol";
-import {IVaultRegistry} from "./interfaces/IVaultRegistry.sol";
 import {ITokenFactory} from "./factories/interfaces/ITokenFactory.sol";
 import {AssetIdKey, Pool, ShareClassDetails, ISpoke} from "./interfaces/ISpoke.sol";
 
@@ -45,7 +44,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     ITokenFactory public tokenFactory;
     ISpokeMessageSender public sender;
     IPoolEscrowFactory public poolEscrowFactory;
-    IVaultRegistry public vaultRegistry;
 
     mapping(PoolId => Pool) public pool;
     mapping(PoolId => IRequestManager) public requestManager;
@@ -70,7 +68,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         else if (what == "sender") sender = ISpokeMessageSender(data);
         else if (what == "tokenFactory") tokenFactory = ITokenFactory(data);
         else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
-        else if (what == "vaultRegistry") vaultRegistry = IVaultRegistry(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }

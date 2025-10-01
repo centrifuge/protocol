@@ -72,7 +72,6 @@ contract SpokeActionBatcher is CommonActionBatcher {
         report.spoke.file("gateway", address(report.common.gateway));
         report.spoke.file("sender", address(report.common.messageDispatcher));
         report.spoke.file("poolEscrowFactory", address(report.common.poolEscrowFactory));
-        report.spoke.file("vaultRegistry", address(report.vaultRegistry));
 
         report.vaultRegistry.file("spoke", address(report.spoke));
 
