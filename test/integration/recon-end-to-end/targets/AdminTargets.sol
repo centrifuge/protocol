@@ -29,9 +29,6 @@ import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 /// @dev These explicitly clamp the investor to always be one of the actors
 abstract contract AdminTargets is BaseTargetFunctions, Properties {
     using CastLib for *;
-
-    event InterestingCoverageLog();
-
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
     /// === SyncManager === ///
@@ -89,7 +86,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         uint32 nowRedeemEpochId,
         uint128 maxApproval
     ) public updateGhosts {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId payoutAssetId = AssetId.wrap(_getAssetId());
@@ -334,7 +331,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         uint32 nowRevokeEpochId,
         uint128 navPerShare
     ) public updateGhostsWithType(OpType.REMOVE) {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId payoutAssetId = AssetId.wrap(_getAssetId());
@@ -451,7 +448,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         /* poolIdAsUint */ uint128,
         /* scIdAsUint */ uint128 navPoolPerShare
     ) public updateGhosts {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
@@ -459,7 +456,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     }
 
     function hub_forceCancelDepositRequest() public updateGhosts {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         bytes32 investor = _getActor().toBytes32();
@@ -469,7 +466,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     }
 
     function hub_forceCancelRedeemRequest() public updateGhosts {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         bytes32 investor = _getActor().toBytes32();
@@ -479,7 +476,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     }
 
     function hub_setMaxAssetPriceAge(uint32 maxAge) public updateGhosts {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
@@ -491,7 +488,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         uint16 centrifugeId,
         uint32 maxAge
     ) public updateGhosts {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
@@ -499,7 +496,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     }
 
     function hub_updateHoldingValue() public updateGhosts {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
@@ -530,7 +527,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         uint128 debitAmount,
         uint128 creditAmount
     ) public updateGhosts {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
 
         AccountId accountId = createdAccountIds[

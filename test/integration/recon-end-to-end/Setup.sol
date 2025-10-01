@@ -172,7 +172,7 @@ abstract contract Setup is
     }
 
     modifier vaultIsSet() {
-        require(_getVault() != address(0));
+        require(address(_getVault()) != address(0));
         _;
     }
 

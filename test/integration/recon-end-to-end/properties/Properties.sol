@@ -52,7 +52,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         // Dig until we get non-zero share class balance
         // Afaict this will never work
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         eq(IShareToken(vault.share()).balanceOf(_getActor()), 0, "token.balanceOf(getActor()) != 0");
     }
 
@@ -61,7 +61,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: Sum of share tokens received on `deposit` and `mint` <= sum of fulfilledDepositRequest.shares
     function property_sum_of_shares_received() public tokenIsSet {
         // only valid for async vaults because sync vaults don't have to fulfill deposit requests
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         if (Helpers.isAsyncVault(address(vault))) {
             address shareToken = vault.share();
             lte(
@@ -75,7 +75,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: the sum of assets received on redeem and withdraw <= sum of payout of fulfilledRedeemRequest
     function property_sum_of_assets_received() public assetIsSet {
         // Redeem and Withdraw
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         address asset = vault.asset();
         lte(
             sumOfClaimedRedemptions[address(asset)],
@@ -86,7 +86,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: the payout of the escrow is always <= sum of redemptions paid out
     function property_sum_of_pending_redeem_request() public tokenIsSet {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
         address asset = vault.asset();
@@ -109,7 +109,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
         // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
 
         // TODO(wischli): Investigate with zero price
 
@@ -130,7 +130,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_system_addresses_never_receive_share_tokens() public assetIsSet {
         address[] memory systemAddresses = _getSystemAddresses();
         uint256 SYSTEM_ADDRESSES_LENGTH = systemAddresses.length;
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         address asset = vault.asset();
         address shareToken = vault.share();
 
@@ -167,7 +167,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     // TODO(wischli): Breaks for ever `revokedShares` which reduced totalSupply
     /// @dev Property: Total cancelled redeem shares <= total supply
     function property_total_cancelled_redeem_shares_lte_total_supply() public tokenIsSet {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
 
         uint256 totalSupply = IShareToken(vault.share()).totalSupply();
         lte(
@@ -204,7 +204,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: Sum of balances equals total supply
     function property_sum_of_balances() public tokenIsSet {
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         address shareToken = vault.share();
 
         uint256 acc;
@@ -234,12 +234,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             // functions can modify the deposit price outside of the bounds
             lte(
                 depositPrice,
-                _after.investorsGlobals[_getVault()][_getActor()].maxDepositPrice,
+                _after.investorsGlobals[address(_getVault())][_getActor()].maxDepositPrice,
                 "depositPrice > maxDepositPrice"
             );
             gte(
                 depositPrice,
-                _after.investorsGlobals[_getVault()][_getActor()].minDepositPrice,
+                _after.investorsGlobals[address(_getVault())][_getActor()].minDepositPrice,
                 "depositPrice < minDepositPrice"
             );
         }
@@ -264,12 +264,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
             lte(
                 redeemPrice,
-                _after.investorsGlobals[_getVault()][_getActor()].maxRedeemPrice,
+                _after.investorsGlobals[address(_getVault())][_getActor()].maxRedeemPrice,
                 "redeemPrice > maxRedeemPrice"
             );
             gte(
                 redeemPrice,
-                _after.investorsGlobals[_getVault()][_getActor()].minRedeemPrice,
+                _after.investorsGlobals[address(_getVault())][_getActor()].minRedeemPrice,
                 "redeemPrice < minRedeemPrice"
             );
         }
@@ -283,7 +283,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             return;
         }
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         address asset = vault.asset();
         PoolId poolId = vault.poolId();
         address poolEscrow = address(poolEscrowFactory.escrow(poolId));
@@ -317,7 +317,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
         // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         address shareToken = vault.share();
         uint256 ghostBalanceOfEscrow;
         uint256 balanceOfEscrow = IShareToken(shareToken).balanceOf(address(globalEscrow));
@@ -340,7 +340,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: The sum of account balances is always <= the balance of the escrow
     // TODO: this can't currently hold, requires a different implementation
     // function property_sum_of_account_balances_leq_escrow() public vaultIsSet {
-    //     IBaseVault vault = IBaseVault(_getVault());
+    //     IBaseVault vault = _getVault();
     //     uint256 balOfEscrow = MockERC20(vault.asset()).balanceOf(address(globalEscrow));
     //     address poolEscrow = address(poolEscrowFactory.escrow(vault.poolId()));
     //     uint256 balOfPoolEscrow = MockERC20(vault.asset()).balanceOf(address(poolEscrow));
@@ -362,11 +362,11 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: The sum of max claimable shares is always <= the share balance of the escrow
     function property_sum_of_possible_account_balances_leq_escrow() public vaultIsSet {
         // only check for async vaults because sync vaults claim minted shares immediately
-        if (!Helpers.isAsyncVault(_getVault())) {
+        if (!Helpers.isAsyncVault(address(_getVault()))) {
             return;
         }
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         uint256 max = IShareToken(vault.share()).balanceOf(address(globalEscrow));
         address[] memory actors = _getActors();
 
@@ -391,7 +391,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             return;
         }
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         uint256 totalAssets = vault.totalAssets();
         address escrow = address(poolEscrowFactory.escrow(vault.poolId()));
         uint256 actualAssets = MockERC20(vault.asset()).balanceOf(escrow);
@@ -419,7 +419,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: requested deposits must be >= the deposits fulfilled
     function property_soundness_processed_deposits() public {
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
 
@@ -435,7 +435,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: requested redemptions must be >= the redemptions fulfilled
     function property_soundness_processed_redemptions() public {
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
 
@@ -451,7 +451,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: requested deposits must be >= the fulfilled cancelled deposits
     function property_cancelled_soundness() public {
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
 
@@ -467,7 +467,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: requested deposits must be >= the fulfilled cancelled deposits + fulfilled deposits
     function property_cancelled_and_processed_deposits_soundness() public {
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
 
@@ -482,7 +482,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: requested redemptions must be >= the fulfilled cancelled redemptions + fulfilled redemptions
     function property_cancelled_and_processed_redemptions_soundness() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
         address[] memory actors = _getActors();
@@ -499,7 +499,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: total deposits must be >= the approved deposits
     function property_solvency_deposit_requests() public {
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
 
@@ -516,7 +516,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory actors = _getActors();
         uint256 totalRedemptions;
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
 
@@ -532,7 +532,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_actor_pending_and_queued_deposits() public {
         // Pending + Queued = Deposited?
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
 
@@ -554,7 +554,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_actor_pending_and_queued_redemptions() public {
         // Pending + Queued = Deposited?
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
 
@@ -574,7 +574,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: escrow total must be >= reserved
     // TODO: this can't currently hold, requires a different implementation
     // function property_escrow_solvency() public {
-    //     IBaseVault vault = IBaseVault(_getVault());
+    //     IBaseVault vault = _getVault();
     //     PoolId poolId = vault.poolId();
     //     ShareClassId scId = vault.scId();
     //     AssetId assetId = AssetId.wrap(_getAssetId());
@@ -589,7 +589,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     // TODO: this needs to be redefined as an inline property in the target functions where assets are transferred and
     // shares are minted/burned
     // function property_price_per_share_overall() public {
-    //     IBaseVault vault = IBaseVault(_getVault());
+    //     IBaseVault vault = _getVault();
     //     PoolId poolId = vault.poolId();
     //     ShareClassId scId = vault.scId();
     //     AssetId assetId = AssetId.wrap(_getAssetId());
@@ -636,7 +636,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: The total pending asset amount pendingDeposit[..] is always >= the approved asset
     /// epochInvestAmounts[..].approvedAssetAmount
     function property_total_pending_and_approved() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
 
@@ -655,7 +655,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// epochInvestAmounts[..].approvedAssetAmount
     function property_sum_pending_user_deposit_geq_total_pending_deposit() public {
         address[] memory _actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
 
@@ -685,7 +685,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// epochRedeemAmounts[..].approvedShareAmount
     function property_sum_pending_user_redeem_geq_total_pending_redeem() public {
         address[] memory _actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         // PoolId poolId = vault.poolId(); // Unused
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
@@ -794,7 +794,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: Value of Holdings == accountValue(Asset)
     function property_accounting_and_holdings_soundness() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
@@ -847,7 +847,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: assets = equity + gain + loss
     function property_asset_soundness() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
@@ -904,7 +904,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: gain = totalYield + loss
     function property_gain_soundness() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
@@ -961,7 +961,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: A user cannot mutate their pending redeem amount pendingRedeem[...] if the
     /// pendingRedeem[..].lastUpdate is <= the latest redeem approval epochId[..].redeem
     function property_user_cannot_mutate_pending_redeem() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
 
@@ -985,7 +985,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// the balance of the escrow for said pool-shareClass for the respective token
     /// @dev This property is undefined when price is zero (no shares issued, so holdings don't track escrow movements)
     function property_holdings_balance_equals_escrow_balance() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
 
         // Guard: Skip when price is zero (property is undefined)
         if (_before.pricePerShare == 0) return;
@@ -1002,7 +1002,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: The total issuance of a share class is <= the sum of issued shares and burned shares
     function property_total_issuance_soundness() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
@@ -1041,7 +1041,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: If user deposits assets, they must always receive at least the pricePerShare
     function property_additions_use_correct_price() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         uint256 decimals = MockERC20(vault.asset()).decimals();
 
         if (currentOperation == OpType.ADD) {
@@ -1060,7 +1060,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: If user redeems shares, they must always pay at least the pricePerShare
     function property_removals_use_correct_price() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         uint256 decimals = MockERC20(vault.asset()).decimals();
 
         if (currentOperation == OpType.REMOVE) {
@@ -1121,7 +1121,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_eligible_user_deposit_amount_leq_deposit_issued_amount() public statelessTest {
         address[] memory _actors = _getActors();
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
@@ -1171,7 +1171,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount() public statelessTest {
         address[] memory _actors = _getActors();
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
@@ -1263,7 +1263,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Doomsday test: System handles all operations gracefully at zero price
     function doomsday_zeroPrice_noPanics() public statelessTest {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         if (address(vault) == address(0)) return;
 
         // Set zero price directly
@@ -1342,12 +1342,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Optimization test to increase the difference between totalAssets and actualAssets is greater than 1 share
     function optimize_totalAssets_solvency() public view returns (int256) {
-        uint256 totalAssets = IBaseVault(_getVault()).totalAssets();
-        uint256 actualAssets = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(address(globalEscrow));
+        uint256 totalAssets = _getVault().totalAssets();
+        uint256 actualAssets = MockERC20(_getVault().asset()).balanceOf(address(globalEscrow));
         uint256 difference = totalAssets - actualAssets;
 
         return int256(difference);
-        // uint256 differenceInShares = IBaseVault(_getVault()).convertToShares(difference);
+        // uint256 differenceInShares = _getVault().convertToShares(difference);
 
         // if (differenceInShares > (10 ** IShareToken(_getShareToken()).decimals()) - 1) {
         //     return int256(difference);
@@ -1390,8 +1390,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         systemAddresses[3] = address(asyncRequestManager);
         systemAddresses[4] = address(syncManager);
         systemAddresses[5] = address(spoke);
-        systemAddresses[6] = address(IBaseVault(_getVault()));
-        systemAddresses[7] = address(IBaseVault(_getVault()).asset());
+        systemAddresses[6] = address(_getVault());
+        systemAddresses[7] = address(_getVault().asset());
         systemAddresses[8] = _getShareToken();
         systemAddresses[9] = address(fullRestrictions);
 

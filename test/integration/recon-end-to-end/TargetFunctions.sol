@@ -190,7 +190,7 @@ abstract contract TargetFunctions is
         {
             spoke_deployVault(isAsyncVault);
 
-            spoke_linkVault(_getVault());
+            spoke_linkVault(address(_getVault()));
 
             asyncRequestManager.rely(address(_getVault()));
         }
@@ -218,7 +218,7 @@ abstract contract TargetFunctions is
 
         _token = _getAsset();
         _shareToken = _getShareToken();
-        _vault = _getVault();
+        _vault = address(_getVault());
         _assetId = _getAssetId();
         _scId = _getShareClassId();
 
@@ -241,7 +241,7 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_deposit_sync(uint256 assets, uint128 navPerShare) public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
 
         transientValuation_setPrice_clamped(navPerShare);
         hub_updateSharePrice(
@@ -259,7 +259,7 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_mint_sync(uint256 shares, uint128 navPerShare) public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
 
         transientValuation_setPrice_clamped(navPerShare);
         hub_updateSharePrice(
@@ -399,7 +399,7 @@ abstract contract TargetFunctions is
         uint256 toEntropy
     ) public {
         // Clamp shares to user's actual share balance to prevent insufficient balance errors
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         uint256 userShareBalance = MockERC20(address(vault.share())).balanceOf(
             _getActor()
         );
@@ -457,9 +457,9 @@ abstract contract TargetFunctions is
         uint256 toEntropy
     ) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(IBaseVault(_getVault()).share()))
+        shares %= (MockERC20(address(_getVault().share()))
             .balanceOf(_getActor()) + 1);
-        uint256 sharesAsAssets = IBaseVault(_getVault()).convertToAssets(
+        uint256 sharesAsAssets = _getVault().convertToAssets(
             shares
         );
 
@@ -473,7 +473,7 @@ abstract contract TargetFunctions is
         uint256 toEntropy
     ) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(IBaseVault(_getVault()).share()))
+        shares %= (MockERC20(address(_getVault().share()))
             .balanceOf(_getActor()) + 1);
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
         shortcut_claim_redemption(shares, toEntropy);
@@ -485,7 +485,7 @@ abstract contract TargetFunctions is
         /* navPerShare */ uint256 toEntropy
     ) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(IBaseVault(_getVault()).share()))
+        shares %= (MockERC20(address(_getVault().share()))
             .balanceOf(_getActor()) + 1);
         vault_requestRedeem(shares, toEntropy);
 
@@ -497,7 +497,7 @@ abstract contract TargetFunctions is
         uint128 navPerShare,
         uint256 toEntropy
     ) public {
-        shares %= (MockERC20(address(IBaseVault(_getVault()).share()))
+        shares %= (MockERC20(address(_getVault().share()))
             .balanceOf(_getActor()) + 1);
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
 
@@ -528,7 +528,7 @@ abstract contract TargetFunctions is
         /* navPerShare */ uint256 toEntropy
     ) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(IBaseVault(_getVault()).share()))
+        shares %= (MockERC20(address(_getVault().share()))
             .balanceOf(_getActor()) + 1);
         vault_requestRedeem(shares, toEntropy);
 
@@ -606,7 +606,7 @@ abstract contract TargetFunctions is
         AssetId quote,
         uint128 price
     ) public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         if (address(vault) == address(0)) return;
 
         PoolId poolId = vault.poolId();
@@ -630,7 +630,7 @@ abstract contract TargetFunctions is
 
     /// @dev Force price to zero for testing zero-price scenarios
     function hub_setPriceZero() public asAdmin {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         if (address(vault) == address(0)) return;
 
         PoolId poolId = vault.poolId();
@@ -644,7 +644,7 @@ abstract contract TargetFunctions is
         if (price == 0) price = 1;
         if (price > type(uint128).max) price = type(uint128).max;
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         if (address(vault) == address(0)) return;
 
         PoolId poolId = vault.poolId();
@@ -660,7 +660,7 @@ abstract contract TargetFunctions is
         if (price < 1e15) price = 1e15;
         if (price > 1e24) price = 1e24;
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         if (address(vault) == address(0)) return;
 
         PoolId poolId = vault.poolId();

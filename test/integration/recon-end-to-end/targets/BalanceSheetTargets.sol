@@ -29,7 +29,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
     }
 
     function balanceSheet_deposit(uint256 tokenId, uint128 amount) public updateGhosts asActor {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         balanceSheet.deposit(vault.poolId(), vault.scId(), vault.asset(), tokenId, amount);
 
         sumOfManagerDeposits[vault.asset()] += amount;
@@ -41,7 +41,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
     // }
 
     function balanceSheet_issue(uint128 shares) public updateGhosts asActor {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
@@ -52,18 +52,18 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
     }
 
     function balanceSheet_noteDeposit(uint256 tokenId, uint128 amount) public updateGhosts asActor {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         balanceSheet.noteDeposit(vault.poolId(), vault.scId(), vault.asset(), tokenId, amount);
     }
 
     function balanceSheet_overridePricePoolPerAsset(D18 value) public updateGhosts asActor {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
         balanceSheet.overridePricePoolPerAsset(vault.poolId(), vault.scId(), assetId, value);
     }
 
     function balanceSheet_overridePricePoolPerShare(D18 value) public updateGhosts asActor {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         balanceSheet.overridePricePoolPerShare(vault.poolId(), vault.scId(), value);
     }
 
@@ -80,18 +80,18 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
     }
 
     function balanceSheet_resetPricePoolPerAsset() public updateGhosts asActor {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
         balanceSheet.resetPricePoolPerAsset(vault.poolId(), vault.scId(), assetId);
     }
 
     function balanceSheet_resetPricePoolPerShare() public updateGhosts asActor {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         balanceSheet.resetPricePoolPerShare(vault.poolId(), vault.scId());
     }
 
     function balanceSheet_revoke(uint128 shares) public updateGhosts asActor {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
@@ -102,14 +102,14 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
     }
 
     function balanceSheet_transferSharesFrom(address to, uint256 amount) public updateGhosts asActor {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         balanceSheet.transferSharesFrom(
             vault.poolId(), vault.scId(), _getActor(), _getActor(), _getRandomActor(uint256(uint160(to))), amount
         );
     }
 
     function balanceSheet_withdraw(uint256 tokenId, uint128 amount) public updateGhosts asActor {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         balanceSheet.withdraw(vault.poolId(), vault.scId(), vault.asset(), tokenId, _getActor(), amount);
 
         sumOfManagerWithdrawals[vault.asset()] += amount;

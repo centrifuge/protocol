@@ -166,7 +166,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     function spoke_linkVault_clamped() public {
-        spoke_linkVault(_getVault());
+        spoke_linkVault(address(_getVault()));
     }
 
     // Extra 7 - remove the vault

@@ -77,7 +77,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// - Updates ghost variables: sumOfFulfilledDeposits, sumOfClaimedDeposits, userDepositProcessed
     function hub_notifyDeposit(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
         // Setup vault context and investor
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         bytes32 investor = CastLib.toBytes32(_getActor());
         AssetId assetId = spoke.vaultDetails(vault).assetId;
 
@@ -123,7 +123,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// - Updates ghost variables: sumOfWithdrawable, userRedemptionsProcessed, userCancelledRedeems
     function hub_notifyRedeem(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
         // Setup vault context and investor
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         bytes32 investor = CastLib.toBytes32(_getActor());
         AssetId assetId = spoke.vaultDetails(vault).assetId;
 
@@ -214,7 +214,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         view
         returns (uint128 pendingBeforeSCM, uint128 pendingBeforeARM, uint256 maxMintBefore)
     {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         (pendingBeforeSCM,) = shareClassManager.depositRequest(vault.scId(), assetId, investor);
@@ -237,7 +237,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint128 totalPaymentAssetAmount,
         uint128 cancelledAssetAmount
     ) private {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
         ShareClassId scId = vault.scId();
         address actor = _getActor();
@@ -269,7 +269,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint256 maxMintBefore,
         uint128 totalPaymentAssetAmount
     ) private {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
         ShareClassId scId = vault.scId();
 
@@ -308,7 +308,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         private
         returns (uint128 totalPaymentAssetAmount, uint128 totalPayoutShareAmount, uint128 cancelledAssetAmount)
     {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
@@ -350,7 +350,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint128 paymentShareAmount,
         uint128 cancelledShareAmount
     ) private {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
         ShareClassId scId = vault.scId();
         address actor = _getActor();
@@ -376,7 +376,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         private
         returns (uint128 paymentShareAmount, uint128 payoutAssetAmount, uint128 cancelledShareAmount)
     {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();

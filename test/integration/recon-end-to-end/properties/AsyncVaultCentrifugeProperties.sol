@@ -144,7 +144,7 @@ abstract contract AsyncVaultCentrifugeProperties is
         uint32 scEntropy,
         uint256 depositAmount
     ) public {
-        uint256 maxDepositBefore = IBaseVault(_getVault()).maxDeposit(
+        uint256 maxDepositBefore = _getVault().maxDeposit(
             _getActor()
         );
         require(maxDepositBefore > 0, "must be able to deposit");
@@ -171,28 +171,28 @@ abstract contract AsyncVaultCentrifugeProperties is
             scId
         );
 
-        bool isAsyncVault = IBaseVault(_getVault()).vaultKind() ==
+        bool isAsyncVault = _getVault().vaultKind() ==
             VaultKind.Async;
         uint256 maxMintBefore;
         if (isAsyncVault) {
             (maxMintBefore, , , , , , , , , ) = asyncRequestManager.investments(
-                IBaseVault(_getVault()),
+                _getVault(),
                 _getActor()
             );
         }
         // TODO(wischli): Find solution for Uint128_Overflow
         // else {
-        //     maxMintBefore = syncManager.maxMint(IBaseVault(_getVault()), _getActor());
+        //     maxMintBefore = syncManager.maxMint(_getVault(), _getActor());
         // }
 
         console2.log("asyncVault_maxDeposit: isAsyncVault == ", isAsyncVault);
 
         vm.prank(_getActor());
         try
-            IBaseVault(_getVault()).deposit(depositAmount, _getActor())
+            _getVault().deposit(depositAmount, _getActor())
         returns (uint256 shares) {
             console2.log(" === After Depositing: Max Deposit === ");
-            uint256 maxDepositAfter = IBaseVault(_getVault()).maxDeposit(
+            uint256 maxDepositAfter = _getVault().maxDeposit(
                 _getActor()
             );
 
@@ -234,11 +234,11 @@ abstract contract AsyncVaultCentrifugeProperties is
                 uint256 maxMintAfter;
                 if (isAsyncVault) {
                     (maxMintAfter, , , , , , , , , ) = asyncRequestManager
-                        .investments(IBaseVault(_getVault()), _getActor());
+                        .investments(_getVault(), _getActor());
                     lte(shares, maxMintBefore, "shares minted surpass maxMint");
                 } else {
                     maxMintAfter = syncManager.maxMint(
-                        IBaseVault(_getVault()),
+                        _getVault(),
                         _getActor()
                     );
                 }
@@ -265,8 +265,8 @@ abstract contract AsyncVaultCentrifugeProperties is
         uint32 scEntropy,
         uint256 mintAmount
     ) public statelessTest {
-        uint256 maxMintBefore = IBaseVault(_getVault()).maxMint(_getActor());
-        uint256 maxDepositBefore = IBaseVault(_getVault()).maxDeposit(
+        uint256 maxMintBefore = _getVault().maxMint(_getActor());
+        uint256 maxDepositBefore = _getVault().maxDeposit(
             _getActor()
         );
         require(maxMintBefore > 0, "must be able to mint");
@@ -289,11 +289,11 @@ abstract contract AsyncVaultCentrifugeProperties is
 
         vm.prank(_getActor());
         console2.log(" === Before asyncVault_maxMint mint === ");
-        try IBaseVault(_getVault()).mint(mintAmount, _getActor()) returns (
+        try _getVault().mint(mintAmount, _getActor()) returns (
             uint256 assets
         ) {
             console2.log(" === After asyncVault_maxMint mint === ");
-            uint256 maxMintAfter = IBaseVault(_getVault()).maxMint(_getActor());
+            uint256 maxMintAfter = _getVault().maxMint(_getActor());
 
             // === Enhanced PoolEscrow-aware maxMint Property ===
             // Update escrow state after the mint operation
@@ -317,10 +317,10 @@ abstract contract AsyncVaultCentrifugeProperties is
                 escrowState
             );
 
-            uint256 shares = IBaseVault(_getVault()).convertToShares(assets);
+            uint256 shares = _getVault().convertToShares(assets);
 
             if (mintAmount == maxMintBefore) {
-                uint256 maxMintVaultAfter = IBaseVault(_getVault()).maxMint(
+                uint256 maxMintVaultAfter = _getVault().maxMint(
                     _getActor()
                 );
 
@@ -332,7 +332,7 @@ abstract contract AsyncVaultCentrifugeProperties is
                 lte(shares, maxDepositBefore, "shares minted surpass maxMint");
 
                 uint256 maxMintManagerAfter;
-                if (IBaseVault(_getVault()).vaultKind() == VaultKind.Async) {
+                if (_getVault().vaultKind() == VaultKind.Async) {
                     (
                         maxMintManagerAfter,
                         ,
@@ -345,12 +345,12 @@ abstract contract AsyncVaultCentrifugeProperties is
                         ,
 
                     ) = asyncRequestManager.investments(
-                        IBaseVault(_getVault()),
+                        _getVault(),
                         _getActor()
                     );
                 } else {
                     maxMintManagerAfter = syncManager.maxMint(
-                        IBaseVault(_getVault()),
+                        _getVault(),
                         _getActor()
                     );
                 }
@@ -362,7 +362,7 @@ abstract contract AsyncVaultCentrifugeProperties is
             }
         } catch {
             // Determine vault type for proper validation
-            bool isAsyncVault = IBaseVault(_getVault()).vaultKind() ==
+            bool isAsyncVault = _getVault().vaultKind() ==
                 VaultKind.Async;
 
             if (isAsyncVault) {
@@ -384,7 +384,7 @@ abstract contract AsyncVaultCentrifugeProperties is
         uint32 scEntropy,
         uint256 withdrawAmount
     ) public statelessTest {
-        uint256 maxWithdrawBefore = IBaseVault(_getVault()).maxWithdraw(
+        uint256 maxWithdrawBefore = _getVault().maxWithdraw(
             _getActor()
         );
         require(maxWithdrawBefore > 0, "must be able to withdraw");
@@ -401,17 +401,17 @@ abstract contract AsyncVaultCentrifugeProperties is
 
         vm.prank(_getActor());
         try
-            IBaseVault(_getVault()).withdraw(
+            _getVault().withdraw(
                 withdrawAmount,
                 _getActor(),
                 _getActor()
             )
         returns (uint256 shares) {
-            uint256 maxWithdrawAfter = IBaseVault(_getVault()).maxWithdraw(
+            uint256 maxWithdrawAfter = _getVault().maxWithdraw(
                 _getActor()
             );
             uint256 difference = maxWithdrawBefore - withdrawAmount;
-            uint256 assets = IBaseVault(_getVault()).convertToAssets(shares);
+            uint256 assets = _getVault().convertToAssets(shares);
 
             t(difference == maxWithdrawAfter, "rounding error in maxWithdraw");
 
@@ -428,7 +428,7 @@ abstract contract AsyncVaultCentrifugeProperties is
                     ,
 
                 ) = asyncRequestManager.investments(
-                        IBaseVault(_getVault()),
+                        _getVault(),
                         _getActor()
                     );
                 (uint256 pendingWithdraw, ) = shareClassManager.redeemRequest(
@@ -455,7 +455,7 @@ abstract contract AsyncVaultCentrifugeProperties is
             }
         } catch {
             // Determine vault type for proper validation
-            bool isAsyncVault = IBaseVault(_getVault()).vaultKind() ==
+            bool isAsyncVault = _getVault().vaultKind() ==
                 VaultKind.Async;
 
             if (isAsyncVault) {
@@ -483,7 +483,7 @@ abstract contract AsyncVaultCentrifugeProperties is
         uint32 scEntropy,
         uint256 redeemAmount
     ) public {
-        uint256 maxRedeemBefore = IBaseVault(_getVault()).maxRedeem(
+        uint256 maxRedeemBefore = _getVault().maxRedeem(
             _getActor()
         );
         require(maxRedeemBefore > 0, "must be able to redeem");
@@ -509,18 +509,18 @@ abstract contract AsyncVaultCentrifugeProperties is
 
         vm.prank(_getActor());
         try
-            IBaseVault(_getVault()).redeem(
+            _getVault().redeem(
                 redeemAmount,
                 _getActor(),
                 _getActor()
             )
         returns (uint256 assets) {
             console2.log(" === After maxRedeem === ");
-            uint256 maxRedeemAfter = IBaseVault(_getVault()).maxRedeem(
+            uint256 maxRedeemAfter = _getVault().maxRedeem(
                 _getActor()
             );
             // uint256 difference = maxRedeemBefore - redeemAmount; // Unused
-            uint256 shares = IBaseVault(_getVault()).convertToShares(assets);
+            uint256 shares = _getVault().convertToShares(assets);
 
             // console2.log("difference:", difference);
             // console2.log("maxRedeemBefore:", maxRedeemBefore);
@@ -537,11 +537,11 @@ abstract contract AsyncVaultCentrifugeProperties is
             }
 
             address poolEscrow = address(
-                poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId())
+                poolEscrowFactory.escrow(_getVault().poolId())
             );
             console2.log(
                 "pool escrow balance after maxRedeem: ",
-                MockERC20(address(IBaseVault(_getVault()).asset())).balanceOf(
+                MockERC20(address(_getVault().asset())).balanceOf(
                     poolEscrow
                 )
             );
@@ -563,7 +563,7 @@ abstract contract AsyncVaultCentrifugeProperties is
                     ,
 
                 ) = asyncRequestManager.investments(
-                        IBaseVault(_getVault()),
+                        _getVault(),
                         _getActor()
                     );
                 (uint256 pendingRedeem, ) = shareClassManager.redeemRequest(
@@ -630,7 +630,7 @@ abstract contract AsyncVaultCentrifugeProperties is
         ShareClassId scId
     ) internal view returns (PoolEscrowState memory state) {
         state.poolEscrow = poolEscrowFactory.escrow(poolId);
-        state.asset = address(IBaseVault(_getVault()).asset());
+        state.asset = address(_getVault().asset());
         state.scId = scId;
         state.tokenId = 0; // ERC20 tokens use tokenId 0
 
@@ -703,7 +703,7 @@ abstract contract AsyncVaultCentrifugeProperties is
         );
 
         // === Vault Type Detection ===
-        bool isAsyncVault = IBaseVault(_getVault()).vaultKind() ==
+        bool isAsyncVault = _getVault().vaultKind() ==
             VaultKind.Async;
 
         if (isAsyncVault) {
@@ -971,16 +971,16 @@ abstract contract AsyncVaultCentrifugeProperties is
             ,
 
         ) = asyncRequestManager.investments(
-                IBaseVault(_getVault()),
+                _getVault(),
                 _getActor()
             );
 
         if (!depositPrice.isZero()) {
             VaultDetails memory vaultDetails = spoke.vaultDetails(
-                IBaseVault(_getVault())
+                _getVault()
             );
             uint128 sharesUp = PricingLib.assetToShareAmount(
-                IBaseVault(_getVault()).share(),
+                _getVault().share(),
                 vaultDetails.asset,
                 vaultDetails.tokenId,
                 depositAmount.toUint128(),
@@ -998,7 +998,7 @@ abstract contract AsyncVaultCentrifugeProperties is
 
         // Check pending cancellation
         (, , , , , , , , bool pendingCancel, ) = asyncRequestManager
-            .investments(IBaseVault(_getVault()), _getActor());
+            .investments(_getVault(), _getActor());
         if (pendingCancel) {
             console2.log("Deposit failed - pending cancellation");
             return;
@@ -1010,16 +1010,16 @@ abstract contract AsyncVaultCentrifugeProperties is
     /// @dev Helper to validate async vault mint failures
     function _validateAsyncMintFailure(uint256 mintAmount) internal {
         (, , D18 depositPrice, , , , , , , ) = asyncRequestManager.investments(
-            IBaseVault(_getVault()),
+            _getVault(),
             _getActor()
         );
 
         if (!depositPrice.isZero()) {
             VaultDetails memory vaultDetails = spoke.vaultDetails(
-                IBaseVault(_getVault())
+                _getVault()
             );
             uint256 assetsRequired = PricingLib.shareToAssetAmount(
-                IBaseVault(_getVault()).share(),
+                _getVault().share(),
                 mintAmount.toUint128(),
                 vaultDetails.asset,
                 vaultDetails.tokenId,
@@ -1027,7 +1027,7 @@ abstract contract AsyncVaultCentrifugeProperties is
                 MathLib.Rounding.Up
             );
 
-            uint256 maxDepositCurrent = IBaseVault(_getVault()).maxDeposit(
+            uint256 maxDepositCurrent = _getVault().maxDeposit(
                 _getActor()
             );
             if (assetsRequired > maxDepositCurrent) {
@@ -1040,7 +1040,7 @@ abstract contract AsyncVaultCentrifugeProperties is
 
         // Check pending cancellation
         (, , , , , , , , bool pendingCancel, ) = asyncRequestManager
-            .investments(IBaseVault(_getVault()), _getActor());
+            .investments(_getVault(), _getActor());
         if (pendingCancel) {
             console2.log("Mint failed - pending cancellation");
             return;
@@ -1054,17 +1054,17 @@ abstract contract AsyncVaultCentrifugeProperties is
         uint256 withdrawAmount
     ) internal returns (bool) {
         (, , , D18 redeemPrice, , , , , , ) = asyncRequestManager.investments(
-            IBaseVault(_getVault()),
+            _getVault(),
             _getActor()
         );
 
         if (!redeemPrice.isZero()) {
             // Calculate shares required for the withdraw using exact AsyncRequestManager logic
             VaultDetails memory vaultDetails = spoke.vaultDetails(
-                IBaseVault(_getVault())
+                _getVault()
             );
             uint128 sharesRequired = PricingLib.assetToShareAmount(
-                IBaseVault(_getVault()).share(),
+                _getVault().share(),
                 vaultDetails.asset,
                 vaultDetails.tokenId,
                 withdrawAmount.toUint128(),
@@ -1073,7 +1073,7 @@ abstract contract AsyncVaultCentrifugeProperties is
             );
 
             // Check if shares would exceed maxRedeem
-            uint256 maxRedeemCurrent = IBaseVault(_getVault()).maxRedeem(
+            uint256 maxRedeemCurrent = _getVault().maxRedeem(
                 _getActor()
             );
             if (sharesRequired > maxRedeemCurrent) {
@@ -1086,7 +1086,7 @@ abstract contract AsyncVaultCentrifugeProperties is
 
         // Check pending cancellation
         (, , , , , , , , bool pendingCancel, ) = asyncRequestManager
-            .investments(IBaseVault(_getVault()), _getActor());
+            .investments(_getVault(), _getActor());
         if (pendingCancel) {
             console2.log("Withdraw failed - pending cancellation");
             return false;

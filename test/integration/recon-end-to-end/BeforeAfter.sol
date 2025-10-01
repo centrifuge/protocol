@@ -135,7 +135,7 @@ abstract contract BeforeAfter is Setup {
             uint256 depositPrice,
             uint256 redeemPrice
         ) = _getDepositAndRedeemPrice();
-        address vault = _getVault();
+        address vault = address(_getVault());
         address actor = _getActor();
 
         // Conditionally Update max | Always works on zero
@@ -407,7 +407,7 @@ abstract contract BeforeAfter is Setup {
                 _structToUpdate.pricePerShare = 0;
                 return;
             } else {
-                _structToUpdate.pricePerShare = BaseVault(_getVault())
+                _structToUpdate.pricePerShare = BaseVault(address(_getVault()))
                     .pricePerShare();
             }
         }
