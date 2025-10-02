@@ -6,9 +6,9 @@ import {Auth} from "../../../src/misc/Auth.sol";
 import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
 import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
 
-import {MessageBenchmarker} from "../utils/MessageBenchmarker.sol";
-
 import "forge-std/Test.sol";
+
+import {MessageBenchmarker} from "../utils/MessageBenchmarker.sol";
 
 /// An adapter that sends the message to another MessageHandler and acts as MessageHandler too.
 contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
