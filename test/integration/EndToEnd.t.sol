@@ -10,44 +10,36 @@ import {D18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 
-import {Root} from "../../src/common/Root.sol";
-import {Guardian} from "../../src/common/Guardian.sol";
-import {PoolId} from "../../src/common/types/PoolId.sol";
-import {GasService} from "../../src/common/GasService.sol";
-import {AccountId} from "../../src/common/types/AccountId.sol";
-import {IGateway, Gateway} from "../../src/common/Gateway.sol";
-import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
-import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";
-import {PricingLib} from "../../src/common/libraries/PricingLib.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "../../src/common/types/AssetId.sol";
-import {IMessageHandler} from "../../src/common/interfaces/IMessageHandler.sol";
-import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/common/MultiAdapter.sol";
-import {ILocalCentrifugeId} from "../../src/common/interfaces/IGatewaySenders.sol";
-import {VaultUpdateKind, MessageType, MessageLib} from "../../src/common/libraries/MessageLib.sol";
+import {Root} from "../../src/core/Root.sol";
+import {Hub} from "../../src/core/hub/Hub.sol";
+import {Spoke} from "../../src/core/spoke/Spoke.sol";
+import {PoolId} from "../../src/core/types/PoolId.sol";
+import {Holdings} from "../../src/core/hub/Holdings.sol";
+import {AccountId} from "../../src/core/types/AccountId.sol";
+import {Accounting} from "../../src/core/hub/Accounting.sol";
+import {HubHandler} from "../../src/core/hub/HubHandler.sol";
+import {IGateway, Gateway} from "../../src/core/Gateway.sol";
+import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
+import {IAdapter} from "../../src/core/interfaces/IAdapter.sol";
+import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
+import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
+import {PricingLib} from "../../src/core/libraries/PricingLib.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
+import {VaultRegistry} from "../../src/core/spoke/VaultRegistry.sol";
+import {MAX_MESSAGE_COST} from "../../src/core/interfaces/IGasService.sol";
+import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
+import {IMessageHandler} from "../../src/core/interfaces/IMessageHandler.sol";
+import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/MultiAdapter.sol";
+import {ILocalCentrifugeId} from "../../src/core/interfaces/IGatewaySenders.sol";
+import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 
-import {Hub} from "../../src/hub/Hub.sol";
-import {Holdings} from "../../src/hub/Holdings.sol";
-import {Accounting} from "../../src/hub/Accounting.sol";
-import {HubHandler} from "../../src/hub/HubHandler.sol";
-import {HubRegistry} from "../../src/hub/HubRegistry.sol";
-import {ShareClassManager} from "../../src/hub/ShareClassManager.sol";
-import {IHubRequestManager} from "../../src/hub/interfaces/IHubRequestManager.sol";
+import {GasService} from "../../src/messaging/GasService.sol";
+import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
+import {VaultUpdateKind, MessageType, MessageLib} from "../../src/messaging/libraries/MessageLib.sol";
 
-import {Spoke} from "../../src/spoke/Spoke.sol";
-import {IVault} from "../../src/spoke/interfaces/IVault.sol";
-import {BalanceSheet} from "../../src/spoke/BalanceSheet.sol";
-import {VaultRegistry} from "../../src/spoke/VaultRegistry.sol";
-import {UpdateContractMessageLib} from "../../src/spoke/libraries/UpdateContractMessageLib.sol";
-
-import {SyncManager} from "../../src/vaults/SyncManager.sol";
-import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
-import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
-import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
-import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
-import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
-import {RefundEscrowFactory} from "../../src/vaults/factories/RefundEscrowFactory.sol";
+import {Guardian} from "../../src/admin/Guardian.sol";
+import {ISafe} from "../../src/admin/interfaces/IGuardian.sol";
 
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
 
@@ -58,6 +50,15 @@ import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestr
 
 import {OracleValuation} from "../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
+
+import {SyncManager} from "../../src/vaults/SyncManager.sol";
+import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
+import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
+import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
+import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {RefundEscrowFactory} from "../../src/vaults/factories/RefundEscrowFactory.sol";
 
 import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
 
@@ -139,7 +140,7 @@ contract EndToEndDeployment is Test {
 
     uint16 constant CENTRIFUGE_ID_A = IntegrationConstants.CENTRIFUGE_ID_A;
     uint16 constant CENTRIFUGE_ID_B = IntegrationConstants.CENTRIFUGE_ID_B;
-    uint128 constant GAS = IntegrationConstants.GAS;
+    uint128 constant GAS = MAX_MESSAGE_COST;
     uint256 constant DEFAULT_SUBSIDY = IntegrationConstants.DEFAULT_SUBSIDY;
     uint128 constant HOOK_GAS = IntegrationConstants.HOOK_GAS;
 

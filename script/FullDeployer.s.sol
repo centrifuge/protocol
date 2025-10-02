@@ -14,7 +14,7 @@ import {
     AdaptersActionBatcher
 } from "./AdaptersDeployer.s.sol";
 
-import {ISafe} from "../src/common/interfaces/IGuardian.sol";
+import {ISafe} from "../src/admin/interfaces/IGuardian.sol";
 
 import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
 

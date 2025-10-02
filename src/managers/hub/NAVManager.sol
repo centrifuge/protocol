@@ -5,17 +5,16 @@ import {INAVManager, INAVHook} from "./interfaces/INAVManager.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 
-import {PoolId} from "../../common/types/PoolId.sol";
-import {AssetId} from "../../common/types/AssetId.sol";
-import {ShareClassId} from "../../common/types/ShareClassId.sol";
-import {IValuation} from "../../common/interfaces/IValuation.sol";
-import {ISnapshotHook} from "../../common/interfaces/ISnapshotHook.sol";
-import {AccountId, withCentrifugeId, withAssetId} from "../../common/types/AccountId.sol";
-
-import {IHoldings} from "../../hub/interfaces/IHoldings.sol";
-import {IHub, AccountType} from "../../hub/interfaces/IHub.sol";
-import {IHubRegistry} from "../../hub/interfaces/IHubRegistry.sol";
-import {IAccounting, JournalEntry} from "../../hub/interfaces/IAccounting.sol";
+import {PoolId} from "../../core/types/PoolId.sol";
+import {AssetId} from "../../core/types/AssetId.sol";
+import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IHoldings} from "../../core/hub/interfaces/IHoldings.sol";
+import {IValuation} from "../../core/hub/interfaces/IValuation.sol";
+import {IHub, AccountType} from "../../core/hub/interfaces/IHub.sol";
+import {IAccounting, JournalEntry} from "../../core/hub/interfaces/IAccounting.sol";
+import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
+import {ISnapshotHook} from "../../core/hub/interfaces/ISnapshotHook.sol";
+import {AccountId, withCentrifugeId, withAssetId} from "../../core/types/AccountId.sol";
 
 /// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
 contract NAVManager is INAVManager, Auth {

@@ -7,13 +7,12 @@ import {ISimplePriceManager} from "./interfaces/ISimplePriceManager.sol";
 import {Auth} from "../../misc/Auth.sol";
 import {D18, d18} from "../../misc/types/D18.sol";
 
-import {PoolId} from "../../common/types/PoolId.sol";
-import {IGateway} from "../../common/interfaces/IGateway.sol";
-import {ShareClassId} from "../../common/types/ShareClassId.sol";
-
-import {IHub} from "../../hub/interfaces/IHub.sol";
-import {IHubRegistry} from "../../hub/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "../../hub/interfaces/IShareClassManager.sol";
+import {PoolId} from "../../core/types/PoolId.sol";
+import {IHub} from "../../core/hub/interfaces/IHub.sol";
+import {IGateway} from "../../core/interfaces/IGateway.sol";
+import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "../../core/hub/interfaces/IShareClassManager.sol";
 
 /// @notice Base share price calculation manager for single share class pools.
 contract SimplePriceManager is ISimplePriceManager, Auth {
@@ -111,20 +110,20 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         metrics_.issuance = metrics_.issuance + issuance - networkMetrics_.issuance;
         metrics_.netAssetValue = metrics_.netAssetValue + netAssetValue - networkMetrics_.netAssetValue;
 
-        D18 price = _navPerShare(poolId);
+        D18 pricePoolPerShare = _pricePoolPerShare(poolId);
 
         networkMetrics_.netAssetValue = netAssetValue;
         networkMetrics_.issuance = issuance;
 
         uint16[] storage networks_ = _networks[poolId];
         uint256 networkCount = networks_.length;
-        hub.updateSharePrice(poolId, scId, price);
+        hub.updateSharePrice(poolId, scId, pricePoolPerShare);
 
         for (uint256 i; i < networkCount; i++) {
             hub.notifySharePrice(poolId, scId, networks_[i], address(0));
         }
 
-        emit Update(poolId, scId, metrics_.netAssetValue, metrics_.issuance, price);
+        emit Update(poolId, scId, metrics_.netAssetValue, metrics_.issuance, pricePoolPerShare);
     }
 
     /// @inheritdoc INAVHook
@@ -157,7 +156,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     // Helpers
     //----------------------------------------------------------------------------------------------
 
-    function _navPerShare(PoolId poolId) internal view returns (D18) {
+    function _pricePoolPerShare(PoolId poolId) internal view returns (D18) {
         Metrics memory metrics_ = metrics[poolId];
         return metrics_.issuance == 0 ? d18(1, 1) : d18(metrics_.netAssetValue) / d18(metrics_.issuance);
     }

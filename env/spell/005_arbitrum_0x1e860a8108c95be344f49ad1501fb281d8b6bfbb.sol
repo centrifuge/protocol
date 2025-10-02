@@ -7,12 +7,12 @@ pragma solidity ^0.8.28;
 // CREATE3 Deterministic Deployment
 
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
-import {IRoot} from "../../src/common/interfaces/IRoot.sol";
-import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
-import {ISpoke} from "../../src/spoke/interfaces/ISpoke.sol";
+import {IRoot} from "../../src/core/interfaces/IRoot.sol";
+import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
+import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
 import {IntegrationConstants} from "../integration/utils/IntegrationConstants.sol";
-import {PoolId} from "../../src/common/types/PoolId.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
+import {PoolId} from "../../src/core/types/PoolId.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 
 /// @notice Arbitrum-specific spell that disables V2 permissions for JTRSY_USDC only
 

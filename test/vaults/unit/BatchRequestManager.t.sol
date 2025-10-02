@@ -7,14 +7,16 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 import {IERC165} from "../../../src/misc/interfaces/IERC165.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-
-import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
-import {IHubRequestManagerCallback} from "../../../src/hub/interfaces/IHubRequestManagerCallback.sol";
-import {IHubRequestManager, IHubRequestManagerNotifications} from "../../../src/hub/interfaces/IHubRequestManager.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {IHubRequestManagerCallback} from "../../../src/core/hub/interfaces/IHubRequestManagerCallback.sol";
+import {
+    IHubRequestManager,
+    IHubRequestManagerNotifications
+} from "../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
 import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
 import {
@@ -193,11 +195,11 @@ abstract contract BatchRequestManagerBaseTest is Test {
 
     function _extractIssueSharesEvent()
         internal
-        returns (uint128 issuedShares, D18 navPoolPerShare, D18 priceAssetPerShare)
+        returns (uint128 issuedShares, D18 pricePoolPerShare, D18 priceAssetPerShare)
     {
         bytes memory data = _extractEventData(IBatchRequestManager.IssueShares.selector);
-        (, navPoolPerShare, priceAssetPerShare, issuedShares) = abi.decode(data, (uint32, D18, D18, uint128));
-        return (issuedShares, navPoolPerShare, priceAssetPerShare);
+        (, pricePoolPerShare, priceAssetPerShare, issuedShares) = abi.decode(data, (uint32, D18, D18, uint128));
+        return (issuedShares, pricePoolPerShare, priceAssetPerShare);
     }
 
     function _extractRevokeSharesEvent()
@@ -206,14 +208,14 @@ abstract contract BatchRequestManagerBaseTest is Test {
             uint128 revokedShares,
             uint128 payoutAssetAmount,
             uint128 payoutPoolAmount,
-            D18 navPoolPerShare,
+            D18 pricePoolPerShare,
             D18 priceAssetPerShare
         )
     {
         bytes memory data = _extractEventData(IBatchRequestManager.RevokeShares.selector);
-        (, navPoolPerShare, priceAssetPerShare, revokedShares, payoutAssetAmount, payoutPoolAmount) =
+        (, pricePoolPerShare, priceAssetPerShare, revokedShares, payoutAssetAmount, payoutPoolAmount) =
             abi.decode(data, (uint32, D18, D18, uint128, uint128, uint128));
-        return (revokedShares, payoutAssetAmount, payoutPoolAmount, navPoolPerShare, priceAssetPerShare);
+        return (revokedShares, payoutAssetAmount, payoutPoolAmount, pricePoolPerShare, priceAssetPerShare);
     }
 
     function _extractApproveDepositsEvent()
@@ -285,7 +287,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
             uint128 approvedAssetAmount,
             uint128 approvedPoolAmount,
             D18 pricePoolPerAsset,
-            D18 navPoolPerShare,
+            D18 pricePoolPerShare,
             uint64 issuedAt
         ) = batchRequestManager.epochInvestAmounts(scId, assetId, epochId);
 
@@ -295,7 +297,9 @@ abstract contract BatchRequestManagerBaseTest is Test {
         assertEq(
             pricePoolPerAsset.raw(), expected.pricePoolPerAsset.raw(), "Mismatch: EpochInvestAmount.pricePoolPerAsset"
         );
-        assertEq(navPoolPerShare.raw(), expected.navPoolPerShare.raw(), "Mismatch: EpochInvestAmount.navPoolPerShare");
+        assertEq(
+            pricePoolPerShare.raw(), expected.pricePoolPerShare.raw(), "Mismatch: EpochInvestAmount.pricePoolPerShare"
+        );
         assertEq(issuedAt, expected.issuedAt, "Mismatch: EpochInvestAmount.issuedAt");
     }
 
@@ -307,7 +311,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
             uint128 approvedShareAmount,
             uint128 pendingShareAmount,
             D18 pricePoolPerAsset,
-            D18 navPoolPerShare,
+            D18 pricePoolPerShare,
             uint128 payoutAssetAmount,
             uint64 revokedAt
         ) = batchRequestManager.epochRedeemAmounts(scId, assetId, epochId);
@@ -318,7 +322,9 @@ abstract contract BatchRequestManagerBaseTest is Test {
         assertEq(
             pricePoolPerAsset.raw(), expected.pricePoolPerAsset.raw(), "Mismatch: EpochRedeemAmount.pricePoolPerAsset"
         );
-        assertEq(navPoolPerShare.raw(), expected.navPoolPerShare.raw(), "Mismatch: EpochRedeemAmount.navPoolPerShare");
+        assertEq(
+            pricePoolPerShare.raw(), expected.pricePoolPerShare.raw(), "Mismatch: EpochRedeemAmount.pricePoolPerShare"
+        );
         assertEq(revokedAt, expected.revokedAt, "Mismatch: EpochRedeemAmount.revokedAt");
     }
 
@@ -548,27 +554,27 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
     }
 
     function testIssueSharesSingleEpoch(
-        uint128 navPoolPerShare_,
+        uint128 pricePoolPerShare_,
         uint128 fuzzDepositAmountUsdc,
         uint128 fuzzApprovedAmountUsdc
     ) public {
-        D18 navPoolPerShare = d18(uint128(bound(navPoolPerShare_, 1e14, type(uint128).max / 1e18)));
+        D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, 1e14, type(uint128).max / 1e18)));
         (, uint128 approvedAmount,) = _depositAndApproveWithFuzzBounds(fuzzDepositAmountUsdc, fuzzApprovedAmountUsdc);
 
-        uint128 expectedIssuedShares = _calcSharesIssued(USDC, approvedAmount, navPoolPerShare);
+        uint128 expectedIssuedShares = _calcSharesIssued(USDC, approvedAmount, pricePoolPerShare);
 
         vm.recordLogs();
         batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND
+            poolId, scId, USDC, _nowIssue(USDC), pricePoolPerShare, SHARE_HOOK_GAS, REFUND
         );
 
         (uint128 actualIssuedShares, D18 eventNav,) = _extractIssueSharesEvent();
         assertEq(actualIssuedShares, expectedIssuedShares, "Issued shares mismatch");
-        assertEq(eventNav.raw(), navPoolPerShare.raw(), "NAV in event mismatch");
+        assertEq(eventNav.raw(), pricePoolPerShare.raw(), "NAV in event mismatch");
         {
             (,,,, D18 storedNav, uint64 issuedAt) =
                 batchRequestManager.epochInvestAmounts(scId, USDC, _nowIssue(USDC) - 1);
-            assertEq(storedNav.raw(), navPoolPerShare.raw(), "Stored NAV mismatch");
+            assertEq(storedNav.raw(), pricePoolPerShare.raw(), "Stored NAV mismatch");
             assertGt(issuedAt, 0, "Issuance timestamp not set");
         }
 
@@ -600,12 +606,12 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         vm.expectRevert(IBatchRequestManager.IssuanceRequired.selector);
         batchRequestManager.claimDeposit(poolId, scId, investor, USDC);
 
-        D18 navPoolPerShare = d18(11, 10);
+        D18 pricePoolPerShare = d18(11, 10);
         batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND
+            poolId, scId, USDC, _nowIssue(USDC), pricePoolPerShare, SHARE_HOOK_GAS, REFUND
         );
 
-        uint128 expectedShares = _calcSharesIssued(USDC, approvedAmountUsdc, navPoolPerShare);
+        uint128 expectedShares = _calcSharesIssued(USDC, approvedAmountUsdc, pricePoolPerShare);
 
         vm.expectEmit();
         emit IBatchRequestManager.ClaimDeposit(
@@ -631,11 +637,11 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
     }
 
     function testClaimDepositSingleEpoch(
-        uint128 navPoolPerShare_,
+        uint128 pricePoolPerShare_,
         uint128 fuzzDepositAmountUsdc,
         uint128 fuzzApprovedAmountUsdc
     ) public {
-        D18 navPoolPerShare = d18(uint128(bound(navPoolPerShare_, 1e14, type(uint128).max / 1e18)));
+        D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, 1e14, type(uint128).max / 1e18)));
         (uint128 depositAmountUsdc, uint128 approvedAmountUsdc,) =
             _depositAndApproveWithFuzzBounds(fuzzDepositAmountUsdc, fuzzApprovedAmountUsdc);
 
@@ -643,10 +649,10 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         batchRequestManager.claimDeposit(poolId, scId, investor, USDC);
 
         batchRequestManager.issueShares{value: COST}(
-            poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND
+            poolId, scId, USDC, _nowIssue(USDC), pricePoolPerShare, SHARE_HOOK_GAS, REFUND
         );
 
-        uint128 expectedShares = _calcSharesIssued(USDC, approvedAmountUsdc, navPoolPerShare);
+        uint128 expectedShares = _calcSharesIssued(USDC, approvedAmountUsdc, pricePoolPerShare);
 
         vm.expectEmit();
         emit IBatchRequestManager.ClaimDeposit(
@@ -888,25 +894,27 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         // Note: Epoch state is tracked internally and tested through other assertions
     }
 
-    function testRevokeSharesSingleEpoch(uint128 navPoolPerShare_, uint128 fuzzRedeemShares, uint128 fuzzApprovedShares)
-        public
-    {
-        D18 navPoolPerShare = d18(uint128(bound(navPoolPerShare_, 1e14, type(uint128).max / 1e18)));
+    function testRevokeSharesSingleEpoch(
+        uint128 pricePoolPerShare_,
+        uint128 fuzzRedeemShares,
+        uint128 fuzzApprovedShares
+    ) public {
+        D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, 1e14, type(uint128).max / 1e18)));
         (, uint128 approvedShares,,) =
-            _redeemAndApproveWithFuzzBounds(fuzzRedeemShares, fuzzApprovedShares, navPoolPerShare.raw());
+            _redeemAndApproveWithFuzzBounds(fuzzRedeemShares, fuzzApprovedShares, pricePoolPerShare.raw());
 
         vm.recordLogs();
         batchRequestManager.revokeShares{value: COST}(
-            poolId, scId, USDC, _nowRevoke(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND
+            poolId, scId, USDC, _nowRevoke(USDC), pricePoolPerShare, SHARE_HOOK_GAS, REFUND
         );
 
         (uint128 revokedShares, uint128 payoutAsset, uint128 payoutPool, D18 eventNav,) = _extractRevokeSharesEvent();
 
         assertEq(revokedShares, approvedShares, "Revoked shares should match approved");
-        assertEq(eventNav.raw(), navPoolPerShare.raw(), "NAV in event mismatch");
+        assertEq(eventNav.raw(), pricePoolPerShare.raw(), "NAV in event mismatch");
 
         // Calculate and verify expected amounts
-        uint128 expectedPayoutPool = navPoolPerShare.mulUint128(approvedShares, MathLib.Rounding.Down);
+        uint128 expectedPayoutPool = pricePoolPerShare.mulUint128(approvedShares, MathLib.Rounding.Down);
         uint128 expectedPayoutAsset = _intoAssetAmount(USDC, expectedPayoutPool);
         assertEq(payoutAsset, expectedPayoutAsset, "Payout asset amount mismatch");
         assertEq(payoutPool, expectedPayoutPool, "Payout pool amount mismatch");
@@ -914,7 +922,7 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         {
             (,,, D18 storedNav, uint128 storedPayoutAsset, uint64 revokedAt) =
                 batchRequestManager.epochRedeemAmounts(scId, USDC, _nowRevoke(USDC) - 1);
-            assertEq(storedNav.raw(), navPoolPerShare.raw(), "Stored NAV mismatch");
+            assertEq(storedNav.raw(), pricePoolPerShare.raw(), "Stored NAV mismatch");
             assertEq(storedPayoutAsset, payoutAsset, "Stored payout mismatch");
             assertGt(revokedAt, 0, "Revocation timestamp not set");
         }
@@ -937,7 +945,7 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
     function testFullClaimRedeemSingleEpoch() public {
         uint128 approvedShares = 100 * DENO_POOL;
         uint128 redeemShares = approvedShares;
-        D18 navPoolPerShare = d18(11, 10);
+        D18 pricePoolPerShare = d18(11, 10);
 
         batchRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
         batchRequestManager.approveRedeems(
@@ -948,11 +956,11 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         batchRequestManager.claimRedeem(poolId, scId, investor, USDC);
 
         batchRequestManager.revokeShares{value: COST}(
-            poolId, scId, USDC, _nowRevoke(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND
+            poolId, scId, USDC, _nowRevoke(USDC), pricePoolPerShare, SHARE_HOOK_GAS, REFUND
         );
 
         uint128 expectedAssetAmount =
-            _intoAssetAmount(USDC, navPoolPerShare.mulUint128(approvedShares, MathLib.Rounding.Down));
+            _intoAssetAmount(USDC, pricePoolPerShare.mulUint128(approvedShares, MathLib.Rounding.Down));
 
         vm.expectEmit();
         emit IBatchRequestManager.ClaimRedeem(
@@ -1585,7 +1593,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
     function testClaimDepositSkippedEpochsNoPayout(uint8 skippedEpochs) public {
         vm.assume(skippedEpochs > 0);
 
-        D18 navPoolPerShare = d18(1e18);
+        D18 pricePoolPerShare = d18(1e18);
         uint128 approvedAmountUsdc = 1;
         uint32 lastUpdate = _nowDeposit(USDC);
 
@@ -1599,7 +1607,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
                 poolId, scId, USDC, _nowDeposit(USDC), approvedAmountUsdc, _pricePoolPerAsset(USDC), REFUND
             );
             batchRequestManager.issueShares{value: COST}(
-                poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND
+                poolId, scId, USDC, _nowIssue(USDC), pricePoolPerShare, SHARE_HOOK_GAS, REFUND
             );
         }
 
@@ -1663,8 +1671,8 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         batchRequestManager.claimDeposit(poolId, scId, investor, USDC);
     }
 
-    function testClaimDepositManyEpochs(uint128 navPoolPerShare_, uint128 depositAmountUsdc_, uint8 epochs) public {
-        D18 poolPerShare = d18(uint128(bound(navPoolPerShare_, 1e10, type(uint128).max / 1e18)));
+    function testClaimDepositManyEpochs(uint128 pricePoolPerShare_, uint128 depositAmountUsdc_, uint8 epochs) public {
+        D18 poolPerShare = d18(uint128(bound(pricePoolPerShare_, 1e10, type(uint128).max / 1e18)));
         epochs = uint8(bound(epochs, 3, 50));
         uint128 depositAmountUsdc = uint128(bound(depositAmountUsdc_, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
         vm.assume(depositAmountUsdc % epochs == 0);
@@ -1711,7 +1719,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
     function testClaimRedeemSkippedEpochsNoPayout(uint8 skippedEpochs) public {
         vm.assume(skippedEpochs > 0);
 
-        D18 navPoolPerShare = d18(1e18);
+        D18 pricePoolPerShare = d18(1e18);
         uint128 approvedShares = 1;
         uint32 lastUpdate = _nowRedeem(USDC);
 
@@ -1725,7 +1733,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
                 poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC)
             );
             batchRequestManager.revokeShares{value: COST}(
-                poolId, scId, USDC, _nowRevoke(USDC), navPoolPerShare, SHARE_HOOK_GAS, REFUND
+                poolId, scId, USDC, _nowRevoke(USDC), pricePoolPerShare, SHARE_HOOK_GAS, REFUND
             );
         }
 
@@ -1782,8 +1790,8 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         _assertRedeemRequestEq(USDC, investor, UserOrder(0, 2 + uint32(skippedEpochs)));
     }
 
-    function testClaimRedeemManyEpochs(uint128 navPoolPerShare_, uint128 totalRedeemShares_, uint8 epochs) public {
-        D18 poolPerShare = d18(uint128(bound(navPoolPerShare_, 1e15, type(uint128).max / 1e18)));
+    function testClaimRedeemManyEpochs(uint128 pricePoolPerShare_, uint128 totalRedeemShares_, uint8 epochs) public {
+        D18 poolPerShare = d18(uint128(bound(pricePoolPerShare_, 1e15, type(uint128).max / 1e18)));
         epochs = uint8(bound(epochs, 3, 50));
         uint128 totalRedeemShares =
             uint128(bound(totalRedeemShares_, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
@@ -2217,9 +2225,9 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
             poolId, scId, USDC, _nowIssue(USDC), d18(0), SHARE_HOOK_GAS, REFUND
         );
 
-        (,, uint128 approvedPoolAmount,, D18 navPoolPerShare, uint64 issuedAt) =
+        (,, uint128 approvedPoolAmount,, D18 pricePoolPerShare, uint64 issuedAt) =
             batchRequestManager.epochInvestAmounts(scId, USDC, 1);
-        assertEq(navPoolPerShare.raw(), 0, "NAV should be zero");
+        assertEq(pricePoolPerShare.raw(), 0, "NAV should be zero");
         assertEq(issuedAt, 1, "Should be issued at epoch 1");
         assertGt(approvedPoolAmount, 0, "Should have approved amount");
     }
@@ -2247,9 +2255,9 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
             poolId, scId, USDC, _nowRevoke(USDC), d18(0), SHARE_HOOK_GAS, REFUND
         );
 
-        (,,, D18 navPoolPerShare, uint128 payoutAssetAmount, uint64 revokedAt) =
+        (,,, D18 pricePoolPerShare, uint128 payoutAssetAmount, uint64 revokedAt) =
             batchRequestManager.epochRedeemAmounts(scId, USDC, 1);
-        assertEq(navPoolPerShare.raw(), 0, "NAV should be zero");
+        assertEq(pricePoolPerShare.raw(), 0, "NAV should be zero");
         assertEq(payoutAssetAmount, 0, "Payout should be zero");
         assertEq(revokedAt, 1, "Should be revoked at epoch 1");
     }
@@ -2282,10 +2290,10 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
             poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND
         );
 
-        (,,, D18 pricePoolPerAsset, D18 navPoolPerShare, uint64 issuedAt) =
+        (,,, D18 pricePoolPerAsset, D18 pricePoolPerShare, uint64 issuedAt) =
             batchRequestManager.epochInvestAmounts(scId, USDC, 1);
         assertEq(pricePoolPerAsset.raw(), 0, "Price should be zero");
-        assertEq(navPoolPerShare.raw(), 1, "NAV should be stored as 1 raw");
+        assertEq(pricePoolPerShare.raw(), 1, "NAV should be stored as 1 raw");
         assertEq(issuedAt, 1, "Should be issued at epoch 1");
     }
 

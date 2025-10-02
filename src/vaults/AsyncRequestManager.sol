@@ -5,11 +5,13 @@ import {IBaseVault} from "./interfaces/IBaseVault.sol";
 import {IRedeemManager} from "./interfaces/IVaultManagers.sol";
 import {IDepositManager} from "./interfaces/IVaultManagers.sol";
 import {IAsyncRedeemManager} from "./interfaces/IVaultManagers.sol";
+import {RequestMessageLib} from "./libraries/RequestMessageLib.sol";
 import {IAsyncDepositManager} from "./interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "./interfaces/IBaseRequestManager.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "./interfaces/IAsyncVault.sol";
 import {IRefundEscrowFactory, IRefundEscrow} from "./factories/RefundEscrowFactory.sol";
 import {IAsyncRequestManager, AsyncInvestmentState} from "./interfaces/IVaultManagers.sol";
+import {RequestCallbackType, RequestCallbackMessageLib} from "./libraries/RequestCallbackMessageLib.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
@@ -18,23 +20,21 @@ import {MathLib} from "../misc/libraries/MathLib.sol";
 import {IEscrow} from "../misc/interfaces/IEscrow.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {AssetId} from "../common/types/AssetId.sol";
-import {PricingLib} from "../common/libraries/PricingLib.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
-import {IPoolEscrow} from "../common/interfaces/IPoolEscrow.sol";
-import {ESCROW_HOOK_ID} from "../common/interfaces/ITransferHook.sol";
-import {IRequestManager} from "../common/interfaces/IRequestManager.sol";
-import {RequestMessageLib} from "../common/libraries/RequestMessageLib.sol";
-import {RequestCallbackType, RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
+import {PoolId} from "../core/types/PoolId.sol";
+import {AssetId} from "../core/types/AssetId.sol";
+import {IVault} from "../core/spoke/interfaces/IVault.sol";
+import {PricingLib} from "../core/libraries/PricingLib.sol";
+import {ShareClassId} from "../core/types/ShareClassId.sol";
+import {IPoolEscrow} from "../core/spoke/interfaces/IPoolEscrow.sol";
+import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
+import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
+import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
+import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
+import {ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
+import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
+import {IUpdateContract} from "../core/spoke/interfaces/IUpdateContract.sol";
 
-import {IVault} from "../spoke/interfaces/IVault.sol";
-import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
-import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
-import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
-import {IVaultRegistry} from "../spoke/interfaces/IVaultRegistry.sol";
-import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "../messaging/libraries/UpdateContractMessageLib.sol";
 
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for

@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {ITransferHook} from "../../../src/common/interfaces/ITransferHook.sol";
+import "../../core/spoke/integration/BaseTest.sol";
 
-import "../../spoke/integration/BaseTest.sol";
+import {ITransferHook} from "../../../src/core/spoke/interfaces/ITransferHook.sol";
 
 contract FreezeOnlyTest is BaseTest {
     using CastLib for *;

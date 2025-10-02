@@ -5,7 +5,7 @@ import {IRefundEscrowFactory} from "./interfaces/IRefundEscrowFactory.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 
-import {PoolId} from "../../common/types/PoolId.sol";
+import {PoolId} from "../../core/types/PoolId.sol";
 
 import {RefundEscrow, IRefundEscrow} from "../RefundEscrow.sol";
 

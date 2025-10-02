@@ -3,11 +3,11 @@ pragma solidity 0.8.28;
 
 import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "./CommonDeployer.s.sol";
 
-import {Spoke} from "../src/spoke/Spoke.sol";
-import {BalanceSheet} from "../src/spoke/BalanceSheet.sol";
-import {VaultRegistry} from "../src/spoke/VaultRegistry.sol";
-import {ContractUpdater} from "../src/spoke/ContractUpdater.sol";
-import {TokenFactory} from "../src/spoke/factories/TokenFactory.sol";
+import {Spoke} from "../src/core/spoke/Spoke.sol";
+import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
+import {VaultRegistry} from "../src/core/spoke/VaultRegistry.sol";
+import {ContractUpdater} from "../src/core/spoke/ContractUpdater.sol";
+import {TokenFactory} from "../src/core/spoke/factories/TokenFactory.sol";
 
 import "forge-std/Script.sol";
 
