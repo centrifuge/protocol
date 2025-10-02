@@ -49,10 +49,6 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(uint32 epochId_ => EpochRedeemAmounts))))
         public epochRedeemAmounts;
 
-    constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
-        hubRegistry = hubRegistry_;
-    }
-
     // Pending requests
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => uint128))) public pendingRedeem;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => uint128))) public pendingDeposit;
@@ -72,6 +68,10 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         allowForceDepositCancel;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(bytes32 investor => bool)))) public
         allowForceRedeemCancel;
+
+    constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
+        hubRegistry = hubRegistry_;
+    }
 
     //----------------------------------------------------------------------------------------------
     // Administration
