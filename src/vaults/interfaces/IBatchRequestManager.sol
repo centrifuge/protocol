@@ -277,20 +277,20 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     // View methods
     //----------------------------------------------------------------------------------------------
 
-    function nowDepositEpoch(ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
+    function nowDepositEpoch(PoolId poolId, ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
 
-    function nowIssueEpoch(ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
+    function nowIssueEpoch(PoolId poolId, ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
 
-    function nowRedeemEpoch(ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
+    function nowRedeemEpoch(PoolId poolId, ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
 
-    function nowRevokeEpoch(ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
+    function nowRevokeEpoch(PoolId poolId, ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
 
-    function maxDepositClaims(ShareClassId scId, bytes32 investor, AssetId depositAssetId)
+    function maxDepositClaims(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external
         view
         returns (uint32);
 
-    function maxRedeemClaims(ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
+    function maxRedeemClaims(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external
         view
         returns (uint32);
@@ -299,7 +299,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     // Epoch data access
     //----------------------------------------------------------------------------------------------
 
-    function epochInvestAmounts(ShareClassId scId, AssetId assetId, uint32 epochId)
+    function epochInvestAmounts(PoolId poolId, ShareClassId scId, AssetId assetId, uint32 epochId)
         external
         view
         returns (
@@ -311,7 +311,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
             uint64 issuedAt
         );
 
-    function epochRedeemAmounts(ShareClassId scId, AssetId assetId, uint32 epochId)
+    function epochRedeemAmounts(PoolId poolId, ShareClassId scId, AssetId assetId, uint32 epochId)
         external
         view
         returns (

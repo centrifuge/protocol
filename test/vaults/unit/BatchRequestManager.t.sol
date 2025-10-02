@@ -13,6 +13,7 @@ import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "../../../src/hub/interfaces/IShareClassManager.sol";
 import {IHubRequestManagerCallback} from "../../../src/hub/interfaces/IHubRequestManagerCallback.sol";
 import {IHubRequestManager, IHubRequestManagerNotifications} from "../../../src/hub/interfaces/IHubRequestManager.sol";
 
@@ -73,8 +74,22 @@ contract HubRegistryMock {
     }
 }
 
+contract ShareClassManagerMock {
+    mapping(PoolId => mapping(ShareClassId => bool)) public shareClassIds;
+
+    function addShareClass(PoolId poolId, ShareClassId scId) external {
+        shareClassIds[poolId][scId] = true;
+    }
+
+    function exists(PoolId poolId, ShareClassId scId) external view returns (bool) {
+        return shareClassIds[poolId][scId];
+    }
+}
+
 contract BatchRequestManagerHarness is BatchRequestManager {
-    constructor(IHubRegistry hubRegistry_, address deployer) BatchRequestManager(hubRegistry_, deployer) {}
+    constructor(IHubRegistry hubRegistry_, IShareClassManager shareClassManager_, address deployer)
+        BatchRequestManager(hubRegistry_, shareClassManager_, deployer)
+    {}
 
     function claimDeposit(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
         public
@@ -114,6 +129,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
 
     BatchRequestManagerHarness public batchRequestManager;
     HubRegistryMock public hubRegistryMock;
+    ShareClassManagerMock public shareClassManagerMock;
 
     uint16 centrifugeId = 1;
     PoolId poolId = PoolId.wrap(POOL_ID);
@@ -129,7 +145,11 @@ abstract contract BatchRequestManagerBaseTest is Test {
 
     function setUp() public virtual {
         hubRegistryMock = new HubRegistryMock();
-        batchRequestManager = new BatchRequestManagerHarness(IHubRegistry(address(hubRegistryMock)), address(this));
+        shareClassManagerMock = new ShareClassManagerMock();
+        shareClassManagerMock.addShareClass(poolId, scId);
+        batchRequestManager = new BatchRequestManagerHarness(
+            IHubRegistry(address(hubRegistryMock)), IShareClassManager(address(shareClassManagerMock)), address(this)
+        );
 
         vm.mockCall(
             address(hub),
@@ -243,7 +263,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
     }
 
     function _assertDepositRequestEq(AssetId asset, bytes32 investor_, UserOrder memory expected) internal view {
-        (uint128 pending, uint32 lastUpdate) = batchRequestManager.depositRequest(scId, asset, investor_);
+        (uint128 pending, uint32 lastUpdate) = batchRequestManager.depositRequest(poolId, scId, asset, investor_);
 
         assertEq(pending, expected.pending, "Mismatch: Deposit UserOrder.pending");
         assertEq(lastUpdate, expected.lastUpdate, "Mismatch: Deposit UserOrder.lastUpdate");
@@ -253,14 +273,14 @@ abstract contract BatchRequestManagerBaseTest is Test {
         internal
         view
     {
-        (bool isCancelling, uint128 amount) = batchRequestManager.queuedDepositRequest(scId, asset, investor_);
+        (bool isCancelling, uint128 amount) = batchRequestManager.queuedDepositRequest(poolId, scId, asset, investor_);
 
         assertEq(isCancelling, expected.isCancelling, "isCancelling deposit mismatch");
         assertEq(amount, expected.amount, "amount deposit mismatch");
     }
 
     function _assertRedeemRequestEq(AssetId asset, bytes32 investor_, UserOrder memory expected) internal view {
-        (uint128 pending, uint32 lastUpdate) = batchRequestManager.redeemRequest(scId, asset, investor_);
+        (uint128 pending, uint32 lastUpdate) = batchRequestManager.redeemRequest(poolId, scId, asset, investor_);
 
         assertEq(pending, expected.pending, "Mismatch: Redeem UserOrder.pending");
         assertEq(lastUpdate, expected.lastUpdate, "Mismatch: Redeem UserOrder.lastUpdate");
@@ -270,7 +290,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
         internal
         view
     {
-        (bool isCancelling, uint128 amount) = batchRequestManager.queuedRedeemRequest(scId, asset, investor_);
+        (bool isCancelling, uint128 amount) = batchRequestManager.queuedRedeemRequest(poolId, scId, asset, investor_);
 
         assertEq(isCancelling, expected.isCancelling, "isCancelling redeem mismatch");
         assertEq(amount, expected.amount, "amount redeem mismatch");
@@ -287,7 +307,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
             D18 pricePoolPerAsset,
             D18 navPoolPerShare,
             uint64 issuedAt
-        ) = batchRequestManager.epochInvestAmounts(scId, assetId, epochId);
+        ) = batchRequestManager.epochInvestAmounts(poolId, scId, assetId, epochId);
 
         assertEq(pendingAssetAmount, expected.pendingAssetAmount, "Mismatch: EpochInvestAmount.pendingAssetAmount");
         assertEq(approvedAssetAmount, expected.approvedAssetAmount, "Mismatch: EpochInvestAmount.approvedAssetAmount");
@@ -310,7 +330,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
             D18 navPoolPerShare,
             uint128 payoutAssetAmount,
             uint64 revokedAt
-        ) = batchRequestManager.epochRedeemAmounts(scId, assetId, epochId);
+        ) = batchRequestManager.epochRedeemAmounts(poolId, scId, assetId, epochId);
 
         assertEq(approvedShareAmount, expected.approvedShareAmount, "Mismatch: EpochRedeemAmount.approvedShareAmount");
         assertEq(pendingShareAmount, expected.pendingShareAmount, "Mismatch: EpochRedeemAmount.pendingShareAmount");
@@ -323,19 +343,19 @@ abstract contract BatchRequestManagerBaseTest is Test {
     }
 
     function _nowDeposit(AssetId assetId) internal view returns (uint32) {
-        return batchRequestManager.nowDepositEpoch(scId, assetId);
+        return batchRequestManager.nowDepositEpoch(poolId, scId, assetId);
     }
 
     function _nowIssue(AssetId assetId) internal view returns (uint32) {
-        return batchRequestManager.nowIssueEpoch(scId, assetId);
+        return batchRequestManager.nowIssueEpoch(poolId, scId, assetId);
     }
 
     function _nowRedeem(AssetId assetId) internal view returns (uint32) {
-        return batchRequestManager.nowRedeemEpoch(scId, assetId);
+        return batchRequestManager.nowRedeemEpoch(poolId, scId, assetId);
     }
 
     function _nowRevoke(AssetId assetId) internal view returns (uint32) {
-        return batchRequestManager.nowRevokeEpoch(scId, assetId);
+        return batchRequestManager.nowRevokeEpoch(poolId, scId, assetId);
     }
 
     /// @dev Helper function for deposit and approval - direct calls
@@ -390,24 +410,24 @@ contract BatchRequestManagerSimpleTest is BatchRequestManagerBaseTest {
     using CastLib for string;
 
     function testInitialValues() public view {
-        assertEq(batchRequestManager.nowDepositEpoch(scId, USDC), 1);
-        assertEq(batchRequestManager.nowRedeemEpoch(scId, USDC), 1);
-        assertEq(batchRequestManager.nowIssueEpoch(scId, USDC), 1);
-        assertEq(batchRequestManager.nowRevokeEpoch(scId, USDC), 1);
+        assertEq(batchRequestManager.nowDepositEpoch(poolId, scId, USDC), 1);
+        assertEq(batchRequestManager.nowRedeemEpoch(poolId, scId, USDC), 1);
+        assertEq(batchRequestManager.nowIssueEpoch(poolId, scId, USDC), 1);
+        assertEq(batchRequestManager.nowRevokeEpoch(poolId, scId, USDC), 1);
     }
 
     function testMaxDepositClaims() public {
-        assertEq(batchRequestManager.maxDepositClaims(scId, investor, USDC), 0);
+        assertEq(batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC), 0);
 
         batchRequestManager.requestDeposit(poolId, scId, 1, investor, USDC);
-        assertEq(batchRequestManager.maxDepositClaims(scId, investor, USDC), 0);
+        assertEq(batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC), 0);
     }
 
     function testMaxRedeemClaims() public {
-        assertEq(batchRequestManager.maxRedeemClaims(scId, investor, USDC), 0);
+        assertEq(batchRequestManager.maxRedeemClaims(poolId, scId, investor, USDC), 0);
 
         batchRequestManager.requestRedeem(poolId, scId, 1, investor, USDC);
-        assertEq(batchRequestManager.maxRedeemClaims(scId, investor, USDC), 0);
+        assertEq(batchRequestManager.maxRedeemClaims(poolId, scId, investor, USDC), 0);
     }
 
     function testEpochViewsInitialValues() public view {
@@ -418,8 +438,8 @@ contract BatchRequestManagerSimpleTest is BatchRequestManagerBaseTest {
     }
 
     function testMaxClaimsStartsAtZero() public view {
-        assertEq(batchRequestManager.maxDepositClaims(scId, investor, USDC), 0);
-        assertEq(batchRequestManager.maxRedeemClaims(scId, investor, USDC), 0);
+        assertEq(batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC), 0);
+        assertEq(batchRequestManager.maxRedeemClaims(poolId, scId, investor, USDC), 0);
     }
 }
 
@@ -430,16 +450,24 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
     function testRequestDeposit(uint128 amount) public {
         amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
 
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0);
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), 0);
         _assertDepositRequestEq(USDC, investor, UserOrder(0, 0));
 
         vm.expectEmit();
         emit IBatchRequestManager.UpdateDepositRequest(
-            poolId, scId, USDC, batchRequestManager.nowDepositEpoch(scId, USDC), investor, amount, amount, 0, false
+            poolId,
+            scId,
+            USDC,
+            batchRequestManager.nowDepositEpoch(poolId, scId, USDC),
+            investor,
+            amount,
+            amount,
+            0,
+            false
         );
         batchRequestManager.requestDeposit(poolId, scId, amount, investor, USDC);
 
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), amount);
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), amount);
         _assertDepositRequestEq(USDC, investor, UserOrder(amount, 1));
     }
 
@@ -449,12 +477,12 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
 
         vm.expectEmit();
         emit IBatchRequestManager.UpdateDepositRequest(
-            poolId, scId, USDC, batchRequestManager.nowDepositEpoch(scId, USDC), investor, 0, 0, 0, false
+            poolId, scId, USDC, batchRequestManager.nowDepositEpoch(poolId, scId, USDC), investor, 0, 0, 0, false
         );
         (uint128 cancelledShares) = batchRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
 
         assertEq(cancelledShares, amount);
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0);
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), 0);
         _assertDepositRequestEq(USDC, investor, UserOrder(0, 1));
     }
 
@@ -474,7 +502,7 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
             deposits += investorDeposit;
             batchRequestManager.requestDeposit(poolId, scId, investorDeposit, investor, USDC);
 
-            assertEq(batchRequestManager.pendingDeposit(scId, USDC), deposits);
+            assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), deposits);
         }
 
         assertEq(_nowDeposit(USDC), 1);
@@ -496,11 +524,11 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         assertEq(eventAssetAmount, approvedUsdc, "Event asset amount mismatch");
         assertEq(eventPending, expectedPendingAfter, "Event pending amount mismatch");
 
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), deposits - approvedUsdc);
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), deposits - approvedUsdc);
 
         {
             (uint128 storedPoolAmount, uint128 storedApprovedAsset,,,,) =
-                batchRequestManager.epochInvestAmounts(scId, USDC, _nowDeposit(USDC) - 1);
+                batchRequestManager.epochInvestAmounts(poolId, scId, USDC, _nowDeposit(USDC) - 1);
             assertEq(storedApprovedAsset, approvedUsdc, "Epoch approved asset amount mismatch");
             assertEq(storedPoolAmount, expectedPoolAmount, "Epoch pool amount mismatch");
         }
@@ -567,7 +595,7 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         assertEq(eventNav.raw(), navPoolPerShare.raw(), "NAV in event mismatch");
         {
             (,,,, D18 storedNav, uint64 issuedAt) =
-                batchRequestManager.epochInvestAmounts(scId, USDC, _nowIssue(USDC) - 1);
+                batchRequestManager.epochInvestAmounts(poolId, scId, USDC, _nowIssue(USDC) - 1);
             assertEq(storedNav.raw(), navPoolPerShare.raw(), "Stored NAV mismatch");
             assertGt(issuedAt, 0, "Issuance timestamp not set");
         }
@@ -679,14 +707,16 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         batchRequestManager.forceCancelDepositRequest{value: COST}(poolId, scId, investor, USDC, REFUND);
 
         assertEq(
-            batchRequestManager.allowForceDepositCancel(scId, USDC, investor),
+            batchRequestManager.allowForceDepositCancel(poolId, scId, USDC, investor),
             true,
             "Cancellation flag should not be reset"
         );
 
         batchRequestManager.requestDeposit(poolId, scId, 1, investor, USDC);
         assertEq(
-            batchRequestManager.pendingDeposit(scId, USDC), 1, "Should be able to make new deposits after force cancel"
+            batchRequestManager.pendingDeposit(poolId, scId, USDC),
+            1,
+            "Should be able to make new deposits after force cancel"
         );
     }
 
@@ -698,8 +728,8 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
 
         batchRequestManager.requestDeposit(poolId, scId, depositAmount, investor, USDC);
 
-        (uint128 pendingBefore,) = batchRequestManager.depositRequest(scId, USDC, investor);
-        uint128 totalPendingBefore = batchRequestManager.pendingDeposit(scId, USDC);
+        (uint128 pendingBefore,) = batchRequestManager.depositRequest(poolId, scId, USDC, investor);
+        uint128 totalPendingBefore = batchRequestManager.pendingDeposit(poolId, scId, USDC);
 
         // Expected cancelled amount should be the full pending
         uint128 expectedCancelledAmount = pendingBefore;
@@ -708,8 +738,8 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         emit IBatchRequestManager.UpdateDepositRequest(poolId, scId, USDC, _nowDeposit(USDC), investor, 0, 0, 0, false);
         batchRequestManager.forceCancelDepositRequest{value: COST}(poolId, scId, investor, USDC, REFUND);
 
-        (uint128 pendingAfter,) = batchRequestManager.depositRequest(scId, USDC, investor);
-        uint128 totalPendingAfter = batchRequestManager.pendingDeposit(scId, USDC);
+        (uint128 pendingAfter,) = batchRequestManager.depositRequest(poolId, scId, USDC, investor);
+        uint128 totalPendingAfter = batchRequestManager.pendingDeposit(poolId, scId, USDC);
 
         uint128 actualCancelledAmount = pendingBefore - pendingAfter;
         assertEq(actualCancelledAmount, expectedCancelledAmount, "Cancelled amount mismatch");
@@ -717,11 +747,15 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         assertEq(totalPendingBefore - totalPendingAfter, depositAmount, "Total pending reduction mismatch");
 
         assertEq(
-            batchRequestManager.allowForceDepositCancel(scId, USDC, investor),
+            batchRequestManager.allowForceDepositCancel(poolId, scId, USDC, investor),
             true,
             "Cancellation flag should not be reset"
         );
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0, "Pending deposit should be zero after force cancel");
+        assertEq(
+            batchRequestManager.pendingDeposit(poolId, scId, USDC),
+            0,
+            "Pending deposit should be zero after force cancel"
+        );
         _assertDepositRequestEq(USDC, investor, UserOrder(0, 1));
 
         // Verify the investor can make new requests after force cancellation
@@ -739,7 +773,7 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         batchRequestManager.request(poolId, scId, USDC, payload);
 
         _assertDepositRequestEq(USDC, investor, UserOrder(0, 1));
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0, "Pending should be updated");
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), 0, "Pending should be updated");
     }
 
     /// @dev Tests request() function with CancelDepositRequest message
@@ -758,9 +792,11 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         batchRequestManager.request(poolId, scId, USDC, payload);
 
         _assertDepositRequestEq(USDC, investor, UserOrder(0, 1));
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0, "Pending should be cleared");
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), 0, "Pending should be cleared");
         assertEq(
-            batchRequestManager.allowForceDepositCancel(scId, USDC, investor), true, "Force cancel should be enabled"
+            batchRequestManager.allowForceDepositCancel(poolId, scId, USDC, investor),
+            true,
+            "Force cancel should be enabled"
         );
     }
 
@@ -806,11 +842,13 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         _depositAndApproveWithFuzzBounds(MIN_REQUEST_AMOUNT_USDC, MIN_REQUEST_AMOUNT_USDC);
         batchRequestManager.issueShares{value: COST}(poolId, scId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
 
-        (uint128 initialPending, uint32 initialLastUpdate) = batchRequestManager.depositRequest(scId, USDC, investor);
+        (uint128 initialPending, uint32 initialLastUpdate) =
+            batchRequestManager.depositRequest(poolId, scId, USDC, investor);
 
         batchRequestManager.notifyDeposit{value: COST}(poolId, scId, USDC, investor, 0, REFUND);
 
-        (uint128 finalPending, uint32 finalLastUpdate) = batchRequestManager.depositRequest(scId, USDC, investor);
+        (uint128 finalPending, uint32 finalLastUpdate) =
+            batchRequestManager.depositRequest(poolId, scId, USDC, investor);
         assertEq(finalPending, initialPending);
         assertEq(finalLastUpdate, initialLastUpdate);
     }
@@ -823,16 +861,24 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
     function testRequestRedeem(uint128 amount) public {
         amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
 
-        assertEq(batchRequestManager.pendingRedeem(scId, USDC), 0);
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), 0);
         _assertRedeemRequestEq(USDC, investor, UserOrder(0, 0));
 
         vm.expectEmit();
         emit IBatchRequestManager.UpdateRedeemRequest(
-            poolId, scId, USDC, batchRequestManager.nowRedeemEpoch(scId, USDC), investor, amount, amount, 0, false
+            poolId,
+            scId,
+            USDC,
+            batchRequestManager.nowRedeemEpoch(poolId, scId, USDC),
+            investor,
+            amount,
+            amount,
+            0,
+            false
         );
         batchRequestManager.requestRedeem(poolId, scId, amount, investor, USDC);
 
-        assertEq(batchRequestManager.pendingRedeem(scId, USDC), amount);
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), amount);
         _assertRedeemRequestEq(USDC, investor, UserOrder(amount, 1));
     }
 
@@ -842,12 +888,12 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
 
         vm.expectEmit();
         emit IBatchRequestManager.UpdateRedeemRequest(
-            poolId, scId, USDC, batchRequestManager.nowRedeemEpoch(scId, USDC), investor, 0, 0, 0, false
+            poolId, scId, USDC, batchRequestManager.nowRedeemEpoch(poolId, scId, USDC), investor, 0, 0, 0, false
         );
         (uint128 cancelledShares) = batchRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
 
         assertEq(cancelledShares, amount);
-        assertEq(batchRequestManager.pendingRedeem(scId, USDC), 0);
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), 0);
         _assertRedeemRequestEq(USDC, investor, UserOrder(0, 1));
     }
 
@@ -867,7 +913,7 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
             redeems += investorRedeem;
             batchRequestManager.requestRedeem(poolId, scId, investorRedeem, investor, USDC);
 
-            assertEq(batchRequestManager.pendingRedeem(scId, USDC), redeems);
+            assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), redeems);
         }
 
         assertEq(_nowRedeem(USDC), 1);
@@ -880,7 +926,7 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
             poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC)
         );
 
-        assertEq(batchRequestManager.pendingRedeem(scId, USDC), redeems - approvedShares);
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), redeems - approvedShares);
 
         // Only one epoch should have passed
         assertEq(_nowRedeem(USDC), 2);
@@ -913,7 +959,7 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
 
         {
             (,,, D18 storedNav, uint128 storedPayoutAsset, uint64 revokedAt) =
-                batchRequestManager.epochRedeemAmounts(scId, USDC, _nowRevoke(USDC) - 1);
+                batchRequestManager.epochRedeemAmounts(poolId, scId, USDC, _nowRevoke(USDC) - 1);
             assertEq(storedNav.raw(), navPoolPerShare.raw(), "Stored NAV mismatch");
             assertEq(storedPayoutAsset, payoutAsset, "Stored payout mismatch");
             assertGt(revokedAt, 0, "Revocation timestamp not set");
@@ -985,7 +1031,7 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         batchRequestManager.forceCancelRedeemRequest{value: COST}(poolId, scId, investor, USDC, REFUND);
 
         assertEq(
-            batchRequestManager.allowForceRedeemCancel(scId, USDC, investor),
+            batchRequestManager.allowForceRedeemCancel(poolId, scId, USDC, investor),
             true,
             "Cancellation flag should not be reset"
         );
@@ -993,7 +1039,9 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         // Verify the investor can make new requests after force cancellation
         batchRequestManager.requestRedeem(poolId, scId, 1, investor, USDC);
         assertEq(
-            batchRequestManager.pendingRedeem(scId, USDC), 1, "Should be able to make new redeems after force cancel"
+            batchRequestManager.pendingRedeem(poolId, scId, USDC),
+            1,
+            "Should be able to make new redeems after force cancel"
         );
     }
 
@@ -1006,8 +1054,8 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         // Submit a redeem request, which will be applied since pending is zero
         batchRequestManager.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
 
-        (uint128 pendingBefore,) = batchRequestManager.redeemRequest(scId, USDC, investor);
-        uint128 totalPendingBefore = batchRequestManager.pendingRedeem(scId, USDC);
+        (uint128 pendingBefore,) = batchRequestManager.redeemRequest(poolId, scId, USDC, investor);
+        uint128 totalPendingBefore = batchRequestManager.pendingRedeem(poolId, scId, USDC);
 
         // Expected cancelled amount should be the full pending
         uint128 expectedCancelledShares = pendingBefore;
@@ -1017,8 +1065,8 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         emit IBatchRequestManager.UpdateRedeemRequest(poolId, scId, USDC, _nowRedeem(USDC), investor, 0, 0, 0, false);
         batchRequestManager.forceCancelRedeemRequest{value: COST}(poolId, scId, investor, USDC, REFUND);
 
-        (uint128 pendingAfter,) = batchRequestManager.redeemRequest(scId, USDC, investor);
-        uint128 totalPendingAfter = batchRequestManager.pendingRedeem(scId, USDC);
+        (uint128 pendingAfter,) = batchRequestManager.redeemRequest(poolId, scId, USDC, investor);
+        uint128 totalPendingAfter = batchRequestManager.pendingRedeem(poolId, scId, USDC);
 
         uint128 actualCancelledShares = pendingBefore - pendingAfter;
         assertEq(actualCancelledShares, expectedCancelledShares, "Cancelled shares mismatch");
@@ -1026,11 +1074,13 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         assertEq(totalPendingBefore - totalPendingAfter, redeemAmount, "Total pending reduction mismatch");
 
         assertEq(
-            batchRequestManager.allowForceRedeemCancel(scId, USDC, investor),
+            batchRequestManager.allowForceRedeemCancel(poolId, scId, USDC, investor),
             true,
             "Cancellation flag should not be reset"
         );
-        assertEq(batchRequestManager.pendingRedeem(scId, USDC), 0, "Pending redeem should be zero after force cancel");
+        assertEq(
+            batchRequestManager.pendingRedeem(poolId, scId, USDC), 0, "Pending redeem should be zero after force cancel"
+        );
         _assertRedeemRequestEq(USDC, investor, UserOrder(0, 1));
 
         // Verify the investor can make new requests after force cancellation
@@ -1048,7 +1098,7 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         batchRequestManager.request(poolId, scId, USDC, payload);
 
         _assertRedeemRequestEq(USDC, investor, UserOrder(0, 1));
-        assertEq(batchRequestManager.pendingRedeem(scId, USDC), 0, "Pending should be updated");
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), 0, "Pending should be updated");
     }
 
     /// @dev Tests request() function with CancelRedeemRequest message
@@ -1065,9 +1115,11 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         batchRequestManager.request(poolId, scId, USDC, payload);
 
         _assertRedeemRequestEq(USDC, investor, UserOrder(0, 1));
-        assertEq(batchRequestManager.pendingRedeem(scId, USDC), 0, "Pending should be cleared");
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), 0, "Pending should be cleared");
         assertEq(
-            batchRequestManager.allowForceRedeemCancel(scId, USDC, investor), true, "Force cancel should be enabled"
+            batchRequestManager.allowForceRedeemCancel(poolId, scId, USDC, investor),
+            true,
+            "Force cancel should be enabled"
         );
     }
 
@@ -1113,10 +1165,11 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         _redeemAndApproveWithFuzzBounds(MIN_REQUEST_AMOUNT_SHARES, MIN_REQUEST_AMOUNT_SHARES, 1);
         batchRequestManager.revokeShares{value: COST}(poolId, scId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
 
-        (uint128 initialPending, uint32 initialLastUpdate) = batchRequestManager.redeemRequest(scId, USDC, investor);
+        (uint128 initialPending, uint32 initialLastUpdate) =
+            batchRequestManager.redeemRequest(poolId, scId, USDC, investor);
         batchRequestManager.notifyRedeem{value: COST}(poolId, scId, USDC, investor, 0, REFUND);
 
-        (uint128 finalPending, uint32 finalLastUpdate) = batchRequestManager.redeemRequest(scId, USDC, investor);
+        (uint128 finalPending, uint32 finalLastUpdate) = batchRequestManager.redeemRequest(poolId, scId, USDC, investor);
         assertEq(finalPending, initialPending);
         assertEq(finalLastUpdate, initialLastUpdate);
     }
@@ -1137,7 +1190,7 @@ contract BatchRequestManagerQueuedDepositsTest is BatchRequestManagerBaseTest {
         _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
         batchRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
         _assertDepositRequestEq(USDC, investor, UserOrder(depositAmountUsdc, epochId));
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), depositAmountUsdc);
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), depositAmountUsdc);
         batchRequestManager.approveDeposits{value: COST}(
             poolId, scId, USDC, _nowDeposit(USDC), depositAmountUsdc, _pricePoolPerAsset(USDC), REFUND
         );
@@ -1151,7 +1204,7 @@ contract BatchRequestManagerQueuedDepositsTest is BatchRequestManagerBaseTest {
         );
         batchRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
         _assertDepositRequestEq(USDC, investor, UserOrder(queuedAmount, epochId - 1));
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0);
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), 0);
         _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
         _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
 
@@ -1178,7 +1231,7 @@ contract BatchRequestManagerQueuedDepositsTest is BatchRequestManagerBaseTest {
         batchRequestManager.claimDeposit(poolId, scId, investor, USDC);
 
         _assertDepositRequestEq(USDC, investor, UserOrder(queuedAmount, epochId));
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), queuedAmount);
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), queuedAmount);
         _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
         _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
     }
@@ -1241,7 +1294,7 @@ contract BatchRequestManagerQueuedDepositsTest is BatchRequestManagerBaseTest {
         assertEq(canClaimAgain, false, "Can claim again mismatch");
 
         _assertDepositRequestEq(USDC, investor, UserOrder(0, epochId));
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0, "Pending deposit mismatch");
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), 0, "Pending deposit mismatch");
         _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
         _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
     }
@@ -1295,7 +1348,7 @@ contract BatchRequestManagerQueuedDepositsTest is BatchRequestManagerBaseTest {
         assertEq(canClaimAgain, false, "Can claim again mismatch");
 
         _assertDepositRequestEq(USDC, investor, UserOrder(0, epochId));
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0, "Pending deposit mismatch");
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), 0, "Pending deposit mismatch");
         _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
         _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
     }
@@ -1325,7 +1378,7 @@ contract BatchRequestManagerQueuedDepositsTest is BatchRequestManagerBaseTest {
         uint128 expectedQueuedCancel = queuedCancelAmount;
 
         assertEq(
-            batchRequestManager.allowForceDepositCancel(scId, USDC, investor),
+            batchRequestManager.allowForceDepositCancel(poolId, scId, USDC, investor),
             true,
             "Cancellation flag should not be reset"
         );
@@ -1339,7 +1392,11 @@ contract BatchRequestManagerQueuedDepositsTest is BatchRequestManagerBaseTest {
         assertEq(cancelledDeposit, depositAmount - approvedAmount, "Should cancel unapproved amount");
         assertEq(canClaimAgain, false, "Can claim again mismatch");
 
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0, "Pending deposit should be zero after force cancel");
+        assertEq(
+            batchRequestManager.pendingDeposit(poolId, scId, USDC),
+            0,
+            "Pending deposit should be zero after force cancel"
+        );
         _assertDepositRequestEq(USDC, investor, UserOrder(0, 2));
 
         batchRequestManager.requestDeposit(poolId, scId, depositAmount, investor, USDC);
@@ -1365,9 +1422,9 @@ contract BatchRequestManagerQueuedRedeemsTest is BatchRequestManagerBaseTest {
         _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
         batchRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
         _assertRedeemRequestEq(USDC, investor, UserOrder(redeemShares, epochId));
-        assertEq(batchRequestManager.pendingRedeem(scId, USDC), redeemShares);
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), redeemShares);
         batchRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), redeemShares, _pricePoolPerAsset(USDC));
-        assertEq(batchRequestManager.pendingRedeem(scId, USDC), 0);
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), 0);
         epochId = 2;
 
         // Expect queued increment due to approval
@@ -1378,7 +1435,7 @@ contract BatchRequestManagerQueuedRedeemsTest is BatchRequestManagerBaseTest {
         );
         batchRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
         _assertRedeemRequestEq(USDC, investor, UserOrder(queuedAmount, epochId - 1));
-        assertEq(batchRequestManager.pendingRedeem(scId, USDC), 0);
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), 0);
         _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
         _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
 
@@ -1406,7 +1463,7 @@ contract BatchRequestManagerQueuedRedeemsTest is BatchRequestManagerBaseTest {
         batchRequestManager.claimRedeem(poolId, scId, investor, USDC);
 
         _assertRedeemRequestEq(USDC, investor, UserOrder(pendingShareAmount, epochId));
-        assertEq(batchRequestManager.pendingRedeem(scId, USDC), pendingShareAmount, "pending redeem mismatch");
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), pendingShareAmount, "pending redeem mismatch");
         _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
         _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
     }
@@ -1470,7 +1527,7 @@ contract BatchRequestManagerQueuedRedeemsTest is BatchRequestManagerBaseTest {
         assertEq(canClaimAgain, false, "Can claim again mismatch");
 
         _assertRedeemRequestEq(USDC, investor, UserOrder(0, epochId));
-        assertEq(batchRequestManager.pendingRedeem(scId, USDC), 0, "Pending redeem mismatch");
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), 0, "Pending redeem mismatch");
         _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
     }
 
@@ -1524,7 +1581,7 @@ contract BatchRequestManagerQueuedRedeemsTest is BatchRequestManagerBaseTest {
         assertEq(canClaimAgain, false, "Can claim again mismatch");
 
         _assertRedeemRequestEq(USDC, investor, UserOrder(0, epochId));
-        assertEq(batchRequestManager.pendingRedeem(scId, USDC), 0, "Pending redeem mismatch");
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), 0, "Pending redeem mismatch");
         _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
     }
 
@@ -1555,7 +1612,7 @@ contract BatchRequestManagerQueuedRedeemsTest is BatchRequestManagerBaseTest {
         uint128 expectedQueuedCancel = queuedCancelAmount;
 
         assertEq(
-            batchRequestManager.allowForceRedeemCancel(scId, USDC, investor),
+            batchRequestManager.allowForceRedeemCancel(poolId, scId, USDC, investor),
             true,
             "Cancellation flag should not be reset"
         );
@@ -1570,7 +1627,9 @@ contract BatchRequestManagerQueuedRedeemsTest is BatchRequestManagerBaseTest {
         assertEq(canClaimAgain, false, "Can claim again mismatch");
 
         // Verify post claiming cleanup
-        assertEq(batchRequestManager.pendingRedeem(scId, USDC), 0, "Pending redeem should be zero after force cancel");
+        assertEq(
+            batchRequestManager.pendingRedeem(poolId, scId, USDC), 0, "Pending redeem should be zero after force cancel"
+        );
         _assertRedeemRequestEq(USDC, investor, UserOrder(0, 2));
 
         batchRequestManager.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
@@ -1689,7 +1748,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
             totalShares += issuedShares;
         }
 
-        assertEq(batchRequestManager.maxDepositClaims(scId, investor, USDC), epochs);
+        assertEq(batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC), epochs);
 
         for (uint256 i = 0; i < epochs; i++) {
             (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
@@ -1810,7 +1869,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
             totalAssets += revokedAssetAmount;
         }
 
-        assertEq(batchRequestManager.maxRedeemClaims(scId, investor, USDC), epochs);
+        assertEq(batchRequestManager.maxRedeemClaims(poolId, scId, investor, USDC), epochs);
 
         for (uint256 i = 0; i < epochs; i++) {
             (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
@@ -1831,12 +1890,14 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
 
     function testMaxClaimsCalculationBranches() public {
         // Test branch 1: userOrder.pending == 0 -> return 0
-        assertEq(batchRequestManager.maxDepositClaims(scId, investor, USDC), 0, "No pending, should return 0");
+        assertEq(batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC), 0, "No pending, should return 0");
 
         // Test branch 2: userOrder.lastUpdate > lastEpoch -> return 0 (user ahead of processing)
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
         assertEq(
-            batchRequestManager.maxDepositClaims(scId, investor, USDC), 0, "User ahead of processing, should return 0"
+            batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC),
+            0,
+            "User ahead of processing, should return 0"
         );
 
         // Test normal calculation: lastEpoch - userOrder.lastUpdate + 1
@@ -1847,7 +1908,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
             poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND
         );
 
-        assertEq(batchRequestManager.maxDepositClaims(scId, investor, USDC), 1, "Should have 1 claimable epoch");
+        assertEq(batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC), 1, "Should have 1 claimable epoch");
 
         // Create multiple epochs to test calculation
         for (uint256 i = 0; i < 3; i++) {
@@ -1861,7 +1922,9 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         }
 
         // Original investor should still have 1+3=4 claimable epochs
-        assertEq(batchRequestManager.maxDepositClaims(scId, investor, USDC), 4, "Should have 4 claimable epochs");
+        assertEq(
+            batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC), 4, "Should have 4 claimable epochs"
+        );
     }
 
     /// @dev Tests all three conditions in _canMutatePending function
@@ -1872,7 +1935,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         assertEq(_nowDeposit(USDC), 1, "Should be epoch 1");
         batchRequestManager.requestDeposit(poolId, scId, amount, investor, USDC);
         _assertDepositRequestEq(USDC, investor, UserOrder(amount, 1));
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), amount, "Should update pending directly");
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), amount, "Should update pending directly");
 
         // Condition 2: userOrder.pending == 0 (allows direct mutation)
         batchRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
@@ -1892,7 +1955,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         // Since investor's lastUpdate = 1 and currentEpoch = 2, this will be queued, not direct
         batchRequestManager.requestDeposit(poolId, scId, amount, investor, USDC);
         _assertDepositRequestEq(USDC, investor, UserOrder(amount, 1));
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0, "Should not update pending when queued");
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), 0, "Should not update pending when queued");
 
         // Should queue instead of direct mutation when no conditions are met
         bytes32 otherInvestor = bytes32("laggingInvestor");
@@ -1921,7 +1984,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
 
         _assertQueuedDepositRequestEq(USDC, otherInvestor, QueuedOrder(false, newAmount));
         assertEq(
-            batchRequestManager.pendingDeposit(scId, USDC),
+            batchRequestManager.pendingDeposit(poolId, scId, USDC),
             0,
             "Pending should be 0 after approving otherInvestor's deposit"
         );
@@ -1960,12 +2023,12 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
             poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND
         );
 
-        assertEq(batchRequestManager.maxDepositClaims(scId, investor, USDC), 1, "Should have 1 claim");
+        assertEq(batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC), 1, "Should have 1 claim");
         (,,, bool canClaimAgain) = batchRequestManager.claimDeposit(poolId, scId, investor, USDC);
         assertEq(canClaimAgain, false, "Should not be able to claim again after last epoch");
 
         _assertDepositRequestEq(USDC, investor, UserOrder(0, 2));
-        assertEq(batchRequestManager.maxDepositClaims(scId, investor, USDC), 0, "Should have no more claims");
+        assertEq(batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC), 0, "Should have no more claims");
     }
 }
 
@@ -2067,6 +2130,8 @@ contract BatchRequestManagerAuthTest is BatchRequestManagerBaseTest {
 }
 
 contract BatchRequestManagerErrorTest is BatchRequestManagerBaseTest {
+    ShareClassId private invalidScId = ShareClassId.wrap(bytes16((uint128(POOL_ID) << 64) + 999));
+
     function testRequestUnknownType() public {
         // Create payload with invalid message type (0 = Invalid enum value, valid handled ones are 1,2,3,4)
         bytes memory invalidPayload = abi.encodePacked(uint8(0), abi.encode(investor, uint128(100)));
@@ -2204,6 +2269,40 @@ contract BatchRequestManagerErrorTest is BatchRequestManagerBaseTest {
         vm.expectRevert(IBatchRequestManager.CancellationInitializationRequired.selector);
         batchRequestManager.forceCancelRedeemRequest{value: COST}(poolId, scId, investor, USDC, REFUND);
     }
+
+    function testApproveDepositsShareClassNotFound() public {
+        vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
+        batchRequestManager.approveDeposits{value: COST}(
+            poolId, invalidScId, USDC, 1, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
+        );
+    }
+
+    function testApproveRedeemsShareClassNotFound() public {
+        vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
+        batchRequestManager.approveRedeems(
+            poolId, invalidScId, USDC, 1, MIN_REQUEST_AMOUNT_SHARES, _pricePoolPerAsset(USDC)
+        );
+    }
+
+    function testIssueSharesShareClassNotFound() public {
+        vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
+        batchRequestManager.issueShares{value: COST}(poolId, invalidScId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
+    }
+
+    function testRevokeSharesShareClassNotFound() public {
+        vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
+        batchRequestManager.revokeShares{value: COST}(poolId, invalidScId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
+    }
+
+    function testForceCancelDepositShareClassNotFound() public {
+        vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
+        batchRequestManager.forceCancelDepositRequest{value: COST}(poolId, invalidScId, investor, USDC, REFUND);
+    }
+
+    function testForceCancelRedeemShareClassNotFound() public {
+        vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
+        batchRequestManager.forceCancelRedeemRequest{value: COST}(poolId, invalidScId, investor, USDC, REFUND);
+    }
 }
 
 ///@dev Contains all zero amount and isNotZero() branch tests with exact assertions
@@ -2218,7 +2317,7 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
         );
 
         (,, uint128 approvedPoolAmount,, D18 navPoolPerShare, uint64 issuedAt) =
-            batchRequestManager.epochInvestAmounts(scId, USDC, 1);
+            batchRequestManager.epochInvestAmounts(poolId, scId, USDC, 1);
         assertEq(navPoolPerShare.raw(), 0, "NAV should be zero");
         assertEq(issuedAt, 1, "Should be issued at epoch 1");
         assertGt(approvedPoolAmount, 0, "Should have approved amount");
@@ -2248,7 +2347,7 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
         );
 
         (,,, D18 navPoolPerShare, uint128 payoutAssetAmount, uint64 revokedAt) =
-            batchRequestManager.epochRedeemAmounts(scId, USDC, 1);
+            batchRequestManager.epochRedeemAmounts(poolId, scId, USDC, 1);
         assertEq(navPoolPerShare.raw(), 0, "NAV should be zero");
         assertEq(payoutAssetAmount, 0, "Payout should be zero");
         assertEq(revokedAt, 1, "Should be revoked at epoch 1");
@@ -2283,7 +2382,7 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
         );
 
         (,,, D18 pricePoolPerAsset, D18 navPoolPerShare, uint64 issuedAt) =
-            batchRequestManager.epochInvestAmounts(scId, USDC, 1);
+            batchRequestManager.epochInvestAmounts(poolId, scId, USDC, 1);
         assertEq(pricePoolPerAsset.raw(), 0, "Price should be zero");
         assertEq(navPoolPerShare.raw(), 1, "NAV should be stored as 1 raw");
         assertEq(issuedAt, 1, "Should be issued at epoch 1");
@@ -2319,7 +2418,7 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
         );
 
         (,, D18 pricePoolPerAsset,, uint128 payoutAssetAmount, uint64 revokedAt) =
-            batchRequestManager.epochRedeemAmounts(scId, USDC, 1);
+            batchRequestManager.epochRedeemAmounts(poolId, scId, USDC, 1);
         assertEq(pricePoolPerAsset.raw(), 0, "Price should be zero");
         assertEq(payoutAssetAmount, 0, "Asset payout should be zero due to zero price");
         assertEq(revokedAt, 1, "Should be revoked at epoch 1");
@@ -2357,7 +2456,7 @@ contract BatchRequestManagerRoundingEdgeCasesDeposit is BatchRequestManagerBaseT
 
         (issuedShares,,) = _extractIssueSharesEvent();
         (,,,, D18 storedNav, uint64 issuedAt) =
-            batchRequestManager.epochInvestAmounts(scId, OTHER_STABLE, _nowIssue(OTHER_STABLE) - 1);
+            batchRequestManager.epochInvestAmounts(poolId, scId, OTHER_STABLE, _nowIssue(OTHER_STABLE) - 1);
         assertEq(storedNav.raw(), navPerShare.raw(), "NAV mismatch in storage");
         assertGt(issuedAt, 0, "Should be issued");
     }
@@ -2385,7 +2484,7 @@ contract BatchRequestManagerRoundingEdgeCasesDeposit is BatchRequestManagerBaseT
         assertEq(paymentA, depositAmountA, "Payment A should never be zero");
         assertEq(paymentB, depositAmountB, "Payment B should never be zero");
         assertEq(cancelledA + cancelledB, 0, "No queued cancellation");
-        assertEq(batchRequestManager.pendingDeposit(scId, OTHER_STABLE), 0, "Pending deposit should be zero");
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, OTHER_STABLE), 0, "Pending deposit should be zero");
 
         _assertDepositRequestEq(OTHER_STABLE, INVESTOR_A, UserOrder(0, 2));
         _assertDepositRequestEq(OTHER_STABLE, INVESTOR_B, UserOrder(0, 2));
@@ -2574,9 +2673,9 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
             poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
         );
 
-        assertEq(batchRequestManager.pendingDeposit(scId, USDC), 0, "Pending should be cleared");
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), 0, "Pending should be cleared");
 
-        (, uint128 approvedAssetAmount,,,,) = batchRequestManager.epochInvestAmounts(scId, USDC, 1);
+        (, uint128 approvedAssetAmount,,,,) = batchRequestManager.epochInvestAmounts(poolId, scId, USDC, 1);
         assertEq(approvedAssetAmount, MIN_REQUEST_AMOUNT_USDC, "Should approve correct amount");
     }
 
@@ -2588,8 +2687,8 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
             poolId, scId, USDC, _nowRedeem(USDC), MIN_REQUEST_AMOUNT_SHARES, _pricePoolPerAsset(USDC)
         );
 
-        assertEq(batchRequestManager.pendingRedeem(scId, USDC), 0, "Pending should be cleared");
-        (uint128 approvedShareAmount,,,,,) = batchRequestManager.epochRedeemAmounts(scId, USDC, 1);
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), 0, "Pending should be cleared");
+        (uint128 approvedShareAmount,,,,,) = batchRequestManager.epochRedeemAmounts(poolId, scId, USDC, 1);
         assertEq(approvedShareAmount, MIN_REQUEST_AMOUNT_SHARES, "Should approve correct amount");
     }
 
@@ -2623,7 +2722,7 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
         vm.prank(poolManager);
         batchRequestManager.forceCancelDepositRequest{value: COST}(poolId, scId, investor, USDC, REFUND);
 
-        (uint128 pending,) = batchRequestManager.depositRequest(scId, USDC, investor);
+        (uint128 pending,) = batchRequestManager.depositRequest(poolId, scId, USDC, investor);
         assertEq(pending, 0, "Request should be cancelled");
     }
 
@@ -2635,7 +2734,7 @@ contract BatchRequestManagerPoolManagerPermissionsTest is BatchRequestManagerBas
         vm.prank(poolManager);
         batchRequestManager.forceCancelRedeemRequest{value: COST}(poolId, scId, investor, USDC, REFUND);
 
-        (uint128 pending,) = batchRequestManager.redeemRequest(scId, USDC, investor);
+        (uint128 pending,) = batchRequestManager.redeemRequest(poolId, scId, USDC, investor);
         assertEq(pending, 0, "Request should be cancelled");
     }
 
@@ -2725,7 +2824,7 @@ contract BatchRequestManagerRoundingEdgeCasesRedeem is BatchRequestManagerBaseTe
         assertEq(claimedA + claimedB, 0, "Claimed amount should be zero for both investors");
         assertEq(paymentA, redeemAmountA, "Payment A should never be zero");
         assertEq(paymentB, redeemAmountB, "Payment B should never be zero");
-        assertEq(batchRequestManager.pendingRedeem(scId, OTHER_STABLE), 0, "Pending redeem should be zero");
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, OTHER_STABLE), 0, "Pending redeem should be zero");
 
         _assertRedeemRequestEq(OTHER_STABLE, INVESTOR_A, UserOrder(0, 2));
         _assertRedeemRequestEq(OTHER_STABLE, INVESTOR_B, UserOrder(0, 2));
@@ -2754,7 +2853,9 @@ contract BatchRequestManagerRoundingEdgeCasesRedeem is BatchRequestManagerBaseTe
         assertEq(claimedA + claimedB + 1, assetPayout, "System should have 1 amount surplus");
         assertEq(paymentA, redeemAmountA, "Payment A should never be zero");
         assertEq(paymentB, redeemAmountB, "Payment B should never be zero");
-        assertEq(batchRequestManager.pendingRedeem(scId, OTHER_STABLE), 0, "Pending redeem should not have reset");
+        assertEq(
+            batchRequestManager.pendingRedeem(poolId, scId, OTHER_STABLE), 0, "Pending redeem should not have reset"
+        );
         assertEq(cancelledA + cancelledB, 0, "No queued cancellation");
 
         _assertRedeemRequestEq(OTHER_STABLE, INVESTOR_A, UserOrder(0, 2));
@@ -2787,7 +2888,9 @@ contract BatchRequestManagerRoundingEdgeCasesRedeem is BatchRequestManagerBaseTe
         assertEq(paymentA, redeemAmountA, "Payment A should never be zero");
         assertEq(paymentB, redeemAmountB, "Payment B should never be zero");
         assertEq(paymentC, redeemAmountC, "Payment C should never be zero");
-        assertEq(batchRequestManager.pendingRedeem(scId, OTHER_STABLE), 0, "Pending redeem should not have reset");
+        assertEq(
+            batchRequestManager.pendingRedeem(poolId, scId, OTHER_STABLE), 0, "Pending redeem should not have reset"
+        );
 
         _assertRedeemRequestEq(OTHER_STABLE, INVESTOR_A, UserOrder(0, 2));
         _assertRedeemRequestEq(OTHER_STABLE, INVESTOR_B, UserOrder(0, 2));
@@ -2874,7 +2977,7 @@ contract BatchRequestManagerERC165Support is BatchRequestManagerBaseTest {
         bytes4 erc165 = 0x01ffc9a7;
         bytes4 hubRequestManager = 0x2f6c33bf;
         bytes4 hubRequestManagerNotifications = 0x3a2d9da4;
-        bytes4 batchRequestManagerID = 0x0645ca38;
+        bytes4 batchRequestManagerID = 0xaf00afbd; // Updated due to PoolId parameter additions
 
         vm.assume(
             unsupportedInterfaceId != erc165 && unsupportedInterfaceId != hubRequestManager
