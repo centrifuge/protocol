@@ -77,8 +77,7 @@ contract NAVManagerIntegrationTest is BaseTest {
         valuation.setPrice(POOL_A, scId, liabilityAsset, d18(1, 1));
     }
 
-    /// forge-config: default.isolate = true
-    function testSuccess() public {
+    function _testInitializeAndUpdate() internal {
         vm.startPrank(manager);
         navManager.initializeNetwork(POOL_A, CHAIN_CP);
         navManager.initializeNetwork(POOL_A, CHAIN_CV);
@@ -124,6 +123,11 @@ contract NAVManagerIntegrationTest is BaseTest {
         assertEq(issuanceSpoke, 3300e18);
         assertEq(globalNAV, 3800e18);
         assertEq(globalIssuance, 3800e18);
+    }
+
+    /// forge-config: default.isolate = true
+    function testPriceUpdate() public {
+        _testInitializeAndUpdate();
 
         valuation.setPrice(POOL_A, scId, asset1, d18(11, 10)); // 10% increase in value
         valuation.setPrice(POOL_A, scId, asset3, d18(1, 2)); // 50% decrease in value
@@ -138,20 +142,20 @@ contract NAVManagerIntegrationTest is BaseTest {
         vm.prank(manager);
         navManager.updateHoldingValue(POOL_A, scId, asset3);
 
-        navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
-        navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
-        (navHub2, issuanceHub,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
-        (navSpoke2, issuanceSpoke,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
-        (globalNAV, globalIssuance) = simplePriceManager.metrics(POOL_A);
+        uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
+        uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
+        (uint128 navHub2, uint128 issuanceHub,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+        (uint128 navSpoke2, uint128 issuanceSpoke,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
         (bool spokeGainIsPositive, uint128 spokeGain) =
             accounting.accountValue(POOL_A, navManager.gainAccount(CHAIN_CV));
         (bool hubLossIsPositive, uint128 hubLoss) = accounting.accountValue(POOL_A, navManager.lossAccount(CHAIN_CP));
 
         assertEq(spokeGain, 100e18);
         assertTrue(spokeGainIsPositive);
-        assertEq(hubLoss, 250e18, "hubLoss2");
+        assertEq(hubLoss, 250e18);
         assertFalse(hubLossIsPositive);
-        assertEq(navHub, 250e18, "navHub2");
+        assertEq(navHub, 250e18);
 
         assertEq(navSpoke, 3400e18);
         assertEq(navHub2, navHub);
@@ -160,50 +164,61 @@ contract NAVManagerIntegrationTest is BaseTest {
         assertEq(issuanceSpoke, 3300e18);
         assertEq(globalNAV, 3650e18); // (3300 * 1.1) + (500 * 0.5) = 3650
         assertEq(globalIssuance, 3800e18);
+    }
+
+    /// forge-config: default.isolate = true
+    function testTransferShares() public {
+        _testInitializeAndUpdate();
 
         vm.prank(address(root));
         hubHandler.initiateTransferShares{value: 0.1 ether}(
             CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32("receiver"), 130e18, 0, manager
         );
 
-        navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
-        navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
-        (navHub2, issuanceHub,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
-        (navSpoke2, issuanceSpoke,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
-        (globalNAV, globalIssuance) = simplePriceManager.metrics(POOL_A);
+        uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
+        uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
+        (uint128 navHub2, uint128 issuanceHub,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+        (uint128 navSpoke2, uint128 issuanceSpoke,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         // NAV and global issuance should remain unchanged, only issuance per network changes
-        assertEq(navHub, 250e18);
-        assertEq(navSpoke, 3400e18);
+        assertEq(navHub, 500e18);
+        assertEq(navSpoke, 3300e18);
         assertEq(navHub2, navHub);
         assertEq(navSpoke2, navSpoke);
         assertEq(issuanceHub, 370e18);
         assertEq(issuanceSpoke, 3430e18);
-        assertEq(globalNAV, 3650e18);
+        assertEq(globalNAV, 3800e18);
         assertEq(globalIssuance, 3800e18);
+    }
+
+    /// forge-config: default.isolate = true
+    function testLiability() public {
+        _testInitializeAndUpdate();
 
         // Increase liability, e.g. fee payable
         vm.expectCall(
             address(hub),
-            abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(3600e18) / d18(3800e18))
+            abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(3750e18) / d18(3800e18))
         );
+
         vm.prank(address(messageDispatcher));
         hubHandler.updateHoldingAmount(CHAIN_CP, POOL_A, scId, liabilityAsset, 50e18, d18(1, 1), true, true, 2);
 
-        navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
-        navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
-        (navHub2, issuanceHub,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
-        (navSpoke2, issuanceSpoke,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
-        (globalNAV, globalIssuance) = simplePriceManager.metrics(POOL_A);
+        uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
+        uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
+        (uint128 navHub2, uint128 issuanceHub,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+        (uint128 navSpoke2, uint128 issuanceSpoke,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         // Liability reduces the NAV
-        assertEq(navHub, 200e18);
-        assertEq(navSpoke, 3400e18);
+        assertEq(navHub, 450e18);
+        assertEq(navSpoke, 3300e18);
         assertEq(navHub2, navHub);
         assertEq(navSpoke2, navSpoke);
-        assertEq(issuanceHub, 370e18);
-        assertEq(issuanceSpoke, 3430e18);
-        assertEq(globalNAV, 3600e18);
+        assertEq(issuanceHub, 500e18);
+        assertEq(issuanceSpoke, 3300e18);
+        assertEq(globalNAV, 3750e18);
         assertEq(globalIssuance, 3800e18);
 
         // Decrease liability by paying with a cash asset
@@ -221,13 +236,13 @@ contract NAVManagerIntegrationTest is BaseTest {
         (globalNAV, globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         // NAV should remain unchanged
-        assertEq(navHub, 200e18);
-        assertEq(navSpoke, 3400e18);
+        assertEq(navHub, 450e18);
+        assertEq(navSpoke, 3300e18);
         assertEq(navHub2, navHub);
         assertEq(navSpoke2, navSpoke);
-        assertEq(issuanceHub, 370e18);
-        assertEq(issuanceSpoke, 3430e18);
-        assertEq(globalNAV, 3600e18);
+        assertEq(issuanceHub, 500e18);
+        assertEq(issuanceSpoke, 3300e18);
+        assertEq(globalNAV, 3750e18);
         assertEq(globalIssuance, 3800e18);
     }
 }

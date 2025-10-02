@@ -23,7 +23,6 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     IShareClassManager public immutable shareClassManager;
 
     mapping(PoolId poolId => Metrics) public metrics;
-    mapping(PoolId poolId => mapping(address => bool)) public manager;
     mapping(PoolId poolId => mapping(uint16 centrifugeId => NetworkMetrics)) public networkMetrics;
     mapping(PoolId poolId => uint16[]) internal _networks;
 
@@ -32,11 +31,6 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         gateway = hub_.gateway();
         hubRegistry = hub_.hubRegistry();
         shareClassManager = hub_.shareClassManager();
-    }
-
-    modifier onlyManager(PoolId poolId) {
-        require(manager[poolId][msg.sender], NotAuthorized());
-        _;
     }
 
     modifier onlyHubManager(PoolId poolId) {
