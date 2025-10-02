@@ -32,16 +32,21 @@ contract MockValuation is IValuation {
     }
 
     /// @inheritdoc IValuation
+    function getPrice(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (D18) {
+        Price memory price_ = price[poolId][scId][assetId];
+        require(price_.isValid, "Price not set");
+
+        return price_.value;
+    }
+
+    /// @inheritdoc IValuation
     function getQuote(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 baseAmount)
         external
         view
         returns (uint128 quoteAmount)
     {
-        Price memory price_ = price[poolId][scId][assetId];
-        require(price_.isValid, "Price not set");
-
         return PricingLib.convertWithPrice(
-            baseAmount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), price_.value
+            baseAmount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), getPrice(poolId, scId, assetId)
         );
     }
 }

@@ -1,15 +1,15 @@
 [![Github Actions][gha-badge]][gha] [![Foundry][foundry-badge]][foundry] [![Docs][docs-badge]][docs]
 
-[gha]: https://github.com/centrifuge/protocol-v3/actions
-[gha-badge]: https://github.com/centrifuge/protocol-v3/actions/workflows/ci.yml/badge.svg
+[gha]: https://github.com/centrifuge/protocol/actions
+[gha-badge]: https://github.com/centrifuge/protocol/actions/workflows/ci.yml/badge.svg
 [foundry]: https://getfoundry.sh
 [foundry-badge]: https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg
 [docs]: https://docs.centrifuge.io/developer/protocol/overview/
 [docs-badge]: https://img.shields.io/badge/Docs-docs.centrifuge.io-6EDFFB.svg
 
-# Centrifuge Protocol V3
+# Centrifuge Protocol
 
-Centrifuge V3 is an open, decentralized protocol for onchain asset management. Built on immutable smart contracts, it enables permissionless deployment of customizable tokenization products.
+Centrifuge is an open, decentralized protocol for onchain asset management. Built on immutable smart contracts, it enables permissionless deployment of customizable tokenization products.
 
 Build a wide range of use cases, from permissioned funds to onchain loans, while enabling fast, secure deployment. ERC-4626 and ERC-7540 vaults allow seamless integration into DeFi.
 
@@ -17,7 +17,7 @@ Using protocol-level chain abstraction, tokenization issuers access liquidity ac
 
 ## Protocol
 
-Centrifuge V3 operates on a [hub-and-spoke model](https://docs.centrifuge.io/developer/protocol/chain-abstraction/). Each pool chooses a single hub chain, and can tokenize and manage liquidity on many spoke chains.
+The Centrifuge Protocol operates on a [hub-and-spoke model](https://docs.centrifuge.io/developer/protocol/chain-abstraction/). Each pool chooses a single hub chain, and can tokenize and manage liquidity on many spoke chains.
 
 ![](https://docs.centrifuge.io/assets/images/overview-6f95e12a2317402da85bcd8d953f2115.png)
 
@@ -56,8 +56,8 @@ Centrifuge V3 operates on a [hub-and-spoke model](https://docs.centrifuge.io/dev
 ## Contributing
 #### Getting started
 ```sh
-git clone git@github.com:centrifuge/protocol-v3.git
-cd protocol-v3
+git clone git@github.com:centrifuge/protocol.git
+cd protocol
 ```
 
 #### Testing
@@ -71,4 +71,4 @@ forge test
 Reports from security reviews can be found in the [documentation](https://docs.centrifuge.io/developer/protocol/security/).
 
 ## License
-The primary license is the [Business Source License 1.1](https://github.com/centrifuge/protocol-v3/blob/main/LICENSE). However, all files in the [`src/misc`](./src/misc) folder, [`src/managers/MerkleProofManager.sol`](./src/managers/MerkleProofManager.sol), and any interface file can also be licensed under `GPL-2.0-or-later` (as indicated in their SPDX headers).
+The primary license is the [Business Source License 1.1](https://github.com/centrifuge/protocol/blob/main/LICENSE). However, all files in the [`src/misc`](./src/misc) folder, [`src/managers/MerkleProofManager.sol`](./src/managers/MerkleProofManager.sol), and any interface file can also be licensed under `GPL-2.0-or-later` (as indicated in their SPDX headers).

@@ -54,6 +54,7 @@ contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
         assertEq(address(asyncRequestManager.spoke()), address(spoke));
         assertEq(address(asyncRequestManager.balanceSheet()), address(balanceSheet));
         assertEq(address(asyncRequestManager.globalEscrow()), address(globalEscrow));
+        assertEq(address(asyncRequestManager.refundEscrowFactory()), address(refundEscrowFactory));
 
         // root endorsements
         assertEq(root.endorsed(address(balanceSheet)), true);
@@ -65,7 +66,6 @@ contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
         vm.assume(nonWard != address(spoke));
 
         assertEq(asyncVaultFactory.wards(address(root)), 1);
-        assertEq(asyncVaultFactory.wards(address(spoke)), 1);
         assertEq(asyncVaultFactory.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -79,7 +79,6 @@ contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
         vm.assume(nonWard != address(spoke));
 
         assertEq(syncDepositVaultFactory.wards(address(root)), 1);
-        assertEq(syncDepositVaultFactory.wards(address(spoke)), 1);
         assertEq(syncDepositVaultFactory.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -118,6 +117,19 @@ contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
 
         // root endorsements
         assertEq(root.endorsed(address(vaultRouter)), true);
+    }
+
+    function testRefundEscrowFactory(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(asyncRequestManager));
+
+        assertEq(refundEscrowFactory.wards(address(root)), 1);
+        assertEq(refundEscrowFactory.wards(address(asyncRequestManager)), 1);
+        assertEq(refundEscrowFactory.wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(address(refundEscrowFactory.controller()), address(asyncRequestManager));
     }
 }
 

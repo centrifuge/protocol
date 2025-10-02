@@ -21,6 +21,10 @@ import {IMessageHandler} from "../common/interfaces/IMessageHandler.sol";
 contract AxelarAdapter is Auth, IAxelarAdapter {
     using CastLib for *;
 
+    /// @dev Cost of executing `execute()` except entrypoint.handle().
+    /// NOTE: Tested in production using real `validateContractCall()` implementation.
+    uint256 public constant RECEIVE_COST = 26000;
+
     IMessageHandler public immutable entrypoint;
     IAxelarGateway public immutable axelarGateway;
     IAxelarGasService public immutable axelarGasService;
@@ -76,11 +80,13 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapter
-    function send(uint16 centrifugeId, bytes calldata payload, uint256, /* gasLimit */ address refund)
-        external
-        payable
-        returns (bytes32 adapterData)
-    {
+    function send(
+        uint16 centrifugeId,
+        bytes calldata payload,
+        uint256,
+        /* gasLimit */
+        address refund
+    ) external payable returns (bytes32 adapterData) {
         require(msg.sender == address(entrypoint), NotEntrypoint());
         AxelarDestination memory destination = destinations[centrifugeId];
         require(bytes(destination.axelarId).length != 0, UnknownChainId());
@@ -97,6 +103,8 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     /// @inheritdoc IAdapter
     function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256) {
         AxelarDestination memory destination = destinations[centrifugeId];
-        return axelarGasService.estimateGasFee(destination.axelarId, destination.addr, payload, gasLimit, bytes(""));
+        return axelarGasService.estimateGasFee(
+            destination.axelarId, destination.addr, payload, gasLimit + RECEIVE_COST, bytes("")
+        );
     }
 }

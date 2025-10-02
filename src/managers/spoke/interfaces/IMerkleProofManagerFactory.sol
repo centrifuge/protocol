@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {IMerkleProofManager} from "./IMerkleProofManager.sol";
 
-import {PoolId} from "../../common/types/PoolId.sol";
+import {PoolId} from "../../../common/types/PoolId.sol";
 
 interface IMerkleProofManagerFactory {
     event DeployMerkleProofManager(PoolId indexed poolId, address indexed manager);

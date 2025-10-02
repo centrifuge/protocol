@@ -9,8 +9,5 @@ interface IMessageProperties {
     function messageLength(bytes calldata message) external view returns (uint16);
 
     /// @notice Inspect the message to return the associated PoolId if any
-    function messagePoolId(bytes calldata message) external view returns (PoolId);
-
-    /// @notice Inspect the message to return the associated PoolId for payment if any
-    function messagePoolIdPayment(bytes calldata message) external view returns (PoolId);
+    function messagePoolId(bytes calldata message) external pure returns (PoolId);
 }

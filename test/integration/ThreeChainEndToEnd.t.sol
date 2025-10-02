@@ -8,12 +8,9 @@ import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 import {d18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../../src/common/types/PoolId.sol";
 import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
 import {IGateway} from "../../src/common/interfaces/IGateway.sol";
 import {MessageLib} from "../../src/common/libraries/MessageLib.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {IMultiAdapter} from "../../src/common/interfaces/IMultiAdapter.sol";
 
 import {IHub} from "../../src/hub/interfaces/IHub.sol";
 
@@ -104,19 +101,20 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
 
         vm.startPrank(FM);
         h.hub.updateSharePrice(POOL_A, SC_1, d18(1, 1));
-        h.hub.notifySharePrice(POOL_A, SC_1, sB.centrifugeId);
+        h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, sB.centrifugeId, REFUND);
 
         // B: Mint shares
         vm.startPrank(BSM);
         IShareToken shareTokenB = IShareToken(sB.spoke.shareToken(POOL_A, SC_1));
         sB.balanceSheet.issue(POOL_A, SC_1, INVESTOR_A, amount);
-        sB.balanceSheet.submitQueuedShares(POOL_A, SC_1, 0);
+        sB.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, 0, REFUND);
         vm.stopPrank();
         assertEq(shareTokenB.balanceOf(INVESTOR_A), amount, "Investor should have minted shares on chain B");
 
         // B: Initiate transfer of shares
         vm.expectEmit();
         emit ISpoke.InitiateTransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A, INVESTOR_A.toBytes32(), amount);
+        vm.expectEmit();
         emit IHub.ForwardTransferShares(sB.centrifugeId, sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount);
 
         // If hub is not source, then message will be pending as unpaid on hub until repaid
@@ -130,7 +128,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
 
         vm.prank(INVESTOR_A);
         sB.spoke.crosschainTransferShares{value: GAS}(
-            sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount, HOOK_GAS, HOOK_GAS
+            sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount, HOOK_GAS, HOOK_GAS, INVESTOR_A
         );
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should be burned on chain B");
         assertEq(
@@ -143,21 +141,11 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         // If hub is not source, then message will be pending as unpaid on hub until repaid
         if (direction == CrossChainDirection.WithIntermediaryHub) {
             assertEq(shareTokenC.balanceOf(INVESTOR_A), 0, "Share transfer not executed due to unpaid message");
-            bytes memory message = MessageLib.ExecuteTransferShares({
-                poolId: PoolId.unwrap(POOL_A),
-                scId: ShareClassId.unwrap(SC_1),
-                receiver: INVESTOR_A.toBytes32(),
-                amount: amount
-            }).serialize();
 
-            // A: Repay for unpaid ExecuteTransferShares message on A to trigger sending it to C if A != C
-            vm.expectEmit(true, false, false, false);
-            emit IMultiAdapter.HandlePayload(h.centrifugeId, bytes32(""), bytes(""), adapterCToA);
+            vm.prank(ANY);
             vm.expectEmit();
             emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, amount);
-
-            vm.startPrank(ANY);
-            h.gateway.repay{value: GAS}(sC.centrifugeId, message);
+            h.gateway.repay{value: GAS}(sC.centrifugeId, _getLastUnpaidMessage(), REFUND);
         }
 
         // C: Verify shares were minted

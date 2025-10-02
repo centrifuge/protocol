@@ -62,16 +62,21 @@ contract OracleValuation is IOracleValuation {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IValuation
+    function getPrice(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (D18) {
+        Price memory price = pricePoolPerAsset[poolId][scId][assetId];
+        require(price.isValid, PriceNotSet());
+
+        return price.value;
+    }
+
+    /// @inheritdoc IValuation
     function getQuote(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 baseAmount)
         external
         view
         returns (uint128 quoteAmount)
     {
-        Price memory price = pricePoolPerAsset[poolId][scId][assetId];
-        require(price.isValid, PriceNotSet());
-
         return PricingLib.convertWithPrice(
-            baseAmount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), price.value
+            baseAmount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), getPrice(poolId, scId, assetId)
         );
     }
 }

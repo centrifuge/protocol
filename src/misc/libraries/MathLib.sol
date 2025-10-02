@@ -145,6 +145,7 @@ library MathLib {
             return result;
         }
     }
+
     // slither-disable-end divide-before-multiply
 
     /// @notice Calculates x * y / denominator with full precision, following the selected rounding direction.

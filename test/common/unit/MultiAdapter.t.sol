@@ -36,7 +36,6 @@ contract MockGateway is IMessageHandler {
 
 contract MockMessageProperties is IMessageProperties {
     function messageLength(bytes calldata message) external pure returns (uint16) {}
-    function messagePoolIdPayment(bytes calldata message) external pure returns (PoolId) {}
 
     function messagePoolId(bytes calldata message) external pure returns (PoolId) {
         if (message.length >= 6) {
@@ -212,7 +211,7 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 2);
 
         assertEq(multiAdapter.poolAdapters(REMOTE_CENT_ID, POOL_A).length, 3);
-        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 0);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 1);
         assertEq(multiAdapter.quorum(REMOTE_CENT_ID, POOL_A), threeAdapters.length);
         assertEq(multiAdapter.threshold(REMOTE_CENT_ID, POOL_A), 1);
         assertEq(multiAdapter.recoveryIndex(REMOTE_CENT_ID, POOL_A), 2);
@@ -222,21 +221,47 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
 
             assertEq(adapter.id, i + 1);
             assertEq(adapter.quorum, threeAdapters.length);
-            assertEq(adapter.activeSessionId, 0);
+            assertEq(adapter.activeSessionId, 1);
             assertEq(address(multiAdapter.adapters(REMOTE_CENT_ID, POOL_A, i)), address(threeAdapters[i]));
         }
     }
 
     function testMultiAdapterSetAdaptersAdvanceSession() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
-        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 0);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 1);
 
         // Using another chain uses a different active session counter
         multiAdapter.setAdapters(LOCAL_CENT_ID, POOL_A, threeAdapters, 3, 3);
-        assertEq(multiAdapter.activeSessionId(LOCAL_CENT_ID, POOL_A), 0);
+        assertEq(multiAdapter.activeSessionId(LOCAL_CENT_ID, POOL_A), 1);
 
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
-        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 1);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 2);
+    }
+
+    function testMultiAdapterSetPoolAdaptersAfterGlobalPool() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 1, 2);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 2);
+
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 2);
+
+        for (uint256 i; i < threeAdapters.length; i++) {
+            IMultiAdapter.Adapter memory adapter = multiAdapter.adapterDetails(REMOTE_CENT_ID, POOL_A, threeAdapters[i]);
+
+            assertEq(adapter.activeSessionId, 2);
+        }
+    }
+
+    function testMultiAdapterSetPoolAdaptersAfterGlobalPoolOnceConfigured() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 1, 2);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 2);
+
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 1, 2);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 1, 2);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_0), 3);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 2);
+
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 2);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 3);
     }
 }
 

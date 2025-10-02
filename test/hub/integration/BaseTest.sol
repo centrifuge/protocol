@@ -15,13 +15,14 @@ import {MAX_MESSAGE_COST} from "../../../src/common/interfaces/IGasService.sol";
 
 import {IHubRequestManager} from "../../../src/hub/interfaces/IHubRequestManager.sol";
 
-import {HubDeployer, HubActionBatcher, CommonInput} from "../../../script/HubDeployer.s.sol";
+import {HubActionBatcher, CommonInput} from "../../../script/HubDeployer.s.sol";
+import {ExtendedHubDeployer, ExtendedHubActionBatcher} from "../../../script/ExtendedHubDeployer.s.sol";
 
 import {MockVaults} from "../mocks/MockVaults.sol";
 
 import "forge-std/Test.sol";
 
-contract BaseTest is HubDeployer, Test {
+contract BaseTest is ExtendedHubDeployer, Test {
     uint16 constant CHAIN_CP = 5;
     uint16 constant CHAIN_CV = 6;
 
@@ -37,6 +38,7 @@ contract BaseTest is HubDeployer, Test {
     bytes32 immutable INVESTOR = bytes32("Investor");
     address immutable ASYNC_REQUEST_MANAGER = makeAddr("AsyncRequestManager");
     address immutable SYNC_REQUEST_MANAGER = makeAddr("SyncManager");
+    address immutable REFUND = makeAddr("Refund");
 
     AssetId immutable USDC_C2 = newAssetId(CHAIN_CV, 1);
     AssetId immutable EUR_STABLE_C2 = newAssetId(CHAIN_CV, 2);
@@ -83,20 +85,18 @@ contract BaseTest is HubDeployer, Test {
             version: bytes32(0)
         });
 
-        HubActionBatcher batcher = new HubActionBatcher();
+        ExtendedHubActionBatcher batcher = new ExtendedHubActionBatcher();
         labelAddresses("");
-        deployHub(input, batcher);
+        deployExtendedHub(input, batcher);
         _mockStuff(batcher);
-        hubRequestManager = IHubRequestManager(address(new MockHubRequestManager(address(hub))));
-        removeHubDeployerAccess(batcher);
+        removeExtendedHubDeployerAccess(batcher);
+        hubRequestManager = new MockHubRequestManager();
 
         // Initialize accounts
         vm.deal(FM, 1 ether);
 
         // We should not use the block ChainID
         vm.chainId(0xDEAD);
-
-        gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
     }
 
     function _assertEqAccountValue(PoolId poolId, AccountId accountId, bool expectedIsPositive, uint128 expectedValue)

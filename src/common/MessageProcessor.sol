@@ -18,7 +18,8 @@ import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
-    IUpdateContractGatewayHandler
+    IUpdateContractGatewayHandler,
+    IVaultRegistryGatewayHandler
 } from "./interfaces/IGatewayHandlers.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -42,6 +43,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     ISpokeGatewayHandler public spoke;
     IHubGatewayHandler public hubHandler;
     IBalanceSheetGatewayHandler public balanceSheet;
+    IVaultRegistryGatewayHandler public vaultRegistry;
     IUpdateContractGatewayHandler public contractUpdater;
 
     constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, address deployer) Auth(deployer) {
@@ -61,6 +63,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
+        else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -73,6 +76,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes calldata message) external auth {
         MessageType kind = message.messageType();
+        gateway.setUnpaidMode(true);
 
         uint16 sourceCentrifugeId = message.messageSourceCentrifugeId();
         require(sourceCentrifugeId == 0 || sourceCentrifugeId == centrifugeId, InvalidSourceChain());
@@ -146,7 +150,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 ShareClassId.wrap(m.scId),
                 m.receiver,
                 m.amount,
-                m.extraGasLimit
+                m.extraGasLimit,
+                address(0) // Refund is not used because we're in unpaid mode with no payment
             );
         } else if (kind == MessageType.ExecuteTransferShares) {
             MessageLib.ExecuteTransferShares memory m = MessageLib.deserializeExecuteTransferShares(message);
@@ -162,7 +167,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             spoke.requestCallback(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
         } else if (kind == MessageType.UpdateVault) {
             MessageLib.UpdateVault memory m = MessageLib.deserializeUpdateVault(message);
-            spoke.updateVault(
+            vaultRegistry.updateVault(
                 PoolId.wrap(m.poolId),
                 ShareClassId.wrap(m.scId),
                 AssetId.wrap(m.assetId),
@@ -213,6 +218,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else {
             revert InvalidMessage(uint8(kind));
         }
+
+        gateway.setUnpaidMode(false);
     }
 
     /// @inheritdoc IMessageProperties
@@ -223,10 +230,5 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageProperties
     function messagePoolId(bytes calldata message) external pure returns (PoolId) {
         return message.messagePoolId();
-    }
-
-    /// @inheritdoc IMessageProperties
-    function messagePoolIdPayment(bytes calldata message) external pure returns (PoolId) {
-        return message.messagePoolIdPayment();
     }
 }

@@ -103,6 +103,7 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
 
     function testEstimate(uint256 gasLimit) public {
         vm.assume(gasLimit > 0);
+        vm.assume(gasLimit < adapter.RECEIVE_COST());
 
         bytes memory payload = "irrelevant";
 

@@ -128,7 +128,6 @@ interface ISpoke {
     error InvalidVault();
     error AlreadyLinkedVault();
     error AlreadyUnlinkedVault();
-    error NotEnoughGas();
 
     /// @notice Returns the asset address and tokenId associated with a given asset id.
     /// @dev Reverts if asset id does not exist
@@ -151,7 +150,7 @@ interface ISpoke {
     ///                or 'gasService'
     function file(bytes32 what, address data) external;
 
-    /// @notice transfers share class tokens to a cross-chain recipient address
+    /// @notice Transfers share class tokens to a cross-chain recipient address
     /// @dev    To transfer to evm chains, pad a 20 byte evm address with 12 bytes of 0
     /// @param  centrifugeId The destination chain id
     /// @param  poolId The centrifuge pool id
@@ -161,6 +160,7 @@ interface ISpoke {
     /// @param  extraGasLimit extra gas limit used for some extra computation that could happen on the intermediary hub
     /// @param  remoteExtraGasLimit extra gas limit used for some extra computation that could happen in the chain where
     /// the transfer is executed.
+    /// @param  refund address to refund the excedent of the payment
     function crosschainTransferShares(
         uint16 centrifugeId,
         PoolId poolId,
@@ -168,9 +168,11 @@ interface ISpoke {
         bytes32 receiver,
         uint128 amount,
         uint128 extraGasLimit,
-        uint128 remoteExtraGasLimit
+        uint128 remoteExtraGasLimit,
+        address refund
     ) external payable;
 
+    /// @dev Maintained for retrocompatibility. New implementers should use the above
     function crosschainTransferShares(
         uint16 centrifugeId,
         PoolId poolId,
@@ -188,7 +190,8 @@ interface ISpoke {
     /// @param asset The address of the asset to be registered
     /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
     /// @return assetId The underlying internal uint128 assetId.
-    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
+    /// @param refund address to refund the excedent of the payment
+    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId, address refund)
         external
         payable
         returns (AssetId assetId);
@@ -200,47 +203,14 @@ interface ISpoke {
     /// @param  scId The share class id
     /// @param  assetId The asset id
     /// @param  payload The request payload to be processed
-    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload)
-        external
-        returns (uint256 cost);
-
-    /// @notice Deploys a new vault
-    ///
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id for which we want to deploy a vault
-    /// @param factory The address of the corresponding vault factory
-    /// @return address The address of the deployed vault
-    function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVaultFactory factory)
-        external
-        returns (IVault);
-
-    /// @dev Used only for migrations
-    function registerVault(
+    function request(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        address asset,
-        uint256 tokenId,
-        IVaultFactory factory,
-        IVault vault
-    ) external;
-
-    /// @notice Links a deployed vault to the given pool, share class and asset.
-    ///
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id for which we want to deploy a vault
-    /// @param vault The address of the deployed vault
-    function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) external;
-
-    /// @notice Removes the link between a vault and the given pool, share class and asset.
-    ///
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id for which we want to deploy a vault
-    /// @param vault The address of the deployed vault
-    function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) external;
+        bytes memory payload,
+        address refund,
+        bool unpaid
+    ) external payable;
 
     /// @notice Returns whether the given pool id is active
     function isPoolActive(PoolId poolId) external view returns (bool);
@@ -252,19 +222,6 @@ interface ISpoke {
     /// @param scId The share class id
     /// @return address The address of the share token
     function shareToken(PoolId poolId, ShareClassId scId) external view returns (IShareToken);
-
-    /// @notice Function to get the details of a vault
-    /// @dev    Reverts if vault does not exist
-    ///
-    /// @param vault The address of the vault to be checked for
-    /// @return details The details of the vault including the underlying asset address, token id, asset id
-    function vaultDetails(IVault vault) external view returns (VaultDetails memory details);
-
-    /// @notice Checks whether a given vault is eligible for investing into a share class of a pool
-    ///
-    /// @param vault The address of the vault
-    /// @return bool Whether vault is to a share class
-    function isLinked(IVault vault) external view returns (bool);
 
     /// @notice Returns the price per share for a given pool and share class. The Provided price is defined as
     /// POOL_UNIT/SHARE_UNIT.
@@ -333,10 +290,15 @@ interface ISpoke {
         view
         returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
 
-    /// @notice Returns the address of the vault for a given pool, share class asset and requestManager
-    /// @param manager the request manager associated to the vault, if 0, then it correspond to a full sync vault.
-    function vault(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager)
-        external
-        view
-        returns (IVault vault);
+    /// @notice Returns the request manager for a given pool
+    /// @param poolId The pool id
+    /// @return manager The request manager for the pool
+    function requestManager(PoolId poolId) external view returns (IRequestManager manager);
+
+    /// @notice Updates a share token's vault reference for a specific asset
+    /// @param poolId The pool ID
+    /// @param scId The share class ID
+    /// @param asset The asset address
+    /// @param vault The vault address to set (or address(0) to unset)
+    function setShareTokenVault(PoolId poolId, ShareClassId scId, address asset, address vault) external;
 }

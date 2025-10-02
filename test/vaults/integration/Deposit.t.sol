@@ -64,7 +64,7 @@ contract DepositTest is BaseTest {
 
         assertEq(vault.isPermissioned(self), false);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max); // add user as
-            // member
+        // member
         assertEq(vault.isPermissioned(self), true);
 
         // will fail - user not member: can not receive share class
@@ -345,7 +345,7 @@ contract DepositTest is BaseTest {
         erc20.mint(self, amount);
 
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max); // add user as
-            // member
+        // member
         erc20.approve(vault_, amount); // add allowance
         vault.requestDeposit(amount, self, self);
 
@@ -399,7 +399,7 @@ contract DepositTest is BaseTest {
 
         erc20.mint(self, amount);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max); // add user as
-            // member
+        // member
         erc20.approve(vault_, amount); // add allowance
         vault.requestDeposit(amount, self, self);
 
@@ -417,7 +417,7 @@ contract DepositTest is BaseTest {
         assertEq(shareToken.balanceOf(address(globalEscrow)), sharePayout);
 
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), receiver, type(uint64).max); // add
-            // receiver
+        // receiver
 
         address router = makeAddr("router");
 
@@ -770,7 +770,7 @@ contract DepositTest is BaseTest {
 
         erc20.mint(investor, amount);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max); // add user
-            // as
+        // as
 
         vm.startPrank(investor);
         erc20.approve(vault_, amount);

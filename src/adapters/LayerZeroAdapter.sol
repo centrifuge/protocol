@@ -30,6 +30,9 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     using CastLib for *;
     using MathLib for *;
 
+    /// @dev Cost of executing `lzReceive()` except entrypoint.handle()
+    uint256 public constant RECEIVE_COST = 4000;
+
     IMessageHandler public immutable entrypoint;
     ILayerZeroEndpointV2 public immutable endpoint;
 
@@ -103,14 +106,14 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         require(destination.layerZeroEid != 0, UnknownChainId());
 
         MessagingReceipt memory receipt =
-            endpoint.send{value: msg.value}(_params(destination, payload, gasLimit), refund);
+            endpoint.send{value: msg.value}(_params(destination, payload, gasLimit + RECEIVE_COST), refund);
         adapterData = receipt.guid;
     }
 
     /// @inheritdoc IAdapter
     function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256) {
         LayerZeroDestination memory destination = destinations[centrifugeId];
-        MessagingFee memory fee = endpoint.quote(_params(destination, payload, gasLimit), address(this));
+        MessagingFee memory fee = endpoint.quote(_params(destination, payload, gasLimit + RECEIVE_COST), address(this));
         return fee.nativeFee;
     }
 

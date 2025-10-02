@@ -12,6 +12,7 @@ import {SyncManager} from "../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../src/vaults/VaultRouter.sol";
 import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
+import {RefundEscrowFactory} from "../src/vaults/factories/RefundEscrowFactory.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import "forge-std/Script.sol";
@@ -25,20 +26,24 @@ struct VaultsReport {
     VaultRouter vaultRouter;
     AsyncVaultFactory asyncVaultFactory;
     SyncDepositVaultFactory syncDepositVaultFactory;
+    RefundEscrowFactory refundEscrowFactory;
 }
 
 contract VaultsActionBatcher is SpokeActionBatcher {
     function engageVaults(VaultsReport memory report) public onlyDeployer {
         // Rely Spoke
-        report.asyncVaultFactory.rely(address(report.spoke.spoke));
-        report.syncDepositVaultFactory.rely(address(report.spoke.spoke));
         report.asyncRequestManager.rely(address(report.spoke.spoke));
+
+        // Rely VaultRegistry
+        report.asyncVaultFactory.rely(address(report.spoke.vaultRegistry));
+        report.syncDepositVaultFactory.rely(address(report.spoke.vaultRegistry));
 
         // Rely ContractUpdater
         report.syncManager.rely(address(report.spoke.contractUpdater));
 
         // Rely async requests manager
         report.globalEscrow.rely(address(report.asyncRequestManager));
+        report.refundEscrowFactory.rely(address(report.asyncRequestManager));
 
         // Rely Root
         report.vaultRouter.rely(address(report.spoke.common.root));
@@ -48,6 +53,7 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         report.globalEscrow.rely(address(report.spoke.common.root));
         report.asyncVaultFactory.rely(address(report.spoke.common.root));
         report.syncDepositVaultFactory.rely(address(report.spoke.common.root));
+        report.refundEscrowFactory.rely(address(report.spoke.common.root));
 
         // Rely others
         report.routerEscrow.rely(address(report.vaultRouter));
@@ -61,9 +67,13 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         // File methods
         report.asyncRequestManager.file("spoke", address(report.spoke.spoke));
         report.asyncRequestManager.file("balanceSheet", address(report.spoke.balanceSheet));
+        report.asyncRequestManager.file("vaultRegistry", address(report.spoke.vaultRegistry));
 
         report.syncManager.file("spoke", address(report.spoke.spoke));
         report.syncManager.file("balanceSheet", address(report.spoke.balanceSheet));
+        report.syncManager.file("vaultRegistry", address(report.spoke.vaultRegistry));
+
+        report.refundEscrowFactory.file(bytes32("controller"), address(report.asyncRequestManager));
 
         // Endorse methods
         report.spoke.common.root.endorse(address(report.asyncRequestManager));
@@ -79,6 +89,7 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         report.routerEscrow.deny(address(this));
         report.globalEscrow.deny(address(this));
         report.vaultRouter.deny(address(this));
+        report.refundEscrowFactory.deny(address(this));
     }
 }
 
@@ -90,6 +101,7 @@ contract VaultsDeployer is SpokeDeployer {
     VaultRouter public vaultRouter;
     AsyncVaultFactory public asyncVaultFactory;
     SyncDepositVaultFactory public syncDepositVaultFactory;
+    RefundEscrowFactory public refundEscrowFactory;
 
     function deployVaults(CommonInput memory input, VaultsActionBatcher batcher) public {
         _preDeployVaults(input, batcher);
@@ -107,10 +119,21 @@ contract VaultsDeployer is SpokeDeployer {
             create3(generateSalt("globalEscrow"), abi.encodePacked(type(Escrow).creationCode, abi.encode(batcher)))
         );
 
-        asyncRequestManager = AsyncRequestManager(
+        refundEscrowFactory = RefundEscrowFactory(
             create3(
-                generateSalt("asyncRequestManager-2"),
-                abi.encodePacked(type(AsyncRequestManager).creationCode, abi.encode(globalEscrow, batcher))
+                generateSalt("refundEscrowFactory"),
+                abi.encodePacked(type(RefundEscrowFactory).creationCode, abi.encode(batcher))
+            )
+        );
+
+        asyncRequestManager = AsyncRequestManager(
+            payable(
+                create3(
+                    generateSalt("asyncRequestManager-2"),
+                    abi.encodePacked(
+                        type(AsyncRequestManager).creationCode, abi.encode(globalEscrow, refundEscrowFactory, batcher)
+                    )
+                )
             )
         );
 
@@ -122,7 +145,8 @@ contract VaultsDeployer is SpokeDeployer {
             create3(
                 generateSalt("vaultRouter"),
                 abi.encodePacked(
-                    type(VaultRouter).creationCode, abi.encode(address(routerEscrow), gateway, spoke, batcher)
+                    type(VaultRouter).creationCode,
+                    abi.encode(address(routerEscrow), gateway, spoke, vaultRegistry, batcher)
                 )
             )
         );
@@ -150,6 +174,7 @@ contract VaultsDeployer is SpokeDeployer {
 
         register("routerEscrow", address(routerEscrow));
         register("globalEscrow", address(globalEscrow));
+        register("refundEscrowFactory", address(refundEscrowFactory));
         register("asyncRequestManager", address(asyncRequestManager));
         register("syncManager", address(syncManager));
         register("asyncVaultFactory", address(asyncVaultFactory));
@@ -176,7 +201,8 @@ contract VaultsDeployer is SpokeDeployer {
             globalEscrow,
             vaultRouter,
             asyncVaultFactory,
-            syncDepositVaultFactory
+            syncDepositVaultFactory,
+            refundEscrowFactory
         );
     }
 }

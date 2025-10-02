@@ -23,6 +23,7 @@ import {IShareToken} from "../../../src/spoke/interfaces/IShareToken.sol";
 import {IVaultFactory} from "../../../src/spoke/factories/interfaces/IVaultFactory.sol";
 
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
+import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
 
 import {
     ExtendedSpokeDeployer, ExtendedSpokeActionBatcher, CommonInput
@@ -61,7 +62,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     uint256 public constant ESTIMATE_ADAPTER_2 = 1_250_000; // 1.25M gas
     uint256 public constant ESTIMATE_ADAPTER_3 = 1_750_000; // 1.75M gas
     uint256 public constant ESTIMATE_ADAPTERS = ESTIMATE_ADAPTER_1 + ESTIMATE_ADAPTER_2 + ESTIMATE_ADAPTER_3;
-    uint256 public constant GAS_COST_LIMIT = MAX_MESSAGE_COST; // 3M gas
+    uint256 public constant GAS_COST_LIMIT = MAX_MESSAGE_COST;
     uint256 public constant DEFAULT_GAS = ESTIMATE_ADAPTERS + GAS_COST_LIMIT * 3;
     uint256 public constant DEFAULT_SUBSIDY = DEFAULT_GAS * 100;
 
@@ -90,6 +91,9 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         deployExtendedSpoke(input, this);
         // removeExtendedSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
 
+        // Ensure test contract has auth on vaultRegistry for testing
+        vaultRegistry.rely(address(this));
+
         // deploy mock adapters
         adapter1 = new MockAdapter(OTHER_CHAIN_ID, multiAdapter);
         adapter2 = new MockAdapter(OTHER_CHAIN_ID, multiAdapter);
@@ -103,14 +107,15 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         testAdapters.push(adapter2);
         testAdapters.push(adapter3);
 
-        centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, syncManager);
+        centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, vaultRegistry, syncManager);
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
         multiAdapter.setAdapters(
             OTHER_CHAIN_ID, PoolId.wrap(0), testAdapters, uint8(testAdapters.length), uint8(testAdapters.length)
         );
-        gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
+
+        asyncRequestManager.depositSubsidy{value: 0.5 ether}(POOL_A);
 
         // We should not use the block ChainID
         vm.chainId(BLOCK_CHAIN_ID);
@@ -130,7 +135,6 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         catch {
             if (spoke.pool(POOL_A) == 0) {
                 centrifugeChain.addPool(POOL_A.raw());
-                gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(POOL_A);
             }
             centrifugeChain.addShareClass(POOL_A.raw(), scId, "name", "symbol", shareTokenDecimals, hook);
             centrifugeChain.updatePricePoolPerShare(POOL_A.raw(), scId, uint128(10 ** 18), uint64(block.timestamp));
@@ -139,7 +143,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         try spoke.assetToId(asset, assetTokenId) {
             assetId = spoke.assetToId(asset, assetTokenId).raw();
         } catch {
-            assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, assetTokenId).raw();
+            assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, assetTokenId, address(this)).raw();
             centrifugeChain.updatePricePoolPerAsset(
                 POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)
             );
@@ -156,15 +160,12 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
 
         IVaultFactory vaultFactory = _vaultKindToVaultFactory(vaultKind);
 
-        spoke.updateVault(
+        vaultRegistry.updateVault(
             POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(vaultFactory), VaultUpdateKind.DeployAndLink
         );
 
         vaultAddress = IShareToken(spoke.shareToken(POOL_A, ShareClassId.wrap(scId))).vault(asset);
         poolId = POOL_A.raw();
-
-        gateway.setRefundAddress(POOL_A, gateway);
-        gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(POOL_A);
     }
 
     function deployVault(VaultKind vaultKind, uint8 decimals, bytes16 scId)
@@ -217,6 +218,17 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         if (claimDeposit) {
             vault.deposit(amount, _investor);
         }
+        vm.stopPrank();
+    }
+
+    function depositSync(address _vault, address _investor, uint256 amount) public {
+        SyncDepositVault vault = SyncDepositVault(_vault);
+        ERC20 asset = ERC20(vault.asset());
+        asset.mint(_investor, amount);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), _investor, type(uint64).max);
+        vm.startPrank(_investor);
+        asset.approve(_vault, amount);
+        vault.deposit(amount, _investor);
         vm.stopPrank();
     }
 
