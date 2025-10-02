@@ -19,7 +19,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     using MathLib for uint256;
     using ArrayLib for int16[8];
 
-    PoolId public constant GLOBAL_ID = PoolId.wrap(0);
+    PoolId public constant GLOBAL_POOL = PoolId.wrap(0);
 
     uint16 public immutable localCentrifugeId;
 
@@ -91,7 +91,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         }
 
         adapters[centrifugeId][poolId] = addresses;
-        if (poolId == GLOBAL_ID) globalSessionId = sessionId;
+        if (poolId == GLOBAL_POOL) globalSessionId = sessionId;
 
         emit SetAdapters(centrifugeId, poolId, addresses, threshold_, recoveryIndex_);
     }
@@ -102,22 +102,16 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes calldata payload) external {
-        IAdapter adapter_ = IAdapter(msg.sender);
         PoolId poolId = messageProperties.messagePoolId(payload);
 
-        Adapter memory adapter = _adapterDetails[centrifugeId][poolId][adapter_];
-
-        // If adapters not configured per pool, then assume it's received by a global adapters
-        if (adapter.id == 0 && adapters[centrifugeId][poolId].length == 0) {
-            adapter = _adapterDetails[centrifugeId][PoolId.wrap(0)][adapter_];
-        }
-
+        IAdapter adapterAddr = IAdapter(msg.sender);
+        Adapter memory adapter = _poolAdapterDetails(centrifugeId, poolId, adapterAddr);
         require(adapter.id != 0, InvalidAdapter());
 
         // Verify adapter and parse message hash
         bytes32 payloadHash = keccak256(payload);
         bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payloadHash));
-        emit HandlePayload(centrifugeId, payloadId, payload, adapter_);
+        emit HandlePayload(centrifugeId, payloadId, payload, adapterAddr);
 
         // Special case for gas efficiency
         if (adapter.quorum == 1) {
@@ -191,30 +185,43 @@ contract MultiAdapter is Auth, IMultiAdapter {
         adapters_ = adapters[centrifugeId][poolId];
 
         // If adapters not configured per pool, then use the global adapters
-        if (adapters_.length == 0) adapters_ = adapters[centrifugeId][GLOBAL_ID];
+        if (adapters_.length == 0) adapters_ = adapters[centrifugeId][GLOBAL_POOL];
+    }
+
+    function _poolAdapterDetails(uint16 centrifugeId, PoolId poolId, IAdapter adapterAddr)
+        internal
+        view
+        returns (Adapter memory adapter)
+    {
+        adapter = _adapterDetails[centrifugeId][poolId][adapterAddr];
+
+        // If adapters not configured per pool, then assume it's received by a global adapters
+        if (adapter.id == 0 && adapters[centrifugeId][poolId].length == 0) {
+            adapter = _adapterDetails[centrifugeId][GLOBAL_POOL][adapterAddr];
+        }
     }
 
     /// @inheritdoc IMultiAdapter
     function quorum(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {
-        IAdapter adapter = adapters[centrifugeId][poolId][0];
+        IAdapter adapter = poolAdapters(centrifugeId, poolId)[0];
         return _adapterDetails[centrifugeId][poolId][adapter].quorum;
     }
 
     /// @inheritdoc IMultiAdapter
     function threshold(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {
-        IAdapter adapter = adapters[centrifugeId][poolId][0];
+        IAdapter adapter = poolAdapters(centrifugeId, poolId)[0];
         return _adapterDetails[centrifugeId][poolId][adapter].threshold;
     }
 
     /// @inheritdoc IMultiAdapter
     function recoveryIndex(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {
-        IAdapter adapter = adapters[centrifugeId][poolId][0];
+        IAdapter adapter = poolAdapters(centrifugeId, poolId)[0];
         return _adapterDetails[centrifugeId][poolId][adapter].recoveryIndex;
     }
 
     /// @inheritdoc IMultiAdapter
     function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint64) {
-        IAdapter adapter = adapters[centrifugeId][poolId][0];
+        IAdapter adapter = poolAdapters(centrifugeId, poolId)[0];
         return _adapterDetails[centrifugeId][poolId][adapter].activeSessionId;
     }
 
