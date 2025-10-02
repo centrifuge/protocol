@@ -172,14 +172,16 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendNotifyPricePoolPerShare(uint16 chainId, PoolId poolId, ShareClassId scId, D18 price, address refund)
-        external
-        payable
-        auth
-    {
+    function sendNotifyPricePoolPerShare(
+        uint16 chainId,
+        PoolId poolId,
+        ShareClassId scId,
+        D18 pricePoolPerShare,
+        address refund
+    ) external payable auth {
         uint64 timestamp = block.timestamp.toUint64();
         if (chainId == localCentrifugeId) {
-            spoke.updatePricePoolPerShare(poolId, scId, price, timestamp);
+            spoke.updatePricePoolPerShare(poolId, scId, pricePoolPerShare, timestamp);
             _refund(refund);
         } else {
             _send(
@@ -187,7 +189,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 MessageLib.NotifyPricePoolPerShare({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
-                    price: price.raw(),
+                    price: pricePoolPerShare.raw(),
                     timestamp: timestamp
                 }).serialize(),
                 0,
@@ -197,14 +199,16 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendNotifyPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price, address refund)
-        external
-        payable
-        auth
-    {
+    function sendNotifyPricePoolPerAsset(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        D18 pricePoolPerAsset,
+        address refund
+    ) external payable auth {
         uint64 timestamp = block.timestamp.toUint64();
         if (assetId.centrifugeId() == localCentrifugeId) {
-            spoke.updatePricePoolPerAsset(poolId, scId, assetId, price, timestamp);
+            spoke.updatePricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset, timestamp);
             _refund(refund);
         } else {
             _send(
@@ -213,7 +217,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     assetId: assetId.raw(),
-                    price: price.raw(),
+                    price: pricePoolPerAsset.raw(),
                     timestamp: timestamp
                 }).serialize(),
                 0,
@@ -521,7 +525,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     scId: scId.raw(),
                     assetId: assetId.raw(),
                     amount: data.netAmount,
-                    pricePerUnit: pricePoolPerAsset.raw(),
+                    pricePoolPerAsset: pricePoolPerAsset.raw(),
                     timestamp: uint64(block.timestamp),
                     isIncrease: data.isIncrease,
                     isSnapshot: data.isSnapshot,
