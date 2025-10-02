@@ -6,7 +6,7 @@ import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "./SpokeDeployer.s.
 
 import {Escrow} from "../src/misc/Escrow.sol";
 
-import {Spoke} from "../src/spoke/Spoke.sol";
+import {Spoke} from "../src/core/spoke/Spoke.sol";
 
 import {SyncManager} from "../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../src/vaults/VaultRouter.sol";

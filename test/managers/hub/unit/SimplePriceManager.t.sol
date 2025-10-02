@@ -5,16 +5,16 @@ import {d18} from "../../../../src/misc/types/D18.sol";
 import {Multicall} from "../../../../src/misc/Multicall.sol";
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "../../../../src/common/types/PoolId.sol";
-import {IGateway} from "../../../../src/common/interfaces/IGateway.sol";
-import {AssetId, newAssetId} from "../../../../src/common/types/AssetId.sol";
-import {IBatchedMulticall} from "../../../../src/common/interfaces/IBatchedMulticall.sol";
-import {ShareClassId, newShareClassId} from "../../../../src/common/types/ShareClassId.sol";
+import {PoolId} from "../../../../src/core/types/PoolId.sol";
+import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
+import {IGateway} from "../../../../src/core/interfaces/IGateway.sol";
+import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
+import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {IBatchedMulticall} from "../../../../src/core/interfaces/IBatchedMulticall.sol";
+import {ShareClassId, newShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
 
-import {IHub} from "../../../../src/hub/interfaces/IHub.sol";
-import {IHubRegistry} from "../../../../src/hub/interfaces/IHubRegistry.sol";
 import {SimplePriceManager} from "../../../../src/managers/hub/SimplePriceManager.sol";
-import {IShareClassManager} from "../../../../src/hub/interfaces/IShareClassManager.sol";
 import {ISimplePriceManager} from "../../../../src/managers/hub/interfaces/ISimplePriceManager.sol";
 
 import "forge-std/Test.sol";

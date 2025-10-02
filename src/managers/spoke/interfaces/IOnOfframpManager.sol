@@ -3,10 +3,9 @@ pragma solidity >=0.5.0;
 
 import {IDepositManager, IWithdrawManager} from "./IBalanceSheetManager.sol";
 
-import {PoolId} from "../../../common/types/PoolId.sol";
-import {ShareClassId} from "../../../common/types/ShareClassId.sol";
-
-import {IUpdateContract} from "../../../spoke/interfaces/IUpdateContract.sol";
+import {PoolId} from "../../../core/types/PoolId.sol";
+import {ShareClassId} from "../../../core/types/ShareClassId.sol";
+import {IUpdateContract} from "../../../core/spoke/interfaces/IUpdateContract.sol";
 
 interface IOnOfframpManager is IDepositManager, IWithdrawManager, IUpdateContract {
     event UpdateOnramp(address indexed asset, bool isEnabled);

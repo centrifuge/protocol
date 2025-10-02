@@ -14,7 +14,7 @@ import {
 import {Auth} from "../misc/Auth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
-import {IMessageHandler} from "../common/interfaces/IMessageHandler.sol";
+import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
 
 /// @title  Wormhole Adapter
 /// @notice Routing contract that integrates with the Wormhole Relayer service

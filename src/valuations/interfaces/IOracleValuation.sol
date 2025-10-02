@@ -3,10 +3,10 @@ pragma solidity >=0.5.0;
 
 import {D18} from "../../misc/types/D18.sol";
 
-import {PoolId} from "../../common/types/PoolId.sol";
-import {AssetId} from "../../common/types/AssetId.sol";
-import {ShareClassId} from "../../common/types/ShareClassId.sol";
-import {IValuation} from "../../common/interfaces/IValuation.sol";
+import {PoolId} from "../../core/types/PoolId.sol";
+import {AssetId} from "../../core/types/AssetId.sol";
+import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IValuation} from "../../core/hub/interfaces/IValuation.sol";
 
 interface IOracleValuation is IValuation {
     /// @dev Latest price

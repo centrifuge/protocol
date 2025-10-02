@@ -7,15 +7,16 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 import {IERC165} from "../../../src/misc/interfaces/IERC165.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-
-import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "../../../src/hub/interfaces/IShareClassManager.sol";
-import {IHubRequestManagerCallback} from "../../../src/hub/interfaces/IHubRequestManagerCallback.sol";
-import {IHubRequestManager, IHubRequestManagerNotifications} from "../../../src/hub/interfaces/IHubRequestManager.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {IHubRequestManagerCallback} from "../../../src/core/hub/interfaces/IHubRequestManagerCallback.sol";
+import {
+    IHubRequestManager,
+    IHubRequestManagerNotifications
+} from "../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
 import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
 import {

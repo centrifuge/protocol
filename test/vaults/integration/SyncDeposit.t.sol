@@ -9,17 +9,17 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {MessageLib} from "../../../src/common/libraries/MessageLib.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-import {ITransferHook} from "../../../src/common/interfaces/ITransferHook.sol";
+import "../../core/spoke/integration/BaseTest.sol";
 
-import "../../spoke/integration/BaseTest.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpoke.sol";
+import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {ITransferHook} from "../../../src/core/spoke/interfaces/ITransferHook.sol";
 
-import {IVault} from "../../../src/spoke/interfaces/IVault.sol";
-import {VaultDetails} from "../../../src/spoke/interfaces/ISpoke.sol";
-import {IBalanceSheet} from "../../../src/spoke/interfaces/IBalanceSheet.sol";
+import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";

@@ -11,20 +11,20 @@ case $1 in
   apply)
     # Computes new benchmarks and updates GasService with those values
     RAYON_NUM_THREADS=1 BENCHMARKING_RUN_ID="$(date +%s)" forge test EndToEnd
-    python3 script/utils/update_gas_service_values.py ./snapshots/MessageGasLimits.json ./src/common/GasService.sol
+    python3 script/utils/update_gas_service_values.py ./snapshots/MessageGasLimits.json ./src/messaging/GasService.sol
     ;;
 
   check)
     # Checks if GasService must be updated
     RAYON_NUM_THREADS=1 BENCHMARKING_RUN_ID="$(date +%s)" forge test EndToEnd
 
-    tmp="$(mktemp ./src/common/GasService_temp.XXXXXXX.sol)"
-    cp ./src/common/GasService.sol "$tmp"
+    tmp="$(mktemp ./src/messaging/GasService_temp.XXXXXXX.sol)"
+    cp ./src/messaging/GasService.sol "$tmp"
     trap 'rm -f "$tmp"' EXIT
 
     python3 script/utils/update_gas_service_values.py ./snapshots/MessageGasLimits.json "$tmp"
 
-    sdiff -s ./src/common/GasService.sol "$tmp"
+    sdiff -s ./src/messaging/GasService.sol "$tmp"
     ;;
 
   *)
