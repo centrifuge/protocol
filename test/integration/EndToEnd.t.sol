@@ -25,6 +25,7 @@ import {AssetId, newAssetId} from "../../src/common/types/AssetId.sol";
 import {ProtocolGuardian} from "../../src/common/ProtocolGuardian.sol";
 import {IMessageHandler} from "../../src/common/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/common/MultiAdapter.sol";
+import {ILocalCentrifugeId} from "../../src/common/interfaces/IGatewaySenders.sol";
 import {VaultUpdateKind, MessageType, MessageLib} from "../../src/common/libraries/MessageLib.sol";
 
 import {Hub} from "../../src/hub/Hub.sol";
@@ -262,6 +263,7 @@ contract EndToEndDeployment is Test {
         CommonInput memory commonInput = CommonInput({
             centrifugeId: localCentrifugeId,
             adminSafe: adminSafe,
+            opsSafe: adminSafe,
             maxBatchGasLimit: uint128(GAS) * 100,
             version: bytes32(abi.encodePacked(localCentrifugeId))
         });
@@ -1211,18 +1213,9 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
             remoteAdapters[i] = address(adapter).toBytes32();
         }
 
-        // When setting adapters locally, no cross-chain message is sent
-        // Instead, local configuration succeeds and any gas sent is refunded
-        uint256 refundBalanceBefore = REFUND.balance;
-
         vm.startPrank(FM);
+        vm.expectRevert(ILocalCentrifugeId.CannotBeSentLocally.selector);
         h.hub.setAdapters{value: GAS}(h.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1, REFUND);
-
-        // Verify the gas was refunded
-        uint256 refundBalanceAfter = REFUND.balance;
-        assertEq(
-            refundBalanceAfter, refundBalanceBefore + GAS, "Gas should be refunded for local adapter configuration"
-        );
     }
 
     /// forge-config: default.isolate = true

@@ -87,10 +87,13 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
     function testWormholeAdapter(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(adminSafe));
+        vm.assume(nonWard != address(opsGuardian));
+        vm.assume(nonWard != address(protocolGuardian));
 
         assertEq(wormholeAdapter.wards(address(root)), 1);
-        assertEq(wormholeAdapter.wards(address(adminSafe)), 1);
+        assertEq(wormholeAdapter.wards(address(opsGuardian)), 1);
+        assertEq(wormholeAdapter.wards(address(protocolGuardian)), 1);
+        assertEq(wormholeAdapter.wards(address(adminSafe)), 0);
         assertEq(wormholeAdapter.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -102,10 +105,13 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
     function testAxelarAdapter(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(adminSafe));
+        vm.assume(nonWard != address(opsGuardian));
+        vm.assume(nonWard != address(protocolGuardian));
 
         assertEq(axelarAdapter.wards(address(root)), 1);
-        assertEq(axelarAdapter.wards(address(adminSafe)), 1);
+        assertEq(axelarAdapter.wards(address(opsGuardian)), 1);
+        assertEq(axelarAdapter.wards(address(protocolGuardian)), 1);
+        assertEq(axelarAdapter.wards(address(adminSafe)), 0);
         assertEq(axelarAdapter.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -117,10 +123,13 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
     function testLayerZeroAdapter(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(adminSafe));
+        vm.assume(nonWard != address(opsGuardian));
+        vm.assume(nonWard != address(protocolGuardian));
 
         assertEq(layerZeroAdapter.wards(address(root)), 1);
-        assertEq(layerZeroAdapter.wards(address(adminSafe)), 1);
+        assertEq(layerZeroAdapter.wards(address(opsGuardian)), 1);
+        assertEq(layerZeroAdapter.wards(address(protocolGuardian)), 1);
+        assertEq(layerZeroAdapter.wards(address(adminSafe)), 0);
         assertEq(layerZeroAdapter.wards(nonWard), 0);
 
         // dependencies set correctly

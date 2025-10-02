@@ -6,9 +6,6 @@ import {IOpsGuardian} from "../src/common/interfaces/IOpsGuardian.sol";
 
 import "forge-std/Script.sol";
 
-import {IAxelarAdapter} from "../src/adapters/interfaces/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "../src/adapters/interfaces/IWormholeAdapter.sol";
-
 /// @dev Configures the local network's adapters to communicate with remote networks.
 ///      This script only sets up one-directional communication (local → remote).
 ///      For bidirectional communication, the script must be run on each network separately.
@@ -72,22 +69,24 @@ contract WireAdapters is Script {
 
             // Wire WormholeAdapter
             if (localWormholeAddr != address(0)) {
-                IWormholeAdapter(localWormholeAddr).wire(
+                bytes memory wormholeData = abi.encode(
                     remoteCentrifugeId,
                     uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
                     vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter")
                 );
+                opsGuardian.wire(localWormholeAddr, wormholeData);
 
                 console.log("Wired WormholeAdapter from", localNetwork, "to", remoteNetwork);
             }
 
             // Wire AxelarAdapter
             if (localAxelarAddr != address(0)) {
-                IAxelarAdapter(localAxelarAddr).wire(
+                bytes memory axelarData = abi.encode(
                     remoteCentrifugeId,
                     vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
                     vm.toString(vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter"))
                 );
+                opsGuardian.wire(localAxelarAddr, axelarData);
 
                 console.log("Wired AxelarAdapter from", localNetwork, "to", remoteNetwork);
             }

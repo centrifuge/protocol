@@ -136,6 +136,7 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
         CommonInput memory commonInput = CommonInput({
             centrifugeId: centrifugeId,
             adminSafe: ISafe(vm.envAddress("ADMIN")),
+            opsSafe: ISafe(vm.envAddress("ADMIN")),
             maxBatchGasLimit: uint128(maxBatchGasLimit),
             // Default to bytes32(0) version to be consistent with CommonDeployer
             version: bytes(versionString).length > 0 ? keccak256(abi.encodePacked(versionString)) : bytes32(0)

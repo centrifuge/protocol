@@ -5,6 +5,7 @@ import {PoolId} from "./types/PoolId.sol";
 import {AssetId} from "./types/AssetId.sol";
 import {ISafe} from "./interfaces/ISafe.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
+import {IBaseGuardian} from "./interfaces/IBaseGuardian.sol";
 import {IOpsGuardian} from "./interfaces/IOpsGuardian.sol";
 import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IHubGuardianActions} from "./interfaces/IGuardianActions.sol";
@@ -12,18 +13,18 @@ import {IHubGuardianActions} from "./interfaces/IGuardianActions.sol";
 contract OpsGuardian is IOpsGuardian {
     PoolId public constant GLOBAL_POOL = PoolId.wrap(0);
 
-    ISafe public safe;
+    ISafe public opsSafe;
     IHubGuardianActions public hub;
     IMultiAdapter public multiAdapter;
 
-    constructor(ISafe safe_, IHubGuardianActions hub_, IMultiAdapter multiAdapter_) {
-        safe = safe_;
+    constructor(ISafe opsSafe_, IHubGuardianActions hub_, IMultiAdapter multiAdapter_) {
+        opsSafe = opsSafe_;
         hub = hub_;
         multiAdapter = multiAdapter_;
     }
 
     modifier onlySafe() {
-        require(msg.sender == address(safe), NotTheAuthorizedSafe());
+        require(msg.sender == address(opsSafe), NotTheAuthorizedSafe());
         _;
     }
 
@@ -31,9 +32,9 @@ contract OpsGuardian is IOpsGuardian {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IOpsGuardian
+    /// @inheritdoc IBaseGuardian
     function file(bytes32 what, address data) external onlySafe {
-        if (what == "safe") safe = ISafe(data);
+        if (what == "opsSafe") opsSafe = ISafe(data);
         else if (what == "hub") hub = IHubGuardianActions(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else revert FileUnrecognizedParam();
@@ -51,6 +52,18 @@ contract OpsGuardian is IOpsGuardian {
     {
         require(multiAdapter.quorum(centrifugeId, GLOBAL_POOL) == 0, AdaptersAlreadyInitialized());
         multiAdapter.setAdapters(centrifugeId, GLOBAL_POOL, adapters, threshold, recoveryIndex);
+    }
+
+    /// @inheritdoc IBaseGuardian
+    function wire(address adapter, bytes memory data) external onlySafe {
+        uint16 centrifugeId;
+        assembly {
+            centrifugeId := mload(add(data, 0x20))
+        }
+
+        require(!IAdapter(adapter).isWired(centrifugeId), AdapterAlreadyWired());
+        IAdapter(adapter).wire(data);
+        IAdapter(adapter).deny(address(this));
     }
 
     //----------------------------------------------------------------------------------------------

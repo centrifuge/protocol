@@ -21,12 +21,14 @@ import "forge-std/Script.sol";
 struct CommonInput {
     uint16 centrifugeId;
     ISafe adminSafe;
+    ISafe opsSafe;
     uint128 maxBatchGasLimit;
     bytes32 version;
 }
 
 struct CommonReport {
     ISafe adminSafe;
+    ISafe opsSafe;
     Root root;
     TokenRecoverer tokenRecoverer;
     ProtocolGuardian protocolGuardian;
@@ -103,7 +105,7 @@ contract CommonActionBatcher {
     function postEngageCommon(CommonReport memory report) public onlyDeployer {
         // We override the deployer with the correct admin once everything is deployed
         report.protocolGuardian.file("safe", address(report.adminSafe));
-        report.opsGuardian.file("safe", address(report.adminSafe));
+        report.opsGuardian.file("opsSafe", address(report.opsSafe));
     }
 
     function revokeCommon(CommonReport memory report) public onlyDeployer {
@@ -122,6 +124,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
 
     bytes32 version;
     ISafe public adminSafe;
+    ISafe public opsSafe;
 
     Root public root;
     TokenRecoverer public tokenRecoverer;
@@ -177,6 +180,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         setUpCreateXFactory();
 
         adminSafe = input.adminSafe;
+        opsSafe = input.opsSafe;
         version = input.version;
 
         root =
@@ -274,7 +278,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     }
 
     function _postDeployCommon(CommonActionBatcher batcher) internal {
-        if (address(protocolGuardian.safe()) == address(_commonReport().adminSafe)) {
+        if (address(opsGuardian.opsSafe()) != address(batcher)) {
             return; // Already configured. Make this method idempotent.
         }
 
@@ -292,6 +296,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     function _commonReport() internal view returns (CommonReport memory) {
         return CommonReport(
             adminSafe,
+            opsSafe,
             root,
             tokenRecoverer,
             protocolGuardian,

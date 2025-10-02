@@ -8,6 +8,7 @@ import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
 import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IRootMessageSender} from "./interfaces/IGatewaySenders.sol";
+import {IBaseGuardian} from "./interfaces/IBaseGuardian.sol";
 import {IProtocolGuardian} from "./interfaces/IProtocolGuardian.sol";
 
 import {CastLib} from "../misc/libraries/CastLib.sol";
@@ -115,11 +116,16 @@ contract ProtocolGuardian is IProtocolGuardian {
         gateway.blockOutgoing(centrifugeId, GLOBAL_POOL, isBlocked);
     }
 
+    /// @inheritdoc IBaseGuardian
+    function wire(address adapter, bytes memory data) external onlySafe {
+        IAdapter(adapter).wire(data);
+    }
+
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IProtocolGuardian
+    /// @inheritdoc IBaseGuardian
     function file(bytes32 what, address data) external onlySafe {
         if (what == "safe") safe = ISafe(data);
         else if (what == "gateway") gateway = IGateway(data);

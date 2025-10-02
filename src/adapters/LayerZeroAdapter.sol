@@ -48,11 +48,17 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc ILayerZeroAdapter
-    function wire(uint16 centrifugeId, uint32 layerZeroEid, address adapter) external auth {
+    /// @inheritdoc IAdapter
+    function wire(bytes memory data) external auth {
+        (uint16 centrifugeId, uint32 layerZeroEid, address adapter) = abi.decode(data, (uint16, uint32, address));
         sources[layerZeroEid] = LayerZeroSource(centrifugeId, adapter);
         destinations[centrifugeId] = LayerZeroDestination(layerZeroEid, adapter);
         emit Wire(centrifugeId, layerZeroEid, adapter);
+    }
+
+    /// @inheritdoc IAdapter
+    function isWired(uint16 centrifugeId) external view returns (bool) {
+        return destinations[centrifugeId].layerZeroEid != 0;
     }
 
     /// @dev Update the LayerZero delegate.

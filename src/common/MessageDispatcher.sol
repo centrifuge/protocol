@@ -637,20 +637,19 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address refund
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            _refund(refund);
-        } else {
-            _send(
-                centrifugeId,
-                MessageLib.SetPoolAdapters({
-                    poolId: poolId.raw(),
-                    threshold: threshold,
-                    recoveryIndex: recoveryIndex,
-                    adapterList: adapters
-                }).serialize(),
-                0,
-                refund
-            );
+            revert CannotBeSentLocally();
         }
+        _send(
+            centrifugeId,
+            MessageLib.SetPoolAdapters({
+                poolId: poolId.raw(),
+                threshold: threshold,
+                recoveryIndex: recoveryIndex,
+                adapterList: adapters
+            }).serialize(),
+            0,
+            refund
+        );
     }
 
     function sendUpdateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage, address refund)

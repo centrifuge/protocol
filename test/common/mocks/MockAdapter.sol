@@ -35,4 +35,12 @@ contract MockAdapter is Auth, Mock, IAdapter {
     function estimate(uint16, bytes calldata, uint256 baseCost) public view returns (uint256 estimation) {
         estimation = values_uint256_return["estimate"] + baseCost;
     }
+
+    function wire(bytes memory) external pure {
+        revert("MockAdapter: wire not supported");
+    }
+
+    function isWired(uint16) external pure returns (bool) {
+        revert("MockAdapter: isWired not supported");
+    }
 }

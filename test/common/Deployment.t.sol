@@ -10,10 +10,16 @@ import "forge-std/Test.sol";
 contract CommonDeploymentInputTest is Test {
     uint16 constant CENTRIFUGE_ID = 23;
     ISafe immutable ADMIN_SAFE = ISafe(makeAddr("AdminSafe"));
+    ISafe immutable OPS_SAFE = ISafe(makeAddr("OpsSafe"));
 
     function _commonInput() internal view returns (CommonInput memory) {
-        return
-            CommonInput({centrifugeId: CENTRIFUGE_ID, adminSafe: ADMIN_SAFE, maxBatchGasLimit: 0, version: bytes32(0)});
+        return CommonInput({
+            centrifugeId: CENTRIFUGE_ID,
+            adminSafe: ADMIN_SAFE,
+            opsSafe: OPS_SAFE,
+            maxBatchGasLimit: 0,
+            version: bytes32(0)
+        });
     }
 }
 
@@ -49,7 +55,7 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
 
     function testOpsGuardian() public view {
         // dependencies set correctly
-        assertEq(address(opsGuardian.safe()), address(ADMIN_SAFE));
+        assertEq(address(opsGuardian.opsSafe()), address(OPS_SAFE));
         assertEq(address(opsGuardian.multiAdapter()), address(multiAdapter));
     }
 

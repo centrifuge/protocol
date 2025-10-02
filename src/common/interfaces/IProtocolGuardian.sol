@@ -1,18 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IBaseGuardian} from "./IBaseGuardian.sol";
 import {ISafe} from "./ISafe.sol";
 import {IAdapter} from "./IAdapter.sol";
 
-interface IProtocolGuardian {
-    error NotTheAuthorizedSafe();
+interface IProtocolGuardian is IBaseGuardian {
     error NotTheAuthorizedSafeOrItsOwner();
-    error FileUnrecognizedParam();
-
-    event File(bytes32 indexed what, address data);
-
-    /// @notice Return the linked Safe
-    function safe() external view returns (ISafe);
 
     /// @notice Pause the protocol
     /// @dev callable by both safe and owners
@@ -67,10 +61,4 @@ interface IProtocolGuardian {
     /// @param centrifugeId Target chain ID to block/unblock
     /// @param isBlocked True to block outgoing messages, false to unblock
     function blockOutgoing(uint16 centrifugeId, bool isBlocked) external;
-
-    /// @notice Updates a contract parameter.
-    /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'safe', 'hub', 'sender', 'gateway', or 'multiAdapter' string value.
-    /// @param data New value given to the `what` parameter
-    function file(bytes32 what, address data) external;
 }
