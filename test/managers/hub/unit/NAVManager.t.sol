@@ -15,8 +15,8 @@ import {AccountId, withCentrifugeId, withAssetId} from "../../../../src/common/t
 import {IHoldings} from "../../../../src/hub/interfaces/IHoldings.sol";
 import {NAVManager} from "../../../../src/managers/hub/NAVManager.sol";
 import {IHub, AccountType} from "../../../../src/hub/interfaces/IHub.sol";
-import {IAccounting, JournalEntry} from "../../../../src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "../../../../src/hub/interfaces/IHubRegistry.sol";
+import {IAccounting, JournalEntry} from "../../../../src/hub/interfaces/IAccounting.sol";
 import {INAVManager, INAVHook} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
 
 import "forge-std/Test.sol";

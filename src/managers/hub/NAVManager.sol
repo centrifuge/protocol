@@ -14,8 +14,8 @@ import {AccountId, withCentrifugeId, withAssetId} from "../../common/types/Accou
 
 import {IHoldings} from "../../hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "../../hub/interfaces/IHub.sol";
-import {IAccounting, JournalEntry} from "../../hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "../../hub/interfaces/IHubRegistry.sol";
+import {IAccounting, JournalEntry} from "../../hub/interfaces/IAccounting.sol";
 
 /// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
 contract NAVManager is INAVManager, Auth {
