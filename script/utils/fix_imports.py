@@ -803,6 +803,24 @@ def convert_import_to_relative(import_stmt: str, current_file: str) -> str:
 
     current_path = path_match.group(1)
 
+    # Normalize redundant relative paths to ensure idempotency
+    # e.g., ../vaults/libraries/Foo.sol from src/vaults/ -> ./libraries/Foo.sol
+    if current_path.startswith('./') or current_path.startswith('../'):
+        current_file_clean = current_file.replace('\\', '/').lstrip('./')
+        current_dir = os.path.dirname(current_file_clean)
+
+        try:
+            # Resolve to absolute path
+            target_path = os.path.normpath(os.path.join(current_dir, current_path)).replace('\\', '/')
+
+            # Only normalize if target exists and is in src/script/test
+            if os.path.exists(target_path) and target_path.startswith(('src/', 'script/', 'test/')):
+                canonical_relative = convert_to_relative_path(current_file, target_path)
+                if canonical_relative != current_path:
+                    return import_stmt.replace(f'"{current_path}"', f'"{canonical_relative}"')
+        except Exception:
+            pass
+
     # Handle absolute paths
     if current_path.startswith('centrifuge-v3/') or current_path.startswith('src/'):
         relative_path = convert_to_relative_path(current_file, current_path)
