@@ -27,7 +27,6 @@ import {AssetId} from "../core/types/AssetId.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "../core/hub/interfaces/IShareClassManager.sol";
 import {IHubRequestManagerCallback} from "../core/hub/interfaces/IHubRequestManagerCallback.sol";
 import {IHubRequestManager, IHubRequestManagerNotifications} from "../core/hub/interfaces/IHubRequestManager.sol";
 
@@ -42,7 +41,6 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
 
     IHubRequestManagerCallback public hub;
     IHubRegistry public immutable hubRegistry;
-    IShareClassManager public immutable shareClassManager;
 
     // Epochs
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => EpochId))) public epochId;
@@ -51,9 +49,8 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(uint32 epochId_ => EpochRedeemAmounts))))
         public epochRedeemAmounts;
 
-    constructor(IHubRegistry hubRegistry_, IShareClassManager shareClassManager_, address deployer) Auth(deployer) {
+    constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
         hubRegistry = hubRegistry_;
-        shareClassManager = shareClassManager_;
     }
 
     // Pending requests
@@ -202,7 +199,6 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         D18 pricePoolPerAsset,
         address refund
     ) external payable authOrManager(poolId) {
-        require(shareClassManager.exists(poolId, scId_), IShareClassManager.ShareClassNotFound());
         require(
             nowDepositEpochId == nowDepositEpoch(poolId, scId_, depositAssetId),
             EpochNotInSequence(nowDepositEpochId, nowDepositEpoch(poolId, scId_, depositAssetId))
@@ -253,7 +249,6 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         uint128 approvedShareAmount,
         D18 pricePoolPerAsset
     ) external payable authOrManager(poolId) {
-        require(shareClassManager.exists(poolId, scId_), IShareClassManager.ShareClassNotFound());
         require(
             nowRedeemEpochId == nowRedeemEpoch(poolId, scId_, payoutAssetId),
             EpochNotInSequence(nowRedeemEpochId, nowRedeemEpoch(poolId, scId_, payoutAssetId))
@@ -287,7 +282,6 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         uint128 extraGasLimit,
         address refund
     ) external payable authOrManager(poolId) {
-        require(shareClassManager.exists(poolId, scId_), IShareClassManager.ShareClassNotFound());
         require(nowIssueEpochId <= epochId[poolId][scId_][depositAssetId].deposit, EpochNotFound());
         require(
             nowIssueEpochId == nowIssueEpoch(poolId, scId_, depositAssetId),
@@ -338,8 +332,6 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         uint128 extraGasLimit,
         address refund
     ) external payable authOrManager(poolId) {
-        require(shareClassManager.exists(poolId, scId_), IShareClassManager.ShareClassNotFound());
-
         (uint128 payoutAssetAmount, uint128 revokedShareAmount) =
             _revokeShares(poolId, scId_, payoutAssetId, nowRevokeEpochId, pricePoolPerShare);
 
@@ -407,7 +399,6 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         AssetId depositAssetId,
         address refund
     ) external payable authOrManager(poolId) {
-        require(shareClassManager.exists(poolId, scId_), IShareClassManager.ShareClassNotFound());
         require(allowForceDepositCancel[poolId][scId_][depositAssetId][investor], CancellationInitializationRequired());
 
         uint128 cancellingAmount = depositRequest[poolId][scId_][depositAssetId][investor].pending;
@@ -430,7 +421,6 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         AssetId payoutAssetId,
         address refund
     ) external payable authOrManager(poolId) {
-        require(shareClassManager.exists(poolId, scId_), IShareClassManager.ShareClassNotFound());
         require(allowForceRedeemCancel[poolId][scId_][payoutAssetId][investor], CancellationInitializationRequired());
 
         uint128 cancellingAmount = redeemRequest[poolId][scId_][payoutAssetId][investor].pending;

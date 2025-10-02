@@ -12,7 +12,6 @@ import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassManager.sol";
 import {IHubRequestManagerCallback} from "../../../src/core/hub/interfaces/IHubRequestManagerCallback.sol";
 import {
     IHubRequestManager,
@@ -76,22 +75,8 @@ contract HubRegistryMock {
     }
 }
 
-contract ShareClassManagerMock {
-    mapping(PoolId => mapping(ShareClassId => bool)) public shareClassIds;
-
-    function addShareClass(PoolId poolId, ShareClassId scId) external {
-        shareClassIds[poolId][scId] = true;
-    }
-
-    function exists(PoolId poolId, ShareClassId scId) external view returns (bool) {
-        return shareClassIds[poolId][scId];
-    }
-}
-
 contract BatchRequestManagerHarness is BatchRequestManager {
-    constructor(IHubRegistry hubRegistry_, IShareClassManager shareClassManager_, address deployer)
-        BatchRequestManager(hubRegistry_, shareClassManager_, deployer)
-    {}
+    constructor(IHubRegistry hubRegistry_, address deployer) BatchRequestManager(hubRegistry_, deployer) {}
 
     function claimDeposit(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
         public
@@ -131,7 +116,6 @@ abstract contract BatchRequestManagerBaseTest is Test {
 
     BatchRequestManagerHarness public batchRequestManager;
     HubRegistryMock public hubRegistryMock;
-    ShareClassManagerMock public shareClassManagerMock;
 
     uint16 centrifugeId = 1;
     PoolId poolId = PoolId.wrap(POOL_ID);
@@ -147,11 +131,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
 
     function setUp() public virtual {
         hubRegistryMock = new HubRegistryMock();
-        shareClassManagerMock = new ShareClassManagerMock();
-        shareClassManagerMock.addShareClass(poolId, scId);
-        batchRequestManager = new BatchRequestManagerHarness(
-            IHubRegistry(address(hubRegistryMock)), IShareClassManager(address(shareClassManagerMock)), address(this)
-        );
+        batchRequestManager = new BatchRequestManagerHarness(IHubRegistry(address(hubRegistryMock)), address(this));
 
         vm.mockCall(
             address(hub),
@@ -2138,8 +2118,6 @@ contract BatchRequestManagerAuthTest is BatchRequestManagerBaseTest {
 }
 
 contract BatchRequestManagerErrorTest is BatchRequestManagerBaseTest {
-    ShareClassId private invalidScId = ShareClassId.wrap(bytes16((uint128(POOL_ID) << 64) + 999));
-
     function testRequestUnknownType() public {
         // Create payload with invalid message type (0 = Invalid enum value, valid handled ones are 1,2,3,4)
         bytes memory invalidPayload = abi.encodePacked(uint8(0), abi.encode(investor, uint128(100)));
@@ -2276,40 +2254,6 @@ contract BatchRequestManagerErrorTest is BatchRequestManagerBaseTest {
     function testForceCancelRedeemNotInitialized() public {
         vm.expectRevert(IBatchRequestManager.CancellationInitializationRequired.selector);
         batchRequestManager.forceCancelRedeemRequest{value: COST}(poolId, scId, investor, USDC, REFUND);
-    }
-
-    function testApproveDepositsShareClassNotFound() public {
-        vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        batchRequestManager.approveDeposits{value: COST}(
-            poolId, invalidScId, USDC, 1, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
-        );
-    }
-
-    function testApproveRedeemsShareClassNotFound() public {
-        vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        batchRequestManager.approveRedeems(
-            poolId, invalidScId, USDC, 1, MIN_REQUEST_AMOUNT_SHARES, _pricePoolPerAsset(USDC)
-        );
-    }
-
-    function testIssueSharesShareClassNotFound() public {
-        vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        batchRequestManager.issueShares{value: COST}(poolId, invalidScId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
-    }
-
-    function testRevokeSharesShareClassNotFound() public {
-        vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        batchRequestManager.revokeShares{value: COST}(poolId, invalidScId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
-    }
-
-    function testForceCancelDepositShareClassNotFound() public {
-        vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        batchRequestManager.forceCancelDepositRequest{value: COST}(poolId, invalidScId, investor, USDC, REFUND);
-    }
-
-    function testForceCancelRedeemShareClassNotFound() public {
-        vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        batchRequestManager.forceCancelRedeemRequest{value: COST}(poolId, invalidScId, investor, USDC, REFUND);
     }
 }
 

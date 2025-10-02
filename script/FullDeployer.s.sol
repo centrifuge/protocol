@@ -72,9 +72,7 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
         batchRequestManager = BatchRequestManager(
             create3(
                 generateSalt("batchRequestManager"),
-                abi.encodePacked(
-                    type(BatchRequestManager).creationCode, abi.encode(hubRegistry, shareClassManager, batcher)
-                )
+                abi.encodePacked(type(BatchRequestManager).creationCode, abi.encode(hubRegistry, batcher))
             )
         );
 
