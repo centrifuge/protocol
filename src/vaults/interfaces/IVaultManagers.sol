@@ -304,7 +304,6 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IUp
     error VaultNotLinked();
     error RefundEscrowNotDeployed();
     error NotEnoughToWithdraw();
-    error CannotWithdraw();
 
     /// @notice Deposit funds to subsidy vault actions through the gateway
     function depositSubsidy(PoolId poolId) external payable;

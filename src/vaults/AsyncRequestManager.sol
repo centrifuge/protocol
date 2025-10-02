@@ -93,10 +93,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
         require(address(refund).code.length > 0, RefundEscrowNotDeployed());
         require(address(refund).balance >= value, NotEnoughToWithdraw());
 
-        refund.withdrawFunds(address(this), value);
-
-        (bool success,) = payable(to).call{value: value}("");
-        require(success, CannotWithdraw());
+        refund.withdrawFunds(to, value);
 
         emit WithdrawSubsidy(poolId, to, value);
     }
