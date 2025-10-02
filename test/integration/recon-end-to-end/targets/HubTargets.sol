@@ -67,6 +67,35 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         }
     }
 
+    // NOTE: this notifies for all epochs until all have been claimed
+    function hub_notifyRedeem_clamped(
+        uint32 maxClaims
+    ) public updateGhostsWithType(OpType.NOTIFY) asActor {
+        // Setup vault context and investor
+        bytes32 investor = CastLib.toBytes32(_getActor());
+
+        // Calculate and bound max claims
+        uint32 maxClaimsBound = shareClassManager.maxRedeemClaims(
+            _getVault().scId(),
+            investor,
+            spoke.vaultDetails(_getVault()).assetId
+        );
+        maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
+
+        // Capture state for ghost variables
+        address actor = _getActor();
+        uint256 investorClaimableBefore = asyncRequestManager.maxWithdraw(
+            _getVault(),
+            actor
+        );
+
+        // Handle validation or continuation
+        if (maxClaimsBound > 0) {
+            // Continue claiming remaining epochs
+            hub_notifyRedeem(1);
+        }
+    }
+
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
 
     // ═══════════════════════════════════════════════════════════════
@@ -185,43 +214,47 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint32 maxClaims
     ) public updateGhostsWithType(OpType.NOTIFY) asActor {
         // Setup vault context and investor
-        IBaseVault vault = _getVault();
-        bytes32 investor = CastLib.toBytes32(_getActor());
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
-        // Calculate and bound max claims
+        // Calculate max claims
         uint32 maxClaimsBound = shareClassManager.maxRedeemClaims(
-            vault.scId(),
-            investor,
-            assetId
+            _getVault().scId(),
+            CastLib.toBytes32(_getActor()), // investor
+            spoke.vaultDetails(_getVault()).assetId
         );
-        maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
 
         // Capture state for ghost variables
-        address actor = _getActor();
         uint256 investorClaimableBefore = asyncRequestManager.maxWithdraw(
-            vault,
-            actor
+            _getVault(),
+            _getActor()
         );
 
+        // NOTE: actually makes the call to the target function
+        vm.prank(_getActor());
         (
+            uint128 payoutAssetAmount,
             uint128 paymentShareAmount,
-            ,
             uint128 cancelledShareAmount
-        ) = _executeNotifyRedeem(investor, maxClaims);
+        ) = hubHelpers.notifyRedeem(
+                _getVault().poolId(),
+                _getVault().scId(),
+                spoke.vaultDetails(_getVault()).assetId,
+                CastLib.toBytes32(_getActor()),
+                maxClaims
+            );
 
-        _updateRedeemGhostVariables(
-            investorClaimableBefore,
-            asyncRequestManager.maxWithdraw(vault, actor),
+        _executeSendRedeemCallback(
+            CastLib.toBytes32(_getActor()),
+            payoutAssetAmount,
             paymentShareAmount,
             cancelledShareAmount
         );
 
-        // Continue claiming remaining epochs if needed
-        bool hasClaimedAll = _hasClaimedAllEpochs(maxClaims, maxClaimsBound);
-        if (!hasClaimedAll && maxClaimsBound > 0) {
-            hub_notifyRedeem(1);
-        }
+        _updateRedeemGhostVariables(
+            investorClaimableBefore,
+            asyncRequestManager.maxWithdraw(_getVault(), _getActor()),
+            paymentShareAmount,
+            cancelledShareAmount
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -438,6 +471,39 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
                     fulfilledAssetAmount: totalPaymentAssetAmount,
                     fulfilledShareAmount: totalPayoutShareAmount,
                     cancelledAssetAmount: cancelledAssetAmount
+                })
+            );
+
+            hub.sender().sendRequestCallback(
+                _getVault().poolId(),
+                _getVault().scId(),
+                spoke.vaultDetails(_getVault()).assetId,
+                message,
+                0 // extraGasLimit
+            );
+        }
+    }
+
+    /// @dev Executes redeem callback sending logic
+    /// @notice Replicates Hub.sol logic for redeem callbacks
+    /// @param investor The investor's address as bytes32
+    /// @param payoutAssetAmount Amount of assets paid out
+    /// @param paymentShareAmount Amount of shares used for payment
+    /// @param cancelledShareAmount Amount of shares cancelled
+    function _executeSendRedeemCallback(
+        bytes32 investor,
+        uint128 payoutAssetAmount,
+        uint128 paymentShareAmount,
+        uint128 cancelledShareAmount
+    ) private {
+        // Replicate Hub's callback sending logic
+        if (paymentShareAmount > 0 || cancelledShareAmount > 0) {
+            bytes memory message = RequestCallbackMessageLib.serialize(
+                RequestCallbackMessageLib.FulfilledRedeemRequest({
+                    investor: investor,
+                    fulfilledAssetAmount: payoutAssetAmount,
+                    fulfilledShareAmount: paymentShareAmount,
+                    cancelledShareAmount: cancelledShareAmount
                 })
             );
 
