@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {CommonDeploymentInputTest} from "../../core/Deployment.t.sol";
+
 import {HubManagersDeployer, HubManagersActionBatcher} from "../../../script/HubManagersDeployer.s.sol";
 
 import "forge-std/Test.sol";
-
-import {CommonDeploymentInputTest} from "../../common/Deployment.t.sol";
 
 contract ManagersDeploymentTest is HubManagersDeployer, CommonDeploymentInputTest {
     function setUp() public {

@@ -14,6 +14,8 @@ import {d18, D18} from "../../misc/types/D18.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
 import {MathLib} from "../../misc/libraries/MathLib.sol";
 
+import {IHubGuardianActions} from "../../admin/interfaces/IGuardianActions.sol";
+
 import {RequestCallbackMessageLib} from "../../vaults/libraries/RequestCallbackMessageLib.sol";
 
 import {PoolId} from "../types/PoolId.sol";
@@ -27,7 +29,6 @@ import {BatchedMulticall} from "../BatchedMulticall.sol";
 import {IMultiAdapter} from "../interfaces/IMultiAdapter.sol";
 import {ISnapshotHook} from "../interfaces/ISnapshotHook.sol";
 import {IHubMessageSender} from "../interfaces/IGatewaySenders.sol";
-import {IHubGuardianActions} from "../interfaces/IGuardianActions.sol";
 
 /// @title  Hub
 /// @notice Central pool management contract, that brings together all functions in one place.

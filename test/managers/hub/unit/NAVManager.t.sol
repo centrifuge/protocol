@@ -4,6 +4,9 @@ pragma solidity 0.8.28;
 import {d18} from "../../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
+import {Mock} from "../../../core/mocks/Mock.sol";
+import {MockValuation} from "../../../core/mocks/MockValuation.sol";
+
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
@@ -15,9 +18,6 @@ import {AccountId, withCentrifugeId, withAssetId} from "../../../../src/core/typ
 
 import {NAVManager} from "../../../../src/managers/hub/NAVManager.sol";
 import {INAVManager, INAVHook} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
-
-import {Mock} from "../../../common/mocks/Mock.sol";
-import {MockValuation} from "../../../common/mocks/MockValuation.sol";
 
 import "forge-std/Test.sol";
 

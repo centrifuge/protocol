@@ -3,12 +3,12 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
+import "../../../core/spoke/integration/BaseTest.sol";
+
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 
 import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
-
-import "../../../spoke/integration/BaseTest.sol";
 
 abstract contract QueueManagerBaseTest is BaseTest {
     uint128 constant DEFAULT_AMOUNT = 100_000_000;

@@ -4,10 +4,10 @@ pragma solidity 0.8.28;
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
+import {Mock} from "../../core/mocks/Mock.sol";
+
 import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
 import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
-
-import {Mock} from "../../common/mocks/Mock.sol";
 
 import "forge-std/Test.sol";
 

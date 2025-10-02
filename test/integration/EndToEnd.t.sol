@@ -19,7 +19,6 @@ import {AccountId} from "../../src/core/types/AccountId.sol";
 import {Accounting} from "../../src/core/hub/Accounting.sol";
 import {HubHandler} from "../../src/core/hub/HubHandler.sol";
 import {IGateway, Gateway} from "../../src/core/Gateway.sol";
-import {ISafe} from "../../src/core/interfaces/IGuardian.sol";
 import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
 import {IAdapter} from "../../src/core/interfaces/IAdapter.sol";
 import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
@@ -40,6 +39,7 @@ import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateCont
 import {VaultUpdateKind, MessageType, MessageLib} from "../../src/messaging/libraries/MessageLib.sol";
 
 import {Guardian} from "../../src/admin/Guardian.sol";
+import {ISafe} from "../../src/admin/interfaces/IGuardian.sol";
 
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
 

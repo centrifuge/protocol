@@ -5,6 +5,8 @@ import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
+import "../../core/spoke/integration/BaseTest.sol";
+
 import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
@@ -12,8 +14,6 @@ import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
 import {ISyncManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "../../../src/vaults/interfaces/IBaseRequestManager.sol";
 import {ISyncManager, ISyncDepositValuation} from "../../../src/vaults/interfaces/IVaultManagers.sol";
-
-import "../../spoke/integration/BaseTest.sol";
 
 contract SyncManagerBaseTest is BaseTest {
     function _deploySyncDepositVault(D18 pricePoolPerShare, D18 pricePoolPerAsset)

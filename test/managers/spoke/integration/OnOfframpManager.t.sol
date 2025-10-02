@@ -4,6 +4,8 @@ pragma solidity 0.8.28;
 import {D18, d18} from "../../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
+import "../../../core/spoke/integration/BaseTest.sol";
+
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 
@@ -13,8 +15,6 @@ import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/Updat
 
 import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
 import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
-
-import "../../../spoke/integration/BaseTest.sol";
 
 abstract contract OnOfframpManagerBaseTest is BaseTest {
     using CastLib for *;

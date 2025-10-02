@@ -3,10 +3,10 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
+import {CommonDeploymentInputTest} from "../core/Deployment.t.sol";
+
 import {VaultsActionBatcher} from "../../script/VaultsDeployer.s.sol";
 import {HooksDeployer, HooksActionBatcher} from "../../script/HooksDeployer.s.sol";
-
-import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
 
 contract VaultsDeploymentTest is HooksDeployer, CommonDeploymentInputTest {
     function setUp() public {

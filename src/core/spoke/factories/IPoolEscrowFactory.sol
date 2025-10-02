@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {PoolId} from "../../types/PoolId.sol";
-import {IPoolEscrow} from "../../interfaces/IPoolEscrow.sol";
+import {IPoolEscrow} from "../interfaces/IPoolEscrow.sol";
 
 interface IPoolEscrowProvider {
     /// @notice Returns the deterministic address of an escrow contract based on a given pool id wrapped into the

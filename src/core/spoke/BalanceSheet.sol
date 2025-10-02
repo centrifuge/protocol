@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {ISpoke} from "./interfaces/ISpoke.sol";
+import {IPoolEscrow} from "./interfaces/IPoolEscrow.sol";
 import {IShareToken} from "./interfaces/IShareToken.sol";
 import {IPoolEscrowProvider} from "./factories/IPoolEscrowFactory.sol";
 import {IBalanceSheet, ShareQueueAmount, AssetQueueAmount} from "./interfaces/IBalanceSheet.sol";
@@ -22,7 +23,6 @@ import {IRoot} from "../interfaces/IRoot.sol";
 import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {BatchedMulticall} from "../BatchedMulticall.sol";
-import {IPoolEscrow} from "../interfaces/IPoolEscrow.sol";
 import {ISpokeMessageSender} from "../interfaces/IGatewaySenders.sol";
 import {IBalanceSheetGatewayHandler} from "../interfaces/IGatewayHandlers.sol";
 

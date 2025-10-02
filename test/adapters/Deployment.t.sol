@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {CommonDeploymentInputTest} from "../core/Deployment.t.sol";
+
 import {
     AdaptersDeployer,
     AdaptersActionBatcher,
@@ -12,7 +14,6 @@ import {
 
 import "forge-std/Test.sol";
 
-import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
 import {ILayerZeroEndpointV2} from "../../src/adapters/interfaces/ILayerZeroAdapter.sol";
 import {IWormholeRelayer, IWormholeDeliveryProvider} from "../../src/adapters/interfaces/IWormholeAdapter.sol";
 

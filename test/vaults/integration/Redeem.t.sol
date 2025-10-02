@@ -5,6 +5,8 @@ import {D18} from "../../../src/misc/types/D18.sol";
 import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
+import "../../core/spoke/integration/BaseTest.sol";
+
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
@@ -12,8 +14,6 @@ import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {RequestMessageLib} from "../../../src/vaults/libraries/RequestMessageLib.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
-
-import "../../spoke/integration/BaseTest.sol";
 
 contract RedeemTest is BaseTest {
     using MessageLib for *;

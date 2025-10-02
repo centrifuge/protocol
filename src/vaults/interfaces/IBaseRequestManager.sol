@@ -7,7 +7,7 @@ import {IEscrow} from "../../misc/interfaces/IEscrow.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
-import {IPoolEscrow} from "../../core/interfaces/IPoolEscrow.sol";
+import {IPoolEscrow} from "../../core/spoke/interfaces/IPoolEscrow.sol";
 import {IRequestManager} from "../../core/interfaces/IRequestManager.sol";
 
 interface IBaseRequestManager is IRequestManager {
