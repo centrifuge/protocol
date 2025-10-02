@@ -5,11 +5,13 @@ import {IBaseVault} from "./interfaces/IBaseVault.sol";
 import {IRedeemManager} from "./interfaces/IVaultManagers.sol";
 import {IDepositManager} from "./interfaces/IVaultManagers.sol";
 import {IAsyncRedeemManager} from "./interfaces/IVaultManagers.sol";
+import {RequestMessageLib} from "./libraries/RequestMessageLib.sol";
 import {IAsyncDepositManager} from "./interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "./interfaces/IBaseRequestManager.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "./interfaces/IAsyncVault.sol";
 import {IRefundEscrowFactory, IRefundEscrow} from "./factories/RefundEscrowFactory.sol";
 import {IAsyncRequestManager, AsyncInvestmentState} from "./interfaces/IVaultManagers.sol";
+import {RequestCallbackType, RequestCallbackMessageLib} from "./libraries/RequestCallbackMessageLib.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
@@ -33,9 +35,6 @@ import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 import {IUpdateContract} from "../core/spoke/interfaces/IUpdateContract.sol";
 
 import {UpdateContractMessageLib, UpdateContractType} from "../messaging/libraries/UpdateContractMessageLib.sol";
-
-import {RequestMessageLib} from "../vaults/libraries/RequestMessageLib.sol";
-import {RequestCallbackType, RequestCallbackMessageLib} from "../vaults/libraries/RequestCallbackMessageLib.sol";
 
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for
