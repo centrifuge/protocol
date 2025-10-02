@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
+import {CommonDeploymentInputTest} from "../core/Deployment.t.sol";
 
 import {
     AdaptersDeployer,

@@ -13,16 +13,16 @@ import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {AssetId} from "../common/types/AssetId.sol";
-import {PricingLib} from "../common/libraries/PricingLib.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {PoolId} from "../core/types/PoolId.sol";
+import {AssetId} from "../core/types/AssetId.sol";
+import {PricingLib} from "../core/libraries/PricingLib.sol";
+import {ShareClassId} from "../core/types/ShareClassId.sol";
+import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
+import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
+import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
+import {IUpdateContract} from "../core/spoke/interfaces/IUpdateContract.sol";
 
-import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
-import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
-import {IVaultRegistry} from "../spoke/interfaces/IVaultRegistry.sol";
-import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "../messaging/libraries/UpdateContractMessageLib.sol";
 
 /// @title  Sync Manager
 /// @notice This is the main contract for synchronous ERC-4626 deposits.

@@ -3,8 +3,8 @@ pragma solidity 0.8.28;
 
 import {Auth} from "../misc/Auth.sol";
 
-import {IAdapter} from "../common/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../common/interfaces/IMessageHandler.sol";
+import {IAdapter} from "../core/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
 
 /// @notice An adapter used to recover messages. It skips any outgoing message.
 contract RecoveryAdapter is Auth, IAdapter, IMessageHandler {
