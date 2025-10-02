@@ -326,7 +326,8 @@ abstract contract Properties is
         }
     }
 
-    /// @dev Property: user share balance correctly changes by the same amount of shares transferred from escrow on deposit
+    /// @dev Property: user share balance correctly changes by the same amount of shares transferred from escrow on deposit/mint
+    /// @dev Covers both vault_deposit and vault_mint operations (both use OpType.ADD)
     function property_deposit_share_balance_delta() public {
         if (currentOperation == OpType.ADD) {
             // Only check for async vaults as sync vaults mint shares directly

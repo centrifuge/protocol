@@ -505,27 +505,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             }
             executedInvestments[vault.share()] += shares;
         }
-
-        // Extra check | // TODO: This math will prob overflow
-        // NOTE: Unchecked so we get broken property and debug faster
-        unchecked {
-            uint256 deltaUser = shareUserAfter - shareUserB4; // B4 - after -> They pay
-            uint256 deltaEscrow = shareEscrowB4 - shareEscrowAfter; // After - B4 -> They gain
-            emit DebugNumber(deltaUser);
-            emit DebugNumber(shares);
-            emit DebugNumber(deltaEscrow);
-
-            if (RECON_EXACT_BAL_CHECK) {
-                eq(deltaUser, shares, "Extra LP-2");
-            }
-
-            // NOTE: async vaults transfer shares from global escrow
-            if (isAsyncVault) {
-                eq(deltaUser, deltaEscrow, "7540-13");
-            }
-
-            // NOTE: sync vaults mint shares directly to the user
-        }
     }
 
     function vault_redeem(
