@@ -70,6 +70,7 @@ contract MessageBenchmarker is IMessageHandler, Test {
         if (kind == MessageType.MaxAssetPriceAge) return "maxAssetPriceAge";
         if (kind == MessageType.MaxSharePriceAge) return "maxSharePriceAge";
         if (kind == MessageType.UpdateGatewayManager) return "updateGatewayManager";
+        if (kind == MessageType.UpdateHubContract) return "updateHubContract";
         revert("Cannot benchmark message"); // Unreachable
     }
 

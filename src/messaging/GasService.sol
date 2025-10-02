@@ -50,34 +50,35 @@ contract GasService is IGasService {
         _maxBatchGasLimit = maxBatchGasLimit_;
 
         // NOTE: Below values should be updated using script/utils/benchmark.sh
-        scheduleUpgrade = BASE_COST + 93735;
-        cancelUpgrade = BASE_COST + 74142;
-        recoverTokens = BASE_COST + 148855;
-        registerAsset = BASE_COST + 103825;
-        setPoolAdapters = BASE_COST + 481481; // using MAX_ADAPTER_COUNT
-        request = BASE_COST + 219471;
-        notifyPool = BASE_COST + 1150668; // create escrow case
-        notifyShareClass = BASE_COST + 1852879;
-        notifyPricePoolPerShare = BASE_COST + 106940;
-        notifyPricePoolPerAsset = BASE_COST + 110946;
-        notifyShareMetadata = BASE_COST + 121326;
-        updateShareHook = BASE_COST + 96255;
-        initiateTransferShares = BASE_COST + 283148;
-        executeTransferShares = BASE_COST + 177386;
-        updateRestriction = BASE_COST + 114365;
-        updateContract = BASE_COST + 144484;
-        requestCallback = BASE_COST + 257948; // approve deposit case
-        updateVaultDeployAndLink = BASE_COST + 2852823;
-        updateVaultLink = BASE_COST + 185154;
-        updateVaultUnlink = BASE_COST + 133872;
-        setRequestManager = BASE_COST + 100432;
-        updateBalanceSheetManager = BASE_COST + 103996;
-        updateHoldingAmount = BASE_COST + 303882;
-        updateShares = BASE_COST + 183649;
-        maxAssetPriceAge = BASE_COST + 110037;
-        maxSharePriceAge = BASE_COST + 106923;
-        updateGatewayManager = BASE_COST + 87952;
-        updateHubContract = BASE_COST + 50000;
+        //       Add an entry to MessageBenchmarker and snapshots.MessageGasLimits to get it updated.
+        scheduleUpgrade = BASE_COST + 93789;
+        cancelUpgrade = BASE_COST + 74196;
+        recoverTokens = BASE_COST + 148909;
+        registerAsset = BASE_COST + 103911;
+        setPoolAdapters = BASE_COST + 481535; // using MAX_ADAPTER_COUNT
+        request = BASE_COST + 219912;
+        notifyPool = BASE_COST + 1150754; // create escrow case
+        notifyShareClass = BASE_COST + 1852965;
+        notifyPricePoolPerShare = BASE_COST + 107026;
+        notifyPricePoolPerAsset = BASE_COST + 111032;
+        notifyShareMetadata = BASE_COST + 121412;
+        updateShareHook = BASE_COST + 96363;
+        initiateTransferShares = BASE_COST + 283246;
+        executeTransferShares = BASE_COST + 177494;
+        updateRestriction = BASE_COST + 114419;
+        updateContract = BASE_COST + 144538;
+        requestCallback = BASE_COST + 258438; // approve deposit case
+        updateVaultDeployAndLink = BASE_COST + 2853024;
+        updateVaultLink = BASE_COST + 185311;
+        updateVaultUnlink = BASE_COST + 134029;
+        setRequestManager = BASE_COST + 100856;
+        updateBalanceSheetManager = BASE_COST + 104131;
+        updateHoldingAmount = BASE_COST + 304017;
+        updateShares = BASE_COST + 183752;
+        maxAssetPriceAge = BASE_COST + 110194;
+        maxSharePriceAge = BASE_COST + 107080;
+        updateGatewayManager = BASE_COST + 88376;
+        updateHubContract = BASE_COST + 83367;
     }
 
     /// @inheritdoc IGasService
