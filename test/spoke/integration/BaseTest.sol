@@ -62,7 +62,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     uint256 public constant ESTIMATE_ADAPTER_2 = 1_250_000; // 1.25M gas
     uint256 public constant ESTIMATE_ADAPTER_3 = 1_750_000; // 1.75M gas
     uint256 public constant ESTIMATE_ADAPTERS = ESTIMATE_ADAPTER_1 + ESTIMATE_ADAPTER_2 + ESTIMATE_ADAPTER_3;
-    uint256 public constant GAS_COST_LIMIT = MAX_MESSAGE_COST; // 3M gas
+    uint256 public constant GAS_COST_LIMIT = MAX_MESSAGE_COST;
     uint256 public constant DEFAULT_GAS = ESTIMATE_ADAPTERS + GAS_COST_LIMIT * 3;
     uint256 public constant DEFAULT_SUBSIDY = DEFAULT_GAS * 100;
 
