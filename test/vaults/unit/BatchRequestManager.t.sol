@@ -12,6 +12,7 @@ import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassManager.sol";
 import {IHubRequestManagerCallback} from "../../../src/core/hub/interfaces/IHubRequestManagerCallback.sol";
 import {
     IHubRequestManager,
@@ -2984,7 +2985,7 @@ contract BatchRequestManagerERC165Support is BatchRequestManagerBaseTest {
         bytes4 erc165 = 0x01ffc9a7;
         bytes4 hubRequestManager = 0x2f6c33bf;
         bytes4 hubRequestManagerNotifications = 0x3a2d9da4;
-        bytes4 batchRequestManagerID = 0xaf00afbd; // Updated due to PoolId parameter additions
+        bytes4 batchRequestManagerID = 0xaf00afbd;
 
         vm.assume(
             unsupportedInterfaceId != erc165 && unsupportedInterfaceId != hubRequestManager
