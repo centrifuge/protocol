@@ -61,4 +61,14 @@ contract TestUpdateContractMessageLibIdentities is Test {
         assertEq(a.minDelay, b.minDelay);
         assertEq(a.extraGasLimit, b.extraGasLimit);
     }
+
+    function testUpdateContractWithdraw(bytes32 who, uint256 value) public pure {
+        UpdateContractMessageLib.UpdateContractWithdraw memory a =
+            UpdateContractMessageLib.UpdateContractWithdraw({who: who, value: value});
+        UpdateContractMessageLib.UpdateContractWithdraw memory b =
+            UpdateContractMessageLib.deserializeUpdateContractWithdraw(a.serialize());
+
+        assertEq(a.who, b.who);
+        assertEq(a.value, b.value);
+    }
 }

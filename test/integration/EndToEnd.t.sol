@@ -10,7 +10,6 @@ import {ERC20} from "../../src/misc/ERC20.sol";
 import {D18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
-import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
 
 import {Root} from "../../src/common/Root.sol";
 import {Guardian} from "../../src/common/Guardian.sol";
@@ -949,6 +948,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     using CastLib for *;
     using MathLib for *;
     using MessageLib for *;
+    using UpdateContractMessageLib for *;
 
     function setUp() public virtual override {
         super.setUp();
@@ -979,15 +979,15 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         _setSpoke(sameChain);
 
-        (bool success,) = address(s.asyncRequestManager).call{value: VALUE}("");
-        require(success);
+        vm.startPrank(ERC20_DEPLOYER);
+        s.usdc.mint(address(s.gateway), VALUE);
 
         vm.startPrank(address(SAFE_ADMIN_A));
         h.guardian.recoverTokens{value: GAS}(
-            s.centrifugeId, address(s.asyncRequestManager), ETH_ADDRESS, 0, RECEIVER, VALUE, REFUND
+            s.centrifugeId, address(s.gateway), address(s.usdc), 0, RECEIVER, VALUE, REFUND
         );
 
-        assertEq(RECEIVER.balance, VALUE);
+        assertEq(s.usdc.balanceOf(RECEIVER), VALUE);
     }
 
     /// forge-config: default.isolate = true
@@ -1266,5 +1266,26 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         IMessageHandler(remoteAdapters[1].toAddress()).handle(h.centrifugeId, message);
 
         assertEq(s.spoke.pool(POOL_A), block.timestamp); // 2 of 2 received and processed
+    }
+
+    /// forge-config: default.isolate = true
+    function testWithdrawSubsidyFromVaults(bool sameChain) public {
+        _configurePool(sameChain);
+
+        address RECEIVER = makeAddr("Receiver");
+        uint256 VALUE = 123;
+
+        vm.startPrank(FM);
+        h.hub.updateContract{value: GAS}(
+            POOL_A,
+            SC_1,
+            s.centrifugeId,
+            address(s.asyncRequestManager).toBytes32(),
+            UpdateContractMessageLib.UpdateContractWithdraw({who: RECEIVER.toBytes32(), value: VALUE}).serialize(),
+            EXTRA_GAS,
+            REFUND
+        );
+
+        assertEq(RECEIVER.balance, VALUE);
     }
 }

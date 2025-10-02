@@ -40,6 +40,7 @@ contract VaultsActionBatcher is SpokeActionBatcher {
 
         // Rely ContractUpdater
         report.syncManager.rely(address(report.spoke.contractUpdater));
+        report.asyncRequestManager.rely(address(report.spoke.contractUpdater));
 
         // Rely async requests manager
         report.globalEscrow.rely(address(report.asyncRequestManager));

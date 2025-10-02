@@ -285,8 +285,9 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
+interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IUpdateContract {
     event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
+    event WithdrawSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
 
     error ExceedsMaxDeposit();
     error AssetMismatch();
@@ -302,9 +303,13 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
     error ExceedsRedeemLimits();
     error VaultNotLinked();
     error RefundEscrowNotDeployed();
+    error NotEnoughToWithdraw();
 
     /// @notice Deposit funds to subsidy vault actions through the gateway
     function depositSubsidy(PoolId poolId) external payable;
+
+    /// @notice Withdraw subsidized funds to an account
+    function withdrawSubsidy(PoolId poolId, address to, uint256 value) external;
 
     /// @notice Returns the investment state
     function investments(IBaseVault vaultAddr, address investor)
