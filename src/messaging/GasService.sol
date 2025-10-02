@@ -5,7 +5,7 @@ import {IMessageProperties} from "../core/interfaces/IMessageProperties.sol";
 
 import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
-import {IGasService} from "../core/interfaces/IGasService.sol";
+import {IGasService} from "./interfaces/IGasService.sol";
 import {PoolId} from "../core/types/PoolId.sol";
 
 /// @title  GasService

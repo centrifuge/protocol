@@ -27,7 +27,6 @@ import {PricingLib} from "../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
 import {VaultRegistry} from "../../src/core/spoke/VaultRegistry.sol";
-import {MAX_MESSAGE_COST} from "../../src/core/interfaces/IGasService.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {IMessageHandler} from "../../src/core/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/MultiAdapter.sol";
@@ -65,6 +64,8 @@ import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDep
 import "forge-std/Test.sol";
 
 import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
+
+import {MAX_MESSAGE_COST} from "../../src/messaging/interfaces/IGasService.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///

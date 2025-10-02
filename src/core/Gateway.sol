@@ -6,7 +6,6 @@ import {IRoot} from "./interfaces/IRoot.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
-import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -38,7 +37,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     IRoot public immutable root;
     IAdapter public adapter;
     IMessageProperties public messageProperties;
-    IMessageProcessor public processor;
+    IMessageHandler public handler;
 
     // Management
     mapping(PoolId => mapping(address => bool)) public manager;
@@ -78,7 +77,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     /// @inheritdoc IGateway
     function file(bytes32 what, address instance) external auth {
         if (what == "messageProperties") messageProperties = IMessageProperties(instance);
-        else if (what == "processor") processor = IMessageProcessor(instance);
+        else if (what == "handler") handler = IMessageHandler(instance);
         else if (what == "adapter") adapter = IAdapter(instance);
         else revert FileUnrecognizedParam();
 
@@ -107,7 +106,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             require(gasleft() > GAS_FAIL_MESSAGE_STORAGE, NotEnoughGasToProcess());
 
-            try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
+            try handler.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
                 emit ExecuteMessage(centrifugeId, message, messageHash);
             } catch (bytes memory err) {
                 failedMessages[centrifugeId][messageHash]++;
@@ -122,7 +121,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(failedMessages[centrifugeId][messageHash] > 0, NotFailedMessage());
 
         failedMessages[centrifugeId][messageHash]--;
-        processor.handle(centrifugeId, message);
+        handler.handle(centrifugeId, message);
 
         emit ExecuteMessage(centrifugeId, message, messageHash);
     }

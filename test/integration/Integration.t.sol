@@ -10,7 +10,7 @@ import {MockValuation} from "../core/mocks/MockValuation.sol";
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
-import {MAX_MESSAGE_COST as GAS} from "../../src/core/interfaces/IGasService.sol";
+import {MAX_MESSAGE_COST as GAS} from "../../src/messaging/interfaces/IGasService.sol";
 
 import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
 

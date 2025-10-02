@@ -18,7 +18,6 @@ import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
 import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "../core/interfaces/ITokenRecoverer.sol";
-import {IMessageDispatcher} from "../core/interfaces/IMessageDispatcher.sol";
 import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "../core/interfaces/IGatewaySenders.sol";
 import {
     ISpokeGatewayHandler,
@@ -27,6 +26,8 @@ import {
     IUpdateContractGatewayHandler,
     IVaultRegistryGatewayHandler
 } from "../core/interfaces/IGatewayHandlers.sol";
+
+import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 
 contract MessageDispatcher is Auth, IMessageDispatcher {
     using CastLib for *;

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IMessageHandler} from "./IMessageHandler.sol";
-import {IMessageProperties} from "./IMessageProperties.sol";
+import {IMessageHandler} from "../../core/interfaces/IMessageHandler.sol";
+import {IMessageProperties} from "../../core/interfaces/IMessageProperties.sol";
 
 interface IMessageProcessor is IMessageHandler {
     error InvalidSourceChain();

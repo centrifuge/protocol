@@ -13,7 +13,7 @@ import {IAdapter} from "../../../../src/core/interfaces/IAdapter.sol";
 import {PoolId, newPoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
-import {MAX_MESSAGE_COST} from "../../../../src/core/interfaces/IGasService.sol";
+import {MAX_MESSAGE_COST} from "../../../../src/messaging/interfaces/IGasService.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IVaultFactory} from "../../../../src/core/spoke/factories/IVaultFactory.sol";
 

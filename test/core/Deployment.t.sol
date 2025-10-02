@@ -116,7 +116,7 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         // dependencies set correctly
         assertEq(address(gateway.root()), address(root));
         assertEq(address(gateway.messageProperties()), address(gasService));
-        assertEq(address(gateway.processor()), address(messageProcessor));
+        assertEq(address(gateway.handler()), address(messageProcessor));
         assertEq(address(gateway.adapter()), address(multiAdapter));
         assertEq(gateway.localCentrifugeId(), CENTRIFUGE_ID);
     }

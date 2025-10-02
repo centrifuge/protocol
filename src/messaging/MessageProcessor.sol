@@ -19,7 +19,6 @@ import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
 import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
 import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "../core/interfaces/ITokenRecoverer.sol";
-import {IMessageProcessor} from "../core/interfaces/IMessageProcessor.sol";
 import {IMessageProperties} from "../core/interfaces/IMessageProperties.sol";
 import {
     ISpokeGatewayHandler,
@@ -28,6 +27,8 @@ import {
     IUpdateContractGatewayHandler,
     IVaultRegistryGatewayHandler
 } from "../core/interfaces/IGatewayHandlers.sol";
+
+import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 
 contract MessageProcessor is Auth, IMessageProcessor {
     using CastLib for *;

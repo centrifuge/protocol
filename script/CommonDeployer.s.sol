@@ -14,7 +14,7 @@ import {MessageProcessor} from "../src/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../src/messaging/MessageDispatcher.sol";
 
 import {Guardian, ISafe} from "../src/admin/Guardian.sol";
-import {TokenRecoverer} from "../src/admin/TokenRecoverer.sol";
+import {TokenRecoverer} from "../src/core/TokenRecoverer.sol";
 
 import "forge-std/Script.sol";
 
@@ -83,7 +83,7 @@ contract CommonActionBatcher {
         report.tokenRecoverer.rely(address(report.messageProcessor));
         report.poolEscrowFactory.rely(address(report.root));
 
-        report.gateway.file("processor", address(report.messageProcessor));
+        report.gateway.file("handler", address(report.messageProcessor));
         report.gateway.file("adapter", address(report.multiAdapter));
         report.poolEscrowFactory.file("gateway", address(report.gateway));
         report.messageProcessor.file("multiAdapter", address(report.multiAdapter));
