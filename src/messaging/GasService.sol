@@ -66,9 +66,9 @@ contract GasService is IGasService {
         updateRestriction = BASE_COST + 114365;
         updateContract = BASE_COST + 144484;
         requestCallback = BASE_COST + 257948; // approve deposit case
-        updateVaultDeployAndLink = BASE_COST + 2852854;
-        updateVaultLink = BASE_COST + 185185;
-        updateVaultUnlink = BASE_COST + 133897;
+        updateVaultDeployAndLink = BASE_COST + 2852823;
+        updateVaultLink = BASE_COST + 185154;
+        updateVaultUnlink = BASE_COST + 133872;
         setRequestManager = BASE_COST + 100432;
         updateBalanceSheetManager = BASE_COST + 103996;
         updateHoldingAmount = BASE_COST + 303882;
