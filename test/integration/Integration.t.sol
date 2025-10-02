@@ -34,6 +34,7 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
         CommonInput memory input = CommonInput({
             centrifugeId: LOCAL_CENTRIFUGE_ID,
             adminSafe: adminSafe,
+            opsSafe: adminSafe,
             maxBatchGasLimit: uint128(GAS) * 100,
             version: bytes32(0)
         });
@@ -92,7 +93,7 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
 
     function _createPool() internal {
         vm.prank(address(adminSafe));
-        guardian.createPool(POOL_A, FM, USD_ID);
+        opsGuardian.createPool(POOL_A, FM, USD_ID);
 
         vm.prank(FM);
         hub.addShareClass(POOL_A, "ShareClass1", "sc1", bytes32("salt"));

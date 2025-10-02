@@ -22,7 +22,8 @@ import {IHubRequestManager} from "../src/core/hub/interfaces/IHubRequestManager.
 import {VaultUpdateKind} from "../src/messaging/libraries/MessageLib.sol";
 import {UpdateContractMessageLib} from "../src/messaging/libraries/UpdateContractMessageLib.sol";
 
-import {Guardian} from "../src/admin/Guardian.sol";
+import {OpsGuardian} from "../src/admin/OpsGuardian.sol";
+import {ProtocolGuardian} from "../src/admin/ProtocolGuardian.sol";
 
 import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
@@ -72,7 +73,8 @@ contract TestData is FullDeployer {
             AsyncRequestManager(payable(vm.parseJsonAddress(config, "$.contracts.asyncRequestManager")));
         batchRequestManager = BatchRequestManager(vm.parseJsonAddress(config, "$.contracts.batchRequestManager"));
         syncManager = SyncManager(vm.parseJsonAddress(config, "$.contracts.syncManager"));
-        guardian = Guardian(vm.parseJsonAddress(config, "$.contracts.guardian"));
+        protocolGuardian = ProtocolGuardian(vm.parseJsonAddress(config, "$.contracts.protocolGuardian"));
+        opsGuardian = OpsGuardian(vm.parseJsonAddress(config, "$.contracts.opsGuardian"));
 
         vm.startBroadcast();
         _configureTestData(centrifugeId);
@@ -107,7 +109,7 @@ contract TestData is FullDeployer {
         state.poolId = hubRegistry.poolId(centrifugeId, 1);
         asyncRequestManager.depositSubsidy{value: 0.5 ether}(state.poolId);
 
-        guardian.createPool(state.poolId, msg.sender, USD_ID);
+        opsGuardian.createPool(state.poolId, msg.sender, USD_ID);
         hub.updateHubManager(state.poolId, admin, true);
         state.scId = shareClassManager.previewNextShareClassId(state.poolId);
 
@@ -273,7 +275,7 @@ contract TestData is FullDeployer {
         PoolId poolId = hubRegistry.poolId(centrifugeId, 2);
         asyncRequestManager.depositSubsidy(poolId);
 
-        guardian.createPool(poolId, msg.sender, USD_ID);
+        opsGuardian.createPool(poolId, msg.sender, USD_ID);
         hub.updateHubManager(poolId, admin, true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 

@@ -44,11 +44,18 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IAxelarAdapter
-    function wire(uint16 centrifugeId, string calldata axelarId, string calldata adapter) external auth {
+    /// @inheritdoc IAdapter
+    function wire(bytes memory data) external auth {
+        (uint16 centrifugeId, string memory axelarId, string memory adapter) =
+            abi.decode(data, (uint16, string, string));
         sources[axelarId] = AxelarSource(centrifugeId, keccak256(bytes(adapter)));
         destinations[centrifugeId] = AxelarDestination(axelarId, adapter);
         emit Wire(centrifugeId, axelarId, adapter);
+    }
+
+    /// @inheritdoc IAdapter
+    function isWired(uint16 centrifugeId) external view returns (bool) {
+        return bytes(destinations[centrifugeId].axelarId).length != 0;
     }
 
     //----------------------------------------------------------------------------------------------

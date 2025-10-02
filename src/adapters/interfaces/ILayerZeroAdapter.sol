@@ -92,12 +92,6 @@ interface ILayerZeroAdapter is IAdapter, ILayerZeroReceiver {
     error NotLayerZeroEndpoint();
     error InvalidSource();
 
-    /// @notice Wire the adapter to a remote one.
-    /// @param centrifugeId The remote chain's chain ID
-    /// @param layerZeroEid The remote chain's LayerZero Endpoint ID
-    /// @param adapter The remote chain's LayerZero adapter address
-    function wire(uint16 centrifugeId, uint32 layerZeroEid, address adapter) external;
-
     /// @notice Returns the source configuration for a given layerzero endpoint id
     /// @param layerZeroEid The remote LayerZero Endpoint ID
     /// @return centrifugeId The remote chain id

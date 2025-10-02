@@ -8,6 +8,7 @@ import {ERC20} from "../../../../src/misc/ERC20.sol";
 import {IERC6909Fungible} from "../../../../src/misc/interfaces/IERC6909.sol";
 
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
+import {ISafe} from "../../../../src/core/interfaces/ISafe.sol";
 import {newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {IAdapter} from "../../../../src/core/interfaces/IAdapter.sol";
 import {PoolId, newPoolId} from "../../../../src/core/types/PoolId.sol";
@@ -18,8 +19,6 @@ import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol
 import {IVaultFactory} from "../../../../src/core/spoke/factories/IVaultFactory.sol";
 
 import {MessageLib, VaultUpdateKind} from "../../../../src/messaging/libraries/MessageLib.sol";
-
-import {ISafe} from "../../../../src/admin/interfaces/IGuardian.sol";
 
 import {AsyncVault} from "../../../../src/vaults/AsyncVault.sol";
 import {SyncDepositVault} from "../../../../src/vaults/SyncDepositVault.sol";
@@ -84,6 +83,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         CommonInput memory input = CommonInput({
             centrifugeId: THIS_CHAIN_ID,
             adminSafe: ISafe(ADMIN),
+            opsSafe: ISafe(ADMIN),
             maxBatchGasLimit: uint128(GAS_COST_LIMIT) * 100,
             version: bytes32(0)
         });

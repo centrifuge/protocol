@@ -43,18 +43,24 @@ contract AdaptersActionBatcher is CommonActionBatcher {
     function engageAdapters(AdaptersReport memory report) public onlyDeployer {
         if (address(report.wormholeAdapter) != address(0)) {
             report.wormholeAdapter.rely(address(report.common.root));
-            report.wormholeAdapter.rely(address(report.common.guardian));
-            report.wormholeAdapter.rely(address(report.common.adminSafe));
+            // Permanent ward for ongoing adapter maintenance
+            report.wormholeAdapter.rely(address(report.common.protocolGuardian));
+            // Temporary ward for initial wire, self-denies after
+            report.wormholeAdapter.rely(address(report.common.opsGuardian));
         }
         if (address(report.axelarAdapter) != address(0)) {
             report.axelarAdapter.rely(address(report.common.root));
-            report.axelarAdapter.rely(address(report.common.guardian));
-            report.axelarAdapter.rely(address(report.common.adminSafe));
+            // Permanent ward for ongoing adapter maintenance
+            report.axelarAdapter.rely(address(report.common.protocolGuardian));
+            // Temporary ward for initial wire, self-denies after
+            report.axelarAdapter.rely(address(report.common.opsGuardian));
         }
         if (address(report.layerZeroAdapter) != address(0)) {
             report.layerZeroAdapter.rely(address(report.common.root));
-            report.layerZeroAdapter.rely(address(report.common.guardian));
-            report.layerZeroAdapter.rely(address(report.common.adminSafe));
+            // Permanent ward for ongoing adapter maintenance
+            report.layerZeroAdapter.rely(address(report.common.protocolGuardian));
+            // Temporary ward for initial wire, self-denies after
+            report.layerZeroAdapter.rely(address(report.common.opsGuardian));
         }
     }
 

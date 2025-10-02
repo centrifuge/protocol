@@ -43,11 +43,17 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IWormholeAdapter
-    function wire(uint16 centrifugeId, uint16 wormholeId, address adapter) external auth {
+    /// @inheritdoc IAdapter
+    function wire(bytes memory data) external auth {
+        (uint16 centrifugeId, uint16 wormholeId, address adapter) = abi.decode(data, (uint16, uint16, address));
         sources[wormholeId] = WormholeSource(centrifugeId, adapter);
         destinations[centrifugeId] = WormholeDestination(wormholeId, adapter);
         emit Wire(centrifugeId, wormholeId, adapter);
+    }
+
+    /// @inheritdoc IAdapter
+    function isWired(uint16 centrifugeId) external view returns (bool) {
+        return destinations[centrifugeId].wormholeId != 0;
     }
 
     //----------------------------------------------------------------------------------------------
