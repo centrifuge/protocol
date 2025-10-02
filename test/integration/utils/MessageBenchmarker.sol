@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
 
