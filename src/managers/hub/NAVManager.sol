@@ -14,7 +14,7 @@ import {AccountId, withCentrifugeId, withAssetId} from "../../common/types/Accou
 
 import {IHoldings} from "../../hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "../../hub/interfaces/IHub.sol";
-import {IAccounting} from "../../hub/interfaces/IAccounting.sol";
+import {IAccounting, JournalEntry} from "../../hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "../../hub/interfaces/IHubRegistry.sol";
 
 /// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
@@ -177,22 +177,33 @@ contract NAVManager is INAVManager, Auth {
         (bool gainIsPositive, uint128 gainValue) = accounting.accountValue(poolId, gainAccount_);
         (bool lossIsPositive, uint128 lossValue) = accounting.accountValue(poolId, lossAccount_);
 
-        accounting.unlock(poolId);
+        uint256 count = 0;
+
+        if (gainIsPositive && gainValue > 0) count++;
+        if (!lossIsPositive && lossValue > 0) count++;
+
+        JournalEntry[] memory debits = new JournalEntry[](count);
+        JournalEntry[] memory credits = new JournalEntry[](count);
+
+        uint256 index = 0;
 
         // Because we're crediting the gain account for gains and debiting the loss account for losses (and loss is
         // credit-normal), gain should never be negative, and loss should never be positive.
         // Still, double-check here.
         if (gainIsPositive && gainValue > 0) {
-            accounting.addDebit(gainAccount_, gainValue);
-            accounting.addCredit(equityAccount_, gainValue);
+            debits[index] = JournalEntry({value: gainValue, accountId: gainAccount_});
+            credits[index] = JournalEntry({value: gainValue, accountId: equityAccount_});
+            index++;
         }
 
         if (!lossIsPositive && lossValue > 0) {
-            accounting.addCredit(lossAccount_, lossValue);
-            accounting.addDebit(equityAccount_, lossValue);
+            debits[index] = JournalEntry({value: lossValue, accountId: equityAccount_});
+            credits[index] = JournalEntry({value: lossValue, accountId: lossAccount_});
         }
 
-        accounting.lock();
+        if (count > 0) {
+            hub.updateJournal(poolId, debits, credits);
+        }
     }
 
     //----------------------------------------------------------------------------------------------

@@ -15,7 +15,7 @@ import {AccountId, withCentrifugeId, withAssetId} from "../../../../src/common/t
 import {IHoldings} from "../../../../src/hub/interfaces/IHoldings.sol";
 import {NAVManager} from "../../../../src/managers/hub/NAVManager.sol";
 import {IHub, AccountType} from "../../../../src/hub/interfaces/IHub.sol";
-import {IAccounting} from "../../../../src/hub/interfaces/IAccounting.sol";
+import {IAccounting, JournalEntry} from "../../../../src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "../../../../src/hub/interfaces/IHubRegistry.sol";
 import {INAVManager, INAVHook} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
 
@@ -64,14 +64,11 @@ contract NAVManagerTest is Test {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.initializeLiability.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateHoldingValue.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateHoldingValuation.selector), abi.encode());
+        vm.mockCall(hub, abi.encodeWithSelector(IHub.updateJournal.selector), abi.encode());
 
         vm.mockCall(holdings, abi.encodeWithSelector(IHoldings.snapshot.selector), abi.encode(false, uint64(0)));
 
         vm.mockCall(accounting, abi.encodeWithSelector(IAccounting.accountValue.selector), abi.encode(true, uint128(0)));
-        vm.mockCall(accounting, abi.encodeWithSelector(IAccounting.unlock.selector), abi.encode());
-        vm.mockCall(accounting, abi.encodeWithSelector(IAccounting.addDebit.selector), abi.encode());
-        vm.mockCall(accounting, abi.encodeWithSelector(IAccounting.addCredit.selector), abi.encode());
-        vm.mockCall(accounting, abi.encodeWithSelector(IAccounting.lock.selector), abi.encode());
 
         vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint128)", asset1), abi.encode(6));
         vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint128)", asset2), abi.encode(6));
@@ -447,24 +444,15 @@ contract NAVManagerCloseGainLossTest is NAVManagerTest {
         _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, true);
         _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, false);
 
-        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.unlock.selector, POOL_A));
-        vm.expectCall(
-            accounting,
-            abi.encodeWithSelector(IAccounting.addDebit.selector, navManager.gainAccount(CENTRIFUGE_ID_1), 100)
-        );
-        vm.expectCall(
-            accounting,
-            abi.encodeWithSelector(IAccounting.addCredit.selector, navManager.equityAccount(CENTRIFUGE_ID_1), 100)
-        );
-        vm.expectCall(
-            accounting,
-            abi.encodeWithSelector(IAccounting.addCredit.selector, navManager.lossAccount(CENTRIFUGE_ID_1), 50)
-        );
-        vm.expectCall(
-            accounting,
-            abi.encodeWithSelector(IAccounting.addDebit.selector, navManager.equityAccount(CENTRIFUGE_ID_1), 50)
-        );
-        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.lock.selector));
+        JournalEntry[] memory debits = new JournalEntry[](2);
+        debits[0] = JournalEntry({value: 100, accountId: navManager.gainAccount(CENTRIFUGE_ID_1)});
+        debits[1] = JournalEntry({value: 50, accountId: navManager.equityAccount(CENTRIFUGE_ID_1)});
+
+        JournalEntry[] memory credits = new JournalEntry[](2);
+        credits[0] = JournalEntry({value: 100, accountId: navManager.equityAccount(CENTRIFUGE_ID_1)});
+        credits[1] = JournalEntry({value: 50, accountId: navManager.lossAccount(CENTRIFUGE_ID_1)});
+
+        vm.expectCall(address(hub), abi.encodeCall(IHub.updateJournal, (POOL_A, debits, credits)));
 
         vm.prank(manager);
         navManager.closeGainLoss(POOL_A, CENTRIFUGE_ID_1);
@@ -474,27 +462,13 @@ contract NAVManagerCloseGainLossTest is NAVManagerTest {
         _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 200, true);
         _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 0, true);
 
-        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.unlock.selector, POOL_A));
-        vm.expectCall(
-            accounting,
-            abi.encodeWithSelector(IAccounting.addDebit.selector, navManager.gainAccount(CENTRIFUGE_ID_1), 200)
-        );
-        vm.expectCall(
-            accounting,
-            abi.encodeWithSelector(IAccounting.addCredit.selector, navManager.equityAccount(CENTRIFUGE_ID_1), 200)
-        );
-        // No calls for loss account
-        vm.expectCall(
-            accounting,
-            abi.encodeWithSelector(IAccounting.addCredit.selector, navManager.lossAccount(CENTRIFUGE_ID_1), 0),
-            0
-        );
-        vm.expectCall(
-            accounting,
-            abi.encodeWithSelector(IAccounting.addDebit.selector, navManager.equityAccount(CENTRIFUGE_ID_1), 0),
-            0
-        );
-        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.lock.selector));
+        JournalEntry[] memory debits = new JournalEntry[](1);
+        debits[0] = JournalEntry({value: 200, accountId: navManager.gainAccount(CENTRIFUGE_ID_1)});
+
+        JournalEntry[] memory credits = new JournalEntry[](1);
+        credits[0] = JournalEntry({value: 200, accountId: navManager.equityAccount(CENTRIFUGE_ID_1)});
+
+        vm.expectCall(address(hub), abi.encodeCall(IHub.updateJournal, (POOL_A, debits, credits)));
 
         vm.prank(manager);
         navManager.closeGainLoss(POOL_A, CENTRIFUGE_ID_1);
@@ -504,27 +478,13 @@ contract NAVManagerCloseGainLossTest is NAVManagerTest {
         _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 0, true);
         _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 150, false);
 
-        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.unlock.selector, POOL_A));
-        vm.expectCall(
-            accounting,
-            abi.encodeWithSelector(IAccounting.addCredit.selector, navManager.lossAccount(CENTRIFUGE_ID_1), 150)
-        );
-        vm.expectCall(
-            accounting,
-            abi.encodeWithSelector(IAccounting.addDebit.selector, navManager.equityAccount(CENTRIFUGE_ID_1), 150)
-        );
-        // No calls for gain account
-        vm.expectCall(
-            accounting,
-            abi.encodeWithSelector(IAccounting.addDebit.selector, navManager.gainAccount(CENTRIFUGE_ID_1), 0),
-            0
-        );
-        vm.expectCall(
-            accounting,
-            abi.encodeWithSelector(IAccounting.addCredit.selector, navManager.equityAccount(CENTRIFUGE_ID_1), 0),
-            0
-        );
-        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.lock.selector));
+        JournalEntry[] memory debits = new JournalEntry[](1);
+        debits[0] = JournalEntry({value: 150, accountId: navManager.equityAccount(CENTRIFUGE_ID_1)});
+
+        JournalEntry[] memory credits = new JournalEntry[](1);
+        credits[0] = JournalEntry({value: 150, accountId: navManager.lossAccount(CENTRIFUGE_ID_1)});
+
+        vm.expectCall(address(hub), abi.encodeCall(IHub.updateJournal, (POOL_A, debits, credits)));
 
         vm.prank(manager);
         navManager.closeGainLoss(POOL_A, CENTRIFUGE_ID_1);
@@ -534,8 +494,7 @@ contract NAVManagerCloseGainLossTest is NAVManagerTest {
         _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 0, true);
         _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 0, true);
 
-        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.unlock.selector, POOL_A));
-        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.lock.selector));
+        vm.expectCall(address(hub), abi.encodeWithSelector(IHub.updateJournal.selector), 0);
 
         vm.prank(manager);
         navManager.closeGainLoss(POOL_A, CENTRIFUGE_ID_1);
@@ -545,8 +504,7 @@ contract NAVManagerCloseGainLossTest is NAVManagerTest {
         _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, false);
         _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 0, true);
 
-        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.unlock.selector, POOL_A));
-        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.lock.selector));
+        vm.expectCall(address(hub), abi.encodeWithSelector(IHub.updateJournal.selector), 0);
 
         vm.prank(manager);
         navManager.closeGainLoss(POOL_A, CENTRIFUGE_ID_1);
@@ -556,8 +514,7 @@ contract NAVManagerCloseGainLossTest is NAVManagerTest {
         _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 0, true);
         _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, true);
 
-        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.unlock.selector, POOL_A));
-        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.lock.selector));
+        vm.expectCall(address(hub), abi.encodeWithSelector(IHub.updateJournal.selector), 0);
 
         vm.prank(manager);
         navManager.closeGainLoss(POOL_A, CENTRIFUGE_ID_1);
