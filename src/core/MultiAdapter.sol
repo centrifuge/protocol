@@ -102,7 +102,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes calldata payload) external {
-        PoolId poolId = messageProperties.messagePoolId(payload);
+        PoolId poolId = messageProperties.poolId(payload);
 
         IAdapter adapterAddr = IAdapter(msg.sender);
         Adapter memory adapter = _poolAdapterDetails(centrifugeId, poolId, adapterAddr);
@@ -149,7 +149,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         auth
         returns (bytes32)
     {
-        PoolId poolId = messageProperties.messagePoolId(payload);
+        PoolId poolId = messageProperties.poolId(payload);
         IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
         require(adapters_.length != 0, EmptyAdapterSet());
 
@@ -169,7 +169,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         view
         returns (uint256 total)
     {
-        PoolId poolId = messageProperties.messagePoolId(payload);
+        PoolId poolId = messageProperties.poolId(payload);
         IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
 
         for (uint256 i; i < adapters_.length; i++) {

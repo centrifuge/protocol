@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IMessageProperties} from "../core/interfaces/IMessageProperties.sol";
+
 import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
 import {IGasService} from "../core/interfaces/IGasService.sol";
+import {PoolId} from "../core/types/PoolId.sol";
 
 /// @title  GasService
 /// @notice This contract stores the gas limits (in gas units) for cross-chain message execution.
@@ -74,8 +77,8 @@ contract GasService is IGasService {
         updateGatewayManager = BASE_COST + 87952;
     }
 
-    /// @inheritdoc IGasService
-    function messageGasLimit(uint16, bytes calldata message) public view returns (uint128) {
+    /// @inheritdoc IMessageProperties
+    function gasLimit(uint16, bytes calldata message) public view returns (uint128) {
         MessageType kind = message.messageType();
 
         if (kind == MessageType.ScheduleUpgrade) return scheduleUpgrade;
@@ -110,5 +113,15 @@ contract GasService is IGasService {
         if (kind == MessageType.MaxSharePriceAge) return maxSharePriceAge;
         if (kind == MessageType.UpdateGatewayManager) return updateGatewayManager;
         revert InvalidMessageType(); // Unreachable
+    }
+
+    /// @inheritdoc IMessageProperties
+    function length(bytes calldata message) external pure returns (uint16) {
+        return message.messageLength();
+    }
+
+    /// @inheritdoc IMessageProperties
+    function poolId(bytes calldata message) external pure returns (PoolId) {
+        return message.messagePoolId();
     }
 }

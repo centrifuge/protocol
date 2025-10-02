@@ -34,7 +34,7 @@ contract GasServiceTest is Test {
             vm.assume(vaultKind <= uint8(type(VaultUpdateKind).max));
         }
 
-        uint256 messageGasLimit = service.messageGasLimit(CENTRIFUGE_ID, message);
+        uint256 messageGasLimit = service.gasLimit(CENTRIFUGE_ID, message);
         assert(messageGasLimit > service.BASE_COST());
         assert(messageGasLimit <= MAX_MESSAGE_COST);
     }

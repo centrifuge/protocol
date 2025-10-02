@@ -222,14 +222,4 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
         gateway.setUnpaidMode(false);
     }
-
-    /// @inheritdoc IMessageProperties
-    function messageLength(bytes calldata message) external pure returns (uint16) {
-        return message.messageLength();
-    }
-
-    /// @inheritdoc IMessageProperties
-    function messagePoolId(bytes calldata message) external pure returns (PoolId) {
-        return message.messagePoolId();
-    }
 }
