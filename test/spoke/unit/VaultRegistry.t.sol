@@ -20,9 +20,9 @@ import {IVaultFactory} from "../../../src/core/spoke/factories/IVaultFactory.sol
 import {IPoolEscrowFactory} from "../../../src/core/spoke/factories/IPoolEscrowFactory.sol";
 import {ISpokeMessageSender, ILocalCentrifugeId} from "../../../src/core/interfaces/IGatewaySenders.sol";
 
-import "forge-std/Test.sol";
-
 import {VaultUpdateKind} from "../../../src/messaging/libraries/MessageLib.sol";
+
+import "forge-std/Test.sol";
 
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}

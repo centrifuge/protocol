@@ -32,10 +32,10 @@ import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 import {IUpdateContract} from "../core/spoke/interfaces/IUpdateContract.sol";
 
+import {UpdateContractMessageLib, UpdateContractType} from "../messaging/libraries/UpdateContractMessageLib.sol";
+
 import {RequestMessageLib} from "../vaults/libraries/RequestMessageLib.sol";
 import {RequestCallbackType, RequestCallbackMessageLib} from "../vaults/libraries/RequestCallbackMessageLib.sol";
-
-import {UpdateContractMessageLib, UpdateContractType} from "../messaging/libraries/UpdateContractMessageLib.sol";
 
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for

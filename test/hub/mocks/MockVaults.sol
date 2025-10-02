@@ -12,11 +12,11 @@ import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
 
+import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
+
 import {RequestMessageLib} from "../../../src/vaults/libraries/RequestMessageLib.sol";
 
 import "forge-std/Test.sol";
-
-import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
 
 contract MockVaults is Test, Auth, IAdapter {
     using MessageLib for *;

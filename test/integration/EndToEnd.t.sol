@@ -35,6 +35,10 @@ import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/MultiAdapter.sol";
 import {ILocalCentrifugeId} from "../../src/core/interfaces/IGatewaySenders.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 
+import {GasService} from "../../src/messaging/GasService.sol";
+import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
+import {VaultUpdateKind, MessageType, MessageLib} from "../../src/messaging/libraries/MessageLib.sol";
+
 import {SyncManager} from "../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
@@ -59,10 +63,7 @@ import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDep
 import "forge-std/Test.sol";
 
 import {Guardian} from "../../src/admin/Guardian.sol";
-import {GasService} from "../../src/messaging/GasService.sol";
 import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
-import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
-import {VaultUpdateKind, MessageType, MessageLib} from "../../src/messaging/libraries/MessageLib.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///

@@ -9,13 +9,14 @@ import {Gateway} from "../src/core/Gateway.sol";
 import {MultiAdapter} from "../src/core/MultiAdapter.sol";
 import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
 
+import {GasService} from "../src/messaging/GasService.sol";
+import {MessageProcessor} from "../src/messaging/MessageProcessor.sol";
+import {MessageDispatcher} from "../src/messaging/MessageDispatcher.sol";
+
 import "forge-std/Script.sol";
 
 import {Guardian, ISafe} from "../src/admin/Guardian.sol";
-import {GasService} from "../src/messaging/GasService.sol";
 import {TokenRecoverer} from "../src/admin/TokenRecoverer.sol";
-import {MessageProcessor} from "../src/messaging/MessageProcessor.sol";
-import {MessageDispatcher} from "../src/messaging/MessageDispatcher.sol";
 
 struct CommonInput {
     uint16 centrifugeId;

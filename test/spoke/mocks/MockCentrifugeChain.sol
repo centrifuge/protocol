@@ -10,6 +10,9 @@ import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
 import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
 import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 
+import {MessageLib, VaultUpdateKind} from "../../../src/messaging/libraries/MessageLib.sol";
+import {UpdateContractMessageLib} from "../../../src/messaging/libraries/UpdateContractMessageLib.sol";
+
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
@@ -17,9 +20,6 @@ import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCa
 import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import "forge-std/Test.sol";
-
-import {MessageLib, VaultUpdateKind} from "../../../src/messaging/libraries/MessageLib.sol";
-import {UpdateContractMessageLib} from "../../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
 interface AdapterLike {
     function execute(bytes memory _message) external;

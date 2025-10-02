@@ -10,10 +10,10 @@ import {PoolId} from "../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {VaultKind} from "../../src/core/spoke/interfaces/IVault.sol";
 
+import {VaultUpdateKind} from "../../src/messaging/libraries/MessageLib.sol";
+
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
 import {AsyncRequestManager, IAsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
-
-import {VaultUpdateKind} from "../../src/messaging/libraries/MessageLib.sol";
 
 /// Test from finding: https://cantina.xyz/code/6cc9d51a-ac1e-4385-a88a-a3924e40c00e/findings/23
 

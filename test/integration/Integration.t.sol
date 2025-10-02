@@ -10,13 +10,13 @@ import {AssetId} from "../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {MAX_MESSAGE_COST as GAS} from "../../src/core/interfaces/IGasService.sol";
 
+import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
+
 import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
 
 import {MockValuation} from "../common/mocks/MockValuation.sol";
 
 import "forge-std/Test.sol";
-
-import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
 /// @notice The base contract for integrators that want to tests their contracts.
 /// It assumes a full deployment in one chain.

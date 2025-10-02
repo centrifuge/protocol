@@ -13,6 +13,7 @@ IMPORT_PRIORITY = [
     ".",        # Current directory (highest priority)
     "misc",
     "core",
+    "messaging",
     "vaults",
     "hooks",
     "managers",

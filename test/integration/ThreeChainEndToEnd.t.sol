@@ -14,11 +14,11 @@ import {IGateway} from "../../src/core/interfaces/IGateway.sol";
 import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
 import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
 
+import {MessageLib} from "../../src/messaging/libraries/MessageLib.sol";
+
 import {FullDeployer} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
-
-import {MessageLib} from "../../src/messaging/libraries/MessageLib.sol";
 
 enum CrossChainDirection {
     WithIntermediaryHub, // C -> A -> B (Hub is on A)

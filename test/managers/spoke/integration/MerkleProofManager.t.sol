@@ -9,6 +9,8 @@ import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {BalanceSheet} from "../../../../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 
+import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
+
 import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {VaultDecoder} from "../../../../src/managers/spoke/decoders/VaultDecoder.sol";
@@ -17,7 +19,6 @@ import {IMerkleProofManager, IERC7751} from "../../../../src/managers/spoke/inte
 
 import "../../../spoke/integration/BaseTest.sol";
 import {MerkleTreeLib} from "../libraries/MerkleTreeLib.sol";
-import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
 abstract contract MerkleProofManagerBaseTest is BaseTest {
     using CastLib for *;

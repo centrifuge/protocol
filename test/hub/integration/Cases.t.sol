@@ -12,10 +12,10 @@ import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IHubRequestManager} from "../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
-import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
-
 import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
 import {VaultUpdateKind} from "../../../src/messaging/libraries/MessageLib.sol";
+
+import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
 contract TestCases is BaseTest {
     using MathLib for *;

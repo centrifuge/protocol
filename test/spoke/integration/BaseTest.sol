@@ -18,6 +18,8 @@ import {MAX_MESSAGE_COST} from "../../../src/core/interfaces/IGasService.sol";
 import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IVaultFactory} from "../../../src/core/spoke/factories/IVaultFactory.sol";
 
+import {MessageLib, VaultUpdateKind} from "../../../src/messaging/libraries/MessageLib.sol";
+
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
 
@@ -29,8 +31,6 @@ import {MockAdapter} from "../../common/mocks/MockAdapter.sol";
 import {MockCentrifugeChain} from "../mocks/MockCentrifugeChain.sol";
 
 import "forge-std/Test.sol";
-
-import {MessageLib, VaultUpdateKind} from "../../../src/messaging/libraries/MessageLib.sol";
 
 contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     using MessageLib for *;

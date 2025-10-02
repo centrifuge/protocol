@@ -10,6 +10,8 @@ import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 
+import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
+
 import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
@@ -18,7 +20,6 @@ import {IVaultRouter} from "../../../src/vaults/interfaces/IVaultRouter.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 
 import "../../spoke/integration/BaseTest.sol";
-import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
 
 contract VaultRouterTest is BaseTest {
     using MessageLib for *;

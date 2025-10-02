@@ -17,13 +17,14 @@ import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ITransferHook} from "../../../src/core/interfaces/ITransferHook.sol";
 import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 
+import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
+
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
 import {ISyncManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncRedeemVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 
 import "../../spoke/integration/BaseTest.sol";
-import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
 
 contract SyncDepositTestHelper is BaseTest {
     using CastLib for *;

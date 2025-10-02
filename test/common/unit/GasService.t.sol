@@ -5,10 +5,10 @@ import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 
 import {MAX_MESSAGE_COST} from "../../../src/core/interfaces/IGasService.sol";
 
-import "forge-std/Test.sol";
-
 import {GasService} from "../../../src/messaging/GasService.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../../../src/messaging/libraries/MessageLib.sol";
+
+import "forge-std/Test.sol";
 
 contract GasServiceTest is Test {
     using MessageLib for *;
