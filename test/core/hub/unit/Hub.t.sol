@@ -251,6 +251,8 @@ contract TestUpdateSharePrice is TestCommon {
             abi.encode(false)
         );
 
+        assertEq(feeHook.calls(POOL_A, SC_A), 0);
+
         vm.prank(ADMIN);
         hub.updateSharePrice(POOL_A, SC_A, d18(1, 1));
 
@@ -275,6 +277,8 @@ contract TestNotifyAssetPrice is TestCommon {
             ),
             abi.encode()
         );
+
+        assertEq(feeHook.calls(POOL_A, SC_A), 0);
 
         vm.prank(ADMIN);
         hub.notifyAssetPrice(POOL_A, SC_A, ASSET_A, REFUND);
