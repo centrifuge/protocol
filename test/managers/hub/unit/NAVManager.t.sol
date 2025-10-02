@@ -12,8 +12,8 @@ import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {IHoldings} from "../../../../src/core/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "../../../../src/core/hub/interfaces/IHub.sol";
-import {IAccounting, JournalEntry} from "../../../../src/core/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {IAccounting, JournalEntry} from "../../../../src/core/hub/interfaces/IAccounting.sol";
 import {AccountId, withCentrifugeId, withAssetId} from "../../../../src/core/types/AccountId.sol";
 
 import {NAVManager} from "../../../../src/managers/hub/NAVManager.sol";

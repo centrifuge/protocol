@@ -11,9 +11,9 @@ import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IHoldings} from "../../core/hub/interfaces/IHoldings.sol";
 import {IValuation} from "../../core/hub/interfaces/IValuation.sol";
 import {IHub, AccountType} from "../../core/hub/interfaces/IHub.sol";
-import {IAccounting, JournalEntry} from "../../core/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
 import {ISnapshotHook} from "../../core/hub/interfaces/ISnapshotHook.sol";
+import {IAccounting, JournalEntry} from "../../core/hub/interfaces/IAccounting.sol";
 import {AccountId, withCentrifugeId, withAssetId} from "../../core/types/AccountId.sol";
 
 /// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
