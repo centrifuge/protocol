@@ -17,7 +17,6 @@ interface ISimplePriceManager is INAVHook {
         uint16 indexed toCentrifugeId,
         uint128 sharesTransferred
     );
-    event UpdateManager(PoolId indexed poolId, address indexed manager, bool canManage);
     event UpdateNetworks(PoolId indexed poolId, uint16[] networks);
     event File(bytes32 indexed what, address data);
 
@@ -45,7 +44,6 @@ interface ISimplePriceManager is INAVHook {
         external
         view
         returns (uint128 netAssetValue, uint128 issuance, uint32 issueEpochsBehind, uint32 revokeEpochsBehind);
-    function manager(PoolId poolId, address manager_) external view returns (bool);
 
     //----------------------------------------------------------------------------------------------
     // Administration
@@ -60,12 +58,6 @@ interface ISimplePriceManager is INAVHook {
     /// @param poolId The pool ID
     /// @param centrifugeId Centrifuge ID for the network to remove
     function removeNetwork(PoolId poolId, uint16 centrifugeId) external;
-
-    /// @notice Update whether an address can manage the NAV manager
-    /// @param poolId The pool ID
-    /// @param manager The address of the manager
-    /// @param canManage Whether the address can manage this manager
-    function updateManager(PoolId poolId, address manager, bool canManage) external;
 
     function file(bytes32 what, address data) external;
 }

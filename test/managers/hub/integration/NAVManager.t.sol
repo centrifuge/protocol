@@ -62,7 +62,6 @@ contract NAVManagerIntegrationTest is BaseTest {
         hub.updateHubManager(POOL_A, address(navManager), true);
         hub.updateHubManager(POOL_A, address(simplePriceManager), true);
         navManager.updateManager(POOL_A, manager, true);
-        simplePriceManager.updateManager(POOL_A, manager, true);
 
         navManager.setNAVHook(POOL_A, INAVHook(address(simplePriceManager)));
 

@@ -81,12 +81,6 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         revert NetworkNotFound();
     }
 
-    /// @inheritdoc ISimplePriceManager
-    function updateManager(PoolId poolId, address manager_, bool canManage) external onlyHubManager(poolId) {
-        manager[poolId][manager_] = canManage;
-        emit UpdateManager(poolId, manager_, canManage);
-    }
-
     //----------------------------------------------------------------------------------------------
     // Updates
     //----------------------------------------------------------------------------------------------

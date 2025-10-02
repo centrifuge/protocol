@@ -113,9 +113,6 @@ contract SimplePriceManagerTest is Test {
         vm.prank(auth);
         priceManager.rely(gateway);
 
-        vm.prank(hubManager);
-        priceManager.updateManager(POOL_A, manager, true);
-
         vm.deal(address(priceManager), 1 ether);
     }
 }
@@ -240,42 +237,6 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         vm.expectRevert(ISimplePriceManager.NetworkNotFound.selector);
         vm.prank(hubManager);
         priceManager.removeNetwork(POOL_A, CENTRIFUGE_ID_2);
-    }
-
-    function testUpdateManagerSuccess() public {
-        address newManager = makeAddr("newManager");
-
-        vm.expectEmit(true, true, false, false);
-        emit ISimplePriceManager.UpdateManager(POOL_A, newManager, true);
-
-        vm.prank(hubManager);
-        priceManager.updateManager(POOL_A, newManager, true);
-
-        assertTrue(priceManager.manager(POOL_A, newManager));
-    }
-
-    function testUpdateManagerRemove() public {
-        address managerAddr = makeAddr("newManager");
-
-        vm.prank(hubManager);
-        priceManager.updateManager(POOL_A, managerAddr, true);
-        assertTrue(priceManager.manager(POOL_A, managerAddr));
-
-        vm.expectEmit(true, true, false, false);
-        emit ISimplePriceManager.UpdateManager(POOL_A, managerAddr, false);
-
-        vm.prank(hubManager);
-        priceManager.updateManager(POOL_A, managerAddr, false);
-
-        assertFalse(priceManager.manager(POOL_A, managerAddr));
-    }
-
-    function testUpdateManagerUnauthorized() public {
-        address managerAddr = makeAddr("newManager");
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(unauthorized);
-        priceManager.updateManager(POOL_A, managerAddr, true);
     }
 }
 
