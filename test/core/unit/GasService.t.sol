@@ -3,9 +3,8 @@ pragma solidity 0.8.28;
 
 import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 
-import {MAX_MESSAGE_COST} from "../../../src/messaging/interfaces/IGasService.sol";
-
 import {GasService} from "../../../src/messaging/GasService.sol";
+import {MAX_MESSAGE_COST} from "../../../src/messaging/interfaces/IGasService.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../../../src/messaging/libraries/MessageLib.sol";
 
 import "forge-std/Test.sol";

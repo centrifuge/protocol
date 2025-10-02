@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IMessageProperties} from "../core/interfaces/IMessageProperties.sol";
-
+import {IGasService} from "./interfaces/IGasService.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
-import {IGasService} from "./interfaces/IGasService.sol";
 import {PoolId} from "../core/types/PoolId.sol";
+import {IMessageProperties} from "../core/interfaces/IMessageProperties.sol";
 
 /// @title  GasService
 /// @notice This contract stores the gas limits (in gas units) for cross-chain message execution.

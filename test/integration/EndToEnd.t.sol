@@ -34,6 +34,7 @@ import {ILocalCentrifugeId} from "../../src/core/interfaces/IGatewaySenders.sol"
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 
 import {GasService} from "../../src/messaging/GasService.sol";
+import {MAX_MESSAGE_COST} from "../../src/messaging/interfaces/IGasService.sol";
 import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
 import {VaultUpdateKind, MessageType, MessageLib} from "../../src/messaging/libraries/MessageLib.sol";
 
@@ -64,8 +65,6 @@ import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDep
 import "forge-std/Test.sol";
 
 import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
-
-import {MAX_MESSAGE_COST} from "../../src/messaging/interfaces/IGasService.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///

@@ -9,8 +9,9 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AccountId} from "../../../../src/core/types/AccountId.sol";
 import {IAdapter} from "../../../../src/core/interfaces/IAdapter.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
-import {MAX_MESSAGE_COST} from "../../../../src/messaging/interfaces/IGasService.sol";
 import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubRequestManager.sol";
+
+import {MAX_MESSAGE_COST} from "../../../../src/messaging/interfaces/IGasService.sol";
 
 import {HubActionBatcher, CommonInput} from "../../../../script/HubDeployer.s.sol";
 import {ExtendedHubDeployer, ExtendedHubActionBatcher} from "../../../../script/ExtendedHubDeployer.s.sol";

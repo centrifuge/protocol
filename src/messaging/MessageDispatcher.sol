@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -26,8 +27,6 @@ import {
     IUpdateContractGatewayHandler,
     IVaultRegistryGatewayHandler
 } from "../core/interfaces/IGatewayHandlers.sol";
-
-import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 
 contract MessageDispatcher is Auth, IMessageDispatcher {
     using CastLib for *;

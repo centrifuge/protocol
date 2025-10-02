@@ -7,6 +7,7 @@ import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 import {Root} from "../src/core/Root.sol";
 import {Gateway} from "../src/core/Gateway.sol";
 import {MultiAdapter} from "../src/core/MultiAdapter.sol";
+import {TokenRecoverer} from "../src/core/TokenRecoverer.sol";
 import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
 
 import {GasService} from "../src/messaging/GasService.sol";
@@ -14,7 +15,6 @@ import {MessageProcessor} from "../src/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../src/messaging/MessageDispatcher.sol";
 
 import {Guardian, ISafe} from "../src/admin/Guardian.sol";
-import {TokenRecoverer} from "../src/core/TokenRecoverer.sol";
 
 import "forge-std/Script.sol";
 
