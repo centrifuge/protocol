@@ -9,7 +9,7 @@ import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
 import {IGateway} from "../../../src/core/interfaces/IGateway.sol";
 
 import {IGuardian} from "../../../src/admin/interfaces/IGuardian.sol";
-import {IHubGuardianActions} from "../../../src/admin/interfaces/IGuardianActions.sol";
+import {ICreatePool} from "../../../src/admin/interfaces/ICreatePool.sol";
 import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "../../../src/admin/Guardian.sol";
 
 import "forge-std/Test.sol";
@@ -19,7 +19,7 @@ contract IsContract {}
 
 contract GuardianTest is Test {
     IRoot immutable root = IRoot(address(new IsContract()));
-    IHubGuardianActions immutable hub = IHubGuardianActions(address(new IsContract()));
+    ICreatePool immutable hub = ICreatePool(address(new IsContract()));
     IRootMessageSender sender = IRootMessageSender(address(new IsContract()));
     IGateway gateway = IGateway(address(new IsContract()));
     IMultiAdapter immutable multiAdapter = IMultiAdapter(address(new IsContract()));

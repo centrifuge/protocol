@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {BaseTransferHook} from "./BaseTransferHook.sol";
 
-import {ITransferHook, HookData} from "../core/interfaces/ITransferHook.sol";
+import {ITransferHook, HookData} from "../core/spoke/interfaces/ITransferHook.sol";
 
 /// @title  Redemption Restrictions
 /// @notice Hook implementation that:

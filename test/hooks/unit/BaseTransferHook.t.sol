@@ -6,7 +6,7 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {IERC165} from "../../../src/misc/interfaces/IERC7575.sol";
 import {BitmapLib} from "../../../src/misc/libraries/BitmapLib.sol";
 
-import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../../../src/core/interfaces/ITransferHook.sol";
+import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../../../src/core/spoke/interfaces/ITransferHook.sol";
 
 import {IFreezable} from "../../../src/hooks/interfaces/IFreezable.sol";
 import {BaseTransferHook} from "../../../src/hooks/BaseTransferHook.sol";

@@ -9,7 +9,7 @@ import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {Holdings} from "../../../../src/core/hub/Holdings.sol";
 import {AccountId} from "../../../../src/core/types/AccountId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IValuation} from "../../../../src/core/interfaces/IValuation.sol";
+import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IHoldings, HoldingAccount} from "../../../../src/core/hub/interfaces/IHoldings.sol";
 

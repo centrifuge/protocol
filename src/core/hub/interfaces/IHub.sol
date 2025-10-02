@@ -16,8 +16,8 @@ import {AssetId} from "../../types/AssetId.sol";
 import {AccountId} from "../../types/AccountId.sol";
 import {IAdapter} from "../../interfaces/IAdapter.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IValuation} from "../../interfaces/IValuation.sol";
-import {ISnapshotHook} from "../../interfaces/ISnapshotHook.sol";
+import {IValuation} from "./IValuation.sol";
+import {ISnapshotHook} from "./ISnapshotHook.sol";
 import {IHubMessageSender} from "../../interfaces/IGatewaySenders.sol";
 import {IBatchedMulticall} from "../../interfaces/IBatchedMulticall.sol";
 

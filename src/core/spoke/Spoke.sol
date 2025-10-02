@@ -23,7 +23,7 @@ import {PoolId} from "../types/PoolId.sol";
 import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {newAssetId, AssetId} from "../types/AssetId.sol";
-import {ITransferHook} from "../interfaces/ITransferHook.sol";
+import {ITransferHook} from "./interfaces/ITransferHook.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 import {ISpokeMessageSender} from "../interfaces/IGatewaySenders.sol";
 import {ISpokeGatewayHandler} from "../interfaces/IGatewayHandlers.sol";

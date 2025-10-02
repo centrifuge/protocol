@@ -15,7 +15,7 @@ import {
     SUCCESS_MESSAGE,
     ERROR_CODE_ID,
     ERROR_MESSAGE
-} from "../interfaces/ITransferHook.sol";
+} from "./interfaces/ITransferHook.sol";
 
 /// @title  Share Token
 /// @notice Extension of ERC20 + ERC1404,

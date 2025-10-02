@@ -8,11 +8,11 @@ import {Auth} from "../../misc/Auth.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IValuation} from "../../core/interfaces/IValuation.sol";
+import {IValuation} from "../../core/hub/interfaces/IValuation.sol";
 import {IHoldings} from "../../core/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "../../core/hub/interfaces/IHub.sol";
 import {IAccounting} from "../../core/hub/interfaces/IAccounting.sol";
-import {ISnapshotHook} from "../../core/interfaces/ISnapshotHook.sol";
+import {ISnapshotHook} from "../../core/hub/interfaces/ISnapshotHook.sol";
 import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
 import {AccountId, withCentrifugeId, withAssetId} from "../../core/types/AccountId.sol";
 

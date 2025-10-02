@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {ISnapshotHook} from "../../../src/core/interfaces/ISnapshotHook.sol";
+import {ISnapshotHook} from "../../../src/core/hub/interfaces/ISnapshotHook.sol";
 
 contract MockSnapshotHook is ISnapshotHook {
     mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => uint256 counter))) public synced;

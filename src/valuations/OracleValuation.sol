@@ -10,7 +10,7 @@ import {AssetId} from "../core/types/AssetId.sol";
 import {IHub} from "../core/hub/interfaces/IHub.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
-import {IValuation} from "../core/interfaces/IValuation.sol";
+import {IValuation} from "../core/hub/interfaces/IValuation.sol";
 import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
 
 /// @notice Provides an implementation for valuation of assets by trusted price feeders.

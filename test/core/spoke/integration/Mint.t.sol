@@ -5,7 +5,7 @@ import "./BaseTest.sol";
 
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
-import {ITransferHook} from "../../../../src/core/interfaces/ITransferHook.sol";
+import {ITransferHook} from "../../../../src/core/spoke/interfaces/ITransferHook.sol";
 
 contract MintTest is BaseTest {
     function testMint(uint256 amount) public {

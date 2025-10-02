@@ -5,8 +5,8 @@ import {PoolId} from "../../../core/types/PoolId.sol";
 import {AssetId} from "../../../core/types/AssetId.sol";
 import {AccountId} from "../../../core/types/AccountId.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
-import {IValuation} from "../../../core/interfaces/IValuation.sol";
-import {ISnapshotHook} from "../../../core/interfaces/ISnapshotHook.sol";
+import {IValuation} from "../../../core/hub/interfaces/IValuation.sol";
+import {ISnapshotHook} from "../../../core/hub/interfaces/ISnapshotHook.sol";
 
 interface INAVHook {
     /// @notice Callback when there is a new net asset value (NAV) on a specific network.

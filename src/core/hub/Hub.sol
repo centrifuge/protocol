@@ -14,7 +14,7 @@ import {d18, D18} from "../../misc/types/D18.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
 import {MathLib} from "../../misc/libraries/MathLib.sol";
 
-import {IHubGuardianActions} from "../../admin/interfaces/IGuardianActions.sol";
+import {ICreatePool} from "../../admin/interfaces/ICreatePool.sol";
 
 import {RequestCallbackMessageLib} from "../../vaults/libraries/RequestCallbackMessageLib.sol";
 
@@ -24,16 +24,16 @@ import {AccountId} from "../types/AccountId.sol";
 import {IAdapter} from "../interfaces/IAdapter.sol";
 import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {IValuation} from "../interfaces/IValuation.sol";
+import {IValuation} from "./interfaces/IValuation.sol";
 import {BatchedMulticall} from "../BatchedMulticall.sol";
 import {IMultiAdapter} from "../interfaces/IMultiAdapter.sol";
-import {ISnapshotHook} from "../interfaces/ISnapshotHook.sol";
+import {ISnapshotHook} from "./interfaces/ISnapshotHook.sol";
 import {IHubMessageSender} from "../interfaces/IGatewaySenders.sol";
 
 /// @title  Hub
 /// @notice Central pool management contract, that brings together all functions in one place.
 ///         Pools can assign hub managers which have full rights over all actions.
-contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCallback, IHubGuardianActions {
+contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCallback, ICreatePool {
     using MathLib for uint256;
     using RequestCallbackMessageLib for *;
 
@@ -76,7 +76,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         emit File(what, data);
     }
 
-    /// @inheritdoc IHubGuardianActions
+    /// @inheritdoc ICreatePool
     function createPool(PoolId poolId, address admin, AssetId currency) external payable {
         _auth();
 

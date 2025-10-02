@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IGuardian, ISafe} from "./interfaces/IGuardian.sol";
-import {IHubGuardianActions} from "./interfaces/IGuardianActions.sol";
+import {ICreatePool} from "./interfaces/ICreatePool.sol";
 
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
@@ -21,7 +21,7 @@ contract Guardian is IGuardian {
 
     ISafe public safe;
     IGateway public gateway;
-    IHubGuardianActions public hub;
+    ICreatePool public hub;
     IRootMessageSender public sender;
     IMultiAdapter public multiAdapter;
 
@@ -57,7 +57,7 @@ contract Guardian is IGuardian {
     function file(bytes32 what, address data) external onlySafe {
         if (what == "safe") safe = ISafe(data);
         else if (what == "sender") sender = IRootMessageSender(data);
-        else if (what == "hub") hub = IHubGuardianActions(data);
+        else if (what == "hub") hub = ICreatePool(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else revert FileUnrecognizedParam();

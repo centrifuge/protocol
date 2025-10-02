@@ -13,8 +13,8 @@ import {AssetId} from "../types/AssetId.sol";
 import {AccountId} from "../types/AccountId.sol";
 import {PricingLib} from "../libraries/PricingLib.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {IValuation} from "../interfaces/IValuation.sol";
-import {ISnapshotHook} from "../interfaces/ISnapshotHook.sol";
+import {IValuation} from "./interfaces/IValuation.sol";
+import {ISnapshotHook} from "./interfaces/ISnapshotHook.sol";
 
 /// @title  Holdings
 /// @notice Bookkeeping of the holdings and its associated accounting IDs for each pool.

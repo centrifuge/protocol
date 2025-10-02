@@ -7,8 +7,8 @@ import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {AccountId} from "../../types/AccountId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IValuation} from "../../interfaces/IValuation.sol";
-import {ISnapshotHook} from "../../interfaces/ISnapshotHook.sol";
+import {IValuation} from "./IValuation.sol";
+import {ISnapshotHook} from "./ISnapshotHook.sol";
 
 struct Holding {
     uint128 assetAmount;

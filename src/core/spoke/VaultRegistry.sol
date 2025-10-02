@@ -6,7 +6,7 @@ import {IVault, VaultKind} from "./interfaces/IVault.sol";
 import {IVaultFactory} from "./factories/IVaultFactory.sol";
 import {VaultDetails, ISpoke} from "./interfaces/ISpoke.sol";
 import {IVaultRegistry} from "./interfaces/IVaultRegistry.sol";
-import {IVaultManager, REQUEST_MANAGER_V3_0} from "./interfaces/legacy/IVaultManager.sol";
+
 
 import {Auth} from "../../misc/Auth.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
@@ -118,10 +118,6 @@ contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatew
         vault[poolId][scId][assetId][requestManager] = vault_;
         vaultDetails_.isLinked = true;
 
-        if (requestManager == REQUEST_MANAGER_V3_0) {
-            IVaultManager(address(requestManager)).addVault(poolId, scId, assetId, vault_, asset, tokenId);
-        }
-
         if (tokenId == 0) {
             spoke.setShareTokenVault(poolId, scId, asset, address(vault_));
         }
@@ -143,10 +139,6 @@ contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatew
 
         delete vault[poolId][scId][assetId][requestManager];
         vaultDetails_.isLinked = false;
-
-        if (requestManager == REQUEST_MANAGER_V3_0) {
-            IVaultManager(address(requestManager)).removeVault(poolId, scId, assetId, vault_, asset, tokenId);
-        }
 
         if (tokenId == 0) {
             spoke.setShareTokenVault(poolId, scId, asset, address(0));

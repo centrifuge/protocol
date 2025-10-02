@@ -6,7 +6,7 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IValuation} from "../../core/interfaces/IValuation.sol";
+import {IValuation} from "../../core/hub/interfaces/IValuation.sol";
 
 interface IOracleValuation is IValuation {
     /// @dev Latest price

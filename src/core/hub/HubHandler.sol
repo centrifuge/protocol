@@ -14,7 +14,7 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {ISnapshotHook} from "../interfaces/ISnapshotHook.sol";
+import {ISnapshotHook} from "./interfaces/ISnapshotHook.sol";
 import {IHubMessageSender} from "../interfaces/IGatewaySenders.sol";
 import {IHubGatewayHandler} from "../interfaces/IGatewayHandlers.sol";
 
