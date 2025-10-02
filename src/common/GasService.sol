@@ -50,10 +50,10 @@ contract GasService is IGasService {
         // NOTE: Below values should be updated using script/utils/benchmark.sh
         scheduleUpgrade = BASE_COST + 66469;
         cancelUpgrade = BASE_COST + 46876;
-        recoverTokens = BASE_COST + 123959;
+        recoverTokens = BASE_COST + 120436;
         registerAsset = BASE_COST + 76846;
-        setPoolAdapters = BASE_COST + 452173; // using MAX_ADAPTER_COUNT
-        request = BASE_COST + 186928;
+        setPoolAdapters = BASE_COST + 452195; // using MAX_ADAPTER_COUNT
+        request = BASE_COST + 186950;
         notifyPool = BASE_COST + 1118719; // create escrow case
         notifyShareClass = BASE_COST + 1818909;
         notifyPricePoolPerShare = BASE_COST + 74705;
@@ -63,9 +63,9 @@ contract GasService is IGasService {
         initiateTransferShares = BASE_COST + 250624;
         executeTransferShares = BASE_COST + 144865;
         updateRestriction = BASE_COST + 81844;
-        updateContract = BASE_COST + 99339;
-        requestCallback = BASE_COST + 225405; // approve deposit case
-        updateVaultDeployAndLink = BASE_COST + 2820311;
+        updateContract = BASE_COST + 111671;
+        requestCallback = BASE_COST + 225427; // approve deposit case
+        updateVaultDeployAndLink = BASE_COST + 2820333;
         updateVaultLink = BASE_COST + 152664;
         updateVaultUnlink = BASE_COST + 101376;
         setRequestManager = BASE_COST + 68197;

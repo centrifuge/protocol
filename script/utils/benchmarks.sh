@@ -18,7 +18,7 @@ case $1 in
     # Checks if GasService must be updated
     RAYON_NUM_THREADS=1 BENCHMARKING_RUN_ID="$(date +%s)" forge test EndToEnd
 
-    tmp="$(mktemp ./src/common/GasService_temp.tmp.sol)"
+    tmp="$(mktemp ./src/common/GasService_temp.XXXXXXX.sol)"
     cp ./src/common/GasService.sol "$tmp"
     trap 'rm -f "$tmp"' EXIT
 
