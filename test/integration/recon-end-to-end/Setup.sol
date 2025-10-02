@@ -132,12 +132,8 @@ abstract contract Setup is
     AccountId[] internal createdAccountIds;
     AssetId[] internal createdAssetIds;
     D18 internal INITIAL_PRICE = d18(1e18); // set the initial price that gets used when creating an asset via a pool's
-    AccountId internal ACCOUNT_TO_UPDATE = AccountId.wrap(0); /// @dev see toggle_AccountToUpdate
 
     // shortcut to avoid stack too deep errors
-    bool internal IS_LIABILITY = true; /// @dev see toggle_IsLiability
-    bool internal IS_INCREASE = true; /// @dev see toggle_IsIncrease
-    bool internal IS_DEBIT_NORMAL = true;
     uint32 internal MAX_CLAIMS = 20;
     uint32 internal ASSET_ACCOUNT = 1;
     uint32 internal EQUITY_ACCOUNT = 2;

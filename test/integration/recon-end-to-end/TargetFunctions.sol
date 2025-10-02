@@ -32,7 +32,6 @@ import {ManagerTargets} from "./targets/ManagerTargets.sol";
 import {Properties} from "./properties/Properties.sol";
 import {AdminTargets} from "./targets/AdminTargets.sol";
 import {HubTargets} from "./targets/HubTargets.sol";
-import {ToggleTargets} from "./targets/ToggleTargets.sol";
 import {DoomsdayTargets} from "./targets/DoomsdayTargets.sol";
 import {BalanceSheetTargets} from "./targets/BalanceSheetTargets.sol";
 
@@ -46,7 +45,6 @@ abstract contract TargetFunctions is
     HubTargets,
     BalanceSheetTargets,
     AdminTargets,
-    ToggleTargets,
     DoomsdayTargets
 {
     bool hasDoneADeploy;
@@ -159,12 +157,12 @@ abstract contract TargetFunctions is
             hub_createAccount(EQUITY_ACCOUNT, isDebitNormal);
             hub_createAccount(LOSS_ACCOUNT, isDebitNormal);
             hub_createAccount(GAIN_ACCOUNT, isDebitNormal);
-            
+
             if (isLiability) {
                 // Create additional accounts needed for liability
                 hub_createAccount(EXPENSE_ACCOUNT, isDebitNormal);
                 hub_createAccount(LIABILITY_ACCOUNT, isDebitNormal);
-                
+
                 // Initialize liability holding
                 hub_initializeLiability(
                     valuation,
@@ -213,9 +211,7 @@ abstract contract TargetFunctions is
         // 6. Set max reserve for sync vaults to maximum value to allow unlimited deposits (instead of default zero
         // max deposit)
         if (!isAsyncVault) {
-            (address asset, uint256 tokenId) = spoke.idToAsset(
-                _getAssetId()
-            );
+            (address asset, uint256 tokenId) = spoke.idToAsset(_getAssetId());
             syncManager.setMaxReserve(
                 _getPool(),
                 _getShareClassId(),
@@ -472,11 +468,10 @@ abstract contract TargetFunctions is
         uint256 toEntropy
     ) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(_getVault().share()))
-            .balanceOf(_getActor()) + 1);
-        uint256 sharesAsAssets = _getVault().convertToAssets(
-            shares
-        );
+        shares %= (MockERC20(address(_getVault().share())).balanceOf(
+            _getActor()
+        ) + 1);
+        uint256 sharesAsAssets = _getVault().convertToAssets(shares);
 
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
         shortcut_claim_withdrawal(sharesAsAssets, toEntropy);
@@ -488,8 +483,9 @@ abstract contract TargetFunctions is
         uint256 toEntropy
     ) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(_getVault().share()))
-            .balanceOf(_getActor()) + 1);
+        shares %= (MockERC20(address(_getVault().share())).balanceOf(
+            _getActor()
+        ) + 1);
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
         shortcut_claim_redemption(shares, toEntropy);
     }
@@ -500,8 +496,9 @@ abstract contract TargetFunctions is
         /* navPerShare */ uint256 toEntropy
     ) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(_getVault().share()))
-            .balanceOf(_getActor()) + 1);
+        shares %= (MockERC20(address(_getVault().share())).balanceOf(
+            _getActor()
+        ) + 1);
         vault_requestRedeem(shares, toEntropy);
 
         vault_cancelRedeemRequest();
@@ -512,8 +509,9 @@ abstract contract TargetFunctions is
         uint128 navPerShare,
         uint256 toEntropy
     ) public {
-        shares %= (MockERC20(address(_getVault().share()))
-            .balanceOf(_getActor()) + 1);
+        shares %= (MockERC20(address(_getVault().share())).balanceOf(
+            _getActor()
+        ) + 1);
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
 
         vault_cancelRedeemRequest();
@@ -543,8 +541,9 @@ abstract contract TargetFunctions is
         /* navPerShare */ uint256 toEntropy
     ) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(_getVault().share()))
-            .balanceOf(_getActor()) + 1);
+        shares %= (MockERC20(address(_getVault().share())).balanceOf(
+            _getActor()
+        ) + 1);
         vault_requestRedeem(shares, toEntropy);
 
         vault_cancelRedeemRequest();
@@ -634,11 +633,7 @@ abstract contract TargetFunctions is
     function transientValuation_setPrice_clamped(uint128 price) public {
         AssetId assetId = _getAssetId();
 
-        transientValuation_setPrice(
-            assetId,
-            _getAssetId(),
-            price
-        );
+        transientValuation_setPrice(assetId, _getAssetId(), price);
     }
 
     // === PRICE CONTROL HANDLERS === //
@@ -682,5 +677,11 @@ abstract contract TargetFunctions is
         ShareClassId scId = vault.scId();
 
         hub.updateSharePrice(poolId, scId, D18.wrap(uint128(price)));
+    }
+
+    /// === Toggling State Variables === ///
+
+    function toggle_MaxClaims(uint32 maxClaims) public {
+        MAX_CLAIMS = maxClaims;
     }
 }
