@@ -185,10 +185,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         );
 
         gasService = GasService(
-            create3(
-                generateSalt("gasService-2"),
-                abi.encodePacked(type(GasService).creationCode, abi.encode(input.maxBatchGasLimit))
-            )
+            create3(generateSalt("gasService-2"), abi.encodePacked(type(GasService).creationCode, abi.encode()))
         );
 
         gateway = Gateway(

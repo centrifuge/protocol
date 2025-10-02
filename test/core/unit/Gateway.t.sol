@@ -178,11 +178,6 @@ contract GatewayTest is Test {
             abi.encodeWithSelector(IGasService.messageGasLimit.selector),
             abi.encode(MESSAGE_GAS_LIMIT)
         );
-        vm.mockCall(
-            address(gasService),
-            abi.encodeWithSelector(IGasService.maxBatchGasLimit.selector),
-            abi.encode(MAX_BATCH_GAS_LIMIT)
-        );
     }
 
     function _mockPause(bool isPaused) internal {
@@ -428,18 +423,6 @@ contract GatewayTestSend is GatewayTest {
     function testErrEmptyMessage() public {
         vm.expectRevert(IGateway.EmptyMessage.selector);
         gateway.send(REMOTE_CENT_ID, new bytes(0), 0, REFUND);
-    }
-
-    function testErrExceedsMaxBatching() public {
-        gateway.startBatching();
-        uint256 maxMessages = MAX_BATCH_GAS_LIMIT / MESSAGE_GAS_LIMIT;
-
-        for (uint256 i; i < maxMessages; i++) {
-            gateway.send(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes(), 0, REFUND);
-        }
-
-        vm.expectRevert(IGateway.ExceedsMaxGasLimit.selector);
-        gateway.send(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes(), 0, REFUND);
     }
 
     function testErrNotPayable() public {

@@ -14,10 +14,9 @@ contract GasServiceTest is Test {
     using MessageLib for *;
     using BytesLib for *;
 
-    uint128 constant MAX_BATCH_GAS_LIMIT = 25_000_000; // 25M gas units
     uint16 constant CENTRIFUGE_ID = 1;
 
-    GasService service = new GasService(MAX_BATCH_GAS_LIMIT);
+    GasService service = new GasService();
 
     function testGasLimit(bytes calldata message) public view {
         vm.assume(message.length > 0);
@@ -38,10 +37,5 @@ contract GasServiceTest is Test {
         uint256 messageGasLimit = service.messageGasLimit(CENTRIFUGE_ID, message);
         assert(messageGasLimit > service.BASE_COST());
         assert(messageGasLimit <= MAX_MESSAGE_COST);
-    }
-
-    function testMaxGasLimit(bytes calldata) public view {
-        uint256 maxBatchGasLimit = service.maxBatchGasLimit(CENTRIFUGE_ID);
-        assertEq(maxBatchGasLimit, MAX_BATCH_GAS_LIMIT);
     }
 }

@@ -15,8 +15,6 @@ contract GasService is IGasService {
     /// @dev Takes into account Adapter + Gateway processing + some mismatch happened regarding the input values
     uint128 public constant BASE_COST = 50_000;
 
-    uint128 internal immutable _maxBatchGasLimit;
-
     uint128 public immutable scheduleUpgrade;
     uint128 public immutable cancelUpgrade;
     uint128 public immutable recoverTokens;
@@ -45,9 +43,7 @@ contract GasService is IGasService {
     uint128 public immutable maxSharePriceAge;
     uint128 public immutable updateGatewayManager;
 
-    constructor(uint128 maxBatchGasLimit_) {
-        _maxBatchGasLimit = maxBatchGasLimit_;
-
+    constructor() {
         // NOTE: Below values should be updated using script/utils/benchmark.sh
         scheduleUpgrade = BASE_COST + 93735;
         cancelUpgrade = BASE_COST + 74142;
@@ -76,11 +72,6 @@ contract GasService is IGasService {
         maxAssetPriceAge = BASE_COST + 110037;
         maxSharePriceAge = BASE_COST + 106923;
         updateGatewayManager = BASE_COST + 87952;
-    }
-
-    /// @inheritdoc IGasService
-    function maxBatchGasLimit(uint16) public view returns (uint128) {
-        return _maxBatchGasLimit;
     }
 
     /// @inheritdoc IGasService
