@@ -12,15 +12,15 @@ import {BytesLib} from "../misc/libraries/BytesLib.sol";
 import {IERC165} from "../misc/interfaces/IERC7575.sol";
 import {BitmapLib} from "../misc/libraries/BitmapLib.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {IRoot} from "../common/interfaces/IRoot.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
-import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../common/interfaces/ITransferHook.sol";
+import {PoolId} from "../core/types/PoolId.sol";
+import {IRoot} from "../core/interfaces/IRoot.sol";
+import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
+import {ShareClassId} from "../core/types/ShareClassId.sol";
+import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
+import {IUpdateContract} from "../core/spoke/interfaces/IUpdateContract.sol";
+import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
 
-import {ISpoke} from "../spoke/interfaces/ISpoke.sol";
-import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
-import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractType, UpdateContractMessageLib} from "../spoke/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractType, UpdateContractMessageLib} from "../messaging/libraries/UpdateContractMessageLib.sol";
 
 /// @title  BaseTransferHook
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,

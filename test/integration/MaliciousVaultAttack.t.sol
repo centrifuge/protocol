@@ -6,11 +6,11 @@ import {EndToEndFlows} from "./EndToEnd.t.sol";
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../../src/common/types/PoolId.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {VaultUpdateKind} from "../../src/common/libraries/MessageLib.sol";
+import {PoolId} from "../../src/core/types/PoolId.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {VaultKind} from "../../src/core/spoke/interfaces/IVault.sol";
 
-import {VaultKind} from "../../src/spoke/interfaces/IVault.sol";
+import {VaultUpdateKind} from "../../src/messaging/libraries/MessageLib.sol";
 
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
 import {AsyncRequestManager, IAsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";

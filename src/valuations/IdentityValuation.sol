@@ -5,13 +5,12 @@ import {IIdentityValuation} from "./interfaces/IIdentityValuation.sol";
 
 import {d18, D18} from "../misc/types/D18.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {AssetId} from "../common/types/AssetId.sol";
-import {PricingLib} from "../common/libraries/PricingLib.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
-import {IValuation} from "../common/interfaces/IValuation.sol";
-
-import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
+import {PoolId} from "../core/types/PoolId.sol";
+import {AssetId} from "../core/types/AssetId.sol";
+import {PricingLib} from "../core/libraries/PricingLib.sol";
+import {ShareClassId} from "../core/types/ShareClassId.sol";
+import {IValuation} from "../core/hub/interfaces/IValuation.sol";
+import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
 
 contract IdentityValuation is IIdentityValuation {
     IHubRegistry public immutable hubRegistry;

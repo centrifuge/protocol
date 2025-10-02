@@ -3,12 +3,11 @@ pragma solidity ^0.8.28;
 
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-
-import {IHub} from "../../../src/hub/interfaces/IHub.sol";
-import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {IHub} from "../../../src/core/hub/interfaces/IHub.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 
 import {OracleValuation} from "../../../src/valuations/OracleValuation.sol";
 import {IOracleValuation} from "../../../src/valuations/interfaces/IOracleValuation.sol";

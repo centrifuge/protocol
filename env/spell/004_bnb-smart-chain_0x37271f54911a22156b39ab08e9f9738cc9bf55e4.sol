@@ -8,9 +8,9 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
-import {IRoot} from "../../src/common/interfaces/IRoot.sol";
+import {IRoot} from "../../src/core/interfaces/IRoot.sol";
 
-import {ISpoke} from "../../src/spoke/interfaces/ISpoke.sol";
+import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
 
 import {IAsyncRequestManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 

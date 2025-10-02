@@ -9,13 +9,13 @@ import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {IERC165} from "../../misc/interfaces/IERC165.sol";
 import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 
-import {PoolId} from "../../common/types/PoolId.sol";
-import {AssetId} from "../../common/types/AssetId.sol";
-import {ShareClassId} from "../../common/types/ShareClassId.sol";
+import {PoolId} from "../../core/types/PoolId.sol";
+import {AssetId} from "../../core/types/AssetId.sol";
+import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
+import {IUpdateContract} from "../../core/spoke/interfaces/IUpdateContract.sol";
 
-import {IBalanceSheet} from "../../spoke/interfaces/IBalanceSheet.sol";
-import {IUpdateContract} from "../../spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractType, UpdateContractMessageLib} from "../../spoke/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractType, UpdateContractMessageLib} from "../../messaging/libraries/UpdateContractMessageLib.sol";
 
 /// @title  OnOfframpManager
 /// @notice Balance sheet manager for depositing and withdrawing ERC20 assets.

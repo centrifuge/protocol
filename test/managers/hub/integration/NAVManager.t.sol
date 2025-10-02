@@ -3,13 +3,13 @@ pragma solidity 0.8.28;
 
 import {d18} from "../../../../src/misc/types/D18.sol";
 
-import {PoolId} from "../../../../src/common/types/PoolId.sol";
-import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
-import {IValuation} from "../../../../src/common/interfaces/IValuation.sol";
-import {AssetId, newAssetId} from "../../../../src/common/types/AssetId.sol";
-import {ISnapshotHook} from "../../../../src/common/interfaces/ISnapshotHook.sol";
+import "../../../core/hub/integration/BaseTest.sol";
 
-import "../../../hub/integration/BaseTest.sol";
+import {PoolId} from "../../../../src/core/types/PoolId.sol";
+import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
+import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
+import {ISnapshotHook} from "../../../../src/core/hub/interfaces/ISnapshotHook.sol";
 
 import {INAVHook} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
 

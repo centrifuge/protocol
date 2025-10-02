@@ -5,7 +5,7 @@ import {D18, d18} from "../../../../src/misc/types/D18.sol";
 import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
 import {IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
 
-import {PricingLib} from "../../../../src/common/libraries/PricingLib.sol";
+import {PricingLib} from "../../../../src/core/libraries/PricingLib.sol";
 
 import "forge-std/Test.sol";
 
