@@ -43,14 +43,15 @@ abstract contract BeforeAfter is Setup {
 
     struct BeforeAfterVars {
         mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => D18 pricePoolPerAsset))) pricePoolPerAsset;
-        mapping(PoolId poolId => mapping(ShareClassId scId => D18 pricePoolPerShare)) pricePoolPerShare;
-        mapping(address investor => AsyncInvestmentState) investments;
         mapping(ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => UserOrder pending))) ghostRedeemRequest;
         mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint128 assetAmountValue))) ghostHolding;
+        mapping(PoolId poolId => mapping(ShareClassId scId => D18 pricePoolPerShare)) pricePoolPerShare;
         mapping(PoolId poolId => mapping(AccountId accountId => uint128 accountValue)) ghostAccountValue;
         mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) ghostEpochId;
         mapping(address vault => mapping(address investor => PriceVars)) investorsGlobals; // global ghost variable only updated as needed
+        mapping(address investor => AsyncInvestmentState) investments;
         mapping(address user => uint256 balance) shareTokenBalance;
+        mapping(address user => uint256 balance) assetTokenBalance;
         uint256 escrowAssetBalance;
         uint256 escrowTrancheTokenBalance;
         uint256 poolEscrowAssetBalance;
@@ -106,6 +107,8 @@ abstract contract BeforeAfter is Setup {
         _before.shareTokenBalance[_getActor()] = IShareToken(
             _getVault().share()
         ).balanceOf(_getActor());
+        _before.assetTokenBalance[_getActor()] = MockERC20(_getAsset())
+            .balanceOf(_getActor());
 
         _updateEpochId(true);
         _updateHolding(true);
@@ -131,6 +134,8 @@ abstract contract BeforeAfter is Setup {
         if (address(_getVault()) == address(0)) return;
 
         _after.shareTokenBalance[_getActor()] = IShareToken(_getVault().share())
+            .balanceOf(_getActor());
+        _after.assetTokenBalance[_getActor()] = MockERC20(_getAsset())
             .balanceOf(_getActor());
 
         _updateEpochId(false);
