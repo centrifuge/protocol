@@ -240,7 +240,7 @@ abstract contract Properties is
                 .depositRequest(
                     _getVault().scId(),
                     spoke.vaultDetails(_getVault()).assetId,
-                    to.toBytes32()
+                    _getActor().toBytes32()
                 );
             (uint32 depositEpochId, , , ) = shareClassManager.epochId(
                 _getVault().scId(),
@@ -265,9 +265,9 @@ abstract contract Properties is
         if (currentOperation == OpType.REQUEST_REDEEM) {
             (uint128 pending, uint32 lastUpdate) = shareClassManager
                 .redeemRequest(
-                    vault.scId(),
-                    spoke.vaultDetails(vault).assetId,
-                    to.toBytes32()
+                    _getVault().scId(),
+                    spoke.vaultDetails(_getVault()).assetId,
+                    _getActor().toBytes32()
                 );
             (, uint32 redeemEpochId, , ) = shareClassManager.epochId(
                 _getVault().scId(),
@@ -290,12 +290,14 @@ abstract contract Properties is
     /// @dev Property: user share balance correctly changes by the same amount of shares added to the escrow
     function share_balance_delta() public {
         if (currentOperation == OpType.REQUEST_REDEEM) {
+            uint256 shareBalanceDelta;
+            uint256 escrowBalanceDelta;
             unchecked {
-                uint256 shareBalanceDelta = _before.shareTokenBalance[
+                shareBalanceDelta = _before.shareTokenBalance[
                     _getActor()
                 ] - _after.shareTokenBalance[_getActor()];
 
-                uint256 escrowBalanceDelta = _after.escrowTrancheTokenBalance -
+                escrowBalanceDelta = _after.escrowTrancheTokenBalance -
                     _before.escrowTrancheTokenBalance;
             }
 

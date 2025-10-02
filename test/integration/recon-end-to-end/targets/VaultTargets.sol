@@ -133,6 +133,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vault_requestDeposit(assets, toEntropy);
     }
 
+    /// @dev Property: sender or recipient can't be frozen for requested redemption
     function vault_requestRedeem(
         uint256 shares,
         uint256 toEntropy
@@ -163,7 +164,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 spoke.vaultDetails(vault).assetId
             ][to] += vault.convertToAssets(shares);
         } catch {
-            // Checks that should be made if there's a revert
             if (
                 fullRestrictions.isFrozen(vault.share(), _getActor()) == true ||
                 fullRestrictions.isFrozen(vault.share(), to) == true
