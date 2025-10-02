@@ -81,12 +81,8 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
 
     function setUp() public virtual {
         // deploy core contracts
-        CommonInput memory input = CommonInput({
-            centrifugeId: THIS_CHAIN_ID,
-            adminSafe: ISafe(ADMIN),
-            maxBatchGasLimit: uint128(GAS_COST_LIMIT) * 100,
-            version: bytes32(0)
-        });
+        CommonInput memory input =
+            CommonInput({centrifugeId: THIS_CHAIN_ID, adminSafe: ISafe(ADMIN), version: bytes32(0)});
 
         setDeployer(address(this));
         labelAddresses("");

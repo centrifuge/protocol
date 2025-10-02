@@ -21,7 +21,6 @@ import "forge-std/Script.sol";
 struct CommonInput {
     uint16 centrifugeId;
     ISafe adminSafe;
-    uint128 maxBatchGasLimit;
     bytes32 version;
 }
 

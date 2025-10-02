@@ -31,12 +31,8 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
 
     function setUp() public virtual {
         // Deployment
-        CommonInput memory input = CommonInput({
-            centrifugeId: LOCAL_CENTRIFUGE_ID,
-            adminSafe: adminSafe,
-            maxBatchGasLimit: uint128(GAS) * 100,
-            version: bytes32(0)
-        });
+        CommonInput memory input =
+            CommonInput({centrifugeId: LOCAL_CENTRIFUGE_ID, adminSafe: adminSafe, version: bytes32(0)});
 
         FullActionBatcher batcher = new FullActionBatcher();
         super.labelAddresses("");

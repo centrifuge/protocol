@@ -12,8 +12,7 @@ contract CommonDeploymentInputTest is Test {
     ISafe immutable ADMIN_SAFE = ISafe(makeAddr("AdminSafe"));
 
     function _commonInput() internal view returns (CommonInput memory) {
-        return
-            CommonInput({centrifugeId: CENTRIFUGE_ID, adminSafe: ADMIN_SAFE, maxBatchGasLimit: 0, version: bytes32(0)});
+        return CommonInput({centrifugeId: CENTRIFUGE_ID, adminSafe: ADMIN_SAFE, version: bytes32(0)});
     }
 }
 
