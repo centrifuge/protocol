@@ -13,13 +13,13 @@ import {IGateway} from "../../../../src/core/interfaces/IGateway.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {VaultRegistry} from "../../../../src/core/spoke/VaultRegistry.sol";
-import {ITransferHook} from "../../../../src/core/spoke/interfaces/ITransferHook.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
 import {IRequestManager} from "../../../../src/core/interfaces/IRequestManager.sol";
 import {ITokenFactory} from "../../../../src/core/spoke/factories/ITokenFactory.sol";
 import {IVaultFactory} from "../../../../src/core/spoke/factories/IVaultFactory.sol";
+import {ITransferHook} from "../../../../src/core/spoke/interfaces/ITransferHook.sol";
 import {ISpokeMessageSender} from "../../../../src/core/interfaces/IGatewaySenders.sol";
 import {IPoolEscrowFactory} from "../../../../src/core/spoke/factories/IPoolEscrowFactory.sol";
 

@@ -5,6 +5,7 @@ import {IHub} from "./interfaces/IHub.sol";
 import {IHoldings} from "./interfaces/IHoldings.sol";
 import {IHubHandler} from "./interfaces/IHubHandler.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
+import {ISnapshotHook} from "./interfaces/ISnapshotHook.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 
@@ -14,7 +15,6 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {ISnapshotHook} from "./interfaces/ISnapshotHook.sol";
 import {IHubMessageSender} from "../interfaces/IGatewaySenders.sol";
 import {IHubGatewayHandler} from "../interfaces/IGatewayHandlers.sol";
 

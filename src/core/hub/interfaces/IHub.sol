@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IValuation} from "./IValuation.sol";
 import {IHubRegistry} from "./IHubRegistry.sol";
+import {ISnapshotHook} from "./ISnapshotHook.sol";
 import {IHoldings, HoldingAccount} from "./IHoldings.sol";
 import {IAccounting, JournalEntry} from "./IAccounting.sol";
 import {IHubRequestManager} from "./IHubRequestManager.sol";
@@ -16,8 +18,6 @@ import {AssetId} from "../../types/AssetId.sol";
 import {AccountId} from "../../types/AccountId.sol";
 import {IAdapter} from "../../interfaces/IAdapter.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IValuation} from "./IValuation.sol";
-import {ISnapshotHook} from "./ISnapshotHook.sol";
 import {IHubMessageSender} from "../../interfaces/IGatewaySenders.sol";
 import {IBatchedMulticall} from "../../interfaces/IBatchedMulticall.sol";
 

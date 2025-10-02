@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IValuation} from "./IValuation.sol";
+import {ISnapshotHook} from "./ISnapshotHook.sol";
+
 import {D18} from "../../../misc/types/D18.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {AccountId} from "../../types/AccountId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IValuation} from "./IValuation.sol";
-import {ISnapshotHook} from "./ISnapshotHook.sol";
 
 struct Holding {
     uint128 assetAmount;

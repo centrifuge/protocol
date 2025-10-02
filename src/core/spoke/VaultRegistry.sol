@@ -7,7 +7,6 @@ import {IVaultFactory} from "./factories/IVaultFactory.sol";
 import {VaultDetails, ISpoke} from "./interfaces/ISpoke.sol";
 import {IVaultRegistry} from "./interfaces/IVaultRegistry.sol";
 
-
 import {Auth} from "../../misc/Auth.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
 

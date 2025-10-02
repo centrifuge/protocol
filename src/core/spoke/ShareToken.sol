@@ -2,12 +2,6 @@
 pragma solidity 0.8.28;
 
 import {IShareToken, IERC1404} from "./interfaces/IShareToken.sol";
-
-import {ERC20} from "../../misc/ERC20.sol";
-import {IERC20} from "../../misc/interfaces/IERC20.sol";
-import {MathLib} from "../../misc/libraries/MathLib.sol";
-import {IERC7575Share, IERC165} from "../../misc/interfaces/IERC7575.sol";
-
 import {
     ITransferHook,
     HookData,
@@ -16,6 +10,11 @@ import {
     ERROR_CODE_ID,
     ERROR_MESSAGE
 } from "./interfaces/ITransferHook.sol";
+
+import {ERC20} from "../../misc/ERC20.sol";
+import {IERC20} from "../../misc/interfaces/IERC20.sol";
+import {MathLib} from "../../misc/libraries/MathLib.sol";
+import {IERC7575Share, IERC165} from "../../misc/interfaces/IERC7575.sol";
 
 /// @title  Share Token
 /// @notice Extension of ERC20 + ERC1404,
