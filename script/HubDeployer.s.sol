@@ -8,9 +8,9 @@ import {Holdings} from "../src/core/hub/Holdings.sol";
 import {Accounting} from "../src/core/hub/Accounting.sol";
 import {HubHandler} from "../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
-import {HubContractUpdater} from "../src/core/hub/HubContractUpdater.sol";
 import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
 import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
+import {HubContractUpdater} from "../src/core/hub/HubContractUpdater.sol";
 
 import "forge-std/Script.sol";
 
