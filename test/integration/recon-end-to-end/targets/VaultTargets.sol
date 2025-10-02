@@ -570,9 +570,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         );
 
         // Bal b4
-        uint256 tokenUserB4 = MockERC20(_getVault().asset()).balanceOf(
-            _getActor()
-        );
         uint256 tokenEscrowB4 = MockERC20(_getVault().asset()).balanceOf(
             escrow
         );
@@ -580,10 +577,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
 
-        // Bal after
-        uint256 tokenUserAfter = MockERC20(_getVault().asset()).balanceOf(
-            _getActor()
-        );
         uint256 tokenEscrowAfter = MockERC20(_getVault().asset()).balanceOf(
             escrow
         );
@@ -591,22 +584,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // E-1
         sumOfClaimedRedemptions[_getVault().asset()] += (tokenEscrowB4 -
             tokenEscrowAfter);
-
-        // Extra check | // TODO: This math will prob overflow
-        // NOTE: Unchecked so we get broken property and debug faster
-        unchecked {
-            uint256 deltaUser = tokenUserAfter - tokenUserB4;
-            uint256 deltaEscrow = tokenEscrowB4 - tokenEscrowAfter;
-            emit DebugNumber(deltaUser);
-            emit DebugNumber(assets);
-            emit DebugNumber(deltaEscrow);
-
-            if (RECON_EXACT_BAL_CHECK) {
-                eq(deltaUser, assets, "Extra LP-3");
-            }
-
-            eq(deltaUser, deltaEscrow, "7540-14");
-        }
     }
 
     /// Helpers

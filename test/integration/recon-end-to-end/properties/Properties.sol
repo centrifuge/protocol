@@ -349,6 +349,26 @@ abstract contract Properties is
         }
     }
 
+    /// @dev Property: user asset balance correctly changes by the same amount of assets transferred from pool escrow on redeem/withdraw
+    /// @dev Covers both vault_redeem and vault_withdraw operations (both use OpType.REMOVE)
+    function property_redeem_asset_balance_delta() public {
+        if (currentOperation == OpType.REMOVE) {
+            uint256 assetBalanceDelta;
+            uint256 poolEscrowBalanceDelta;
+            unchecked {
+                assetBalanceDelta =
+                    _after.assetTokenBalance[_getActor()] -
+                    _before.assetTokenBalance[_getActor()];
+
+                poolEscrowBalanceDelta =
+                    _before.poolEscrowAssetBalance -
+                    _after.poolEscrowAssetBalance;
+            }
+
+            eq(assetBalanceDelta, poolEscrowBalanceDelta, "7540-14");
+        }
+    }
+
     // == SHARE CLASS TOKENS == //
 
     /// @dev Property: Sum of balances equals total supply
