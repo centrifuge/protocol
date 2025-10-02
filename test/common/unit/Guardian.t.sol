@@ -3,13 +3,13 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {IGateway} from "../../../src/common/interfaces/IGateway.sol";
-import {IGuardian} from "../../../src/common/interfaces/IGuardian.sol";
-import {IHubGuardianActions} from "../../../src/common/interfaces/IGuardianActions.sol";
-import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "../../../src/common/Guardian.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
+import {IGateway} from "../../../src/core/interfaces/IGateway.sol";
+import {IGuardian} from "../../../src/core/interfaces/IGuardian.sol";
+import {IHubGuardianActions} from "../../../src/core/interfaces/IGuardianActions.sol";
+import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "../../../src/admin/Guardian.sol";
 
 import "forge-std/Test.sol";
 

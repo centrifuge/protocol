@@ -6,14 +6,14 @@ import "./BaseTest.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {MessageLib} from "../../../src/common/libraries/MessageLib.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 
-import {ShareToken} from "../../../src/spoke/ShareToken.sol";
-import {IVault} from "../../../src/spoke/interfaces/IVault.sol";
-import {VaultDetails} from "../../../src/spoke/interfaces/ISpoke.sol";
+import {ShareToken} from "../../../src/core/spoke/ShareToken.sol";
+import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
+import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 

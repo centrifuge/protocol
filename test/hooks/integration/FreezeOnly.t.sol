@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {ITransferHook} from "../../../src/common/interfaces/ITransferHook.sol";
+import {ITransferHook} from "../../../src/core/interfaces/ITransferHook.sol";
 
 import "../../spoke/integration/BaseTest.sol";
 

@@ -20,16 +20,16 @@ import {IERC165} from "../misc/interfaces/IERC165.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 import {ReentrancyProtection} from "../misc/ReentrancyProtection.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {AssetId} from "../common/types/AssetId.sol";
-import {PricingLib} from "../common/libraries/PricingLib.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
-import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
-import {RequestMessageLib, RequestType as RequestMessageType} from "../common/libraries/RequestMessageLib.sol";
+import {PoolId} from "../core/types/PoolId.sol";
+import {AssetId} from "../core/types/AssetId.sol";
+import {PricingLib} from "../core/libraries/PricingLib.sol";
+import {ShareClassId} from "../core/types/ShareClassId.sol";
+import {RequestCallbackMessageLib} from "../vaults/libraries/RequestCallbackMessageLib.sol";
+import {RequestMessageLib, RequestType as RequestMessageType} from "../vaults/libraries/RequestMessageLib.sol";
 
-import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
-import {IHubRequestManagerCallback} from "../hub/interfaces/IHubRequestManagerCallback.sol";
-import {IHubRequestManager, IHubRequestManagerNotifications} from "../hub/interfaces/IHubRequestManager.sol";
+import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
+import {IHubRequestManagerCallback} from "../core/hub/interfaces/IHubRequestManagerCallback.sol";
+import {IHubRequestManager, IHubRequestManagerNotifications} from "../core/hub/interfaces/IHubRequestManager.sol";
 
 /// @title  Batch Request Manager
 /// @notice Manager for handling deposit/redeem requests, epochs, and fulfillment logic for share classes

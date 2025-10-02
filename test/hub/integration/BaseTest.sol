@@ -7,13 +7,13 @@ import {D18, d18} from "../../../src/misc/types/D18.sol";
 
 import {MockValuation} from "../../common/mocks/MockValuation.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AccountId} from "../../../src/common/types/AccountId.sol";
-import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {AssetId, newAssetId} from "../../../src/common/types/AssetId.sol";
-import {MAX_MESSAGE_COST} from "../../../src/common/interfaces/IGasService.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AccountId} from "../../../src/core/types/AccountId.sol";
+import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
+import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
+import {MAX_MESSAGE_COST} from "../../../src/core/interfaces/IGasService.sol";
 
-import {IHubRequestManager} from "../../../src/hub/interfaces/IHubRequestManager.sol";
+import {IHubRequestManager} from "../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
 import {HubActionBatcher, CommonInput} from "../../../script/HubDeployer.s.sol";
 import {ExtendedHubDeployer, ExtendedHubActionBatcher} from "../../../script/ExtendedHubDeployer.s.sol";

@@ -12,9 +12,7 @@ from pathlib import Path
 IMPORT_PRIORITY = [
     ".",        # Current directory (highest priority)
     "misc",
-    "common",
-    "hub",
-    "spoke",
+    "core",
     "vaults",
     "hooks",
     "managers",

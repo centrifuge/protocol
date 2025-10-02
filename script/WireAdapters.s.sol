@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAdapter} from "../src/common/interfaces/IAdapter.sol";
-import {IGuardian} from "../src/common/interfaces/IGuardian.sol";
+import {IAdapter} from "../src/core/interfaces/IAdapter.sol";
+import {IGuardian} from "../src/core/interfaces/IGuardian.sol";
 
 import "forge-std/Script.sol";
 

@@ -7,9 +7,9 @@ import {ERC20} from "../../../src/misc/ERC20.sol";
 import {Escrow, IEscrow} from "../../../src/misc/Escrow.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-import {PoolEscrow, IPoolEscrow} from "../../../src/common/PoolEscrow.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {PoolEscrow, IPoolEscrow} from "../../../src/core/spoke/PoolEscrow.sol";
 
 import "forge-std/Test.sol";
 

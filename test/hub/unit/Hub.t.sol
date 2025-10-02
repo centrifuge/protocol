@@ -4,22 +4,22 @@ pragma solidity ^0.8.28;
 import {d18, D18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {AccountId} from "../../../src/common/types/AccountId.sol";
-import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {IGateway} from "../../../src/common/interfaces/IGateway.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-import {IValuation} from "../../../src/common/interfaces/IValuation.sol";
-import {IMultiAdapter} from "../../../src/common/interfaces/IMultiAdapter.sol";
-import {ISnapshotHook} from "../../../src/common/interfaces/ISnapshotHook.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {AccountId} from "../../../src/core/types/AccountId.sol";
+import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
+import {IGateway} from "../../../src/core/interfaces/IGateway.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {IValuation} from "../../../src/core/interfaces/IValuation.sol";
+import {IMultiAdapter} from "../../../src/core/interfaces/IMultiAdapter.sol";
+import {ISnapshotHook} from "../../../src/core/interfaces/ISnapshotHook.sol";
 
-import {Hub} from "../../../src/hub/Hub.sol";
-import {IHoldings} from "../../../src/hub/interfaces/IHoldings.sol";
-import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
-import {IHub, VaultUpdateKind} from "../../../src/hub/interfaces/IHub.sol";
-import {IAccounting, JournalEntry} from "../../../src/hub/interfaces/IAccounting.sol";
-import {IShareClassManager} from "../../../src/hub/interfaces/IShareClassManager.sol";
+import {Hub} from "../../../src/core/hub/Hub.sol";
+import {IHoldings} from "../../../src/core/hub/interfaces/IHoldings.sol";
+import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {IHub, VaultUpdateKind} from "../../../src/core/hub/interfaces/IHub.sol";
+import {IAccounting, JournalEntry} from "../../../src/core/hub/interfaces/IAccounting.sol";
+import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassManager.sol";
 
 import "forge-std/Test.sol";
 

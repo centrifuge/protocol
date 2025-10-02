@@ -4,12 +4,12 @@ pragma solidity 0.8.28;
 import {IAuth} from "../../../src/misc/Auth.sol";
 import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {MultiAdapter} from "../../../src/common/MultiAdapter.sol";
-import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
-import {IMessageProperties} from "../../../src/common/interfaces/IMessageProperties.sol";
-import {IMultiAdapter, MAX_ADAPTER_COUNT} from "../../../src/common/interfaces/IMultiAdapter.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {MultiAdapter} from "../../../src/core/MultiAdapter.sol";
+import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
+import {IMessageProperties} from "../../../src/core/interfaces/IMessageProperties.sol";
+import {IMultiAdapter, MAX_ADAPTER_COUNT} from "../../../src/core/interfaces/IMultiAdapter.sol";
 
 import "forge-std/Test.sol";
 

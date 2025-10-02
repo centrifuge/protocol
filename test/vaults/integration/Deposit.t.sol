@@ -6,10 +6,10 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-import {RequestMessageLib} from "../../../src/common/libraries/RequestMessageLib.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {RequestMessageLib} from "../../../src/vaults/libraries/RequestMessageLib.sol";
 
 import "../../spoke/integration/BaseTest.sol";
 

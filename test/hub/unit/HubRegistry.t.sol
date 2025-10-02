@@ -4,13 +4,13 @@ pragma solidity 0.8.28;
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {PoolId, newPoolId} from "../../../src/common/types/PoolId.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {PoolId, newPoolId} from "../../../src/core/types/PoolId.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 
-import {HubRegistry} from "../../../src/hub/HubRegistry.sol";
-import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "../../../src/hub/interfaces/IShareClassManager.sol";
+import {HubRegistry} from "../../../src/core/hub/HubRegistry.sol";
+import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassManager.sol";
 
 import "forge-std/Test.sol";
 

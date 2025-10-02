@@ -7,13 +7,13 @@ import {ISimplePriceManager} from "./interfaces/ISimplePriceManager.sol";
 import {Auth} from "../../misc/Auth.sol";
 import {D18, d18} from "../../misc/types/D18.sol";
 
-import {PoolId} from "../../common/types/PoolId.sol";
-import {IGateway} from "../../common/interfaces/IGateway.sol";
-import {ShareClassId} from "../../common/types/ShareClassId.sol";
+import {PoolId} from "../../core/types/PoolId.sol";
+import {IGateway} from "../../core/interfaces/IGateway.sol";
+import {ShareClassId} from "../../core/types/ShareClassId.sol";
 
-import {IHub} from "../../hub/interfaces/IHub.sol";
-import {IHubRegistry} from "../../hub/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "../../hub/interfaces/IShareClassManager.sol";
+import {IHub} from "../../core/hub/interfaces/IHub.sol";
+import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "../../core/hub/interfaces/IShareClassManager.sol";
 
 /// @notice Base share price calculation manager for single share class pools.
 contract SimplePriceManager is ISimplePriceManager, Auth {

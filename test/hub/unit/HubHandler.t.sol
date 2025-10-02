@@ -4,17 +4,17 @@ pragma solidity ^0.8.28;
 import {D18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 
-import {IHub} from "../../../src/hub/interfaces/IHub.sol";
-import {HubHandler} from "../../../src/hub/HubHandler.sol";
-import {IHoldings} from "../../../src/hub/interfaces/IHoldings.sol";
-import {IHubHandler} from "../../../src/hub/interfaces/IHubHandler.sol";
-import {JournalEntry} from "../../../src/hub/interfaces/IAccounting.sol";
-import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "../../../src/hub/interfaces/IShareClassManager.sol";
+import {IHub} from "../../../src/core/hub/interfaces/IHub.sol";
+import {HubHandler} from "../../../src/core/hub/HubHandler.sol";
+import {IHoldings} from "../../../src/core/hub/interfaces/IHoldings.sol";
+import {IHubHandler} from "../../../src/core/hub/interfaces/IHubHandler.sol";
+import {JournalEntry} from "../../../src/core/hub/interfaces/IAccounting.sol";
+import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassManager.sol";
 
 import "forge-std/Test.sol";
 

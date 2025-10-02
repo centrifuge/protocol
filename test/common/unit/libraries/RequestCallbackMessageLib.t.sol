@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {
     RequestCallbackType,
     RequestCallbackMessageLib
-} from "../../../../src/common/libraries/RequestCallbackMessageLib.sol";
+} from "../../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
 import "forge-std/Test.sol";
 

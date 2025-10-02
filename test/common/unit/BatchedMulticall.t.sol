@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IGateway} from "../../../src/common/interfaces/IGateway.sol";
-import {BatchedMulticall} from "../../../src/common/BatchedMulticall.sol";
+import {IGateway} from "../../../src/core/interfaces/IGateway.sol";
+import {BatchedMulticall} from "../../../src/core/BatchedMulticall.sol";
 
 import "forge-std/Test.sol";
 

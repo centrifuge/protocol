@@ -8,18 +8,18 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {IEscrow} from "../../../src/misc/interfaces/IEscrow.sol";
 import {IERC6909} from "../../../src/misc/interfaces/IERC6909.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {IRoot} from "../../../src/common/interfaces/IRoot.sol";
-import {IGateway} from "../../../src/common/interfaces/IGateway.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-import {IPoolEscrow} from "../../../src/common/interfaces/IPoolEscrow.sol";
-import {ISpokeMessageSender} from "../../../src/common/interfaces/IGatewaySenders.sol";
-import {IPoolEscrowProvider} from "../../../src/common/factories/interfaces/IPoolEscrowFactory.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {IRoot} from "../../../src/core/interfaces/IRoot.sol";
+import {IGateway} from "../../../src/core/interfaces/IGateway.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {IPoolEscrow} from "../../../src/core/interfaces/IPoolEscrow.sol";
+import {ISpokeMessageSender} from "../../../src/core/interfaces/IGatewaySenders.sol";
+import {IPoolEscrowProvider} from "../../../src/core/spoke/factories/IPoolEscrowFactory.sol";
 
-import {ISpoke} from "../../../src/spoke/interfaces/ISpoke.sol";
-import {IShareToken} from "../../../src/spoke/interfaces/IShareToken.sol";
-import {BalanceSheet, IBalanceSheet} from "../../../src/spoke/BalanceSheet.sol";
+import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
+import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
+import {BalanceSheet, IBalanceSheet} from "../../../src/core/spoke/BalanceSheet.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 

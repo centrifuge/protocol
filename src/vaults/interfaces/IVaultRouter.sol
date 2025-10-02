@@ -4,9 +4,9 @@ pragma solidity >=0.5.0;
 import {IBaseVault} from "./IBaseVault.sol";
 import {IAsyncVault} from "./IAsyncVault.sol";
 
-import {PoolId} from "../../common/types/PoolId.sol";
-import {ShareClassId} from "../../common/types/ShareClassId.sol";
-import {IBatchedMulticall} from "../../common/interfaces/IBatchedMulticall.sol";
+import {PoolId} from "../../core/types/PoolId.sol";
+import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IBatchedMulticall} from "../../core/interfaces/IBatchedMulticall.sol";
 
 import {BaseSyncDepositVault} from "../BaseVaults.sol";
 

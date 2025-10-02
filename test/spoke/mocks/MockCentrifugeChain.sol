@@ -4,15 +4,15 @@ pragma solidity 0.8.28;
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {MessageLib, VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
-import {RequestCallbackMessageLib} from "../../../src/common/libraries/RequestCallbackMessageLib.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
+import {MessageLib, VaultUpdateKind} from "../../../src/messaging/libraries/MessageLib.sol";
+import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
-import {Spoke} from "../../../src/spoke/Spoke.sol";
-import {VaultRegistry} from "../../../src/spoke/VaultRegistry.sol";
-import {VaultDetails} from "../../../src/spoke/interfaces/ISpoke.sol";
-import {UpdateContractMessageLib} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";
+import {Spoke} from "../../../src/core/spoke/Spoke.sol";
+import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
+import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpoke.sol";
+import {UpdateContractMessageLib} from "../../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";

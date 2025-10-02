@@ -9,18 +9,18 @@ import {IERC6909Fungible} from "../../../src/misc/interfaces/IERC6909.sol";
 
 import {MockAdapter} from "../../common/mocks/MockAdapter.sol";
 
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {newAssetId} from "../../../src/common/types/AssetId.sol";
-import {ISafe} from "../../../src/common/interfaces/IGuardian.sol";
-import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {PoolId, newPoolId} from "../../../src/common/types/PoolId.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-import {MAX_MESSAGE_COST} from "../../../src/common/interfaces/IGasService.sol";
-import {MessageLib, VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {newAssetId} from "../../../src/core/types/AssetId.sol";
+import {ISafe} from "../../../src/core/interfaces/IGuardian.sol";
+import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
+import {PoolId, newPoolId} from "../../../src/core/types/PoolId.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {MAX_MESSAGE_COST} from "../../../src/core/interfaces/IGasService.sol";
+import {MessageLib, VaultUpdateKind} from "../../../src/messaging/libraries/MessageLib.sol";
 
-import {VaultKind} from "../../../src/spoke/interfaces/IVault.sol";
-import {IShareToken} from "../../../src/spoke/interfaces/IShareToken.sol";
-import {IVaultFactory} from "../../../src/spoke/factories/interfaces/IVaultFactory.sol";
+import {VaultKind} from "../../../src/core/spoke/interfaces/IVault.sol";
+import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
+import {IVaultFactory} from "../../../src/core/spoke/factories/IVaultFactory.sol";
 
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";

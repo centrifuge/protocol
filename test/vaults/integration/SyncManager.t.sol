@@ -5,7 +5,7 @@ import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
-import {MessageLib} from "../../../src/common/libraries/MessageLib.sol";
+import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
 
 import "../../spoke/integration/BaseTest.sol";
 

@@ -5,9 +5,9 @@ import {IERC165} from "../../../src/misc/interfaces/IERC7575.sol";
 
 import {MockRoot} from "../../common/mocks/MockRoot.sol";
 
-import {ITransferHook} from "../../../src/common/interfaces/ITransferHook.sol";
+import {ITransferHook} from "../../../src/core/interfaces/ITransferHook.sol";
 
-import {ShareToken} from "../../../src/spoke/ShareToken.sol";
+import {ShareToken} from "../../../src/core/spoke/ShareToken.sol";
 
 import {IFreezable} from "../../../src/hooks/interfaces/IFreezable.sol";
 import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";

@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
-import {Root, IRoot} from "../../../src/common/Root.sol";
+import {Root, IRoot} from "../../../src/core/Root.sol";
 
 import "forge-std/Test.sol";
 

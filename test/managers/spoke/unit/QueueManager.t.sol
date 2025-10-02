@@ -4,17 +4,17 @@ pragma solidity 0.8.28;
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../../src/common/types/AssetId.sol";
-import {IGateway} from "../../../../src/common/interfaces/IGateway.sol";
-import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
-import {IBatchedMulticall} from "../../../../src/common/interfaces/IBatchedMulticall.sol";
+import {PoolId} from "../../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../../src/core/types/AssetId.sol";
+import {IGateway} from "../../../../src/core/interfaces/IGateway.sol";
+import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {IBatchedMulticall} from "../../../../src/core/interfaces/IBatchedMulticall.sol";
 
 import {QueueManager} from "../../../../src/managers/spoke/QueueManager.sol";
-import {IBalanceSheet} from "../../../../src/spoke/interfaces/IBalanceSheet.sol";
-import {IUpdateContract} from "../../../../src/spoke/interfaces/IUpdateContract.sol";
+import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {IUpdateContract} from "../../../../src/core/spoke/interfaces/IUpdateContract.sol";
 import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueManager.sol";
-import {UpdateContractMessageLib} from "../../../../src/spoke/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
 import "forge-std/Test.sol";
 

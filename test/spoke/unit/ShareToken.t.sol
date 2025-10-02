@@ -9,9 +9,9 @@ import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 
 import {MockRoot} from "../../common/mocks/MockRoot.sol";
 
-import {ITransferHook} from "../../../src/common/interfaces/ITransferHook.sol";
+import {ITransferHook} from "../../../src/core/interfaces/ITransferHook.sol";
 
-import {ShareToken} from "../../../src/spoke/ShareToken.sol";
+import {ShareToken} from "../../../src/core/spoke/ShareToken.sol";
 
 import {MockFullRestrictions} from "../mocks/MockFullRestrictions.sol";
 

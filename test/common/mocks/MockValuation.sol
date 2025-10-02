@@ -4,13 +4,13 @@ pragma solidity 0.8.28;
 import {D18} from "../../../src/misc/types/D18.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-import {IValuation} from "../../../src/common/interfaces/IValuation.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {IValuation} from "../../../src/core/interfaces/IValuation.sol";
 
-import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
+import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 
 struct Price {
     D18 value;

@@ -5,14 +5,14 @@ import {IOracleValuation} from "./interfaces/IOracleValuation.sol";
 
 import {D18} from "../misc/types/D18.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {AssetId} from "../common/types/AssetId.sol";
-import {PricingLib} from "../common/libraries/PricingLib.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
-import {IValuation} from "../common/interfaces/IValuation.sol";
+import {PoolId} from "../core/types/PoolId.sol";
+import {AssetId} from "../core/types/AssetId.sol";
+import {PricingLib} from "../core/libraries/PricingLib.sol";
+import {ShareClassId} from "../core/types/ShareClassId.sol";
+import {IValuation} from "../core/interfaces/IValuation.sol";
 
-import {IHub} from "../hub/interfaces/IHub.sol";
-import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
+import {IHub} from "../core/hub/interfaces/IHub.sol";
+import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
 
 /// @notice Provides an implementation for valuation of assets by trusted price feeders.
 ///         Prices should be denominated in the pool currency.

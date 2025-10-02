@@ -14,13 +14,13 @@ import {IERC7540Deposit} from "../misc/interfaces/IERC7540.sol";
 import {IERC20, IERC20Permit} from "../misc/interfaces/IERC20.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {IGateway} from "../common/interfaces/IGateway.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
-import {BatchedMulticall} from "../common/BatchedMulticall.sol";
+import {PoolId} from "../core/types/PoolId.sol";
+import {IGateway} from "../core/interfaces/IGateway.sol";
+import {ShareClassId} from "../core/types/ShareClassId.sol";
+import {BatchedMulticall} from "../core/BatchedMulticall.sol";
 
-import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
-import {IVaultRegistry} from "../spoke/interfaces/IVaultRegistry.sol";
+import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
+import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 
 /// @title  VaultRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
