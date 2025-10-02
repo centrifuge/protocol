@@ -14,12 +14,16 @@ import {
 import {Auth} from "../misc/Auth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
-import {IMessageHandler} from "../common/interfaces/IMessageHandler.sol";
+import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
 
 /// @title  Axelar Adapter
 /// @notice Routing contract that integrates with an Axelar Gateway
 contract AxelarAdapter is Auth, IAxelarAdapter {
     using CastLib for *;
+
+    /// @dev Cost of executing `execute()` except entrypoint.handle().
+    /// NOTE: Tested in production using real `validateContractCall()` implementation.
+    uint256 public constant RECEIVE_COST = 26000;
 
     IMessageHandler public immutable entrypoint;
     IAxelarGateway public immutable axelarGateway;
@@ -99,6 +103,8 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     /// @inheritdoc IAdapter
     function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256) {
         AxelarDestination memory destination = destinations[centrifugeId];
-        return axelarGasService.estimateGasFee(destination.axelarId, destination.addr, payload, gasLimit, bytes(""));
+        return axelarGasService.estimateGasFee(
+            destination.axelarId, destination.addr, payload, gasLimit + RECEIVE_COST, bytes("")
+        );
     }
 }

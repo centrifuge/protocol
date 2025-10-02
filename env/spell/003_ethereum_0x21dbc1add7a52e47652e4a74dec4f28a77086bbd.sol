@@ -5,21 +5,21 @@ pragma solidity 0.8.28;
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {IEscrow} from "../../src/misc/interfaces/IEscrow.sol";
 
-import {PoolId} from "../../src/common/types/PoolId.sol";
-import {AssetId} from "../../src/common/types/AssetId.sol";
-import {IRoot} from "../../src/common/interfaces/IRoot.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {ISpokeGatewayHandler} from "../../src/common/interfaces/IGatewayHandlers.sol";
-import {IBalanceSheetGatewayHandler} from "../../src/common/interfaces/IGatewayHandlers.sol";
+import {PoolId} from "../../src/core/types/PoolId.sol";
+import {AssetId} from "../../src/core/types/AssetId.sol";
+import {IRoot} from "../../src/core/interfaces/IRoot.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {ISpokeGatewayHandler} from "../../src/core/interfaces/IGatewayHandlers.sol";
+import {IBalanceSheetGatewayHandler} from "../../src/core/interfaces/IGatewayHandlers.sol";
 
-import {IBalanceSheet} from "../../src/spoke/interfaces/IBalanceSheet.sol";
-import {ISpoke, VaultDetails} from "../../src/spoke/interfaces/ISpoke.sol";
+import {IBalanceSheet} from "../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {ISpoke, VaultDetails} from "../../src/core/spoke/interfaces/ISpoke.sol";
 
 import {BaseVault} from "../../src/vaults/BaseVaults.sol";
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncRequestManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 
-import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
 
 /**
  * @title VaultPermissionSpellEthereum

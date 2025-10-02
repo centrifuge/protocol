@@ -6,11 +6,10 @@ import {IBaseRequestManager} from "./IBaseRequestManager.sol";
 
 import {D18} from "../../misc/types/D18.sol";
 
-import {PoolId} from "../../common/types/PoolId.sol";
-import {AssetId} from "../../common/types/AssetId.sol";
-import {ShareClassId} from "../../common/types/ShareClassId.sol";
-
-import {IUpdateContract} from "../../spoke/interfaces/IUpdateContract.sol";
+import {PoolId} from "../../core/types/PoolId.sol";
+import {AssetId} from "../../core/types/AssetId.sol";
+import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IUpdateContract} from "../../core/spoke/interfaces/IUpdateContract.sol";
 
 interface IDepositManager {
     /// @notice Processes owner's asset deposit after the epoch has been executed on the corresponding CP instance and
@@ -285,8 +284,9 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
+interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IUpdateContract {
     event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
+    event WithdrawSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
 
     error ExceedsMaxDeposit();
     error AssetMismatch();
@@ -302,9 +302,13 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
     error ExceedsRedeemLimits();
     error VaultNotLinked();
     error RefundEscrowNotDeployed();
+    error NotEnoughToWithdraw();
 
     /// @notice Deposit funds to subsidy vault actions through the gateway
     function depositSubsidy(PoolId poolId) external payable;
+
+    /// @notice Withdraw subsidized funds to an account
+    function withdrawSubsidy(PoolId poolId, address to, uint256 value) external;
 
     /// @notice Returns the investment state
     function investments(IBaseVault vaultAddr, address investor)

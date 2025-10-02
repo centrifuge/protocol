@@ -3,15 +3,14 @@ pragma solidity 0.8.28;
 
 import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "./CommonDeployer.s.sol";
 
-import {AssetId, newAssetId} from "../src/common/types/AssetId.sol";
-
-import {Hub} from "../src/hub/Hub.sol";
-import {Holdings} from "../src/hub/Holdings.sol";
-import {Accounting} from "../src/hub/Accounting.sol";
-import {HubHandler} from "../src/hub/HubHandler.sol";
-import {HubRegistry} from "../src/hub/HubRegistry.sol";
-import {ShareClassManager} from "../src/hub/ShareClassManager.sol";
-import {HubContractUpdater} from "../src/hub/HubContractUpdater.sol";
+import {Hub} from "../src/core/hub/Hub.sol";
+import {Holdings} from "../src/core/hub/Holdings.sol";
+import {Accounting} from "../src/core/hub/Accounting.sol";
+import {HubHandler} from "../src/core/hub/HubHandler.sol";
+import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
+import {HubContractUpdater} from "../src/core/hub/HubContractUpdater.sol";
+import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
+import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
 
 import "forge-std/Script.sol";
 
@@ -115,6 +114,10 @@ contract HubDeployer is CommonDeployer, HubConstants {
     }
 
     function _preDeployHub(CommonInput memory input, HubActionBatcher batcher) internal {
+        if (address(hub) != address(0)) {
+            return; // Already deployed. Make this method idempotent.
+        }
+
         _preDeployCommon(input, batcher);
 
         hubRegistry = HubRegistry(
@@ -192,6 +195,10 @@ contract HubDeployer is CommonDeployer, HubConstants {
     }
 
     function removeHubDeployerAccess(HubActionBatcher batcher) public {
+        if (hub.wards(address(batcher)) == 0) {
+            return; // Already removed. Make this method idempotent.
+        }
+
         removeCommonDeployerAccess(batcher);
         batcher.revokeHub(_hubReport());
     }

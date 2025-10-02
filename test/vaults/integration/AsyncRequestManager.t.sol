@@ -7,11 +7,10 @@ import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 import {IEscrow} from "../../../src/misc/interfaces/IEscrow.sol";
 
-import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
+import "../../core/spoke/integration/BaseTest.sol";
 
-import "../../spoke/integration/BaseTest.sol";
-
-import {VaultDetails} from "../../../src/spoke/interfaces/ISpoke.sol";
+import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
+import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
@@ -44,7 +43,7 @@ contract AsyncRequestManagerHarness is AsyncRequestManager {
             );
         }
 
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
         address shareToken = vault.share();
         return PricingLib.calculatePriceAssetPerShare(
             shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets, MathLib.Rounding.Down
@@ -78,7 +77,7 @@ contract AsyncRequestManagerTest is BaseTest {
         (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         IAsyncVault vault = IAsyncVault(vault_);
 
-        spoke.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
+        vaultRegistry.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
         vm.prank(address(vault));
         vm.expectRevert(IAsyncRequestManager.VaultNotLinked.selector);

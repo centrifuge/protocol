@@ -8,11 +8,11 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 
-import {MessageLib} from "../../../src/common/libraries/MessageLib.sol";
+import "../../core/spoke/integration/BaseTest.sol";
 
-import "../../spoke/integration/BaseTest.sol";
+import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 
-import {ISpoke} from "../../../src/spoke/interfaces/ISpoke.sol";
+import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
 
 import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
@@ -579,7 +579,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
     function testInitialization() public {
         // redeploying within test to increase coverage
-        new VaultRouter(address(routerEscrow), gateway, spoke, address(this));
+        new VaultRouter(address(routerEscrow), gateway, spoke, vaultRegistry, address(this));
 
         assertEq(address(vaultRouter.escrow()), address(routerEscrow));
         assertEq(address(vaultRouter.gateway()), address(gateway));

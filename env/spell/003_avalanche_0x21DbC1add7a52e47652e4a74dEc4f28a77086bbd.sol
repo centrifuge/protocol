@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 
 import {VaultPermissionSpell} from "./VaultPermissionSpell.sol";
 
-import {PoolId} from "../../src/common/types/PoolId.sol";
+import {PoolId} from "../../src/core/types/PoolId.sol";
 
 /**
  * @title VaultPermissionSpellAvalanche

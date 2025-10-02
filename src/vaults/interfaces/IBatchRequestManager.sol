@@ -3,25 +3,24 @@ pragma solidity >=0.5.0;
 
 import {D18} from "../../misc/types/D18.sol";
 
-import {PoolId} from "../../common/types/PoolId.sol";
-import {AssetId} from "../../common/types/AssetId.sol";
-import {ShareClassId} from "../../common/types/ShareClassId.sol";
-
-import {IHubRequestManager, IHubRequestManagerNotifications} from "../../hub/interfaces/IHubRequestManager.sol";
+import {PoolId} from "../../core/types/PoolId.sol";
+import {AssetId} from "../../core/types/AssetId.sol";
+import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IHubRequestManager, IHubRequestManagerNotifications} from "../../core/hub/interfaces/IHubRequestManager.sol";
 
 /// @notice Struct containing the epoch data for issuing share class tokens
 /// @param approvedPoolAmount The amount of pool currency which was approved by the Fund Manager
 /// @param approvedAssetAmount The amount of assets which was approved by the Fund Manager
 /// @param pendingAssetAmount The amount of assets for which issuance was pending by the Fund Manager
 /// @param pricePoolPerAsset The price of 1 pool currency token in terms of asset tokens at the time of approval
-/// @param navPoolPerShare The price of 1 pool currency token in terms of share class tokens at the time of issuance
+/// @param pricePoolPerShare The price of 1 pool currency token in terms of share class tokens at the time of issuance
 /// @param issuedAt The timestamp when shares were issued
 struct EpochInvestAmounts {
     uint128 approvedPoolAmount;
     uint128 approvedAssetAmount;
     uint128 pendingAssetAmount;
     D18 pricePoolPerAsset;
-    D18 navPoolPerShare;
+    D18 pricePoolPerShare;
     uint64 issuedAt;
 }
 
@@ -29,14 +28,14 @@ struct EpochInvestAmounts {
 /// @param approvedShareAmount The amount of share class tokens which was approved by the Fund Manager for payout
 /// @param pendingShareAmount The amount of share class tokens for which payout was pending by the Fund Manager
 /// @param pricePoolPerAsset The price of 1 pool currency token in terms of asset tokens at the time of approval
-/// @param navPoolPerShare The price of 1 pool currency token in terms of share class tokens at the time of revocation
+/// @param pricePoolPerShare The price of 1 pool currency token in terms of share class tokens at the time of revocation
 /// @param payoutAssetAmount The amount of payout assets to claim by redeeming share class tokens
 /// @param revokedAt The timestamp when shares were revoked
 struct EpochRedeemAmounts {
     uint128 approvedShareAmount;
     uint128 pendingShareAmount;
     D18 pricePoolPerAsset;
-    D18 navPoolPerShare;
+    D18 pricePoolPerShare;
     uint128 payoutAssetAmount;
     uint64 revokedAt;
 }
@@ -104,7 +103,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         ShareClassId indexed shareClassId,
         AssetId indexed assetId,
         uint32 epochId,
-        D18 navPoolPerShare,
+        D18 pricePoolPerShare,
         D18 priceAssetPerShare,
         uint128 issuedShareAmount
     );
@@ -114,7 +113,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         ShareClassId indexed shareClassId,
         AssetId indexed assetId,
         uint32 epochId,
-        D18 navPoolPerShare,
+        D18 pricePoolPerShare,
         D18 priceAssetPerShare,
         uint128 approvedShareAmount,
         uint128 payoutAssetAmount,
@@ -242,7 +241,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         ShareClassId scId,
         AssetId depositAssetId,
         uint32 nowIssueEpochId,
-        D18 navPoolPerShare,
+        D18 pricePoolPerShare,
         uint128 extraGasLimit,
         address refund
     ) external payable;
@@ -252,7 +251,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         ShareClassId scId,
         AssetId payoutAssetId,
         uint32 nowRevokeEpochId,
-        D18 navPoolPerShare,
+        D18 pricePoolPerShare,
         uint128 extraGasLimit,
         address refund
     ) external payable;
@@ -307,7 +306,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
             uint128 approvedAssetAmount,
             uint128 approvedPoolAmount,
             D18 pricePoolPerAsset,
-            D18 navPoolPerShare,
+            D18 pricePoolPerShare,
             uint64 issuedAt
         );
 
@@ -318,7 +317,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
             uint128 approvedShareAmount,
             uint128 pendingShareAmount,
             D18 pricePoolPerAsset,
-            D18 navPoolPerShare,
+            D18 pricePoolPerShare,
             uint128 payoutAssetAmount,
             uint64 revokedAt
         );

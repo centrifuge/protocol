@@ -14,12 +14,12 @@ import {IERC7540Deposit} from "../misc/interfaces/IERC7540.sol";
 import {IERC20, IERC20Permit} from "../misc/interfaces/IERC20.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {IGateway} from "../common/interfaces/IGateway.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
-import {BatchedMulticall} from "../common/BatchedMulticall.sol";
-
-import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
+import {PoolId} from "../core/types/PoolId.sol";
+import {IGateway} from "../core/interfaces/IGateway.sol";
+import {ShareClassId} from "../core/types/ShareClassId.sol";
+import {BatchedMulticall} from "../core/BatchedMulticall.sol";
+import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
+import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 
 /// @title  VaultRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
@@ -36,18 +36,20 @@ contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
     uint256 private constant REQUEST_ID = 0;
 
     ISpoke public immutable spoke;
+    IVaultRegistry public immutable vaultRegistry;
     IEscrow public immutable escrow;
 
     /// @inheritdoc IVaultRouter
     mapping(address controller => mapping(IBaseVault vault => uint256 amount)) public lockedRequests;
 
-    constructor(address escrow_, IGateway gateway_, ISpoke spoke_, address deployer)
+    constructor(address escrow_, IGateway gateway_, ISpoke spoke_, IVaultRegistry vaultRegistry_, address deployer)
         Auth(deployer)
         BatchedMulticall(gateway)
     {
         escrow = IEscrow(escrow_);
         gateway = gateway_;
         spoke = spoke_;
+        vaultRegistry = vaultRegistry_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -74,7 +76,7 @@ contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
     {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
 
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
         if (owner == address(this)) {
             _approveMax(vaultDetails.asset, address(vault));
         }
@@ -91,7 +93,7 @@ contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
         require(!vault.supportsInterface(type(IERC7540Deposit).interfaceId), NonSyncDepositVault());
 
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(this), assets);
         _approveMax(vaultDetails.asset, address(vault));
 
@@ -111,7 +113,7 @@ contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
     ) external payable protected {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
 
-        spoke.vaultDetails(vault); // Ensure vault is valid
+        vaultRegistry.vaultDetails(vault); // Ensure vault is valid
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vault.share(), owner, address(this), shares);
 
         spoke.crosschainTransferShares{value: gateway.isBatching() ? 0 : msg.value}(
@@ -130,7 +132,7 @@ contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
 
         lockedRequests[controller][vault] += amount;
 
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
         SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(escrow), amount);
 
         emit LockDepositRequest(vault, controller, owner, msg.sender, amount);
@@ -148,7 +150,7 @@ contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
         require(lockedRequest != 0, NoLockedBalance());
         lockedRequests[msg.sender][vault] = 0;
 
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
         escrow.authTransferTo(vaultDetails.asset, 0, receiver, lockedRequest);
 
         emit UnlockDepositRequest(vault, msg.sender, receiver);
@@ -160,7 +162,7 @@ contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
         require(lockedRequest != 0, NoLockedRequest());
         lockedRequests[controller][vault] = 0;
 
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
         escrow.authTransferTo(vaultDetails.asset, 0, address(this), lockedRequest);
 
         _approveMax(vaultDetails.asset, address(vault));

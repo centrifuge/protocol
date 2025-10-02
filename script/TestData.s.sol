@@ -7,22 +7,27 @@ import {ERC20} from "../src/misc/ERC20.sol";
 import {D18, d18} from "../src/misc/types/D18.sol";
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
-import {Guardian} from "../src/common/Guardian.sol";
-import {PoolId} from "../src/common/types/PoolId.sol";
-import {AccountId} from "../src/common/types/AccountId.sol";
-import {ShareClassId} from "../src/common/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "../src/common/types/AssetId.sol";
-import {VaultUpdateKind} from "../src/common/libraries/MessageLib.sol";
+import {Hub} from "../src/core/hub/Hub.sol";
+import {Spoke} from "../src/core/spoke/Spoke.sol";
+import {PoolId} from "../src/core/types/PoolId.sol";
+import {AccountId} from "../src/core/types/AccountId.sol";
+import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
+import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
+import {ShareClassId} from "../src/core/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
+import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
+import {IShareToken} from "../src/core/spoke/interfaces/IShareToken.sol";
+import {IHubRequestManager} from "../src/core/hub/interfaces/IHubRequestManager.sol";
 
-import {Hub} from "../src/hub/Hub.sol";
-import {HubRegistry} from "../src/hub/HubRegistry.sol";
-import {ShareClassManager} from "../src/hub/ShareClassManager.sol";
-import {IHubRequestManager} from "../src/hub/interfaces/IHubRequestManager.sol";
+import {VaultUpdateKind} from "../src/messaging/libraries/MessageLib.sol";
+import {UpdateContractMessageLib} from "../src/messaging/libraries/UpdateContractMessageLib.sol";
 
-import {Spoke} from "../src/spoke/Spoke.sol";
-import {BalanceSheet} from "../src/spoke/BalanceSheet.sol";
-import {IShareToken} from "../src/spoke/interfaces/IShareToken.sol";
-import {UpdateContractMessageLib} from "../src/spoke/libraries/UpdateContractMessageLib.sol";
+import {Guardian} from "../src/admin/Guardian.sol";
+
+import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
+import {UpdateRestrictionMessageLib} from "../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
+import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
 
 import {SyncManager} from "../src/vaults/SyncManager.sol";
 import {SyncDepositVault} from "../src/vaults/SyncDepositVault.sol";
@@ -31,11 +36,6 @@ import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
-
-import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
-import {UpdateRestrictionMessageLib} from "../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
-
-import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
 
 import "forge-std/Script.sol";
 
@@ -111,7 +111,7 @@ contract TestData is FullDeployer {
         hub.updateHubManager(state.poolId, admin, true);
         state.scId = shareClassManager.previewNextShareClassId(state.poolId);
 
-        D18 navPerShare = d18(1, 1);
+        D18 pricePoolPerShare = d18(1, 1);
 
         hub.setPoolMetadata(state.poolId, bytes("Testing pool"));
         hub.addShareClass(state.poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")));
@@ -128,10 +128,10 @@ contract TestData is FullDeployer {
             msg.sender
         );
         hub.updateBalanceSheetManager(
-            centrifugeId, state.poolId, address(asyncRequestManager).toBytes32(), true, msg.sender
+            state.poolId, centrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender
         );
         // Add ADMIN as balance sheet manager to call submitQueuedAssets without going through the asyncRequestManager
-        hub.updateBalanceSheetManager(centrifugeId, state.poolId, address(admin).toBytes32(), true, msg.sender);
+        hub.updateBalanceSheetManager(state.poolId, centrifugeId, address(admin).toBytes32(), true, msg.sender);
 
         hub.createAccount(state.poolId, AccountId.wrap(0x01), true);
         hub.createAccount(state.poolId, AccountId.wrap(0x02), false);
@@ -158,7 +158,7 @@ contract TestData is FullDeployer {
             msg.sender
         );
 
-        hub.updateSharePrice(state.poolId, state.scId, navPerShare);
+        hub.updateSharePrice(state.poolId, state.scId, pricePoolPerShare);
         hub.notifySharePrice(state.poolId, state.scId, centrifugeId, msg.sender);
         hub.notifyAssetPrice(state.poolId, state.scId, assetId, msg.sender);
 
@@ -277,7 +277,7 @@ contract TestData is FullDeployer {
         hub.updateHubManager(poolId, admin, true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
-        D18 navPerShare = d18(1, 1);
+        D18 pricePoolPerShare = d18(1, 1);
 
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "RWA Portfolio", "RWA", bytes32(bytes("2")));
@@ -291,8 +291,8 @@ contract TestData is FullDeployer {
             address(asyncRequestManager).toBytes32(),
             msg.sender
         );
-        hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true, msg.sender);
-        hub.updateBalanceSheetManager(centrifugeId, poolId, address(syncManager).toBytes32(), true, msg.sender);
+        hub.updateBalanceSheetManager(poolId, centrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender);
+        hub.updateBalanceSheetManager(poolId, centrifugeId, address(syncManager).toBytes32(), true, msg.sender);
 
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
@@ -319,7 +319,7 @@ contract TestData is FullDeployer {
             msg.sender
         );
 
-        hub.updateSharePrice(poolId, scId, navPerShare);
+        hub.updateSharePrice(poolId, scId, pricePoolPerShare);
         hub.notifySharePrice(poolId, scId, centrifugeId, msg.sender);
         hub.notifyAssetPrice(poolId, scId, assetId, msg.sender);
 

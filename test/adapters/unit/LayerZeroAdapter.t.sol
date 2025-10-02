@@ -4,10 +4,10 @@ pragma solidity 0.8.28;
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {Mock} from "../../common/mocks/Mock.sol";
+import {Mock} from "../../core/mocks/Mock.sol";
 
-import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
+import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
 
@@ -197,6 +197,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         public
     {
         vm.assume(invalidOrigin != address(GATEWAY));
+        vm.assume(gasLimit < adapter.RECEIVE_COST());
 
         vm.deal(address(this), 0.1 ether);
         vm.expectRevert(IAdapter.NotEntrypoint.selector);
@@ -221,7 +222,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
             uint8(1), // WORKER_ID
             uint16(17), // uint128 gasLimit byte length + 1
             uint8(1), // OPTION_TYPE_LZ
-            uint128(gasLimit)
+            uint128(gasLimit + adapter.RECEIVE_COST())
         );
         assertEq(endpoint.values_bytes("params.options"), expectedOptions);
         assertEq(endpoint.values_bool("params.payInLzToken"), false);

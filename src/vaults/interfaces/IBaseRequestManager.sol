@@ -5,11 +5,10 @@ import {IBaseVault} from "./IBaseVault.sol";
 
 import {IEscrow} from "../../misc/interfaces/IEscrow.sol";
 
-import {PoolId} from "../../common/types/PoolId.sol";
-import {IPoolEscrow} from "../../common/interfaces/IPoolEscrow.sol";
-import {IRequestManager} from "../../common/interfaces/IRequestManager.sol";
-
-import {ISpoke} from "../../spoke/interfaces/ISpoke.sol";
+import {PoolId} from "../../core/types/PoolId.sol";
+import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
+import {IPoolEscrow} from "../../core/spoke/interfaces/IPoolEscrow.sol";
+import {IRequestManager} from "../../core/interfaces/IRequestManager.sol";
 
 interface IBaseRequestManager is IRequestManager {
     event File(bytes32 indexed what, address data);

@@ -226,3 +226,23 @@ jobs:
         uses: codespell-project/actions-codespell@v2
         with:
           skip: ./docs
+
+  check-benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Run benchmarks check
+        run: ./script/utils/benchmarks.sh check
+        env:
+          FOUNDRY_PROFILE: ci

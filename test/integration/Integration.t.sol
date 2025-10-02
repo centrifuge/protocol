@@ -5,14 +5,14 @@ import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
 import {ERC20} from "../../src/misc/ERC20.sol";
 
-import {MockValuation} from "../common/mocks/MockValuation.sol";
+import {MockValuation} from "../core/mocks/MockValuation.sol";
 
-import {PoolId} from "../../src/common/types/PoolId.sol";
-import {AssetId} from "../../src/common/types/AssetId.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {MAX_MESSAGE_COST as GAS} from "../../src/common/interfaces/IGasService.sol";
+import {PoolId} from "../../src/core/types/PoolId.sol";
+import {AssetId} from "../../src/core/types/AssetId.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {MAX_MESSAGE_COST as GAS} from "../../src/core/interfaces/IGasService.sol";
 
-import {UpdateContractMessageLib} from "../../src/spoke/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
 import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
 
@@ -23,8 +23,7 @@ import "forge-std/Test.sol";
 /// @dev NOTE. Use always LOCAL_CENTRIFUGE_ID when centrifugeId param is required
 contract CentrifugeIntegrationTest is FullDeployer, Test {
     uint16 constant LOCAL_CENTRIFUGE_ID = IntegrationConstants.LOCAL_CENTRIFUGE_ID;
-    address immutable ADMIN = address(adminSafe);
-    address immutable FUNDED = makeAddr("FUNDED");
+    address FUNDED = makeAddr("FUNDED");
     uint256 constant DEFAULT_SUBSIDY = IntegrationConstants.INTEGRATION_DEFAULT_SUBSIDY;
 
     // Helper contracts
@@ -72,12 +71,13 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
         SC_1 = shareClassManager.previewNextShareClassId(POOL_A);
 
         // Extra deployment
-        vm.startPrank(ADMIN);
         usdc = new ERC20(6);
+        usdc.rely(address(adminSafe));
+        vm.startPrank(address(adminSafe));
         usdc.file("name", "USD Coin");
         usdc.file("symbol", "USDC");
-        vm.label(address(usdc), "usdc");
         vm.stopPrank();
+        vm.label(address(usdc), "usdc");
     }
 
     function _registerUSDC() internal {
@@ -86,12 +86,12 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
     }
 
     function _mintUSDC(address receiver, uint256 amount) internal {
-        vm.prank(ADMIN);
+        vm.prank(address(adminSafe));
         usdc.mint(receiver, amount);
     }
 
     function _createPool() internal {
-        vm.prank(ADMIN);
+        vm.prank(address(adminSafe));
         guardian.createPool(POOL_A, FM, USD_ID);
 
         vm.prank(FM);

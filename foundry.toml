@@ -12,9 +12,9 @@ verbosity = 3
 
 ffi = true
 fs_permissions = [
-  { access = "read-write", path = ".forge-snapshots/" },
   { access = "read-write", path = "./env/latest" },
   { access = "read", path = "env" },
+  { access = "read-write", path = "snapshots" },
 ]
 
 # Deployment specific settings
@@ -26,6 +26,8 @@ gas_snapshot_check = false
 ignored_warnings_from = [
   "src/misc/ReentrancyProtection.sol", # Issue: https://github.com/ethereum/solidity/issues/14359
 ]
+
+dynamic_test_linking = true
 
 [profile.default.lint]
 severity = ["high"]

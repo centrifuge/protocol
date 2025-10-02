@@ -4,9 +4,9 @@ pragma solidity 0.8.28;
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {Mock} from "../../common/mocks/Mock.sol";
+import {Mock} from "../../core/mocks/Mock.sol";
 
-import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
+import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
 
@@ -103,6 +103,7 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
 
     function testEstimate(uint256 gasLimit) public {
         vm.assume(gasLimit > 0);
+        vm.assume(gasLimit < adapter.RECEIVE_COST());
 
         bytes memory payload = "irrelevant";
 
