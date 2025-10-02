@@ -12,6 +12,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {UserOrder, EpochId} from "src/hub/interfaces/IShareClassManager.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 import {BaseVault} from "src/vaults/BaseVaults.sol";
 import {AsyncInvestmentState} from "src/vaults/interfaces/IVaultManagers.sol";

@@ -88,7 +88,8 @@ abstract contract TargetFunctions is
         uint256 salt,
         bool isIdentityValuation,
         bool isDebitNormal,
-        bool isAsyncVault
+        bool isAsyncVault,
+        bool isLiability
     )
         public
         returns (
@@ -148,7 +149,7 @@ abstract contract TargetFunctions is
             ShareToken(_getShareToken()).rely(address(balanceSheet));
         }
 
-        // 4. Create accounts and holding
+        // 4. Create accounts and holding/liability
         {
             IValuation valuation = isIdentityValuation
                 ? IValuation(address(identityValuation))
@@ -158,14 +159,28 @@ abstract contract TargetFunctions is
             hub_createAccount(EQUITY_ACCOUNT, isDebitNormal);
             hub_createAccount(LOSS_ACCOUNT, isDebitNormal);
             hub_createAccount(GAIN_ACCOUNT, isDebitNormal);
-
-            hub_initializeHolding(
-                valuation,
-                ASSET_ACCOUNT,
-                EQUITY_ACCOUNT,
-                LOSS_ACCOUNT,
-                GAIN_ACCOUNT
-            );
+            
+            if (isLiability) {
+                // Create additional accounts needed for liability
+                hub_createAccount(EXPENSE_ACCOUNT, isDebitNormal);
+                hub_createAccount(LIABILITY_ACCOUNT, isDebitNormal);
+                
+                // Initialize liability holding
+                hub_initializeLiability(
+                    valuation,
+                    EXPENSE_ACCOUNT,
+                    LIABILITY_ACCOUNT
+                );
+            } else {
+                // Initialize regular holding
+                hub_initializeHolding(
+                    valuation,
+                    ASSET_ACCOUNT,
+                    EQUITY_ACCOUNT,
+                    LOSS_ACCOUNT,
+                    GAIN_ACCOUNT
+                );
+            }
         }
 
         // 4a. Register request manager on hub side BEFORE deploying vaults (critical for async operations)

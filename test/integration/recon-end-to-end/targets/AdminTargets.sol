@@ -152,7 +152,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         );
     }
 
-    function hub_createHolding_clamped(
+    function hub_initializeHolding_clamped(
         bool isIdentityValuation,
         uint8 assetAccountEntropy,
         uint8 equityAccountEntropy,
