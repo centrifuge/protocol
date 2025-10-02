@@ -5,9 +5,8 @@ import {Auth} from "../../misc/Auth.sol";
 import {IAuth} from "../../misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
-import {ShareClassId} from "../../core/types/ShareClassId.sol";
-
 import {IVault} from "../../core/spoke/interfaces/IVault.sol";
+import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IShareToken} from "../../core/spoke/interfaces/IShareToken.sol";
 import {IVaultFactory} from "../../core/spoke/factories/IVaultFactory.sol";
 

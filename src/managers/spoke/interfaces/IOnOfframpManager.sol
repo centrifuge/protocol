@@ -5,7 +5,6 @@ import {IDepositManager, IWithdrawManager} from "./IBalanceSheetManager.sol";
 
 import {PoolId} from "../../../core/types/PoolId.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
-
 import {IUpdateContract} from "../../../core/spoke/interfaces/IUpdateContract.sol";
 
 interface IOnOfframpManager is IDepositManager, IWithdrawManager, IUpdateContract {

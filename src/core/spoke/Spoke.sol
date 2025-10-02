@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {Price} from "./types/Price.sol";
 import {IShareToken} from "./interfaces/IShareToken.sol";
 import {ITokenFactory} from "./factories/ITokenFactory.sol";
+import {IPoolEscrowFactory} from "./factories/IPoolEscrowFactory.sol";
 import {AssetIdKey, Pool, ShareClassDetails, ISpoke} from "./interfaces/ISpoke.sol";
 
 import {Auth} from "../../misc/Auth.sol";
@@ -18,14 +19,13 @@ import {ReentrancyProtection} from "../../misc/ReentrancyProtection.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {IGateway} from "../interfaces/IGateway.sol";
-import {MessageLib} from "../../messaging/libraries/MessageLib.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {newAssetId, AssetId} from "../types/AssetId.sol";
 import {ITransferHook} from "../interfaces/ITransferHook.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
+import {MessageLib} from "../../messaging/libraries/MessageLib.sol";
 import {ISpokeMessageSender} from "../interfaces/IGatewaySenders.sol";
 import {ISpokeGatewayHandler} from "../interfaces/IGatewayHandlers.sol";
-import {IPoolEscrowFactory} from "./factories/IPoolEscrowFactory.sol";
 
 /// @title  Spoke
 /// @notice This contract manages which pools & share classes exist, controlling allowed pool currencies,

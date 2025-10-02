@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {CastLib} from "../misc/libraries/CastLib.sol";
+
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
 import {IRoot} from "../core/interfaces/IRoot.sol";
@@ -10,8 +12,6 @@ import {IGuardian, ISafe} from "../core/interfaces/IGuardian.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
 import {IRootMessageSender} from "../core/interfaces/IGatewaySenders.sol";
 import {IHubGuardianActions} from "../core/interfaces/IGuardianActions.sol";
-
-import {CastLib} from "../misc/libraries/CastLib.sol";
 
 contract Guardian is IGuardian {
     using CastLib for address;

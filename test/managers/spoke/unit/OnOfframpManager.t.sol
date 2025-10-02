@@ -10,17 +10,18 @@ import {IERC7751} from "../../../../src/misc/interfaces/IERC7751.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
-import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
+import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../../../../src/core/spoke/interfaces/IUpdateContract.sol";
+
 import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
 import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
-import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
 import {IDepositManager, IWithdrawManager} from "../../../../src/managers/spoke/interfaces/IBalanceSheetManager.sol";
 
 import "forge-std/Test.sol";
+
+import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}

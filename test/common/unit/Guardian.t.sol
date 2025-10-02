@@ -9,9 +9,10 @@ import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
 import {IGateway} from "../../../src/core/interfaces/IGateway.sol";
 import {IGuardian} from "../../../src/core/interfaces/IGuardian.sol";
 import {IHubGuardianActions} from "../../../src/core/interfaces/IGuardianActions.sol";
-import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "../../../src/admin/Guardian.sol";
 
 import "forge-std/Test.sol";
+
+import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "../../../src/admin/Guardian.sol";
 
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}

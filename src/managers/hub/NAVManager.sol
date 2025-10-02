@@ -9,13 +9,12 @@ import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IValuation} from "../../core/interfaces/IValuation.sol";
-import {ISnapshotHook} from "../../core/interfaces/ISnapshotHook.sol";
-import {AccountId, withCentrifugeId, withAssetId} from "../../core/types/AccountId.sol";
-
 import {IHoldings} from "../../core/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "../../core/hub/interfaces/IHub.sol";
 import {IAccounting} from "../../core/hub/interfaces/IAccounting.sol";
+import {ISnapshotHook} from "../../core/interfaces/ISnapshotHook.sol";
 import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
+import {AccountId, withCentrifugeId, withAssetId} from "../../core/types/AccountId.sol";
 
 /// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
 contract NAVManager is INAVManager, Auth {

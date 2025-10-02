@@ -5,20 +5,18 @@ import {MockHubRequestManager} from "./mocks/MockHubRequestManager.sol";
 
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 
-import {MockValuation} from "../../common/mocks/MockValuation.sol";
-
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AccountId} from "../../../src/core/types/AccountId.sol";
 import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
 import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
 import {MAX_MESSAGE_COST} from "../../../src/core/interfaces/IGasService.sol";
-
 import {IHubRequestManager} from "../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
 import {HubActionBatcher, CommonInput} from "../../../script/HubDeployer.s.sol";
 import {ExtendedHubDeployer, ExtendedHubActionBatcher} from "../../../script/ExtendedHubDeployer.s.sol";
 
 import {MockVaults} from "../mocks/MockVaults.sol";
+import {MockValuation} from "../../common/mocks/MockValuation.sol";
 
 import "forge-std/Test.sol";
 

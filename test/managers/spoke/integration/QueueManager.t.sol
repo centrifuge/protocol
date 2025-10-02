@@ -7,7 +7,6 @@ import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 
 import "../../../spoke/integration/BaseTest.sol";
-
 import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
 abstract contract QueueManagerBaseTest is BaseTest {

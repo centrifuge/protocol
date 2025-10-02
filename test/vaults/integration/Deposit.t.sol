@@ -9,13 +9,13 @@ import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {RequestMessageLib} from "../../../src/vaults/libraries/RequestMessageLib.sol";
-
-import "../../spoke/integration/BaseTest.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
+import {RequestMessageLib} from "../../../src/vaults/libraries/RequestMessageLib.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
+
+import "../../spoke/integration/BaseTest.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;

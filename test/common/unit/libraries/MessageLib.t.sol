@@ -3,9 +3,10 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
-import {MessageType, MessageLib} from "../../../../src/messaging/libraries/MessageLib.sol";
 
 import "forge-std/Test.sol";
+
+import {MessageType, MessageLib} from "../../../../src/messaging/libraries/MessageLib.sol";
 
 contract TestMessageLibIds is Test {
     function _prepareFor() private returns (bytes memory buffer) {

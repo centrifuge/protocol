@@ -9,9 +9,9 @@ import {MerkleProofLib} from "../../misc/libraries/MerkleProofLib.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../../core/spoke/interfaces/IUpdateContract.sol";
+
 import {UpdateContractMessageLib, UpdateContractType} from "../../messaging/libraries/UpdateContractMessageLib.sol";
 
 /// @title  Merkle Proof Manager

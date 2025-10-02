@@ -8,13 +8,14 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
 import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {VaultUpdateKind} from "../../../src/messaging/libraries/MessageLib.sol";
+import {IHubRequestManager} from "../../../src/core/hub/interfaces/IHubRequestManager.sol";
+
 import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
-import {IHubRequestManager} from "../../../src/core/hub/interfaces/IHubRequestManager.sol";
+import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
+import {VaultUpdateKind} from "../../../src/messaging/libraries/MessageLib.sol";
 
 contract TestCases is BaseTest {
     using MathLib for *;

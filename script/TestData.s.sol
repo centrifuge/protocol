@@ -7,22 +7,17 @@ import {ERC20} from "../src/misc/ERC20.sol";
 import {D18, d18} from "../src/misc/types/D18.sol";
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
-import {Guardian} from "../src/admin/Guardian.sol";
+import {Hub} from "../src/core/hub/Hub.sol";
+import {Spoke} from "../src/core/spoke/Spoke.sol";
 import {PoolId} from "../src/core/types/PoolId.sol";
 import {AccountId} from "../src/core/types/AccountId.sol";
+import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
+import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
-import {VaultUpdateKind} from "../src/messaging/libraries/MessageLib.sol";
-
-import {Hub} from "../src/core/hub/Hub.sol";
-import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
 import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
-import {IHubRequestManager} from "../src/core/hub/interfaces/IHubRequestManager.sol";
-
-import {Spoke} from "../src/core/spoke/Spoke.sol";
-import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
 import {IShareToken} from "../src/core/spoke/interfaces/IShareToken.sol";
-import {UpdateContractMessageLib} from "../src/messaging/libraries/UpdateContractMessageLib.sol";
+import {IHubRequestManager} from "../src/core/hub/interfaces/IHubRequestManager.sol";
 
 import {SyncManager} from "../src/vaults/SyncManager.sol";
 import {SyncDepositVault} from "../src/vaults/SyncDepositVault.sol";
@@ -38,6 +33,10 @@ import {UpdateRestrictionMessageLib} from "../src/hooks/libraries/UpdateRestrict
 import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
 
 import "forge-std/Script.sol";
+
+import {Guardian} from "../src/admin/Guardian.sol";
+import {VaultUpdateKind} from "../src/messaging/libraries/MessageLib.sol";
+import {UpdateContractMessageLib} from "../src/messaging/libraries/UpdateContractMessageLib.sol";
 
 // Script to deploy Hub and Vaults with a Localhost Adapter.
 contract TestData is FullDeployer {

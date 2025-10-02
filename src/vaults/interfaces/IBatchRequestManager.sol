@@ -6,7 +6,6 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-
 import {IHubRequestManager, IHubRequestManagerNotifications} from "../../core/hub/interfaces/IHubRequestManager.sol";
 
 /// @notice Struct containing the epoch data for issuing share class tokens

@@ -6,19 +6,18 @@ import {D18, d18} from "../../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
-import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-
-import "../../../spoke/integration/BaseTest.sol";
-
 import {BalanceSheet} from "../../../../src/core/spoke/BalanceSheet.sol";
-import {VaultDecoder} from "../../../../src/managers/spoke/decoders/VaultDecoder.sol";
-import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
-import {MerkleProofManager, PolicyLeaf, Call} from "../../../../src/managers/spoke/MerkleProofManager.sol";
-import {IMerkleProofManager, IERC7751} from "../../../../src/managers/spoke/interfaces/IMerkleProofManager.sol";
+import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
+import {VaultDecoder} from "../../../../src/managers/spoke/decoders/VaultDecoder.sol";
+import {MerkleProofManager, PolicyLeaf, Call} from "../../../../src/managers/spoke/MerkleProofManager.sol";
+import {IMerkleProofManager, IERC7751} from "../../../../src/managers/spoke/interfaces/IMerkleProofManager.sol";
+
+import "../../../spoke/integration/BaseTest.sol";
 import {MerkleTreeLib} from "../libraries/MerkleTreeLib.sol";
+import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
 abstract contract MerkleProofManagerBaseTest is BaseTest {
     using CastLib for *;

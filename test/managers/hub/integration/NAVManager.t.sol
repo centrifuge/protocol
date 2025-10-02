@@ -9,9 +9,9 @@ import {IValuation} from "../../../../src/core/interfaces/IValuation.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {ISnapshotHook} from "../../../../src/core/interfaces/ISnapshotHook.sol";
 
-import "../../../hub/integration/BaseTest.sol";
-
 import {INAVHook} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
+
+import "../../../hub/integration/BaseTest.sol";
 
 contract NAVManagerIntegrationTest is BaseTest {
     PoolId constant POOL_A = PoolId.wrap(1);

@@ -12,9 +12,9 @@ import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {IGateway} from "../../core/interfaces/IGateway.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../../core/spoke/interfaces/IUpdateContract.sol";
+
 import {UpdateContractMessageLib, UpdateContractType} from "../../messaging/libraries/UpdateContractMessageLib.sol";
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified

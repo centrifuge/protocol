@@ -6,13 +6,12 @@ import {IVault, VaultKind} from "./IVault.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
 
+import {Price} from "../types/Price.sol";
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IRequestManager} from "../../interfaces/IRequestManager.sol";
-
-import {Price} from "../types/Price.sol";
 import {IVaultFactory} from "../factories/IVaultFactory.sol";
+import {IRequestManager} from "../../interfaces/IRequestManager.sol";
 
 /// @dev Centrifuge pools
 struct Pool {

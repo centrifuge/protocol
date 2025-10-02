@@ -5,9 +5,8 @@ import {D18, d18} from "../../../src/misc/types/D18.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
-import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-
 import {IHub} from "../../../src/core/hub/interfaces/IHub.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 
 import {OracleValuation} from "../../../src/valuations/OracleValuation.sol";

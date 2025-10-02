@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
-
 import {VaultsDeployer, VaultsActionBatcher} from "../../script/VaultsDeployer.s.sol";
 
 import "forge-std/Test.sol";
+
+import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
 
 contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
     function setUp() public {

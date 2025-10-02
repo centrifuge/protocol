@@ -10,9 +10,9 @@ import {AssetId} from "../../types/AssetId.sol";
 import {IRoot} from "../../interfaces/IRoot.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 import {IPoolEscrow} from "../../interfaces/IPoolEscrow.sol";
+import {IPoolEscrowProvider} from "../factories/IPoolEscrowFactory.sol";
 import {IBatchedMulticall} from "../../interfaces/IBatchedMulticall.sol";
 import {ISpokeMessageSender} from "../../interfaces/IGatewaySenders.sol";
-import {IPoolEscrowProvider} from "../factories/IPoolEscrowFactory.sol";
 
 struct ShareQueueAmount {
     // Net queued shares

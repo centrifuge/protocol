@@ -12,14 +12,13 @@ import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {IRoot} from "../../../src/core/interfaces/IRoot.sol";
 import {IGateway} from "../../../src/core/interfaces/IGateway.sol";
+import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IPoolEscrow} from "../../../src/core/interfaces/IPoolEscrow.sol";
-import {ISpokeMessageSender} from "../../../src/core/interfaces/IGatewaySenders.sol";
-import {IPoolEscrowProvider} from "../../../src/core/spoke/factories/IPoolEscrowFactory.sol";
-
-import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {BalanceSheet, IBalanceSheet} from "../../../src/core/spoke/BalanceSheet.sol";
+import {ISpokeMessageSender} from "../../../src/core/interfaces/IGatewaySenders.sol";
+import {IPoolEscrowProvider} from "../../../src/core/spoke/factories/IPoolEscrowFactory.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 

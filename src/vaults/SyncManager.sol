@@ -17,11 +17,11 @@ import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
-
 import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 import {IUpdateContract} from "../core/spoke/interfaces/IUpdateContract.sol";
+
 import {UpdateContractMessageLib, UpdateContractType} from "../messaging/libraries/UpdateContractMessageLib.sol";
 
 /// @title  Sync Manager

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IRoot} from "../core/interfaces/IRoot.sol";
-import {ITokenRecoverer} from "../core/interfaces/ITokenRecoverer.sol";
-
 import {Auth} from "../misc/Auth.sol";
 import {IRecoverable} from "../misc/interfaces/IRecoverable.sol";
+
+import {IRoot} from "../core/interfaces/IRoot.sol";
+import {ITokenRecoverer} from "../core/interfaces/ITokenRecoverer.sol";
 
 contract TokenRecoverer is Auth, ITokenRecoverer {
     IRoot public immutable root;

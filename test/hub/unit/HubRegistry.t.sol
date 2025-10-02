@@ -5,10 +5,9 @@ import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
 import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {HubRegistry} from "../../../src/core/hub/HubRegistry.sol";
 import {PoolId, newPoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-
-import {HubRegistry} from "../../../src/core/hub/HubRegistry.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassManager.sol";
 

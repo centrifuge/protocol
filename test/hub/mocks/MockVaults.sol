@@ -9,12 +9,14 @@ import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
-import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
+
 import {RequestMessageLib} from "../../../src/vaults/libraries/RequestMessageLib.sol";
 
 import "forge-std/Test.sol";
+
+import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
 
 contract MockVaults is Test, Auth, IAdapter {
     using MessageLib for *;

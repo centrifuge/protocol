@@ -10,7 +10,6 @@ import {AssetId} from "../core/types/AssetId.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IValuation} from "../core/interfaces/IValuation.sol";
-
 import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
 
 contract IdentityValuation is IIdentityValuation {

@@ -11,35 +11,29 @@ import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 
 import {Root} from "../../src/core/Root.sol";
-import {Guardian} from "../../src/admin/Guardian.sol";
+import {Hub} from "../../src/core/hub/Hub.sol";
+import {Spoke} from "../../src/core/spoke/Spoke.sol";
 import {PoolId} from "../../src/core/types/PoolId.sol";
-import {GasService} from "../../src/messaging/GasService.sol";
+import {Holdings} from "../../src/core/hub/Holdings.sol";
 import {AccountId} from "../../src/core/types/AccountId.sol";
+import {Accounting} from "../../src/core/hub/Accounting.sol";
+import {HubHandler} from "../../src/core/hub/HubHandler.sol";
 import {IGateway, Gateway} from "../../src/core/Gateway.sol";
 import {ISafe} from "../../src/core/interfaces/IGuardian.sol";
+import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
 import {IAdapter} from "../../src/core/interfaces/IAdapter.sol";
+import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
+import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
 import {PricingLib} from "../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
+import {VaultRegistry} from "../../src/core/spoke/VaultRegistry.sol";
 import {MAX_MESSAGE_COST} from "../../src/core/interfaces/IGasService.sol";
+import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {IMessageHandler} from "../../src/core/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/MultiAdapter.sol";
 import {ILocalCentrifugeId} from "../../src/core/interfaces/IGatewaySenders.sol";
-import {VaultUpdateKind, MessageType, MessageLib} from "../../src/messaging/libraries/MessageLib.sol";
-
-import {Hub} from "../../src/core/hub/Hub.sol";
-import {Holdings} from "../../src/core/hub/Holdings.sol";
-import {Accounting} from "../../src/core/hub/Accounting.sol";
-import {HubHandler} from "../../src/core/hub/HubHandler.sol";
-import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
-import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
-
-import {Spoke} from "../../src/core/spoke/Spoke.sol";
-import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
-import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
-import {VaultRegistry} from "../../src/core/spoke/VaultRegistry.sol";
-import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
 import {SyncManager} from "../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
@@ -64,7 +58,11 @@ import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDep
 
 import "forge-std/Test.sol";
 
+import {Guardian} from "../../src/admin/Guardian.sol";
+import {GasService} from "../../src/messaging/GasService.sol";
 import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
+import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
+import {VaultUpdateKind, MessageType, MessageLib} from "../../src/messaging/libraries/MessageLib.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///

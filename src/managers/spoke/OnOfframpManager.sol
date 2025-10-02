@@ -12,9 +12,9 @@ import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../../core/spoke/interfaces/IUpdateContract.sol";
+
 import {UpdateContractType, UpdateContractMessageLib} from "../../messaging/libraries/UpdateContractMessageLib.sol";
 
 /// @title  OnOfframpManager

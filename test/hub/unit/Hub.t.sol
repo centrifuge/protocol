@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import {d18, D18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
+import {Hub} from "../../../src/core/hub/Hub.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {AccountId} from "../../../src/core/types/AccountId.sol";
@@ -11,11 +12,9 @@ import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
 import {IGateway} from "../../../src/core/interfaces/IGateway.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IValuation} from "../../../src/core/interfaces/IValuation.sol";
+import {IHoldings} from "../../../src/core/hub/interfaces/IHoldings.sol";
 import {IMultiAdapter} from "../../../src/core/interfaces/IMultiAdapter.sol";
 import {ISnapshotHook} from "../../../src/core/interfaces/ISnapshotHook.sol";
-
-import {Hub} from "../../../src/core/hub/Hub.sol";
-import {IHoldings} from "../../../src/core/hub/interfaces/IHoldings.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IHub, VaultUpdateKind} from "../../../src/core/hub/interfaces/IHub.sol";
 import {IAccounting, JournalEntry} from "../../../src/core/hub/interfaces/IAccounting.sol";

@@ -6,15 +6,15 @@ import {Multicall} from "../../../../src/misc/Multicall.sol";
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
+import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {IGateway} from "../../../../src/core/interfaces/IGateway.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
+import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IBatchedMulticall} from "../../../../src/core/interfaces/IBatchedMulticall.sol";
 import {ShareClassId, newShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-
-import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
-import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
-import {SimplePriceManager} from "../../../../src/managers/hub/SimplePriceManager.sol";
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
+
+import {SimplePriceManager} from "../../../../src/managers/hub/SimplePriceManager.sol";
 import {ISimplePriceManager} from "../../../../src/managers/hub/interfaces/ISimplePriceManager.sol";
 
 import "forge-std/Test.sol";

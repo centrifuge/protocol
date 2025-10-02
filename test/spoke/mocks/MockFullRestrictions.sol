@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "../../common/mocks/Mock.sol";
-
 import {HookData} from "../../../src/core/interfaces/ITransferHook.sol";
 
 import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
+
+import "../../common/mocks/Mock.sol";
 
 contract MockFullRestrictions is FullRestrictions, Mock {
     constructor(

@@ -2,9 +2,10 @@
 pragma solidity 0.8.28;
 
 import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
-import {MessageLib, MessageType, VaultUpdateKind} from "../../../src/messaging/libraries/MessageLib.sol";
 
 import "forge-std/Test.sol";
+
+import {MessageLib, MessageType, VaultUpdateKind} from "../../../src/messaging/libraries/MessageLib.sol";
 
 string constant FILE_PATH = "snapshots/MessageGasLimits.json";
 

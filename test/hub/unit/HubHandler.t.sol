@@ -6,10 +6,9 @@ import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
-import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-
 import {IHub} from "../../../src/core/hub/interfaces/IHub.sol";
 import {HubHandler} from "../../../src/core/hub/HubHandler.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IHoldings} from "../../../src/core/hub/interfaces/IHoldings.sol";
 import {IHubHandler} from "../../../src/core/hub/interfaces/IHubHandler.sol";
 import {JournalEntry} from "../../../src/core/hub/interfaces/IAccounting.sol";

@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {IShareToken} from "./interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "./interfaces/IVault.sol";
+import {IVaultFactory} from "./factories/IVaultFactory.sol";
 import {VaultDetails, ISpoke} from "./interfaces/ISpoke.sol";
 import {IVaultRegistry} from "./interfaces/IVaultRegistry.sol";
-import {IVaultFactory} from "./factories/IVaultFactory.sol";
 import {IVaultManager, REQUEST_MANAGER_V3_0} from "./interfaces/legacy/IVaultManager.sol";
 
 import {Auth} from "../../misc/Auth.sol";
@@ -14,8 +14,8 @@ import {Recoverable} from "../../misc/Recoverable.sol";
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {VaultUpdateKind} from "../../messaging/libraries/MessageLib.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
+import {VaultUpdateKind} from "../../messaging/libraries/MessageLib.sol";
 import {IVaultRegistryGatewayHandler} from "../interfaces/IGatewayHandlers.sol";
 
 /// @title  VaultRegistry

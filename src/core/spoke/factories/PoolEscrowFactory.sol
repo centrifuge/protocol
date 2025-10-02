@@ -5,8 +5,8 @@ import {IPoolEscrowProvider, IPoolEscrowFactory} from "./IPoolEscrowFactory.sol"
 
 import {Auth} from "../../../misc/Auth.sol";
 
-import {PoolId} from "../../types/PoolId.sol";
 import {PoolEscrow} from "../PoolEscrow.sol";
+import {PoolId} from "../../types/PoolId.sol";
 import {IPoolEscrow} from "../../interfaces/IPoolEscrow.sol";
 
 contract PoolEscrowFactory is Auth, IPoolEscrowFactory {

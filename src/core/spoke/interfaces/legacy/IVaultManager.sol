@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IVault} from "../IVault.sol";
 import {PoolId} from "../../../types/PoolId.sol";
 import {AssetId} from "../../../types/AssetId.sol";
 import {ShareClassId} from "../../../types/ShareClassId.sol";
 import {IRequestManager} from "../../../interfaces/IRequestManager.sol";
-
-import {IVault} from "../IVault.sol";
 
 IRequestManager constant REQUEST_MANAGER_V3_0 = IRequestManager(0xf06f89A1b6C601235729A689595571B7455Dd433);
 

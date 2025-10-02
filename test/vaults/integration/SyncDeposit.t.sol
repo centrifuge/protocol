@@ -11,20 +11,19 @@ import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
-import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
-import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {ITransferHook} from "../../../src/core/interfaces/ITransferHook.sol";
-
-import "../../spoke/integration/BaseTest.sol";
-
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpoke.sol";
+import {ITransferHook} from "../../../src/core/interfaces/ITransferHook.sol";
 import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
 import {ISyncManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncRedeemVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
+
+import "../../spoke/integration/BaseTest.sol";
+import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
 
 contract SyncDepositTestHelper is BaseTest {
     using CastLib for *;

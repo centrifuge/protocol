@@ -2,10 +2,9 @@
 pragma solidity 0.8.28;
 
 import {PoolId} from "../../types/PoolId.sol";
-import {ShareClassId} from "../../types/ShareClassId.sol";
-
 import {IVault} from "../interfaces/IVault.sol";
 import {IShareToken} from "../interfaces/IShareToken.sol";
+import {ShareClassId} from "../../types/ShareClassId.sol";
 
 interface IVaultFactory {
     error UnsupportedTokenId();

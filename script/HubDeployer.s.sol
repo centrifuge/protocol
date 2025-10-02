@@ -3,13 +3,12 @@ pragma solidity 0.8.28;
 
 import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "./CommonDeployer.s.sol";
 
-import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
-
 import {Hub} from "../src/core/hub/Hub.sol";
 import {Holdings} from "../src/core/hub/Holdings.sol";
 import {Accounting} from "../src/core/hub/Accounting.sol";
 import {HubHandler} from "../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
+import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
 import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
 
 import "forge-std/Script.sol";

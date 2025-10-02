@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {ISpoke} from "./interfaces/ISpoke.sol";
 import {IShareToken} from "./interfaces/IShareToken.sol";
+import {IPoolEscrowProvider} from "./factories/IPoolEscrowFactory.sol";
 import {IBalanceSheet, ShareQueueAmount, AssetQueueAmount} from "./interfaces/IBalanceSheet.sol";
 
 import {Auth} from "../../misc/Auth.sol";
@@ -24,7 +25,6 @@ import {BatchedMulticall} from "../BatchedMulticall.sol";
 import {IPoolEscrow} from "../interfaces/IPoolEscrow.sol";
 import {ISpokeMessageSender} from "../interfaces/IGatewaySenders.sol";
 import {IBalanceSheetGatewayHandler} from "../interfaces/IGatewayHandlers.sol";
-import {IPoolEscrowProvider} from "./factories/IPoolEscrowFactory.sol";
 
 /// @title  Balance Sheet
 /// @notice Management contract that integrates all balance sheet functions of a pool:

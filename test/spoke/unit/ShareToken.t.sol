@@ -7,12 +7,10 @@ import "../../../src/misc/interfaces/IERC7575.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 
-import {MockRoot} from "../../common/mocks/MockRoot.sol";
-
+import {ShareToken} from "../../../src/core/spoke/ShareToken.sol";
 import {ITransferHook} from "../../../src/core/interfaces/ITransferHook.sol";
 
-import {ShareToken} from "../../../src/core/spoke/ShareToken.sol";
-
+import {MockRoot} from "../../common/mocks/MockRoot.sol";
 import {MockFullRestrictions} from "../mocks/MockFullRestrictions.sol";
 
 import "forge-std/Test.sol";

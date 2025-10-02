@@ -8,15 +8,16 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {IGateway} from "../../../../src/core/interfaces/IGateway.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {IBatchedMulticall} from "../../../../src/core/interfaces/IBatchedMulticall.sol";
+import {IUpdateContract} from "../../../../src/core/spoke/interfaces/IUpdateContract.sol";
 
 import {QueueManager} from "../../../../src/managers/spoke/QueueManager.sol";
-import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {IUpdateContract} from "../../../../src/core/spoke/interfaces/IUpdateContract.sol";
 import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueManager.sol";
-import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
 import "forge-std/Test.sol";
+
+import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
 contract IsContract {}
 
