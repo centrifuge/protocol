@@ -9,7 +9,6 @@ import {ERC20} from "../../src/misc/ERC20.sol";
 import {D18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
-import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
 
 import {Root} from "../../src/common/Root.sol";
 import {Guardian} from "../../src/common/Guardian.sol";
