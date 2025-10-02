@@ -153,6 +153,9 @@ interface IHoldings {
 
     function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external;
 
+    /// @notice Checks the snapshot state and calls the hook if it's a snapshot
+    function checkSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external;
+
     /// @notice Returns the snapshot hook for the given pool.
     function snapshotHook(PoolId poolId) external view returns (ISnapshotHook);
 

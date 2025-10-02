@@ -126,6 +126,16 @@ contract Holdings is Auth, IHoldings {
         if (address(hook) != address(0)) hook.onSync(poolId, scId, centrifugeId);
     }
 
+    /// @inheritdoc IHoldings
+    function checkSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external auth {
+        Snapshot storage snapshot_ = snapshot[poolId][scId][centrifugeId];
+
+        if (snapshot_.isSnapshot) {
+            ISnapshotHook hook = snapshotHook[poolId];
+            if (address(hook) != address(0)) hook.onSync(poolId, scId, centrifugeId);
+        }
+    }
+
     //----------------------------------------------------------------------------------------------
     // Value updates
     //----------------------------------------------------------------------------------------------
