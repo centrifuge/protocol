@@ -8,6 +8,7 @@ import "forge-std/Script.sol";
 
 import {IAxelarAdapter} from "../src/adapters/interfaces/IAxelarAdapter.sol";
 import {IWormholeAdapter} from "../src/adapters/interfaces/IWormholeAdapter.sol";
+import {ILayerZeroAdapter} from "../src/adapters/interfaces/ILayerZeroAdapter.sol";
 
 /// @dev Configures the local network's adapters to communicate with remote networks.
 ///      This script only sets up one-directional communication (local → remote).
@@ -35,6 +36,7 @@ contract WireAdapters is Script {
 
         // Declare and initialize local adapter addresses
         address localWormholeAddr = address(0);
+        address localLayerZeroAddr = address(0);
         address localAxelarAddr = address(0);
 
         // Try to get local Wormhole adapter
@@ -45,6 +47,16 @@ contract WireAdapters is Script {
             }
         } catch {
             console.log("No WormholeAdapter found in config for network", localNetwork);
+        }
+
+        // Try to get local LayerZero adapter
+        try vm.parseJsonAddress(localConfig, "$.contracts.layerZeroAdapter") returns (address addr) {
+            if (addr != address(0)) {
+                localLayerZeroAddr = addr;
+                adapters.push(IAdapter(addr));
+            }
+        } catch {
+            console.log("No LayerZeroAdapter found in config for network", localNetwork);
         }
 
         // Try to get local Axelar adapter
@@ -79,6 +91,17 @@ contract WireAdapters is Script {
                 );
 
                 console.log("Wired WormholeAdapter from", localNetwork, "to", remoteNetwork);
+            }
+
+            // Wire LayerZeroAdapter
+            if (localLayerZeroAddr != address(0)) {
+                ILayerZeroAdapter(localLayerZeroAddr).wire(
+                    remoteCentrifugeId,
+                    uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
+                    vm.parseJsonAddress(remoteConfig, "$.contracts.layerZeroAdapter")
+                );
+
+                console.log("Wired LayerZeroAdapter from", localNetwork, "to", remoteNetwork);
             }
 
             // Wire AxelarAdapter
