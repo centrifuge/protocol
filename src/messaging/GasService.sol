@@ -59,7 +59,7 @@ contract GasService is IGasService {
         notifyPricePoolPerAsset = BASE_COST + 116077;
         notifyShareMetadata = BASE_COST + 126457;
         updateShareHook = BASE_COST + 101386;
-        initiateTransferShares = BASE_COST + 288279;
+        initiateTransferShares = BASE_COST + 288301;
         executeTransferShares = BASE_COST + 182517;
         updateRestriction = BASE_COST + 119496;
         updateContract = BASE_COST + 149615;
@@ -69,8 +69,8 @@ contract GasService is IGasService {
         updateVaultUnlink = BASE_COST + 139003;
         setRequestManager = BASE_COST + 105563;
         updateBalanceSheetManager = BASE_COST + 109127;
-        updateHoldingAmount = BASE_COST + 309013;
-        updateShares = BASE_COST + 188780;
+        updateHoldingAmount = BASE_COST + 309378;
+        updateShares = BASE_COST + 189057;
         maxAssetPriceAge = BASE_COST + 115168;
         maxSharePriceAge = BASE_COST + 112054;
         updateGatewayManager = BASE_COST + 93061;
