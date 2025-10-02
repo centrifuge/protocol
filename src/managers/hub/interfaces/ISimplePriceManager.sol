@@ -9,7 +9,9 @@ import {PoolId} from "../../../common/types/PoolId.sol";
 import {ShareClassId} from "../../../common/types/ShareClassId.sol";
 
 interface ISimplePriceManager is INAVHook {
-    event Update(PoolId indexed poolId, ShareClassId scId, uint128 newNAV, uint128 newIssuance, D18 newSharePrice);
+    event Update(
+        PoolId indexed poolId, ShareClassId scId, uint128 newNAV, uint128 newIssuance, D18 newPricePoolPerShare
+    );
     event Transfer(
         PoolId indexed poolId,
         ShareClassId scId,

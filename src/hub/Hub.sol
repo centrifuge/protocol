@@ -317,10 +317,10 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 navPoolPerShare) public payable {
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) public payable {
         _isManager(poolId);
 
-        shareClassManager.updateSharePrice(poolId, scId, navPoolPerShare);
+        shareClassManager.updateSharePrice(poolId, scId, pricePoolPerShare);
     }
 
     /// @inheritdoc IHub
