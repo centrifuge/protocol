@@ -6,9 +6,9 @@ import {Multicall} from "../../../../src/misc/Multicall.sol";
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../../../src/common/types/PoolId.sol";
+import {IGateway} from "../../../../src/common/interfaces/IGateway.sol";
 import {AssetId, newAssetId} from "../../../../src/common/types/AssetId.sol";
 import {IBatchedMulticall} from "../../../../src/common/interfaces/IBatchedMulticall.sol";
-import {IGateway} from "../../../../src/common/interfaces/IGateway.sol";
 import {ShareClassId, newShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 
 import {IHub} from "../../../../src/hub/interfaces/IHub.sol";
