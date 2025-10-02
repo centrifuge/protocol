@@ -1,5 +1,5 @@
 {
-  "BENCHMARKING_RUN_ID": 1759405615,
+  "BENCHMARKING_RUN_ID": 1759410257,
   "scheduleUpgrade": 93735,
   "cancelUpgrade": 74142,
   "recoverTokens": 148855,
@@ -12,7 +12,7 @@
   "notifyPricePoolPerAsset": 110946,
   "notifyShareMetadata": 121326,
   "updateShareHook": 96255,
-  "initiateTransferShares": 283148,
+  "initiateTransferShares": 283170,
   "executeTransferShares": 177386,
   "updateRestriction": 114365,
   "updateContract": 144484,
@@ -22,8 +22,8 @@
   "updateVaultUnlink": 133897,
   "setRequestManager": 100432,
   "updateBalanceSheetManager": 103996,
-  "updateHoldingAmount": 303882,
-  "updateShares": 183649,
+  "updateHoldingAmount": 304478,
+  "updateShares": 184157,
   "maxAssetPriceAge": 110037,
   "maxSharePriceAge": 106923,
   "updateGatewayManager": 87952
