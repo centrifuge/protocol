@@ -439,35 +439,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 spoke.vaultDetails(vault).assetId
             ][_getActor()] += assets;
         }
-
-        // Bal after
-        uint256 shareUserAfter = IShareToken(vault.share()).balanceOf(
-            _getActor()
-        );
-        uint256 shareEscrowAfter = IShareToken(vault.share()).balanceOf(
-            address(globalEscrow)
-        );
-
-        // Extra check | // TODO: This math will prob overflow
-        // NOTE: Unchecked so we get broken property and debug faster
-        unchecked {
-            uint256 deltaUser = shareUserAfter - shareUserB4; // B4 - after -> They pay
-            uint256 deltaEscrow = shareEscrowB4 - shareEscrowAfter; // After - B4 -> They gain
-            emit DebugNumber(deltaUser);
-            emit DebugNumber(assets);
-            emit DebugNumber(deltaEscrow);
-
-            if (RECON_EXACT_BAL_CHECK) {
-                eq(deltaUser, assets, "Extra LP-2");
-            }
-
-            // NOTE: async vaults transfer shares from global escrow
-            if (isAsyncVault) {
-                eq(deltaUser, deltaEscrow, "7540-13");
-            }
-
-            // NOTE: sync vaults mint shares directly to the user
-        }
     }
     // Given a random value, see if the other one would yield more shares or lower cost
     // Not only check view

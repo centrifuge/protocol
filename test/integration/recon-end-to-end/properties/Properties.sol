@@ -326,6 +326,28 @@ abstract contract Properties is
         }
     }
 
+    /// @dev Property: user share balance correctly changes by the same amount of shares transferred from escrow on deposit
+    function property_deposit_share_balance_delta() public {
+        if (currentOperation == OpType.ADD) {
+            // Only check for async vaults as sync vaults mint shares directly
+            if (Helpers.isAsyncVault(address(_getVault()))) {
+                uint256 shareBalanceDelta;
+                uint256 escrowBalanceDelta;
+                unchecked {
+                    shareBalanceDelta =
+                        _after.shareTokenBalance[_getActor()] -
+                        _before.shareTokenBalance[_getActor()];
+
+                    escrowBalanceDelta =
+                        _before.escrowTrancheTokenBalance -
+                        _after.escrowTrancheTokenBalance;
+                }
+
+                eq(shareBalanceDelta, escrowBalanceDelta, "7540-13");
+            }
+        }
+    }
+
     // == SHARE CLASS TOKENS == //
 
     /// @dev Property: Sum of balances equals total supply
