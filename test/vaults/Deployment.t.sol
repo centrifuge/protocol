@@ -43,11 +43,13 @@ contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
         vm.assume(nonWard != address(spoke));
         vm.assume(nonWard != address(syncDepositVaultFactory));
         vm.assume(nonWard != address(asyncVaultFactory));
+        vm.assume(nonWard != address(contractUpdater));
 
         assertEq(asyncRequestManager.wards(address(root)), 1);
         assertEq(asyncRequestManager.wards(address(spoke)), 1);
         assertEq(asyncRequestManager.wards(address(syncDepositVaultFactory)), 1);
         assertEq(asyncRequestManager.wards(address(asyncVaultFactory)), 1);
+        assertEq(asyncRequestManager.wards(address(contractUpdater)), 1);
         assertEq(asyncRequestManager.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -63,9 +65,10 @@ contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
     function testAsyncVaultFactory(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spoke));
+        vm.assume(nonWard != address(vaultRegistry));
 
         assertEq(asyncVaultFactory.wards(address(root)), 1);
+        assertEq(asyncVaultFactory.wards(address(vaultRegistry)), 1);
         assertEq(asyncVaultFactory.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -76,9 +79,10 @@ contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
     function testSyncDepositVaultFactory(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spoke));
+        vm.assume(nonWard != address(vaultRegistry));
 
         assertEq(syncDepositVaultFactory.wards(address(root)), 1);
+        assertEq(syncDepositVaultFactory.wards(address(vaultRegistry)), 1);
         assertEq(syncDepositVaultFactory.wards(nonWard), 0);
 
         // dependencies set correctly

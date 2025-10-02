@@ -13,7 +13,6 @@ import {IAsyncRequestManager, AsyncInvestmentState} from "./interfaces/IVaultMan
 
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
-import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {IEscrow} from "../misc/interfaces/IEscrow.sol";
@@ -34,11 +33,13 @@ import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
 import {IVaultRegistry} from "../spoke/interfaces/IVaultRegistry.sol";
+import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/UpdateContractMessageLib.sol";
 
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
+contract AsyncRequestManager is Auth, IAsyncRequestManager {
     using CastLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
@@ -76,13 +77,24 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     /// @inheritdoc IAsyncRequestManager
     function depositSubsidy(PoolId poolId) external payable {
-        IRefundEscrow escrow = refundEscrowFactory.get(poolId);
-        if (address(escrow).code.length == 0) {
-            escrow = refundEscrowFactory.newEscrow(poolId);
+        IRefundEscrow refund = refundEscrowFactory.get(poolId);
+        if (address(refund).code.length == 0) {
+            refund = refundEscrowFactory.newEscrow(poolId);
         }
 
-        escrow.depositFunds{value: msg.value}();
+        refund.depositFunds{value: msg.value}();
         emit DepositSubsidy(poolId, msg.sender, msg.value);
+    }
+
+    /// @inheritdoc IAsyncRequestManager
+    function withdrawSubsidy(PoolId poolId, address to, uint256 value) public auth {
+        IRefundEscrow refund = refundEscrowFactory.get(poolId);
+        require(address(refund).code.length > 0, RefundEscrowNotDeployed());
+        require(address(refund).balance >= value, NotEnoughToWithdraw());
+
+        refund.withdrawFunds(to, value);
+
+        emit WithdrawSubsidy(poolId, to, value);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -174,8 +186,12 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         IRefundEscrow refund;
         uint256 payment;
 
-        if (!balanceSheet.gateway().isBatching()) {
-            refund = refundEscrowFactory.get(vault_.poolId());
+        PoolId poolId = vault_.poolId();
+        AssetId assetId = vaultRegistry.vaultDetails(vault_).assetId;
+        bool isLocal = poolId.centrifugeId() == assetId.centrifugeId();
+
+        if (!balanceSheet.gateway().isBatching() && !isLocal) {
+            refund = refundEscrowFactory.get(poolId);
             require(address(refund).code.length > 0, RefundEscrowNotDeployed());
 
             uint256 availableSubsidy = address(refund).balance;
@@ -184,14 +200,26 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         }
 
         // It use all funds for the message, and the rest is refunded again to the RefundEscrow
-        spoke.request{value: payment}(
-            vault_.poolId(), vault_.scId(), vaultRegistry.vaultDetails(vault_).assetId, payload, address(refund), true
-        );
+        spoke.request{value: payment}(poolId, vault_.scId(), assetId, payload, address(refund), true);
     }
 
     //----------------------------------------------------------------------------------------------
     // Gateway handlers
     //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IUpdateContract
+    function update(PoolId poolId, ShareClassId, bytes memory payload) external auth {
+        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
+
+        if (kind == uint8(UpdateContractType.Withdraw)) {
+            UpdateContractMessageLib.UpdateContractWithdraw memory m =
+                UpdateContractMessageLib.deserializeUpdateContractWithdraw(payload);
+
+            withdrawSubsidy(poolId, m.who.toAddress(), m.value);
+        } else {
+            revert UnknownUpdateContractType();
+        }
+    }
 
     function callback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external auth {
         uint8 kind = uint8(RequestCallbackMessageLib.requestCallbackType(payload));
