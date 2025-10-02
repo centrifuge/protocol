@@ -3,7 +3,6 @@ pragma solidity ^0.8.28;
 
 import {VMLabeling} from "./utils/VMLabeling.sol";
 import {LocalAdapter} from "./adapters/LocalAdapter.sol";
-import {MessageBenchmarker} from "./utils/MessageBenchmarker.sol";
 import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
 import {ERC20} from "../../src/misc/ERC20.sol";
@@ -271,21 +270,7 @@ contract EndToEndDeployment is Test {
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         _setAdapter(deploy, remoteCentrifugeId, adapter);
 
-        // Only run the benchmarks if using one thread to avoid concurrence issues writing the json
-        // Example of command: RAYON_NUM_THREADS=1 BENCHMARKING_RUN_ID="$(date +%s)" forge test EndToEnd
-        if (vm.envOr("RAYON_NUM_THREADS", uint256(0)) == 1) {
-            _attachBenchmark(deploy, batcher);
-        }
-
         deploy.removeFullDeployerAccess(batcher);
-    }
-
-    function _attachBenchmark(FullDeployer deploy, FullActionBatcher batcher) internal {
-        vm.startPrank(address(batcher));
-        MessageBenchmarker benchmarker = new MessageBenchmarker(deploy.gateway());
-        deploy.gateway().rely(address(benchmarker));
-        deploy.multiAdapter().file("gateway", address(benchmarker));
-        vm.stopPrank();
     }
 
     function _setSpoke(FullDeployer deploy, uint16 centrifugeId, CSpoke storage s_) internal {

@@ -11,10 +11,10 @@ string constant FILE_PATH = "snapshots/MessageGasLimits.json";
 contract MessageBenchmarker is IMessageHandler, Test {
     using MessageLib for *;
 
-    IMessageHandler public immutable messageHandler;
+    IMessageHandler public messageHandler;
 
-    constructor(IMessageHandler messageHandler_) {
-        messageHandler = messageHandler_;
+    function setHandler(IMessageHandler handler_) public {
+        messageHandler = handler_;
     }
 
     /// @inheritdoc IMessageHandler
