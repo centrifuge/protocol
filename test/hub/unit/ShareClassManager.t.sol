@@ -130,9 +130,9 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
     }
 
     function testDefaultGetShareClassNavPerShare() public view {
-        (uint128 totalIssuance, D18 navPerShare) = shareClass.metrics(scId);
+        (uint128 totalIssuance, D18 pricePoolPerShare) = shareClass.metrics(scId);
         assertEq(totalIssuance, 0);
-        assertEq(navPerShare.raw(), 0);
+        assertEq(pricePoolPerShare.raw(), 0);
     }
 
     function testExistence() public view {
@@ -197,9 +197,9 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         emit IShareClassManager.RemoteIssueShares(centrifugeId, poolId, scId, amount);
         shareClass.updateShares(centrifugeId, poolId, scId, amount, true);
 
-        (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.metrics(scId);
+        (uint128 totalIssuance_, D18 pricePoolPerShareMetric) = shareClass.metrics(scId);
         assertEq(totalIssuance_, amount);
-        assertEq(navPerShareMetric.raw(), 0, "navPerShare metric should not be updated");
+        assertEq(pricePoolPerShareMetric.raw(), 0, "pricePoolPerShare metric should not be updated");
     }
 
     function testDecreaseShareClassIssuance(uint128 amount) public {
@@ -209,9 +209,9 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         emit IShareClassManager.RemoteRevokeShares(centrifugeId, poolId, scId, amount);
         shareClass.updateShares(centrifugeId, poolId, scId, amount, false);
 
-        (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.metrics(scId);
+        (uint128 totalIssuance_, D18 pricePoolPerShareMetric) = shareClass.metrics(scId);
         assertEq(totalIssuance_, 0, "TotalIssuance should be reset");
-        assertEq(navPerShareMetric.raw(), 0, "navPerShare metric should not be updated");
+        assertEq(pricePoolPerShareMetric.raw(), 0, "pricePoolPerShare metric should not be updated");
     }
 }
 

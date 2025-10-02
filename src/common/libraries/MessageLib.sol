@@ -696,7 +696,7 @@ library MessageLib {
         bytes16 scId;
         uint128 assetId;
         uint128 amount;
-        uint128 pricePerUnit;
+        uint128 pricePoolPerAsset;
         uint64 timestamp;
         bool isIncrease;
         bool isSnapshot;
@@ -711,7 +711,7 @@ library MessageLib {
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
             amount: data.toUint128(41),
-            pricePerUnit: data.toUint128(57),
+            pricePoolPerAsset: data.toUint128(57),
             timestamp: data.toUint64(73),
             isIncrease: data.toBool(81),
             isSnapshot: data.toBool(82),
@@ -726,7 +726,7 @@ library MessageLib {
             t.scId,
             t.assetId,
             t.amount,
-            t.pricePerUnit,
+            t.pricePoolPerAsset,
             t.timestamp,
             t.isIncrease,
             t.isSnapshot,

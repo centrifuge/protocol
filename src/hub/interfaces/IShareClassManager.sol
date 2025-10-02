@@ -19,7 +19,7 @@ struct ShareClassMetrics {
     /// @dev Total number of shares
     uint128 totalIssuance;
     /// @dev The latest net asset value per share class token
-    D18 navPerShare;
+    D18 pricePoolPerShare;
 }
 
 interface IShareClassManager {
@@ -28,7 +28,7 @@ interface IShareClassManager {
         PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index, string name, string symbol, bytes32 salt
     );
     event UpdateMetadata(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol);
-    event UpdateShareClass(PoolId indexed poolId, ShareClassId indexed scId, D18 navPoolPerShare);
+    event UpdateShareClass(PoolId indexed poolId, ShareClassId indexed scId, D18 pricePoolPerShare);
     event RemoteIssueShares(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId indexed scId, uint128 amount
     );

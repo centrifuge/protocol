@@ -111,7 +111,7 @@ contract TestData is FullDeployer {
         hub.updateHubManager(state.poolId, admin, true);
         state.scId = shareClassManager.previewNextShareClassId(state.poolId);
 
-        D18 navPerShare = d18(1, 1);
+        D18 pricePoolPerShare = d18(1, 1);
 
         hub.setPoolMetadata(state.poolId, bytes("Testing pool"));
         hub.addShareClass(state.poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")));
@@ -158,7 +158,7 @@ contract TestData is FullDeployer {
             msg.sender
         );
 
-        hub.updateSharePrice(state.poolId, state.scId, navPerShare);
+        hub.updateSharePrice(state.poolId, state.scId, pricePoolPerShare);
         hub.notifySharePrice(state.poolId, state.scId, centrifugeId, msg.sender);
         hub.notifyAssetPrice(state.poolId, state.scId, assetId, msg.sender);
 
@@ -278,7 +278,7 @@ contract TestData is FullDeployer {
         hub.updateHubManager(poolId, admin, true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
-        D18 navPerShare = d18(1, 1);
+        D18 pricePoolPerShare = d18(1, 1);
 
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "RWA Portfolio", "RWA", bytes32(bytes("2")));
@@ -320,7 +320,7 @@ contract TestData is FullDeployer {
             msg.sender
         );
 
-        hub.updateSharePrice(poolId, scId, navPerShare);
+        hub.updateSharePrice(poolId, scId, pricePoolPerShare);
         hub.notifySharePrice(poolId, scId, centrifugeId, msg.sender);
         hub.notifyAssetPrice(poolId, scId, assetId, msg.sender);
 

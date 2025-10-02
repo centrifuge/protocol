@@ -21,6 +21,7 @@ import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";
 import {PricingLib} from "../../src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/common/types/AssetId.sol";
+import {MAX_MESSAGE_COST} from "../../src/common/interfaces/IGasService.sol";
 import {IMessageHandler} from "../../src/common/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/common/MultiAdapter.sol";
 import {ILocalCentrifugeId} from "../../src/common/interfaces/IGatewaySenders.sol";
@@ -139,7 +140,7 @@ contract EndToEndDeployment is Test {
 
     uint16 constant CENTRIFUGE_ID_A = IntegrationConstants.CENTRIFUGE_ID_A;
     uint16 constant CENTRIFUGE_ID_B = IntegrationConstants.CENTRIFUGE_ID_B;
-    uint128 constant GAS = IntegrationConstants.GAS;
+    uint128 constant GAS = MAX_MESSAGE_COST;
     uint256 constant DEFAULT_SUBSIDY = IntegrationConstants.DEFAULT_SUBSIDY;
     uint128 constant HOOK_GAS = IntegrationConstants.HOOK_GAS;
 
