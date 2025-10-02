@@ -876,7 +876,8 @@ contract IntegrationMock is Test {
     }
 
     function _nested() external payable {
-        gateway.withBatch(abi.encodeWithSelector(this._nested.selector), address(0));
+        assertEq(gateway.lockCallback(), address(this));
+        gateway.withBatch(abi.encodeWithSelector(this._success.selector, false, 2), address(0));
     }
 
     function _emptyError() external payable {
@@ -916,12 +917,6 @@ contract GatewayTestWithBatch is GatewayTest {
         integration = new IntegrationMock(gateway);
     }
 
-    function testErrAlreadyBatching() public {
-        vm.prank(ANY);
-        vm.expectRevert(IGateway.AlreadyBatching.selector);
-        integration.callNested(REFUND);
-    }
-
     function testErrCallFailedWithEmptyRevert() public {
         vm.prank(ANY);
         vm.expectRevert(IGateway.CallFailedWithEmptyRevert.selector);
@@ -941,6 +936,13 @@ contract GatewayTestWithBatch is GatewayTest {
 
         assertEq(integration.wasCalled(), true);
         assertEq(REFUND.balance, 1234);
+    }
+
+    function testWithCallbackNested() public {
+        vm.prank(ANY);
+        integration.callNested(REFUND);
+
+        assertEq(integration.wasCalled(), true);
     }
 }
 
