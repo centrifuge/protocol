@@ -45,70 +45,39 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     IShareClassManager public immutable shareClassManager;
 
     // Epochs
-    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => EpochId))) public epochId;
-    mapping(
-        PoolId poolId
-            => mapping(
-                ShareClassId scId => mapping(AssetId assetId => mapping(uint32 epochId_ => EpochInvestAmounts epoch))
-            )
-    ) public epochInvestAmounts;
-    mapping(
-        PoolId poolId
-            => mapping(
-                ShareClassId scId => mapping(AssetId assetId => mapping(uint32 epochId_ => EpochRedeemAmounts epoch))
-            )
-    ) public epochRedeemAmounts;
-
-    // Pending requests
-    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId payoutAssetId => uint128 pending))) public
-        pendingRedeem;
-    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId depositAssetId => uint128 pending))) public
-        pendingDeposit;
-    mapping(
-        PoolId poolId
-            => mapping(
-                ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => UserOrder pending))
-            )
-    ) public redeemRequest;
-    mapping(
-        PoolId poolId
-            => mapping(
-                ShareClassId scId => mapping(AssetId depositAssetId => mapping(bytes32 investor => UserOrder pending))
-            )
-    ) public depositRequest;
-
-    // Queued requests
-    mapping(
-        PoolId poolId
-            => mapping(
-                ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => QueuedOrder queued))
-            )
-    ) public queuedRedeemRequest;
-    mapping(
-        PoolId poolId
-            => mapping(
-                ShareClassId scId => mapping(AssetId depositAssetId => mapping(bytes32 investor => QueuedOrder queued))
-            )
-    ) public queuedDepositRequest;
-
-    // Force cancel request safeguards
-    mapping(
-        PoolId poolId
-            => mapping(
-                ShareClassId scId => mapping(AssetId depositAssetId => mapping(bytes32 investor => bool cancelled))
-            )
-    ) public allowForceDepositCancel;
-    mapping(
-        PoolId poolId
-            => mapping(
-                ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => bool cancelled))
-            )
-    ) public allowForceRedeemCancel;
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId => EpochId))) public epochId;
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(uint32 epochId_ => EpochInvestAmounts))))
+        public epochInvestAmounts;
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(uint32 epochId_ => EpochRedeemAmounts))))
+        public epochRedeemAmounts;
 
     constructor(IHubRegistry hubRegistry_, IShareClassManager shareClassManager_, address deployer) Auth(deployer) {
         hubRegistry = hubRegistry_;
         shareClassManager = shareClassManager_;
     }
+
+    // Pending requests
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId payoutAssetId => uint128))) public pendingRedeem;
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId depositAssetId => uint128))) public pendingDeposit;
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => UserOrder))))
+        public redeemRequest;
+    mapping(
+        PoolId => mapping(ShareClassId => mapping(AssetId depositAssetId => mapping(bytes32 investor => UserOrder)))
+    ) public depositRequest;
+
+    // Queued requests
+    mapping(
+        PoolId => mapping(ShareClassId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => QueuedOrder)))
+    ) public queuedRedeemRequest;
+    mapping(
+        PoolId => mapping(ShareClassId => mapping(AssetId depositAssetId => mapping(bytes32 investor => QueuedOrder)))
+    ) public queuedDepositRequest;
+
+    // Force cancel request safeguards
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId depositAssetId => mapping(bytes32 investor => bool))))
+        public allowForceDepositCancel;
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => bool))))
+        public allowForceRedeemCancel;
 
     //----------------------------------------------------------------------------------------------
     // Administration
