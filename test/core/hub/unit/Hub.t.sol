@@ -18,13 +18,14 @@ import {IMultiAdapter} from "../../../../src/core/interfaces/IMultiAdapter.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IHub, VaultUpdateKind} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {ISnapshotHook} from "../../../../src/core/hub/interfaces/ISnapshotHook.sol";
+import {IHubMessageSender} from "../../../../src/core/interfaces/IGatewaySenders.sol";
 import {IAccounting, JournalEntry} from "../../../../src/core/hub/interfaces/IAccounting.sol";
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
 
 import "forge-std/Test.sol";
 
 contract MockFeeHook is IFeeHook {
-    mapping(PoolId => mapping (ShareClassId => uint32)) public calls;
+    mapping(PoolId => mapping(ShareClassId => uint32)) public calls;
 
     function accrue(PoolId poolId, ShareClassId scId) external {
         calls[poolId][scId]++;
@@ -47,6 +48,7 @@ contract TestCommon is Test {
     IMultiAdapter immutable multiAdapter = IMultiAdapter(makeAddr("MultiAdapter"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
+    IHubMessageSender immutable sender = IHubMessageSender(makeAddr("Sender"));
     MockFeeHook immutable feeHook = new MockFeeHook();
 
     Hub hub = new Hub(gateway, holdings, accounting, hubRegistry, multiAdapter, scm, address(this));
@@ -62,6 +64,7 @@ contract TestCommon is Test {
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatching.selector), abi.encode());
 
         hub.file("feeHook", address(feeHook));
+        hub.file("sender", address(sender));
     }
 }
 
@@ -250,6 +253,31 @@ contract TestUpdateSharePrice is TestCommon {
 
         vm.prank(ADMIN);
         hub.updateSharePrice(POOL_A, SC_A, d18(1, 1));
+
+        assertEq(feeHook.calls(POOL_A, SC_A), 1);
+    }
+}
+
+contract TestNotifyAssetPrice is TestCommon {
+    function testNotifyAssetPriceAccruesFees() public {
+        address REFUND = makeAddr("Refund");
+
+        vm.mockCall(
+            address(holdings),
+            abi.encodeWithSelector(IHoldings.isInitialized.selector, POOL_A, SC_A, ASSET_A),
+            abi.encode(false)
+        );
+
+        vm.mockCall(
+            address(sender),
+            abi.encodeWithSelector(
+                IHubMessageSender.sendNotifyPricePoolPerAsset.selector, POOL_A, SC_A, ASSET_A, d18(1, 1), REFUND
+            ),
+            abi.encode()
+        );
+
+        vm.prank(ADMIN);
+        hub.notifyAssetPrice(POOL_A, SC_A, ASSET_A, REFUND);
 
         assertEq(feeHook.calls(POOL_A, SC_A), 1);
     }
