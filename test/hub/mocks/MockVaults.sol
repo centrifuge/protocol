@@ -120,7 +120,7 @@ contract MockVaults is Test, Auth, IAdapter {
                 scId: scId.raw(),
                 assetId: assetId.raw(),
                 amount: amount,
-                pricePerUnit: pricePoolPerAsset.raw(),
+                pricePoolPerAsset: pricePoolPerAsset.raw(),
                 timestamp: 0,
                 isIncrease: isIncrease,
                 isSnapshot: isSnapshot,

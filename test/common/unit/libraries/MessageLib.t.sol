@@ -516,7 +516,7 @@ contract TestMessageLibIdentities is Test {
         bytes16 scId,
         uint128 assetId,
         uint128 amount,
-        uint128 pricePerUnit,
+        uint128 pricePoolPerAsset,
         uint64 timestamp,
         bool isIncrease,
         bool isSnapshot,
@@ -527,7 +527,7 @@ contract TestMessageLibIdentities is Test {
             scId: scId,
             assetId: assetId,
             amount: amount,
-            pricePerUnit: pricePerUnit,
+            pricePoolPerAsset: pricePoolPerAsset,
             timestamp: timestamp,
             isIncrease: isIncrease,
             isSnapshot: isSnapshot,
@@ -540,7 +540,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.scId, b.scId);
         assertEq(a.assetId, b.assetId);
         assertEq(a.amount, b.amount);
-        assertEq(a.pricePerUnit, b.pricePerUnit);
+        assertEq(a.pricePoolPerAsset, b.pricePoolPerAsset);
         assertEq(a.timestamp, b.timestamp);
         assertEq(a.isIncrease, b.isIncrease);
         assertEq(a.isSnapshot, b.isSnapshot);

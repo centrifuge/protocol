@@ -47,12 +47,12 @@ contract ShareClassManager is Auth, IShareClassManager {
     }
 
     /// @inheritdoc IShareClassManager
-    function updateSharePrice(PoolId poolId, ShareClassId scId_, D18 navPoolPerShare) external auth {
+    function updateSharePrice(PoolId poolId, ShareClassId scId_, D18 pricePoolPerShare) external auth {
         require(exists(poolId, scId_), ShareClassNotFound());
 
         ShareClassMetrics storage m = metrics[scId_];
-        m.navPerShare = navPoolPerShare;
-        emit UpdateShareClass(poolId, scId_, navPoolPerShare);
+        m.pricePoolPerShare = pricePoolPerShare;
+        emit UpdateShareClass(poolId, scId_, pricePoolPerShare);
     }
 
     /// @inheritdoc IShareClassManager

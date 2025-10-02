@@ -276,7 +276,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         ShareClassId scId_,
         AssetId depositAssetId,
         uint32 nowIssueEpochId,
-        D18 navPoolPerShare,
+        D18 pricePoolPerShare,
         uint128 extraGasLimit,
         address refund
     ) external payable authOrManager(poolId) {
@@ -287,15 +287,15 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         );
 
         EpochInvestAmounts storage epochAmounts = epochInvestAmounts[scId_][depositAssetId][nowIssueEpochId];
-        epochAmounts.navPoolPerShare = navPoolPerShare;
+        epochAmounts.pricePoolPerShare = pricePoolPerShare;
 
-        uint128 issuedShareAmount = navPoolPerShare.isNotZero()
+        uint128 issuedShareAmount = pricePoolPerShare.isNotZero()
             ? PricingLib.assetToShareAmount(
                 epochAmounts.approvedAssetAmount,
                 hubRegistry.decimals(depositAssetId),
                 hubRegistry.decimals(poolId),
                 epochAmounts.pricePoolPerAsset,
-                navPoolPerShare,
+                pricePoolPerShare,
                 MathLib.Rounding.Down
             )
             : 0;
@@ -308,15 +308,15 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
             scId_,
             depositAssetId,
             nowIssueEpochId,
-            navPoolPerShare,
+            pricePoolPerShare,
             epochAmounts.pricePoolPerAsset.isNotZero()
-                ? PricingLib.priceAssetPerShare(epochAmounts.navPoolPerShare, epochAmounts.pricePoolPerAsset)
+                ? PricingLib.priceAssetPerShare(epochAmounts.pricePoolPerShare, epochAmounts.pricePoolPerAsset)
                 : d18(0),
             issuedShareAmount
         );
 
         bytes memory callback =
-            RequestCallbackMessageLib.IssuedShares(issuedShareAmount, navPoolPerShare.raw()).serialize();
+            RequestCallbackMessageLib.IssuedShares(issuedShareAmount, pricePoolPerShare.raw()).serialize();
         hub.requestCallback{value: msg.value}(poolId, scId_, depositAssetId, callback, extraGasLimit, refund);
     }
 
@@ -326,7 +326,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         ShareClassId scId_,
         AssetId payoutAssetId,
         uint32 nowRevokeEpochId,
-        D18 navPoolPerShare,
+        D18 pricePoolPerShare,
         uint128 extraGasLimit,
         address refund
     ) external payable authOrManager(poolId) {
@@ -337,17 +337,17 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         );
 
         EpochRedeemAmounts storage epochAmounts = epochRedeemAmounts[scId_][payoutAssetId][nowRevokeEpochId];
-        epochAmounts.navPoolPerShare = navPoolPerShare;
+        epochAmounts.pricePoolPerShare = pricePoolPerShare;
 
         // NOTE: shares and pool currency have the same decimals - no conversion needed!
-        uint128 payoutPoolAmount = navPoolPerShare.mulUint128(epochAmounts.approvedShareAmount, MathLib.Rounding.Down);
+        uint128 payoutPoolAmount = pricePoolPerShare.mulUint128(epochAmounts.approvedShareAmount, MathLib.Rounding.Down);
 
         uint128 payoutAssetAmount = epochAmounts.pricePoolPerAsset.isNotZero()
             ? PricingLib.shareToAssetAmount(
                 epochAmounts.approvedShareAmount,
                 hubRegistry.decimals(poolId),
                 hubRegistry.decimals(payoutAssetId),
-                epochAmounts.navPoolPerShare,
+                epochAmounts.pricePoolPerShare,
                 epochAmounts.pricePoolPerAsset,
                 MathLib.Rounding.Down
             )
@@ -363,9 +363,9 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
             scId_,
             payoutAssetId,
             nowRevokeEpochId,
-            navPoolPerShare,
+            pricePoolPerShare,
             epochAmounts.pricePoolPerAsset.isNotZero()
-                ? PricingLib.priceAssetPerShare(epochAmounts.navPoolPerShare, epochAmounts.pricePoolPerAsset)
+                ? PricingLib.priceAssetPerShare(epochAmounts.pricePoolPerShare, epochAmounts.pricePoolPerAsset)
                 : d18(0),
             epochAmounts.approvedShareAmount,
             payoutAssetAmount,
@@ -373,7 +373,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         );
 
         bytes memory callback = RequestCallbackMessageLib.RevokedShares(
-            payoutAssetAmount, revokedShareAmount, navPoolPerShare.raw()
+            payoutAssetAmount, revokedShareAmount, pricePoolPerShare.raw()
         ).serialize();
         hub.requestCallback{value: msg.value}(poolId, scId_, payoutAssetId, callback, extraGasLimit, refund);
     }
@@ -495,13 +495,13 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         // tokens corresponding to the approved share amount (instead of equality). I.e., it is possible for an epoch to
         // have an excess of a share class tokens which cannot be claimed by anyone.
         if (paymentAssetAmount > 0) {
-            payoutShareAmount = epochAmounts.navPoolPerShare.isNotZero()
+            payoutShareAmount = epochAmounts.pricePoolPerShare.isNotZero()
                 ? PricingLib.assetToShareAmount(
                     paymentAssetAmount,
                     hubRegistry.decimals(depositAssetId),
                     hubRegistry.decimals(poolId),
                     epochAmounts.pricePoolPerAsset,
-                    epochAmounts.navPoolPerShare,
+                    epochAmounts.pricePoolPerShare,
                     MathLib.Rounding.Down
                 )
                 : 0;
@@ -611,7 +611,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
                     paymentShareAmount,
                     hubRegistry.decimals(poolId),
                     hubRegistry.decimals(payoutAssetId),
-                    epochAmounts.navPoolPerShare,
+                    epochAmounts.pricePoolPerShare,
                     epochAmounts.pricePoolPerAsset,
                     MathLib.Rounding.Down
                 )
