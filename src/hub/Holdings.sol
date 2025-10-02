@@ -120,12 +120,13 @@ contract Holdings is Auth, IHoldings {
 
         emit SetSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
 
-        _callOnSync(poolId, scId, centrifugeId);
+        _callOnSync(poolId, scId, centrifugeId, snapshot_);
     }
 
     /// @inheritdoc IHoldings
     function checkSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external auth {
-        _callOnSync(poolId, scId, centrifugeId);
+        Snapshot memory snapshot_ = snapshot[poolId][scId][centrifugeId];
+        _callOnSync(poolId, scId, centrifugeId, snapshot_);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -229,8 +230,7 @@ contract Holdings is Auth, IHoldings {
     // Internal methods
     //----------------------------------------------------------------------------------------------
 
-    function _callOnSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) internal {
-        Snapshot memory snapshot_ = snapshot[poolId][scId][centrifugeId];
+    function _callOnSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId, Snapshot memory snapshot_) internal {
         if (!snapshot_.isSnapshot) return;
 
         ISnapshotHook hook = snapshotHook[poolId];

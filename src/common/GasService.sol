@@ -70,8 +70,8 @@ contract GasService is IGasService {
         updateVaultUnlink = BASE_COST + 133897;
         setRequestManager = BASE_COST + 100432;
         updateBalanceSheetManager = BASE_COST + 103996;
-        updateHoldingAmount = BASE_COST + 304478;
-        updateShares = BASE_COST + 184157;
+        updateHoldingAmount = BASE_COST + 304247;
+        updateShares = BASE_COST + 183926;
         maxAssetPriceAge = BASE_COST + 110037;
         maxSharePriceAge = BASE_COST + 106923;
         updateGatewayManager = BASE_COST + 87952;
