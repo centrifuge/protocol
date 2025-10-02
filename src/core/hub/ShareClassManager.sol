@@ -17,9 +17,9 @@ contract ShareClassManager is Auth, IShareClassManager {
 
     mapping(bytes32 salt => bool) public salts;
     mapping(PoolId poolId => uint32) public shareClassCount;
+    mapping(PoolId poolId => mapping(ShareClassId => bool)) public shareClassIds;
     mapping(PoolId poolId => mapping(ShareClassId scId => ShareClassMetrics)) public metrics;
     mapping(PoolId poolId => mapping(ShareClassId scId => ShareClassMetadata)) public metadata;
-    mapping(PoolId poolId => mapping(ShareClassId => bool)) public shareClassIds;
     mapping(PoolId poolId => mapping(ShareClassId scId => mapping(uint16 centrifugeId => uint128))) public issuance;
 
     constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
