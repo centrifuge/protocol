@@ -60,11 +60,6 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             );
         }
 
-        // Capture state for ghost variables
-        address actor = _getActor();
-        (, , , , uint128 pendingBeforeARM, , , , , ) = asyncRequestManager
-            .investments(_getVault(), actor);
-
         // Handle validation or continuation
         if (maxClaimsBound > 0) {
             // Continue claiming remaining epochs
