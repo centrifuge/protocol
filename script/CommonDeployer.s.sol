@@ -13,10 +13,10 @@ import {GasService} from "../src/messaging/GasService.sol";
 import {MessageProcessor} from "../src/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../src/messaging/MessageDispatcher.sol";
 
-import "forge-std/Script.sol";
-
 import {Guardian, ISafe} from "../src/admin/Guardian.sol";
 import {TokenRecoverer} from "../src/admin/TokenRecoverer.sol";
+
+import "forge-std/Script.sol";
 
 struct CommonInput {
     uint16 centrifugeId;

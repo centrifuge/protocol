@@ -15,9 +15,9 @@ import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 
 import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
 
-import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
-
 import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
+import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 
 contract SpokeTestHelper is BaseTest {
     PoolId poolId;

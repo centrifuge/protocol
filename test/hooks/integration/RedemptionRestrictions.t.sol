@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
-
 import {RedemptionRestrictions} from "../../../src/hooks/RedemptionRestrictions.sol";
+
+import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 
 import "../../spoke/integration/BaseTest.sol";
 

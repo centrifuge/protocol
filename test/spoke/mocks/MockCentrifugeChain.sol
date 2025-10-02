@@ -13,11 +13,11 @@ import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {MessageLib, VaultUpdateKind} from "../../../src/messaging/libraries/MessageLib.sol";
 import {UpdateContractMessageLib} from "../../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
+import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
-
-import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import "forge-std/Test.sol";
 

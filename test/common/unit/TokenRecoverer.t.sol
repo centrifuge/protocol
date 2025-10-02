@@ -6,9 +6,9 @@ import {IRecoverable} from "../../../src/misc/interfaces/IRecoverable.sol";
 
 import {IRoot} from "../../../src/core/interfaces/IRoot.sol";
 
-import "forge-std/Test.sol";
-
 import {TokenRecoverer, ITokenRecoverer} from "../../../src/admin/TokenRecoverer.sol";
+
+import "forge-std/Test.sol";
 
 contract TestTokenRecoverer is Test {
     uint256 constant AMOUNT = 100;

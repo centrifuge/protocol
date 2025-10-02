@@ -39,14 +39,7 @@ import {GasService} from "../../src/messaging/GasService.sol";
 import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
 import {VaultUpdateKind, MessageType, MessageLib} from "../../src/messaging/libraries/MessageLib.sol";
 
-import {SyncManager} from "../../src/vaults/SyncManager.sol";
-import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
-import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
-import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
-import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
-import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
-import {RefundEscrowFactory} from "../../src/vaults/factories/RefundEscrowFactory.sol";
+import {Guardian} from "../../src/admin/Guardian.sol";
 
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
 
@@ -58,11 +51,19 @@ import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestr
 import {OracleValuation} from "../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
 
+import {SyncManager} from "../../src/vaults/SyncManager.sol";
+import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
+import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
+import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
+import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {RefundEscrowFactory} from "../../src/vaults/factories/RefundEscrowFactory.sol";
+
 import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
-import {Guardian} from "../../src/admin/Guardian.sol";
 import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
 
 /// End to end testing assuming two full deployments in two different chains

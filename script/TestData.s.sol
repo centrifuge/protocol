@@ -22,6 +22,13 @@ import {IHubRequestManager} from "../src/core/hub/interfaces/IHubRequestManager.
 import {VaultUpdateKind} from "../src/messaging/libraries/MessageLib.sol";
 import {UpdateContractMessageLib} from "../src/messaging/libraries/UpdateContractMessageLib.sol";
 
+import {Guardian} from "../src/admin/Guardian.sol";
+
+import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
+import {UpdateRestrictionMessageLib} from "../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
+import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
+
 import {SyncManager} from "../src/vaults/SyncManager.sol";
 import {SyncDepositVault} from "../src/vaults/SyncDepositVault.sol";
 import {IAsyncVault} from "../src/vaults/interfaces/IAsyncVault.sol";
@@ -30,14 +37,7 @@ import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
-import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
-import {UpdateRestrictionMessageLib} from "../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
-
-import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
-
 import "forge-std/Script.sol";
-
-import {Guardian} from "../src/admin/Guardian.sol";
 
 // Script to deploy Hub and Vaults with a Localhost Adapter.
 contract TestData is FullDeployer {
