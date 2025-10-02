@@ -26,6 +26,7 @@ import {
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
     IUpdateContractGatewayHandler,
+    IUpdateHubContractGatewayHandler,
     IVaultRegistryGatewayHandler
 } from "../core/interfaces/IGatewayHandlers.sol";
 
@@ -44,8 +45,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
     ISpokeGatewayHandler public spoke;
     IHubGatewayHandler public hubHandler;
     IBalanceSheetGatewayHandler public balanceSheet;
-    IVaultRegistryGatewayHandler public vaultRegistry;
     IUpdateContractGatewayHandler public contractUpdater;
+    IUpdateHubContractGatewayHandler public hubContractUpdater;
+    IVaultRegistryGatewayHandler public vaultRegistry;
 
     constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, address deployer) Auth(deployer) {
         root = root_;
@@ -64,6 +66,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
+        else if (what == "hubContractUpdater") hubContractUpdater = IUpdateHubContractGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
@@ -163,6 +166,11 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateContract) {
             MessageLib.UpdateContract memory m = MessageLib.deserializeUpdateContract(message);
             contractUpdater.execute(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload);
+        } else if (kind == MessageType.UpdateHubContract) {
+            MessageLib.UpdateHubContract memory m = MessageLib.deserializeUpdateHubContract(message);
+            hubContractUpdater.execute(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.sender.toAddress(), m.target.toAddress(), m.payload
+            );
         } else if (kind == MessageType.RequestCallback) {
             MessageLib.RequestCallback memory m = MessageLib.deserializeRequestCallback(message);
             spoke.requestCallback(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);

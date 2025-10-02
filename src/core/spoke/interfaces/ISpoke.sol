@@ -99,6 +99,14 @@ interface ISpoke {
     event UpdateMaxAssetPriceAge(
         PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, uint64 maxPriceAge
     );
+    event UpdateHubContract(
+        uint16 indexed centrifugeId,
+        PoolId indexed poolId,
+        ShareClassId scId,
+        bytes32 target,
+        address indexed sender,
+        bytes payload
+    );
 
     error FileUnrecognizedParam();
     error TooFewDecimals();
@@ -143,6 +151,11 @@ interface ISpoke {
     /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
     /// @return assetId The underlying internal uint128 assetId.
     function assetToId(address asset, uint256 tokenId) external view returns (AssetId assetId);
+
+    /// @notice Returns the request manager for a given pool
+    /// @param poolId The pool id
+    /// @return The request manager for the pool
+    function requestManager(PoolId poolId) external view returns (IRequestManager);
 
     /// @notice Updates a contract parameter
     /// @param what Accepts a bytes32 representation of 'gateway', 'investmentManager', 'tokenFactory',
@@ -211,6 +224,61 @@ interface ISpoke {
         bool unpaid
     ) external payable;
 
+    /// @notice Initiates an update to a hub-side contract from spoke
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param target The hub-side target contract (as bytes32 for cross-chain compatibility)
+    /// @param payload The update payload
+    /// @param extraGasLimit Additional gas for cross-chain execution
+    /// @param refund Address to refund excess payment
+    /// @dev Permissionless by choice, forwards caller's address to recipient for permission validation
+    function updateHubContract(
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 target,
+        bytes calldata payload,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
+
+    /// @notice Deploys a new vault
+    ///
+    /// @param poolId The pool id
+    /// @param scId The share class id
+    /// @param assetId The asset id for which we want to deploy a vault
+    /// @param factory The address of the corresponding vault factory
+    /// @return address The address of the deployed vault
+    function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVaultFactory factory)
+        external
+        returns (IVault);
+
+    /// @dev Used only for migrations
+    function registerVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address asset,
+        uint256 tokenId,
+        IVaultFactory factory,
+        IVault vault
+    ) external;
+
+    /// @notice Links a deployed vault to the given pool, share class and asset.
+    ///
+    /// @param poolId The pool id
+    /// @param scId The share class id
+    /// @param assetId The asset id for which we want to deploy a vault
+    /// @param vault The address of the deployed vault
+    function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) external;
+
+    /// @notice Removes the link between a vault and the given pool, share class and asset.
+    ///
+    /// @param poolId The pool id
+    /// @param scId The share class id
+    /// @param assetId The asset id for which we want to deploy a vault
+    /// @param vault The address of the deployed vault
+    function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) external;
+
     /// @notice Returns whether the given pool id is active
     function isPoolActive(PoolId poolId) external view returns (bool);
 
@@ -221,6 +289,19 @@ interface ISpoke {
     /// @param scId The share class id
     /// @return address The address of the share token
     function shareToken(PoolId poolId, ShareClassId scId) external view returns (IShareToken);
+
+    /// @notice Function to get the details of a vault
+    /// @dev    Reverts if vault does not exist
+    ///
+    /// @param vault The address of the vault to be checked for
+    /// @return details The details of the vault including the underlying asset address, token id, asset id
+    function vaultDetails(IVault vault) external view returns (VaultDetails memory details);
+
+    /// @notice Checks whether a given vault is eligible for investing into a share class of a pool
+    ///
+    /// @param vault The address of the vault
+    /// @return bool Whether vault is to a share class
+    function isLinked(IVault vault) external view returns (bool);
 
     /// @notice Returns the price per share for a given pool and share class. The Provided price is defined as
     /// POOL_UNIT/SHARE_UNIT.
@@ -289,15 +370,10 @@ interface ISpoke {
         view
         returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
 
-    /// @notice Returns the request manager for a given pool
-    /// @param poolId The pool id
-    /// @return manager The request manager for the pool
-    function requestManager(PoolId poolId) external view returns (IRequestManager manager);
-
-    /// @notice Updates a share token's vault reference for a specific asset
-    /// @param poolId The pool ID
-    /// @param scId The share class ID
-    /// @param asset The asset address
-    /// @param vault The vault address to set (or address(0) to unset)
-    function setShareTokenVault(PoolId poolId, ShareClassId scId, address asset, address vault) external;
+    /// @notice Returns the address of the vault for a given pool, share class asset and requestManager
+    /// @param manager the request manager associated to the vault, if 0, then it correspond to a full sync vault.
+    function vault(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager)
+        external
+        view
+        returns (IVault vault);
 }

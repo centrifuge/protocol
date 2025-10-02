@@ -118,7 +118,8 @@ contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatew
         vaultDetails_.isLinked = true;
 
         if (tokenId == 0) {
-            spoke.setShareTokenVault(poolId, scId, asset, address(vault_));
+            IShareToken token = spoke.shareToken(poolId, scId);
+            token.updateVault(asset, address(vault_));
         }
 
         emit LinkVault(poolId, scId, asset, tokenId, vault_);
@@ -140,7 +141,8 @@ contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatew
         vaultDetails_.isLinked = false;
 
         if (tokenId == 0) {
-            spoke.setShareTokenVault(poolId, scId, asset, address(0));
+            IShareToken token = spoke.shareToken(poolId, scId);
+            token.updateVault(asset, address(0));
         }
 
         emit UnlinkVault(poolId, scId, asset, tokenId, vault_);

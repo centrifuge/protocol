@@ -141,6 +141,11 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeUpdateHubContract() public {
+        MessageLib.deserializeUpdateHubContract(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
     function testMessageLength() public {
         bytes memory buffer = new bytes(1);
         buffer[0] = bytes1(uint8(type(MessageType).max) + 1);
@@ -627,5 +632,27 @@ contract TestMessageLibIdentities is Test {
         assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
+    }
+
+    function testUpdateHubContract(uint64 poolId, bytes16 scId, bytes32 target, bytes32 sender, bytes memory payload)
+        public
+        pure
+    {
+        MessageLib.UpdateHubContract memory a =
+            MessageLib.UpdateHubContract({poolId: poolId, scId: scId, target: target, sender: sender, payload: payload});
+        MessageLib.UpdateHubContract memory b = MessageLib.deserializeUpdateHubContract(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.target, b.target);
+        assertEq(a.sender, b.sender);
+        assertEq(a.payload, b.payload);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
+
+        // Check the payload length is correctly encoded as little endian
+        assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 }

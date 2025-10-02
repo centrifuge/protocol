@@ -47,7 +47,8 @@ enum MessageType {
     Request,
     RequestCallback,
     SetRequestManager,
-    UpdateGatewayManager
+    UpdateGatewayManager,
+    UpdateHubContract
 }
 
 /// @dev Used internally in the UpdateVault message (not represent a submessage)
@@ -107,7 +108,8 @@ library MessageLib {
         (41  << (uint8(MessageType.Request) - 32) * 8) +
         (41  << (uint8(MessageType.RequestCallback) - 32) * 8) +
         (41  << (uint8(MessageType.SetRequestManager) - 32) * 8) +
-        (42  << (uint8(MessageType.UpdateGatewayManager) - 32) * 8);
+        (42  << (uint8(MessageType.UpdateGatewayManager) - 32) * 8) +
+        (89  << (uint8(MessageType.UpdateHubContract) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -129,6 +131,8 @@ library MessageLib {
         if (kind == uint8(MessageType.UpdateRestriction)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.UpdateContract)) {
+            length += 2 + message.toUint16(length); //payloadLength
+        } else if (kind == uint8(MessageType.UpdateHubContract)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.Request)) {
             length += 2 + message.toUint16(length); //payloadLength
@@ -561,6 +565,36 @@ library MessageLib {
     function serialize(UpdateContract memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
             MessageType.UpdateContract, t.poolId, t.scId, t.target, t.payload.length.toUint16(), t.payload
+        );
+    }
+
+    //---------------------------------------
+    //    UpdateHubContract
+    //---------------------------------------
+
+    struct UpdateHubContract {
+        uint64 poolId;
+        bytes16 scId;
+        bytes32 target;
+        bytes32 sender;
+        bytes payload;
+    }
+
+    function deserializeUpdateHubContract(bytes memory data) internal pure returns (UpdateHubContract memory) {
+        require(messageType(data) == MessageType.UpdateHubContract, UnknownMessageType());
+        uint16 payloadLength = data.toUint16(89);
+        return UpdateHubContract({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            target: data.toBytes32(25),
+            sender: data.toBytes32(57),
+            payload: data.slice(91, payloadLength)
+        });
+    }
+
+    function serialize(UpdateHubContract memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(
+            MessageType.UpdateHubContract, t.poolId, t.scId, t.target, t.sender, t.payload.length.toUint16(), t.payload
         );
     }
 

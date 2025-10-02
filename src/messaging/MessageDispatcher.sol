@@ -25,6 +25,7 @@ import {
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
     IUpdateContractGatewayHandler,
+    IUpdateHubContractGatewayHandler,
     IVaultRegistryGatewayHandler
 } from "../core/interfaces/IGatewayHandlers.sol";
 
@@ -42,12 +43,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     uint16 public immutable localCentrifugeId;
 
     IGateway public gateway;
-    IMultiAdapter public multiAdapter;
     ISpokeGatewayHandler public spoke;
+    IMultiAdapter public multiAdapter;
     IHubGatewayHandler public hubHandler;
     IBalanceSheetGatewayHandler public balanceSheet;
-    IVaultRegistryGatewayHandler public vaultRegistry;
     IUpdateContractGatewayHandler public contractUpdater;
+    IUpdateHubContractGatewayHandler public hubContractUpdater;
+    IVaultRegistryGatewayHandler public vaultRegistry;
 
     constructor(
         uint16 localCentrifugeId_,
@@ -73,6 +75,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
+        else if (what == "hubContractUpdater") hubContractUpdater = IUpdateHubContractGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
@@ -173,16 +176,14 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendNotifyPricePoolPerShare(
-        uint16 chainId,
-        PoolId poolId,
-        ShareClassId scId,
-        D18 pricePoolPerShare,
-        address refund
-    ) external payable auth {
+    function sendNotifyPricePoolPerShare(uint16 chainId, PoolId poolId, ShareClassId scId, D18 price, address refund)
+        external
+        payable
+        auth
+    {
         uint64 timestamp = block.timestamp.toUint64();
         if (chainId == localCentrifugeId) {
-            spoke.updatePricePoolPerShare(poolId, scId, pricePoolPerShare, timestamp);
+            spoke.updatePricePoolPerShare(poolId, scId, price, timestamp);
             _refund(refund);
         } else {
             _send(
@@ -190,7 +191,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 MessageLib.NotifyPricePoolPerShare({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
-                    price: pricePoolPerShare.raw(),
+                    price: price.raw(),
                     timestamp: timestamp
                 }).serialize(),
                 0,
@@ -200,16 +201,14 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendNotifyPricePoolPerAsset(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        D18 pricePoolPerAsset,
-        address refund
-    ) external payable auth {
+    function sendNotifyPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price, address refund)
+        external
+        payable
+        auth
+    {
         uint64 timestamp = block.timestamp.toUint64();
         if (assetId.centrifugeId() == localCentrifugeId) {
-            spoke.updatePricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset, timestamp);
+            spoke.updatePricePoolPerAsset(poolId, scId, assetId, price, timestamp);
             _refund(refund);
         } else {
             _send(
@@ -218,7 +217,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     assetId: assetId.raw(),
-                    price: pricePoolPerAsset.raw(),
+                    price: price.raw(),
                     timestamp: timestamp
                 }).serialize(),
                 0,
@@ -608,6 +607,37 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
+    /// @inheritdoc ISpokeMessageSender
+    function sendUpdateHubContract(
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 target,
+        bytes32 sender,
+        bytes calldata payload,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable auth {
+        uint16 hubCentrifugeId = poolId.centrifugeId();
+
+        if (hubCentrifugeId == localCentrifugeId) {
+            hubContractUpdater.execute(poolId, scId, sender.toAddress(), target.toAddress(), payload);
+            _refund(refund);
+        } else {
+            _send(
+                hubCentrifugeId,
+                MessageLib.UpdateHubContract({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    target: target,
+                    sender: sender,
+                    payload: payload
+                }).serialize(),
+                extraGasLimit,
+                refund
+            );
+        }
+    }
+
     /// @inheritdoc IHubMessageSender
     function sendRequestCallback(
         PoolId poolId,
@@ -685,7 +715,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     function _refund(address refund) internal {
         if (msg.value > 0) {
-            (bool success,) = payable(refund).call{value: msg.value}("");
+            (bool success,) = payable(refund).call{value: msg.value}(new bytes(0));
             require(success, CannotRefund());
         }
     }

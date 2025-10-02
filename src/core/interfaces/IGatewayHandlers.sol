@@ -158,6 +158,17 @@ interface IUpdateContractGatewayHandler {
     function execute(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
 }
 
+/// @notice Interface for the update hub contract method, called by message
+interface IUpdateHubContractGatewayHandler {
+    /// @notice Updates the hub-side target address. Generic update function from Spoke to Hub
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  sender The spoke-side contract that initiated the update
+    /// @param  target The hub-side target address to be called
+    /// @param  update The payload to be processed by the target address
+    function execute(PoolId poolId, ShareClassId scId, address sender, address target, bytes memory update) external;
+}
+
 /// @notice Interface for methods implemented by a balance sheet
 interface IBalanceSheetGatewayHandler {
     function updateManager(PoolId poolId, address who, bool canManage) external;

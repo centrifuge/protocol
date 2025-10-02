@@ -334,11 +334,8 @@ contract VaultRegistryTestLinkVault is VaultRegistryTest {
         _utilAddPoolAndShareClass(NO_HOOK);
         _utilDeployVault(erc20);
 
-        vm.mockCall(
-            address(spoke),
-            abi.encodeWithSelector(spoke.setShareTokenVault.selector, POOL_A, SC_1, erc20, vault),
-            abi.encode()
-        );
+        vm.mockCall(address(share), abi.encodeWithSelector(spoke.shareToken.selector, POOL_A, SC_1), abi.encode(share));
+        vm.mockCall(address(share), abi.encodeWithSelector(share.updateVault.selector, erc20, vault), abi.encode());
 
         vm.prank(AUTH);
         vm.expectEmit();
@@ -435,20 +432,13 @@ contract VaultRegistryTestUnlinkVault is VaultRegistryTest {
         _utilAddPoolAndShareClass(NO_HOOK);
         _utilDeployVault(erc20);
 
-        vm.mockCall(
-            address(spoke),
-            abi.encodeWithSelector(spoke.setShareTokenVault.selector, POOL_A, SC_1, erc20, vault),
-            abi.encode()
-        );
+        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.shareToken.selector, POOL_A, SC_1), abi.encode(share));
+        vm.mockCall(address(share), abi.encodeWithSelector(share.updateVault.selector, erc20, vault), abi.encode());
 
         vm.prank(AUTH);
         vaultRegistry.linkVault(POOL_A, SC_1, ASSET_ID_20, vault);
 
-        vm.mockCall(
-            address(spoke),
-            abi.encodeWithSelector(spoke.setShareTokenVault.selector, POOL_A, SC_1, erc20, address(0)),
-            abi.encode()
-        );
+        vm.mockCall(address(share), abi.encodeWithSelector(share.updateVault.selector, erc20, address(0)), abi.encode());
 
         vm.prank(AUTH);
         vm.expectEmit();
