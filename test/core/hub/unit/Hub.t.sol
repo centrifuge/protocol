@@ -11,6 +11,7 @@ import {AccountId} from "../../../../src/core/types/AccountId.sol";
 import {IAdapter} from "../../../../src/core/interfaces/IAdapter.sol";
 import {IGateway} from "../../../../src/core/interfaces/IGateway.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {IFeeHook} from "../../../../src/core/hub/interfaces/IFeeHook.sol";
 import {IHoldings} from "../../../../src/core/hub/interfaces/IHoldings.sol";
 import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
 import {IMultiAdapter} from "../../../../src/core/interfaces/IMultiAdapter.sol";
@@ -21,6 +22,14 @@ import {IAccounting, JournalEntry} from "../../../../src/core/hub/interfaces/IAc
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
 
 import "forge-std/Test.sol";
+
+contract MockFeeHook is IFeeHook {
+    mapping(PoolId => mapping (ShareClassId => uint32)) public calls;
+
+    function accrue(PoolId poolId, ShareClassId scId) external {
+        calls[poolId][scId]++;
+    }
+}
 
 contract TestCommon is Test {
     uint16 constant CHAIN_A = 23;
@@ -38,6 +47,7 @@ contract TestCommon is Test {
     IMultiAdapter immutable multiAdapter = IMultiAdapter(makeAddr("MultiAdapter"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
+    MockFeeHook immutable feeHook = new MockFeeHook();
 
     Hub hub = new Hub(gateway, holdings, accounting, hubRegistry, multiAdapter, scm, address(this));
 
@@ -50,6 +60,8 @@ contract TestCommon is Test {
 
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatching.selector), abi.encode());
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatching.selector), abi.encode());
+
+        hub.file("feeHook", address(feeHook));
     }
 }
 
@@ -225,6 +237,21 @@ contract TestInitializeLiability is TestCommon {
         vm.prank(ADMIN);
         vm.expectRevert(IHubRegistry.AssetNotFound.selector);
         hub.initializeLiability(POOL_A, SC_A, ASSET_A, IValuation(address(1)), AccountId.wrap(1), AccountId.wrap(1));
+    }
+}
+
+contract TestUpdateSharePrice is TestCommon {
+    function testUpdateSharePriceAccruesFees() public {
+        vm.mockCall(
+            address(scm),
+            abi.encodeWithSelector(IShareClassManager.updateSharePrice.selector, POOL_A, SC_A, d18(1, 1)),
+            abi.encode(false)
+        );
+
+        vm.prank(ADMIN);
+        hub.updateSharePrice(POOL_A, SC_A, d18(1, 1));
+
+        assertEq(feeHook.calls(POOL_A, SC_A), 1);
     }
 }
 
