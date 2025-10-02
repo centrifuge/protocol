@@ -288,20 +288,41 @@ abstract contract Properties is
     }
 
     /// @dev Property: user share balance correctly changes by the same amount of shares added to the escrow
-    function share_balance_delta() public {
+    function property_share_balance_delta() public {
         if (currentOperation == OpType.REQUEST_REDEEM) {
             uint256 shareBalanceDelta;
             uint256 escrowBalanceDelta;
             unchecked {
-                shareBalanceDelta = _before.shareTokenBalance[
-                    _getActor()
-                ] - _after.shareTokenBalance[_getActor()];
+                shareBalanceDelta =
+                    _before.shareTokenBalance[_getActor()] -
+                    _after.shareTokenBalance[_getActor()];
 
-                escrowBalanceDelta = _after.escrowTrancheTokenBalance -
+                escrowBalanceDelta =
+                    _after.escrowTrancheTokenBalance -
                     _before.escrowTrancheTokenBalance;
             }
 
             eq(shareBalanceDelta, escrowBalanceDelta, "7540-12");
+        }
+    }
+
+    /// @dev Property: user asset balance correctly changes by the same amount of assets added to the escrow
+    // NOTE: most likely need a way to ensure that the tx didn't revert, in this case balance deltas should both be 0 though
+    function property_asset_balance_delta() public {
+        if (currentOperation == OpType.REQUEST_DEPOSIT) {
+            uint256 assetBalanceDelta;
+            uint256 escrowBalanceDelta;
+            unchecked {
+                assetBalanceDelta =
+                    _before.assetTokenBalance[_getActor()] -
+                    _after.assetTokenBalance[_getActor()];
+
+                escrowBalanceDelta =
+                    _after.escrowAssetBalance -
+                    _before.escrowAssetBalance;
+            }
+
+            eq(assetBalanceDelta, escrowBalanceDelta, "7540-11");
         }
     }
 

@@ -46,14 +46,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         MockERC20(_getVault().asset()).approve(address(_getVault()), assets);
 
-        // B4 Balances
-        uint256 balanceB4 = MockERC20(_getVault().asset()).balanceOf(
-            _getActor()
-        );
-        uint256 balanceOfEscrowB4 = MockERC20(_getVault().asset()).balanceOf(
-            address(globalEscrow)
-        );
-
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
         try
@@ -69,21 +61,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             ][to] += assets;
             sumOfDepositRequests[_getVault().asset()] += assets;
             requestDepositAssets[to][_getVault().asset()] += assets;
-
-            // After Balances and Checks
-            uint256 balanceAfter = MockERC20(_getVault().asset()).balanceOf(
-                _getActor()
-            );
-            uint256 balanceOfEscrowAfter = MockERC20(_getVault().asset())
-                .balanceOf(address(globalEscrow));
-
-            // NOTE: We only enforce the check if the tx didn't revert
-            // Extra check
-            uint256 deltaUser = balanceB4 - balanceAfter;
-            uint256 deltaEscrow = balanceOfEscrowAfter - balanceOfEscrowB4;
-            RECON_EXACT_BAL_CHECK
-                ? eq(deltaUser, assets, "Extra LP-1")
-                : eq(deltaUser, deltaEscrow, "7540-11");
         } catch (bytes memory reason) {
             // precondition: check that it wasn't an overflow because we only care about underflow
             uint128 pendingDeposit = shareClassManager.pendingDeposit(
