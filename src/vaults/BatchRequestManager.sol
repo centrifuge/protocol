@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {RequestCallbackMessageLib} from "./libraries/RequestCallbackMessageLib.sol";
+import {RequestMessageLib, RequestType as RequestMessageType} from "./libraries/RequestMessageLib.sol";
 import {
     IBatchRequestManager,
     EpochInvestAmounts,
@@ -27,9 +29,6 @@ import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
 import {IHubRequestManagerCallback} from "../core/hub/interfaces/IHubRequestManagerCallback.sol";
 import {IHubRequestManager, IHubRequestManagerNotifications} from "../core/hub/interfaces/IHubRequestManager.sol";
-
-import {RequestCallbackMessageLib} from "../vaults/libraries/RequestCallbackMessageLib.sol";
-import {RequestMessageLib, RequestType as RequestMessageType} from "../vaults/libraries/RequestMessageLib.sol";
 
 /// @title  Batch Request Manager
 /// @notice Manager for handling deposit/redeem requests, epochs, and fulfillment logic for share classes
