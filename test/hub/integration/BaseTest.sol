@@ -15,13 +15,14 @@ import {MAX_MESSAGE_COST} from "../../../src/common/interfaces/IGasService.sol";
 
 import {IHubRequestManager} from "../../../src/hub/interfaces/IHubRequestManager.sol";
 
-import {HubDeployer, HubActionBatcher, CommonInput} from "../../../script/HubDeployer.s.sol";
+import {HubActionBatcher, CommonInput} from "../../../script/HubDeployer.s.sol";
+import {ExtendedHubDeployer, ExtendedHubActionBatcher} from "../../../script/ExtendedHubDeployer.s.sol";
 
 import {MockVaults} from "../mocks/MockVaults.sol";
 
 import "forge-std/Test.sol";
 
-contract BaseTest is HubDeployer, Test {
+contract BaseTest is ExtendedHubDeployer, Test {
     uint16 constant CHAIN_CP = 5;
     uint16 constant CHAIN_CV = 6;
 
@@ -84,12 +85,12 @@ contract BaseTest is HubDeployer, Test {
             version: bytes32(0)
         });
 
-        HubActionBatcher batcher = new HubActionBatcher();
+        ExtendedHubActionBatcher batcher = new ExtendedHubActionBatcher();
         labelAddresses("");
-        deployHub(input, batcher);
+        deployExtendedHub(input, batcher);
         _mockStuff(batcher);
+        removeExtendedHubDeployerAccess(batcher);
         hubRequestManager = new MockHubRequestManager();
-        removeHubDeployerAccess(batcher);
 
         // Initialize accounts
         vm.deal(FM, 1 ether);

@@ -104,6 +104,10 @@ contract HubDeployer is CommonDeployer, HubConstants {
     }
 
     function _preDeployHub(CommonInput memory input, HubActionBatcher batcher) internal {
+        if (address(hub) != address(0)) {
+            return; // Already deployed. Make this method idempotent.
+        }
+
         _preDeployCommon(input, batcher);
 
         hubRegistry = HubRegistry(
@@ -173,6 +177,10 @@ contract HubDeployer is CommonDeployer, HubConstants {
     }
 
     function removeHubDeployerAccess(HubActionBatcher batcher) public {
+        if (hub.wards(address(batcher)) == 0) {
+            return; // Already removed. Make this method idempotent.
+        }
+
         removeCommonDeployerAccess(batcher);
         batcher.revokeHub(_hubReport());
     }
