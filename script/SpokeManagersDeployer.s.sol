@@ -4,13 +4,13 @@ pragma solidity 0.8.28;
 import {CommonInput} from "./CommonDeployer.s.sol";
 import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "./SpokeDeployer.s.sol";
 
-import {QueueManager} from "../src/managers/QueueManager.sol";
-import {VaultDecoder} from "../src/managers/decoders/VaultDecoder.sol";
-import {CircleDecoder} from "../src/managers/decoders/CircleDecoder.sol";
-import {OnOfframpManagerFactory} from "../src/managers/OnOfframpManager.sol";
-import {MerkleProofManagerFactory} from "../src/managers/MerkleProofManager.sol";
+import {QueueManager} from "../src/managers/spoke/QueueManager.sol";
+import {VaultDecoder} from "../src/managers/spoke/decoders/VaultDecoder.sol";
+import {CircleDecoder} from "../src/managers/spoke/decoders/CircleDecoder.sol";
+import {OnOfframpManagerFactory} from "../src/managers/spoke/OnOfframpManager.sol";
+import {MerkleProofManagerFactory} from "../src/managers/spoke/MerkleProofManager.sol";
 
-struct ManagersReport {
+struct SpokeManagersReport {
     SpokeReport spoke;
     QueueManager queueManager;
     OnOfframpManagerFactory onOfframpManagerFactory;
@@ -19,8 +19,8 @@ struct ManagersReport {
     CircleDecoder circleDecoder;
 }
 
-contract ManagersActionBatcher is SpokeActionBatcher {
-    function engageManagers(ManagersReport memory report) public onlyDeployer {
+contract SpokeManagersActionBatcher is SpokeActionBatcher {
+    function engageManagers(SpokeManagersReport memory report) public onlyDeployer {
         // rely QueueManager on Gateway
         report.spoke.common.gateway.rely(address(report.queueManager));
 
@@ -28,24 +28,24 @@ contract ManagersActionBatcher is SpokeActionBatcher {
         report.queueManager.rely(address(report.spoke.common.root));
     }
 
-    function revokeManagers(ManagersReport memory report) public onlyDeployer {
+    function revokeManagers(SpokeManagersReport memory report) public onlyDeployer {
         report.queueManager.deny(address(this));
     }
 }
 
-contract ManagersDeployer is SpokeDeployer {
+contract SpokeManagersDeployer is SpokeDeployer {
     QueueManager public queueManager;
     OnOfframpManagerFactory public onOfframpManagerFactory;
     MerkleProofManagerFactory public merkleProofManagerFactory;
     VaultDecoder public vaultDecoder;
     CircleDecoder public circleDecoder;
 
-    function deployManagers(CommonInput memory input, ManagersActionBatcher batcher) public {
-        _preDeployManagers(input, batcher);
-        _postDeployManagers(batcher);
+    function deploySpokeManagers(CommonInput memory input, SpokeManagersActionBatcher batcher) public {
+        _preDeploySpokeManagers(input, batcher);
+        _postDeploySpokeManagers(batcher);
     }
 
-    function _preDeployManagers(CommonInput memory input, ManagersActionBatcher batcher) internal {
+    function _preDeploySpokeManagers(CommonInput memory input, SpokeManagersActionBatcher batcher) internal {
         _preDeploySpoke(input, batcher);
 
         queueManager = QueueManager(
@@ -79,7 +79,7 @@ contract ManagersDeployer is SpokeDeployer {
         circleDecoder =
             CircleDecoder(create3(generateSalt("circleDecoder"), abi.encodePacked(type(CircleDecoder).creationCode)));
 
-        batcher.engageManagers(_managersReport());
+        batcher.engageManagers(_spokeManagersReport());
 
         register("queueManager", address(queueManager));
         register("onOfframpManagerFactory", address(onOfframpManagerFactory));
@@ -88,18 +88,18 @@ contract ManagersDeployer is SpokeDeployer {
         register("circleDecoder", address(circleDecoder));
     }
 
-    function _postDeployManagers(ManagersActionBatcher batcher) internal {
+    function _postDeploySpokeManagers(SpokeManagersActionBatcher batcher) internal {
         _postDeploySpoke(batcher);
     }
 
-    function removeManagersDeployerAccess(ManagersActionBatcher batcher) public {
+    function removeSpokeManagersDeployerAccess(SpokeManagersActionBatcher batcher) public {
         removeSpokeDeployerAccess(batcher);
 
-        batcher.revokeManagers(_managersReport());
+        batcher.revokeManagers(_spokeManagersReport());
     }
 
-    function _managersReport() internal view returns (ManagersReport memory) {
-        return ManagersReport(
+    function _spokeManagersReport() internal view returns (SpokeManagersReport memory) {
+        return SpokeManagersReport(
             _spokeReport(),
             queueManager,
             onOfframpManagerFactory,

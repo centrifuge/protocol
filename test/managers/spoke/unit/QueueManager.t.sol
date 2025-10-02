@@ -1,21 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
-import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
+import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {IGateway} from "../../../src/common/interfaces/IGateway.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-import {IBatchedMulticall} from "../../../src/common/interfaces/IBatchedMulticall.sol";
+import {PoolId} from "../../../../src/common/types/PoolId.sol";
+import {AssetId} from "../../../../src/common/types/AssetId.sol";
+import {IGateway} from "../../../../src/common/interfaces/IGateway.sol";
+import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
+import {IBatchedMulticall} from "../../../../src/common/interfaces/IBatchedMulticall.sol";
 
-import {IBalanceSheet} from "../../../src/spoke/interfaces/IBalanceSheet.sol";
-import {IUpdateContract} from "../../../src/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";
-
-import {QueueManager} from "../../../src/managers/QueueManager.sol";
-import {IQueueManager} from "../../../src/managers/interfaces/IQueueManager.sol";
+import {QueueManager} from "../../../../src/managers/spoke/QueueManager.sol";
+import {IBalanceSheet} from "../../../../src/spoke/interfaces/IBalanceSheet.sol";
+import {IUpdateContract} from "../../../../src/spoke/interfaces/IUpdateContract.sol";
+import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueManager.sol";
+import {UpdateContractMessageLib} from "../../../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import "forge-std/Test.sol";
 
