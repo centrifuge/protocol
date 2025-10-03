@@ -14,6 +14,13 @@ package admin {
     class TokenRecoverer
 }
 
+package adapters {
+    class AxelarAdapter
+    class WormholeAdapter
+    class LayerZeroAdapter
+    class RecoveryAdapter
+}
+
 class Gateway
 class BatchedMulticall
 class MultiAdapter
@@ -29,6 +36,16 @@ Gateway --> MultiAdapter
 Gateway --> PoolEscrow
 
 MultiAdapter --> "n" IAdapter
+
+IAdapter <|-- AxelarAdapter
+IAdapter <|-- WormholeAdapter
+IAdapter <|-- LayerZeroAdapter
+IAdapter <|-- RecoveryAdapter
+
+AxelarAdapter --> Gateway
+WormholeAdapter --> Gateway
+LayerZeroAdapter --> Gateway
+RecoveryAdapter --> Gateway
 
 MessageProcessor --> Root
 MessageProcessor --> TokenRecoverer
