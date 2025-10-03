@@ -26,16 +26,16 @@ abstract contract ReconPoolManager {
     error PoolNotAdded();
 
     /// @notice Returns the current active asset
-    function _getPool() internal view returns (uint64) {
-        return __pool;
+    function _getPool() internal view returns (PoolId) {
+        return PoolId.wrap(__pool);
     }
 
     /// @notice Returns all pools being used
-    function _getPools() internal view returns (uint64[] memory) {
+    function _getPools() internal view returns (PoolId[] memory) {
         uint256[] memory rawValues = _pools.values();
-        uint64[] memory result = new uint64[](rawValues.length);
+        PoolId[] memory result = new PoolId[](rawValues.length);
         for (uint256 i = 0; i < rawValues.length; i++) {
-            result[i] = uint64(rawValues[i]);
+            result[i] = PoolId.wrap(uint64(rawValues[i]));
         }
         return result;
     }
@@ -64,7 +64,8 @@ abstract contract ReconPoolManager {
     /// @notice Switches the current pool based on the entropy
     /// @param entropy The entropy to choose a random pool in the set for switching
     function _switchPool(uint256 entropy) internal {
-        uint64 target = uint64(_pools.at(entropy % _pools.length()));
+        uint256[] memory pools = _pools.values();
+        uint64 target = uint64(pools[entropy % pools.length]);
         __pool = target;
     }
 }
