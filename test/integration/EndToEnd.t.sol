@@ -62,13 +62,7 @@ import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {RefundEscrowFactory} from "../../src/vaults/factories/RefundEscrowFactory.sol";
 
-import {
-    FullActionBatcher,
-    FullDeployer,
-    FullInput,
-    noAdaptersInput,
-    CoreInput
-} from "../../../../script/FullDeployer.s.sol";
+import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 

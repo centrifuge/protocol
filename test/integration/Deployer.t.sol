@@ -33,6 +33,8 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
     address immutable LAYERZERO_ENDPOINT = makeAddr("LayerZeroEndpoint");
     address immutable LAYERZERO_DELEGATE = makeAddr("LayerZeroDelegate");
 
+    bytes constant SIMPLE_CONTRACT = hex"6001600160005260206000f3";
+
     function _mockRealWormholeContracts() private {
         vm.mockCall(
             WORMHOLE_RELAYER,
@@ -55,11 +57,19 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
         );
     }
 
+    /// @dev Mock deployed code for validation check which requires deployed code length > 0
+    function _mockBridgeContracts() internal {
+        vm.etch(WORMHOLE_RELAYER, SIMPLE_CONTRACT);
+        vm.etch(AXELAR_GATEWAY, SIMPLE_CONTRACT);
+        vm.etch(AXELAR_GAS_SERVICE, SIMPLE_CONTRACT);
+    }
+
     function setUp() public virtual {
         FullActionBatcher batcher = new FullActionBatcher();
 
         _mockRealWormholeContracts();
         _mockRealLayerZeroContracts();
+        _mockBridgeContracts();
         deployFull(
             FullInput({
                 core: CoreInput({centrifugeId: CENTRIFUGE_ID, version: bytes32(0), root: address(0)}),
@@ -636,7 +646,15 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         assertEq(address(oracleValuation.hub()), address(hub));
     }
 
-    function testNavManager() public view {
+    function testNavManager(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(holdings));
+        vm.assume(nonWard != address(hubHandler));
+
+        assertEq(navManager.wards(address(holdings)), 1);
+        assertEq(navManager.wards(address(hubHandler)), 1);
+        assertEq(navManager.wards(nonWard), 0);
+
         // dependencies set correctly
         assertEq(address(navManager.hub()), address(hub));
     }
@@ -702,21 +720,6 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
 }
 
 contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
-    bytes constant SIMPLE_CONTRACT = hex"6001600160005260206000f3";
-
-    function setUp() public override {
-        _mockBridgeContracts();
-        super.setUp();
-    }
-
-    /// @dev Mock deployed code for validation check which requires deployed code length > 0
-    function _mockBridgeContracts() internal {
-        vm.etch(WORMHOLE_RELAYER, SIMPLE_CONTRACT);
-        vm.etch(AXELAR_GATEWAY, SIMPLE_CONTRACT);
-        vm.etch(AXELAR_GAS_SERVICE, SIMPLE_CONTRACT);
-    }
-
-    /// @dev Helper function to mock a contract with deployed bytecode
     function _mockNonEmptyContract(address contractAddr) internal {
         vm.etch(contractAddr, SIMPLE_CONTRACT);
     }

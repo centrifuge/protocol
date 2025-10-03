@@ -52,12 +52,9 @@ contract MockMessageProperties is IMessageProperties {
 // -----------------------------------------
 
 contract MultiAdapterExt is MultiAdapter {
-    constructor(
-        uint16 localCentrifugeId_,
-        IMessageHandler gateway_,
-        IMessageProperties messageProperties_,
-        address deployer
-    ) MultiAdapter(localCentrifugeId_, gateway_, messageProperties_, deployer) {}
+    constructor(uint16 localCentrifugeId_, IMessageHandler gateway_, address deployer)
+        MultiAdapter(localCentrifugeId_, gateway_, deployer)
+    {}
 
     function adapterDetails(uint16 centrifugeId, PoolId poolId, IAdapter adapter)
         public
@@ -98,7 +95,7 @@ contract MultiAdapterTest is Test {
 
     MockGateway gateway = new MockGateway();
     MockMessageProperties messageProperties = new MockMessageProperties();
-    MultiAdapterExt multiAdapter = new MultiAdapterExt(LOCAL_CENT_ID, gateway, messageProperties, address(this));
+    MultiAdapterExt multiAdapter = new MultiAdapterExt(LOCAL_CENT_ID, gateway, address(this));
 
     address immutable ANY = makeAddr("ANY");
     address immutable REFUND = makeAddr("REFUND");
@@ -130,6 +127,8 @@ contract MultiAdapterTest is Test {
         threeAdapters.push(adapter1);
         threeAdapters.push(adapter2);
         threeAdapters.push(adapter3);
+
+        multiAdapter.file("messageProperties", address(messageProperties));
     }
 
     function testConstructor() public view {

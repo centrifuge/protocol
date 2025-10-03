@@ -187,6 +187,7 @@ contract FullActionBatcher is CoreActionBatcher {
 
         // Rely hubHandler
         report.batchRequestManager.rely(address(report.core.hubHandler));
+        report.navManager.rely(address(report.core.hubHandler));
 
         // Rely asyncRequestManager
         report.globalEscrow.rely(address(report.asyncRequestManager));
@@ -217,10 +218,8 @@ contract FullActionBatcher is CoreActionBatcher {
         report.core.messageProcessor.file("tokenRecoverer", address(report.tokenRecoverer));
 
         report.opsGuardian.file("opsSafe", address(opsSafe));
-        report.opsGuardian.file("hub", address(report.core.hub));
 
         report.protocolGuardian.file("safe", address(adminSafe));
-        report.protocolGuardian.file("sender", address(report.core.messageDispatcher));
 
         report.refundEscrowFactory.file(bytes32("controller"), address(report.asyncRequestManager));
 
@@ -235,6 +234,7 @@ contract FullActionBatcher is CoreActionBatcher {
         report.batchRequestManager.file("hub", address(report.core.hub));
 
         // Endorse methods
+        report.root.endorse(address(report.core.balanceSheet));
         report.root.endorse(address(report.asyncRequestManager));
         report.root.endorse(address(report.globalEscrow));
         report.root.endorse(address(report.vaultRouter));
@@ -346,7 +346,7 @@ contract FullDeployer is CoreDeployer {
                 generateSalt("protocolGuardian"),
                 abi.encodePacked(
                     type(ProtocolGuardian).creationCode,
-                    abi.encode(ISafe(address(batcher)), root, gateway, multiAdapter)
+                    abi.encode(ISafe(address(batcher)), root, gateway, multiAdapter, messageDispatcher)
                 )
             )
         );
@@ -354,9 +354,7 @@ contract FullDeployer is CoreDeployer {
         opsGuardian = OpsGuardian(
             create3(
                 generateSalt("opsGuardian"),
-                abi.encodePacked(
-                    type(OpsGuardian).creationCode, abi.encode(ISafe(address(batcher)), address(0), multiAdapter)
-                )
+                abi.encodePacked(type(OpsGuardian).creationCode, abi.encode(ISafe(address(batcher)), hub, multiAdapter))
             )
         );
 

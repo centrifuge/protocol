@@ -46,7 +46,7 @@ contract ProtocolGuardianTest is Test {
     ProtocolGuardian protocolGuardian;
 
     function setUp() public {
-        protocolGuardian = new ProtocolGuardian(SAFE, root, gateway, multiAdapter);
+        protocolGuardian = new ProtocolGuardian(SAFE, root, gateway, multiAdapter, sender);
         vm.deal(address(SAFE), 1 ether);
     }
 

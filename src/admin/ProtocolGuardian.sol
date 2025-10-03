@@ -26,11 +26,12 @@ contract ProtocolGuardian is IProtocolGuardian {
     IMultiAdapter public multiAdapter;
     IRootMessageSender public sender;
 
-    constructor(ISafe safe_, IRoot root_, IGateway gateway_, IMultiAdapter multiAdapter_) {
+    constructor(ISafe safe_, IRoot root_, IGateway gateway_, IMultiAdapter multiAdapter_, IRootMessageSender sender_) {
         safe = safe_;
         root = root_;
         gateway = gateway_;
         multiAdapter = multiAdapter_;
+        sender = sender_;
     }
 
     modifier onlySafe() {

@@ -132,6 +132,7 @@ contract CoreActionBatcher is Constants {
         report.gateway.rely(address(report.spoke));
         report.messageDispatcher.rely(address(report.spoke));
         report.tokenFactory.rely(address(report.spoke));
+        report.poolEscrowFactory.rely(address(report.spoke));
 
         // Rely balanceSheet
         report.gateway.rely(address(report.balanceSheet));
@@ -144,8 +145,10 @@ contract CoreActionBatcher is Constants {
 
         // Rely hub
         report.gateway.rely(address(report.hub));
+        report.multiAdapter.rely(address(report.hub));
         report.accounting.rely(address(report.hub));
         report.holdings.rely(address(report.hub));
+        report.hubRegistry.rely(address(report.hub));
         report.shareClassManager.rely(address(report.hub));
         report.messageDispatcher.rely(address(report.hub));
 
@@ -159,6 +162,7 @@ contract CoreActionBatcher is Constants {
         // File
         report.gateway.file("adapter", address(report.multiAdapter));
         report.gateway.file("messageLimits", address(report.gasService));
+        report.gateway.file("processor", address(report.messageProcessor));
 
         report.multiAdapter.file("messageProperties", address(report.messageProcessor));
 
