@@ -22,7 +22,8 @@ import {IHubRequestManager} from "../src/core/hub/interfaces/IHubRequestManager.
 import {VaultUpdateKind} from "../src/messaging/libraries/MessageLib.sol";
 import {UpdateContractMessageLib} from "../src/messaging/libraries/UpdateContractMessageLib.sol";
 
-import {Guardian} from "../src/admin/Guardian.sol";
+import {OpsGuardian} from "../src/admin/OpsGuardian.sol";
+import {ProtocolGuardian} from "../src/admin/ProtocolGuardian.sol";
 
 import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
@@ -56,7 +57,7 @@ contract TestData is FullDeployer {
 
         uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
 
-        admin = vm.envAddress("ADMIN");
+        admin = vm.envAddress("PROTOCOL_ADMIN");
         spoke = Spoke(vm.parseJsonAddress(config, "$.contracts.spoke"));
         hub = Hub(vm.parseJsonAddress(config, "$.contracts.hub"));
         shareClassManager = ShareClassManager(vm.parseJsonAddress(config, "$.contracts.shareClassManager"));
@@ -72,7 +73,8 @@ contract TestData is FullDeployer {
             AsyncRequestManager(payable(vm.parseJsonAddress(config, "$.contracts.asyncRequestManager")));
         batchRequestManager = BatchRequestManager(vm.parseJsonAddress(config, "$.contracts.batchRequestManager"));
         syncManager = SyncManager(vm.parseJsonAddress(config, "$.contracts.syncManager"));
-        guardian = Guardian(vm.parseJsonAddress(config, "$.contracts.guardian"));
+        protocolGuardian = ProtocolGuardian(vm.parseJsonAddress(config, "$.contracts.protocolGuardian"));
+        opsGuardian = OpsGuardian(vm.parseJsonAddress(config, "$.contracts.opsGuardian"));
 
         vm.startBroadcast();
         _configureTestData(centrifugeId);
@@ -107,7 +109,7 @@ contract TestData is FullDeployer {
         state.poolId = hubRegistry.poolId(centrifugeId, 1);
         asyncRequestManager.depositSubsidy{value: 0.5 ether}(state.poolId);
 
-        guardian.createPool(state.poolId, msg.sender, USD_ID);
+        opsGuardian.createPool(state.poolId, msg.sender, USD_ID);
         hub.updateHubManager(state.poolId, admin, true);
         state.scId = shareClassManager.previewNextShareClassId(state.poolId);
 
@@ -170,7 +172,7 @@ contract TestData is FullDeployer {
         state.vault.requestDeposit(1_000_000e6, msg.sender, msg.sender);
 
         // Fulfill deposit request
-        state.nowDepositEpoch = batchRequestManager.nowDepositEpoch(state.scId, assetId);
+        state.nowDepositEpoch = batchRequestManager.nowDepositEpoch(state.poolId, state.scId, assetId);
         batchRequestManager.approveDeposits(
             state.poolId, state.scId, assetId, state.nowDepositEpoch, 1_000_000e6, d18(1, 1), msg.sender
         );
@@ -181,12 +183,13 @@ contract TestData is FullDeployer {
         balanceSheet.submitQueuedAssets(state.poolId, state.scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
 
         // Issue and claim
-        state.nowIssueEpoch = batchRequestManager.nowIssueEpoch(state.scId, assetId);
+        state.nowIssueEpoch = batchRequestManager.nowIssueEpoch(state.poolId, state.scId, assetId);
         batchRequestManager.issueShares(
             state.poolId, state.scId, assetId, state.nowIssueEpoch, d18(1, 1), 0, msg.sender
         );
         balanceSheet.submitQueuedShares(state.poolId, state.scId, DEFAULT_EXTRA_GAS, msg.sender);
-        uint32 maxClaims = batchRequestManager.maxDepositClaims(state.scId, msg.sender.toBytes32(), assetId);
+        uint32 maxClaims =
+            batchRequestManager.maxDepositClaims(state.poolId, state.scId, msg.sender.toBytes32(), assetId);
         batchRequestManager.notifyDeposit(
             state.poolId, state.scId, assetId, msg.sender.toBytes32(), maxClaims, msg.sender
         );
@@ -214,8 +217,8 @@ contract TestData is FullDeployer {
         state.vault.requestRedeem(1_000_000e18, msg.sender, msg.sender);
 
         // Fulfill redeem request
-        state.nowRedeemEpoch = batchRequestManager.nowRedeemEpoch(state.scId, assetId);
-        state.nowRevokeEpoch = batchRequestManager.nowRevokeEpoch(state.scId, assetId);
+        state.nowRedeemEpoch = batchRequestManager.nowRedeemEpoch(state.poolId, state.scId, assetId);
+        state.nowRevokeEpoch = batchRequestManager.nowRevokeEpoch(state.poolId, state.scId, assetId);
 
         batchRequestManager.approveRedeems(
             state.poolId, state.scId, assetId, state.nowRedeemEpoch, 1_000_000e18, d18(1, 1)
@@ -273,7 +276,7 @@ contract TestData is FullDeployer {
         PoolId poolId = hubRegistry.poolId(centrifugeId, 2);
         asyncRequestManager.depositSubsidy(poolId);
 
-        guardian.createPool(poolId, msg.sender, USD_ID);
+        opsGuardian.createPool(poolId, msg.sender, USD_ID);
         hub.updateHubManager(poolId, admin, true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 

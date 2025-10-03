@@ -15,9 +15,9 @@ import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
 import {IRequestManager} from "../../../../src/core/interfaces/IRequestManager.sol";
-import {ITokenFactory} from "../../../../src/core/spoke/factories/ITokenFactory.sol";
-import {IVaultFactory} from "../../../../src/core/spoke/factories/IVaultFactory.sol";
-import {IPoolEscrowFactory} from "../../../../src/core/spoke/factories/IPoolEscrowFactory.sol";
+import {ITokenFactory} from "../../../../src/core/spoke/factories/interfaces/ITokenFactory.sol";
+import {IVaultFactory} from "../../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
+import {IPoolEscrowFactory} from "../../../../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {ISpokeMessageSender, ILocalCentrifugeId} from "../../../../src/core/interfaces/IGatewaySenders.sol";
 
 import {VaultUpdateKind} from "../../../../src/messaging/libraries/MessageLib.sol";

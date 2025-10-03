@@ -10,8 +10,8 @@ import {MockValuation} from "../core/mocks/MockValuation.sol";
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
-import {MAX_MESSAGE_COST as GAS} from "../../src/core/interfaces/IGasService.sol";
 
+import {MAX_MESSAGE_COST as GAS} from "../../src/messaging/interfaces/IGasService.sol";
 import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
 import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
@@ -34,7 +34,7 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
         CommonInput memory input = CommonInput({
             centrifugeId: LOCAL_CENTRIFUGE_ID,
             adminSafe: adminSafe,
-            maxBatchGasLimit: uint128(GAS) * 100,
+            opsSafe: adminSafe,
             version: bytes32(0)
         });
 
@@ -92,7 +92,7 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
 
     function _createPool() internal {
         vm.prank(address(adminSafe));
-        guardian.createPool(POOL_A, FM, USD_ID);
+        opsGuardian.createPool(POOL_A, FM, USD_ID);
 
         vm.prank(FM);
         hub.addShareClass(POOL_A, "ShareClass1", "sc1", bytes32("salt"));

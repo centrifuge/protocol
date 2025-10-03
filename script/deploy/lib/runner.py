@@ -40,7 +40,8 @@ class DeploymentRunner:
         env["VERSION"] = os.environ.get("VERSION", "")
         if self.env_loader.etherscan_api_key is not None:
             env["ETHERSCAN_API_KEY"] = self.env_loader.etherscan_api_key
-        env["ADMIN"] = self.env_loader.admin_address
+        env["PROTOCOL_ADMIN"] = self.env_loader.protocol_admin_address
+        env["OPS_ADMIN"] = self.env_loader.ops_admin_address
         # Also add the vars in .env (if .env is there)
         env_file = ".env"
         if os.path.exists(env_file):
@@ -63,7 +64,8 @@ class DeploymentRunner:
         print_info(f"Chain ID: {self.env_loader.chain_id}")
         if os.environ.get("VERSION"):
             print_info(f"Version (for salt): {os.environ.get("VERSION")}")
-        print_info(f"Admin Account: {format_account(self.env_loader.admin_address)}")
+        print_info(f"Protocol Admin: {format_account(self.env_loader.protocol_admin_address)}")
+        print_info(f"Ops Admin: {format_account(self.env_loader.ops_admin_address)}")
         base_cmd = self._build_command(script_name)
         if self.args.catapulta:
             if self.args.dry_run:

@@ -10,8 +10,8 @@ import {Price} from "../types/Price.sol";
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IVaultFactory} from "../factories/IVaultFactory.sol";
 import {IRequestManager} from "../../interfaces/IRequestManager.sol";
+import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
 
 /// @dev Centrifuge pools
 struct Pool {

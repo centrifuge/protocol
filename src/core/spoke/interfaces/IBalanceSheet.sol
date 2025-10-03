@@ -3,16 +3,16 @@ pragma solidity >=0.5.0;
 
 import {ISpoke} from "./ISpoke.sol";
 import {IPoolEscrow} from "./IPoolEscrow.sol";
+import {IEndorsements} from "./IEndorsements.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
-import {IRoot} from "../../interfaces/IRoot.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IPoolEscrowProvider} from "../factories/IPoolEscrowFactory.sol";
 import {IBatchedMulticall} from "../../interfaces/IBatchedMulticall.sol";
 import {ISpokeMessageSender} from "../../interfaces/IGatewaySenders.sol";
+import {IPoolEscrowProvider} from "../factories/interfaces/IPoolEscrowFactory.sol";
 
 struct ShareQueueAmount {
     // Net queued shares
@@ -75,9 +75,9 @@ interface IBalanceSheet is IBatchedMulticall {
     error FileUnrecognizedParam();
     error CannotTransferFromEndorsedContract();
 
-    function root() external view returns (IRoot);
     function spoke() external view returns (ISpoke);
     function sender() external view returns (ISpokeMessageSender);
+    function endorsements() external view returns (IEndorsements);
     function poolEscrowProvider() external view returns (IPoolEscrowProvider);
 
     function manager(PoolId poolId, address manager) external view returns (bool);

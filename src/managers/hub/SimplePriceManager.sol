@@ -105,7 +105,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
 
         NetworkMetrics storage networkMetrics_ = networkMetrics[poolId][centrifugeId];
         Metrics storage metrics_ = metrics[poolId];
-        uint128 issuance = shareClassManager.issuance(scId, centrifugeId);
+        uint128 issuance = shareClassManager.issuance(poolId, scId, centrifugeId);
 
         metrics_.issuance = metrics_.issuance + issuance - networkMetrics_.issuance;
         metrics_.netAssetValue = metrics_.netAssetValue + netAssetValue - networkMetrics_.netAssetValue;

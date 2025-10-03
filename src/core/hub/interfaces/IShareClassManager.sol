@@ -98,15 +98,21 @@ interface IShareClassManager {
 
     /// @notice Exposes relevant metrics for a share class
     ///
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
     /// @return totalIssuance The total number of shares known to the Hub side
     /// @return pricePoolPerShare The amount of pool units per unit share
-    function metrics(ShareClassId scId) external view returns (uint128 totalIssuance, D18 pricePoolPerShare);
+    function metrics(PoolId poolId, ShareClassId scId)
+        external
+        view
+        returns (uint128 totalIssuance, D18 pricePoolPerShare);
 
     /// @notice Exposes issuance of a share class on a given network
     ///
+    /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param centrifugeId Identifier of the chain
-    function issuance(ShareClassId scId, uint16 centrifugeId) external view returns (uint128);
+    function issuance(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external view returns (uint128);
 
     /// @notice Determines the next share class id for the given pool.
     ///
@@ -123,11 +129,12 @@ interface IShareClassManager {
 
     /// @notice returns The metadata of the share class.
     ///
+    /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @return name The registered name of the share class token
     /// @return symbol The registered symbol of the share class token
     /// @return salt The registered salt of the share class token, used for deterministic deployments
-    function metadata(ShareClassId scId)
+    function metadata(PoolId poolId, ShareClassId scId)
         external
         view
         returns (string memory name, string memory symbol, bytes32 salt);

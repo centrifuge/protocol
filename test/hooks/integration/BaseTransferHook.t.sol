@@ -23,7 +23,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         CommonInput memory input = CommonInput({
             centrifugeId: LOCAL_CENTRIFUGE_ID,
             adminSafe: adminSafe,
-            maxBatchGasLimit: uint128(GAS) * 100,
+            opsSafe: adminSafe,
             version: bytes32(0)
         });
 

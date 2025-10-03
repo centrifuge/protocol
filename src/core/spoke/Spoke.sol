@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {Price} from "./types/Price.sol";
 import {IShareToken} from "./interfaces/IShareToken.sol";
-import {ITokenFactory} from "./factories/ITokenFactory.sol";
 import {ITransferHook} from "./interfaces/ITransferHook.sol";
-import {IPoolEscrowFactory} from "./factories/IPoolEscrowFactory.sol";
+import {ITokenFactory} from "./factories/interfaces/ITokenFactory.sol";
+import {IPoolEscrowFactory} from "./factories/interfaces/IPoolEscrowFactory.sol";
 import {AssetIdKey, Pool, ShareClassDetails, ISpoke} from "./interfaces/ISpoke.sol";
 
 import {Auth} from "../../misc/Auth.sol";
