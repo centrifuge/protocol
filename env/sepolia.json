@@ -22,6 +22,7 @@
     },
     "layerZero": {
       "layerZeroId": "ethereum-sepolia",
+      "layerZeroEid": 40294,
       "endpoint": "0x6edce65403992e310a62460808c4b910d972f10f",
       "deploy": true
     }
