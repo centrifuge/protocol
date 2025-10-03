@@ -15,7 +15,7 @@ import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
 import {ISafe} from "../src/admin/interfaces/ISafe.sol";
 
-import {CoreInput} from "../../script/CoreDeployer.s.sol";
+import {CoreInput} from "./CoreDeployer.s.sol";
 
 import "forge-std/Script.sol";
 
