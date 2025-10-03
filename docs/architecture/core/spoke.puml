@@ -1,0 +1,93 @@
+@startuml spoke
+title Core Spoke Components
+hide empty members
+
+package messaging {
+    class MessageDispatcher
+}
+
+package managers {
+    class OnOfframpManager
+    class MerkleProofManager
+    class QueueManager
+}
+
+package hooks {
+    class FreelyTransferable
+    class FreezeOnly
+    class FullRestrictions
+    class RedemptionRestrictions
+}
+
+package vaults {
+    class AsyncVault
+    class SyncDepositVault
+    class AsyncRequestManager
+    class SyncManager
+    class VaultRouter
+}
+
+class Spoke
+class ShareToken
+class BalanceSheet
+class TokenFactory
+class VaultRegistry
+class ContractUpdater
+class PoolEscrowFactory
+class PoolEscrow
+class Gateway
+
+interface IVaultFactory
+interface IVault
+interface IRequestManager
+interface ITransferHook
+interface IUpdateContract
+
+Spoke --> TokenFactory
+Spoke --> PoolEscrowFactory
+Spoke --> ShareToken
+Spoke --> Gateway
+Spoke --> MessageDispatcher
+Spoke --> VaultRegistry
+Spoke -[norank]-> IRequestManager
+
+VaultRegistry --> IVaultFactory
+VaultRegistry --> AsyncVault
+VaultRegistry --> SyncDepositVault
+
+AsyncVault -up-|> IVault
+SyncDepositVault -up-|> IVault
+
+AsyncVault --> AsyncRequestManager
+SyncDepositVault --> SyncManager
+
+AsyncRequestManager -up-|> IRequestManager
+SyncManager -up-|> IRequestManager
+
+VaultRouter --> VaultRegistry
+
+ContractUpdater --> IUpdateContract
+
+BalanceSheet --> PoolEscrowFactory
+BalanceSheet --> Spoke
+BalanceSheet --> MessageDispatcher
+BalanceSheet --> Gateway
+
+PoolEscrowFactory ..> PoolEscrow
+
+OnOfframpManager --> BalanceSheet
+MerkleProofManager --> BalanceSheet
+QueueManager --> BalanceSheet
+
+ShareToken ..> ITransferHook
+ShareToken --> IVault
+
+ITransferHook <|-- FreelyTransferable
+ITransferHook <|-- FreezeOnly
+ITransferHook <|-- FullRestrictions
+ITransferHook <|-- RedemptionRestrictions
+
+TokenFactory ..> ShareToken
+IVaultFactory ..> IVault
+
+@enduml
