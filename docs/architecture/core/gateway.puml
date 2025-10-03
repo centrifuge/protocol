@@ -1,0 +1,47 @@
+@startuml gateway
+title Gateway & Cross-Chain Infrastructure
+hide empty members
+
+package messaging {
+    class MessageDispatcher
+    class MessageProcessor
+    class GasService
+}
+
+package admin {
+    class Guardian
+    class Root
+    class TokenRecoverer
+}
+
+class Gateway
+class BatchedMulticall
+class MultiAdapter
+class PoolEscrow
+
+interface IAdapter
+
+BatchedMulticall --> Gateway
+
+Gateway --> GasService
+Gateway --> Root
+Gateway --> MultiAdapter
+Gateway --> PoolEscrow
+
+MultiAdapter --> "n" IAdapter
+
+MessageProcessor --> Root
+MessageProcessor --> TokenRecoverer
+MessageProcessor <--> Gateway
+
+MessageDispatcher <--> Root
+MessageDispatcher <--> TokenRecoverer
+MessageDispatcher <--> Gateway
+
+Guardian --> Root
+Guardian --> MessageDispatcher
+Guardian --> MultiAdapter
+
+TokenRecoverer --> Root
+
+@enduml

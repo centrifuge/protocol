@@ -45,15 +45,15 @@ interface IUpdateContract
 
 Spoke --> TokenFactory
 Spoke --> PoolEscrowFactory
-Spoke --> ShareToken
+Spoke --> "n" ShareToken
 Spoke --> Gateway
 Spoke --> MessageDispatcher
 Spoke --> VaultRegistry
 Spoke -[norank]-> IRequestManager
 
-VaultRegistry --> IVaultFactory
-VaultRegistry --> AsyncVault
-VaultRegistry --> SyncDepositVault
+VaultRegistry --> "n" IVaultFactory
+VaultRegistry --> "n" AsyncVault
+VaultRegistry --> "n" SyncDepositVault
 
 AsyncVault -up-|> IVault
 SyncDepositVault -up-|> IVault
