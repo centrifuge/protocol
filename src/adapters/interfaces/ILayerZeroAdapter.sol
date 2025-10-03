@@ -3,6 +3,8 @@ pragma solidity >=0.5.0;
 
 import {IAdapter} from "../../core/interfaces/IAdapter.sol";
 
+import {IAdapterWiring} from "../../admin/interfaces/IAdapterWiring.sol";
+
 // From
 // https://github.com/LayerZero-Labs/LayerZero-v2/blob/main/packages/layerzero-v2/evm/protocol/contracts/interfaces/ILayerZeroEndpointV2.sol#L28C1-L34C1
 
@@ -85,18 +87,12 @@ struct LayerZeroDestination {
     address addr;
 }
 
-interface ILayerZeroAdapter is IAdapter, ILayerZeroReceiver {
+interface ILayerZeroAdapter is IAdapter, IAdapterWiring, ILayerZeroReceiver {
     event Wire(uint16 indexed centrifugeId, uint32 indexed layerZeroEid, address adapter);
     event SetDelegate(address indexed newDelegate);
 
     error NotLayerZeroEndpoint();
     error InvalidSource();
-
-    /// @notice Wire the adapter to a remote one.
-    /// @param centrifugeId The remote chain's chain ID
-    /// @param layerZeroEid The remote chain's LayerZero Endpoint ID
-    /// @param adapter The remote chain's LayerZero adapter address
-    function wire(uint16 centrifugeId, uint32 layerZeroEid, address adapter) external;
 
     /// @notice Returns the source configuration for a given layerzero endpoint id
     /// @param layerZeroEid The remote LayerZero Endpoint ID

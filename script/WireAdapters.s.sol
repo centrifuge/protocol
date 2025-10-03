@@ -3,13 +3,9 @@ pragma solidity 0.8.28;
 
 import {IAdapter} from "../src/core/interfaces/IAdapter.sol";
 
-import {IGuardian} from "../src/admin/interfaces/IGuardian.sol";
+import {IOpsGuardian} from "../src/admin/interfaces/IOpsGuardian.sol";
 
 import "forge-std/Script.sol";
-
-import {IAxelarAdapter} from "../src/adapters/interfaces/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "../src/adapters/interfaces/IWormholeAdapter.sol";
-import {ILayerZeroAdapter} from "../src/adapters/interfaces/ILayerZeroAdapter.sol";
 
 /// @dev Configures the local network's adapters to communicate with remote networks.
 ///      This script only sets up one-directional communication (local → remote).
@@ -73,76 +69,41 @@ contract WireAdapters is Script {
             string memory remoteConfig = fetchConfig(remoteNetwork);
             uint16 remoteCentrifugeId = uint16(vm.parseJsonUint(remoteConfig, "$.network.centrifugeId"));
 
-            // Build per-destination adapter set, excluding adapters not deployed on remote
-            IAdapter[] memory temp = new IAdapter[](3);
-            uint8 count = 0;
+            // Register ALL adapters for this destination chain
+            IOpsGuardian opsGuardian = IOpsGuardian(vm.parseJsonAddress(localConfig, "$.contracts.opsGuardian"));
+            opsGuardian.initAdapters(remoteCentrifugeId, adapters, uint8(adapters.length), uint8(adapters.length));
+            console.log("Registered MultiAdapter(", localNetwork, ") for", remoteNetwork);
 
-            bool remoteWormhole = false;
-            bool remoteLayerZero = false;
-            bool remoteAxelar = false;
-
-            try vm.parseJsonBool(remoteConfig, "$.adapters.wormhole.deploy") returns (bool dep) {
-                remoteWormhole = dep;
-            } catch {}
-            try vm.parseJsonBool(remoteConfig, "$.adapters.layerZero.deploy") returns (bool dep) {
-                remoteLayerZero = dep;
-            } catch {}
-            try vm.parseJsonBool(remoteConfig, "$.adapters.axelar.deploy") returns (bool dep) {
-                remoteAxelar = dep;
-            } catch {}
-
-            if (localWormholeAddr != address(0) && remoteWormhole) {
-                temp[count++] = IAdapter(localWormholeAddr);
-            }
-            if (localLayerZeroAddr != address(0) && remoteLayerZero) {
-                temp[count++] = IAdapter(localLayerZeroAddr);
-            }
-            if (localAxelarAddr != address(0) && remoteAxelar) {
-                temp[count++] = IAdapter(localAxelarAddr);
-            }
-
-            IAdapter[] memory adaptersForDst = new IAdapter[](count);
-            for (uint8 j = 0; j < count; j++) adaptersForDst[j] = temp[j];
-
-            // Register destination's adapter set through Guardian (GLOBAL for that dst)
-            IGuardian guardian = IGuardian(vm.parseJsonAddress(localConfig, "$.contracts.guardian"));
-            // threshold = max(1, count). Use 1 so any adapter can deliver by default.
-            uint8 threshold = count == 0 ? 0 : 1;
-            uint8 recoveryIndex = count; // not used when threshold=1
-            if (count > 0) {
-                guardian.setAdapters(remoteCentrifugeId, adaptersForDst, count, threshold);
-                console.log("Registered MultiAdapter(", localNetwork, ") for", remoteNetwork, "with", count, "adapters");
-            } else {
-                console.log("Skipping registration for", remoteNetwork, "(no common adapters)");
-            }
-
-            // Wire WormholeAdapter when present on both ends
-            if (localWormholeAddr != address(0) && remoteWormhole) {
-                IWormholeAdapter(localWormholeAddr).wire(
-                    remoteCentrifugeId,
+            // Wire WormholeAdapter
+            if (localWormholeAddr != address(0)) {
+                bytes memory wormholeData = abi.encode(
                     uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
                     vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter")
                 );
+                opsGuardian.wire(localWormholeAddr, remoteCentrifugeId, wormholeData);
+
                 console.log("Wired WormholeAdapter from", localNetwork, "to", remoteNetwork);
             }
 
-            // Wire LayerZeroAdapter when present on both ends
-            if (localLayerZeroAddr != address(0) && remoteLayerZero) {
-                ILayerZeroAdapter(localLayerZeroAddr).wire(
-                    remoteCentrifugeId,
+            // Wire LayerZeroAdapter
+            if (localLayerZeroAddr != address(0)) {
+                bytes memory layerZeroData = abi.encode(
                     uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
                     vm.parseJsonAddress(remoteConfig, "$.contracts.layerZeroAdapter")
                 );
+                opsGuardian.wire(localLayerZeroAddr, remoteCentrifugeId, layerZeroData);
+
                 console.log("Wired LayerZeroAdapter from", localNetwork, "to", remoteNetwork);
             }
 
-            // Wire AxelarAdapter when present on both ends
-            if (localAxelarAddr != address(0) && remoteAxelar) {
-                IAxelarAdapter(localAxelarAddr).wire(
-                    remoteCentrifugeId,
+            // Wire AxelarAdapter
+            if (localAxelarAddr != address(0)) {
+                bytes memory axelarData = abi.encode(
                     vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
                     vm.toString(vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter"))
                 );
+                opsGuardian.wire(localAxelarAddr, remoteCentrifugeId, axelarData);
+
                 console.log("Wired AxelarAdapter from", localNetwork, "to", remoteNetwork);
             }
         }

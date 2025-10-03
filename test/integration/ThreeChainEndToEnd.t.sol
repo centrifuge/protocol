@@ -15,7 +15,7 @@ import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
 
 import {MessageLib} from "../../src/messaging/libraries/MessageLib.sol";
 
-import {ISafe} from "../../src/admin/interfaces/IGuardian.sol";
+import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
 import {FullDeployer} from "../../script/FullDeployer.s.sol";
 

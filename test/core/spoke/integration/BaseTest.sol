@@ -19,7 +19,7 @@ import {IVaultFactory} from "../../../../src/core/spoke/factories/IVaultFactory.
 import {MAX_MESSAGE_COST} from "../../../../src/messaging/interfaces/IGasService.sol";
 import {MessageLib, VaultUpdateKind} from "../../../../src/messaging/libraries/MessageLib.sol";
 
-import {ISafe} from "../../../../src/admin/interfaces/IGuardian.sol";
+import {ISafe} from "../../../../src/admin/interfaces/ISafe.sol";
 
 import {AsyncVault} from "../../../../src/vaults/AsyncVault.sol";
 import {SyncDepositVault} from "../../../../src/vaults/SyncDepositVault.sol";
@@ -81,8 +81,12 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
 
     function setUp() public virtual {
         // deploy core contracts
-        CommonInput memory input =
-            CommonInput({centrifugeId: THIS_CHAIN_ID, adminSafe: ISafe(ADMIN), version: bytes32(0)});
+        CommonInput memory input = CommonInput({
+            centrifugeId: THIS_CHAIN_ID,
+            adminSafe: ISafe(ADMIN),
+            opsSafe: ISafe(ADMIN),
+            version: bytes32(0)
+        });
 
         setDeployer(address(this));
         labelAddresses("");
