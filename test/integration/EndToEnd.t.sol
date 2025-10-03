@@ -32,6 +32,7 @@ import {IMessageHandler} from "../../src/core/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/MultiAdapter.sol";
 import {ILocalCentrifugeId} from "../../src/core/interfaces/IGatewaySenders.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
+import {IUpdateHubContract} from "../../src/core/hub/interfaces/IUpdateHubContract.sol";
 
 import {GasService} from "../../src/messaging/GasService.sol";
 import {MAX_MESSAGE_COST} from "../../src/messaging/interfaces/IGasService.sol";
@@ -321,6 +322,8 @@ contract EndToEndDeployment is Test {
         }
     }
 }
+
+contract IsContract {}
 
 /// Common and generic utilities ready to be used in different tests
 contract EndToEndUtils is EndToEndDeployment {
@@ -1282,5 +1285,23 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         );
 
         assertEq(RECEIVER.balance, VALUE);
+    }
+
+    /// forge-config: default.isolate = true
+    function testUpdateHubContract(bool sameChain) public {
+        _setSpoke(sameChain);
+
+        address hubContract = address(new IsContract());
+        address spokeSender = makeAddr("SpokeSender");
+
+        vm.mockCall(
+            hubContract,
+            abi.encodeWithSelector(IUpdateHubContract.updateFromSpoke.selector, POOL_A, SC_1, spokeSender, "data"),
+            abi.encode()
+        );
+
+        vm.startPrank(spokeSender);
+        vm.deal(spokeSender, GAS);
+        s.spoke.updateHubContract{value: GAS}(POOL_A, SC_1, hubContract.toBytes32(), "data", EXTRA_GAS, REFUND);
     }
 }
