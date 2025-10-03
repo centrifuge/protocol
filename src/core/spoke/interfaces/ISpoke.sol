@@ -99,13 +99,13 @@ interface ISpoke {
     event UpdateMaxAssetPriceAge(
         PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, uint64 maxPriceAge
     );
-    event UpdateHubContract(
+    event UntrustedContractUpdate(
         uint16 indexed centrifugeId,
         PoolId indexed poolId,
         ShareClassId scId,
         bytes32 target,
-        address indexed sender,
-        bytes payload
+        bytes payload,
+        address indexed sender
     );
 
     error FileUnrecognizedParam();

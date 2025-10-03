@@ -164,7 +164,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         uint128 extraGasLimit,
         address refund
     ) external payable {
-        emit UpdateHubContract(poolId.centrifugeId(), poolId, scId, target, msg.sender, payload);
+        emit UntrustedContractUpdate(poolId.centrifugeId(), poolId, scId, target, payload, msg.sender);
 
         sender.sendUntrustedContractUpdate{value: msg.value}(
             poolId, scId, target, payload, msg.sender.toBytes32(), extraGasLimit, refund

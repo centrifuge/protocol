@@ -232,7 +232,7 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         external
         payable;
 
-    /// @notice Creates and sends an UpdateHubContract message
+    /// @notice Creates and sends an UntrustedContractUpdate message
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param target The hub-side target contract (as bytes32)
