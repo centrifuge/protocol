@@ -130,12 +130,20 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISyncDepositManager
-    function previewMint(IBaseVault vault_, address sender, uint256 shares) public view returns (uint256 assets) {
+    function previewMint(IBaseVault vault_, address, /* sender */ uint256 shares)
+        public
+        view
+        returns (uint256 assets)
+    {
         return _shareToAssetAmount(vault_, shares, MathLib.Rounding.Up);
     }
 
     /// @inheritdoc ISyncDepositManager
-    function previewDeposit(IBaseVault vault_, address sender, uint256 assets) public view returns (uint256 shares) {
+    function previewDeposit(IBaseVault vault_, address, /* sender */ uint256 assets)
+        public
+        view
+        returns (uint256 shares)
+    {
         return convertToShares(vault_, assets);
     }
 
