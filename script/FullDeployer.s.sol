@@ -14,7 +14,7 @@ import {
     AdaptersActionBatcher
 } from "./AdaptersDeployer.s.sol";
 
-import {ISafe} from "../src/admin/interfaces/IGuardian.sol";
+import {ISafe} from "../src/admin/interfaces/ISafe.sol";
 
 import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
 
@@ -127,7 +127,8 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
 
         CommonInput memory commonInput = CommonInput({
             centrifugeId: centrifugeId,
-            adminSafe: ISafe(vm.envAddress("ADMIN")),
+            adminSafe: ISafe(vm.envAddress("PROTOCOL_ADMIN")),
+            opsSafe: ISafe(vm.envAddress("OPS_ADMIN")),
             // Default to bytes32(0) version to be consistent with CommonDeployer
             version: bytes(versionString).length > 0 ? keccak256(abi.encodePacked(versionString)) : bytes32(0)
         });
@@ -234,7 +235,12 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
     function _verifyMainnetAddresses() internal view {
         require(address(root) == 0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f, "Root address mismatch with mainnet");
         require(
-            address(guardian) == 0xFEE13c017693a4706391D516ACAbF6789D5c3157, "Guardian address mismatch with mainnet"
+            address(protocolGuardian) == 0xFEE13c017693a4706391D516ACAbF6789D5c3157,
+            "ProtocolGuardian address mismatch with mainnet"
+        );
+        require(
+            address(opsGuardian) == 0xFEE13c017693a4706391D516ACAbF6789D5c3157,
+            "OpsGuardian address mismatch with mainnet"
         );
         require(
             address(gasService) == 0x295262f96186505Ce67c67B9d29e36ad1f9EAe88,

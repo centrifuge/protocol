@@ -20,8 +20,12 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     FullRestrictions public correctHook;
 
     function setUp() public {
-        CommonInput memory input =
-            CommonInput({centrifugeId: LOCAL_CENTRIFUGE_ID, adminSafe: adminSafe, version: bytes32(0)});
+        CommonInput memory input = CommonInput({
+            centrifugeId: LOCAL_CENTRIFUGE_ID,
+            adminSafe: adminSafe,
+            opsSafe: adminSafe,
+            version: bytes32(0)
+        });
 
         FullActionBatcher batcher = new FullActionBatcher();
         super.labelAddresses("");
