@@ -7,7 +7,7 @@ import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
 import "../../core/spoke/integration/BaseTest.sol";
 
-import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
+import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";

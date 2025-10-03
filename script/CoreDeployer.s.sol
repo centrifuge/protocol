@@ -13,16 +13,15 @@ import {HubHandler} from "../src/core/hub/HubHandler.sol";
 import {MultiAdapter} from "../src/core/MultiAdapter.sol";
 import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
+import {GasService} from "../src/core/messaging/GasService.sol";
 import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
 import {VaultRegistry} from "../src/core/spoke/VaultRegistry.sol";
 import {ContractUpdater} from "../src/core/spoke/ContractUpdater.sol";
 import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
 import {TokenFactory} from "../src/core/spoke/factories/TokenFactory.sol";
+import {MessageProcessor} from "../src/core/messaging/MessageProcessor.sol";
+import {MessageDispatcher} from "../src/core/messaging/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
-
-import {GasService} from "../src/messaging/GasService.sol";
-import {MessageProcessor} from "../src/messaging/MessageProcessor.sol";
-import {MessageDispatcher} from "../src/messaging/MessageDispatcher.sol";
 
 import "forge-std/Script.sol";
 

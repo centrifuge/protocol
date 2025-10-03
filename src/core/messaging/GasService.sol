@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {IGasService} from "./interfaces/IGasService.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
-import {IMessageLimits} from "../core/interfaces/IMessageLimits.sol";
+import {IMessageLimits} from "../interfaces/IMessageLimits.sol";
 
 /// @title  GasService
 /// @notice This contract stores the gas limits (in gas units) for cross-chain message execution.
@@ -58,7 +58,7 @@ contract GasService is IGasService {
         notifyPricePoolPerAsset = BASE_COST + 110946;
         notifyShareMetadata = BASE_COST + 121326;
         updateShareHook = BASE_COST + 96255;
-        initiateTransferShares = BASE_COST + 283979;
+        initiateTransferShares = BASE_COST + 286505;
         executeTransferShares = BASE_COST + 177386;
         updateRestriction = BASE_COST + 114365;
         updateContract = BASE_COST + 144484;
@@ -68,7 +68,7 @@ contract GasService is IGasService {
         updateVaultUnlink = BASE_COST + 133872;
         setRequestManager = BASE_COST + 100432;
         updateBalanceSheetManager = BASE_COST + 103996;
-        updateHoldingAmount = BASE_COST + 304228;
+        updateHoldingAmount = BASE_COST + 304140;
         updateShares = BASE_COST + 184290;
         maxAssetPriceAge = BASE_COST + 110037;
         maxSharePriceAge = BASE_COST + 106923;

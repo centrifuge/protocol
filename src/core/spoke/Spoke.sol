@@ -18,7 +18,7 @@ import {IERC20Metadata} from "../../misc/interfaces/IERC20.sol";
 import {IERC6909MetadataExt} from "../../misc/interfaces/IERC6909.sol";
 import {ReentrancyProtection} from "../../misc/ReentrancyProtection.sol";
 
-import {MessageLib} from "../../messaging/libraries/MessageLib.sol";
+import {MessageLib} from "../messaging/libraries/MessageLib.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {IGateway} from "../interfaces/IGateway.sol";

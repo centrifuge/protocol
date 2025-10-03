@@ -5,7 +5,6 @@ import {IHub} from "./interfaces/IHub.sol";
 import {IHoldings} from "./interfaces/IHoldings.sol";
 import {IHubHandler} from "./interfaces/IHubHandler.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
-import {ISnapshotHook} from "./interfaces/ISnapshotHook.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 
@@ -121,8 +120,7 @@ contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
         shareClassManager.updateShares(originCentrifugeId, poolId, scId, amount, false);
         shareClassManager.updateShares(targetCentrifugeId, poolId, scId, amount, true);
 
-        ISnapshotHook hook = holdings.snapshotHook(poolId);
-        if (address(hook) != address(0)) hook.onTransfer(poolId, scId, originCentrifugeId, targetCentrifugeId, amount);
+        holdings.callOnTransferSnapshot(poolId, scId, originCentrifugeId, targetCentrifugeId, amount);
 
         emit ForwardTransferShares(originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount);
 
