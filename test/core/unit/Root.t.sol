@@ -3,7 +3,10 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
-import {Root, IRoot} from "../../../src/core/Root.sol";
+import {IProtocolPauser} from "../../../src/core/interfaces/IProtocolPauser.sol";
+import {IEndorsements} from "../../../src/core/spoke/interfaces/IEndorsements.sol";
+
+import {Root, IRoot} from "../../../src/admin/Root.sol";
 
 import "forge-std/Test.sol";
 
@@ -67,7 +70,7 @@ contract RootTestEndorse is RootTest {
     function testEndorse() public {
         vm.prank(address(AUTH));
         vm.expectEmit();
-        emit IRoot.Endorse(USER);
+        emit IEndorsements.Endorse(USER);
         root.endorse(USER);
 
         assertEq(root.endorsed(USER), true);
@@ -87,7 +90,7 @@ contract RootTestVeto is RootTest {
 
         vm.prank(address(AUTH));
         vm.expectEmit();
-        emit IRoot.Veto(USER);
+        emit IEndorsements.Veto(USER);
         root.veto(USER);
 
         assertEq(root.endorsed(USER), false);
@@ -104,7 +107,7 @@ contract RootTestPause is RootTest {
     function testPause() public {
         vm.prank(address(AUTH));
         vm.expectEmit();
-        emit IRoot.Pause();
+        emit IProtocolPauser.Pause();
         root.pause();
 
         assertEq(root.paused(), true);
@@ -124,7 +127,7 @@ contract RootTestUnpause is RootTest {
 
         vm.prank(address(AUTH));
         vm.expectEmit();
-        emit IRoot.Unpause();
+        emit IProtocolPauser.Unpause();
         root.unpause();
 
         assertEq(root.paused(), false);

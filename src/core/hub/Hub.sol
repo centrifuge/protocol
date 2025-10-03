@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IFeeHook} from "./interfaces/IFeeHook.sol";
 import {IValuation} from "./interfaces/IValuation.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {ISnapshotHook} from "./interfaces/ISnapshotHook.sol";
@@ -26,8 +27,8 @@ import {AccountId} from "../types/AccountId.sol";
 import {IAdapter} from "../interfaces/IAdapter.sol";
 import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {BatchedMulticall} from "../BatchedMulticall.sol";
 import {IMultiAdapter} from "../interfaces/IMultiAdapter.sol";
+import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
 import {IHubMessageSender} from "../interfaces/IGatewaySenders.sol";
 
 /// @title  Hub
@@ -37,6 +38,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     using MathLib for uint256;
     using RequestCallbackMessageLib for *;
 
+    IFeeHook public feeHook;
     IHoldings public holdings;
     IAccounting public accounting;
     IHubRegistry public hubRegistry;
@@ -68,10 +70,11 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function file(bytes32 what, address data) external {
         _auth();
 
-        if (what == "sender") sender = IHubMessageSender(data);
+        if (what == "gateway") gateway = IGateway(data);
+        else if (what == "feeHook") feeHook = IFeeHook(data);
         else if (what == "holdings") holdings = IHoldings(data);
+        else if (what == "sender") sender = IHubMessageSender(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
-        else if (what == "gateway") gateway = IGateway(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -105,7 +108,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
-        (string memory name, string memory symbol, bytes32 salt) = shareClassManager.metadata(scId);
+        (string memory name, string memory symbol, bytes32 salt) = shareClassManager.metadata(poolId, scId);
         uint8 decimals = hubRegistry.decimals(poolId);
 
         emit NotifyShareClass(centrifugeId, poolId, scId);
@@ -121,7 +124,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     {
         _isManager(poolId);
 
-        (string memory name, string memory symbol,) = shareClassManager.metadata(scId);
+        (string memory name, string memory symbol,) = shareClassManager.metadata(poolId, scId);
 
         emit NotifyShareMetadata(centrifugeId, poolId, scId, name, symbol);
         sender.sendNotifyShareMetadata{value: _payment()}(centrifugeId, poolId, scId, name, symbol, refund);
@@ -142,7 +145,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) public payable {
         _isManager(poolId);
 
-        (, D18 poolPerShare) = shareClassManager.metrics(scId);
+        (, D18 poolPerShare) = shareClassManager.metrics(poolId, scId);
 
         emit NotifySharePrice(centrifugeId, poolId, scId, poolPerShare);
         sender.sendNotifyPricePoolPerShare{value: _payment()}(centrifugeId, poolId, scId, poolPerShare, refund);
@@ -155,6 +158,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         D18 pricePoolPerAsset_ = pricePoolPerAsset(poolId, scId, assetId);
         emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset_);
         sender.sendNotifyPricePoolPerAsset{value: _payment()}(poolId, scId, assetId, pricePoolPerAsset_, refund);
+
+        if (address(feeHook) != address(0)) feeHook.accrue(poolId, scId);
     }
 
     /// @inheritdoc IHub
@@ -323,6 +328,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _isManager(poolId);
 
         shareClassManager.updateSharePrice(poolId, scId, pricePoolPerShare);
+
+        if (address(feeHook) != address(0)) feeHook.accrue(poolId, scId);
     }
 
     /// @inheritdoc IHub

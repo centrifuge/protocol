@@ -7,7 +7,7 @@ import {PoolId} from "../../core/types/PoolId.sol";
 import {IVault} from "../../core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IShareToken} from "../../core/spoke/interfaces/IShareToken.sol";
-import {IVaultFactory} from "../../core/spoke/factories/IVaultFactory.sol";
+import {IVaultFactory} from "../../core/spoke/factories/interfaces/IVaultFactory.sol";
 
 import {AsyncVault} from "../AsyncVault.sol";
 import {IAsyncRequestManager} from "../interfaces/IVaultManagers.sol";

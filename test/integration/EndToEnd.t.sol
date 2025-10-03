@@ -10,24 +10,23 @@ import {D18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 
-import {Root} from "../../src/core/Root.sol";
 import {Hub} from "../../src/core/hub/Hub.sol";
+import {Gateway} from "../../src/core/Gateway.sol";
 import {Spoke} from "../../src/core/spoke/Spoke.sol";
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {Holdings} from "../../src/core/hub/Holdings.sol";
 import {AccountId} from "../../src/core/types/AccountId.sol";
 import {Accounting} from "../../src/core/hub/Accounting.sol";
 import {HubHandler} from "../../src/core/hub/HubHandler.sol";
-import {IGateway, Gateway} from "../../src/core/Gateway.sol";
 import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
 import {IAdapter} from "../../src/core/interfaces/IAdapter.sol";
+import {IGateway} from "../../src/core/interfaces/IGateway.sol";
 import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
 import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
 import {PricingLib} from "../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
 import {VaultRegistry} from "../../src/core/spoke/VaultRegistry.sol";
-import {MAX_MESSAGE_COST} from "../../src/core/interfaces/IGasService.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {IMessageHandler} from "../../src/core/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/MultiAdapter.sol";
@@ -35,11 +34,14 @@ import {ILocalCentrifugeId} from "../../src/core/interfaces/IGatewaySenders.sol"
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 
 import {GasService} from "../../src/messaging/GasService.sol";
+import {MAX_MESSAGE_COST} from "../../src/messaging/interfaces/IGasService.sol";
 import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
-import {VaultUpdateKind, MessageType, MessageLib} from "../../src/messaging/libraries/MessageLib.sol";
+import {MessageLib, MessageType, VaultUpdateKind} from "../../src/messaging/libraries/MessageLib.sol";
 
-import {Guardian} from "../../src/admin/Guardian.sol";
-import {ISafe} from "../../src/admin/interfaces/IGuardian.sol";
+import {Root} from "../../src/admin/Root.sol";
+import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
+import {OpsGuardian} from "../../src/admin/OpsGuardian.sol";
+import {ProtocolGuardian} from "../../src/admin/ProtocolGuardian.sol";
 
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
 
@@ -91,7 +93,8 @@ contract EndToEndDeployment is Test {
         uint16 centrifugeId;
         // Common
         Root root;
-        Guardian guardian;
+        ProtocolGuardian protocolGuardian;
+        OpsGuardian opsGuardian;
         Gateway gateway;
         MultiAdapter multiAdapter;
         GasService gasService;
@@ -113,7 +116,8 @@ contract EndToEndDeployment is Test {
         uint16 centrifugeId;
         // Common
         Root root;
-        Guardian guardian;
+        ProtocolGuardian protocolGuardian;
+        OpsGuardian opsGuardian;
         Gateway gateway;
         MultiAdapter multiAdapter;
         // Vaults
@@ -214,7 +218,8 @@ contract EndToEndDeployment is Test {
         h = CHub({
             centrifugeId: CENTRIFUGE_ID_A,
             root: deployA.root(),
-            guardian: deployA.guardian(),
+            protocolGuardian: deployA.protocolGuardian(),
+            opsGuardian: deployA.opsGuardian(),
             gateway: deployA.gateway(),
             multiAdapter: deployA.multiAdapter(),
             gasService: deployA.gasService(),
@@ -242,11 +247,15 @@ contract EndToEndDeployment is Test {
     }
 
     function _setAdapter(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
-        vm.startPrank(address(deploy.guardian().safe()));
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
-        deploy.guardian().setAdapters(remoteCentrifugeId, adapters, uint8(adapters.length), uint8(adapters.length));
-        deploy.guardian().updateGatewayManager(GATEWAY_MANAGER, true);
+        vm.startPrank(address(deploy.protocolGuardian()));
+        deploy.multiAdapter().setAdapters(
+            remoteCentrifugeId, GLOBAL_POOL, adapters, uint8(adapters.length), uint8(adapters.length)
+        );
+
+        vm.startPrank(address(deploy.protocolGuardian()));
+        deploy.gateway().updateManager(GLOBAL_POOL, GATEWAY_MANAGER, true);
         vm.stopPrank();
     }
 
@@ -257,7 +266,7 @@ contract EndToEndDeployment is Test {
         CommonInput memory commonInput = CommonInput({
             centrifugeId: localCentrifugeId,
             adminSafe: adminSafe,
-            maxBatchGasLimit: uint128(GAS) * 100,
+            opsSafe: adminSafe,
             version: bytes32(abi.encodePacked(localCentrifugeId))
         });
 
@@ -278,7 +287,8 @@ contract EndToEndDeployment is Test {
 
         s_.centrifugeId = centrifugeId;
         s_.root = deploy.root();
-        s_.guardian = deploy.guardian();
+        s_.protocolGuardian = deploy.protocolGuardian();
+        s_.opsGuardian = deploy.opsGuardian();
         s_.gateway = deploy.gateway();
         s_.multiAdapter = deploy.multiAdapter();
         s_.balanceSheet = deploy.balanceSheet();
@@ -437,8 +447,8 @@ contract EndToEndFlows is EndToEndUtils {
     }
 
     function _createPool() internal {
-        vm.startPrank(address(h.guardian.safe()));
-        h.guardian.createPool(POOL_A, FM, USD_ID);
+        vm.startPrank(address(h.protocolGuardian.safe()));
+        h.opsGuardian.createPool(POOL_A, FM, USD_ID);
 
         vm.startPrank(FM);
         h.hub.setPoolMetadata(POOL_A, bytes("Testing pool"));
@@ -635,15 +645,15 @@ contract EndToEndFlows is EndToEndUtils {
         uint128 amount
     ) internal {
         vm.startPrank(poolManager);
-        uint32 depositEpochId = hub.batchRequestManager.nowDepositEpoch(shareClassId, assetId);
+        uint32 depositEpochId = hub.batchRequestManager.nowDepositEpoch(poolId, shareClassId, assetId);
         D18 pricePoolPerAsset = hub.hub.pricePoolPerAsset(poolId, shareClassId, assetId);
         hub.batchRequestManager.approveDeposits{value: GAS}(
             poolId, shareClassId, assetId, depositEpochId, amount, pricePoolPerAsset, REFUND
         );
 
         vm.startPrank(poolManager);
-        uint32 issueEpochId = hub.batchRequestManager.nowIssueEpoch(shareClassId, assetId);
-        (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
+        uint32 issueEpochId = hub.batchRequestManager.nowIssueEpoch(poolId, shareClassId, assetId);
+        (, D18 sharePrice) = hub.shareClassManager.metrics(poolId, shareClassId);
         hub.batchRequestManager.issueShares{value: GAS}(
             poolId, shareClassId, assetId, issueEpochId, sharePrice, HOOK_GAS, REFUND
         );
@@ -666,7 +676,7 @@ contract EndToEndFlows is EndToEndUtils {
             shareClassId,
             assetId,
             investor.toBytes32(),
-            hub.batchRequestManager.maxDepositClaims(shareClassId, investor.toBytes32(), assetId),
+            hub.batchRequestManager.maxDepositClaims(poolId, shareClassId, investor.toBytes32(), assetId),
             REFUND
         );
 
@@ -816,12 +826,12 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager
     ) internal {
         vm.startPrank(poolManager);
-        uint32 redeemEpochId = hub.batchRequestManager.nowRedeemEpoch(shareClassId, assetId);
+        uint32 redeemEpochId = hub.batchRequestManager.nowRedeemEpoch(poolId, shareClassId, assetId);
         D18 pricePoolPerAsset = hub.hub.pricePoolPerAsset(poolId, shareClassId, assetId);
         hub.batchRequestManager.approveRedeems(poolId, shareClassId, assetId, redeemEpochId, shares, pricePoolPerAsset);
 
-        uint32 revokeEpochId = hub.batchRequestManager.nowRevokeEpoch(shareClassId, assetId);
-        (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
+        uint32 revokeEpochId = hub.batchRequestManager.nowRevokeEpoch(poolId, shareClassId, assetId);
+        (, D18 sharePrice) = hub.shareClassManager.metrics(poolId, shareClassId);
         hub.batchRequestManager.revokeShares{value: GAS}(
             poolId, shareClassId, assetId, revokeEpochId, sharePrice, HOOK_GAS, REFUND
         );
@@ -844,7 +854,7 @@ contract EndToEndFlows is EndToEndUtils {
             shareClassId,
             assetId,
             investor.toBytes32(),
-            hub.batchRequestManager.maxRedeemClaims(shareClassId, investor.toBytes32(), assetId),
+            hub.batchRequestManager.maxRedeemClaims(poolId, shareClassId, investor.toBytes32(), assetId),
             REFUND
         );
 
@@ -947,9 +957,9 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         _setSpoke(sameChain);
 
         vm.startPrank(address(SAFE_ADMIN_A));
-        h.guardian.scheduleUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
-        h.guardian.cancelUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
-        h.guardian.scheduleUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
+        h.protocolGuardian.scheduleUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
+        h.protocolGuardian.cancelUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
+        h.protocolGuardian.scheduleUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
 
         vm.warp(block.timestamp + deployA.DELAY() + 1000);
 
@@ -968,7 +978,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         s.usdc.mint(address(s.gateway), VALUE);
 
         vm.startPrank(address(SAFE_ADMIN_A));
-        h.guardian.recoverTokens{value: GAS}(
+        h.protocolGuardian.recoverTokens{value: GAS}(
             s.centrifugeId, address(s.gateway), address(s.usdc), 0, RECEIVER, VALUE, REFUND
         );
 

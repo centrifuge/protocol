@@ -24,7 +24,8 @@ class AnvilManager:
         self.root_dir = root_dir
         self.anvil_url = "http://localhost:8545"
         self.chain_id = "31337"
-        self.admin_address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"  # 2nd Anvil account
+        self.protocol_admin_address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"  # 2nd Anvil account
+        self.ops_admin_address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"  # 2nd Anvil account (same for now)
         self.private_key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"  # 1st account
         self.anvil_config_file = self.root_dir / "env" / "anvil.json"
     
@@ -45,7 +46,8 @@ class AnvilManager:
                 self.rpc_url = manager.anvil_url
                 self.private_key = manager.private_key
                 self.etherscan_api_key = ""  # Not needed for anvil
-                self.admin_address = manager.admin_address
+                self.protocol_admin_address = manager.protocol_admin_address
+                self.ops_admin_address = manager.ops_admin_address
                 self.is_testnet = True
                 self.config_file = manager.anvil_config_file
             

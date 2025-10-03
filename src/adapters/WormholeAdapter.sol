@@ -16,6 +16,8 @@ import {CastLib} from "../misc/libraries/CastLib.sol";
 
 import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
 
+import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
+
 /// @title  Wormhole Adapter
 /// @notice Routing contract that integrates with the Wormhole Relayer service
 contract WormholeAdapter is Auth, IWormholeAdapter {
@@ -40,14 +42,20 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Administration
+    // Network wiring
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IWormholeAdapter
-    function wire(uint16 centrifugeId, uint16 wormholeId, address adapter) external auth {
+    /// @inheritdoc IAdapterWiring
+    function wire(uint16 centrifugeId, bytes memory data) external auth {
+        (uint16 wormholeId, address adapter) = abi.decode(data, (uint16, address));
         sources[wormholeId] = WormholeSource(centrifugeId, adapter);
         destinations[centrifugeId] = WormholeDestination(wormholeId, adapter);
         emit Wire(centrifugeId, wormholeId, adapter);
+    }
+
+    /// @inheritdoc IAdapterWiring
+    function isWired(uint16 centrifugeId) external view returns (bool) {
+        return destinations[centrifugeId].wormholeId != 0;
     }
 
     //----------------------------------------------------------------------------------------------

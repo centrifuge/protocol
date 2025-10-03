@@ -64,7 +64,6 @@ contract SpokeDeploymentTest is SpokeDeployer, CommonDeploymentInputTest {
         assertEq(balanceSheet.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(balanceSheet.root()), address(root));
         assertEq(address(balanceSheet.spoke()), address(spoke));
         assertEq(address(balanceSheet.sender()), address(messageDispatcher));
         assertEq(address(balanceSheet.poolEscrowProvider()), address(poolEscrowFactory));
@@ -91,7 +90,7 @@ contract SpokeDeploymentCommonExtTest is SpokeDeploymentTest {
     function testMessageDispatcherExt(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root)); // From common
-        vm.assume(nonWard != address(guardian)); // From common
+        vm.assume(nonWard != address(protocolGuardian)); // From common
         vm.assume(nonWard != address(spoke));
         vm.assume(nonWard != address(balanceSheet));
         vm.assume(nonWard != address(contractUpdater));
@@ -117,7 +116,8 @@ contract SpokeDeploymentCommonExtTest is SpokeDeploymentTest {
     function testGatewayExt(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root)); // From common
-        vm.assume(nonWard != address(guardian)); // From common
+        vm.assume(nonWard != address(protocolGuardian)); // From common
+        vm.assume(nonWard != address(opsGuardian)); // From common
         vm.assume(nonWard != address(messageDispatcher)); // From common
         vm.assume(nonWard != address(messageProcessor)); // From common
         vm.assume(nonWard != address(multiAdapter)); // From common

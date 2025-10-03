@@ -31,7 +31,7 @@ contract TestCases is BaseTest {
 
         poolId = hubRegistry.poolId(CHAIN_CP, 1);
         vm.prank(ADMIN);
-        guardian.createPool(poolId, FM, USD_ID);
+        opsGuardian.createPool(poolId, FM, USD_ID);
 
         scId = shareClassManager.previewNextShareClassId(poolId);
 
@@ -163,12 +163,12 @@ contract TestCases is BaseTest {
 
         cv.updateShares(poolId, scId, 100, true, IS_SNAPSHOT, 0);
 
-        (uint128 totalIssuance,) = shareClassManager.metrics(scId);
+        (uint128 totalIssuance,) = shareClassManager.metrics(poolId, scId);
         assertEq(totalIssuance, 100);
 
         cv.updateShares(poolId, scId, 45, false, IS_SNAPSHOT, 1);
 
-        (uint128 totalIssuance2,) = shareClassManager.metrics(scId);
+        (uint128 totalIssuance2,) = shareClassManager.metrics(poolId, scId);
         assertEq(totalIssuance2, 55);
     }
 

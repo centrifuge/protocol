@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 import {MessageType, MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -11,15 +12,12 @@ import {IRecoverable} from "../misc/interfaces/IRecoverable.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
-import {IRoot} from "../core/interfaces/IRoot.sol";
 import {IAdapter} from "../core/interfaces/IAdapter.sol";
 import {IGateway} from "../core/interfaces/IGateway.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
 import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
 import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
-import {ITokenRecoverer} from "../core/interfaces/ITokenRecoverer.sol";
-import {IMessageProcessor} from "../core/interfaces/IMessageProcessor.sol";
 import {IMessageProperties} from "../core/interfaces/IMessageProperties.sol";
 import {
     ISpokeGatewayHandler,
@@ -28,6 +26,9 @@ import {
     IUpdateContractGatewayHandler,
     IVaultRegistryGatewayHandler
 } from "../core/interfaces/IGatewayHandlers.sol";
+
+import {IRoot} from "../admin/interfaces/IRoot.sol";
+import {ITokenRecoverer} from "../admin/interfaces/ITokenRecoverer.sol";
 
 contract MessageProcessor is Auth, IMessageProcessor {
     using CastLib for *;

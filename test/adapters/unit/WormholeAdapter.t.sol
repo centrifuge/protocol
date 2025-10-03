@@ -72,11 +72,11 @@ contract WormholeAdapterTestWire is WormholeAdapterTestBase {
     function testWireErrNotAuthorized() public {
         vm.prank(makeAddr("NotAuthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.wire(CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR));
     }
 
     function testWire() public {
-        adapter.wire(CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR));
 
         (uint16 wormholeId, address remoteDestAddress) = adapter.destinations(CENTRIFUGE_CHAIN_ID);
         assertEq(wormholeId, WORMHOLE_CHAIN_ID);
@@ -85,6 +85,12 @@ contract WormholeAdapterTestWire is WormholeAdapterTestBase {
         (uint16 centrifugeId, address remoteSourceAddress) = adapter.sources(WORMHOLE_CHAIN_ID);
         assertEq(centrifugeId, CENTRIFUGE_CHAIN_ID);
         assertEq(remoteSourceAddress, REMOTE_WORMHOLE_ADDR);
+    }
+
+    function testIsWired() public {
+        assertFalse(adapter.isWired(CENTRIFUGE_CHAIN_ID));
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR));
+        assertTrue(adapter.isWired(CENTRIFUGE_CHAIN_ID));
     }
 }
 
@@ -134,7 +140,7 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
             payload, vaas, validAddress.toBytes32LeftPadded(), WORMHOLE_CHAIN_ID, bytes32(0)
         );
 
-        adapter.wire(CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, validAddress);
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(WORMHOLE_CHAIN_ID, validAddress));
 
         // Incorrect address
         vm.prank(address(relayer));
@@ -176,7 +182,7 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
         vm.expectRevert(IAdapter.UnknownChainId.selector);
         adapter.send{value: 0.1 ether}(CENTRIFUGE_CHAIN_ID, payload, gasLimit, refund);
 
-        adapter.wire(CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter"));
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter")));
 
         vm.deal(address(this), 0.1 ether);
         vm.prank(address(GATEWAY));

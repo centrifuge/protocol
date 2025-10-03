@@ -15,7 +15,7 @@ contract TestBatchingAndPayment is BaseTest {
     function testMultipleMulticallSamePool() public {
         PoolId poolA = hubRegistry.poolId(CHAIN_CP, 1);
         vm.startPrank(ADMIN);
-        guardian.createPool(poolA, FM, USD_ID);
+        opsGuardian.createPool(poolA, FM, USD_ID);
 
         vm.startPrank(FM);
 
@@ -40,8 +40,8 @@ contract TestBatchingAndPayment is BaseTest {
 
         PoolId poolA = hubRegistry.poolId(CHAIN_CP, 1);
         PoolId poolB = hubRegistry.poolId(CHAIN_CP, 2);
-        guardian.createPool(poolA, FM, USD_ID);
-        guardian.createPool(poolB, FM, USD_ID);
+        opsGuardian.createPool(poolA, FM, USD_ID);
+        opsGuardian.createPool(poolB, FM, USD_ID);
 
         vm.startPrank(FM);
 
