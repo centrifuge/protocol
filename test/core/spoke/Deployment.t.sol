@@ -91,7 +91,7 @@ contract SpokeDeploymentCommonExtTest is SpokeDeploymentTest {
     function testMessageDispatcherExt(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root)); // From common
-        vm.assume(nonWard != address(guardian)); // From common
+        vm.assume(nonWard != address(protocolGuardian)); // From common
         vm.assume(nonWard != address(spoke));
         vm.assume(nonWard != address(balanceSheet));
         vm.assume(nonWard != address(contractUpdater));
@@ -117,7 +117,8 @@ contract SpokeDeploymentCommonExtTest is SpokeDeploymentTest {
     function testGatewayExt(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root)); // From common
-        vm.assume(nonWard != address(guardian)); // From common
+        vm.assume(nonWard != address(protocolGuardian)); // From common
+        vm.assume(nonWard != address(opsGuardian)); // From common
         vm.assume(nonWard != address(messageDispatcher)); // From common
         vm.assume(nonWard != address(messageProcessor)); // From common
         vm.assume(nonWard != address(multiAdapter)); // From common

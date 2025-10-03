@@ -157,6 +157,14 @@ contract MockVaults is Test, Auth, IAdapter {
         return baseCost;
     }
 
+    function wire(bytes memory) external pure {
+        revert("MockVaults: wire not supported");
+    }
+
+    function isWired(uint16) external pure returns (bool) {
+        revert("MockVaults: isWired not supported");
+    }
+
     function resetMessages() external {
         delete lastMessages;
     }

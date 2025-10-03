@@ -31,8 +31,12 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
 
     function setUp() public virtual {
         // Deployment
-        CommonInput memory input =
-            CommonInput({centrifugeId: LOCAL_CENTRIFUGE_ID, adminSafe: adminSafe, version: bytes32(0)});
+        CommonInput memory input = CommonInput({
+            centrifugeId: LOCAL_CENTRIFUGE_ID,
+            adminSafe: adminSafe,
+            opsSafe: adminSafe,
+            version: bytes32(0)
+        });
 
         FullActionBatcher batcher = new FullActionBatcher();
         super.labelAddresses("");
@@ -88,7 +92,7 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
 
     function _createPool() internal {
         vm.prank(address(adminSafe));
-        guardian.createPool(POOL_A, FM, USD_ID);
+        opsGuardian.createPool(POOL_A, FM, USD_ID);
 
         vm.prank(FM);
         hub.addShareClass(POOL_A, "ShareClass1", "sc1", bytes32("salt"));
