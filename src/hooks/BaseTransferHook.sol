@@ -18,8 +18,7 @@ import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 import {IUpdateContract} from "../core/spoke/interfaces/IUpdateContract.sol";
 import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
-
-import {UpdateContractType, UpdateContractMessageLib} from "../messaging/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractType, UpdateContractMessageLib} from "../core/messaging/libraries/UpdateContractMessageLib.sol";
 
 import {IRoot} from "../admin/interfaces/IRoot.sol";
 

@@ -23,6 +23,7 @@ import {IAdapter} from "../../src/core/interfaces/IAdapter.sol";
 import {IGateway} from "../../src/core/interfaces/IGateway.sol";
 import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
 import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
+import {GasService} from "../../src/core/messaging/GasService.sol";
 import {PricingLib} from "../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
@@ -31,12 +32,10 @@ import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {IMessageHandler} from "../../src/core/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/MultiAdapter.sol";
 import {ILocalCentrifugeId} from "../../src/core/interfaces/IGatewaySenders.sol";
+import {MAX_MESSAGE_COST} from "../../src/core/messaging/interfaces/IGasService.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
-
-import {GasService} from "../../src/messaging/GasService.sol";
-import {MAX_MESSAGE_COST} from "../../src/messaging/interfaces/IGasService.sol";
-import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
-import {MessageLib, MessageType, VaultUpdateKind} from "../../src/messaging/libraries/MessageLib.sol";
+import {UpdateContractMessageLib} from "../../src/core/messaging/libraries/UpdateContractMessageLib.sol";
+import {MessageLib, MessageType, VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {Root} from "../../src/admin/Root.sol";
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";

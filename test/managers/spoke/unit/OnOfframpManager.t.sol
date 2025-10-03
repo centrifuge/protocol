@@ -14,8 +14,7 @@ import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../../../../src/core/spoke/interfaces/IUpdateContract.sol";
-
-import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../../../../src/core/messaging/libraries/UpdateContractMessageLib.sol";
 
 import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
 import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";

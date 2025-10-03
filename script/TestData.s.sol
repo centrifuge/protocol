@@ -17,10 +17,9 @@ import {ShareClassId} from "../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
 import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
 import {IShareToken} from "../src/core/spoke/interfaces/IShareToken.sol";
+import {VaultUpdateKind} from "../src/core/messaging/libraries/MessageLib.sol";
 import {IHubRequestManager} from "../src/core/hub/interfaces/IHubRequestManager.sol";
-
-import {VaultUpdateKind} from "../src/messaging/libraries/MessageLib.sol";
-import {UpdateContractMessageLib} from "../src/messaging/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../src/core/messaging/libraries/UpdateContractMessageLib.sol";
 
 import {OpsGuardian} from "../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../src/admin/ProtocolGuardian.sol";

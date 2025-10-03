@@ -9,9 +9,8 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {IAdapter} from "../../../../src/core/interfaces/IAdapter.sol";
 import {VaultRegistry} from "../../../../src/core/spoke/VaultRegistry.sol";
 import {VaultDetails} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
-
-import {MessageLib, VaultUpdateKind} from "../../../../src/messaging/libraries/MessageLib.sol";
-import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
+import {MessageLib, VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
+import {UpdateContractMessageLib} from "../../../../src/core/messaging/libraries/UpdateContractMessageLib.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 

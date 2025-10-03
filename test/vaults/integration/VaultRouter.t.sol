@@ -11,8 +11,7 @@ import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 import "../../core/spoke/integration/BaseTest.sol";
 
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
-
-import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
+import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";

@@ -11,8 +11,9 @@ import {PoolId} from "../../core/types/PoolId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../../core/spoke/interfaces/IUpdateContract.sol";
-
-import {UpdateContractMessageLib, UpdateContractType} from "../../messaging/libraries/UpdateContractMessageLib.sol";
+import {
+    UpdateContractMessageLib, UpdateContractType
+} from "../../core/messaging/libraries/UpdateContractMessageLib.sol";
 
 /// @title  Merkle Proof Manager
 /// @author Inspired by Boring Vaults from Se7en-Seas

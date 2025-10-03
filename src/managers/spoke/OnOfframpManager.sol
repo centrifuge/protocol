@@ -14,8 +14,9 @@ import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../../core/spoke/interfaces/IUpdateContract.sol";
-
-import {UpdateContractType, UpdateContractMessageLib} from "../../messaging/libraries/UpdateContractMessageLib.sol";
+import {
+    UpdateContractType, UpdateContractMessageLib
+} from "../../core/messaging/libraries/UpdateContractMessageLib.sol";
 
 /// @title  OnOfframpManager
 /// @notice Balance sheet manager for depositing and withdrawing ERC20 assets.

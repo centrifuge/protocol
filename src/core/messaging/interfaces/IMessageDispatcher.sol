@@ -1,20 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IMessageHandler} from "../../core/interfaces/IMessageHandler.sol";
-import {IMessageProperties} from "../../core/interfaces/IMessageProperties.sol";
+import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "../../interfaces/IGatewaySenders.sol";
 
-interface IMessageProcessor is IMessageHandler, IMessageProperties {
-    error InvalidSourceChain();
-
+interface IMessageDispatcher is IRootMessageSender, ISpokeMessageSender, IHubMessageSender {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
 
-    /// @notice Dispatched when a message is tried to send from a different chain than mainnet
-    error OnlyFromMainnet();
+    /// @notice Dispatched when an account is not valid to withdraw funds
+    error CannotRefund();
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.

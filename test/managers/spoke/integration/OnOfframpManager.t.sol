@@ -8,8 +8,7 @@ import "../../../core/spoke/integration/BaseTest.sol";
 
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-
-import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../../../../src/core/messaging/libraries/UpdateContractMessageLib.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 

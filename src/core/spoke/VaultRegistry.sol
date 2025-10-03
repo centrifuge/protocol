@@ -10,7 +10,7 @@ import {IVaultFactory} from "./factories/interfaces/IVaultFactory.sol";
 import {Auth} from "../../misc/Auth.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
 
-import {VaultUpdateKind} from "../../messaging/libraries/MessageLib.sol";
+import {VaultUpdateKind} from "../messaging/libraries/MessageLib.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
