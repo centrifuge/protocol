@@ -237,18 +237,6 @@ contract FullActionBatcher is CoreActionBatcher {
         report.root.endorse(address(report.asyncRequestManager));
         report.root.endorse(address(report.globalEscrow));
         report.root.endorse(address(report.vaultRouter));
-
-        // Adapters
-        if (address(report.wormholeAdapter) != address(0)) {
-            // By design, restricted to initial wiring only
-        }
-        if (address(report.axelarAdapter) != address(0)) {
-            // By design, restricted to initial wiring only
-        }
-        if (address(report.layerZeroAdapter) != address(0)) {
-            // Permanent ward for ongoing adapter maintenance
-            // By design, restricted to initial wiring only
-        }
     }
 
     function revokeFull(FullReport memory report) public onlyDeployer {
