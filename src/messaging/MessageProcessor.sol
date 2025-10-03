@@ -19,6 +19,7 @@ import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
 import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "../core/interfaces/IMessageProperties.sol";
+import {IMessageLimits} from "../core/interfaces/IMessageLimits.sol";
 import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "../core/interfaces/ITokenRecoverer.sol";
 import {
@@ -29,7 +30,9 @@ import {
     IVaultRegistryGatewayHandler
 } from "../core/interfaces/IGatewayHandlers.sol";
 
-contract MessageProcessor is Auth, IMessageProcessor {
+import {IGasService} from "./GasService.sol";
+
+contract MessageProcessor is Auth, IMessageProcessor, IMessageLimits {
     using CastLib for *;
     using MessageLib for *;
     using BytesLib for bytes;
@@ -39,6 +42,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IRoot public immutable root;
     ITokenRecoverer public immutable tokenRecoverer;
 
+    IGasService public gasService;
     IGateway public gateway;
     IMultiAdapter public multiAdapter;
     ISpokeGatewayHandler public spoke;
@@ -47,9 +51,12 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IVaultRegistryGatewayHandler public vaultRegistry;
     IUpdateContractGatewayHandler public contractUpdater;
 
-    constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, address deployer) Auth(deployer) {
+    constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, IGasService gasService_, address deployer)
+        Auth(deployer)
+    {
         root = root_;
         tokenRecoverer = tokenRecoverer_;
+        gasService = gasService_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -59,6 +66,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageProcessor
     function file(bytes32 what, address data) external auth {
         if (what == "hubHandler") hubHandler = IHubGatewayHandler(data);
+        else if (what == "gasService") gasService = IGasService(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
@@ -231,5 +239,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageProperties
     function messagePoolId(bytes calldata message) external pure returns (PoolId) {
         return message.messagePoolId();
+    }
+
+    /// @inheritdoc IMessageLimits
+    function messageGasLimit(uint16 centrifugeId, bytes calldata message) external view returns (uint128) {
+        return gasService.messageGasLimit(centrifugeId, message);
     }
 }

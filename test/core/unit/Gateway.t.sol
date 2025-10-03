@@ -9,9 +9,8 @@ import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageL
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
-import {Gateway, IRoot, IGateway} from "../../../src/core/Gateway.sol";
+import {Gateway, IRoot, IGateway, IGatewayProcessor} from "../../../src/core/Gateway.sol";
 import {IGasService} from "../../../src/messaging/interfaces/IGasService.sol";
-import {Gateway, IRoot, IGateway} from "../../../src/core/Gateway.sol";
 import {IMessageProperties} from "../../../src/core/interfaces/IMessageProperties.sol";
 
 import "forge-std/Test.sol";
@@ -22,6 +21,7 @@ import "forge-std/Test.sol";
 
 PoolId constant POOL_A = PoolId.wrap(23);
 PoolId constant POOL_0 = PoolId.wrap(0);
+uint128 constant MESSAGE_GAS_LIMIT = 100_000;
 
 enum MessageKind {
     _Invalid,
@@ -50,7 +50,7 @@ function asBytes(MessageKind kind) pure returns (bytes memory) {
 using {asBytes, length} for MessageKind;
 
 // A MessageLib agnostic processor
-contract MockProcessor is IMessageProperties {
+contract MockProcessor is IGatewayProcessor {
     using BytesLib for bytes;
 
     error HandleError();
@@ -83,6 +83,10 @@ contract MockProcessor is IMessageProperties {
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA2)) return POOL_A;
         revert("Unreachable: message never asked for pool");
     }
+
+    function messageGasLimit(uint16, bytes calldata) external pure returns (uint128) {
+        return MESSAGE_GAS_LIMIT;
+    }
 }
 
 contract NoPayableDestination {}
@@ -92,9 +96,7 @@ contract NoPayableDestination {}
 // -----------------------------------------
 
 contract GatewayExt is Gateway {
-    constructor(uint16 localCentrifugeId, IRoot root_, IGasService gasService_, address deployer)
-        Gateway(localCentrifugeId, root_, gasService_, deployer)
-    {}
+    constructor(uint16 localCentrifugeId, IRoot root_, address deployer) Gateway(localCentrifugeId, root_, deployer) {}
 
     function batchLocatorsLength() public view returns (uint256) {
         return TransientArrayLib.length(BATCH_LOCATORS_SLOT);
@@ -134,17 +136,14 @@ contract GatewayTest is Test {
     uint256 constant ADAPTER_ESTIMATE = 1;
     bytes32 constant ADAPTER_DATA = bytes32("adapter data");
 
-    uint256 constant MESSAGE_GAS_LIMIT = 100_000;
-    uint256 constant MAX_BATCH_GAS_LIMIT = 500_000;
     uint128 constant EXTRA_GAS_LIMIT = 10;
     bool constant NO_SUBSIDIZED = false;
 
-    IGasService gasService = IGasService(makeAddr("GasService"));
     IRoot root = IRoot(makeAddr("Root"));
     IAdapter adapter = IAdapter(makeAddr("Adapter"));
 
     MockProcessor processor = new MockProcessor();
-    GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), gasService, address(this));
+    GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), address(this));
 
     address immutable ANY = makeAddr("ANY");
     address immutable MANAGER = makeAddr("MANAGER");
@@ -168,14 +167,6 @@ contract GatewayTest is Test {
         );
     }
 
-    function _mockGasService() internal {
-        vm.mockCall(
-            address(gasService),
-            abi.encodeWithSelector(IGasService.messageGasLimit.selector),
-            abi.encode(MESSAGE_GAS_LIMIT)
-        );
-    }
-
     function _mockPause(bool isPaused) internal {
         vm.mockCall(address(root), abi.encodeWithSelector(IRoot.paused.selector), abi.encode(isPaused));
     }
@@ -185,7 +176,6 @@ contract GatewayTest is Test {
         gateway.file("processor", address(processor));
 
         _mockPause(false);
-        _mockGasService();
     }
 }
 
@@ -206,9 +196,6 @@ contract GatewayTestFile is GatewayTest {
         emit IGateway.File("processor", address(23));
         gateway.file("processor", address(23));
         assertEq(address(gateway.processor()), address(23));
-
-        gateway.file("gasService", address(42));
-        assertEq(address(gateway.gasService()), address(42));
 
         gateway.file("adapter", address(88));
         assertEq(address(gateway.adapter()), address(88));

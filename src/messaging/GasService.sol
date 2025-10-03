@@ -6,6 +6,8 @@ import {IGasService} from "./interfaces/IGasService.sol";
 import {PoolId} from "../core/types/PoolId.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
+import {IMessageLimits} from "../core/interfaces/IMessageLimits.sol";
+
 /// @title  GasService
 /// @notice This contract stores the gas limits (in gas units) for cross-chain message execution.
 ///         These values are used by adapters to determine how much gas to allocate for
@@ -46,36 +48,36 @@ contract GasService is IGasService {
 
     constructor() {
         // NOTE: Below values should be updated using script/utils/benchmark.sh
-        scheduleUpgrade = BASE_COST + 93735;
-        cancelUpgrade = BASE_COST + 74142;
-        recoverTokens = BASE_COST + 148855;
-        registerAsset = BASE_COST + 103825;
-        setPoolAdapters = BASE_COST + 481481; // using MAX_ADAPTER_COUNT
-        request = BASE_COST + 219436;
-        notifyPool = BASE_COST + 1150668; // create escrow case
-        notifyShareClass = BASE_COST + 1852879;
-        notifyPricePoolPerShare = BASE_COST + 106940;
-        notifyPricePoolPerAsset = BASE_COST + 110946;
-        notifyShareMetadata = BASE_COST + 121326;
-        updateShareHook = BASE_COST + 96255;
-        initiateTransferShares = BASE_COST + 283170;
-        executeTransferShares = BASE_COST + 177386;
-        updateRestriction = BASE_COST + 114365;
-        updateContract = BASE_COST + 144484;
-        requestCallback = BASE_COST + 257948; // approve deposit case
-        updateVaultDeployAndLink = BASE_COST + 2852823;
-        updateVaultLink = BASE_COST + 185154;
-        updateVaultUnlink = BASE_COST + 133872;
-        setRequestManager = BASE_COST + 100432;
-        updateBalanceSheetManager = BASE_COST + 103996;
-        updateHoldingAmount = BASE_COST + 304247;
-        updateShares = BASE_COST + 183926;
-        maxAssetPriceAge = BASE_COST + 110037;
-        maxSharePriceAge = BASE_COST + 106923;
-        updateGatewayManager = BASE_COST + 87952;
+        scheduleUpgrade = BASE_COST + 93774;
+        cancelUpgrade = BASE_COST + 74181;
+        recoverTokens = BASE_COST + 148872;
+        registerAsset = BASE_COST + 103846;
+        setPoolAdapters = BASE_COST + 481520; // using MAX_ADAPTER_COUNT
+        request = BASE_COST + 220898;
+        notifyPool = BASE_COST + 1150707; // create escrow case
+        notifyShareClass = BASE_COST + 1852918;
+        notifyPricePoolPerShare = BASE_COST + 106973;
+        notifyPricePoolPerAsset = BASE_COST + 111000;
+        notifyShareMetadata = BASE_COST + 121365;
+        updateShareHook = BASE_COST + 96294;
+        initiateTransferShares = BASE_COST + 283163;
+        executeTransferShares = BASE_COST + 177440;
+        updateRestriction = BASE_COST + 114401;
+        updateContract = BASE_COST + 144523;
+        requestCallback = BASE_COST + 257981; // approve deposit case
+        updateVaultDeployAndLink = BASE_COST + 2852862;
+        updateVaultLink = BASE_COST + 185193;
+        updateVaultUnlink = BASE_COST + 133911;
+        setRequestManager = BASE_COST + 100471;
+        updateBalanceSheetManager = BASE_COST + 104035;
+        updateHoldingAmount = BASE_COST + 304286;
+        updateShares = BASE_COST + 183886;
+        maxAssetPriceAge = BASE_COST + 110070;
+        maxSharePriceAge = BASE_COST + 106971;
+        updateGatewayManager = BASE_COST + 87969;
     }
 
-    /// @inheritdoc IGasService
+    /// @inheritdoc IMessageLimits
     function messageGasLimit(uint16, bytes calldata message) public view returns (uint128) {
         MessageType kind = message.messageType();
 

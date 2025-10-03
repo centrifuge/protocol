@@ -5,9 +5,9 @@ import {PoolId} from "./types/PoolId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
-import {IGasService} from "../messaging/interfaces/IGasService.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
-import {IMessageProcessor} from "../messaging/interfaces/IMessageProcessor.sol";
+import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
+import {IMessageLimits} from "./interfaces/IMessageLimits.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
@@ -16,6 +16,8 @@ import {BytesLib} from "../misc/libraries/BytesLib.sol";
 import {TransientArrayLib} from "../misc/libraries/TransientArrayLib.sol";
 import {TransientBytesLib} from "../misc/libraries/TransientBytesLib.sol";
 import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
+
+interface IGatewayProcessor is IMessageHandler, IMessageProperties, IMessageLimits {}
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages through an adapter
@@ -37,8 +39,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Dependencies
     IRoot public immutable root;
     IAdapter public adapter;
-    IGasService public gasService;
-    IMessageProcessor public processor;
+    IGatewayProcessor public processor;
 
     // Management
     mapping(PoolId => mapping(address => bool)) public manager;
@@ -53,10 +54,9 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Inbound
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
 
-    constructor(uint16 localCentrifugeId_, IRoot root_, IGasService gasService_, address deployer) Auth(deployer) {
+    constructor(uint16 localCentrifugeId_, IRoot root_, address deployer) Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
         root = root_;
-        gasService = gasService_;
     }
 
     modifier pauseable() {
@@ -75,8 +75,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IGateway
     function file(bytes32 what, address instance) external auth {
-        if (what == "gasService") gasService = IGasService(instance);
-        else if (what == "processor") processor = IMessageProcessor(instance);
+        if (what == "processor") processor = IGatewayProcessor(instance);
         else if (what == "adapter") adapter = IAdapter(instance);
         else revert FileUnrecognizedParam();
 
@@ -141,7 +140,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         PoolId poolId = processor.messagePoolId(message);
         emit PrepareMessage(centrifugeId, poolId, message);
 
-        uint128 gasLimit = gasService.messageGasLimit(centrifugeId, message) + extraGasLimit;
+        uint128 gasLimit = processor.messageGasLimit(centrifugeId, message) + extraGasLimit;
         if (isBatching) {
             require(msg.value == 0, NotPayable());
             bytes32 batchSlot = _outboundBatchSlot(centrifugeId, poolId);

@@ -176,24 +176,24 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             )
         );
 
+        gasService = GasService(
+            create3(generateSalt("gasService-2"), abi.encodePacked(type(GasService).creationCode, abi.encode()))
+        );
+
         messageProcessor = MessageProcessor(
             create3(
                 generateSalt("messageProcessor"),
-                abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, tokenRecoverer, batcher))
+                abi.encodePacked(
+                    type(MessageProcessor).creationCode, abi.encode(root, tokenRecoverer, gasService, batcher)
+                )
             )
-        );
-
-        gasService = GasService(
-            create3(generateSalt("gasService-2"), abi.encodePacked(type(GasService).creationCode, abi.encode()))
         );
 
         gateway = Gateway(
             payable(
                 create3(
                     generateSalt("gateway"),
-                    abi.encodePacked(
-                        type(Gateway).creationCode, abi.encode(input.centrifugeId, root, gasService, batcher)
-                    )
+                    abi.encodePacked(type(Gateway).creationCode, abi.encode(input.centrifugeId, root, batcher))
                 )
             )
         );
