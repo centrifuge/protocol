@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CastLib} from "../src/misc/libraries/CastLib.sol";
-
-import {ISafe} from "../src/admin/interfaces/ISafe.sol";
-
-import {CoreInput} from "../../script/CoreDeployer.s.sol";
 import {
     FullInput,
     FullActionBatcher,
@@ -14,7 +9,13 @@ import {
     WormholeInput,
     AxelarInput,
     LayerZeroInput
-} from "../../script/FullDeployer.s.sol";
+} from "./FullDeployer.s.sol";
+
+import {CastLib} from "../src/misc/libraries/CastLib.sol";
+
+import {ISafe} from "../src/admin/interfaces/ISafe.sol";
+
+import {CoreInput} from "../../script/CoreDeployer.s.sol";
 
 import "forge-std/Script.sol";
 
