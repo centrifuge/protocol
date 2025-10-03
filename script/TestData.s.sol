@@ -57,7 +57,7 @@ contract TestData is FullDeployer {
 
         uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
 
-        admin = vm.envAddress("ADMIN");
+        admin = vm.envAddress("PROTOCOL_ADMIN");
         spoke = Spoke(vm.parseJsonAddress(config, "$.contracts.spoke"));
         hub = Hub(vm.parseJsonAddress(config, "$.contracts.hub"));
         shareClassManager = ShareClassManager(vm.parseJsonAddress(config, "$.contracts.shareClassManager"));
