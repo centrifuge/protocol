@@ -33,6 +33,7 @@ import {IMessageHandler} from "../../src/core/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/MultiAdapter.sol";
 import {ILocalCentrifugeId} from "../../src/core/interfaces/IGatewaySenders.sol";
 import {MAX_MESSAGE_COST} from "../../src/core/messaging/interfaces/IGasService.sol";
+import {IUntrustedContractUpdate} from "../../src/core/interfaces/IContractUpdate.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
@@ -320,6 +321,8 @@ contract EndToEndDeployment is Test {
         }
     }
 }
+
+contract IsContract {}
 
 /// Common and generic utilities ready to be used in different tests
 contract EndToEndUtils is EndToEndDeployment {
@@ -1281,5 +1284,25 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         );
 
         assertEq(RECEIVER.balance, VALUE);
+    }
+
+    /// forge-config: default.isolate = true
+    function testUntrustedContractUpdate(bool sameChain) public {
+        _setSpoke(sameChain);
+
+        address hubContract = address(new IsContract());
+        address spokeSender = makeAddr("SpokeSender");
+
+        vm.mockCall(
+            hubContract,
+            abi.encodeWithSelector(
+                IUntrustedContractUpdate.untrustedCall.selector, POOL_A, SC_1, "data", s.centrifugeId, spokeSender
+            ),
+            abi.encode()
+        );
+
+        vm.startPrank(spokeSender);
+        vm.deal(spokeSender, GAS);
+        s.spoke.updateContract{value: GAS}(POOL_A, SC_1, hubContract.toBytes32(), "data", EXTRA_GAS, REFUND);
     }
 }
