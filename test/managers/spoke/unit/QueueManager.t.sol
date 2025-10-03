@@ -10,7 +10,7 @@ import {IGateway} from "../../../../src/core/interfaces/IGateway.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {IBatchedMulticall} from "../../../../src/core/interfaces/IBatchedMulticall.sol";
-import {IUpdateContract} from "../../../../src/core/spoke/interfaces/IUpdateContract.sol";
+import {ITrustedContractUpdate} from "../../../../src/core/spoke/interfaces/IContractUpdate.sol";
 
 import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
@@ -176,7 +176,7 @@ contract QueueManagerUpdateContractFailureTests is QueueManagerTest {
     function testUnknownUpdateContractType() public {
         bytes memory invalidPayload = abi.encode(uint8(255), bytes("invalid"));
 
-        vm.expectRevert(IUpdateContract.UnknownUpdateContractType.selector);
+        vm.expectRevert(ITrustedContractUpdate.UnknownUpdateContractType.selector);
         vm.prank(contractUpdater);
         queueManager.update(POOL_A, SC_1, invalidPayload);
     }

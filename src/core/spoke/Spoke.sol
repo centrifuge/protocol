@@ -156,7 +156,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     }
 
     /// @inheritdoc ISpoke
-    function updateHubContract(
+    function updateContract(
         PoolId poolId,
         ShareClassId scId,
         bytes32 target,
@@ -164,11 +164,10 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         uint128 extraGasLimit,
         address refund
     ) external payable {
-        bytes32 senderBytes = CastLib.toBytes32(msg.sender);
         emit UpdateHubContract(poolId.centrifugeId(), poolId, scId, target, msg.sender, payload);
 
-        sender.sendUpdateHubContract{value: msg.value}(
-            poolId, scId, target, senderBytes, payload, extraGasLimit, refund
+        sender.sendUntrustedContractUpdate{value: msg.value}(
+            poolId, scId, target, payload, msg.sender.toBytes32(), extraGasLimit, refund
         );
     }
 

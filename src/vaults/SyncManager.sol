@@ -20,7 +20,7 @@ import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
-import {IUpdateContract} from "../core/spoke/interfaces/IUpdateContract.sol";
+import {ITrustedContractUpdate} from "../core/spoke/interfaces/IContractUpdate.sol";
 
 import {UpdateContractMessageLib, UpdateContractType} from "../messaging/libraries/UpdateContractMessageLib.sol";
 
@@ -55,8 +55,8 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         emit File(what, data);
     }
 
-    /// @inheritdoc IUpdateContract
-    function update(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
+    /// @inheritdoc ITrustedContractUpdate
+    function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
         uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
 
         if (kind == uint8(UpdateContractType.Valuation)) {

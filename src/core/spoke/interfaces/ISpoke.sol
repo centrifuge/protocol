@@ -211,7 +211,7 @@ interface ISpoke {
     /// @param extraGasLimit Additional gas for cross-chain execution
     /// @param refund Address to refund excess payment
     /// @dev Permissionless by choice, forwards caller's address to recipient for permission validation
-    function updateHubContract(
+    function updateContract(
         PoolId poolId,
         ShareClassId scId,
         bytes32 target,

@@ -31,7 +31,7 @@ contract GasService is IGasService {
     uint128 public immutable initiateTransferShares;
     uint128 public immutable executeTransferShares;
     uint128 public immutable updateRestriction;
-    uint128 public immutable updateContract;
+    uint128 public immutable trustedContractUpdate;
     uint128 public immutable requestCallback;
     uint128 public immutable updateVaultDeployAndLink;
     uint128 public immutable updateVaultLink;
@@ -43,7 +43,7 @@ contract GasService is IGasService {
     uint128 public immutable maxAssetPriceAge;
     uint128 public immutable maxSharePriceAge;
     uint128 public immutable updateGatewayManager;
-    uint128 public immutable updateHubContract;
+    uint128 public immutable untrustedContractUpdate;
 
     constructor() {
         // NOTE: Below values should be updated using script/utils/benchmark.sh
@@ -62,7 +62,7 @@ contract GasService is IGasService {
         initiateTransferShares = BASE_COST + 283979;
         executeTransferShares = BASE_COST + 177386;
         updateRestriction = BASE_COST + 114365;
-        updateContract = BASE_COST + 144484;
+        trustedContractUpdate = BASE_COST + 144484;
         requestCallback = BASE_COST + 257970; // approve deposit case
         updateVaultDeployAndLink = BASE_COST + 2852823;
         updateVaultLink = BASE_COST + 185154;
@@ -74,7 +74,7 @@ contract GasService is IGasService {
         maxAssetPriceAge = BASE_COST + 110037;
         maxSharePriceAge = BASE_COST + 106923;
         updateGatewayManager = BASE_COST + 87952;
-        updateHubContract = BASE_COST + 50000;
+        untrustedContractUpdate = BASE_COST + 50000;
     }
 
     /// @inheritdoc IMessageLimits
@@ -96,7 +96,7 @@ contract GasService is IGasService {
         if (kind == MessageType.InitiateTransferShares) return initiateTransferShares;
         if (kind == MessageType.ExecuteTransferShares) return executeTransferShares;
         if (kind == MessageType.UpdateRestriction) return updateRestriction;
-        if (kind == MessageType.UpdateContract) return updateContract;
+        if (kind == MessageType.TrustedContractUpdate) return trustedContractUpdate;
         if (kind == MessageType.RequestCallback) return requestCallback;
         if (kind == MessageType.UpdateVault) {
             VaultUpdateKind vaultKind = VaultUpdateKind(message.deserializeUpdateVault().kind);
@@ -112,7 +112,7 @@ contract GasService is IGasService {
         if (kind == MessageType.MaxAssetPriceAge) return maxAssetPriceAge;
         if (kind == MessageType.MaxSharePriceAge) return maxSharePriceAge;
         if (kind == MessageType.UpdateGatewayManager) return updateGatewayManager;
-        if (kind == MessageType.UpdateHubContract) return updateHubContract;
+        if (kind == MessageType.UntrustedContractUpdate) return untrustedContractUpdate;
         revert InvalidMessageType(); // Unreachable
     }
 }

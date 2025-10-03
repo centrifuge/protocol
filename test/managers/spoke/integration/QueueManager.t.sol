@@ -58,7 +58,7 @@ contract QueueManagerSuccessTest is QueueManagerBaseTest {
     function testSuccess() public {
         uint128 extraGasLimit = 500;
         vm.prank(address(contractUpdater));
-        queueManager.update(
+        queueManager.trustedCall(
             POOL_A,
             defaultTypedShareClassId,
             UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: 0, extraGasLimit: extraGasLimit}).serialize()

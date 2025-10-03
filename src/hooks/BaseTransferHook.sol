@@ -16,7 +16,7 @@ import {PoolId} from "../core/types/PoolId.sol";
 import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
-import {IUpdateContract} from "../core/spoke/interfaces/IUpdateContract.sol";
+import {ITrustedContractUpdate} from "../core/spoke/interfaces/IContractUpdate.sol";
 import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
 
 import {UpdateContractType, UpdateContractMessageLib} from "../messaging/libraries/UpdateContractMessageLib.sol";
@@ -26,7 +26,7 @@ import {IRoot} from "../admin/interfaces/IRoot.sol";
 /// @title  BaseTransferHook
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
 ///         the last bit is used to denote whether the account is frozen.
-abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHook, IUpdateContract {
+abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHook, ITrustedContractUpdate {
     using BitmapLib for *;
     using UpdateRestrictionMessageLib for *;
     using BytesLib for bytes;
@@ -154,8 +154,8 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IUpdateContract
-    function update(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
+    /// @inheritdoc ITrustedContractUpdate
+    function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
         uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
 
         if (kind == uint8(UpdateContractType.UpdateAddress)) {

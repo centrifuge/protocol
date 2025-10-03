@@ -85,7 +85,7 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
 
         // Enable onramp
         vm.prank(address(contractUpdater));
-        manager.update(
+        manager.trustedCall(
             POOL_A,
             defaultTypedShareClassId,
             UpdateContractMessageLib.UpdateContractUpdateAddress({
@@ -98,7 +98,7 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
 
         // Enable relayer
         vm.prank(address(contractUpdater));
-        manager.update(
+        manager.trustedCall(
             POOL_A,
             defaultTypedShareClassId,
             UpdateContractMessageLib.UpdateContractUpdateAddress({
@@ -111,7 +111,7 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
 
         // Enable offramp destination
         vm.prank(address(contractUpdater));
-        manager.update(
+        manager.trustedCall(
             POOL_A,
             defaultTypedShareClassId,
             UpdateContractMessageLib.UpdateContractUpdateAddress({

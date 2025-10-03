@@ -9,7 +9,7 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IUpdateContract} from "../../core/spoke/interfaces/IUpdateContract.sol";
+import {ITrustedContractUpdate} from "../../core/spoke/interfaces/IContractUpdate.sol";
 
 interface IDepositManager {
     /// @notice Processes owner's asset deposit after the epoch has been executed on the corresponding CP instance and
@@ -216,7 +216,7 @@ interface ISyncDepositValuation {
     function pricePoolPerShare(PoolId poolId, ShareClassId scId) external view returns (D18 price);
 }
 
-interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, IUpdateContract {
+interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedContractUpdate {
     event SetValuation(PoolId indexed poolId, ShareClassId indexed scId, address valuation);
     event SetMaxReserve(
         PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 maxReserve
@@ -284,7 +284,7 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IUpdateContract {
+interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, ITrustedContractUpdate {
     event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
     event WithdrawSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
 

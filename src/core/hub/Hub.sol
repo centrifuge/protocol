@@ -320,7 +320,9 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         emit UpdateContract(centrifugeId, poolId, scId, target, payload);
-        sender.sendUpdateContract{value: _payment()}(centrifugeId, poolId, scId, target, payload, extraGasLimit, refund);
+        sender.sendTrustedContractUpdate{value: _payment()}(
+            centrifugeId, poolId, scId, target, payload, extraGasLimit, refund
+        );
     }
 
     /// @inheritdoc IHub

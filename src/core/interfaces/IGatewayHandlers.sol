@@ -149,24 +149,27 @@ interface ISpokeGatewayHandler {
 }
 
 /// @notice Interface for the update contract method, called by message
-interface IUpdateContractGatewayHandler {
-    /// @notice Updates the target address. Generic update function from Hub to Vaults
+interface IContractUpdateGatewayHandler {
+    /// @notice Updates the target address. Generic update function from Hub to Spoke
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
     /// @param  target The target address to be called
     /// @param  update The payload to be processed by the target address
-    function execute(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
-}
+    function trustedCall(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
 
-/// @notice Interface for the update hub contract method, called by message
-interface IUpdateHubContractGatewayHandler {
-    /// @notice Updates the hub-side target address. Generic update function from Spoke to Hub
+    /// @notice Updates the target address. Generic update function from Spoke to Hub
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
-    /// @param  sender The spoke-side contract that initiated the update
-    /// @param  target The hub-side target address to be called
+    /// @param  target The target address to be called
     /// @param  update The payload to be processed by the target address
-    function execute(PoolId poolId, ShareClassId scId, address sender, address target, bytes memory update) external;
+    function untrustedCall(
+        PoolId poolId,
+        ShareClassId scId,
+        address target,
+        bytes memory update,
+        uint16 centrifugeId,
+        bytes32 sender
+    ) external;
 }
 
 /// @notice Interface for methods implemented by a balance sheet

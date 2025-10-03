@@ -10,13 +10,13 @@ import {MerkleProofLib} from "../../misc/libraries/MerkleProofLib.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {IUpdateContract} from "../../core/spoke/interfaces/IUpdateContract.sol";
+import {ITrustedContractUpdate} from "../../core/spoke/interfaces/IContractUpdate.sol";
 
 import {UpdateContractMessageLib, UpdateContractType} from "../../messaging/libraries/UpdateContractMessageLib.sol";
 
 /// @title  Merkle Proof Manager
 /// @author Inspired by Boring Vaults from Se7en-Seas
-contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
+contract MerkleProofManager is IMerkleProofManager, ITrustedContractUpdate {
     using CastLib for *;
 
     PoolId public immutable poolId;
@@ -35,8 +35,8 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
     // Owner actions
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IUpdateContract
-    function update(
+    /// @inheritdoc ITrustedContractUpdate
+    function trustedCall(
         PoolId poolId_,
         ShareClassId,
         /* scId */

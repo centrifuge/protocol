@@ -13,7 +13,7 @@ import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {IUpdateContract} from "../../core/spoke/interfaces/IUpdateContract.sol";
+import {ITrustedContractUpdate} from "../../core/spoke/interfaces/IContractUpdate.sol";
 
 import {UpdateContractType, UpdateContractMessageLib} from "../../messaging/libraries/UpdateContractMessageLib.sol";
 
@@ -46,8 +46,8 @@ contract OnOfframpManager is IOnOfframpManager {
     // Owner actions
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IUpdateContract
-    function update(PoolId poolId_, ShareClassId scId_, bytes calldata payload) external {
+    /// @inheritdoc ITrustedContractUpdate
+    function trustedCall(PoolId poolId_, ShareClassId scId_, bytes calldata payload) external {
         require(poolId == poolId_, InvalidPoolId());
         require(scId == scId_, InvalidShareClassId());
         require(msg.sender == contractUpdater, NotContractUpdater());

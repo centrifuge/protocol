@@ -82,7 +82,7 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
         bytes32 rootHash = tree[tree.length - 1][0];
 
         vm.prank(address(spoke));
-        manager.update(
+        manager.trustedCall(
             POOL_A,
             defaultTypedShareClassId,
             UpdateContractMessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: rootHash}).serialize()

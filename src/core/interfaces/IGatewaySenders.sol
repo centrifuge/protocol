@@ -97,7 +97,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external payable;
 
     /// @notice Creates and send the message
-    function sendUpdateContract(
+    function sendTrustedContractUpdate(
         uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
@@ -240,12 +240,12 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
     /// @param payload The update payload
     /// @param extraGasLimit Additional gas for cross-chain execution
     /// @param refund Address to refund excess payment
-    function sendUpdateHubContract(
+    function sendUntrustedContractUpdate(
         PoolId poolId,
         ShareClassId scId,
         bytes32 target,
-        bytes32 sender,
         bytes calldata payload,
+        bytes32 sender,
         uint128 extraGasLimit,
         address refund
     ) external payable;

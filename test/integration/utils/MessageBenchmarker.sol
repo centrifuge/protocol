@@ -54,7 +54,7 @@ contract MessageBenchmarker is IMessageHandler, Test {
         if (kind == MessageType.InitiateTransferShares) return "initiateTransferShares";
         if (kind == MessageType.ExecuteTransferShares) return "executeTransferShares";
         if (kind == MessageType.UpdateRestriction) return "updateRestriction";
-        if (kind == MessageType.UpdateContract) return "updateContract";
+        if (kind == MessageType.TrustedContractUpdate) return "trustedContractUpdate";
         if (kind == MessageType.RequestCallback) return "requestCallback";
         if (kind == MessageType.UpdateVault) {
             VaultUpdateKind vaultKind = VaultUpdateKind(message.deserializeUpdateVault().kind);
@@ -70,6 +70,7 @@ contract MessageBenchmarker is IMessageHandler, Test {
         if (kind == MessageType.MaxAssetPriceAge) return "maxAssetPriceAge";
         if (kind == MessageType.MaxSharePriceAge) return "maxSharePriceAge";
         if (kind == MessageType.UpdateGatewayManager) return "updateGatewayManager";
+        if (kind == MessageType.UntrustedContractUpdate) return "untrustedContractUpdate";
         revert("Cannot benchmark message"); // Unreachable
     }
 

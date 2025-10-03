@@ -23,9 +23,8 @@ import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
-    IUpdateContractGatewayHandler,
-    IVaultRegistryGatewayHandler,
-    IUpdateHubContractGatewayHandler
+    IContractUpdateGatewayHandler,
+    IVaultRegistryGatewayHandler
 } from "../core/interfaces/IGatewayHandlers.sol";
 
 import {IRoot} from "../admin/interfaces/IRoot.sol";
@@ -47,8 +46,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IHubGatewayHandler public hubHandler;
     IBalanceSheetGatewayHandler public balanceSheet;
     IVaultRegistryGatewayHandler public vaultRegistry;
-    IUpdateContractGatewayHandler public contractUpdater;
-    IUpdateHubContractGatewayHandler public hubContractUpdater;
+    IContractUpdateGatewayHandler public contractUpdater;
 
     constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, address deployer) Auth(deployer) {
         root = root_;
@@ -67,8 +65,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
-        else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
-        else if (what == "hubContractUpdater") hubContractUpdater = IUpdateHubContractGatewayHandler(data);
+        else if (what == "contractUpdater") contractUpdater = IContractUpdateGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -164,13 +161,20 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateRestriction) {
             MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
             spoke.updateRestriction(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
-        } else if (kind == MessageType.UpdateContract) {
-            MessageLib.UpdateContract memory m = MessageLib.deserializeUpdateContract(message);
-            contractUpdater.execute(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload);
-        } else if (kind == MessageType.UpdateHubContract) {
-            MessageLib.UpdateHubContract memory m = MessageLib.deserializeUpdateHubContract(message);
-            hubContractUpdater.execute(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.sender.toAddress(), m.target.toAddress(), m.payload
+        } else if (kind == MessageType.TrustedContractUpdate) {
+            MessageLib.TrustedContractUpdate memory m = MessageLib.deserializeTrustedContractUpdate(message);
+            contractUpdater.trustedCall(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload
+            );
+        } else if (kind == MessageType.UntrustedContractUpdate) {
+            MessageLib.UntrustedContractUpdate memory m = MessageLib.deserializeUntrustedContractUpdate(message);
+            contractUpdater.untrustedCall(
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                m.target.toAddress(),
+                m.payload,
+                centrifugeId,
+                m.sender
             );
         } else if (kind == MessageType.RequestCallback) {
             MessageLib.RequestCallback memory m = MessageLib.deserializeRequestCallback(message);
