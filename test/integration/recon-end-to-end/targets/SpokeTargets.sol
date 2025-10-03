@@ -148,20 +148,20 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
 
     // Step 5 - set the request manager
     function spoke_setRequestManager(address vault) public asAdmin {
-        IBaseVault vaultInstance = IBaseVault(_getVault());
+        IBaseVault vaultInstance = IBaseVault(vault);
         PoolId poolId = vaultInstance.poolId();
         ShareClassId scId = vaultInstance.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
 
-        spoke.setRequestManager(poolId, scId, assetId, address(asyncRequestManager));
+        spoke.setRequestManager(poolId, scId, assetId, asyncRequestManager);
     }
 
     // Step 6- link the vault
     function spoke_linkVault(address vault) public asAdmin {
-        IBaseVault vaultInstance = IBaseVault(_getVault());
+        IBaseVault vaultInstance = IBaseVault(vault);
         PoolId poolId = vaultInstance.poolId();
         ShareClassId scId = vaultInstance.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
         spoke.linkVault(poolId, scId, assetId, IBaseVault(vault));
     }
 

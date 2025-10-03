@@ -17,12 +17,29 @@ import {PoolEscrow} from "src/common/PoolEscrow.sol";
 
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
 
 /// @dev sanity tests for the fuzzing suite setup
 // forge test --match-contract CryticSanity --match-path test/integration/recon-end-to-end/CryticSanity.sol -vv
 contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
+    using RequestCallbackMessageLib for RequestCallbackMessageLib.FulfilledDepositRequest;
+
     function setUp() public {
         setup();
+    }
+
+    /// === HELPER FUNCTIONS === ///
+
+    /// @dev Get the current deposit epoch for the current vault
+    function nowDepositEpoch() private view returns (uint32) {
+        IBaseVault vault = IBaseVault(_getVault());
+        return shareClassManager.nowDepositEpoch(vault.scId(), spoke.vaultDetails(vault).assetId);
+    }
+
+    /// @dev Get the current redeem epoch for the current vault
+    function nowRedeemEpoch() private view returns (uint32) {
+        IBaseVault vault = IBaseVault(_getVault());
+        return shareClassManager.nowRedeemEpoch(vault.scId(), spoke.vaultDetails(vault).assetId);
     }
 
     /// === SANITY CHECKS === ///
@@ -47,10 +64,13 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         vault_requestDeposit(1e18, 0);
 
-        hub_approveDeposits(1, 1e18);
-        hub_issueShares(1, 1e18);
+        // Set price again after request (critical!)
+        transientValuation_setPrice_clamped(1e18);
 
-        // need to call claimDeposit first to mint the shares
+        uint32 depositEpoch = nowDepositEpoch();
+        hub_approveDeposits(depositEpoch, 1e18);
+        hub_issueShares(depositEpoch, 1e18);
+
         hub_notifyDeposit(MAX_CLAIMS);
 
         vault_deposit(1e18);
@@ -91,8 +111,9 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         transientValuation_setPrice_clamped(1e18);
 
-        hub_approveDeposits(1, 1e18);
-        hub_issueShares(1, 1e18);
+        uint32 depositEpoch = nowDepositEpoch();
+        hub_approveDeposits(depositEpoch, 1e18);
+        hub_issueShares(depositEpoch, 1e18);
 
         // need to call claimDeposit first to mint the shares
         hub_notifyDeposit(MAX_CLAIMS);
@@ -101,8 +122,9 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         vault_requestRedeem(1e18, 0);
 
-        hub_approveRedeems(1, 1e18);
-        hub_revokeShares(1, 1e18);
+        uint32 redeemEpoch = nowRedeemEpoch();
+        hub_approveRedeems(redeemEpoch, 1e18);
+        hub_revokeShares(redeemEpoch, 1e18);
 
         hub_notifyRedeem(MAX_CLAIMS);
 
@@ -150,11 +172,9 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_request_deposit(1e18, 1e18, 1e18, 0);
 
-        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(
-            IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId())
-        );
-        hub_approveDeposits(nowDepositEpoch, 5e17);
-        hub_issueShares(nowDepositEpoch, 5e17);
+        uint32 _nowDepositEpoch = nowDepositEpoch();
+        hub_approveDeposits(_nowDepositEpoch, 5e17);
+        hub_issueShares(_nowDepositEpoch, 5e17);
 
         vault_cancelDepositRequest();
 
@@ -225,5 +245,136 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         asset_approve(address(balanceSheet), depositAmount);
         // Call balanceSheet_deposit with test values
         balanceSheet_deposit(tokenId, depositAmount);
+    }
+
+    function test_balanceSheet_issue_basic() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+        
+        // Set prices
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        spoke_updateMember(type(uint64).max);
+        
+        // Issue shares - verify no revert
+        balanceSheet_issue(100e18);
+    }
+
+    function test_balanceSheet_revoke_basic() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+        
+        // Set prices
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        spoke_updateMember(type(uint64).max);
+        
+        // Issue shares first
+        balanceSheet_issue(200e18);
+        
+        // Approve and revoke
+        IBaseVault vault = IBaseVault(_getVault());
+        vm.startPrank(_getActor());
+        spoke.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
+        vm.stopPrank();
+        
+        balanceSheet_revoke(100e18);
+    }
+
+    function test_balanceSheet_withdraw_basic() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+        
+        // Set prices
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        // Deposit first
+        asset_approve(address(balanceSheet), 200e18);
+        balanceSheet_deposit(0, 200e18);
+        
+        // Withdraw
+        balanceSheet_withdraw(0, 100e18);
+    }
+
+    function test_balanceSheet_submitQueuedShares_basic() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+        
+        // Set prices
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        spoke_updateMember(type(uint64).max);
+        
+        // Queue some shares
+        balanceSheet_issue(100e18);
+        
+        // Submit queued shares
+        balanceSheet_submitQueuedShares(0);
+    }
+
+    function test_balanceSheet_submitQueuedAssets_basic() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+        
+        // Set prices
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        // Queue some assets
+        asset_approve(address(balanceSheet), 100e18);
+        balanceSheet_deposit(0, 100e18);
+        
+        // Submit queued assets
+        balanceSheet_submitQueuedAssets(0);
+    }
+
+    function test_queue_issue_revoke_sequence() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+        
+        // Set prices
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        spoke_updateMember(type(uint64).max);
+        
+        // Issue initial batch
+        balanceSheet_issue(200e18);
+        
+        // Approve for revocations
+        IBaseVault vault = IBaseVault(_getVault());
+        vm.startPrank(_getActor());
+        spoke.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
+        vm.stopPrank();
+        
+        // Execute sequence
+        balanceSheet_revoke(50e18);
+        balanceSheet_issue(75e18);
+        balanceSheet_revoke(100e18);
+    }
+
+    function test_queue_deposit_withdraw_sequence() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+        
+        // Set prices
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        spoke_updateMember(type(uint64).max);
+        
+        // Approve for all operations
+        asset_approve(address(balanceSheet), 1000e18);
+        
+        // Execute sequence
+        balanceSheet_deposit(0, 200e18);
+        balanceSheet_withdraw(0, 50e18);
+        balanceSheet_deposit(0, 100e18);
     }
 }

@@ -64,7 +64,8 @@ abstract contract ReconPoolManager {
     /// @notice Switches the current pool based on the entropy
     /// @param entropy The entropy to choose a random pool in the set for switching
     function _switchPool(uint256 entropy) internal {
-        uint64 target = uint64(_pools.at(entropy % _pools.length()));
+        uint256[] memory pools = _pools.values();
+        uint64 target = uint64(pools[entropy % pools.length]);
         __pool = target;
     }
 }

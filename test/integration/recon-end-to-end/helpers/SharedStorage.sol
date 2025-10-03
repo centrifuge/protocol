@@ -87,9 +87,9 @@ abstract contract SharedStorage {
     mapping(address => uint256) sumOfTransfersOut;
 
     // Global-1
-    mapping(address => uint256) cancelRedeemShareTokenPayout;
+    mapping(address => uint256) sumOfClaimedCancelledDeposits;
     // Global-2
-    mapping(address => uint256) cancelDepositCurrencyPayout;
+    mapping(address => uint256) sumOfClaimedCancelledRedeemShares;
 
     // END === invariant_E_1 === //
 
@@ -112,12 +112,12 @@ abstract contract SharedStorage {
      *         - asyncRequests_fulfillCancelRedeemRequest
      *         - asyncRequests_fulfillRedeemRequest // NOTE: Used by E_1
      */
-    mapping(address => uint256) currencyPayout;
+    mapping(address => uint256) sumOfWithdrawable;
     /**
      * See:
      *         - asyncRequests_fulfillDepositRequest
      */
-    mapping(address => uint256) sumOfFullfilledDeposits;
+    mapping(address => uint256) sumOfFulfilledDeposits;
 
     /**
      * See:
@@ -131,13 +131,6 @@ abstract contract SharedStorage {
      *         - asyncRequests_triggerRedeemRequest
      */
     mapping(address => uint256) sumOfRedeemRequests;
-
-    /**
-     * See:
-     *         - asyncRequests_fulfillRedeemRequest
-     */
-    mapping(address => uint256) sumOfClaimedDepositCancelations;
-    mapping(address => uint256) sumOfClaimedRedeemCancelations;
 
     mapping(address asset => uint256) sumOfSyncDepositsAsset;
     mapping(address share => uint256) sumOfSyncDepositsShare;

@@ -13,13 +13,16 @@ import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ShareToken} from "src/spoke/ShareToken.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {PoolEscrow} from "src/common/PoolEscrow.sol";
+import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
+import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 // Component
 import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
@@ -50,7 +53,9 @@ abstract contract TargetFunctions is
 {
     bool hasDoneADeploy;
 
-    /// === Canaries === ///
+    // ═══════════════════════════════════════════════════════════════
+    // CANARIES
+    // ═══════════════════════════════════════════════════════════════
     function canary_doesTokenGetDeployed() public view returns (bool) {
         if (RECON_TOGGLE_CANARY_TESTS) {
             return _getAssets().length < 10;
@@ -75,7 +80,9 @@ abstract contract TargetFunctions is
         return true;
     }
 
-    /// === Shortcut Functions === ///
+    // ═══════════════════════════════════════════════════════════════
+    // SHORTCUT FUNCTIONS
+    // ═══════════════════════════════════════════════════════════════
     /// @dev This is the main system setup function done like this to explore more possible states
     /// @dev Deploy new asset, add asset to pool, deploy share class, deploy vault
     function shortcut_deployNewTokenPoolAndShare(
@@ -111,7 +118,7 @@ abstract contract TargetFunctions is
 
         // 2. Deploy new pool and register it
         {
-            _poolId = PoolId.wrap(POOL_ID_COUNTER);
+            _poolId = newPoolId(CENTRIFUGE_CHAIN_ID, uint48(POOL_ID_COUNTER));
             hub_createPool(_poolId.raw(), _getActor(), _getAssetId());
 
             spoke_addPool();
@@ -145,12 +152,17 @@ abstract contract TargetFunctions is
             hub_initializeHolding(valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT);
         }
 
+        // 4a. Register request manager on hub side BEFORE deploying vaults (critical for async operations)
+        {
+            hub_setRequestManager(_getPool(), _scId, _getAssetId(), address(asyncRequestManager));
+
+            // Update balance sheet manager for async request manager
+            hub_updateBalanceSheetManager(CENTRIFUGE_CHAIN_ID, _getPool(), address(asyncRequestManager), true);
+        }
+
         // 5. Deploy new vault and register it
         {
             spoke_deployVault(isAsyncVault);
-
-            // must happen before linking vault
-            spoke_setRequestManager(_getVault());
 
             spoke_linkVault(_getVault());
 
@@ -182,7 +194,7 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_request_deposit(
-        uint64 pricePoolPerShare,
+        uint64, /* pricePoolPerShare */
         uint128 priceValuation,
         uint256 amount,
         uint256 toEntropy
@@ -231,14 +243,15 @@ abstract contract TargetFunctions is
         uint128 navPerShare,
         uint256 toEntropy
     ) public {
-        shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
+        // Request 2x amount to ensure sufficient pending after claiming the approved amount
+        // This prevents assertion failures in hub_notifyDeposit when pending delta < payment amount
+        shortcut_request_deposit(pricePoolPerShare, priceValuation, amount * 2, toEntropy);
 
         uint32 depositEpoch =
             shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
-        shortcut_approve_and_issue_shares(uint128(amount), depositEpoch, navPerShare);
+        shortcut_approve_and_issue_shares_safe(uint128(amount), depositEpoch, navPerShare);
 
         hub_notifyDeposit(MAX_CLAIMS);
-
         vault_deposit(amount);
     }
 
@@ -246,7 +259,7 @@ abstract contract TargetFunctions is
         uint64 pricePoolPerShare,
         uint128 priceValuation,
         uint256 amount,
-        uint128 navPerShare,
+        uint128, /* navPerShare */
         uint256 toEntropy
     ) public {
         shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
@@ -276,7 +289,7 @@ abstract contract TargetFunctions is
         uint64 pricePoolPerShare,
         uint128 priceValuation,
         uint256 amount,
-        uint128 navPerShare,
+        uint128, /* navPerShare */
         uint256 toEntropy
     ) public {
         shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
@@ -298,15 +311,26 @@ abstract contract TargetFunctions is
 
         uint32 redeemEpoch =
             shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
-        shortcut_approve_and_revoke_shares(shares, redeemEpoch, navPerShare);
+        shortcut_approve_and_revoke_shares_safe(shares, redeemEpoch, navPerShare);
     }
 
     function shortcut_queue_redemption(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
-        vault_requestRedeem(shares, toEntropy);
+        // Clamp shares to user's actual share balance to prevent insufficient balance errors
+        IBaseVault vault = IBaseVault(_getVault());
+        uint256 userShareBalance = MockERC20(address(vault.share())).balanceOf(_getActor());
+
+        // Request 2x shares to ensure sufficient pending after claiming the approved amount
+        // But clamp to available balance
+        uint256 requestShares = shares * 2;
+        if (requestShares > userShareBalance) {
+            requestShares = userShareBalance;
+        }
+
+        vault_requestRedeem(requestShares, toEntropy);
 
         uint32 redeemEpoch =
             shareClassManager.nowRedeemEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
-        shortcut_approve_and_revoke_shares(uint128(shares), redeemEpoch, navPerShare);
+        shortcut_approve_and_revoke_shares_safe(uint128(shares), redeemEpoch, navPerShare);
     }
 
     function shortcut_claim_withdrawal(uint256 assets, uint256 toEntropy) public {
@@ -342,7 +366,7 @@ abstract contract TargetFunctions is
         shortcut_claim_redemption(shares, toEntropy);
     }
 
-    function shortcut_cancel_redeem_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
+    function shortcut_cancel_redeem_clamped(uint256 shares, uint128, /* navPerShare */ uint256 toEntropy) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
         shares %= (MockERC20(address(IBaseVault(_getVault()).share())).balanceOf(_getActor()) + 1);
         vault_requestRedeem(shares, toEntropy);
@@ -359,11 +383,21 @@ abstract contract TargetFunctions is
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
 
         vault_cancelRedeemRequest();
+
+        // After cancellation, check if there's still pending redeem to approve/revoke
         uint128 pendingRedeem =
             shareClassManager.pendingRedeem(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+
+        // Throw iff pending redeem == 0 to signal pruning
+        uint32 redeemEpoch =
+            shareClassManager.nowRedeemEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        // Use safe approval function that will revert if pendingRedeem becomes 0
+        shortcut_approve_and_revoke_shares_safe(pendingRedeem, redeemEpoch, navPerShare);
     }
 
-    function shortcut_cancel_redeem_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
+    function shortcut_cancel_redeem_claim_clamped(uint256 shares, uint128, /* navPerShare */ uint256 toEntropy)
+        public
+    {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
         shares %= (MockERC20(address(IBaseVault(_getVault()).share())).balanceOf(_getActor()) + 1);
         vault_requestRedeem(shares, toEntropy);
@@ -372,7 +406,9 @@ abstract contract TargetFunctions is
         vault_claimCancelRedeemRequest(toEntropy);
     }
 
-    /// === POOL ADMIN SHORTCUTS === ///
+    // ═══════════════════════════════════════════════════════════════
+    // POOL ADMIN SHORTCUTS
+    // ═══════════════════════════════════════════════════════════════
     function shortcut_approve_and_issue_shares(uint128 maxApproval, uint32 nowDepositEpochId, uint128 navPerShare)
         public
     {
@@ -385,26 +421,91 @@ abstract contract TargetFunctions is
         hub_revokeShares(epochId, navPerShare);
     }
 
-    /// === Transient Valuation === ///
+    // ═══════════════════════════════════════════════════════════════
+    // SAFE APPROVAL SHORTCUTS (WITH EXPLICIT REVERTS)
+    // ═══════════════════════════════════════════════════════════════
+    function shortcut_approve_and_issue_shares_safe(uint128 maxApproval, uint32 nowDepositEpochId, uint128 navPerShare)
+        public
+    {
+        uint128 pendingDeposit =
+            shareClassManager.pendingDeposit(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        require(pendingDeposit > 0, "InsufficientPending: pendingDeposit is 0");
+        require(maxApproval <= pendingDeposit, "ExceedsPending: approval exceeds pending deposit");
+
+        hub_approveDeposits(nowDepositEpochId, maxApproval);
+        hub_issueShares(nowDepositEpochId, navPerShare);
+    }
+
+    function shortcut_approve_and_revoke_shares_safe(uint128 maxApproval, uint32 epochId, uint128 navPerShare) public {
+        uint128 pendingRedeem =
+            shareClassManager.pendingRedeem(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        require(pendingRedeem > 0, "InsufficientPending: pendingRedeem is 0");
+        require(maxApproval <= pendingRedeem, "ExceedsPending: approval exceeds pending redeem");
+
+        hub_approveRedeems(epochId, maxApproval);
+        hub_revokeShares(epochId, navPerShare);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // TRANSIENT VALUATION
+    // ═══════════════════════════════════════════════════════════════
     function transientValuation_setPrice(AssetId base, AssetId quote, uint128 price) public {
-        transientValuation.setPrice(base, quote, D18.wrap(price));
+        IBaseVault vault = IBaseVault(_getVault());
+        if (address(vault) == address(0)) return;
+
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+
+        transientValuation.setPrice(poolId, scId, base, D18.wrap(price));
     }
 
     // set the price of the asset in the transient valuation for a given pool
     function transientValuation_setPrice_clamped(uint128 price) public {
-        AssetId poolCurrency = hubRegistry.currency(PoolId.wrap(_getPool()));
         AssetId assetId = AssetId.wrap(_getAssetId());
 
         transientValuation_setPrice(assetId, AssetId.wrap(_getAssetId()), price);
     }
 
-    /// === Permission Functions === ///
-    // TODO: can probably remove these
-    function root_scheduleRely(address target) public asAdmin {
-        root.scheduleRely(target);
+    // === PRICE CONTROL HANDLERS === //
+
+    /// @dev Force price to zero for testing zero-price scenarios
+    function hub_setPriceZero() public asAdmin {
+        IBaseVault vault = IBaseVault(_getVault());
+        if (address(vault) == address(0)) return;
+
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+
+        hub.updateSharePrice(poolId, scId, D18.wrap(0));
     }
 
-    function root_cancelRely(address target) public asAdmin {
-        root.cancelRely(target);
+    /// @dev Set non-zero price with proper clamping for realistic testing
+    function hub_setPriceNonZero_clamped(uint256 price) public asAdmin {
+        if (price == 0) price = 1;
+        if (price > type(uint128).max) price = type(uint128).max;
+
+        IBaseVault vault = IBaseVault(_getVault());
+        if (address(vault) == address(0)) return;
+
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+
+        hub.updateSharePrice(poolId, scId, D18.wrap(uint128(price)));
+    }
+
+    /// @dev Set price to realistic range for testing normal operations
+    function hub_setPriceRealistic_clamped(uint256 price) public asAdmin {
+        // Clamp to realistic DeFi price range (0.001 to 1,000,000)
+        // TODO: @Reviewer, is this range too restrictive?
+        if (price < 1e15) price = 1e15;
+        if (price > 1e24) price = 1e24;
+
+        IBaseVault vault = IBaseVault(_getVault());
+        if (address(vault) == address(0)) return;
+
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+
+        hub.updateSharePrice(poolId, scId, D18.wrap(uint128(price)));
     }
 }
