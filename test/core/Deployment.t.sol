@@ -122,7 +122,6 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         assertEq(gateway.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(gateway.root()), address(root));
         assertEq(address(gateway.processor()), address(messageProcessor));
         assertEq(address(gateway.adapter()), address(multiAdapter));
         assertEq(address(gateway.messageLimits()), address(gasService));

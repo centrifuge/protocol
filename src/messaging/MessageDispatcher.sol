@@ -13,12 +13,10 @@ import {IRecoverable} from "../misc/interfaces/IRecoverable.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
-import {IRoot} from "../core/interfaces/IRoot.sol";
 import {IGateway} from "../core/interfaces/IGateway.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
 import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
-import {ITokenRecoverer} from "../core/interfaces/ITokenRecoverer.sol";
 import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "../core/interfaces/IGatewaySenders.sol";
 import {
     ISpokeGatewayHandler,
@@ -27,6 +25,9 @@ import {
     IUpdateContractGatewayHandler,
     IVaultRegistryGatewayHandler
 } from "../core/interfaces/IGatewayHandlers.sol";
+
+import {IRoot} from "../admin/interfaces/IRoot.sol";
+import {ITokenRecoverer} from "../admin/interfaces/ITokenRecoverer.sol";
 
 contract MessageDispatcher is Auth, IMessageDispatcher {
     using CastLib for *;

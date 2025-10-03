@@ -62,7 +62,7 @@ contract GasService is IGasService {
         executeTransferShares = BASE_COST + 177386;
         updateRestriction = BASE_COST + 114365;
         updateContract = BASE_COST + 144484;
-        requestCallback = BASE_COST + 257948; // approve deposit case
+        requestCallback = BASE_COST + 257970; // approve deposit case
         updateVaultDeployAndLink = BASE_COST + 2852823;
         updateVaultLink = BASE_COST + 185154;
         updateVaultUnlink = BASE_COST + 133872;
@@ -72,7 +72,7 @@ contract GasService is IGasService {
         updateShares = BASE_COST + 184290;
         maxAssetPriceAge = BASE_COST + 110037;
         maxSharePriceAge = BASE_COST + 106923;
-        updateGatewayManager = BASE_COST + 87952;
+        updateGatewayManager = BASE_COST + 87974;
     }
 
     /// @inheritdoc IMessageLimits
