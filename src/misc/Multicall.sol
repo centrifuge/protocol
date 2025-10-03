@@ -4,8 +4,8 @@ pragma solidity ^0.8.28;
 // NOTE: This file has warning disabled due https://github.com/ethereum/solidity/issues/14359
 // If perform any change on it, please ensure no other warnings appears
 
-import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
-import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
+import {IMulticall} from "./interfaces/IMulticall.sol";
+import {ReentrancyProtection} from "./ReentrancyProtection.sol";
 
 abstract contract Multicall is ReentrancyProtection, IMulticall {
     function multicall(bytes[] calldata data) public payable virtual protected {

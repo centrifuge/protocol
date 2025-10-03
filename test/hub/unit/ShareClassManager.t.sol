@@ -1,32 +1,28 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {D18, d18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {AssetId} from "../../../src/common/types/AssetId.sol";
+import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
+import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 
-import {ShareClassManager} from "src/hub/ShareClassManager.sol";
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-
-import "forge-std/Test.sol";
-
+import {ShareClassManager} from "../../../src/hub/ShareClassManager.sol";
+import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "../../../src/hub/interfaces/IShareClassManager.sol";
 import {
     IShareClassManager,
     EpochInvestAmounts,
     EpochRedeemAmounts,
     UserOrder,
-    ShareClassMetadata,
-    ShareClassMetrics,
-    QueuedOrder,
-    RequestType
-} from "src/hub/interfaces/IShareClassManager.sol";
+    QueuedOrder
+} from "../../../src/hub/interfaces/IShareClassManager.sol";
+
+import "forge-std/Test.sol";
 
 uint16 constant CHAIN_ID = 1;
 uint64 constant POOL_ID = 42;
@@ -58,9 +54,9 @@ contract HubRegistryMock {
     }
 
     function decimals(AssetId assetId) external pure returns (uint8) {
-        if (assetId.eq(USDC)) {
+        if (assetId == USDC) {
             return DECIMALS_USDC;
-        } else if (assetId.eq(OTHER_STABLE)) {
+        } else if (assetId == OTHER_STABLE) {
             return DECIMALS_OTHER_STABLE;
         } else {
             revert("IHubRegistry.decimals() - Unknown assetId");
@@ -135,9 +131,9 @@ abstract contract ShareClassManagerBaseTest is Test {
     }
 
     function _pricePoolPerAsset(AssetId assetId) internal pure returns (D18) {
-        if (assetId.eq(USDC)) {
+        if (assetId == USDC) {
             return d18(1, 1);
-        } else if (assetId.eq(OTHER_STABLE)) {
+        } else if (assetId == OTHER_STABLE) {
             return d18(1, OTHER_STABLE_PER_POOL);
         } else {
             revert("ShareClassManagerBaseTest._priceAssetPerPool() - Unknown assetId");

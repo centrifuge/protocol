@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {D18} from "src/misc/types/D18.sol";
+import {D18} from "../../misc/types/D18.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {PoolId} from "../types/PoolId.sol";
+import {AssetId} from "../types/AssetId.sol";
+import {ShareClassId} from "../types/ShareClassId.sol";
+import {VaultUpdateKind} from "../libraries/MessageLib.sol";
 
 interface ILocalCentrifugeId {
     function localCentrifugeId() external view returns (uint16);
@@ -105,7 +105,8 @@ interface IHubMessageSender is ILocalCentrifugeId {
 
     /// @notice Creates and send the message
     function sendExecuteTransferShares(
-        uint16 centrifugeId,
+        uint16 originCentrifugeId,
+        uint16 targetCentrifugeId,
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,

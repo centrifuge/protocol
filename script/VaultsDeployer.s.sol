@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Escrow} from "src/misc/Escrow.sol";
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
+import {CommonInput} from "./CommonDeployer.s.sol";
+import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "./SpokeDeployer.s.sol";
 
-import {SyncManager} from "src/vaults/SyncManager.sol";
-import {VaultRouter} from "src/vaults/VaultRouter.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
+import {Escrow} from "../src/misc/Escrow.sol";
 
-import {Spoke} from "src/spoke/Spoke.sol";
+import {Spoke} from "../src/spoke/Spoke.sol";
 
-import {CommonInput} from "script/CommonDeployer.s.sol";
-import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "script/SpokeDeployer.s.sol";
+import {SyncManager} from "../src/vaults/SyncManager.sol";
+import {VaultRouter} from "../src/vaults/VaultRouter.sol";
+import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
+import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import "forge-std/Script.sol";
 
@@ -29,7 +28,7 @@ struct VaultsReport {
 }
 
 contract VaultsActionBatcher is SpokeActionBatcher {
-    function engageVaults(VaultsReport memory report, bool newRoot) public unlocked {
+    function engageVaults(VaultsReport memory report) public onlyDeployer {
         // Rely Spoke
         report.asyncVaultFactory.rely(address(report.spoke.spoke));
         report.syncDepositVaultFactory.rely(address(report.spoke.spoke));
@@ -53,6 +52,8 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         // Rely others
         report.routerEscrow.rely(address(report.vaultRouter));
         report.syncManager.rely(address(report.syncDepositVaultFactory));
+        report.asyncRequestManager.rely(address(report.syncDepositVaultFactory));
+        report.asyncRequestManager.rely(address(report.asyncVaultFactory));
 
         // Rely VaultRouter
         report.spoke.common.gateway.rely(address(report.vaultRouter));
@@ -65,14 +66,12 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         report.syncManager.file("balanceSheet", address(report.spoke.balanceSheet));
 
         // Endorse methods
-        if (newRoot) {
-            report.spoke.common.root.endorse(address(report.asyncRequestManager));
-            report.spoke.common.root.endorse(address(report.globalEscrow));
-            report.spoke.common.root.endorse(address(report.vaultRouter));
-        }
+        report.spoke.common.root.endorse(address(report.asyncRequestManager));
+        report.spoke.common.root.endorse(address(report.globalEscrow));
+        report.spoke.common.root.endorse(address(report.vaultRouter));
     }
 
-    function revokeVaults(VaultsReport memory report) public unlocked {
+    function revokeVaults(VaultsReport memory report) public onlyDeployer {
         report.asyncVaultFactory.deny(address(this));
         report.syncDepositVaultFactory.deny(address(this));
         report.asyncRequestManager.deny(address(this));
@@ -110,8 +109,8 @@ contract VaultsDeployer is SpokeDeployer {
 
         asyncRequestManager = AsyncRequestManager(
             create3(
-                generateSalt("asyncRequestManager"),
-                abi.encodePacked(type(AsyncRequestManager).creationCode, abi.encode(IEscrow(globalEscrow), batcher))
+                generateSalt("asyncRequestManager-2"),
+                abi.encodePacked(type(AsyncRequestManager).creationCode, abi.encode(globalEscrow, batcher))
             )
         );
 
@@ -130,7 +129,7 @@ contract VaultsDeployer is SpokeDeployer {
 
         asyncVaultFactory = AsyncVaultFactory(
             create3(
-                generateSalt("asyncVaultFactory"),
+                generateSalt("asyncVaultFactory-3"),
                 abi.encodePacked(
                     type(AsyncVaultFactory).creationCode, abi.encode(address(root), asyncRequestManager, batcher)
                 )
@@ -139,7 +138,7 @@ contract VaultsDeployer is SpokeDeployer {
 
         syncDepositVaultFactory = SyncDepositVaultFactory(
             create3(
-                generateSalt("syncDepositVaultFactory"),
+                generateSalt("syncDepositVaultFactory-3"),
                 abi.encodePacked(
                     type(SyncDepositVaultFactory).creationCode,
                     abi.encode(address(root), syncManager, asyncRequestManager, batcher)
@@ -147,7 +146,7 @@ contract VaultsDeployer is SpokeDeployer {
             )
         );
 
-        batcher.engageVaults(_vaultsReport(), newRoot);
+        batcher.engageVaults(_vaultsReport());
 
         register("routerEscrow", address(routerEscrow));
         register("globalEscrow", address(globalEscrow));

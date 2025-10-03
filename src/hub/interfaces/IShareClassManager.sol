@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {D18} from "src/misc/types/D18.sol";
+import {D18} from "../../misc/types/D18.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "../../common/types/PoolId.sol";
+import {AssetId} from "../../common/types/AssetId.sol";
+import {ShareClassId} from "../../common/types/ShareClassId.sol";
 
 struct EpochRedeemAmounts {
     /// @dev Amount of shares pending to be redeemed at time of epoch
@@ -520,5 +520,8 @@ interface IShareClassManager {
     /// @return name The registered name of the share class token
     /// @return symbol The registered symbol of the share class token
     /// @return salt The registered salt of the share class token, used for deterministic deployments
-    function metadata(ShareClassId scId) external returns (string memory name, string memory symbol, bytes32 salt);
+    function metadata(ShareClassId scId)
+        external
+        view
+        returns (string memory name, string memory symbol, bytes32 salt);
 }

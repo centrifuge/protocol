@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ERC20} from "src/misc/ERC20.sol";
-import "src/misc/interfaces/IERC7540.sol";
-import "src/misc/interfaces/IERC7575.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {ERC20} from "../../../src/misc/ERC20.sol";
+import "../../../src/misc/interfaces/IERC7540.sol";
+import "../../../src/misc/interfaces/IERC7575.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
+import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 
-import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
+import {MockRoot} from "../../common/mocks/MockRoot.sol";
 
-import {ShareToken} from "src/spoke/ShareToken.sol";
+import {ITransferHook} from "../../../src/common/interfaces/ITransferHook.sol";
 
-import {MockRoot} from "test/common/mocks/MockRoot.sol";
-import {MockFullRestrictions} from "test/spoke/mocks/MockFullRestrictions.sol";
+import {ShareToken} from "../../../src/spoke/ShareToken.sol";
+
+import {MockFullRestrictions} from "../mocks/MockFullRestrictions.sol";
 
 import "forge-std/Test.sol";
 
@@ -36,7 +37,13 @@ contract ShareTokenTest is Test {
         token.file("name", "Some Token");
         token.file("symbol", "ST");
 
-        fullRestrictionsHook = new MockFullRestrictions(address(new MockRoot()), address(this));
+        fullRestrictionsHook = new MockFullRestrictions(
+            address(new MockRoot()),
+            makeAddr("redeemSource"),
+            makeAddr("depositTarget"),
+            makeAddr("crosschainSource"),
+            address(this)
+        );
         token.file("hook", address(fullRestrictionsHook));
     }
 

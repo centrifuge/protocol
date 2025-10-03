@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
 import "forge-std/Test.sol";
 
@@ -15,7 +15,7 @@ contract CastLibTest is Test {
 
         bytes32 input = bytes32(bytes.concat(bytes20(addr), nonZero));
 
-        vm.expectRevert(bytes("Input should be 20 bytes"));
+        vm.expectRevert(CastLib.PrefixNotZero.selector);
         this.toAddress(input);
     }
 

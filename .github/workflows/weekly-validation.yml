@@ -1,0 +1,71 @@
+name: Weekly Chain Validation
+
+on:
+  schedule:
+    # Run every Monday at 6:00 AM UTC (7:00 AM CET)
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    # Allow manual triggering for testing
+
+jobs:
+  validate-chains:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        chain:
+          - name: "Ethereum"
+            test: "test_validateEthereum"
+            emoji: "🌐"
+            # rpc_secret: "ETH_RPC_URL"
+          - name: "Base"
+            test: "test_validateBase"
+            emoji: "🔵"
+            # rpc_secret: "BASE_RPC_URL"
+          - name: "Arbitrum"
+            test: "test_validateArbitrum"
+            emoji: "🔶"
+            # rpc_secret: "ARBITRUM_RPC_URL"
+          - name: "Avalanche"
+            test: "test_validateAvalanche"
+            emoji: "🏔️"
+            # rpc_secret: "AVAX_RPC_URL"
+          - name: "BNB"
+            test: "test_validateBNB"
+            emoji: "🟡"
+            # rpc_secret: "BNB_RPC_URL"
+          - name: "Plume"
+            test: "test_validatePlume"
+            emoji: "🟣"
+            # rpc_secret: "PLUME_RPC_URL"
+    
+    name: "Validate ${{ matrix.chain.name }}"
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      
+      - name: Create build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            cache
+            out
+          key: ${{ runner.os }}-foundry-${{ hashFiles('lib/**', 'src/**', 'test/**') }}
+          restore-keys: |
+            ${{ runner.os }}-foundry-
+      
+      - name: Install dependencies
+        run: forge install --no-commit
+      
+      - name: Validate ${{ matrix.chain.name }} deployment
+        # env:
+        #   ${{ matrix.chain.rpc_secret }}: ${{ secrets[matrix.chain.rpc_secret] }}
+        run: |
+          echo "${{ matrix.chain.emoji }} Validating ${{ matrix.chain.name }} deployment..."
+          forge test --match-test ${{ matrix.chain.test }} -vv

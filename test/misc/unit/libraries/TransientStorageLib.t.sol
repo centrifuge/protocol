@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
+import {TransientStorageLib} from "../../../../src/misc/libraries/TransientStorageLib.sol";
 
 import "forge-std/Test.sol";
 

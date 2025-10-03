@@ -1,21 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
-import {TransientBytesLib} from "src/misc/libraries/TransientBytesLib.sol";
-import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
-import {Recoverable, IRecoverable, ETH_ADDRESS} from "src/misc/Recoverable.sol";
+import {PoolId} from "./types/PoolId.sol";
+import {IRoot} from "./interfaces/IRoot.sol";
+import {IAdapter} from "./interfaces/IAdapter.sol";
+import {IGateway} from "./interfaces/IGateway.sol";
+import {IGasService} from "./interfaces/IGasService.sol";
+import {IMessageSender} from "./interfaces/IMessageSender.sol";
+import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
+import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {IGasService} from "src/common/interfaces/IGasService.sol";
-import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
+import {Auth} from "../misc/Auth.sol";
+import {MathLib} from "../misc/libraries/MathLib.sol";
+import {BytesLib} from "../misc/libraries/BytesLib.sol";
+import {TransientArrayLib} from "../misc/libraries/TransientArrayLib.sol";
+import {TransientBytesLib} from "../misc/libraries/TransientBytesLib.sol";
+import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
+import {Recoverable, IRecoverable, ETH_ADDRESS} from "../misc/Recoverable.sol";
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)
@@ -26,6 +27,7 @@ import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 ///         Supports processing multiple duplicate messages in parallel by storing counts of messages
 ///         and proofs that have been received. Also implements a retry method for failed messages.
 contract Gateway is Auth, Recoverable, IGateway {
+    using MathLib for *;
     using BytesLib for bytes;
     using TransientStorageLib for bytes32;
 
@@ -127,7 +129,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         emit PrepareMessage(centrifugeId, poolId, message);
 
-        uint128 gasLimit = gasService.gasLimit(centrifugeId, message) + extraGasLimit;
+        uint128 gasLimit = gasService.messageGasLimit(centrifugeId, message) + extraGasLimit;
         extraGasLimit = 0;
 
         if (isBatching) {
@@ -136,7 +138,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             bytes32 gasLimitSlot = _gasLimitSlot(centrifugeId, poolId);
             uint128 newGasLimit = gasLimitSlot.tloadUint128() + gasLimit;
-            require(newGasLimit <= gasService.maxBatchSize(centrifugeId), ExceedsMaxBatchSize());
+            require(newGasLimit <= gasService.maxBatchGasLimit(centrifugeId), ExceedsMaxGasLimit());
             gasLimitSlot.tstore(uint256(newGasLimit));
 
             if (previousMessage.length == 0) {
@@ -145,27 +147,26 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             TransientBytesLib.append(batchSlot, message);
         } else {
-            _send(centrifugeId, poolId, message, gasLimit);
+            _send(centrifugeId, message, gasLimit);
         }
     }
 
-    function _send(uint16 centrifugeId, PoolId poolId, bytes memory batch, uint128 batchGasLimit)
-        internal
-        returns (bool succeeded)
-    {
+    function _send(uint16 centrifugeId, bytes memory batch, uint128 batchGasLimit) internal returns (bool succeeded) {
+        PoolId poolId = processor.messagePoolIdPayment(batch);
         uint256 cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
 
         // Ensure sufficient funds are available
         if (transactionRefund != address(0)) {
             require(cost <= fuel, NotEnoughTransactionGas());
             fuel -= cost;
-        } else { // Subsidized pool payment
+        } else {
+            // Subsidized pool payment
             if (cost > subsidy[poolId].value) {
                 _requestPoolFunding(poolId);
             }
 
             if (cost <= subsidy[poolId].value) {
-                subsidy[poolId].value -= uint96(cost);
+                subsidy[poolId].value -= cost.toUint96();
             } else {
                 _addUnpaidBatch(centrifugeId, batch, batchGasLimit);
                 return false;
@@ -184,7 +185,10 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IGateway
     function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external auth {
-        _addUnpaidBatch(centrifugeId, message, gasService.gasLimit(centrifugeId, message));
+        uint128 gasLimit = gasService.messageGasLimit(centrifugeId, message) + extraGasLimit;
+        extraGasLimit = 0;
+        emit PrepareMessage(centrifugeId, processor.messagePoolId(message), message);
+        _addUnpaidBatch(centrifugeId, message, gasLimit);
     }
 
     function _addUnpaidBatch(uint16 centrifugeId, bytes memory message, uint128 gasLimit) internal {
@@ -203,18 +207,21 @@ contract Gateway is Auth, Recoverable, IGateway {
         Underpaid storage underpaid_ = underpaid[centrifugeId][batchHash];
         require(underpaid_.counter > 0, NotUnderpaidBatch());
 
-        PoolId poolId = processor.messagePoolId(batch);
+        PoolId poolId = processor.messagePoolIdPayment(batch);
         if (msg.value > 0) subsidizePool(poolId);
 
         underpaid_.counter--;
-        require(_send(centrifugeId, poolId, batch, underpaid_.gasLimit), InsufficientFundsForRepayment());
+        require(_send(centrifugeId, batch, underpaid_.gasLimit), InsufficientFundsForRepayment());
+
+        if (underpaid_.counter == 0) delete underpaid[centrifugeId][batchHash];
 
         emit RepayBatch(centrifugeId, batch);
     }
 
     function _requestPoolFunding(PoolId poolId) internal {
+        // NOTE: refund will never be shared across pools
         IRecoverable refund = subsidy[poolId].refund;
-        if (!poolId.isNull() && address(refund) != address(0)) {
+        if (!poolId.isNull()) {
             uint256 refundBalance = address(refund).balance;
             if (refundBalance == 0) return;
 
@@ -222,7 +229,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             refund.recoverTokens(ETH_ADDRESS, address(this), refundBalance);
 
             // Extract from the GLOBAL_POT
-            subsidy[GLOBAL_POT].value -= uint96(refundBalance);
+            subsidy[GLOBAL_POT].value -= refundBalance.toUint96();
             _subsidizePool(poolId, address(refund), refundBalance);
         }
     }
@@ -245,7 +252,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     function _subsidizePool(PoolId poolId, address who, uint256 value) internal {
-        subsidy[poolId].value += uint96(value);
+        subsidy[poolId].value += value.toUint96();
         emit SubsidizePool(poolId, who, value);
     }
 
@@ -293,7 +300,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             bytes32 outboundBatchSlot = _outboundBatchSlot(centrifugeId, poolId);
             uint128 gasLimit = _gasLimitSlot(centrifugeId, poolId).tloadUint128();
 
-            _send(centrifugeId, poolId, TransientBytesLib.get(outboundBatchSlot), gasLimit);
+            _send(centrifugeId, TransientBytesLib.get(outboundBatchSlot), gasLimit);
 
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));

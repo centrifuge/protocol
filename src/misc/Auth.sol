@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IAuth} from "./interfaces/IAuth.sol";
 
 /// @title  Auth
 /// @notice Simple authentication pattern

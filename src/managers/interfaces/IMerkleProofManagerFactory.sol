@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {PoolId} from "src/common/types/PoolId.sol";
+import {IMerkleProofManager} from "./IMerkleProofManager.sol";
 
-import {IMerkleProofManager} from "src/managers/interfaces/IMerkleProofManager.sol";
+import {PoolId} from "../../common/types/PoolId.sol";
 
 interface IMerkleProofManagerFactory {
     event DeployMerkleProofManager(PoolId indexed poolId, address indexed manager);

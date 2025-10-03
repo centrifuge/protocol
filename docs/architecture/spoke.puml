@@ -33,7 +33,6 @@ class TokenFactory
 
 interface IVaultFactory
 interface IVault
-interface IVaultManager
 interface IRequestManager
 interface ITransferHook
 
@@ -59,7 +58,6 @@ PoolEscrowFactory .right.> PoolEscrow
 
 ShareToken -up-> ITransferHook
 ShareToken -right-> IVault
-IVault -up-> IVaultManager
 
 OnOfframpManager -down-> BalanceSheet
 MerkleProofManager -up-> BalanceSheet

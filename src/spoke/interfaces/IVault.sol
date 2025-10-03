@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-
-import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
+import {PoolId} from "../../common/types/PoolId.sol";
+import {ShareClassId} from "../../common/types/ShareClassId.sol";
 
 enum VaultKind {
     /// @dev Refers to AsyncVault
@@ -23,9 +21,6 @@ interface IVault {
 
     /// @notice Identifier of the share class of the Centrifuge pool
     function scId() external view returns (ShareClassId);
-
-    /// @notice Returns the associated manager.
-    function manager() external view returns (IVaultManager);
 
     /// @notice Checks whether the vault is partially (a)synchronous.
     ///

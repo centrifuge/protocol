@@ -3,9 +3,11 @@ pragma solidity 0.8.28;
 
 // Small library to handle fixed point number operations with 18 decimals with static typing support.
 
-import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {MathLib} from "../libraries/MathLib.sol";
 
 type D18 is uint128;
+
+error D18_DivisionByZero();
 
 using MathLib for uint256;
 
@@ -14,7 +16,7 @@ function add(D18 d1, D18 d2) pure returns (D18) {
     return D18.wrap(D18.unwrap(d1) + D18.unwrap(d2));
 }
 
-/// @dev substract two D18 types
+/// @dev subtract two D18 types
 function sub(D18 d1, D18 d2) pure returns (D18) {
     return D18.wrap(D18.unwrap(d1) - D18.unwrap(d2));
 }
@@ -39,7 +41,7 @@ function mulD18(D18 d1, D18 d2) pure returns (D18) {
 ///      Example: if d = 2.0 (2e18 internally), reciprocal(d) = 0.5 (5e17 internally).
 function reciprocal(D18 d) pure returns (D18) {
     uint128 val = D18.unwrap(d);
-    require(val != 0, "D18/division-by-zero");
+    require(val != 0, D18_DivisionByZero());
     return d18(1e18, val);
 }
 

@@ -3,8 +3,11 @@ pragma solidity 0.8.28;
 
 /// @title  CastLib
 library CastLib {
+    error PrefixNotZero();
+    error SizeNot128();
+
     function toAddressLeftPadded(bytes32 addr) internal pure returns (address) {
-        require(bytes12(addr) == 0, "First 12 bytes should be zero");
+        require(bytes12(addr) == 0, PrefixNotZero());
         return address(uint160(uint256(addr)));
     }
 
@@ -13,7 +16,7 @@ library CastLib {
     }
 
     function toAddress(bytes32 addr) internal pure returns (address) {
-        require(uint96(uint256(addr)) == 0, "Input should be 20 bytes");
+        require(uint96(uint256(addr)) == 0, PrefixNotZero());
         return address(bytes20(addr));
     }
 
@@ -28,7 +31,7 @@ library CastLib {
 
     /// @dev Removes zero padding
     function bytes128ToString(bytes memory _bytes128) internal pure returns (string memory) {
-        require(_bytes128.length == 128, "Input should be 128 bytes");
+        require(_bytes128.length == 128, SizeNot128());
 
         uint8 i = 0;
         while (i < 128 && _bytes128[i] != 0) {

@@ -72,8 +72,8 @@ abstract contract ManagerTargets is BaseTargetFunctions, Properties {
 
     /// @dev Mint to arbitrary address, uses owner by default, even though MockERC20 doesn't check
     function asset_mint(address to, uint128 amt) public updateGhosts asAdmin {
-        // PoolId poolId = IBaseVault(_getVault()).poolId();
-        address poolEscrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
+        // PoolId poolId = _getVault().poolId();
+        address poolEscrow = address(poolEscrowFactory.escrow(_getVault().poolId()));
 
         require(to != address(globalEscrow) && to != poolEscrow, "Cannot mint to globalEscrow or poolEscrow");
         console2.log("asset_mint to", to);

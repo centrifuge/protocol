@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "../../interfaces/IShareToken.sol";
 
 interface ITokenFactory {
     event File(bytes32 what, address[] addr);
@@ -14,7 +14,7 @@ interface ITokenFactory {
 
     /// @notice Used to deploy new share class tokens.
     /// @dev    In order to have the same address on different EVMs `salt` should be used
-    ///         during creationg process.
+    ///         during creation process.
     /// @param name Name of the new token.
     /// @param symbol Symbol of the new token.
     /// @param decimals Decimals of the new token.

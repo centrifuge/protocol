@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
+import {IAccounting, JournalEntry} from "./interfaces/IAccounting.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
+import {Auth} from "../misc/Auth.sol";
+import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 
-import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {AccountId} from "../common/types/AccountId.sol";
 
 /// @notice In a transaction there can be multiple journal entries for different pools,
 /// which can be interleaved. We want entries for the same pool to share the same journal ID.
@@ -78,7 +78,7 @@ contract Accounting is Auth, IAccounting {
         accounts[poolId][account].metadata = metadata;
         emit SetAccountMetadata(poolId, account, metadata);
     }
-    
+
     //----------------------------------------------------------------------------------------------
     // Account updates
     //----------------------------------------------------------------------------------------------
@@ -125,7 +125,7 @@ contract Accounting is Auth, IAccounting {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAccounting
-    function accountValue(PoolId poolId, AccountId account) external view returns (bool /* isPositive */, uint128) {
+    function accountValue(PoolId poolId, AccountId account) external view returns (bool, /* isPositive */ uint128) {
         Account storage acc = accounts[poolId][account];
         require(acc.lastUpdated != 0, AccountDoesNotExist());
 

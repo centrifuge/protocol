@@ -23,59 +23,106 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 // Test Utils
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
-import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
+import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 
 /// @dev Admin functions called by the admin actor
+/// @dev These explicitly clamp the investor to always be one of the actors
 abstract contract AdminTargets is BaseTargetFunctions, Properties {
     using CastLib for *;
-
-    event InterestingCoverageLog();
-
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
-    /// === STATE FUNCTIONS === ///
-    /// @dev These explicitly clamp the investor to always be one of the actors
+    /// === SyncManager === ///
+    function syncManager_setValuation(address valuation) public updateGhosts {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        syncManager.setValuation(poolId, scId, valuation);
+    }
 
+    function syncManager_setValuation_clamped(bool isIdentityValuation) public {
+        address valuation = isIdentityValuation
+            ? address(identityValuation)
+            : address(transientValuation);
+        syncManager_setValuation(valuation);
+    }
+
+    // === Hub === ///
     function hub_addShareClass(uint256 salt) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
+        PoolId poolId = _getPool();
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
         hub.addShareClass(poolId, name, symbol, bytes32(salt));
     }
 
-    function hub_approveDeposits(uint32 nowDepositEpochId, uint128 maxApproval) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        AssetId paymentAssetId = hubRegistry.currency(poolId);
-        uint128 pendingDepositBefore = shareClassManager.pendingDeposit(scId, paymentAssetId);
+    function hub_approveDeposits(
+        uint32 nowDepositEpochId,
+        uint128 maxApproval
+    ) public updateGhosts {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId paymentAssetId = _getAssetId();
+        uint128 pendingDepositBefore = shareClassManager.pendingDeposit(
+            scId,
+            paymentAssetId
+        );
 
-        hub.approveDeposits(poolId, scId, paymentAssetId, nowDepositEpochId, maxApproval);
+        hub.approveDeposits(
+            poolId,
+            scId,
+            paymentAssetId,
+            nowDepositEpochId,
+            maxApproval
+        );
 
-        uint128 pendingDepositAfter = shareClassManager.pendingDeposit(scId, paymentAssetId);
-        uint128 approvedAssetAmount = pendingDepositBefore - pendingDepositAfter;
+        uint128 pendingDepositAfter = shareClassManager.pendingDeposit(
+            scId,
+            paymentAssetId
+        );
+        uint128 approvedAssetAmount = pendingDepositBefore -
+            pendingDepositAfter;
         approvedDeposits[scId][paymentAssetId] += approvedAssetAmount;
     }
 
-    function hub_approveRedeems(uint32 nowRedeemEpochId, uint128 maxApproval) public updateGhosts {
-        IBaseVault vault = IBaseVault(_getVault());
+    function hub_approveRedeems(
+        uint32 nowRedeemEpochId,
+        uint128 maxApproval
+    ) public updateGhosts {
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId payoutAssetId = hubRegistry.currency(poolId);
-        uint128 pendingRedeemBefore = shareClassManager.pendingRedeem(scId, payoutAssetId);
+        AssetId payoutAssetId = _getAssetId();
+        uint128 pendingRedeemBefore = shareClassManager.pendingRedeem(
+            scId,
+            payoutAssetId
+        );
 
-        hub.approveRedeems(poolId, scId, payoutAssetId, nowRedeemEpochId, maxApproval);
+        hub.approveRedeems(
+            poolId,
+            scId,
+            payoutAssetId,
+            nowRedeemEpochId,
+            maxApproval
+        );
 
-        uint128 pendingRedeemAfter = shareClassManager.pendingRedeem(scId, payoutAssetId);
+        uint128 pendingRedeemAfter = shareClassManager.pendingRedeem(
+            scId,
+            payoutAssetId
+        );
         uint128 approvedAssetAmount = pendingRedeemBefore - pendingRedeemAfter;
         approvedRedemptions[scId][payoutAssetId] += approvedAssetAmount;
     }
 
-    function hub_approveRedeems_clamped(uint32 nowRedeemEpochId, uint128 maxApproval) public {
+    function hub_approveRedeems_clamped(
+        uint32 nowRedeemEpochId,
+        uint128 maxApproval
+    ) public {
         hub_approveRedeems(nowRedeemEpochId, maxApproval);
     }
 
-    function hub_createAccount(uint32 accountAsInt, bool isDebitNormal) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
+    function hub_createAccount(
+        uint32 accountAsInt,
+        bool isDebitNormal
+    ) public updateGhosts {
+        PoolId poolId = _getPool();
         AccountId account = AccountId.wrap(accountAsInt);
         hub.createAccount(poolId, account, isDebitNormal);
 
@@ -89,9 +136,9 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         uint32 lossAccountAsUint,
         uint32 gainAccountAsUint
     ) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        AssetId assetId = hubRegistry.currency(poolId);
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
 
         hub.initializeHolding(
             poolId,
@@ -105,30 +152,50 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         );
     }
 
-    function hub_createHolding_clamped(
+    function hub_initializeHolding_clamped(
         bool isIdentityValuation,
         uint8 assetAccountEntropy,
         uint8 equityAccountEntropy,
         uint8 lossAccountEntropy,
         uint8 gainAccountEntropy
     ) public {
-        IValuation valuation =
-            isIdentityValuation ? IValuation(address(identityValuation)) : IValuation(address(transientValuation));
-        AccountId assetAccount = Helpers.getRandomAccountId(createdAccountIds, assetAccountEntropy);
-        AccountId equityAccount = Helpers.getRandomAccountId(createdAccountIds, equityAccountEntropy);
-        AccountId lossAccount = Helpers.getRandomAccountId(createdAccountIds, lossAccountEntropy);
-        AccountId gainAccount = Helpers.getRandomAccountId(createdAccountIds, gainAccountEntropy);
+        IValuation valuation = isIdentityValuation
+            ? IValuation(address(identityValuation))
+            : IValuation(address(transientValuation));
+        AccountId assetAccount = Helpers.getRandomAccountId(
+            createdAccountIds,
+            assetAccountEntropy
+        );
+        AccountId equityAccount = Helpers.getRandomAccountId(
+            createdAccountIds,
+            equityAccountEntropy
+        );
+        AccountId lossAccount = Helpers.getRandomAccountId(
+            createdAccountIds,
+            lossAccountEntropy
+        );
+        AccountId gainAccount = Helpers.getRandomAccountId(
+            createdAccountIds,
+            gainAccountEntropy
+        );
 
-        hub_initializeHolding(valuation, assetAccount.raw(), equityAccount.raw(), lossAccount.raw(), gainAccount.raw());
+        hub_initializeHolding(
+            valuation,
+            assetAccount.raw(),
+            equityAccount.raw(),
+            lossAccount.raw(),
+            gainAccount.raw()
+        );
     }
 
-    function hub_initializeLiability(IValuation valuation, uint32 expenseAccountAsUint, uint32 liabilityAccountAsUint)
-        public
-        updateGhosts
-    {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        AssetId assetId = AssetId.wrap(_getAssetId());
+    function hub_initializeLiability(
+        IValuation valuation,
+        uint32 expenseAccountAsUint,
+        uint32 liabilityAccountAsUint
+    ) public updateGhosts {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
         hub.initializeLiability(
             poolId,
             scId,
@@ -144,36 +211,63 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         uint8 expenseAccountEntropy,
         uint8 liabilityAccountEntropy
     ) public {
-        IValuation valuation =
-            isIdentityValuation ? IValuation(address(identityValuation)) : IValuation(address(transientValuation));
-        AccountId expenseAccount = Helpers.getRandomAccountId(createdAccountIds, expenseAccountEntropy);
-        AccountId liabilityAccount = Helpers.getRandomAccountId(createdAccountIds, liabilityAccountEntropy);
+        IValuation valuation = isIdentityValuation
+            ? IValuation(address(identityValuation))
+            : IValuation(address(transientValuation));
+        AccountId expenseAccount = Helpers.getRandomAccountId(
+            createdAccountIds,
+            expenseAccountEntropy
+        );
+        AccountId liabilityAccount = Helpers.getRandomAccountId(
+            createdAccountIds,
+            liabilityAccountEntropy
+        );
 
-        hub_initializeLiability(valuation, expenseAccount.raw(), liabilityAccount.raw());
+        hub_initializeLiability(
+            valuation,
+            expenseAccount.raw(),
+            liabilityAccount.raw()
+        );
     }
 
     /// @dev Property: After FM performs approveDeposits and issueShares with non-zero navPerShare, the total issuance
     /// totalIssuance[..] is increased
     // TODO: Refactor this property to work with new issuance update logic
-    function hub_issueShares(uint32 nowIssueEpochId, uint128 navPerShare) public updateGhostsWithType(OpType.ADD) {
-        uint128 totalIssuanceBefore;
-        uint128 totalIssuanceAfter;
+    function hub_issueShares(
+        uint32 nowIssueEpochId,
+        uint128 navPerShare
+    ) public updateGhostsWithType(OpType.ADD) {
+        // TODO(wischli): Investigate with Balance Sheet property impl
+        // uint128 totalIssuanceBefore;
+        // uint128 totalIssuanceAfter;
 
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        AssetId assetId = AssetId.wrap(_getAssetId());
-        uint256 escrowSharesBefore = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
-        (totalIssuanceBefore,) = shareClassManager.metrics(scId);
-        (uint128 balanceSheetSharesBefore,,,) = balanceSheet.queuedShares(poolId, scId);
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
+        uint256 escrowSharesBefore = IShareToken(_getShareToken()).balanceOf(
+            address(globalEscrow)
+        );
+        // (totalIssuanceBefore,) = shareClassManager.metrics(scId);
+        // (uint128 balanceSheetSharesBefore,,,) = balanceSheet.queuedShares(poolId, scId);
 
-        (uint128 issuedShareAmount,,) = hub.issueShares(poolId, scId, assetId, nowIssueEpochId, D18.wrap(navPerShare), 0);
+        (uint128 issuedShareAmount, , ) = hub.issueShares(
+            poolId,
+            scId,
+            assetId,
+            nowIssueEpochId,
+            D18.wrap(navPerShare),
+            0
+        );
 
-        uint256 escrowSharesAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
-        (totalIssuanceAfter,) = shareClassManager.metrics(scId);
-        (uint128 balanceSheetSharesAfter,,,) = balanceSheet.queuedShares(poolId, scId);
+        uint256 escrowSharesAfter = IShareToken(_getShareToken()).balanceOf(
+            address(globalEscrow)
+        );
+        // (totalIssuanceAfter,) = shareClassManager.metrics(scId);
+        // (uint128 balanceSheetSharesAfter,,,) = balanceSheet.queuedShares(poolId, scId);
 
         uint256 escrowShareDelta = escrowSharesAfter - escrowSharesBefore;
         executedInvestments[_getShareToken()] += escrowShareDelta;
+        sumOfFulfilledDeposits[_getShareToken()] += escrowShareDelta;
         issuedHubShares[poolId][scId][assetId] += issuedShareAmount;
 
         // TODO: Refactor this to work with new issuance update logic
@@ -182,12 +276,15 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         // }
     }
 
-    function hub_issueShares_clamped(uint32 nowIssueEpochId, uint128 navPerShare) public {
+    function hub_issueShares_clamped(
+        uint32 nowIssueEpochId,
+        uint128 navPerShare
+    ) public {
         hub_issueShares(nowIssueEpochId, navPerShare);
     }
 
     function hub_notifyPool(uint16 centrifugeId) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
+        PoolId poolId = _getPool();
         hub.notifyPool(poolId, centrifugeId);
     }
 
@@ -195,9 +292,12 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         hub_notifyPool(CENTRIFUGE_CHAIN_ID);
     }
 
-    function hub_notifyShareClass(uint16 centrifugeId, uint256 hookAsUint) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
+    function hub_notifyShareClass(
+        uint16 centrifugeId,
+        uint256 hookAsUint
+    ) public updateGhosts {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
         hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(hookAsUint));
     }
 
@@ -205,9 +305,11 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         hub_notifyShareClass(CENTRIFUGE_CHAIN_ID, hookAsUint);
     }
 
-    function hub_notifySharePrice(uint16 centrifugeId) public updateGhostsWithType(OpType.UPDATE) {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
+    function hub_notifySharePrice(
+        uint16 centrifugeId
+    ) public updateGhostsWithType(OpType.UPDATE) {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
         hub.notifySharePrice(poolId, scId, centrifugeId);
     }
 
@@ -216,34 +318,44 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     }
 
     function hub_notifyAssetPrice() public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        AssetId assetId = hubRegistry.currency(poolId);
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
         hub.notifyAssetPrice(poolId, scId, assetId);
     }
 
     /// @dev Property: After FM performs approveRedeems and revokeShares with non-zero navPerShare, the total issuance
     /// totalIssuance[..] is decreased
     // TODO: Refactor this property to work with new issuance update logic
-    function hub_revokeShares(uint32 nowRevokeEpochId, uint128 navPerShare)
-        public
-        updateGhostsWithType(OpType.REMOVE)
-    {
-        IBaseVault vault = IBaseVault(_getVault());
+    function hub_revokeShares(
+        uint32 nowRevokeEpochId,
+        uint128 navPerShare
+    ) public updateGhostsWithType(OpType.REMOVE) {
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId payoutAssetId = hubRegistry.currency(poolId);
-        uint256 sharesBefore = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
-        (uint128 totalIssuanceBefore,) = shareClassManager.metrics(scId);
-        (uint128 balanceSheetSharesBefore,,,) = balanceSheet.queuedShares(poolId, scId);
+        AssetId payoutAssetId = _getAssetId();
+        uint256 sharesBefore = IShareToken(_getShareToken()).balanceOf(
+            address(globalEscrow)
+        );
+        // (uint128 totalIssuanceBefore,) = shareClassManager.metrics(scId); // Unused
+        // (uint128 balanceSheetSharesBefore,,,) = balanceSheet.queuedShares(poolId, scId); // Unused
 
-        (uint128 revokedShareAmount,,) =
-            hub.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, D18.wrap(navPerShare), 0);
+        (uint128 revokedShareAmount, , ) = hub.revokeShares(
+            poolId,
+            scId,
+            payoutAssetId,
+            nowRevokeEpochId,
+            D18.wrap(navPerShare),
+            0
+        );
 
-        uint256 sharesAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
+        uint256 sharesAfter = IShareToken(_getShareToken()).balanceOf(
+            address(globalEscrow)
+        );
         uint256 burnedShares = sharesBefore - sharesAfter;
-        (uint128 totalIssuanceAfter,) = shareClassManager.metrics(scId);
-        (uint128 balanceSheetSharesAfter,,,) = balanceSheet.queuedShares(poolId, scId);
+        // (uint128 totalIssuanceAfter,) = shareClassManager.metrics(scId); // Unused
+        // (uint128 balanceSheetSharesAfter,,,) = balanceSheet.queuedShares(poolId, scId); // Unused
 
         // NOTE: shares are burned on revoke
         executedRedemptions[vault.share()] += burnedShares;
@@ -254,45 +366,88 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         // }
     }
 
-    function hub_setAccountMetadata(uint32 accountAsInt, uint256 metadataAsUint) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
+    function hub_setAccountMetadata(
+        uint32 accountAsInt,
+        uint256 metadataAsUint
+    ) public updateGhosts {
+        PoolId poolId = _getPool();
         AccountId account = AccountId.wrap(accountAsInt);
         bytes memory metadata = abi.encodePacked(metadataAsUint);
         hub.setAccountMetadata(poolId, account, metadata);
     }
 
-    function hub_setHoldingAccountId(uint128 assetIdAsUint, uint8 kind, uint32 accountIdAsInt) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
+    function hub_setHoldingAccountId(
+        uint128 assetIdAsUint,
+        uint8 kind,
+        uint32 accountIdAsInt
+    ) public updateGhosts {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
         AssetId assetId = AssetId.wrap(assetIdAsUint);
         AccountId accountId = AccountId.wrap(accountIdAsInt);
         hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
     }
 
+    function hub_setHoldingAccountId_clamped(
+        uint128 assetIdAsUint,
+        uint8 kind,
+        uint32 accountIdAsInt
+    ) public updateGhosts {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
+
+        accountIdAsInt %= 5; // 4 possible accountId types in Setup
+        AccountId accountId = AccountId.wrap(accountIdAsInt);
+        hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
+    }
+
     function hub_setPoolMetadata(uint256 metadataAsUint) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
+        PoolId poolId = _getPool();
         bytes memory metadata = abi.encodePacked(metadataAsUint);
         hub.setPoolMetadata(poolId, metadata);
     }
 
-    function hub_updateHoldingValuation(uint128 assetIdAsUint, IValuation valuation) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
+    function hub_updateHoldingValuation(
+        uint128 assetIdAsUint,
+        IValuation valuation
+    ) public updateGhosts {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
         AssetId assetId = AssetId.wrap(assetIdAsUint);
         hub.updateHoldingValuation(poolId, scId, assetId, valuation);
     }
 
-    function hub_updateHoldingValuation_clamped(bool isIdentityValuation) public {
-        PoolId poolId = PoolId.wrap(_getPool());
-        AssetId assetId = hubRegistry.currency(poolId);
-        IValuation valuation =
-            isIdentityValuation ? IValuation(address(identityValuation)) : IValuation(address(transientValuation));
+    function hub_updateHoldingValuation_clamped(
+        bool isIdentityValuation
+    ) public {
+        AssetId assetId = _getAssetId();
+        IValuation valuation = isIdentityValuation
+            ? IValuation(address(identityValuation))
+            : IValuation(address(transientValuation));
         hub_updateHoldingValuation(assetId.raw(), valuation);
     }
 
-    function hub_updateRestriction(uint16 chainId, uint256 payloadAsUint) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
+    function hub_updateHoldingIsLiability(
+        uint128 assetIdAsUint,
+        bool isLiability
+    ) public updateGhosts {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = AssetId.wrap(assetIdAsUint);
+        hub.updateHoldingIsLiability(poolId, scId, assetId, isLiability);
+    }
+
+    function hub_updateHoldingIsLiability_clamped(bool isLiability) public {
+        hub_updateHoldingIsLiability(_getAssetId().raw(), isLiability);
+    }
+
+    function hub_updateRestriction(
+        uint16 chainId,
+        uint256 payloadAsUint
+    ) public updateGhosts {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
         bytes memory payload = abi.encodePacked(payloadAsUint);
         hub.updateRestriction(poolId, scId, chainId, payload, 0);
     }
@@ -301,22 +456,12 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         hub_updateRestriction(CENTRIFUGE_CHAIN_ID, payloadAsUint);
     }
 
-    function syncManager_setValuation(address valuation) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        syncManager.setValuation(poolId, scId, valuation);
-    }
-
-    function syncManager_setValuation_clamped(bool isIdentityValuation) public {
-        address valuation = isIdentityValuation ? address(identityValuation) : address(transientValuation);
-        syncManager_setValuation(valuation);
-    }
-
-    function hub_updateSharePrice(uint64 poolIdAsUint, uint128 scIdAsUint, uint128 navPoolPerShare)
-        public
-        updateGhosts
-    {
-        IBaseVault vault = IBaseVault(_getVault());
+    function hub_updateSharePrice(
+        uint64,
+        /* poolIdAsUint */ uint128,
+        /* scIdAsUint */ uint128 navPoolPerShare
+    ) public updateGhosts {
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
@@ -324,36 +469,39 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     }
 
     function hub_forceCancelDepositRequest() public updateGhosts {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         bytes32 investor = _getActor().toBytes32();
-        AssetId depositAssetId = hubRegistry.currency(poolId);
+        AssetId depositAssetId = _getAssetId();
 
         hub.forceCancelDepositRequest(poolId, scId, investor, depositAssetId);
     }
 
     function hub_forceCancelRedeemRequest() public updateGhosts {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         bytes32 investor = _getActor().toBytes32();
-        AssetId payoutAssetId = hubRegistry.currency(poolId);
+        AssetId payoutAssetId = _getAssetId();
 
         hub.forceCancelRedeemRequest(poolId, scId, investor, payoutAssetId);
     }
 
     function hub_setMaxAssetPriceAge(uint32 maxAge) public updateGhosts {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = _getAssetId();
 
         hub.setMaxAssetPriceAge(poolId, scId, assetId, maxAge);
     }
 
-    function hub_setMaxSharePriceAge(uint16 centrifugeId, uint32 maxAge) public updateGhosts {
-        IBaseVault vault = IBaseVault(_getVault());
+    function hub_setMaxSharePriceAge(
+        uint16 centrifugeId,
+        uint32 maxAge
+    ) public updateGhosts {
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
@@ -361,19 +509,23 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     }
 
     function hub_updateHoldingValue() public updateGhosts {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = _getAssetId();
 
         hub.updateHoldingValue(poolId, scId, assetId);
     }
 
-    function hub_updateJournal(uint64 poolId, uint8 accountToUpdate, uint128 debitAmount, uint128 creditAmount)
-        public
-        updateGhosts
-    {
-        AccountId accountId = createdAccountIds[accountToUpdate % createdAccountIds.length];
+    function hub_updateJournal(
+        uint64 poolId,
+        uint8 accountToUpdate,
+        uint128 debitAmount,
+        uint128 creditAmount
+    ) public updateGhosts {
+        AccountId accountId = createdAccountIds[
+            accountToUpdate % createdAccountIds.length
+        ];
         JournalEntry[] memory debits = new JournalEntry[](1);
         debits[0] = JournalEntry({value: debitAmount, accountId: accountId});
         JournalEntry[] memory credits = new JournalEntry[](1);
@@ -383,21 +535,95 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     }
 
     function hub_updateJournal_clamped(
-        uint64 poolEntropy,
+        uint64 /* poolEntropy */,
         uint8 accountToUpdate,
         uint128 debitAmount,
         uint128 creditAmount
     ) public updateGhosts {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
 
-        AccountId accountId = createdAccountIds[accountToUpdate % createdAccountIds.length];
+        AccountId accountId = createdAccountIds[
+            accountToUpdate % createdAccountIds.length
+        ];
         JournalEntry[] memory debits = new JournalEntry[](1);
         debits[0] = JournalEntry({value: debitAmount, accountId: accountId});
         JournalEntry[] memory credits = new JournalEntry[](1);
         credits[0] = JournalEntry({value: creditAmount, accountId: accountId});
 
         hub.updateJournal(poolId, debits, credits);
+    }
+
+    // === RestrictedTransfers === ///
+    function restrictedTransfers_updateMemberBasic(
+        uint64 validUntil
+    ) public asAdmin {
+        fullRestrictions.updateMember(
+            _getShareToken(),
+            _getActor(),
+            validUntil
+        );
+    }
+
+    // TODO: We prob want to keep one generic
+    // And one with limited actors
+    function restrictedTransfers_updateMember(
+        address user,
+        uint64 validUntil
+    ) public asAdmin {
+        fullRestrictions.updateMember(_getShareToken(), user, validUntil);
+    }
+
+    function restrictedTransfers_freeze() public asAdmin {
+        fullRestrictions.freeze(_getShareToken(), _getActor());
+    }
+
+    function restrictedTransfers_unfreeze() public asAdmin {
+        fullRestrictions.unfreeze(_getShareToken(), _getActor());
+    }
+
+    /// === Hub === ///
+    function balanceSheet_submitQueuedAssets(
+        uint128 extraGasLimit
+    ) public asAdmin {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
+
+        balanceSheet.submitQueuedAssets(poolId, scId, assetId, extraGasLimit);
+    }
+
+    function balanceSheet_submitQueuedShares(
+        uint128 extraGasLimit
+    ) public asAdmin {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+
+        balanceSheet.submitQueuedShares(poolId, scId, extraGasLimit);
+    }
+
+    function balanceSheet_reserve(
+        uint256 tokenId,
+        uint128 amount
+    ) public asAdmin {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
+        (address asset, ) = spoke.idToAsset(assetId);
+
+        balanceSheet.reserve(poolId, scId, asset, tokenId, amount);
+    }
+
+    function balanceSheet_unreserve(
+        uint256 tokenId,
+        uint128 amount
+    ) public asAdmin {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
+        (address asset, ) = spoke.idToAsset(assetId);
+
+        balanceSheet.unreserve(poolId, scId, asset, tokenId, amount);
     }
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///

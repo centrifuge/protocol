@@ -15,7 +15,8 @@ contract Mock is Test {
 
     // passed parameter
     mapping(bytes32 => uint8) public values_uint8;
-    mapping(bytes32 => uint64) public values_uint16;
+    mapping(bytes32 => uint16) public values_uint16;
+    mapping(bytes32 => uint32) public values_uint32;
     mapping(bytes32 => uint64) public values_uint64;
     mapping(bytes32 => uint128) public values_uint128;
     mapping(bytes32 => uint256) public values_uint256;
@@ -24,6 +25,7 @@ contract Mock is Test {
     mapping(bytes32 => bytes32) public values_bytes32;
     mapping(bytes32 => bytes) public values_bytes;
     mapping(bytes32 => string) public values_string;
+    mapping(bytes32 => bool) public values_bool;
     mapping(bytes32 => mapping(address => uint256)) public values_mapping_address_uint;
 
     mapping(bytes32 => bool) method_fail;

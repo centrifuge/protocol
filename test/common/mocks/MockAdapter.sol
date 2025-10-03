@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
+import "./Mock.sol";
 
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {Auth} from "../../../src/misc/Auth.sol";
 
-import "test/common/mocks/Mock.sol";
+import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
 

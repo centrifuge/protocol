@@ -15,19 +15,24 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {PoolEscrow} from "src/common/PoolEscrow.sol";
 import {AccountType} from "src/hub/interfaces/IHub.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {BaseVault} from "src/vaults/BaseVaults.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 
 import {OpType} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
-import {AsyncVaultCentrifugeProperties} from
-    "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
-import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
+import {AsyncVaultCentrifugeProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
+import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 
 import "forge-std/console2.sol";
 
-abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProperties {
+abstract contract Properties is
+    BeforeAfter,
+    Asserts,
+    AsyncVaultCentrifugeProperties
+{
     using CastLib for *;
     using MathLib for D18;
     using MathLib for uint128;
@@ -50,8 +55,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         // Dig until we get non-zero share class balance
         // Afaict this will never work
-        IBaseVault vault = IBaseVault(_getVault());
-        eq(IShareToken(vault.share()).balanceOf(_getActor()), 0, "token.balanceOf(getActor()) != 0");
+        IBaseVault vault = _getVault();
+        eq(
+            IShareToken(vault.share()).balanceOf(_getActor()),
+            0,
+            "token.balanceOf(getActor()) != 0"
+        );
     }
 
     // == VAULT == //
@@ -59,13 +68,13 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: Sum of share tokens received on `deposit` and `mint` <= sum of fulfilledDepositRequest.shares
     function property_sum_of_shares_received() public tokenIsSet {
         // only valid for async vaults because sync vaults don't have to fulfill deposit requests
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         if (Helpers.isAsyncVault(address(vault))) {
             address shareToken = vault.share();
             lte(
                 sumOfClaimedDeposits[address(shareToken)],
-                sumOfFullfilledDeposits[address(shareToken)],
-                "sumOfClaimedDeposits[address(shareToken)] > sumOfFullfilledDeposits[address(shareToken)]"
+                sumOfFulfilledDeposits[address(shareToken)],
+                "sumOfClaimedDeposits[address(shareToken)] > sumOfFulfilledDeposits[address(shareToken)]"
             );
         }
     }
@@ -73,26 +82,28 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: the sum of assets received on redeem and withdraw <= sum of payout of fulfilledRedeemRequest
     function property_sum_of_assets_received() public assetIsSet {
         // Redeem and Withdraw
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         address asset = vault.asset();
         lte(
             sumOfClaimedRedemptions[address(asset)],
-            currencyPayout[address(asset)],
-            "sumOfClaimedRedemptions[address(_getAsset())] > currencyPayout[address(_getAsset())]"
+            sumOfWithdrawable[address(asset)],
+            "sumOfClaimedRedemptions[address(_getAsset())] > sumOfWithdrawable[address(_getAsset())]"
         );
     }
 
     /// @dev Property: the payout of the escrow is always <= sum of redemptions paid out
     function property_sum_of_pending_redeem_request() public tokenIsSet {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
         address asset = vault.asset();
 
         address[] memory actors = _getActors();
         uint256 sumOfRedemptionsProcessed;
         for (uint256 i; i < actors.length; i++) {
-            sumOfRedemptionsProcessed += redemptionsProcessed[scId][assetId][actors[i]];
+            sumOfRedemptionsProcessed += userRedemptionsProcessed[scId][
+                assetId
+            ][actors[i]];
         }
 
         lte(
@@ -107,25 +118,33 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
         // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
+
+        // TODO(wischli): Investigate with zero price
+
         uint256 ghostTotalSupply;
         address shareToken = vault.share();
         uint256 totalSupply = IShareToken(shareToken).totalSupply();
 
-        // NOTE: shareMints is no longer updated because hub_triggerIssueShares was removed
+        // TODO(wischli): shareMints is no longer updated because hub_triggerIssueShares was removed
         unchecked {
-            ghostTotalSupply = (shareMints[address(shareToken)] + executedInvestments[address(shareToken)])
-                - executedRedemptions[address(shareToken)];
+            ghostTotalSupply =
+                (shareMints[address(shareToken)] +
+                    executedInvestments[address(shareToken)]) -
+                executedRedemptions[address(shareToken)];
         }
         console2.log("totalSupply", totalSupply);
         eq(totalSupply, ghostTotalSupply, "totalSupply != ghostTotalSupply");
     }
 
     /// @dev Property: System addresses should never receive share tokens
-    function property_system_addresses_never_receive_share_tokens() public assetIsSet {
+    function property_system_addresses_never_receive_share_tokens()
+        public
+        assetIsSet
+    {
         address[] memory systemAddresses = _getSystemAddresses();
         uint256 SYSTEM_ADDRESSES_LENGTH = systemAddresses.length;
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         address asset = vault.asset();
         address shareToken = vault.share();
 
@@ -133,38 +152,34 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         for (uint256 i; i < SYSTEM_ADDRESSES_LENGTH; i++) {
             if (MockERC20(asset).balanceOf(systemAddresses[i]) > 0) {
                 emit DebugNumber(i); // Number to index
-                eq(IShareToken(shareToken).balanceOf(systemAddresses[i]), 0, "token.balanceOf(systemAddresses[i]) != 0");
+                eq(
+                    IShareToken(shareToken).balanceOf(systemAddresses[i]),
+                    0,
+                    "token.balanceOf(systemAddresses[i]) != 0"
+                );
             }
         }
     }
 
-    /// @dev Property: Sum of assets received on claimCancelDepositRequest <= sum of fulfillCancelDepositRequest.assets
-    function property_sum_of_assets_received_on_claim_cancel_deposit_request() public assetIsSet {
-        // claimCancelDepositRequest
-        // requestManager_fulfillCancelDepositRequest
-        IBaseVault vault = IBaseVault(_getVault());
-        address asset = vault.asset();
-
-        lte(
-            sumOfClaimedDepositCancelations[address(asset)],
-            cancelDepositCurrencyPayout[address(asset)],
-            "sumOfClaimedDepositCancelations !<= cancelDepositCurrencyPayout"
-        );
-    }
-
     /// @dev Property (inductive): Sum of assets received on claimCancelDepositRequest <= sum of
     /// fulfillCancelDepositRequest.assets
-    function property_sum_of_assets_received_on_claim_cancel_deposit_request_inductive() public tokenIsSet {
+    function property_sum_of_assets_received_on_claim_cancel_deposit_request_inductive()
+        public
+        tokenIsSet
+    {
         // we only care about the case where the claimableCancelDepositRequest is decreasing because it indicates that a
         // cancel deposit request was fulfilled
         if (
-            _before.investments[_getActor()].claimableCancelDepositRequest
-                > _after.investments[_getActor()].claimableCancelDepositRequest
+            _before.investments[_getActor()].claimableCancelDepositRequest >
+            _after.investments[_getActor()].claimableCancelDepositRequest
         ) {
-            uint256 claimableCancelDepositRequestDelta = _before.investments[_getActor()].claimableCancelDepositRequest
-                - _after.investments[_getActor()].claimableCancelDepositRequest;
+            uint256 claimableCancelDepositRequestDelta = _before
+                .investments[_getActor()]
+                .claimableCancelDepositRequest -
+                _after.investments[_getActor()].claimableCancelDepositRequest;
             // claiming a cancel deposit request means that the globalEscrow token balance decreases
-            uint256 escrowAssetBalanceDelta = _before.escrowAssetBalance - _after.escrowAssetBalance;
+            uint256 escrowAssetBalanceDelta = _before.escrowAssetBalance -
+                _after.escrowAssetBalance;
             eq(
                 claimableCancelDepositRequestDelta,
                 escrowAssetBalanceDelta,
@@ -173,32 +188,41 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    /// @dev Property: Sum of share class tokens received on claimCancelRedeemRequest <= sum of
-    /// fulfillCancelRedeemRequest.shares
-    function property_sum_of_received_leq_fulfilled() public tokenIsSet {
-        // claimCancelRedeemRequest
-        IBaseVault vault = IBaseVault(_getVault());
+    // TODO(wischli): Breaks for ever `revokedShares` which reduced totalSupply
+    /// @dev Property: Total cancelled redeem shares <= total supply
+    function property_total_cancelled_redeem_shares_lte_total_supply()
+        public
+        tokenIsSet
+    {
+        IBaseVault vault = _getVault();
+
+        uint256 totalSupply = IShareToken(vault.share()).totalSupply();
         lte(
-            sumOfClaimedRedeemCancelations[address(vault.share())],
-            cancelRedeemShareTokenPayout[address(vault.share())],
-            "sumOfClaimedRedeemCancelations !<= cancelRedeemShareTokenPayout"
+            sumOfClaimedCancelledRedeemShares[address(vault.share())],
+            totalSupply,
+            "Ghost: sumOfClaimedCancelledRedeemShares exceeds totalSupply"
         );
     }
 
     /// @dev Property (inductive): Sum of share class tokens received on claimCancelRedeemRequest <= sum of
     /// fulfillCancelRedeemRequest.shares
-    function property_sum_of_received_leq_fulfilled_inductive() public tokenIsSet {
+    function property_sum_of_received_leq_fulfilled_inductive()
+        public
+        tokenIsSet
+    {
         // we only care about the case where the claimableCancelRedeemRequest is decreasing because it indicates that a
         // cancel redeem request was fulfilled
         if (
-            _before.investments[_getActor()].claimableCancelRedeemRequest
-                > _after.investments[_getActor()].claimableCancelRedeemRequest
+            _before.investments[_getActor()].claimableCancelRedeemRequest >
+            _after.investments[_getActor()].claimableCancelRedeemRequest
         ) {
-            uint256 claimableCancelRedeemRequestDelta = _before.investments[_getActor()].claimableCancelRedeemRequest
-                - _after.investments[_getActor()].claimableCancelRedeemRequest;
+            uint256 claimableCancelRedeemRequestDelta = _before
+                .investments[_getActor()]
+                .claimableCancelRedeemRequest -
+                _after.investments[_getActor()].claimableCancelRedeemRequest;
             // claiming a cancel redeem request means that the globalEscrow tranche token balance decreases
-            uint256 escrowTrancheTokenBalanceDelta =
-                _before.escrowTrancheTokenBalance - _after.escrowTrancheTokenBalance;
+            uint256 escrowTrancheTokenBalanceDelta = _before
+                .escrowTrancheTokenBalance - _after.escrowTrancheTokenBalance;
             eq(
                 claimableCancelRedeemRequestDelta,
                 escrowTrancheTokenBalanceDelta,
@@ -207,24 +231,168 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
+    /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate
+    /// equals the current nowDepositEpoch
+    // NOTE: might need an additional precondition to know that call was successful
+    function property_last_update_on_request_deposit() public {
+        if (currentOperation == OpType.REQUEST_DEPOSIT) {
+            (uint128 pending, uint32 lastUpdate) = shareClassManager
+                .depositRequest(
+                    _getVault().scId(),
+                    spoke.vaultDetails(_getVault()).assetId,
+                    _getActor().toBytes32()
+                );
+            (uint32 depositEpochId, , , ) = shareClassManager.epochId(
+                _getVault().scId(),
+                spoke.vaultDetails(_getVault()).assetId
+            );
+
+            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should
+            // not change
+            if (Helpers.canMutate(lastUpdate, pending, depositEpochId)) {
+                // nowDepositEpoch = depositEpochId + 1
+                eq(
+                    lastUpdate,
+                    depositEpochId + 1,
+                    "lastUpdate != nowDepositEpoch2"
+                );
+            }
+        }
+    }
+
+    /// @dev Property: After successfully calling requestRedeem for an investor, their redeemRequest[..].lastUpdate equals nowRedeemEpoch
+    function property_last_update_on_request_redeem() public {
+        if (currentOperation == OpType.REQUEST_REDEEM) {
+            (uint128 pending, uint32 lastUpdate) = shareClassManager
+                .redeemRequest(
+                    _getVault().scId(),
+                    spoke.vaultDetails(_getVault()).assetId,
+                    _getActor().toBytes32()
+                );
+            (, uint32 redeemEpochId, , ) = shareClassManager.epochId(
+                _getVault().scId(),
+                spoke.vaultDetails(_getVault()).assetId
+            );
+
+            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should
+            // not change
+            if (Helpers.canMutate(lastUpdate, pending, redeemEpochId)) {
+                // nowRedeemEpoch = redeemEpochId + 1
+                eq(
+                    lastUpdate,
+                    redeemEpochId + 1,
+                    "lastUpdate != nowRedeemEpoch after redeemRequest"
+                );
+            }
+        }
+    }
+
+    /// @dev Property: user share balance correctly changes by the same amount of shares added to the escrow
+    function property_share_balance_delta() public {
+        if (currentOperation == OpType.REQUEST_REDEEM) {
+            uint256 shareBalanceDelta;
+            uint256 escrowBalanceDelta;
+            unchecked {
+                shareBalanceDelta =
+                    _before.shareTokenBalance[_getActor()] -
+                    _after.shareTokenBalance[_getActor()];
+
+                escrowBalanceDelta =
+                    _after.escrowTrancheTokenBalance -
+                    _before.escrowTrancheTokenBalance;
+            }
+
+            eq(shareBalanceDelta, escrowBalanceDelta, "7540-12");
+        }
+    }
+
+    /// @dev Property: user asset balance correctly changes by the same amount of assets added to the escrow
+    // NOTE: most likely need a way to ensure that the tx didn't revert, in this case balance deltas should both be 0 though
+    function property_asset_balance_delta() public {
+        if (currentOperation == OpType.REQUEST_DEPOSIT) {
+            uint256 assetBalanceDelta;
+            uint256 escrowBalanceDelta;
+            unchecked {
+                assetBalanceDelta =
+                    _before.assetTokenBalance[_getActor()] -
+                    _after.assetTokenBalance[_getActor()];
+
+                escrowBalanceDelta =
+                    _after.escrowAssetBalance -
+                    _before.escrowAssetBalance;
+            }
+
+            eq(assetBalanceDelta, escrowBalanceDelta, "7540-11");
+        }
+    }
+
+    /// @dev Property: user share balance correctly changes by the same amount of shares transferred from escrow on deposit/mint
+    /// @dev Covers both vault_deposit and vault_mint operations (both use OpType.ADD)
+    function property_deposit_share_balance_delta() public {
+        if (currentOperation == OpType.ADD) {
+            // Only check for async vaults as sync vaults mint shares directly
+            if (Helpers.isAsyncVault(address(_getVault()))) {
+                uint256 shareBalanceDelta;
+                uint256 escrowBalanceDelta;
+                unchecked {
+                    shareBalanceDelta =
+                        _after.shareTokenBalance[_getActor()] -
+                        _before.shareTokenBalance[_getActor()];
+
+                    escrowBalanceDelta =
+                        _before.escrowTrancheTokenBalance -
+                        _after.escrowTrancheTokenBalance;
+                }
+
+                eq(shareBalanceDelta, escrowBalanceDelta, "7540-13");
+            }
+        }
+    }
+
+    /// @dev Property: user asset balance correctly changes by the same amount of assets transferred from pool escrow on redeem/withdraw
+    /// @dev Covers both vault_redeem and vault_withdraw operations (both use OpType.REMOVE)
+    function property_redeem_asset_balance_delta() public {
+        if (currentOperation == OpType.REMOVE) {
+            uint256 assetBalanceDelta;
+            uint256 poolEscrowBalanceDelta;
+            unchecked {
+                assetBalanceDelta =
+                    _after.assetTokenBalance[_getActor()] -
+                    _before.assetTokenBalance[_getActor()];
+
+                poolEscrowBalanceDelta =
+                    _before.poolEscrowAssetBalance -
+                    _after.poolEscrowAssetBalance;
+            }
+
+            eq(assetBalanceDelta, poolEscrowBalanceDelta, "7540-14");
+        }
+    }
+
     // == SHARE CLASS TOKENS == //
 
     /// @dev Property: Sum of balances equals total supply
     function property_sum_of_balances() public tokenIsSet {
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         address shareToken = vault.share();
 
         uint256 acc;
         for (uint256 i; i < actors.length; i++) {
             // NOTE: Accounts for scenario in which we didn't deploy the demo tranche
-            try IShareToken(shareToken).balanceOf(actors[i]) returns (uint256 bal) {
+            try IShareToken(shareToken).balanceOf(actors[i]) returns (
+                uint256 bal
+            ) {
                 acc += bal;
             } catch {}
         }
 
         // NOTE: This ensures that supply doesn't overflow
-        lte(acc, IShareToken(shareToken).totalSupply(), "sum of user balances > token.totalSupply()");
+        lte(
+            acc,
+            IShareToken(shareToken).totalSupply(),
+            "sum of user balances > token.totalSupply()"
+        );
     }
 
     /// @dev Property: The price at which a user deposit is made is bounded by the price when the request was fulfilled
@@ -235,19 +403,23 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         // Get actor data
         {
-            (uint256 depositPrice,) = _getDepositAndRedeemPrice();
+            (uint256 depositPrice, ) = _getDepositAndRedeemPrice();
 
             // NOTE: Specification | Obv this breaks when you switch pools etc..
             // after a call to notifyDeposit the deposit price of the pool is set, so this checks that no other
             // functions can modify the deposit price outside of the bounds
             lte(
                 depositPrice,
-                _after.investorsGlobals[_getVault()][_getActor()].maxDepositPrice,
+                _after
+                .investorsGlobals[address(_getVault())][_getActor()]
+                    .maxDepositPrice,
                 "depositPrice > maxDepositPrice"
             );
             gte(
                 depositPrice,
-                _after.investorsGlobals[_getVault()][_getActor()].minDepositPrice,
+                _after
+                .investorsGlobals[address(_getVault())][_getActor()]
+                    .minDepositPrice,
                 "depositPrice < minDepositPrice"
             );
         }
@@ -266,17 +438,22 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
 
         // Get actor data
+
         {
             (, uint256 redeemPrice) = _getDepositAndRedeemPrice();
 
             lte(
                 redeemPrice,
-                _after.investorsGlobals[_getVault()][_getActor()].maxRedeemPrice,
+                _after
+                .investorsGlobals[address(_getVault())][_getActor()]
+                    .maxRedeemPrice,
                 "redeemPrice > maxRedeemPrice"
             );
             gte(
                 redeemPrice,
-                _after.investorsGlobals[_getVault()][_getActor()].minRedeemPrice,
+                _after
+                .investorsGlobals[address(_getVault())][_getActor()]
+                    .minRedeemPrice,
                 "redeemPrice < minRedeemPrice"
             );
         }
@@ -290,13 +467,17 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             return;
         }
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         address asset = vault.asset();
         PoolId poolId = vault.poolId();
         address poolEscrow = address(poolEscrowFactory.escrow(poolId));
-        uint256 balOfPoolEscrow = MockERC20(address(asset)).balanceOf(address(poolEscrow)); // The balance of tokens in
-            // Escrow is sum of deposit requests plus transfers in minus transfers out
-        uint256 balOfGlobalEscrow = MockERC20(address(asset)).balanceOf(address(globalEscrow));
+        uint256 balOfPoolEscrow = MockERC20(address(asset)).balanceOf(
+            address(poolEscrow)
+        ); // The balance of tokens in
+        // Escrow is sum of deposit requests plus transfers in minus transfers out
+        uint256 balOfGlobalEscrow = MockERC20(address(asset)).balanceOf(
+            address(globalEscrow)
+        );
 
         // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
         // NOTE: Overflow should always result back to a rational value as assets cannot overflow due to other
@@ -305,16 +486,19 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         unchecked {
             // Deposit Requests + Transfers In - Claimed Redemptions + TransfersOut
             /// @audit Minted by Asset Payouts by Investors
-            ghostBalOfEscrow = (
-                (sumOfDepositRequests[asset] + sumOfSyncDepositsAsset[asset] + sumOfManagerDeposits[asset])
-                    - (
-                        sumOfClaimedDepositCancelations[asset] + sumOfClaimedRedemptions[asset]
-                            + sumOfManagerWithdrawals[asset]
-                    )
-            );
+            ghostBalOfEscrow = ((sumOfDepositRequests[asset] +
+                sumOfSyncDepositsAsset[asset] +
+                sumOfManagerDeposits[asset]) -
+                (sumOfClaimedCancelledDeposits[asset] +
+                    sumOfClaimedRedemptions[asset] +
+                    sumOfManagerWithdrawals[asset]));
         }
 
-        eq(balOfPoolEscrow + balOfGlobalEscrow, ghostBalOfEscrow, "balOfEscrow != ghostBalOfEscrow");
+        eq(
+            balOfPoolEscrow + balOfGlobalEscrow,
+            ghostBalOfEscrow,
+            "balOfEscrow != ghostBalOfEscrow"
+        );
     }
 
     /// @dev Property: The balance of share class tokens in Escrow is the sum of all fulfilled deposits - sum of all
@@ -324,22 +508,27 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
         // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         address shareToken = vault.share();
         uint256 ghostBalanceOfEscrow;
-        uint256 balanceOfEscrow = IShareToken(shareToken).balanceOf(address(globalEscrow));
+        uint256 balanceOfEscrow = IShareToken(shareToken).balanceOf(
+            address(globalEscrow)
+        );
 
         unchecked {
-            ghostBalanceOfEscrow = (
-                (sumOfFullfilledDeposits[address(shareToken)] + sumOfRedeemRequests[address(shareToken)])
-                    - (
-                        sumOfClaimedDeposits[address(shareToken)] + executedRedemptions[address(shareToken)] // revoked
-                            // redemptions burn share tokens
-                            + sumOfClaimedRedeemCancelations[address(shareToken)]
-                    )
-            ); // claims of cancelled amount can happen in claimCancelRedeemRequest or notifyRedeem
+            ghostBalanceOfEscrow = ((sumOfFulfilledDeposits[
+                address(shareToken)
+            ] + sumOfRedeemRequests[address(shareToken)]) -
+                (sumOfClaimedDeposits[address(shareToken)] +
+                    executedRedemptions[address(shareToken)] + // revoked
+                    // redemptions burn share tokens
+                    sumOfClaimedCancelledRedeemShares[address(shareToken)])); // claims of cancelled amount can happen in claimCancelRedeemRequest or notifyRedeem
         }
-        eq(balanceOfEscrow, ghostBalanceOfEscrow, "balanceOfEscrow != ghostBalanceOfEscrow");
+        eq(
+            balanceOfEscrow,
+            ghostBalanceOfEscrow,
+            "balanceOfEscrow != ghostBalanceOfEscrow"
+        );
     }
 
     // TODO: Multi Assets -> Iterate over all existing combinations
@@ -347,7 +536,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: The sum of account balances is always <= the balance of the escrow
     // TODO: this can't currently hold, requires a different implementation
     // function property_sum_of_account_balances_leq_escrow() public vaultIsSet {
-    //     IBaseVault vault = IBaseVault(_getVault());
+    //     IBaseVault vault = _getVault();
     //     uint256 balOfEscrow = MockERC20(vault.asset()).balanceOf(address(globalEscrow));
     //     address poolEscrow = address(poolEscrowFactory.escrow(vault.poolId()));
     //     uint256 balOfPoolEscrow = MockERC20(vault.asset()).balanceOf(address(poolEscrow));
@@ -367,14 +556,19 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     // }
 
     /// @dev Property: The sum of max claimable shares is always <= the share balance of the escrow
-    function property_sum_of_possible_account_balances_leq_escrow() public vaultIsSet {
+    function property_sum_of_possible_account_balances_leq_escrow()
+        public
+        vaultIsSet
+    {
         // only check for async vaults because sync vaults claim minted shares immediately
-        if (!Helpers.isAsyncVault(_getVault())) {
+        if (!Helpers.isAsyncVault(address(_getVault()))) {
             return;
         }
 
-        IBaseVault vault = IBaseVault(_getVault());
-        uint256 max = IShareToken(vault.share()).balanceOf(address(globalEscrow));
+        IBaseVault vault = _getVault();
+        uint256 max = IShareToken(vault.share()).balanceOf(
+            address(globalEscrow)
+        );
         address[] memory actors = _getActors();
 
         uint256 acc; // Use acc to get maxMint for each actor
@@ -398,7 +592,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             return;
         }
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         uint256 totalAssets = vault.totalAssets();
         address escrow = address(poolEscrowFactory.escrow(vault.poolId()));
         uint256 actualAssets = MockERC20(vault.asset()).balanceOf(escrow);
@@ -410,7 +604,10 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         console2.log("actualAssets", actualAssets);
 
         // precondition: check if the difference is greater than one share
-        if (differenceInShares > (10 ** IShareToken(vault.share()).decimals()) - 1) {
+        if (
+            differenceInShares >
+            (10 ** IShareToken(vault.share()).decimals()) - 1
+        ) {
             lte(totalAssets, actualAssets, "totalAssets > actualAssets");
         }
     }
@@ -426,14 +623,14 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: requested deposits must be >= the deposits fulfilled
     function property_soundness_processed_deposits() public {
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
-                requestDeposited[scId][assetId][actors[i]],
-                depositProcessed[scId][assetId][actors[i]],
+                userRequestDeposited[scId][assetId][actors[i]],
+                userDepositProcessed[scId][assetId][actors[i]],
                 "property_soundness_processed_deposits Actor Requests must be gte than processed amounts"
             );
         }
@@ -442,14 +639,14 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: requested redemptions must be >= the redemptions fulfilled
     function property_soundness_processed_redemptions() public {
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
-                requestRedeemed[scId][assetId][actors[i]],
-                redemptionsProcessed[scId][assetId][actors[i]],
+                userRequestRedeemed[scId][assetId][actors[i]],
+                userRedemptionsProcessed[scId][assetId][actors[i]],
                 "property_soundness_processed_redemptions Actor Requests must be gte than processed amounts"
             );
         }
@@ -458,14 +655,14 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: requested deposits must be >= the fulfilled cancelled deposits
     function property_cancelled_soundness() public {
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
-                requestDeposited[scId][assetId][actors[i]],
-                cancelledDeposits[scId][assetId][actors[i]],
+                userRequestDeposited[scId][assetId][actors[i]],
+                userCancelledDeposits[scId][assetId][actors[i]],
                 "actor requests must be >= cancelled amounts"
             );
         }
@@ -474,14 +671,15 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: requested deposits must be >= the fulfilled cancelled deposits + fulfilled deposits
     function property_cancelled_and_processed_deposits_soundness() public {
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
-                requestDeposited[scId][assetId][actors[i]],
-                cancelledDeposits[scId][assetId][actors[i]] + depositProcessed[scId][assetId][actors[i]],
+                userRequestDeposited[scId][assetId][actors[i]],
+                userCancelledDeposits[scId][assetId][actors[i]] +
+                    userDepositProcessed[scId][assetId][actors[i]],
                 "actor requests must be >= cancelled + processed amounts"
             );
         }
@@ -489,15 +687,16 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: requested redemptions must be >= the fulfilled cancelled redemptions + fulfilled redemptions
     function property_cancelled_and_processed_redemptions_soundness() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
         address[] memory actors = _getActors();
 
         for (uint256 i; i < actors.length; i++) {
             gte(
-                requestRedeemed[scId][assetId][actors[i]],
-                cancelledRedemptions[scId][assetId][actors[i]] + redemptionsProcessed[scId][assetId][actors[i]],
+                userRequestRedeemed[scId][assetId][actors[i]],
+                userCancelledRedeems[scId][assetId][actors[i]] +
+                    userRedemptionsProcessed[scId][assetId][actors[i]],
                 "actor requests must be >= cancelled + processed amounts"
             );
         }
@@ -506,16 +705,20 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: total deposits must be >= the approved deposits
     function property_solvency_deposit_requests() public {
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         uint256 totalDeposits;
         for (uint256 i; i < actors.length; i++) {
-            totalDeposits += requestDeposited[scId][assetId][actors[i]];
+            totalDeposits += userRequestDeposited[scId][assetId][actors[i]];
         }
 
-        gte(totalDeposits, approvedDeposits[scId][assetId], "total deposits < approved deposits");
+        gte(
+            totalDeposits,
+            approvedDeposits[scId][assetId],
+            "total deposits < approved deposits"
+        );
     }
 
     /// @dev Property: total redemptions must be >= the approved redemptions
@@ -523,16 +726,19 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory actors = _getActors();
         uint256 totalRedemptions;
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        PoolId poolId = vault.poolId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = _getAssetId();
 
         for (uint256 i; i < actors.length; i++) {
-            totalRedemptions += requestRedeemed[scId][assetId][actors[i]];
+            totalRedemptions += userRequestRedeemed[scId][assetId][actors[i]];
         }
 
-        gte(totalRedemptions, approvedRedemptions[scId][assetId], "total redemptions < approved redemptions");
+        gte(
+            totalRedemptions,
+            approvedRedemptions[scId][assetId],
+            "total redemptions < approved redemptions"
+        );
     }
 
     /// @dev Property: actor requested deposits - cancelled deposits - processed deposits actor pending deposits +
@@ -540,17 +746,26 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_actor_pending_and_queued_deposits() public {
         // Pending + Queued = Deposited?
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
-            (uint128 pending,) = shareClassManager.depositRequest(scId, assetId, actors[i].toBytes32());
-            (, uint128 queued) = shareClassManager.queuedDepositRequest(scId, assetId, actors[i].toBytes32());
+            (uint128 pending, ) = shareClassManager.depositRequest(
+                scId,
+                assetId,
+                actors[i].toBytes32()
+            );
+            (, uint128 queued) = shareClassManager.queuedDepositRequest(
+                scId,
+                assetId,
+                actors[i].toBytes32()
+            );
 
             eq(
-                requestDeposited[scId][assetId][actors[i]] - cancelledDeposits[scId][assetId][actors[i]]
-                    - depositProcessed[scId][assetId][actors[i]],
+                userRequestDeposited[scId][assetId][actors[i]] -
+                    userCancelledDeposits[scId][assetId][actors[i]] -
+                    userDepositProcessed[scId][assetId][actors[i]],
                 pending + queued,
                 "actor requested deposits - cancelled deposits - processed deposits != actor pending deposits + queued deposits"
             );
@@ -562,17 +777,26 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_actor_pending_and_queued_redemptions() public {
         // Pending + Queued = Deposited?
         address[] memory actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
-            (uint128 pending,) = shareClassManager.redeemRequest(scId, assetId, actors[i].toBytes32());
-            (, uint128 queued) = shareClassManager.queuedRedeemRequest(scId, assetId, actors[i].toBytes32());
+            (uint128 pending, ) = shareClassManager.redeemRequest(
+                scId,
+                assetId,
+                actors[i].toBytes32()
+            );
+            (, uint128 queued) = shareClassManager.queuedRedeemRequest(
+                scId,
+                assetId,
+                actors[i].toBytes32()
+            );
 
             eq(
-                requestRedeemed[scId][assetId][actors[i]] - cancelledRedemptions[scId][assetId][actors[i]]
-                    - redemptionsProcessed[scId][assetId][actors[i]],
+                userRequestRedeemed[scId][assetId][actors[i]] -
+                    userCancelledRedeems[scId][assetId][actors[i]] -
+                    userRedemptionsProcessed[scId][assetId][actors[i]],
                 pending + queued,
                 "property_actor_pending_and_queued_redemptions"
             );
@@ -582,10 +806,10 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: escrow total must be >= reserved
     // TODO: this can't currently hold, requires a different implementation
     // function property_escrow_solvency() public {
-    //     IBaseVault vault = IBaseVault(_getVault());
+    //     IBaseVault vault = _getVault();
     //     PoolId poolId = vault.poolId();
     //     ShareClassId scId = vault.scId();
-    //     AssetId assetId = hubRegistry.currency(poolId);
+    //     AssetId assetId = _getAssetId();
     //     (address assetAddr, uint256 tokenId) = spoke.idToAsset(assetId);
 
     //     PoolEscrow poolEscrow = PoolEscrow(payable(address(poolEscrowFactory.escrow(poolId))));
@@ -597,10 +821,10 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     // TODO: this needs to be redefined as an inline property in the target functions where assets are transferred and
     // shares are minted/burned
     // function property_price_per_share_overall() public {
-    //     IBaseVault vault = IBaseVault(_getVault());
+    //     IBaseVault vault = _getVault();
     //     PoolId poolId = vault.poolId();
     //     ShareClassId scId = vault.scId();
-    //     AssetId assetId = hubRegistry.currency(poolId);
+    //     AssetId assetId = _getAssetId();
 
     //     // first check if the share amount changed
     //     uint256 shareDelta;
@@ -644,112 +868,195 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: The total pending asset amount pendingDeposit[..] is always >= the approved asset
     /// epochInvestAmounts[..].approvedAssetAmount
     function property_total_pending_and_approved() public {
-        IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = _getAssetId();
 
-        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(scId, assetId);
-        uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, assetId);
-        (uint128 pendingAssetAmount, uint128 approvedAssetAmount,,,,) =
-            shareClassManager.epochInvestAmounts(scId, assetId, nowDepositEpoch);
+        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(
+            scId,
+            assetId
+        );
+        uint128 pendingDeposit = shareClassManager.pendingDeposit(
+            scId,
+            assetId
+        );
+        (
+            uint128 pendingAssetAmount,
+            uint128 approvedAssetAmount,
+            ,
+            ,
+            ,
 
-        gte(pendingDeposit, approvedAssetAmount, "pendingDeposit < approvedAssetAmount");
-        gte(pendingDeposit, pendingAssetAmount, "pendingDeposit < pendingAssetAmount");
+        ) = shareClassManager.epochInvestAmounts(
+                scId,
+                assetId,
+                nowDepositEpoch
+            );
+
+        gte(
+            pendingDeposit,
+            approvedAssetAmount,
+            "pendingDeposit < approvedAssetAmount"
+        );
+        gte(
+            pendingDeposit,
+            pendingAssetAmount,
+            "pendingDeposit < pendingAssetAmount"
+        );
     }
 
     /// @dev Property: The sum of pending user deposit amounts depositRequest[..] is always >= total pending deposit
     /// amount pendingDeposit[..]
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the approved deposit amount
     /// epochInvestAmounts[..].approvedAssetAmount
-    function property_sum_pending_user_deposit_geq_total_pending_deposit() public {
+    function property_sum_pending_user_deposit_geq_total_pending_deposit()
+        public
+    {
         address[] memory _actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = _getAssetId();
 
-        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(scId, assetId);
-        uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, assetId);
+        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(
+            scId,
+            assetId
+        );
+        uint128 pendingDeposit = shareClassManager.pendingDeposit(
+            scId,
+            assetId
+        );
 
         // get the pending and approved deposit amounts for the current epoch
-        (uint128 pendingAssetAmount, uint128 approvedAssetAmount,,,,) =
-            shareClassManager.epochInvestAmounts(scId, assetId, nowDepositEpoch);
+        (, uint128 approvedAssetAmount, , , , ) = shareClassManager
+            .epochInvestAmounts(scId, assetId, nowDepositEpoch);
 
         uint128 totalPendingUserDeposit;
         for (uint256 k = 0; k < _actors.length; k++) {
             address actor = _actors[k];
 
-            (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(scId, assetId, CastLib.toBytes32(actor));
+            (uint128 pendingUserDeposit, ) = shareClassManager.depositRequest(
+                scId,
+                assetId,
+                CastLib.toBytes32(actor)
+            );
             totalPendingUserDeposit += pendingUserDeposit;
         }
 
         // check that the pending deposit is >= the total pending user deposit
-        gte(totalPendingUserDeposit, pendingDeposit, "total pending user deposits is < pending deposit");
+        gte(
+            totalPendingUserDeposit,
+            pendingDeposit,
+            "total pending user deposits is < pending deposit"
+        );
         // check that the pending deposit is >= the approved deposit
-        gte(pendingDeposit, approvedAssetAmount, "pending deposit is < approved deposit");
+        gte(
+            pendingDeposit,
+            approvedAssetAmount,
+            "pending deposit is < approved deposit"
+        );
     }
 
     /// @dev Property: The sum of pending user redeem amounts redeemRequest[..] is always >= total pending redeem amount
     /// pendingRedeem[..]
     /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the approved redeem amount
     /// epochRedeemAmounts[..].approvedShareAmount
-    function property_sum_pending_user_redeem_geq_total_pending_redeem() public {
+    function property_sum_pending_user_redeem_geq_total_pending_redeem()
+        public
+    {
         address[] memory _actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
+        IBaseVault vault = _getVault();
+        // PoolId poolId = vault.poolId(); // Unused
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = _getAssetId();
 
-        (uint32 redeemEpochId) = shareClassManager.nowRedeemEpoch(scId, assetId);
+        uint32 redeemEpochId = shareClassManager.nowRedeemEpoch(scId, assetId);
         uint128 pendingRedeem = shareClassManager.pendingRedeem(scId, assetId);
 
         // get the pending and approved redeem amounts for the current epoch
-        (, uint128 approvedShareAmount, uint128 payoutAssetAmount,,,) =
-            shareClassManager.epochRedeemAmounts(scId, assetId, redeemEpochId);
+        (, uint128 approvedShareAmount, , , , ) = shareClassManager
+            .epochRedeemAmounts(scId, assetId, redeemEpochId);
 
         uint128 totalPendingUserRedeem;
         for (uint256 k = 0; k < _actors.length; k++) {
             address actor = _actors[k];
 
-            (uint128 pendingUserRedeem,) = shareClassManager.redeemRequest(scId, assetId, CastLib.toBytes32(actor));
+            (uint128 pendingUserRedeem, ) = shareClassManager.redeemRequest(
+                scId,
+                assetId,
+                CastLib.toBytes32(actor)
+            );
             totalPendingUserRedeem += pendingUserRedeem;
         }
 
         // check that the pending redeem is >= the total pending user redeem
-        gte(totalPendingUserRedeem, pendingRedeem, "total pending user redeems is < pending redeem");
+        gte(
+            totalPendingUserRedeem,
+            pendingRedeem,
+            "total pending user redeems is < pending redeem"
+        );
         // check that the pending redeem is >= the approved redeem
-        gte(pendingRedeem, approvedShareAmount, "pending redeem is < approved redeem");
+        gte(
+            pendingRedeem,
+            approvedShareAmount,
+            "pending redeem is < approved redeem"
+        );
     }
 
     /// @dev Property: The epoch of a pool epochId[poolId] can increase at most by one within the same transaction (i.e.
     /// multicall/execute) independent of the number of approvals
-    function property_epochId_can_increase_by_one_within_same_transaction() public {
+    function property_epochId_can_increase_by_one_within_same_transaction()
+        public
+    {
         // precondition: there must've been a batch operation (call to execute/multicall)
         if (currentOperation == OpType.BATCH) {
-            uint64[] memory _createdPools = _getPools();
+            PoolId[] memory _createdPools = _getPools();
             for (uint256 i = 0; i < _createdPools.length; i++) {
-                PoolId poolId = PoolId.wrap(_createdPools[i]);
-                uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+                PoolId poolId = _createdPools[i];
+                uint32 shareClassCount = shareClassManager.shareClassCount(
+                    poolId
+                );
                 // skip the first share class because it's never assigned
                 for (uint32 j = 1; j < shareClassCount; j++) {
-                    ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                    AssetId assetId = hubRegistry.currency(poolId);
+                    ShareClassId scId = shareClassManager.previewShareClassId(
+                        poolId,
+                        j
+                    );
+                    AssetId assetId = _getAssetId();
 
-                    uint32 depositEpochIdDifference =
-                        _after.ghostEpochId[scId][assetId].deposit - _before.ghostEpochId[scId][assetId].deposit;
-                    uint32 redeemEpochIdDifference =
-                        _after.ghostEpochId[scId][assetId].redeem - _before.ghostEpochId[scId][assetId].redeem;
-                    uint32 issueEpochIdDifference =
-                        _after.ghostEpochId[scId][assetId].issue - _before.ghostEpochId[scId][assetId].issue;
-                    uint32 revokeEpochIdDifference =
-                        _after.ghostEpochId[scId][assetId].revoke - _before.ghostEpochId[scId][assetId].revoke;
+                    uint32 depositEpochIdDifference = _after
+                    .ghostEpochId[scId][assetId].deposit -
+                        _before.ghostEpochId[scId][assetId].deposit;
+                    uint32 redeemEpochIdDifference = _after
+                    .ghostEpochId[scId][assetId].redeem -
+                        _before.ghostEpochId[scId][assetId].redeem;
+                    uint32 issueEpochIdDifference = _after
+                    .ghostEpochId[scId][assetId].issue -
+                        _before.ghostEpochId[scId][assetId].issue;
+                    uint32 revokeEpochIdDifference = _after
+                    .ghostEpochId[scId][assetId].revoke -
+                        _before.ghostEpochId[scId][assetId].revoke;
 
                     // check that the epochId increased by at most 1
-                    lte(depositEpochIdDifference, 1, "deposit epochId increased by more than 1");
-                    lte(redeemEpochIdDifference, 1, "redeem epochId increased by more than 1");
-                    lte(issueEpochIdDifference, 1, "issue epochId increased by more than 1");
-                    lte(revokeEpochIdDifference, 1, "revoke epochId increased by more than 1");
+                    lte(
+                        depositEpochIdDifference,
+                        1,
+                        "deposit epochId increased by more than 1"
+                    );
+                    lte(
+                        redeemEpochIdDifference,
+                        1,
+                        "redeem epochId increased by more than 1"
+                    );
+                    lte(
+                        issueEpochIdDifference,
+                        1,
+                        "issue epochId increased by more than 1"
+                    );
+                    lte(
+                        revokeEpochIdDifference,
+                        1,
+                        "revoke epochId increased by more than 1"
+                    );
                 }
             }
         }
@@ -759,14 +1066,14 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     // NOTE: this property is not relevant anymore with the latest implementation of the accountValue using uint128
     // instead of int128
     // function property_account_totalDebit_and_totalCredit_leq_max_int128() public {
-    //     uint64[] memory _createdPools = _getPools();
+    //     PoolId[] memory _createdPools = _getPools();
     //     for (uint256 i = 0; i < _createdPools.length; i++) {
-    //         PoolId poolId = PoolId.wrap(_createdPools[i]);
+    //         PoolId poolId = _createdPools[i];
     //         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
     //         // skip the first share class because it's never assigned
     //         for (uint32 j = 1; j < shareClassCount; j++) {
     //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-    //             AssetId assetId = hubRegistry.currency(poolId);
+    //             AssetId assetId = _getAssetId();
     //             // loop over all account types defined in IHub::AccountType
     //             for(uint8 kind = 0; kind < 6; kind++) {
     //                 AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
@@ -780,21 +1087,36 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: Any decrease in valuation should not result in an increase in accountValue
     function property_decrease_valuation_no_increase_in_accountValue() public {
-        uint64[] memory _createdPools = _getPools();
+        PoolId[] memory _createdPools = _getPools();
         for (uint256 i = 0; i < _createdPools.length; i++) {
-            PoolId poolId = PoolId.wrap(_createdPools[i]);
+            PoolId poolId = _createdPools[i];
             uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
             // skip the first share class because it's never assigned
             for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                AssetId assetId = hubRegistry.currency(poolId);
+                ShareClassId scId = shareClassManager.previewShareClassId(
+                    poolId,
+                    j
+                );
+                AssetId assetId = _getAssetId();
 
-                if (_before.ghostHolding[poolId][scId][assetId] > _after.ghostHolding[poolId][scId][assetId]) {
+                if (
+                    _before.ghostHolding[poolId][scId][assetId] >
+                    _after.ghostHolding[poolId][scId][assetId]
+                ) {
                     // loop over all account types defined in IHub::AccountType
                     for (uint8 kind = 0; kind < 6; kind++) {
-                        AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
-                        uint128 accountValueBefore = _before.ghostAccountValue[poolId][accountId];
-                        uint128 accountValueAfter = _after.ghostAccountValue[poolId][accountId];
+                        AccountId accountId = holdings.accountId(
+                            poolId,
+                            scId,
+                            assetId,
+                            kind
+                        );
+                        uint128 accountValueBefore = _before.ghostAccountValue[
+                            poolId
+                        ][accountId];
+                        uint128 accountValueAfter = _after.ghostAccountValue[
+                            poolId
+                        ][accountId];
                         if (accountValueAfter > accountValueBefore) {
                             t(false, "accountValue increased");
                         }
@@ -806,47 +1128,92 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: Value of Holdings == accountValue(Asset)
     function property_accounting_and_holdings_soundness() public {
-        uint64[] memory _createdPools = _getPools();
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
-        AccountId accountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
+        AssetId assetId = _getAssetId();
+        AccountId accountId = holdings.accountId(
+            poolId,
+            scId,
+            assetId,
+            uint8(AccountType.Asset)
+        );
 
         (, uint128 assets) = accounting.accountValue(poolId, accountId);
         uint128 holdingsValue = holdings.value(poolId, scId, assetId);
 
         // This property holds all of the system accounting together
-        eq(assets, holdingsValue, "Assets and Holdings value must match");
+        // NOTE: If priceAssetPerPool == 0, this equality might break, investigate then
+        uint128 deltaAssetsHoldingValue = assets - holdingsValue;
+        t(
+            deltaAssetsHoldingValue == 0 ||
+                _before.pricePoolPerAsset[poolId][scId][assetId].raw() == 0,
+            "Assets and Holdings value must match except if price is zero"
+        );
     }
 
     /// @dev Property: Total Yield = assets - equity
     function property_total_yield() public {
-        uint64[] memory _createdPools = _getPools();
+        PoolId[] memory _createdPools = _getPools();
         for (uint256 i = 0; i < _createdPools.length; i++) {
-            PoolId poolId = PoolId.wrap(_createdPools[i]);
+            PoolId poolId = _createdPools[i];
             uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
             // skip the first share class because it's never assigned
             for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                AssetId assetId = hubRegistry.currency(poolId);
+                ShareClassId scId = shareClassManager.previewShareClassId(
+                    poolId,
+                    j
+                );
+                AssetId assetId = _getAssetId();
 
                 // get the account ids for each account
-                AccountId assetAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
-                AccountId equityAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Equity));
-                AccountId gainAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain));
-                AccountId lossAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss));
+                AccountId assetAccountId = holdings.accountId(
+                    poolId,
+                    scId,
+                    assetId,
+                    uint8(AccountType.Asset)
+                );
+                AccountId equityAccountId = holdings.accountId(
+                    poolId,
+                    scId,
+                    assetId,
+                    uint8(AccountType.Equity)
+                );
+                AccountId gainAccountId = holdings.accountId(
+                    poolId,
+                    scId,
+                    assetId,
+                    uint8(AccountType.Gain)
+                );
+                AccountId lossAccountId = holdings.accountId(
+                    poolId,
+                    scId,
+                    assetId,
+                    uint8(AccountType.Loss)
+                );
 
-                (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
-                (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
+                (, uint128 assets) = accounting.accountValue(
+                    poolId,
+                    assetAccountId
+                );
+                (, uint128 equity) = accounting.accountValue(
+                    poolId,
+                    equityAccountId
+                );
 
                 if (assets > equity) {
                     // Yield
-                    (, uint128 yield) = accounting.accountValue(poolId, gainAccountId);
+                    (, uint128 yield) = accounting.accountValue(
+                        poolId,
+                        gainAccountId
+                    );
                     t(yield == assets - equity, "property_total_yield gain");
                 } else if (assets < equity) {
                     // Loss
-                    (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
+                    (, uint128 loss) = accounting.accountValue(
+                        poolId,
+                        lossAccountId
+                    );
                     t(loss == assets - equity, "property_total_yield loss"); // Loss is negative
                 }
             }
@@ -855,16 +1222,36 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: assets = equity + gain + loss
     function property_asset_soundness() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = _getAssetId();
 
         // get the account ids for each account
-        AccountId assetAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
-        AccountId equityAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Equity));
-        AccountId gainAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain));
-        AccountId lossAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss));
+        AccountId assetAccountId = holdings.accountId(
+            poolId,
+            scId,
+            assetId,
+            uint8(AccountType.Asset)
+        );
+        AccountId equityAccountId = holdings.accountId(
+            poolId,
+            scId,
+            assetId,
+            uint8(AccountType.Equity)
+        );
+        AccountId gainAccountId = holdings.accountId(
+            poolId,
+            scId,
+            assetId,
+            uint8(AccountType.Gain)
+        );
+        AccountId lossAccountId = holdings.accountId(
+            poolId,
+            scId,
+            assetId,
+            uint8(AccountType.Loss)
+        );
 
         (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
         (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
@@ -882,46 +1269,101 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: equity = assets - loss - gain
     function property_equity_soundness() public {
-        uint64[] memory _createdPools = _getPools();
+        PoolId[] memory _createdPools = _getPools();
         for (uint256 i = 0; i < _createdPools.length; i++) {
-            PoolId poolId = PoolId.wrap(_createdPools[i]);
+            PoolId poolId = _createdPools[i];
             uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
             // skip the first share class because it's never assigned
             for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                AssetId assetId = hubRegistry.currency(poolId);
+                ShareClassId scId = shareClassManager.previewShareClassId(
+                    poolId,
+                    j
+                );
+                AssetId assetId = _getAssetId();
 
                 // get the account ids for each account
-                AccountId assetAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
-                AccountId equityAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Equity));
-                AccountId gainAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain));
-                AccountId lossAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss));
+                AccountId assetAccountId = holdings.accountId(
+                    poolId,
+                    scId,
+                    assetId,
+                    uint8(AccountType.Asset)
+                );
+                AccountId equityAccountId = holdings.accountId(
+                    poolId,
+                    scId,
+                    assetId,
+                    uint8(AccountType.Equity)
+                );
+                AccountId gainAccountId = holdings.accountId(
+                    poolId,
+                    scId,
+                    assetId,
+                    uint8(AccountType.Gain)
+                );
+                AccountId lossAccountId = holdings.accountId(
+                    poolId,
+                    scId,
+                    assetId,
+                    uint8(AccountType.Loss)
+                );
 
-                (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
-                (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
-                (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
-                (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
+                (, uint128 assets) = accounting.accountValue(
+                    poolId,
+                    assetAccountId
+                );
+                (, uint128 equity) = accounting.accountValue(
+                    poolId,
+                    equityAccountId
+                );
+                (, uint128 gain) = accounting.accountValue(
+                    poolId,
+                    gainAccountId
+                );
+                (, uint128 loss) = accounting.accountValue(
+                    poolId,
+                    lossAccountId
+                );
 
                 // equity = accountValue(Asset) + (ABS(accountValue(Loss)) - accountValue(Gain) // Loss comes back, gain
                 // is subtracted
                 t(equity == assets + loss - gain, "property_equity_soundness"); // Loss comes back, gain is subtracted,
-                    // since loss is negative we need to negate it
+                // since loss is negative we need to negate it
             }
         }
     }
 
     /// @dev Property: gain = totalYield + loss
     function property_gain_soundness() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = _getAssetId();
 
         // get the account ids for each account
-        AccountId assetAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
-        AccountId equityAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Equity));
-        AccountId gainAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain));
-        AccountId lossAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss));
+        AccountId assetAccountId = holdings.accountId(
+            poolId,
+            scId,
+            assetId,
+            uint8(AccountType.Asset)
+        );
+        AccountId equityAccountId = holdings.accountId(
+            poolId,
+            scId,
+            assetId,
+            uint8(AccountType.Equity)
+        );
+        AccountId gainAccountId = holdings.accountId(
+            poolId,
+            scId,
+            assetId,
+            uint8(AccountType.Gain)
+        );
+        AccountId lossAccountId = holdings.accountId(
+            poolId,
+            scId,
+            assetId,
+            uint8(AccountType.Loss)
+        );
 
         (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
         (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
@@ -934,25 +1376,60 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: loss = totalYield - gain
     function property_loss_soundness() public {
-        uint64[] memory _createdPools = _getPools();
+        PoolId[] memory _createdPools = _getPools();
         for (uint256 i = 0; i < _createdPools.length; i++) {
-            PoolId poolId = PoolId.wrap(_createdPools[i]);
+            PoolId poolId = _createdPools[i];
             uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
             // skip the first share class because it's never assigned
             for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                AssetId assetId = hubRegistry.currency(poolId);
+                ShareClassId scId = shareClassManager.previewShareClassId(
+                    poolId,
+                    j
+                );
+                AssetId assetId = _getAssetId();
 
                 // get the account ids for each account
-                AccountId assetAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
-                AccountId equityAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Equity));
-                AccountId gainAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain));
-                AccountId lossAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss));
+                AccountId assetAccountId = holdings.accountId(
+                    poolId,
+                    scId,
+                    assetId,
+                    uint8(AccountType.Asset)
+                );
+                AccountId equityAccountId = holdings.accountId(
+                    poolId,
+                    scId,
+                    assetId,
+                    uint8(AccountType.Equity)
+                );
+                AccountId gainAccountId = holdings.accountId(
+                    poolId,
+                    scId,
+                    assetId,
+                    uint8(AccountType.Gain)
+                );
+                AccountId lossAccountId = holdings.accountId(
+                    poolId,
+                    scId,
+                    assetId,
+                    uint8(AccountType.Loss)
+                );
 
-                (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
-                (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
-                (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
-                (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
+                (, uint128 assets) = accounting.accountValue(
+                    poolId,
+                    assetAccountId
+                );
+                (, uint128 equity) = accounting.accountValue(
+                    poolId,
+                    equityAccountId
+                );
+                (, uint128 gain) = accounting.accountValue(
+                    poolId,
+                    gainAccountId
+                );
+                (, uint128 loss) = accounting.accountValue(
+                    poolId,
+                    lossAccountId
+                );
 
                 uint128 totalYield = assets - equity; // Can be positive or negative
                 console2.log("loss:", loss);
@@ -969,17 +1446,16 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: A user cannot mutate their pending redeem amount pendingRedeem[...] if the
     /// pendingRedeem[..].lastUpdate is <= the latest redeem approval epochId[..].redeem
     function property_user_cannot_mutate_pending_redeem() public {
-        IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
+        IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = _getAssetId();
 
         bytes32 actor = CastLib.toBytes32(_getActor());
         // precondition: user already has non-zero pending redeem and it has changed
         if (
-            _before.ghostRedeemRequest[scId][assetId][actor].pending > 0
-                && _before.ghostRedeemRequest[scId][assetId][actor].pending
-                    != _after.ghostRedeemRequest[scId][assetId][actor].pending
+            _before.ghostRedeemRequest[scId][assetId][actor].pending > 0 &&
+            _before.ghostRedeemRequest[scId][assetId][actor].pending !=
+            _after.ghostRedeemRequest[scId][assetId][actor].pending
         ) {
             // check that the lastUpdate was > the latest redeem revoke pointer
             gt(
@@ -990,15 +1466,23 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    /// @dev Property: The amount of holdings of an asset for a pool-shareClas pair in Holdings MUST always be equal to
+    /// @dev Property: The amount of holdings of an asset for a pool-shareClass pair in Holdings MUST always be equal to
     /// the balance of the escrow for said pool-shareClass for the respective token
+    /// @dev This property is undefined when price is zero (no shares issued, so holdings don't track escrow movements)
     function property_holdings_balance_equals_escrow_balance() public {
-        address[] memory _actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
-        address asset = vault.asset();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        IBaseVault vault = _getVault();
 
-        (uint128 holdingAssetAmount,,,) = holdings.holding(vault.poolId(), vault.scId(), assetId);
+        // Guard: Skip when price is zero (property is undefined)
+        if (_before.pricePerShare == 0) return;
+
+        address asset = vault.asset();
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+
+        (uint128 holdingAssetAmount, , , ) = holdings.holding(
+            vault.poolId(),
+            vault.scId(),
+            assetId
+        );
         address poolEscrow = address(poolEscrowFactory.escrow(vault.poolId()));
         uint256 escrowBalance = MockERC20(asset).balanceOf(poolEscrow);
 
@@ -1007,75 +1491,105 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: The total issuance of a share class is <= the sum of issued shares and burned shares
     function property_total_issuance_soundness() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = _getAssetId();
 
         // TODO(wischli): Find feasible replacement now that queues are always enabled
         // precondition: if queue is enabled, return early because the totalIssuance is only updated immediately when
         // the queue isn't enabled
         return;
 
-        (uint128 totalIssuance,) = shareClassManager.metrics(scId);
-
-        uint256 minted = issuedHubShares[poolId][scId][assetId] + issuedBalanceSheetShares[poolId][scId]
-            + sumOfSyncDepositsShare[vault.share()];
-        uint256 burned = revokedHubShares[poolId][scId][assetId] + revokedBalanceSheetShares[poolId][scId];
-        console2.log("issuedHubShares:", issuedHubShares[poolId][scId][assetId]);
-        console2.log("issuedBalanceSheetShares:", issuedBalanceSheetShares[poolId][scId]);
-        console2.log("sumOfSyncDepositsShare:", sumOfSyncDepositsShare[vault.share()]);
-        console2.log("revokedHubShares:", revokedHubShares[poolId][scId][assetId]);
-        console2.log("revokedBalanceSheetShares:", revokedBalanceSheetShares[poolId][scId]);
-        lte(totalIssuance, minted - burned, "total issuance is > issuedHubShares + issuedBalanceSheetShares");
+        // Unreachable code commented out to fix compiler warnings
+        // (uint128 totalIssuance,) = shareClassManager.metrics(scId);
+        // uint256 minted = issuedHubShares[poolId][scId][assetId] + issuedBalanceSheetShares[poolId][scId]
+        //     + sumOfSyncDepositsShare[vault.share()];
+        // uint256 burned = revokedHubShares[poolId][scId][assetId] + revokedBalanceSheetShares[poolId][scId];
+        // console2.log("issuedHubShares:", issuedHubShares[poolId][scId][assetId]);
+        // console2.log("issuedBalanceSheetShares:", issuedBalanceSheetShares[poolId][scId]);
+        // console2.log("sumOfSyncDepositsShare:", sumOfSyncDepositsShare[vault.share()]);
+        // console2.log("revokedHubShares:", revokedHubShares[poolId][scId][assetId]);
+        // console2.log("revokedBalanceSheetShares:", revokedBalanceSheetShares[poolId][scId]);
+        // lte(totalIssuance, minted - burned, "total issuance is > issuedHubShares + issuedBalanceSheetShares");
     }
 
     function property_additions_dont_cause_ppfs_loss() public {
         if (currentOperation == OpType.ADD) {
-            gte(_after.totalAssets, _before.totalAssets, "total assets must increase when adding");
-            gte(_after.totalShareSupply, _before.totalShareSupply, "total supply must increase when adding");
+            gte(
+                _after.totalAssets,
+                _before.totalAssets,
+                "total assets must increase when adding"
+            );
+            gte(
+                _after.totalShareSupply,
+                _before.totalShareSupply,
+                "total supply must increase when adding"
+            );
         }
     }
 
     function property_removals_dont_cause_ppfs_loss() public {
         if (currentOperation == OpType.REMOVE) {
-            lte(_after.totalAssets, _before.totalAssets, "total assets must decrease when removing");
-            lte(_after.totalShareSupply, _before.totalShareSupply, "total supply must decrease when removing");
+            lte(
+                _after.totalAssets,
+                _before.totalAssets,
+                "total assets must decrease when removing"
+            );
+            lte(
+                _after.totalShareSupply,
+                _before.totalShareSupply,
+                "total supply must decrease when removing"
+            );
         }
     }
 
     /// @dev Property: If user deposits assets, they must always receive at least the pricePerShare
     function property_additions_use_correct_price() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         uint256 decimals = MockERC20(vault.asset()).decimals();
 
         if (currentOperation == OpType.ADD) {
             uint256 assetDelta = _after.totalAssets - _before.totalAssets;
-            uint256 shareDelta = _after.totalShareSupply - _before.totalShareSupply;
-            uint256 expectedShares = (_before.pricePerShare * assetDelta) - (10 ** decimals);
+            uint256 shareDelta = _after.totalShareSupply -
+                _before.totalShareSupply;
+            uint256 expectedShares = _before.pricePerShare == 0
+                ? 0
+                : (_before.pricePerShare * assetDelta) - (10 ** decimals);
             if (expectedShares > shareDelta) {
                 // difference between expected and how much they actually paid
                 uint256 expectedVsActual = shareDelta - expectedShares;
                 // difference should be less than 1 atom
-                lte(expectedVsActual, (10 ** decimals), "shareDelta must be >= expectedShares using pricePerShare");
+                lte(
+                    expectedVsActual,
+                    (10 ** decimals),
+                    "shareDelta must be >= expectedShares using pricePerShare"
+                );
             }
         }
     }
 
     /// @dev Property: If user redeems shares, they must always pay at least the pricePerShare
     function property_removals_use_correct_price() public {
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         uint256 decimals = MockERC20(vault.asset()).decimals();
 
         if (currentOperation == OpType.REMOVE) {
             uint256 assetDelta = _after.totalAssets - _before.totalAssets;
-            uint256 shareDelta = _after.totalShareSupply - _before.totalShareSupply;
-            uint256 expectedShares = (_before.pricePerShare * assetDelta) + (10 ** decimals);
+            uint256 shareDelta = _after.totalShareSupply -
+                _before.totalShareSupply;
+            uint256 expectedShares = _before.pricePerShare == 0
+                ? 0
+                : (_before.pricePerShare * assetDelta) + (10 ** decimals);
             if (expectedShares > shareDelta) {
                 // difference between expected and how much they actually paid
                 uint256 expectedVsActual = expectedShares - shareDelta;
                 // difference should be less than 1 atom
-                lte(expectedVsActual, (10 ** decimals), "shareDelta must be >= expectedShares using pricePerShare");
+                lte(
+                    expectedVsActual,
+                    (10 ** decimals),
+                    "shareDelta must be >= expectedShares using pricePerShare"
+                );
             }
         }
     }
@@ -1094,7 +1608,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     //         // skip the first share class because it's never assigned
     //         for (uint32 j = 1; j < shareClassCount; j++) {
     //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-    //             AssetId assetId = hubRegistry.currency(poolId);
+    //             AssetId assetId = _getAssetId();
 
     //             address pendingShareClassEscrow = hub.escrow(poolId, scId, EscrowId.PendingShareClass);
     //             address shareClassEscrow = hub.escrow(poolId, scId, EscrowId.ShareClass);
@@ -1121,23 +1635,29 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: The sum of eligible user payoutAssetAmount for an epoch is <= the number of issued asset
     /// epochInvestAmounts[..].pendingAssetAmount
     /// @dev Stateless because of the calls to claimDeposit which would make story difficult to read
-    function property_eligible_user_deposit_amount_leq_deposit_issued_amount() public statelessTest {
+    function property_eligible_user_deposit_amount_leq_deposit_issued_amount()
+        public
+        statelessTest
+    {
         address[] memory _actors = _getActors();
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = _getAssetId();
 
         // get the current deposit epoch
         uint32 epochId = shareClassManager.nowDepositEpoch(scId, assetId);
         uint128 totalDepositAssets;
         uint128 totalDepositShares;
         for (uint32 i = 0; i < epochId; i++) {
-            (uint128 pendingAssetAmount,,,,,) = shareClassManager.epochInvestAmounts(scId, assetId, i);
+            (uint128 pendingAssetAmount, , , , , ) = shareClassManager
+                .epochInvestAmounts(scId, assetId, i);
             totalDepositAssets += pendingAssetAmount;
             // TODO: confirm if this share calculation is correct
-            totalDepositShares += uint128(vault.convertToShares(pendingAssetAmount));
+            totalDepositShares += uint128(
+                vault.convertToShares(pendingAssetAmount)
+            );
         }
 
         // sum eligible user claim payoutShareAmount for the epoch
@@ -1145,14 +1665,31 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint128 totalPayoutShareAmount;
         for (uint256 k = 0; k < _actors.length; k++) {
             address actor = _actors[k];
-            (uint128 payoutShareAmount, uint128 payoutAssetAmount,) =
-                hubHelpers.notifyDeposit(poolId, scId, assetId, CastLib.toBytes32(actor), MAX_CLAIMS);
+            (
+                uint128 payoutShareAmount,
+                uint128 payoutAssetAmount,
+
+            ) = hubHelpers.notifyDeposit(
+                    poolId,
+                    scId,
+                    assetId,
+                    CastLib.toBytes32(actor),
+                    MAX_CLAIMS
+                );
             totalPayoutAssetAmount += payoutAssetAmount;
             totalPayoutShareAmount += payoutShareAmount;
         }
 
-        lte(totalPayoutAssetAmount, totalDepositAssets, "totalPayoutAssetAmount > totalDepositAssets");
-        lte(totalPayoutShareAmount, totalDepositShares, "totalPayoutShareAmount > totalDepositShares");
+        lte(
+            totalPayoutAssetAmount,
+            totalDepositAssets,
+            "totalPayoutAssetAmount > totalDepositAssets"
+        );
+        lte(
+            totalPayoutShareAmount,
+            totalDepositShares,
+            "totalPayoutShareAmount > totalDepositShares"
+        );
 
         // NOTE: removed because the totalPayoutAssetAmount, totalPaymentShareAmount are dependent on the NAV passed in
         // by the admin when approving/revoking so can easily allow the admin to wreck the user
@@ -1171,21 +1708,30 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// redeemed share class tokens epochRedeemAmounts[..].approvedShareAmount
     /// @dev This doesn't sum over previous epochs because it can be assumed that it'll be called by the fuzzer for each
     /// current epoch
-    function property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount() public statelessTest {
+    function property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount()
+        public
+        statelessTest
+    {
         address[] memory _actors = _getActors();
 
-        IBaseVault vault = IBaseVault(_getVault());
+        IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = _getAssetId();
 
         // get the current redeem epoch
         uint32 epochId = shareClassManager.nowRedeemEpoch(scId, assetId);
         uint128 totalPayoutAssetAmountEpochs;
         uint128 totalApprovedShareAmountEpochs;
         for (uint32 i = 0; i < epochId; i++) {
-            (, uint128 approvedShareAmount, uint128 payoutAssetAmount,,,) =
-                shareClassManager.epochRedeemAmounts(scId, assetId, i);
+            (
+                ,
+                uint128 approvedShareAmount,
+                uint128 payoutAssetAmount,
+                ,
+                ,
+
+            ) = shareClassManager.epochRedeemAmounts(scId, assetId, i);
             totalPayoutAssetAmountEpochs += payoutAssetAmount;
             totalApprovedShareAmountEpochs += approvedShareAmount;
         }
@@ -1195,13 +1741,26 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint128 totalPaymentShareAmount;
         for (uint256 k = 0; k < _actors.length; k++) {
             address actor = _actors[k];
-            (uint128 payoutAssetAmount, uint128 paymentShareAmount,) =
-                hubHelpers.notifyRedeem(poolId, scId, assetId, CastLib.toBytes32(actor), MAX_CLAIMS);
+            (
+                uint128 payoutAssetAmount,
+                uint128 paymentShareAmount,
+
+            ) = hubHelpers.notifyRedeem(
+                    poolId,
+                    scId,
+                    assetId,
+                    CastLib.toBytes32(actor),
+                    MAX_CLAIMS
+                );
             totalPayoutAssetAmount += payoutAssetAmount;
             totalPaymentShareAmount += paymentShareAmount;
         }
 
-        lte(totalPayoutAssetAmount, totalPayoutAssetAmountEpochs, "total payout asset amount is > redeem assets");
+        lte(
+            totalPayoutAssetAmount,
+            totalPayoutAssetAmountEpochs,
+            "total payout asset amount is > redeem assets"
+        );
         lte(
             totalPaymentShareAmount,
             totalApprovedShareAmountEpochs,
@@ -1219,20 +1778,42 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // lte(differenceShare, 1, "sumRedeemApprovedShares - totalPaymentShareAmount difference is greater than 1");
     }
 
+    /// === ZERO PRICE PROPERTIES === ///
+
+    /// @dev Property: When price is zero, no shares should be issued
+    function property_zeroPrice_noShareIssuance() public {
+        if (_before.pricePerShare == 0) {
+            // Verify no new shares were issued in this transaction
+            uint256 shareSupplyDelta = _after.totalShareSupply -
+                _before.totalShareSupply;
+            eq(shareSupplyDelta, 0, "Shares issued at zero price");
+        }
+    }
+
     /// === DOOMSDAY TESTS === ///
 
     /// @dev Property: pricePerShare never changes after a user operation
-    function doomsday_pricePerShare_never_changes_after_user_operation() public {
+    function doomsday_pricePerShare_never_changes_after_user_operation()
+        public
+    {
         if (currentOperation != OpType.ADMIN) {
-            eq(_before.pricePerShare, _after.pricePerShare, "pricePerShare changed after user operation");
+            eq(
+                _before.pricePerShare,
+                _after.pricePerShare,
+                "pricePerShare changed after user operation"
+            );
         }
     }
 
     /// @dev Property: implied pricePerShare (totalAssets / totalSupply) never changes after a user operation
-    function doomsday_impliedPricePerShare_never_changes_after_user_operation() public {
+    function doomsday_impliedPricePerShare_never_changes_after_user_operation()
+        public
+    {
         if (currentOperation != OpType.ADMIN) {
-            uint256 impliedPricePerShareBefore = _before.totalAssets / _before.totalShareSupply;
-            uint256 impliedPricePerShareAfter = _after.totalAssets / _after.totalShareSupply;
+            uint256 impliedPricePerShareBefore = _before.totalAssets /
+                _before.totalShareSupply;
+            uint256 impliedPricePerShareAfter = _after.totalAssets /
+                _after.totalShareSupply;
             eq(
                 impliedPricePerShareBefore,
                 impliedPricePerShareAfter,
@@ -1242,14 +1823,117 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     }
 
     /// @dev Property: accounting.accountValue should never revert
-    function doomsday_accountValue(uint64 poolIdAsUint, uint32 accountAsInt) public {
+    function doomsday_accountValue(
+        uint64 poolIdAsUint,
+        uint32 accountAsInt
+    ) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         AccountId account = AccountId.wrap(accountAsInt);
 
-        try accounting.accountValue(poolId, account) {}
-        catch (bytes memory reason) {
+        try accounting.accountValue(poolId, account) {} catch (
+            bytes memory reason
+        ) {
             bool expectedRevert = checkError(reason, "AccountDoesNotExist()");
             t(expectedRevert, "accountValue should never revert");
+        }
+    }
+
+    /// @dev Doomsday test: System handles all operations gracefully at zero price
+    function doomsday_zeroPrice_noPanics() public statelessTest {
+        IBaseVault vault = _getVault();
+        if (address(vault) == address(0)) return;
+
+        // Set zero price directly
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        hub.updateSharePrice(poolId, scId, D18.wrap(0));
+
+        // === CONVERSION FUNCTION TESTS === //
+        try vault.convertToShares(1e18) returns (uint256 shares) {
+            eq(shares, 0, "convertToShares should return 0 at zero price");
+        } catch {
+            t(false, "convertToShares should not panic at zero price");
+        }
+
+        try vault.convertToAssets(1e18) returns (uint256 assets) {
+            eq(assets, 0, "convertToAssets should return 0 at zero price");
+        } catch {
+            t(false, "convertToAssets should not panic at zero price");
+        }
+
+        try BaseVault(address(vault)).pricePerShare() returns (uint256 pps) {
+            eq(pps, 0, "pricePerShare should be 0");
+        } catch {
+            t(false, "pricePerShare should not panic at zero price");
+        }
+
+        // === VAULT OPERATION TESTS === //
+        try vault.maxDeposit(_getActor()) returns (uint256 max) {
+            eq(max, 0, "maxDeposit handled zero price");
+        } catch {
+            t(false, "maxDeposit shout not revert at zero price");
+        }
+
+        try vault.maxMint(_getActor()) returns (uint256 max) {
+            eq(max, 0, "maxMint should return 0 at zero price");
+        } catch {
+            t(false, "maxMint shout not revert at zero price");
+        }
+
+        try vault.maxRedeem(_getActor()) returns (uint256 max) {
+            eq(max, 0, "maxRedeem should return 0 at zero price");
+        } catch {
+            t(false, "maxRedeem shout not revert at zero price");
+        }
+
+        try vault.maxWithdraw(_getActor()) returns (uint256 max) {
+            eq(max, 0, "maxWithdraw should return 0 at zero price");
+        } catch {
+            t(false, "maxWithdraw shout not revert at zero price");
+        }
+
+        // === SHARE CLASS MANAGER OPERATIONS === //
+        uint32 nowIssueEpoch = shareClassManager.nowIssueEpoch(scId, assetId);
+        try
+            shareClassManager.issueShares(
+                poolId,
+                scId,
+                assetId,
+                nowIssueEpoch,
+                D18.wrap(0)
+            )
+        returns (uint128 issued, uint128, uint128) {
+            eq(issued, 0, "issued shares should return 0 at zero price");
+        } catch (bytes memory reason) {
+            bool expectedRevert = checkError(reason, "EpochNotFound()");
+            t(
+                expectedRevert,
+                "issueShares shout not revert at zero price apart from EpochNotFound"
+            );
+        }
+
+        uint32 nowRevokeEpoch = shareClassManager.nowRevokeEpoch(scId, assetId);
+        try
+            shareClassManager.revokeShares(
+                poolId,
+                scId,
+                assetId,
+                nowRevokeEpoch,
+                D18.wrap(0)
+            )
+        returns (uint128, uint128 assetAmount, uint128) {
+            eq(
+                assetAmount,
+                0,
+                "revoked asset amount should return 0 at zero price"
+            );
+        } catch (bytes memory reason) {
+            bool expectedRevert = checkError(reason, "EpochNotFound()");
+            t(
+                expectedRevert,
+                "issueShares shout not revert at zero price apart from EpochNotFound"
+            );
         }
     }
 
@@ -1257,12 +1941,14 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Optimization test to increase the difference between totalAssets and actualAssets is greater than 1 share
     function optimize_totalAssets_solvency() public view returns (int256) {
-        uint256 totalAssets = IBaseVault(_getVault()).totalAssets();
-        uint256 actualAssets = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(address(globalEscrow));
+        uint256 totalAssets = _getVault().totalAssets();
+        uint256 actualAssets = MockERC20(_getVault().asset()).balanceOf(
+            address(globalEscrow)
+        );
         uint256 difference = totalAssets - actualAssets;
 
         return int256(difference);
-        // uint256 differenceInShares = IBaseVault(_getVault()).convertToShares(difference);
+        // uint256 differenceInShares = _getVault().convertToShares(difference);
 
         // if (differenceInShares > (10 ** IShareToken(_getShareToken()).decimals()) - 1) {
         //     return int256(difference);
@@ -1292,7 +1978,11 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Lists out all system addresses, used to check that no dust is left behind
     /// NOTE: A more advanced dust check would have 100% of actors withdraw, to ensure that the sum of operations is
     /// sound
-    function _getSystemAddresses() internal view returns (address[] memory systemAddresses) {
+    function _getSystemAddresses()
+        internal
+        view
+        returns (address[] memory systemAddresses)
+    {
         // uint256 SYSTEM_ADDRESSES_LENGTH = GOV_FUZZING ? 10 : 8;
         uint256 SYSTEM_ADDRESSES_LENGTH = 10;
 
@@ -1305,8 +1995,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         systemAddresses[3] = address(asyncRequestManager);
         systemAddresses[4] = address(syncManager);
         systemAddresses[5] = address(spoke);
-        systemAddresses[6] = address(IBaseVault(_getVault()));
-        systemAddresses[7] = address(IBaseVault(_getVault()).asset());
+        systemAddresses[6] = address(_getVault());
+        systemAddresses[7] = address(_getVault().asset());
         systemAddresses[8] = _getShareToken();
         systemAddresses[9] = address(fullRestrictions);
 
@@ -1348,6 +2038,10 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
 
         // Check for overflow here
-        gte(cachedTotal, totalShareSent[asset], " _decreaseTotalShareSent Overflow");
+        gte(
+            cachedTotal,
+            totalShareSent[asset],
+            " _decreaseTotalShareSent Overflow"
+        );
     }
 }

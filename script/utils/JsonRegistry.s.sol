@@ -7,6 +7,8 @@ import {console} from "forge-std/console.sol";
 contract JsonRegistry is Script {
     string deploymentOutput;
     uint256 registeredContracts = 0;
+    bool shouldLabelAddresses;
+    string addressLabelPrefix;
 
     function register(string memory name, address target) public {
         deploymentOutput = (registeredContracts == 0)
@@ -14,6 +16,15 @@ contract JsonRegistry is Script {
             : string(abi.encodePacked(deploymentOutput, ',\n    "', name, '": "', vm.toString(target), '"'));
 
         registeredContracts += 1;
+
+        if (shouldLabelAddresses) {
+            vm.label(target, string(abi.encodePacked(addressLabelPrefix, name)));
+        }
+    }
+
+    function labelAddresses(string memory prefix) public {
+        shouldLabelAddresses = true;
+        addressLabelPrefix = prefix;
     }
 
     function startDeploymentOutput() public {
@@ -30,9 +41,10 @@ contract JsonRegistry is Script {
         string memory timestampedPath = string(
             abi.encodePacked(
                 dir,
+                "_chain",
                 vm.toString(block.chainid),
                 "_block",
-                vm.toString(block.chainid),
+                vm.toString(block.number),
                 "_nonce",
                 vm.toString(vm.getNonce(msg.sender)),
                 ".json"

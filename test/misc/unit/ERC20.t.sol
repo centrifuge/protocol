@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ERC20} from "src/misc/ERC20.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IERC1271} from "src/misc/libraries/SignatureLib.sol";
-import {IERC20, IERC20Permit} from "src/misc/interfaces/IERC20.sol";
+import {ERC20} from "../../../src/misc/ERC20.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
+import {IERC1271} from "../../../src/misc/libraries/SignatureLib.sol";
+import {IERC20, IERC20Permit} from "../../../src/misc/interfaces/IERC20.sol";
 
 import "forge-std/Test.sol";
 
