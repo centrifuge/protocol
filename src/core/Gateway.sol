@@ -94,7 +94,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMessageHandler
-    function handle(uint16 centrifugeId, bytes memory batch) public pauseable auth {
+    function handle(uint16 centrifugeId, bytes calldata batch) public pauseable auth {
         bytes memory remaining = batch;
 
         while (remaining.length > 0) {
@@ -290,6 +290,29 @@ contract Gateway is Auth, Recoverable, IGateway {
     function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external onlyAuthOrManager(poolId) {
         isOutgoingBlocked[centrifugeId][poolId] = isBlocked;
         emit BlockOutgoing(centrifugeId, poolId, isBlocked);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // View
+    //----------------------------------------------------------------------------------------------
+
+    function estimate(uint16 centrifugeId, bytes calldata batch, uint128 extraGasLimit)
+        external
+        view
+        returns (uint256)
+    {
+        bytes memory remaining = batch;
+
+        uint256 batchGasLimit;
+        while (remaining.length > 0) {
+            uint256 length = processor.messageLength(remaining);
+            bytes memory message = remaining.slice(0, length);
+            remaining = remaining.slice(length, remaining.length - length);
+
+            batchGasLimit += gasService.messageGasLimit(centrifugeId, message);
+        }
+
+        return adapter.estimate(centrifugeId, batch, batchGasLimit + extraGasLimit);
     }
 
     //----------------------------------------------------------------------------------------------

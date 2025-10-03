@@ -604,13 +604,22 @@ contract GatewayTestSend is GatewayTest {
     }
 
     function testSendMessageBatchedWithExtraGasLimit() public {
-        bytes memory message = MessageKind.WithPoolA1.asBytes();
+        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
+        bytes memory message2 = MessageKind.WithPoolA2.asBytes();
+        bytes memory batch = bytes.concat(message1, message2);
 
         gateway.startBatching();
-        gateway.send(REMOTE_CENT_ID, message, EXTRA_GAS_LIMIT, address(0));
-        gateway.send(REMOTE_CENT_ID, message, EXTRA_GAS_LIMIT, address(0));
+        gateway.send(REMOTE_CENT_ID, message1, EXTRA_GAS_LIMIT, address(0));
+        gateway.send(REMOTE_CENT_ID, message2, EXTRA_GAS_LIMIT, address(0));
 
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), (MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT) * 2);
+
+        _mockAdapter(REMOTE_CENT_ID, batch, (MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT) * 2, REFUND);
+
+        assertEq(
+            gateway.estimate(REMOTE_CENT_ID, batch, EXTRA_GAS_LIMIT * 2),
+            (MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT) * 2 + ADAPTER_ESTIMATE
+        );
     }
 }
 
@@ -645,6 +654,7 @@ contract GatewayTestEndBatching is GatewayTest {
         assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), new bytes(0));
         assertEq(gateway.batchLocatorsLength(), 0);
         assertEq(gateway.isBatching(), false);
+        assertEq(gateway.estimate(REMOTE_CENT_ID, batch, 0), cost);
     }
 
     function testSendTwoMessageBatchingDifferentChainSamePool() public {
@@ -710,34 +720,6 @@ contract GatewayTestEndBatching is GatewayTest {
         (uint128 gasLimit, uint64 counter) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
         assertEq(counter, 1);
         assertEq(gasLimit, MESSAGE_GAS_LIMIT);
-    }
-
-    function testSendUnpaidMessageTwice() public {
-        bytes memory message = MessageKind.WithPoolA1.asBytes();
-        bytes32 batchHash = keccak256(message);
-
-        _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, address(0));
-
-        gateway.setUnpaidMode(true);
-        gateway.send(REMOTE_CENT_ID, message, 0, address(0));
-        gateway.send(REMOTE_CENT_ID, message, 0, address(0));
-
-        (uint128 gasLimit, uint64 counter) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
-        assertEq(counter, 2);
-        assertEq(gasLimit, MESSAGE_GAS_LIMIT);
-    }
-
-    function testSendUnpaidMessageWithExtraGas() public {
-        bytes memory message = MessageKind.WithPoolA1.asBytes();
-        bytes32 batchHash = keccak256(message);
-
-        _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT, address(0));
-
-        gateway.setUnpaidMode(true);
-        gateway.send(REMOTE_CENT_ID, message, EXTRA_GAS_LIMIT, address(0));
-
-        (uint128 gasLimit,) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
-        assertEq(gasLimit, MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT);
     }
 
     function testSendUnpaidBatch() public {

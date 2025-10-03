@@ -116,9 +116,7 @@ interface IGateway is IMessageHandler, IRecoverable {
 
     /// @notice Handling outgoing messages.
     /// @param centrifugeId Destination chain
-    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit, address refund)
-        external
-        payable;
+    function send(uint16 centrifugeId, bytes calldata batch, uint128 extraGasLimit, address refund) external payable;
 
     /// @notice Initialize batching message
     function startBatching() external;
@@ -161,4 +159,10 @@ interface IGateway is IMessageHandler, IRecoverable {
 
     /// @notice Returns the current gateway batching level.
     function isBatching() external view returns (bool);
+
+    /// @notice Returns the cost of sending payload to centrifugeId
+    function estimate(uint16 centrifugeId, bytes calldata batch, uint128 extraGasLimit)
+        external
+        view
+        returns (uint256);
 }
