@@ -1,4 +1,5 @@
-@startuml
+@startuml request-managers
+title Vault Request Managers
 hide empty members
 
 package misc {
