@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IGasService} from "./interfaces/IGasService.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
-import {IGasService} from "../core/interfaces/IGasService.sol";
+import {IMessageLimits} from "../core/interfaces/IMessageLimits.sol";
 
 /// @title  GasService
 /// @notice This contract stores the gas limits (in gas units) for cross-chain message execution.
@@ -14,8 +15,6 @@ contract GasService is IGasService {
 
     /// @dev Takes into account Adapter + Gateway processing + some mismatch happened regarding the input values
     uint128 public constant BASE_COST = 50_000;
-
-    uint128 internal immutable _maxBatchGasLimit;
 
     uint128 public immutable scheduleUpgrade;
     uint128 public immutable cancelUpgrade;
@@ -45,23 +44,21 @@ contract GasService is IGasService {
     uint128 public immutable maxSharePriceAge;
     uint128 public immutable updateGatewayManager;
 
-    constructor(uint128 maxBatchGasLimit_) {
-        _maxBatchGasLimit = maxBatchGasLimit_;
-
+    constructor() {
         // NOTE: Below values should be updated using script/utils/benchmark.sh
         scheduleUpgrade = BASE_COST + 93816;
         cancelUpgrade = BASE_COST + 74223;
         recoverTokens = BASE_COST + 149002;
         registerAsset = BASE_COST + 103906;
         setPoolAdapters = BASE_COST + 481562; // using MAX_ADAPTER_COUNT
-        request = BASE_COST + 219627;
+        request = BASE_COST + 220257;
         notifyPool = BASE_COST + 1150749; // create escrow case
         notifyShareClass = BASE_COST + 1852960;
         notifyPricePoolPerShare = BASE_COST + 107021;
         notifyPricePoolPerAsset = BASE_COST + 111027;
         notifyShareMetadata = BASE_COST + 121407;
         updateShareHook = BASE_COST + 96336;
-        initiateTransferShares = BASE_COST + 283251;
+        initiateTransferShares = BASE_COST + 284060;
         executeTransferShares = BASE_COST + 177467;
         updateRestriction = BASE_COST + 114446;
         updateContract = BASE_COST + 144565;
@@ -72,18 +69,13 @@ contract GasService is IGasService {
         setRequestManager = BASE_COST + 100513;
         updateBalanceSheetManager = BASE_COST + 104077;
         updateHoldingAmount = BASE_COST + 304328;
-        updateShares = BASE_COST + 184007;
+        updateShares = BASE_COST + 184371;
         maxAssetPriceAge = BASE_COST + 110118;
         maxSharePriceAge = BASE_COST + 107004;
         updateGatewayManager = BASE_COST + 88055;
     }
 
-    /// @inheritdoc IGasService
-    function maxBatchGasLimit(uint16) public view returns (uint128) {
-        return _maxBatchGasLimit;
-    }
-
-    /// @inheritdoc IGasService
+    /// @inheritdoc IMessageLimits
     function messageGasLimit(uint16, bytes calldata message) public view returns (uint128) {
         MessageType kind = message.messageType();
 

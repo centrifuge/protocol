@@ -9,14 +9,6 @@ import {PoolId} from "../types/PoolId.sol";
 
 /// @notice Interface for dispatch-only gateway
 interface IGateway is IMessageHandler, IRecoverable {
-    struct Funds {
-        /// @notice Funds associated to pay for sending messages
-        /// @dev    Overflows with type(uint64).max / 10**18 = 7.923 × 10^10 ETH
-        uint96 value;
-        /// @notice Address where to refund the remaining gas
-        IRecoverable refund;
-    }
-
     struct Underpaid {
         uint128 gasLimit;
         uint64 counter;
@@ -54,9 +46,6 @@ interface IGateway is IMessageHandler, IRecoverable {
 
     /// @notice Dispatched when a batch that has not been underpaid is repaid.
     error NotUnderpaidBatch();
-
-    /// @notice Dispatched when a message is added to a batch that causes it to exceed the max batch size.
-    error ExceedsMaxGasLimit();
 
     /// @notice Dispatched when a handle is called without enough gas to process the message.
     error NotEnoughGasToProcess();
