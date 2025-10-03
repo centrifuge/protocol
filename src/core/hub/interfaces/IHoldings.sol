@@ -155,10 +155,10 @@ interface IHoldings {
     function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external;
 
     /// @notice Checks the snapshot state and calls the hook if it's a snapshot
-    function checkSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external;
+    function callOnSyncSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external;
 
     /// @notice Calls the snapshot hook's onTransfer function if a hook is set
-    function snapshotTransferShares(
+    function callOnTransferSnapshot(
         PoolId poolId,
         ShareClassId scId,
         uint16 originCentrifugeId,

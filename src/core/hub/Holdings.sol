@@ -124,13 +124,13 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
-    function checkSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external auth {
+    function callOnSyncSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external auth {
         Snapshot memory snapshot_ = snapshot[poolId][scId][centrifugeId];
         _callOnSync(poolId, scId, centrifugeId, snapshot_);
     }
 
     /// @inheritdoc IHoldings
-    function snapshotTransferShares(
+    function callOnTransferSnapshot(
         PoolId poolId,
         ShareClassId scId,
         uint16 originCentrifugeId,
