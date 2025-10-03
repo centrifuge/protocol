@@ -1,25 +1,21 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-interface IRoot {
+import {IEndorsements} from "../../core/spoke/interfaces/IEndorsements.sol";
+import {IProtocolPauser} from "../../core/interfaces/IProtocolPauser.sol";
+
+interface IRoot is IEndorsements, IProtocolPauser {
     // --- Events ---
     event File(bytes32 indexed what, uint256 data);
-    event Pause();
-    event Unpause();
     event ScheduleRely(address indexed target, uint256 indexed scheduledTime);
     event CancelRely(address indexed target);
     event RelyContract(address indexed target, address indexed user);
     event DenyContract(address indexed target, address indexed user);
-    event Endorse(address indexed user);
-    event Veto(address indexed user);
 
     error DelayTooLong();
     error FileUnrecognizedParam();
     error TargetNotScheduled();
     error TargetNotReady();
-
-    /// @notice Returns whether the root is paused
-    function paused() external view returns (bool);
 
     /// @notice Returns the current timelock for adding new wards
     function delay() external view returns (uint256);
@@ -44,9 +40,6 @@ interface IRoot {
 
     /// @notice Removes the endorsed user
     function veto(address user) external;
-
-    /// @notice Returns whether the user is endorsed
-    function endorsed(address user) external view returns (bool);
 
     // --- Pause management ---
     /// @notice Pause any contracts that depend on `Root.paused()`

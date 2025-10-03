@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import {IRoot} from "./interfaces/IRoot.sol";
-
+import {IEndorsements} from "../core/spoke/interfaces/IEndorsements.sol";
 import {Auth} from "../misc/Auth.sol";
 import {IAuth} from "../misc/interfaces/IAuth.sol";
 
@@ -16,6 +16,7 @@ contract Root is Auth, IRoot {
 
     bool public paused;
     uint256 public delay;
+
     mapping(address => uint256) public endorsements;
     mapping(address relyTarget => uint256 timestamp) public schedule;
 
@@ -51,7 +52,7 @@ contract Root is Auth, IRoot {
         emit Veto(user);
     }
 
-    /// @inheritdoc IRoot
+    /// @inheritdoc IEndorsements
     function endorsed(address user) external view returns (bool) {
         return endorsements[user] == 1;
     }

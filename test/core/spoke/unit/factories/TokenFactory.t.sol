@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../../../../src/misc/interfaces/IAuth.sol";
 
-import {Root} from "../../../../../src/core/Root.sol";
+import {Root} from "../../../../../src/admin/Root.sol";
 import {ShareToken} from "../../../../../src/core/spoke/ShareToken.sol";
 import {IShareToken} from "../../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {TokenFactory} from "../../../../../src/core/spoke/factories/TokenFactory.sol";

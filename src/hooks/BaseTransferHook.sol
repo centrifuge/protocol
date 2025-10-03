@@ -13,7 +13,7 @@ import {IERC165} from "../misc/interfaces/IERC7575.sol";
 import {BitmapLib} from "../misc/libraries/BitmapLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
-import {IRoot} from "../core/interfaces/IRoot.sol";
+import {IRoot} from "../admin/interfaces/IRoot.sol";
 import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";

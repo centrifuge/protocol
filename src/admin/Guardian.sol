@@ -8,7 +8,7 @@ import {CastLib} from "../misc/libraries/CastLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
-import {IRoot} from "../core/interfaces/IRoot.sol";
+import {IRoot} from "./interfaces/IRoot.sol";
 import {IAdapter} from "../core/interfaces/IAdapter.sol";
 import {IGateway} from "../core/interfaces/IGateway.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";

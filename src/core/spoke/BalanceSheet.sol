@@ -19,7 +19,8 @@ import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol"
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
-import {IRoot} from "../interfaces/IRoot.sol";
+import {IRoot} from "../../admin/interfaces/IRoot.sol";
+import {IEndorsements} from "./interfaces/IEndorsements.sol";
 import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {BatchedMulticall} from "../BatchedMulticall.sol";
@@ -38,19 +39,23 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     using MathLib for *;
     using CastLib for bytes32;
 
-    IRoot public immutable root;
-
     ISpoke public spoke;
     ISpokeMessageSender public sender;
+    IEndorsements public immutable endorsements;
     IPoolEscrowProvider public poolEscrowProvider;
+
+    /// @inheritdoc IBalanceSheet
+    function root() external view returns (IRoot) {
+        return IRoot(address(endorsements));
+    }
 
     mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId poolId => mapping(ShareClassId scId => ShareQueueAmount)) public queuedShares;
     mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => AssetQueueAmount))) public
         queuedAssets;
 
-    constructor(IRoot root_, address deployer) Auth(deployer) BatchedMulticall(gateway) {
-        root = root_;
+    constructor(IEndorsements endorsements_, address deployer) Auth(deployer) BatchedMulticall(gateway) {
+        endorsements = endorsements_;
     }
 
     /// @dev Check if the msg.sender is ward or a manager
@@ -258,7 +263,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         address to,
         uint256 amount
     ) external payable authOrManager(poolId) {
-        require(!root.endorsed(from), CannotTransferFromEndorsedContract());
+        require(!endorsements.endorsed(from), CannotTransferFromEndorsedContract());
         IShareToken token = spoke.shareToken(poolId, scId);
         token.authTransferFrom(sender_, from, to, amount);
         emit TransferSharesFrom(poolId, scId, sender_, from, to, amount);

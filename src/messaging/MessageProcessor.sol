@@ -12,14 +12,14 @@ import {IRecoverable} from "../misc/interfaces/IRecoverable.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
-import {IRoot} from "../core/interfaces/IRoot.sol";
+import {IRoot} from "../admin/interfaces/IRoot.sol";
 import {IAdapter} from "../core/interfaces/IAdapter.sol";
 import {IGateway} from "../core/interfaces/IGateway.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
 import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
 import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
-import {ITokenRecoverer} from "../core/interfaces/ITokenRecoverer.sol";
+import {ITokenRecoverer} from "../admin/interfaces/ITokenRecoverer.sol";
 import {IMessageProperties} from "../core/interfaces/IMessageProperties.sol";
 import {
     ISpokeGatewayHandler,

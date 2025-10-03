@@ -4,10 +4,10 @@ pragma solidity 0.8.28;
 import {CreateXScript} from "./utils/CreateXScript.sol";
 import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 
-import {Root} from "../src/core/Root.sol";
+import {Root} from "../src/admin/Root.sol";
 import {Gateway} from "../src/core/Gateway.sol";
 import {MultiAdapter} from "../src/core/MultiAdapter.sol";
-import {TokenRecoverer} from "../src/core/TokenRecoverer.sol";
+import {TokenRecoverer} from "../src/admin/TokenRecoverer.sol";
 import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
 
 import {GasService} from "../src/messaging/GasService.sol";

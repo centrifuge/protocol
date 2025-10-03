@@ -10,7 +10,7 @@ import {D18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 
-import {Root} from "../../src/core/Root.sol";
+import {Root} from "../../src/admin/Root.sol";
 import {Hub} from "../../src/core/hub/Hub.sol";
 import {Spoke} from "../../src/core/spoke/Spoke.sol";
 import {PoolId} from "../../src/core/types/PoolId.sol";

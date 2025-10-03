@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {PoolId} from "./types/PoolId.sol";
-import {IRoot} from "./interfaces/IRoot.sol";
+import {IProtocolPauser} from "./interfaces/IProtocolPauser.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
 import {IMessageLimits} from "./interfaces/IMessageLimits.sol";
@@ -37,10 +37,10 @@ contract Gateway is Auth, Recoverable, IGateway {
     uint16 public immutable localCentrifugeId;
 
     // Dependencies
-    IRoot public immutable root;
     IAdapter public adapter;
     IGatewayProcessor public processor;
     IMessageLimits public messageLimits;
+    IProtocolPauser public immutable pauser;
 
     // Management
     mapping(PoolId => mapping(address => bool)) public manager;
@@ -55,16 +55,16 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Inbound
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
 
-    constructor(uint16 localCentrifugeId_, IRoot root_, IMessageLimits messageLimits_, address deployer)
+    constructor(uint16 localCentrifugeId_, IProtocolPauser pauser_, IMessageLimits messageLimits_, address deployer)
         Auth(deployer)
     {
         localCentrifugeId = localCentrifugeId_;
-        root = root_;
+        pauser = pauser_;
         messageLimits = messageLimits_;
     }
 
     modifier pauseable() {
-        require(!root.paused(), Paused());
+        require(!pauser.paused(), Paused());
         _;
     }
 

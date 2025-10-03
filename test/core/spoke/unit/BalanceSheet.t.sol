@@ -10,7 +10,8 @@ import {IERC6909} from "../../../../src/misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
-import {IRoot} from "../../../../src/core/interfaces/IRoot.sol";
+import {IRoot} from "../../../../src/admin/interfaces/IRoot.sol";
+import {IEndorsements} from "../../../../src/core/spoke/interfaces/IEndorsements.sol";
 import {IGateway} from "../../../../src/core/interfaces/IGateway.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
@@ -836,7 +837,7 @@ contract BalanceSheetTestTransferSharesFrom is BalanceSheetTest {
     }
 
     function testErrCannotTransferFromEndorsedContract() public {
-        vm.mockCall(address(root), abi.encodeWithSelector(IRoot.endorsed.selector, FROM), abi.encode(true));
+        vm.mockCall(address(root), abi.encodeWithSelector(IEndorsements.endorsed.selector, FROM), abi.encode(true));
 
         vm.prank(AUTH);
         vm.expectRevert(IBalanceSheet.CannotTransferFromEndorsedContract.selector);
@@ -844,7 +845,7 @@ contract BalanceSheetTestTransferSharesFrom is BalanceSheetTest {
     }
 
     function testOverrideAsset(bool managerOrAuth) public {
-        vm.mockCall(address(root), abi.encodeWithSelector(IRoot.endorsed.selector, FROM), abi.encode(false));
+        vm.mockCall(address(root), abi.encodeWithSelector(IEndorsements.endorsed.selector, FROM), abi.encode(false));
         vm.mockCall(
             share,
             abi.encodeWithSelector(IShareToken.authTransferFrom.selector, SENDER, FROM, TO, AMOUNT),

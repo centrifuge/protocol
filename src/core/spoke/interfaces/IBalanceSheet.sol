@@ -8,7 +8,7 @@ import {D18} from "../../../misc/types/D18.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
-import {IRoot} from "../../interfaces/IRoot.sol";
+import {IRoot} from "../../../admin/interfaces/IRoot.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 import {IPoolEscrowProvider} from "../factories/IPoolEscrowFactory.sol";
 import {IBatchedMulticall} from "../../interfaces/IBatchedMulticall.sol";

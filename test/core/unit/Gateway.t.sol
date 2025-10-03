@@ -9,7 +9,9 @@ import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageL
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
-import {Gateway, IRoot, IGateway} from "../../../src/core/Gateway.sol";
+import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
+import {IProtocolPauser} from "../../../src/core/interfaces/IProtocolPauser.sol";
+import {Gateway, IGateway} from "../../../src/core/Gateway.sol";
 import {IMessageLimits} from "../../../src/core/interfaces/IMessageLimits.sol";
 import {IMessageProperties} from "../../../src/core/interfaces/IMessageProperties.sol";
 
@@ -176,7 +178,7 @@ contract GatewayTest is Test {
     }
 
     function _mockPause(bool isPaused) internal {
-        vm.mockCall(address(root), abi.encodeWithSelector(IRoot.paused.selector), abi.encode(isPaused));
+        vm.mockCall(address(root), abi.encodeWithSelector(IProtocolPauser.paused.selector), abi.encode(isPaused));
     }
 
     function setUp() public virtual {
