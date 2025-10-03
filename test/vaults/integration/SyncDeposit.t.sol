@@ -137,6 +137,14 @@ contract SyncDepositTest is SyncDepositTestHelper {
 
         assertEq(address(syncVault), address(asyncVault));
 
+        // Will fail - user not member: can not send funds
+        vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
+        syncVault.deposit(amount, self);
+
+        assertEq(syncVault.isPermissioned(self), false);
+        centrifugeChain.updateMember(syncVault.poolId().raw(), syncVault.scId().raw(), self, type(uint64).max);
+        assertEq(syncVault.isPermissioned(self), true);
+
         // Check price and max amounts
         uint256 shares = syncVault.previewDeposit(amount);
         uint256 assetsForShares = syncVault.previewMint(shares);
@@ -148,14 +156,6 @@ contract SyncDepositTest is SyncDepositTestHelper {
             syncVault.convertToShares(MAX_UINT128),
             "syncVault.maxMint(self) != convertToShares(MAX_UINT128)"
         );
-
-        // Will fail - user not member: can not send funds
-        vm.expectRevert(ITransferHook.TransferBlocked.selector);
-        syncVault.deposit(amount, self);
-
-        assertEq(syncVault.isPermissioned(self), false);
-        centrifugeChain.updateMember(syncVault.poolId().raw(), syncVault.scId().raw(), self, type(uint64).max);
-        assertEq(syncVault.isPermissioned(self), true);
 
         // Will fail - user did not give asset allowance to syncVault
         vm.expectPartialRevert(IERC7751.WrappedError.selector);
