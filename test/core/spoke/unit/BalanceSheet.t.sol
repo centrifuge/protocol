@@ -18,7 +18,7 @@ import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {BalanceSheet, IBalanceSheet} from "../../../../src/core/spoke/BalanceSheet.sol";
 import {ISpokeMessageSender} from "../../../../src/core/interfaces/IGatewaySenders.sol";
-import {IPoolEscrowProvider} from "../../../../src/core/spoke/factories/IPoolEscrowFactory.sol";
+import {IPoolEscrowProvider} from "../../../../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 

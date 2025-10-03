@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ITokenFactory} from "./ITokenFactory.sol";
+import {ITokenFactory} from "./interfaces/ITokenFactory.sol";
 
 import {Auth} from "../../../misc/Auth.sol";
 
