@@ -18,6 +18,7 @@ import {IGateway} from "../core/interfaces/IGateway.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
 import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
+import {IMessageProperties} from "../core/interfaces/IMessageProperties.sol";
 import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "../core/interfaces/ITokenRecoverer.sol";
 import {
@@ -220,5 +221,15 @@ contract MessageProcessor is Auth, IMessageProcessor {
         }
 
         gateway.setUnpaidMode(false);
+    }
+
+    /// @inheritdoc IMessageProperties
+    function messageLength(bytes calldata message) external pure returns (uint16) {
+        return message.messageLength();
+    }
+
+    /// @inheritdoc IMessageProperties
+    function messagePoolId(bytes calldata message) external pure returns (PoolId) {
+        return message.messagePoolId();
     }
 }

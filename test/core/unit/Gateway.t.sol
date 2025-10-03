@@ -10,7 +10,8 @@ import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageL
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
 import {Gateway, IRoot, IGateway} from "../../../src/core/Gateway.sol";
-import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
+import {IGasService} from "../../../src/messaging/interfaces/IGasService.sol";
+import {Gateway, IRoot, IGateway} from "../../../src/core/Gateway.sol";
 import {IMessageProperties} from "../../../src/core/interfaces/IMessageProperties.sol";
 
 import "forge-std/Test.sol";
@@ -21,7 +22,6 @@ import "forge-std/Test.sol";
 
 PoolId constant POOL_A = PoolId.wrap(23);
 PoolId constant POOL_0 = PoolId.wrap(0);
-uint128 constant MESSAGE_GAS_LIMIT = 100_000;
 
 enum MessageKind {
     _Invalid,
@@ -33,7 +33,7 @@ enum MessageKind {
     WithPoolAFail
 }
 
-function messageLength(MessageKind kind) pure returns (uint16) {
+function length(MessageKind kind) pure returns (uint16) {
     if (kind == MessageKind.WithPool0) return 5;
     if (kind == MessageKind.WithPoolA1) return 10;
     if (kind == MessageKind.WithPoolA2) return 15;
@@ -42,15 +42,15 @@ function messageLength(MessageKind kind) pure returns (uint16) {
 }
 
 function asBytes(MessageKind kind) pure returns (bytes memory) {
-    bytes memory encoded = new bytes(messageLength(kind));
+    bytes memory encoded = new bytes(length(kind));
     encoded[0] = bytes1(uint8(kind));
     return encoded;
 }
 
-using {asBytes, messageLength} for MessageKind;
+using {asBytes, length} for MessageKind;
 
-// A MessageLib agnostic handler
-contract MockHandler is IMessageHandler {
+// A MessageLib agnostic processor
+contract MockProcessor is IMessageProperties {
     using BytesLib for bytes;
 
     error HandleError();
@@ -72,24 +72,16 @@ contract MockHandler is IMessageHandler {
     function count(uint16 centrifugeId) external view returns (uint256) {
         return processed[centrifugeId].length;
     }
-}
 
-contract MockMessageProperties is IMessageProperties {
-    using BytesLib for bytes;
-
-    function length(bytes calldata message) external pure returns (uint16) {
-        return MessageKind(message.toUint8(0)).messageLength();
+    function messageLength(bytes calldata message) external pure returns (uint16) {
+        return MessageKind(message.toUint8(0)).length();
     }
 
-    function poolId(bytes calldata message) external pure returns (PoolId) {
+    function messagePoolId(bytes calldata message) external pure returns (PoolId) {
         if (message.toUint8(0) == uint8(MessageKind.WithPool0)) return POOL_0;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA1)) return POOL_A;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA2)) return POOL_A;
         revert("Unreachable: message never asked for pool");
-    }
-
-    function gasLimit(uint16, bytes calldata) external pure returns (uint128) {
-        return MESSAGE_GAS_LIMIT;
     }
 }
 
@@ -100,8 +92,8 @@ contract NoPayableDestination {}
 // -----------------------------------------
 
 contract GatewayExt is Gateway {
-    constructor(uint16 localCentrifugeId, IRoot root_, IMessageProperties messageProperties_, address deployer)
-        Gateway(localCentrifugeId, root_, messageProperties_, deployer)
+    constructor(uint16 localCentrifugeId, IRoot root_, IGasService gasService_, address deployer)
+        Gateway(localCentrifugeId, root_, gasService_, deployer)
     {}
 
     function batchLocatorsLength() public view returns (uint256) {
@@ -122,7 +114,7 @@ contract GatewayExt is Gateway {
 
     function process(uint16 centrifugeId, bytes memory message, bytes32 messageHash) public {
         // Copied only the try catch from `handle`, to be able to measure the gas cost
-        try handler.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
+        try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
             emit ExecuteMessage(centrifugeId, message, messageHash);
         } catch (bytes memory err) {
             failedMessages[centrifugeId][messageHash]++;
@@ -142,16 +134,17 @@ contract GatewayTest is Test {
     uint256 constant ADAPTER_ESTIMATE = 1;
     bytes32 constant ADAPTER_DATA = bytes32("adapter data");
 
+    uint256 constant MESSAGE_GAS_LIMIT = 100_000;
     uint256 constant MAX_BATCH_GAS_LIMIT = 500_000;
     uint128 constant EXTRA_GAS_LIMIT = 10;
     bool constant NO_SUBSIDIZED = false;
 
-    IMessageProperties messageProperties = new MockMessageProperties();
+    IGasService gasService = IGasService(makeAddr("GasService"));
     IRoot root = IRoot(makeAddr("Root"));
     IAdapter adapter = IAdapter(makeAddr("Adapter"));
 
-    MockHandler handler = new MockHandler();
-    GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), messageProperties, address(this));
+    MockProcessor processor = new MockProcessor();
+    GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), gasService, address(this));
 
     address immutable ANY = makeAddr("ANY");
     address immutable MANAGER = makeAddr("MANAGER");
@@ -175,15 +168,24 @@ contract GatewayTest is Test {
         );
     }
 
+    function _mockGasService() internal {
+        vm.mockCall(
+            address(gasService),
+            abi.encodeWithSelector(IGasService.messageGasLimit.selector),
+            abi.encode(MESSAGE_GAS_LIMIT)
+        );
+    }
+
     function _mockPause(bool isPaused) internal {
         vm.mockCall(address(root), abi.encodeWithSelector(IRoot.paused.selector), abi.encode(isPaused));
     }
 
     function setUp() public virtual {
         gateway.file("adapter", address(adapter));
-        gateway.file("handler", address(handler));
+        gateway.file("processor", address(processor));
 
         _mockPause(false);
+        _mockGasService();
     }
 }
 
@@ -201,12 +203,12 @@ contract GatewayTestFile is GatewayTest {
 
     function testGatewayFile() public {
         vm.expectEmit();
-        emit IGateway.File("handler", address(23));
-        gateway.file("handler", address(23));
-        assertEq(address(gateway.handler()), address(23));
+        emit IGateway.File("processor", address(23));
+        gateway.file("processor", address(23));
+        assertEq(address(gateway.processor()), address(23));
 
-        gateway.file("messageProperties", address(42));
-        assertEq(address(gateway.messageProperties()), address(42));
+        gateway.file("gasService", address(42));
+        assertEq(address(gateway.gasService()), address(42));
 
         gateway.file("adapter", address(88));
         assertEq(address(gateway.adapter()), address(88));
@@ -259,7 +261,7 @@ contract GatewayTestHandle is GatewayTest {
         emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch, keccak256(batch));
         gateway.handle(REMOTE_CENT_ID, batch);
 
-        assertEq(handler.processed(REMOTE_CENT_ID, 0), batch);
+        assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
     }
 
     function testMessageFailed() public {
@@ -269,7 +271,7 @@ contract GatewayTestHandle is GatewayTest {
         emit IGateway.FailMessage(REMOTE_CENT_ID, batch, keccak256(batch), abi.encodeWithSignature("HandleError()"));
         gateway.handle(REMOTE_CENT_ID, batch);
 
-        assertEq(handler.count(REMOTE_CENT_ID), 0);
+        assertEq(processor.count(REMOTE_CENT_ID), 0);
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 1);
     }
 
@@ -280,9 +282,9 @@ contract GatewayTestHandle is GatewayTest {
 
         gateway.handle(REMOTE_CENT_ID, batch);
 
-        assertEq(handler.count(REMOTE_CENT_ID), 2);
-        assertEq(handler.processed(REMOTE_CENT_ID, 0), message1);
-        assertEq(handler.processed(REMOTE_CENT_ID, 1), message2);
+        assertEq(processor.count(REMOTE_CENT_ID), 2);
+        assertEq(processor.processed(REMOTE_CENT_ID, 0), message1);
+        assertEq(processor.processed(REMOTE_CENT_ID, 1), message2);
     }
 
     function testBatchWithFailingMessages() public {
@@ -293,9 +295,9 @@ contract GatewayTestHandle is GatewayTest {
 
         gateway.handle(REMOTE_CENT_ID, batch);
 
-        assertEq(handler.count(REMOTE_CENT_ID), 2);
-        assertEq(handler.processed(REMOTE_CENT_ID, 0), message1);
-        assertEq(handler.processed(REMOTE_CENT_ID, 1), message3);
+        assertEq(processor.count(REMOTE_CENT_ID), 2);
+        assertEq(processor.processed(REMOTE_CENT_ID, 0), message1);
+        assertEq(processor.processed(REMOTE_CENT_ID, 1), message3);
 
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(message2)), 1);
     }
@@ -343,14 +345,14 @@ contract GatewayTestRetry is GatewayTest {
 
         gateway.handle(REMOTE_CENT_ID, batch);
 
-        handler.disableFailure();
+        processor.disableFailure();
 
         vm.prank(ANY);
         emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch, keccak256(batch));
         gateway.retry(REMOTE_CENT_ID, batch);
 
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);
-        assertEq(handler.processed(REMOTE_CENT_ID, 0), batch);
+        assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
     }
 
     function testRecoverMultipleFailingMessage() public {
@@ -359,16 +361,16 @@ contract GatewayTestRetry is GatewayTest {
         gateway.handle(REMOTE_CENT_ID, batch);
         gateway.handle(REMOTE_CENT_ID, batch);
 
-        handler.disableFailure();
+        processor.disableFailure();
 
         vm.prank(ANY);
         gateway.retry(REMOTE_CENT_ID, batch);
         vm.prank(ANY);
         gateway.retry(REMOTE_CENT_ID, batch);
 
-        assertEq(handler.count(REMOTE_CENT_ID), 2);
-        assertEq(handler.processed(REMOTE_CENT_ID, 0), batch);
-        assertEq(handler.processed(REMOTE_CENT_ID, 1), batch);
+        assertEq(processor.count(REMOTE_CENT_ID), 2);
+        assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
+        assertEq(processor.processed(REMOTE_CENT_ID, 1), batch);
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);
     }
 }

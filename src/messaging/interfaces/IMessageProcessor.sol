@@ -2,8 +2,9 @@
 pragma solidity >=0.5.0;
 
 import {IMessageHandler} from "../../core/interfaces/IMessageHandler.sol";
+import {IMessageProperties} from "../../core/interfaces/IMessageProperties.sol";
 
-interface IMessageProcessor is IMessageHandler {
+interface IMessageProcessor is IMessageHandler, IMessageProperties {
     error InvalidSourceChain();
 
     /// @notice Emitted when a call to `file()` was performed.

@@ -5,8 +5,9 @@ import {PoolId} from "./types/PoolId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
+import {IGasService} from "../messaging/interfaces/IGasService.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
-import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
+import {IMessageProcessor} from "../messaging/interfaces/IMessageProcessor.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
@@ -36,8 +37,8 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Dependencies
     IRoot public immutable root;
     IAdapter public adapter;
-    IMessageProperties public messageProperties;
-    IMessageHandler public handler;
+    IGasService public gasService;
+    IMessageProcessor public processor;
 
     // Management
     mapping(PoolId => mapping(address => bool)) public manager;
@@ -52,12 +53,10 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Inbound
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
 
-    constructor(uint16 localCentrifugeId_, IRoot root_, IMessageProperties messageProperties_, address deployer)
-        Auth(deployer)
-    {
+    constructor(uint16 localCentrifugeId_, IRoot root_, IGasService gasService_, address deployer) Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
         root = root_;
-        messageProperties = messageProperties_;
+        gasService = gasService_;
     }
 
     modifier pauseable() {
@@ -76,8 +75,8 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IGateway
     function file(bytes32 what, address instance) external auth {
-        if (what == "messageProperties") messageProperties = IMessageProperties(instance);
-        else if (what == "handler") handler = IMessageHandler(instance);
+        if (what == "gasService") gasService = IGasService(instance);
+        else if (what == "processor") processor = IMessageProcessor(instance);
         else if (what == "adapter") adapter = IAdapter(instance);
         else revert FileUnrecognizedParam();
 
@@ -99,14 +98,14 @@ contract Gateway is Auth, Recoverable, IGateway {
         bytes memory remaining = batch;
 
         while (remaining.length > 0) {
-            uint256 length = messageProperties.length(remaining);
+            uint256 length = processor.messageLength(remaining);
             bytes memory message = remaining.slice(0, length);
             remaining = remaining.slice(length, remaining.length - length);
             bytes32 messageHash = keccak256(message);
 
             require(gasleft() > GAS_FAIL_MESSAGE_STORAGE, NotEnoughGasToProcess());
 
-            try handler.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
+            try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
                 emit ExecuteMessage(centrifugeId, message, messageHash);
             } catch (bytes memory err) {
                 failedMessages[centrifugeId][messageHash]++;
@@ -121,7 +120,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(failedMessages[centrifugeId][messageHash] > 0, NotFailedMessage());
 
         failedMessages[centrifugeId][messageHash]--;
-        handler.handle(centrifugeId, message);
+        processor.handle(centrifugeId, message);
 
         emit ExecuteMessage(centrifugeId, message, messageHash);
     }
@@ -139,10 +138,10 @@ contract Gateway is Auth, Recoverable, IGateway {
     {
         require(message.length > 0, EmptyMessage());
 
-        PoolId poolId = messageProperties.poolId(message);
+        PoolId poolId = processor.messagePoolId(message);
         emit PrepareMessage(centrifugeId, poolId, message);
 
-        uint128 gasLimit = messageProperties.gasLimit(centrifugeId, message) + extraGasLimit;
+        uint128 gasLimit = gasService.messageGasLimit(centrifugeId, message) + extraGasLimit;
         if (isBatching) {
             require(msg.value == 0, NotPayable());
             bytes32 batchSlot = _outboundBatchSlot(centrifugeId, poolId);
@@ -167,7 +166,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         internal
         returns (uint256 cost)
     {
-        PoolId adapterPoolId = messageProperties.poolId(batch);
+        PoolId adapterPoolId = processor.messagePoolId(batch);
         require(!isOutgoingBlocked[centrifugeId][adapterPoolId], OutgoingBlocked());
 
         cost = adapter.estimate(centrifugeId, batch, batchGasLimit);

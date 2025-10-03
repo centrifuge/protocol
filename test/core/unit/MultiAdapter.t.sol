@@ -35,9 +35,9 @@ contract MockGateway is IMessageHandler {
 }
 
 contract MockMessageProperties is IMessageProperties {
-    function length(bytes calldata message) external pure returns (uint16) {}
+    function messageLength(bytes calldata message) external pure returns (uint16) {}
 
-    function poolId(bytes calldata message) external pure returns (PoolId) {
+    function messagePoolId(bytes calldata message) external pure returns (PoolId) {
         if (message.length >= 6) {
             bytes memory prefix = message[0:6];
             if (keccak256(prefix) == keccak256("POOL_A")) return POOL_A;
@@ -45,8 +45,6 @@ contract MockMessageProperties is IMessageProperties {
         }
         return PoolId.wrap(0);
     }
-
-    function gasLimit(uint16, bytes calldata) external pure returns (uint128) {}
 }
 
 // -----------------------------------------

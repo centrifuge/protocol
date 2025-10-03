@@ -2,10 +2,9 @@
 pragma solidity 0.8.28;
 
 import {IGasService} from "./interfaces/IGasService.sol";
-import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
-import {IMessageProperties} from "../core/interfaces/IMessageProperties.sol";
+import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
 /// @title  GasService
 /// @notice This contract stores the gas limits (in gas units) for cross-chain message execution.
@@ -47,37 +46,37 @@ contract GasService is IGasService {
 
     constructor() {
         // NOTE: Below values should be updated using script/utils/benchmark.sh
-        scheduleUpgrade = BASE_COST + 98862;
-        cancelUpgrade = BASE_COST + 79269;
-        recoverTokens = BASE_COST + 153960;
-        registerAsset = BASE_COST + 108952;
-        setPoolAdapters = BASE_COST + 486612; // using MAX_ADAPTER_COUNT
-        request = BASE_COST + 221667;
-        notifyPool = BASE_COST + 1155763; // create escrow case
-        notifyShareClass = BASE_COST + 1858010;
-        notifyPricePoolPerShare = BASE_COST + 112071;
-        notifyPricePoolPerAsset = BASE_COST + 116077;
-        notifyShareMetadata = BASE_COST + 126457;
-        updateShareHook = BASE_COST + 101386;
-        initiateTransferShares = BASE_COST + 288301;
-        executeTransferShares = BASE_COST + 182517;
-        updateRestriction = BASE_COST + 119496;
-        updateContract = BASE_COST + 149615;
-        requestCallback = BASE_COST + 263079; // approve deposit case
-        updateVaultDeployAndLink = BASE_COST + 2857954;
-        updateVaultLink = BASE_COST + 190285;
-        updateVaultUnlink = BASE_COST + 139003;
-        setRequestManager = BASE_COST + 105563;
-        updateBalanceSheetManager = BASE_COST + 109127;
-        updateHoldingAmount = BASE_COST + 309378;
-        updateShares = BASE_COST + 189057;
-        maxAssetPriceAge = BASE_COST + 115168;
-        maxSharePriceAge = BASE_COST + 112054;
-        updateGatewayManager = BASE_COST + 93061;
+        scheduleUpgrade = BASE_COST + 93735;
+        cancelUpgrade = BASE_COST + 74142;
+        recoverTokens = BASE_COST + 148855;
+        registerAsset = BASE_COST + 103825;
+        setPoolAdapters = BASE_COST + 481481; // using MAX_ADAPTER_COUNT
+        request = BASE_COST + 219436;
+        notifyPool = BASE_COST + 1150668; // create escrow case
+        notifyShareClass = BASE_COST + 1852879;
+        notifyPricePoolPerShare = BASE_COST + 106940;
+        notifyPricePoolPerAsset = BASE_COST + 110946;
+        notifyShareMetadata = BASE_COST + 121326;
+        updateShareHook = BASE_COST + 96255;
+        initiateTransferShares = BASE_COST + 283170;
+        executeTransferShares = BASE_COST + 177386;
+        updateRestriction = BASE_COST + 114365;
+        updateContract = BASE_COST + 144484;
+        requestCallback = BASE_COST + 257948; // approve deposit case
+        updateVaultDeployAndLink = BASE_COST + 2852823;
+        updateVaultLink = BASE_COST + 185154;
+        updateVaultUnlink = BASE_COST + 133872;
+        setRequestManager = BASE_COST + 100432;
+        updateBalanceSheetManager = BASE_COST + 103996;
+        updateHoldingAmount = BASE_COST + 304247;
+        updateShares = BASE_COST + 183926;
+        maxAssetPriceAge = BASE_COST + 110037;
+        maxSharePriceAge = BASE_COST + 106923;
+        updateGatewayManager = BASE_COST + 87952;
     }
 
-    /// @inheritdoc IMessageProperties
-    function gasLimit(uint16, bytes calldata message) public view returns (uint128) {
+    /// @inheritdoc IGasService
+    function messageGasLimit(uint16, bytes calldata message) public view returns (uint128) {
         MessageType kind = message.messageType();
 
         if (kind == MessageType.ScheduleUpgrade) return scheduleUpgrade;
@@ -112,15 +111,5 @@ contract GasService is IGasService {
         if (kind == MessageType.MaxSharePriceAge) return maxSharePriceAge;
         if (kind == MessageType.UpdateGatewayManager) return updateGatewayManager;
         revert InvalidMessageType(); // Unreachable
-    }
-
-    /// @inheritdoc IMessageProperties
-    function length(bytes calldata message) external pure returns (uint16) {
-        return message.messageLength();
-    }
-
-    /// @inheritdoc IMessageProperties
-    function poolId(bytes calldata message) external pure returns (PoolId) {
-        return message.messagePoolId();
     }
 }

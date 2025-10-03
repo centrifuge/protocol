@@ -82,7 +82,7 @@ contract CommonActionBatcher {
         report.tokenRecoverer.rely(address(report.messageProcessor));
         report.poolEscrowFactory.rely(address(report.root));
 
-        report.gateway.file("handler", address(report.messageProcessor));
+        report.gateway.file("processor", address(report.messageProcessor));
         report.gateway.file("adapter", address(report.multiAdapter));
         report.poolEscrowFactory.file("gateway", address(report.gateway));
         report.messageProcessor.file("multiAdapter", address(report.multiAdapter));
@@ -202,7 +202,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             create3(
                 generateSalt("multiAdapter"),
                 abi.encodePacked(
-                    type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, gasService, batcher)
+                    type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, messageProcessor, batcher)
                 )
             )
         );
