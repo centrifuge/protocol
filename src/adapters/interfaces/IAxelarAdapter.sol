@@ -3,6 +3,8 @@ pragma solidity >=0.5.0;
 
 import {IAdapter} from "../../core/interfaces/IAdapter.sol";
 
+import {IAdapterWiring} from "../../admin/interfaces/IAdapterWiring.sol";
+
 // From https://github.com/axelarnetwork/axelar-cgp-solidity/blob/main/contracts/interfaces/IAxelarGateway.sol
 interface IAxelarGateway {
     function callContract(string calldata destinationChain, string calldata contractAddress, bytes calldata payload)
@@ -78,7 +80,7 @@ struct AxelarDestination {
     string addr;
 }
 
-interface IAxelarAdapter is IAdapter, IAxelarExecutable {
+interface IAxelarAdapter is IAdapter, IAdapterWiring, IAxelarExecutable {
     event Wire(uint16 indexed centrifugeId, string indexed axelarId, string adapter);
 
     /// @notice Returns the source configuration for a given axelar chain id

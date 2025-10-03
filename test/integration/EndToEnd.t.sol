@@ -16,7 +16,6 @@ import {Gateway} from "../../src/core/Gateway.sol";
 import {Spoke} from "../../src/core/spoke/Spoke.sol";
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {Holdings} from "../../src/core/hub/Holdings.sol";
-import {ISafe} from "../../src/core/interfaces/ISafe.sol";
 import {AccountId} from "../../src/core/types/AccountId.sol";
 import {Accounting} from "../../src/core/hub/Accounting.sol";
 import {HubHandler} from "../../src/core/hub/HubHandler.sol";
@@ -33,12 +32,14 @@ import {MAX_MESSAGE_COST} from "../../src/core/interfaces/IGasService.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {IMessageHandler} from "../../src/core/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/MultiAdapter.sol";
+import {ILocalCentrifugeId} from "../../src/core/interfaces/IGatewaySenders.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 
 import {GasService} from "../../src/messaging/GasService.sol";
 import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../../src/messaging/libraries/MessageLib.sol";
 
+import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../../src/admin/ProtocolGuardian.sol";
 
@@ -1204,7 +1205,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     }
 
     /// forge-config: default.isolate = true
-    function testSetAdaptersLocally() public {
+    function testErrSetAdaptersLocally() public {
         _setSpoke(IN_DIFFERENT_CHAINS);
         _createPool();
 
@@ -1217,7 +1218,9 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
             remoteAdapters[i] = address(adapter).toBytes32();
         }
 
+        vm.expectRevert(ILocalCentrifugeId.CannotBeSentLocally.selector);
         vm.startPrank(FM);
+        h.hub.setAdapters{value: GAS}(POOL_A, h.centrifugeId, localAdapters, remoteAdapters, 1, 1, REFUND);
     }
 
     /// forge-config: default.isolate = true

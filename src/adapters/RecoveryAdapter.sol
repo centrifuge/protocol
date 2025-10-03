@@ -28,16 +28,4 @@ contract RecoveryAdapter is Auth, IAdapter, IMessageHandler {
     function estimate(uint16, bytes calldata, uint256) external pure returns (uint256) {
         return 0;
     }
-
-    /// @inheritdoc IAdapter
-    /// @dev RecoveryAdapter is a local recovery mechanism, not a cross-chain adapter
-    function wire(bytes memory) external pure {
-        revert("RecoveryAdapter: wire not supported");
-    }
-
-    /// @inheritdoc IAdapter
-    /// @dev RecoveryAdapter is a local recovery mechanism, not a cross-chain adapter
-    function isWired(uint16) external pure returns (bool) {
-        revert("RecoveryAdapter: isWired not supported");
-    }
 }

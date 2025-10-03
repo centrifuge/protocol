@@ -13,13 +13,4 @@ interface IAdapter {
 
     /// @notice Estimate the total cost in native gas tokens
     function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256);
-
-    /// @notice Wire the adapter to a remote chain
-    /// @param data ABI-encoded adapter-specific configuration data
-    function wire(bytes memory data) external;
-
-    /// @notice Check if the adapter is wired to a specific chain
-    /// @param centrifugeId The chain ID to check
-    /// @return True if the adapter is already wired to this chain
-    function isWired(uint16 centrifugeId) external view returns (bool);
 }

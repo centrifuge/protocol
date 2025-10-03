@@ -5,14 +5,15 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {IRoot} from "../../../src/core/interfaces/IRoot.sol";
-import {ISafe} from "../../../src/core/interfaces/ISafe.sol";
 import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
 import {IGateway} from "../../../src/core/interfaces/IGateway.sol";
 import {IMultiAdapter} from "../../../src/core/interfaces/IMultiAdapter.sol";
 import {IRootMessageSender} from "../../../src/core/interfaces/IGatewaySenders.sol";
 
+import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 import {ProtocolGuardian} from "../../../src/admin/ProtocolGuardian.sol";
 import {IBaseGuardian} from "../../../src/admin/interfaces/IBaseGuardian.sol";
+import {IAdapterWiring} from "../../../src/admin/interfaces/IAdapterWiring.sol";
 import {IProtocolGuardian} from "../../../src/admin/interfaces/IProtocolGuardian.sol";
 
 import "forge-std/Test.sol";
@@ -365,21 +366,23 @@ contract ProtocolGuardianTestFile is ProtocolGuardianTest {
 
 contract ProtocolGuardianTestWire is ProtocolGuardianTest {
     function testWireSuccess() public {
-        bytes memory data = abi.encode(CENTRIFUGE_ID, "some", "data");
+        bytes memory data = abi.encode("some", "data");
 
-        vm.mockCall(address(ADAPTER), abi.encodeWithSelector(IAdapter.wire.selector, data), abi.encode());
+        vm.mockCall(
+            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data), abi.encode()
+        );
 
-        vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapter.wire.selector, data));
+        vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data));
 
         vm.prank(address(SAFE));
-        protocolGuardian.wire(address(ADAPTER), data);
+        protocolGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
     }
 
     function testWireRevertWhenNotSafe() public {
-        bytes memory data = abi.encode(CENTRIFUGE_ID, "some", "data");
+        bytes memory data = abi.encode("some", "data");
 
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
-        protocolGuardian.wire(address(ADAPTER), data);
+        protocolGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
     }
 }

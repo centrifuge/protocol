@@ -6,7 +6,6 @@ import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 
 import {Root} from "../src/core/Root.sol";
 import {Gateway} from "../src/core/Gateway.sol";
-import {ISafe} from "../src/core/interfaces/ISafe.sol";
 import {MultiAdapter} from "../src/core/MultiAdapter.sol";
 import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
 
@@ -14,6 +13,7 @@ import {GasService} from "../src/messaging/GasService.sol";
 import {MessageProcessor} from "../src/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../src/messaging/MessageDispatcher.sol";
 
+import {ISafe} from "../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../src/admin/OpsGuardian.sol";
 import {TokenRecoverer} from "../src/admin/TokenRecoverer.sol";
 import {ProtocolGuardian} from "../src/admin/ProtocolGuardian.sol";
@@ -66,37 +66,31 @@ contract CommonActionBatcher {
     }
 
     function engageCommon(CommonReport memory report) public onlyDeployer {
-        // Protocol Guardian permissions
         report.root.rely(address(report.protocolGuardian));
-        report.gateway.rely(address(report.protocolGuardian));
-        report.multiAdapter.rely(address(report.protocolGuardian));
-        report.tokenRecoverer.rely(address(report.protocolGuardian));
-        report.messageDispatcher.rely(address(report.protocolGuardian));
-        report.poolEscrowFactory.rely(address(report.protocolGuardian));
-
-        // Ops Guardian permissions
-        report.multiAdapter.rely(address(report.opsGuardian));
-
-        // Continue with existing non-guardian permissions
         report.root.rely(address(report.tokenRecoverer));
         report.root.rely(address(report.messageProcessor));
         report.root.rely(address(report.messageDispatcher));
         report.gateway.rely(address(report.root));
+        report.gateway.rely(address(report.protocolGuardian));
         report.gateway.rely(address(report.messageDispatcher));
         report.gateway.rely(address(report.messageProcessor));
         report.gateway.rely(address(report.multiAdapter));
         report.multiAdapter.rely(address(report.root));
         report.multiAdapter.rely(address(report.gateway));
+        report.multiAdapter.rely(address(report.protocolGuardian));
+        report.multiAdapter.rely(address(report.opsGuardian));
         report.multiAdapter.rely(address(report.messageProcessor));
         report.messageDispatcher.rely(address(report.root));
         report.messageProcessor.rely(address(report.root));
+        report.messageDispatcher.rely(address(report.protocolGuardian));
         report.messageProcessor.rely(address(report.gateway));
         report.tokenRecoverer.rely(address(report.root));
+        report.tokenRecoverer.rely(address(report.protocolGuardian));
         report.tokenRecoverer.rely(address(report.messageDispatcher));
         report.tokenRecoverer.rely(address(report.messageProcessor));
         report.poolEscrowFactory.rely(address(report.root));
+        report.poolEscrowFactory.rely(address(report.protocolGuardian));
 
-        // File operations remain the same
         report.gateway.file("processor", address(report.messageProcessor));
         report.gateway.file("adapter", address(report.multiAdapter));
         report.poolEscrowFactory.file("gateway", address(report.gateway));
@@ -280,7 +274,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     }
 
     function _postDeployCommon(CommonActionBatcher batcher) internal {
-        if (address(opsGuardian.opsSafe()) != address(batcher)) {
+        if (protocolGuardian.safe() == _commonReport().adminSafe) {
             return; // Already configured. Make this method idempotent.
         }
 

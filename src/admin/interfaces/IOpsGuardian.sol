@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {ISafe} from "./ISafe.sol";
 import {IBaseGuardian} from "./IBaseGuardian.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
-import {ISafe} from "../../core/interfaces/ISafe.sol";
 import {IAdapter} from "../../core/interfaces/IAdapter.sol";
 
 interface IOpsGuardian is IBaseGuardian {

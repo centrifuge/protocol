@@ -3,14 +3,15 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
-import {ISafe} from "../../../src/core/interfaces/ISafe.sol";
 import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
 import {IMultiAdapter} from "../../../src/core/interfaces/IMultiAdapter.sol";
 
+import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
 import {ICreatePool} from "../../../src/admin/interfaces/ICreatePool.sol";
 import {IOpsGuardian} from "../../../src/admin/interfaces/IOpsGuardian.sol";
 import {IBaseGuardian} from "../../../src/admin/interfaces/IBaseGuardian.sol";
+import {IAdapterWiring} from "../../../src/admin/interfaces/IAdapterWiring.sol";
 
 import "forge-std/Test.sol";
 
@@ -64,12 +65,18 @@ contract OpsGuardianTestInitAdapters is OpsGuardianTest {
             abi.encode()
         );
 
+        vm.mockCall(
+            address(multiAdapter), abi.encodeWithSignature("deny(address)", address(opsGuardian)), abi.encode()
+        );
+
         vm.expectCall(
             address(multiAdapter),
             abi.encodeWithSelector(
                 IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold, recoveryIndex
             )
         );
+
+        vm.expectCall(address(multiAdapter), abi.encodeWithSignature("deny(address)", address(opsGuardian)));
 
         vm.prank(address(SAFE));
         opsGuardian.initAdapters(CENTRIFUGE_ID, adapters, threshold, recoveryIndex);
@@ -97,6 +104,48 @@ contract OpsGuardianTestInitAdapters is OpsGuardianTest {
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
         opsGuardian.initAdapters(CENTRIFUGE_ID, adapters, 1, 2);
+    }
+
+    function testInitAdaptersSelfDeniesAfterSetup() public {
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = ADAPTER;
+        uint8 threshold = 1;
+        uint8 recoveryIndex = 2;
+
+        // Mock quorum returning 0 (not initialized)
+        vm.mockCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.quorum.selector, CENTRIFUGE_ID, GLOBAL_POOL),
+            abi.encode(uint8(0))
+        );
+
+        // Mock setAdapters call
+        vm.mockCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(
+                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold, recoveryIndex
+            ),
+            abi.encode()
+        );
+
+        // Mock deny call
+        vm.mockCall(
+            address(multiAdapter), abi.encodeWithSignature("deny(address)", address(opsGuardian)), abi.encode()
+        );
+
+        // Expect setAdapters to be called FIRST
+        vm.expectCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(
+                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold, recoveryIndex
+            )
+        );
+
+        // Expect deny to be called SECOND (self-revoke)
+        vm.expectCall(address(multiAdapter), abi.encodeWithSignature("deny(address)", address(opsGuardian)));
+
+        vm.prank(address(SAFE));
+        opsGuardian.initAdapters(CENTRIFUGE_ID, adapters, threshold, recoveryIndex);
     }
 }
 
@@ -182,39 +231,41 @@ contract OpsGuardianTestFile is OpsGuardianTest {
 
 contract OpsGuardianTestWire is OpsGuardianTest {
     function testWireSuccess() public {
-        bytes memory data = abi.encode(CENTRIFUGE_ID, "some", "data");
+        bytes memory data = abi.encode("some", "data");
 
         vm.mockCall(
-            address(ADAPTER), abi.encodeWithSelector(IAdapter.isWired.selector, CENTRIFUGE_ID), abi.encode(false)
+            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.isWired.selector, CENTRIFUGE_ID), abi.encode(false)
         );
-        vm.mockCall(address(ADAPTER), abi.encodeWithSelector(IAdapter.wire.selector, data), abi.encode());
+        vm.mockCall(
+            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data), abi.encode()
+        );
         vm.mockCall(address(ADAPTER), abi.encodeWithSignature("deny(address)", address(opsGuardian)), abi.encode());
 
-        vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapter.isWired.selector, CENTRIFUGE_ID));
-        vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapter.wire.selector, data));
+        vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.isWired.selector, CENTRIFUGE_ID));
+        vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data));
         vm.expectCall(address(ADAPTER), abi.encodeWithSignature("deny(address)", address(opsGuardian)));
 
         vm.prank(address(SAFE));
-        opsGuardian.wire(address(ADAPTER), data);
+        opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
     }
 
     function testWireRevertWhenAlreadyWired() public {
         vm.mockCall(
-            address(ADAPTER), abi.encodeWithSelector(IAdapter.isWired.selector, CENTRIFUGE_ID), abi.encode(true)
+            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.isWired.selector, CENTRIFUGE_ID), abi.encode(true)
         );
 
-        bytes memory data = abi.encode(CENTRIFUGE_ID, "some", "data");
+        bytes memory data = abi.encode("some", "data");
 
         vm.prank(address(SAFE));
         vm.expectRevert(IOpsGuardian.AdapterAlreadyWired.selector);
-        opsGuardian.wire(address(ADAPTER), data);
+        opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
     }
 
     function testWireRevertWhenNotSafe() public {
-        bytes memory data = abi.encode(CENTRIFUGE_ID, "some", "data");
+        bytes memory data = abi.encode("some", "data");
 
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
-        opsGuardian.wire(address(ADAPTER), data);
+        opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
     }
 }

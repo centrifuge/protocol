@@ -20,6 +20,8 @@ import {MathLib} from "../misc/libraries/MathLib.sol";
 
 import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
 
+import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
+
 /// @title  LayerZero Adapter
 /// @notice Routing contract that integrates with LayerZero V2.
 /// @dev    A delegate is set on deployment, to configure the DVN and executor
@@ -51,15 +53,15 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IAdapter
-    function wire(bytes memory data) external auth {
-        (uint16 centrifugeId, uint32 layerZeroEid, address adapter) = abi.decode(data, (uint16, uint32, address));
+    /// @inheritdoc IAdapterWiring
+    function wire(uint16 centrifugeId, bytes memory data) external auth {
+        (uint32 layerZeroEid, address adapter) = abi.decode(data, (uint32, address));
         sources[layerZeroEid] = LayerZeroSource(centrifugeId, adapter);
         destinations[centrifugeId] = LayerZeroDestination(layerZeroEid, adapter);
         emit Wire(centrifugeId, layerZeroEid, adapter);
     }
 
-    /// @inheritdoc IAdapter
+    /// @inheritdoc IAdapterWiring
     function isWired(uint16 centrifugeId) external view returns (bool) {
         return destinations[centrifugeId].layerZeroEid != 0;
     }

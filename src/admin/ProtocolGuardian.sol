@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ISafe} from "./interfaces/ISafe.sol";
 import {IBaseGuardian} from "./interfaces/IBaseGuardian.sol";
+import {IAdapterWiring} from "./interfaces/IAdapterWiring.sol";
 import {IProtocolGuardian} from "./interfaces/IProtocolGuardian.sol";
 
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {IRoot} from "../core/interfaces/IRoot.sol";
-import {ISafe} from "../core/interfaces/ISafe.sol";
 import {IAdapter} from "../core/interfaces/IAdapter.sol";
 import {IGateway} from "../core/interfaces/IGateway.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
@@ -41,6 +42,20 @@ contract ProtocolGuardian is IProtocolGuardian {
     modifier onlySafeOrOwner() {
         require(msg.sender == address(safe) || _isSafeOwner(msg.sender), NotTheAuthorizedSafeOrItsOwner());
         _;
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IBaseGuardian
+    function file(bytes32 what, address data) external onlySafe {
+        if (what == "safe") safe = ISafe(data);
+        else if (what == "gateway") gateway = IGateway(data);
+        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
+        else if (what == "sender") sender = IRootMessageSender(data);
+        else revert FileUnrecognizedParam();
+        emit File(what, data);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -118,22 +133,8 @@ contract ProtocolGuardian is IProtocolGuardian {
     }
 
     /// @inheritdoc IBaseGuardian
-    function wire(address adapter, bytes memory data) external onlySafe {
-        IAdapter(adapter).wire(data);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Administration
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IBaseGuardian
-    function file(bytes32 what, address data) external onlySafe {
-        if (what == "safe") safe = ISafe(data);
-        else if (what == "gateway") gateway = IGateway(data);
-        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
-        else if (what == "sender") sender = IRootMessageSender(data);
-        else revert FileUnrecognizedParam();
-        emit File(what, data);
+    function wire(address adapter, uint16 centrifugeId, bytes memory data) external onlySafe {
+        IAdapterWiring(adapter).wire(centrifugeId, data);
     }
 
     //----------------------------------------------------------------------------------------------

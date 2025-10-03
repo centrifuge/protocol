@@ -71,12 +71,4 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
     function estimate(uint16, bytes calldata, uint256 gasLimit) public pure returns (uint256 nativePriceQuote) {
         return gasLimit;
     }
-
-    function wire(bytes memory) external pure {
-        revert("LocalAdapter: wire not supported");
-    }
-
-    function isWired(uint16) external pure returns (bool) {
-        revert("LocalAdapter: isWired not supported");
-    }
 }

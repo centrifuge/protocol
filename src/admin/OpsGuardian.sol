@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ISafe} from "./interfaces/ISafe.sol";
 import {ICreatePool} from "./interfaces/ICreatePool.sol";
 import {IOpsGuardian} from "./interfaces/IOpsGuardian.sol";
 import {IBaseGuardian} from "./interfaces/IBaseGuardian.sol";
+import {IAdapterWiring} from "./interfaces/IAdapterWiring.sol";
 
 import {IAuth} from "../misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
-import {ISafe} from "../core/interfaces/ISafe.sol";
 import {IAdapter} from "../core/interfaces/IAdapter.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
 
@@ -55,17 +56,13 @@ contract OpsGuardian is IOpsGuardian {
     {
         require(multiAdapter.quorum(centrifugeId, GLOBAL_POOL) == 0, AdaptersAlreadyInitialized());
         multiAdapter.setAdapters(centrifugeId, GLOBAL_POOL, adapters, threshold, recoveryIndex);
+        IAuth(address(multiAdapter)).deny(address(this));
     }
 
     /// @inheritdoc IBaseGuardian
-    function wire(address adapter, bytes memory data) external onlySafe {
-        uint16 centrifugeId;
-        assembly {
-            centrifugeId := mload(add(data, 0x20))
-        }
-
-        require(!IAdapter(adapter).isWired(centrifugeId), AdapterAlreadyWired());
-        IAdapter(adapter).wire(data);
+    function wire(address adapter, uint16 centrifugeId, bytes memory data) external onlySafe {
+        require(!IAdapterWiring(adapter).isWired(centrifugeId), AdapterAlreadyWired());
+        IAdapterWiring(adapter).wire(centrifugeId, data);
         IAuth(adapter).deny(address(this));
     }
 

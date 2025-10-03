@@ -26,6 +26,7 @@ interface IBaseGuardian {
     ///      - OpsGuardian: First-time setup only, reverts if already wired, self-denies after
     ///      - ProtocolGuardian: No restrictions, can re-wire at any time
     /// @param adapter Address of the adapter to wire
+    /// @param centrifugeId The chain ID to wire to
     /// @param data ABI-encoded adapter-specific configuration data
-    function wire(address adapter, bytes memory data) external;
+    function wire(address adapter, uint16 centrifugeId, bytes memory data) external;
 }

@@ -78,7 +78,7 @@ contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
     function testWireErrNotAuthorized() public {
         vm.prank(makeAddr("NotAuthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.wire(abi.encode(CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
     }
 
     function testWire() public {
@@ -88,7 +88,7 @@ contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
 
         vm.expectEmit();
         emit ILayerZeroAdapter.Wire(CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
-        adapter.wire(abi.encode(CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
 
         vm.assertEq(
             adapter.allowInitializePath(Origin(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR.toBytes32LeftPadded(), 0)), true
@@ -105,7 +105,7 @@ contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
 
     function testIsWired() public {
         assertFalse(adapter.isWired(CENTRIFUGE_ID));
-        adapter.wire(abi.encode(CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
         assertTrue(adapter.isWired(CENTRIFUGE_ID));
     }
 }
@@ -170,7 +170,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
             Origin(LAYERZERO_ID, validAddress.toBytes32LeftPadded(), 0), bytes32("1"), payload, EXECUTOR, bytes("")
         );
 
-        adapter.wire(abi.encode(CENTRIFUGE_ID, LAYERZERO_ID, validAddress));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID, validAddress));
 
         // Incorrect address
         vm.prank(address(endpoint));
@@ -214,7 +214,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         vm.expectRevert(IAdapter.UnknownChainId.selector);
         adapter.send{value: 0.1 ether}(CENTRIFUGE_ID, payload, gasLimit, refund);
 
-        adapter.wire(abi.encode(CENTRIFUGE_ID, LAYERZERO_ID, makeAddr("DestinationAdapter")));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID, makeAddr("DestinationAdapter")));
 
         vm.deal(address(this), 0.1 ether);
         vm.prank(address(GATEWAY));

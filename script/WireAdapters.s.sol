@@ -82,11 +82,10 @@ contract WireAdapters is Script {
             // Wire WormholeAdapter
             if (localWormholeAddr != address(0)) {
                 bytes memory wormholeData = abi.encode(
-                    remoteCentrifugeId,
                     uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
                     vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter")
                 );
-                opsGuardian.wire(localWormholeAddr, wormholeData);
+                opsGuardian.wire(localWormholeAddr, remoteCentrifugeId, wormholeData);
 
                 console.log("Wired WormholeAdapter from", localNetwork, "to", remoteNetwork);
             }
@@ -94,11 +93,10 @@ contract WireAdapters is Script {
             // Wire LayerZeroAdapter
             if (localLayerZeroAddr != address(0)) {
                 bytes memory layerZeroData = abi.encode(
-                    remoteCentrifugeId,
                     uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
                     vm.parseJsonAddress(remoteConfig, "$.contracts.layerZeroAdapter")
                 );
-                opsGuardian.wire(localLayerZeroAddr, layerZeroData);
+                opsGuardian.wire(localLayerZeroAddr, remoteCentrifugeId, layerZeroData);
 
                 console.log("Wired LayerZeroAdapter from", localNetwork, "to", remoteNetwork);
             }
@@ -106,11 +104,10 @@ contract WireAdapters is Script {
             // Wire AxelarAdapter
             if (localAxelarAddr != address(0)) {
                 bytes memory axelarData = abi.encode(
-                    remoteCentrifugeId,
                     vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
                     vm.toString(vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter"))
                 );
-                opsGuardian.wire(localAxelarAddr, axelarData);
+                opsGuardian.wire(localAxelarAddr, remoteCentrifugeId, axelarData);
 
                 console.log("Wired AxelarAdapter from", localNetwork, "to", remoteNetwork);
             }

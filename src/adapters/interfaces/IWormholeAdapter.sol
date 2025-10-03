@@ -3,6 +3,8 @@ pragma solidity >=0.5.0;
 
 import {IAdapter} from "../../core/interfaces/IAdapter.sol";
 
+import {IAdapterWiring} from "../../admin/interfaces/IAdapterWiring.sol";
+
 // From https://github.com/wormhole-foundation/wormhole-solidity-sdk/blob/main/src/interfaces/IWormholeRelayer.sol#L75
 interface IWormholeRelayer {
     /**
@@ -133,7 +135,7 @@ struct WormholeDestination {
     address addr;
 }
 
-interface IWormholeAdapter is IAdapter, IWormholeReceiver {
+interface IWormholeAdapter is IAdapter, IAdapterWiring, IWormholeReceiver {
     event Wire(uint16 indexed centrifugeId, uint16 indexed wormholeId, address adapter);
 
     error NotWormholeRelayer();

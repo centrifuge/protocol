@@ -56,18 +56,6 @@ contract MultiAdapter is Auth, IMultiAdapter {
         emit File(what, instance);
     }
 
-    /// @inheritdoc IAdapter
-    /// @dev MultiAdapter is not a cross-chain adapter, so wire/isWired are not applicable
-    function wire(bytes memory) external pure {
-        revert("MultiAdapter: wire not supported");
-    }
-
-    /// @inheritdoc IAdapter
-    /// @dev MultiAdapter is not a cross-chain adapter, so wire/isWired are not applicable
-    function isWired(uint16) external pure returns (bool) {
-        revert("MultiAdapter: isWired not supported");
-    }
-
     /// @inheritdoc IMultiAdapter
     function setAdapters(
         uint16 centrifugeId,

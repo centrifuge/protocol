@@ -8,13 +8,14 @@ import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 import {d18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
-import {ISafe} from "../../src/core/interfaces/ISafe.sol";
 import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
 import {IGateway} from "../../src/core/interfaces/IGateway.sol";
 import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
 import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
 
 import {MessageLib} from "../../src/messaging/libraries/MessageLib.sol";
+
+import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
 import {FullDeployer} from "../../script/FullDeployer.s.sol";
 

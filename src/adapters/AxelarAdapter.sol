@@ -16,6 +16,8 @@ import {CastLib} from "../misc/libraries/CastLib.sol";
 
 import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
 
+import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
+
 /// @title  Axelar Adapter
 /// @notice Routing contract that integrates with an Axelar Gateway
 contract AxelarAdapter is Auth, IAxelarAdapter {
@@ -44,16 +46,15 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IAdapter
-    function wire(bytes memory data) external auth {
-        (uint16 centrifugeId, string memory axelarId, string memory adapter) =
-            abi.decode(data, (uint16, string, string));
+    /// @inheritdoc IAdapterWiring
+    function wire(uint16 centrifugeId, bytes memory data) external auth {
+        (string memory axelarId, string memory adapter) = abi.decode(data, (string, string));
         sources[axelarId] = AxelarSource(centrifugeId, keccak256(bytes(adapter)));
         destinations[centrifugeId] = AxelarDestination(axelarId, adapter);
         emit Wire(centrifugeId, axelarId, adapter);
     }
 
-    /// @inheritdoc IAdapter
+    /// @inheritdoc IAdapterWiring
     function isWired(uint16 centrifugeId) external view returns (bool) {
         return bytes(destinations[centrifugeId].axelarId).length != 0;
     }
