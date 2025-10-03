@@ -12,8 +12,7 @@ import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
 import {IGateway} from "../../src/core/interfaces/IGateway.sol";
 import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
 import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
-
-import {MessageLib} from "../../src/messaging/libraries/MessageLib.sol";
+import {MessageLib} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 

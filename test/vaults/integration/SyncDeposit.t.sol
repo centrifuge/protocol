@@ -16,10 +16,9 @@ import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpoke.sol";
+import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {ITransferHook} from "../../../src/core/spoke/interfaces/ITransferHook.sol";
-
-import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
