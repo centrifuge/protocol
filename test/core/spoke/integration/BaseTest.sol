@@ -25,17 +25,19 @@ import {AsyncVault} from "../../../../src/vaults/AsyncVault.sol";
 import {SyncDepositVault} from "../../../../src/vaults/SyncDepositVault.sol";
 
 import {
-    ExtendedSpokeDeployer,
-    ExtendedSpokeActionBatcher,
-    CommonInput
-} from "../../../../script/ExtendedSpokeDeployer.s.sol";
+    FullActionBatcher,
+    FullDeployer,
+    FullInput,
+    noAdaptersInput,
+    CoreInput
+} from "../../../../script/FullDeployer.s.sol";
 
 import {MockAdapter} from "../../mocks/MockAdapter.sol";
 import {MockCentrifugeChain} from "../mocks/MockCentrifugeChain.sol";
 
 import "forge-std/Test.sol";
 
-contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
+contract BaseTest is FullDeployer, Test, FullActionBatcher {
     using MessageLib for *;
 
     MockCentrifugeChain centrifugeChain;
@@ -80,17 +82,18 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     }
 
     function setUp() public virtual {
-        // deploy core contracts
-        CommonInput memory input = CommonInput({
-            centrifugeId: THIS_CHAIN_ID,
-            adminSafe: ISafe(ADMIN),
-            opsSafe: ISafe(ADMIN),
-            version: bytes32(0)
-        });
-
         setDeployer(address(this));
         labelAddresses("");
-        deployExtendedSpoke(input, this);
+
+        deployFull(
+            FullInput({
+                core: CoreInput({centrifugeId: THIS_CHAIN_ID, version: bytes32(0), root: address(0)}),
+                adminSafe: ISafe(ADMIN),
+                opsSafe: ISafe(ADMIN),
+                adapters: noAdaptersInput()
+            }),
+            this
+        );
         // removeExtendedSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
 
         // Ensure test contract has auth on vaultRegistry for testing

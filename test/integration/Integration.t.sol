@@ -14,7 +14,13 @@ import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {MAX_MESSAGE_COST as GAS} from "../../src/messaging/interfaces/IGasService.sol";
 import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
-import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
+import {
+    FullActionBatcher,
+    FullDeployer,
+    FullInput,
+    noAdaptersInput,
+    CoreInput
+} from "../../../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -31,17 +37,18 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
 
     function setUp() public virtual {
         // Deployment
-        CommonInput memory input = CommonInput({
-            centrifugeId: LOCAL_CENTRIFUGE_ID,
-            adminSafe: adminSafe,
-            opsSafe: adminSafe,
-            version: bytes32(0)
-        });
-
         FullActionBatcher batcher = new FullActionBatcher();
         super.labelAddresses("");
-        super.deployFull(input, noAdaptersInput(), batcher);
-        super.removeHubDeployerAccess(batcher);
+        super.deployFull(
+            FullInput({
+                core: CoreInput({centrifugeId: LOCAL_CENTRIFUGE_ID, version: bytes32(0), root: address(0)}),
+                adminSafe: adminSafe,
+                opsSafe: adminSafe,
+                adapters: noAdaptersInput()
+            }),
+            batcher
+        );
+        super.removeFullDeployerAccess(batcher);
 
         // Extra deployment
         valuation = new MockValuation(hubRegistry);

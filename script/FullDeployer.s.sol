@@ -281,6 +281,9 @@ contract FullActionBatcher is CoreActionBatcher {
 contract FullDeployer is CoreDeployer {
     uint256 public constant DELAY = 48 hours;
 
+    ISafe public adminSafe;
+    ISafe public opsSafe;
+
     Root public root;
     TokenRecoverer public tokenRecoverer;
     ProtocolGuardian public protocolGuardian;
@@ -319,6 +322,9 @@ contract FullDeployer is CoreDeployer {
     LayerZeroAdapter layerZeroAdapter;
 
     function deployFull(FullInput memory input, FullActionBatcher batcher) public {
+        adminSafe = input.adminSafe;
+        opsSafe = input.opsSafe;
+
         if (input.core.root == address(0)) {
             root = Root(
                 create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher)))

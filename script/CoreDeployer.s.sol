@@ -227,8 +227,8 @@ contract CoreActionBatcher is Constants {
     }
 }
 
-abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript {
-    bytes32 version;
+abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants {
+    bytes32 public version;
 
     Gateway public gateway;
     MultiAdapter public multiAdapter;

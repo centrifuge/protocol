@@ -18,7 +18,7 @@ import "forge-std/Test.sol";
 import {ILayerZeroEndpointV2} from "../../src/adapters/interfaces/ILayerZeroAdapter.sol";
 import {IWormholeRelayer, IWormholeDeliveryProvider} from "../../src/adapters/interfaces/IWormholeAdapter.sol";
 
-contract FullDeploymentConfigTest is Test, FullDeployer, Constants {
+contract FullDeploymentConfigTest is Test, FullDeployer {
     uint16 constant CENTRIFUGE_ID = 23;
     ISafe immutable ADMIN_SAFE = ISafe(makeAddr("AdminSafe"));
     ISafe immutable OPS_SAFE = ISafe(makeAddr("OpsSafe"));
