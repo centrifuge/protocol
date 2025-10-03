@@ -11,6 +11,7 @@ import {IRoot} from "../../../admin/interfaces/IRoot.sol";
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
+import {IEndorsements} from "../interfaces/IEndorsements.sol";
 import {IBatchedMulticall} from "../../interfaces/IBatchedMulticall.sol";
 import {ISpokeMessageSender} from "../../interfaces/IGatewaySenders.sol";
 import {IPoolEscrowProvider} from "../factories/interfaces/IPoolEscrowFactory.sol";
@@ -76,9 +77,9 @@ interface IBalanceSheet is IBatchedMulticall {
     error FileUnrecognizedParam();
     error CannotTransferFromEndorsedContract();
 
-    function root() external view returns (IRoot);
     function spoke() external view returns (ISpoke);
     function sender() external view returns (ISpokeMessageSender);
+    function endorsements() external view returns (IEndorsements);
     function poolEscrowProvider() external view returns (IPoolEscrowProvider);
 
     function manager(PoolId poolId, address manager) external view returns (bool);

@@ -18,8 +18,6 @@ import {IERC6909} from "../../misc/interfaces/IERC6909.sol";
 import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol";
 
-import {IRoot} from "../../admin/interfaces/IRoot.sol";
-
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {IGateway} from "../interfaces/IGateway.sol";
@@ -44,11 +42,6 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     ISpokeMessageSender public sender;
     IEndorsements public immutable endorsements;
     IPoolEscrowProvider public poolEscrowProvider;
-
-    /// @inheritdoc IBalanceSheet
-    function root() external view returns (IRoot) {
-        return IRoot(address(endorsements));
-    }
 
     mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId poolId => mapping(ShareClassId scId => ShareQueueAmount)) public queuedShares;
