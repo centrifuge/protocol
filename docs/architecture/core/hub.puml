@@ -1,0 +1,51 @@
+@startuml hub
+title Core Hub Components
+hide empty members
+
+package messaging {
+    class MessageDispatcher
+}
+
+package managers {
+    class NAVManager
+    class SimplePriceManager
+    interface INAVHook
+}
+
+class Hub
+class HubHandler
+class Holdings
+class HubRegistry
+class ShareClassManager
+class Accounting
+class BatchRequestManager
+
+interface ISnapshotHook
+interface IValuation
+interface IFeeHook
+
+Hub --> Holdings
+Hub --> HubRegistry
+Hub --> ShareClassManager
+Hub --> Accounting
+Hub --> MessageDispatcher
+Hub --> Gateway
+Hub ..> IFeeHook
+
+HubHandler --> Hub
+
+BatchRequestManager --> Hub
+
+Holdings --> HubRegistry
+Holdings --> IValuation
+Holdings ..> ISnapshotHook
+
+ShareClassManager --> HubRegistry
+Accounting --> HubRegistry
+
+NAVManager -up-|> ISnapshotHook
+NAVManager -down-|> INAVHook
+
+SimplePriceManager -|> INAVHook
+
+@enduml
