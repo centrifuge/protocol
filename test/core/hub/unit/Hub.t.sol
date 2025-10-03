@@ -30,6 +30,10 @@ contract MockFeeHook is IFeeHook {
     function accrue(PoolId poolId, ShareClassId scId) external {
         calls[poolId][scId]++;
     }
+
+    function accrued(PoolId poolId, ShareClassId scId) external view returns (uint128 poolAmount) {
+        return 0;
+    }
 }
 
 contract TestCommon is Test {
