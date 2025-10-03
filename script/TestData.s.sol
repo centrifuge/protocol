@@ -170,7 +170,7 @@ contract TestData is FullDeployer {
         state.vault.requestDeposit(1_000_000e6, msg.sender, msg.sender);
 
         // Fulfill deposit request
-        state.nowDepositEpoch = batchRequestManager.nowDepositEpoch(state.scId, assetId);
+        state.nowDepositEpoch = batchRequestManager.nowDepositEpoch(state.poolId, state.scId, assetId);
         batchRequestManager.approveDeposits(
             state.poolId, state.scId, assetId, state.nowDepositEpoch, 1_000_000e6, d18(1, 1), msg.sender
         );
@@ -181,12 +181,13 @@ contract TestData is FullDeployer {
         balanceSheet.submitQueuedAssets(state.poolId, state.scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
 
         // Issue and claim
-        state.nowIssueEpoch = batchRequestManager.nowIssueEpoch(state.scId, assetId);
+        state.nowIssueEpoch = batchRequestManager.nowIssueEpoch(state.poolId, state.scId, assetId);
         batchRequestManager.issueShares(
             state.poolId, state.scId, assetId, state.nowIssueEpoch, d18(1, 1), 0, msg.sender
         );
         balanceSheet.submitQueuedShares(state.poolId, state.scId, DEFAULT_EXTRA_GAS, msg.sender);
-        uint32 maxClaims = batchRequestManager.maxDepositClaims(state.scId, msg.sender.toBytes32(), assetId);
+        uint32 maxClaims =
+            batchRequestManager.maxDepositClaims(state.poolId, state.scId, msg.sender.toBytes32(), assetId);
         batchRequestManager.notifyDeposit(
             state.poolId, state.scId, assetId, msg.sender.toBytes32(), maxClaims, msg.sender
         );
@@ -214,8 +215,8 @@ contract TestData is FullDeployer {
         state.vault.requestRedeem(1_000_000e18, msg.sender, msg.sender);
 
         // Fulfill redeem request
-        state.nowRedeemEpoch = batchRequestManager.nowRedeemEpoch(state.scId, assetId);
-        state.nowRevokeEpoch = batchRequestManager.nowRevokeEpoch(state.scId, assetId);
+        state.nowRedeemEpoch = batchRequestManager.nowRedeemEpoch(state.poolId, state.scId, assetId);
+        state.nowRevokeEpoch = batchRequestManager.nowRevokeEpoch(state.poolId, state.scId, assetId);
 
         batchRequestManager.approveRedeems(
             state.poolId, state.scId, assetId, state.nowRedeemEpoch, 1_000_000e18, d18(1, 1)
