@@ -34,7 +34,7 @@ import {ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 import {IUpdateContract} from "../core/spoke/interfaces/IUpdateContract.sol";
 
-import {UpdateContractMessageLib, UpdateContractType} from "../messaging/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "../utils/UpdateContractMessageLib.sol";
 
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for

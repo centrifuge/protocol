@@ -6,11 +6,10 @@ import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 
 import {Gateway} from "../src/core/Gateway.sol";
 import {MultiAdapter} from "../src/core/MultiAdapter.sol";
+import {GasService} from "../src/core/messaging/GasService.sol";
+import {MessageProcessor} from "../src/core/messaging/MessageProcessor.sol";
+import {MessageDispatcher} from "../src/core/messaging/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
-
-import {GasService} from "../src/messaging/GasService.sol";
-import {MessageProcessor} from "../src/messaging/MessageProcessor.sol";
-import {MessageDispatcher} from "../src/messaging/MessageDispatcher.sol";
 
 import {Root} from "../src/admin/Root.sol";
 import {ISafe} from "../src/admin/interfaces/ISafe.sol";

@@ -90,7 +90,7 @@ contract Create2VaultFactorySpellCommon {
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
-import {VaultUpdateKind} from "../../src/messaging/libraries/MessageLib.sol";
+import {VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 import {ISpokeGatewayHandler} from "../../src/core/interfaces/IGatewayHandlers.sol";
 
 import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
