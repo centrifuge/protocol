@@ -263,9 +263,10 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IGateway
     function withBatch(bytes memory data, address refund) external payable {
-        _startBatching();
-        _batcher = msg.sender;
+        bool wasBatching = isBatching;
+        if (!wasBatching) _startBatching();
 
+        _batcher = msg.sender;
         (bool success, bytes memory returnData) = msg.sender.call(data);
         if (!success) {
             uint256 length = returnData.length;
@@ -279,7 +280,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         // Force the user to call lockCallback()
         require(address(_batcher) == address(0), CallbackWasNotLocked());
 
-        _endBatching(refund);
+        if (!wasBatching) _endBatching(refund);
     }
 
     /// @inheritdoc IGateway

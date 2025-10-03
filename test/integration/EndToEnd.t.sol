@@ -634,15 +634,15 @@ contract EndToEndFlows is EndToEndUtils {
         uint128 amount
     ) internal {
         vm.startPrank(poolManager);
-        uint32 depositEpochId = hub.batchRequestManager.nowDepositEpoch(shareClassId, assetId);
+        uint32 depositEpochId = hub.batchRequestManager.nowDepositEpoch(poolId, shareClassId, assetId);
         D18 pricePoolPerAsset = hub.hub.pricePoolPerAsset(poolId, shareClassId, assetId);
         hub.batchRequestManager.approveDeposits{value: GAS}(
             poolId, shareClassId, assetId, depositEpochId, amount, pricePoolPerAsset, REFUND
         );
 
         vm.startPrank(poolManager);
-        uint32 issueEpochId = hub.batchRequestManager.nowIssueEpoch(shareClassId, assetId);
-        (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
+        uint32 issueEpochId = hub.batchRequestManager.nowIssueEpoch(poolId, shareClassId, assetId);
+        (, D18 sharePrice) = hub.shareClassManager.metrics(poolId, shareClassId);
         hub.batchRequestManager.issueShares{value: GAS}(
             poolId, shareClassId, assetId, issueEpochId, sharePrice, HOOK_GAS, REFUND
         );
@@ -665,7 +665,7 @@ contract EndToEndFlows is EndToEndUtils {
             shareClassId,
             assetId,
             investor.toBytes32(),
-            hub.batchRequestManager.maxDepositClaims(shareClassId, investor.toBytes32(), assetId),
+            hub.batchRequestManager.maxDepositClaims(poolId, shareClassId, investor.toBytes32(), assetId),
             REFUND
         );
 
@@ -815,12 +815,12 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager
     ) internal {
         vm.startPrank(poolManager);
-        uint32 redeemEpochId = hub.batchRequestManager.nowRedeemEpoch(shareClassId, assetId);
+        uint32 redeemEpochId = hub.batchRequestManager.nowRedeemEpoch(poolId, shareClassId, assetId);
         D18 pricePoolPerAsset = hub.hub.pricePoolPerAsset(poolId, shareClassId, assetId);
         hub.batchRequestManager.approveRedeems(poolId, shareClassId, assetId, redeemEpochId, shares, pricePoolPerAsset);
 
-        uint32 revokeEpochId = hub.batchRequestManager.nowRevokeEpoch(shareClassId, assetId);
-        (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
+        uint32 revokeEpochId = hub.batchRequestManager.nowRevokeEpoch(poolId, shareClassId, assetId);
+        (, D18 sharePrice) = hub.shareClassManager.metrics(poolId, shareClassId);
         hub.batchRequestManager.revokeShares{value: GAS}(
             poolId, shareClassId, assetId, revokeEpochId, sharePrice, HOOK_GAS, REFUND
         );
@@ -843,7 +843,7 @@ contract EndToEndFlows is EndToEndUtils {
             shareClassId,
             assetId,
             investor.toBytes32(),
-            hub.batchRequestManager.maxRedeemClaims(shareClassId, investor.toBytes32(), assetId),
+            hub.batchRequestManager.maxRedeemClaims(poolId, shareClassId, investor.toBytes32(), assetId),
             REFUND
         );
 
