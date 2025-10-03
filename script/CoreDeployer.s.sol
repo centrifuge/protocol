@@ -4,27 +4,25 @@ pragma solidity 0.8.28;
 import {CreateXScript} from "./utils/CreateXScript.sol";
 import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 
+import {Hub} from "../src/core/hub/Hub.sol";
 import {Gateway} from "../src/core/Gateway.sol";
+import {Spoke} from "../src/core/spoke/Spoke.sol";
+import {Holdings} from "../src/core/hub/Holdings.sol";
+import {Accounting} from "../src/core/hub/Accounting.sol";
+import {HubHandler} from "../src/core/hub/HubHandler.sol";
 import {MultiAdapter} from "../src/core/MultiAdapter.sol";
+import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
+import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
 import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
+import {VaultRegistry} from "../src/core/spoke/VaultRegistry.sol";
+import {ContractUpdater} from "../src/core/spoke/ContractUpdater.sol";
+import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
+import {TokenFactory} from "../src/core/spoke/factories/TokenFactory.sol";
+import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
 
 import {GasService} from "../src/messaging/GasService.sol";
 import {MessageProcessor} from "../src/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../src/messaging/MessageDispatcher.sol";
-
-import {Spoke} from "../src/core/spoke/Spoke.sol";
-import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
-import {VaultRegistry} from "../src/core/spoke/VaultRegistry.sol";
-import {ContractUpdater} from "../src/core/spoke/ContractUpdater.sol";
-import {TokenFactory} from "../src/core/spoke/factories/TokenFactory.sol";
-import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
-
-import {Hub} from "../src/core/hub/Hub.sol";
-import {Holdings} from "../src/core/hub/Holdings.sol";
-import {Accounting} from "../src/core/hub/Accounting.sol";
-import {HubHandler} from "../src/core/hub/HubHandler.sol";
-import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
-import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
 
 import "forge-std/Script.sol";
 

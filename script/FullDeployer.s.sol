@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {CoreInput, CoreReport, CoreDeployer, CoreActionBatcher} from "./CoreDeployer.s.sol";
 
-import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
+import {Escrow} from "../src/misc/Escrow.sol";
 
 import {Root} from "../src/admin/Root.sol";
 import {ISafe} from "../src/admin/interfaces/ISafe.sol";
@@ -11,36 +11,35 @@ import {OpsGuardian} from "../src/admin/OpsGuardian.sol";
 import {TokenRecoverer} from "../src/admin/TokenRecoverer.sol";
 import {ProtocolGuardian} from "../src/admin/ProtocolGuardian.sol";
 
-import {Escrow} from "../src/misc/Escrow.sol";
-import {SyncManager} from "../src/vaults/SyncManager.sol";
-import {VaultRouter} from "../src/vaults/VaultRouter.sol";
-import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
-import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
-import {RefundEscrowFactory} from "../src/vaults/factories/RefundEscrowFactory.sol";
-import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
-
 import {FreezeOnly} from "../src/hooks/FreezeOnly.sol";
 import {FullRestrictions} from "../src/hooks/FullRestrictions.sol";
 import {FreelyTransferable} from "../src/hooks/FreelyTransferable.sol";
 import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
 
-import {OracleValuation} from "../src/valuations/OracleValuation.sol";
-import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
-
+import {NAVManager} from "../src/managers/hub/NAVManager.sol";
 import {QueueManager} from "../src/managers/spoke/QueueManager.sol";
 import {VaultDecoder} from "../src/managers/spoke/decoders/VaultDecoder.sol";
+import {SimplePriceManager} from "../src/managers/hub/SimplePriceManager.sol";
 import {CircleDecoder} from "../src/managers/spoke/decoders/CircleDecoder.sol";
 import {OnOfframpManagerFactory} from "../src/managers/spoke/OnOfframpManager.sol";
 import {MerkleProofManagerFactory} from "../src/managers/spoke/MerkleProofManager.sol";
 
-import {NAVManager} from "../src/managers/hub/NAVManager.sol";
-import {SimplePriceManager} from "../src/managers/hub/SimplePriceManager.sol";
+import {OracleValuation} from "../src/valuations/OracleValuation.sol";
+import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
+
+import {SyncManager} from "../src/vaults/SyncManager.sol";
+import {VaultRouter} from "../src/vaults/VaultRouter.sol";
+import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
+import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
+import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
+import {RefundEscrowFactory} from "../src/vaults/factories/RefundEscrowFactory.sol";
+import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
+
+import "forge-std/Script.sol";
 
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
-
-import "forge-std/Script.sol";
 
 struct WormholeInput {
     bool shouldDeploy;
