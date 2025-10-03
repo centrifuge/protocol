@@ -23,7 +23,6 @@ struct AxelarInput {
 struct LayerZeroInput {
     bool shouldDeploy;
     address endpoint;
-    address delegate;
 }
 
 struct AdaptersInput {
@@ -119,7 +118,6 @@ contract AdaptersDeployer is CommonDeployer {
         if (adaptersInput.layerZero.shouldDeploy) {
             require(adaptersInput.layerZero.endpoint != address(0), "LayerZero endpoint address cannot be zero");
             require(adaptersInput.layerZero.endpoint.code.length > 0, "LayerZero endpoint must be a deployed contract");
-            require(adaptersInput.layerZero.delegate != address(0), "LayerZero delegate address cannot be zero");
 
             layerZeroAdapter = LayerZeroAdapter(
                 create3(
@@ -127,7 +125,7 @@ contract AdaptersDeployer is CommonDeployer {
                     abi.encodePacked(
                         type(LayerZeroAdapter).creationCode,
                         abi.encode(
-                            multiAdapter, adaptersInput.layerZero.endpoint, adaptersInput.layerZero.delegate, batcher
+                            multiAdapter, adaptersInput.layerZero.endpoint, address(adminSafe), batcher
                         )
                     )
                 )
@@ -159,7 +157,7 @@ contract AdaptersDeployer is CommonDeployer {
         return AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
+            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0)})
         });
     }
 }

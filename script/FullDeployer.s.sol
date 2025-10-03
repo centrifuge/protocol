@@ -153,8 +153,7 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
             }),
             layerZero: LayerZeroInput({
                 shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.layerZero.deploy"),
-                endpoint: _parseJsonAddressOrDefault(config, "$.adapters.layerZero.endpoint"),
-                delegate: _parseJsonAddressOrDefault(config, "$.adapters.layerZero.delegate")
+                endpoint: _parseJsonAddressOrDefault(config, "$.adapters.layerZero.endpoint")
             })
         });
 
