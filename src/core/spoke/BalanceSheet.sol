@@ -22,7 +22,7 @@ import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {BatchedMulticall} from "../BatchedMulticall.sol";
+import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
 import {ISpokeMessageSender} from "../interfaces/IGatewaySenders.sol";
 import {IBalanceSheetGatewayHandler} from "../interfaces/IGatewayHandlers.sol";
 

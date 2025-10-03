@@ -27,8 +27,8 @@ import {AccountId} from "../types/AccountId.sol";
 import {IAdapter} from "../interfaces/IAdapter.sol";
 import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {BatchedMulticall} from "../BatchedMulticall.sol";
 import {IMultiAdapter} from "../interfaces/IMultiAdapter.sol";
+import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
 import {IHubMessageSender} from "../interfaces/IGatewaySenders.sol";
 
 /// @title  Hub
