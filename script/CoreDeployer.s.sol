@@ -55,7 +55,7 @@ struct CoreReport {
 }
 
 abstract contract Constants {
-    uint8 constant ISO4217_DECIMALS = 18;
+    uint8 public constant ISO4217_DECIMALS = 18;
     AssetId public immutable USD_ID = newAssetId(840);
     AssetId public immutable EUR_ID = newAssetId(978);
 }

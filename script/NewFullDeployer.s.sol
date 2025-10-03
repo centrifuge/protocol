@@ -3,8 +3,6 @@ pragma solidity 0.8.28;
 
 import {CoreInput, CoreReport, CoreDeployer, CoreActionBatcher} from "./CoreDeployer.s.sol";
 
-import {ISafe} from "../src/admin/interfaces/ISafe.sol";
-
 import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
 
 import {Root} from "../src/admin/Root.sol";
@@ -68,8 +66,8 @@ struct AdaptersInput {
 }
 
 struct FullInput {
-    address adminSafe;
-    address opsSafe;
+    ISafe adminSafe;
+    ISafe opsSafe;
     CoreInput core;
     AdaptersInput adapters;
 }
@@ -108,7 +106,7 @@ struct FullReport {
 }
 
 contract FullActionBatcher is CoreActionBatcher {
-    function engageFull(FullReport memory report, address adminSafe, address opsSafe) public onlyDeployer {
+    function engageFull(FullReport memory report, ISafe adminSafe, ISafe opsSafe) public onlyDeployer {
         // Rely Root
         report.tokenRecoverer.rely(address(report.root));
 
@@ -218,10 +216,10 @@ contract FullActionBatcher is CoreActionBatcher {
         report.core.messageDispatcher.file("tokenRecoverer", address(report.tokenRecoverer));
         report.core.messageProcessor.file("tokenRecoverer", address(report.tokenRecoverer));
 
-        report.opsGuardian.file("opsSafe", opsSafe);
+        report.opsGuardian.file("opsSafe", address(opsSafe));
         report.opsGuardian.file("hub", address(report.core.hub));
 
-        report.protocolGuardian.file("safe", adminSafe);
+        report.protocolGuardian.file("safe", address(adminSafe));
         report.protocolGuardian.file("sender", address(report.core.messageDispatcher));
 
         report.refundEscrowFactory.file(bytes32("controller"), address(report.asyncRequestManager));
@@ -321,10 +319,14 @@ contract FullDeployer is CoreDeployer {
     LayerZeroAdapter layerZeroAdapter;
 
     function deployFull(FullInput memory input, FullActionBatcher batcher) public {
-        deployCore(input.core, batcher);
+        if (input.core.root == address(0)) {
+            root = Root(
+                create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher)))
+            );
+            input.core.root = address(root);
+        }
 
-        root =
-            Root(create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));
+        deployCore(input.core, batcher);
 
         tokenRecoverer = TokenRecoverer(
             create3(
@@ -673,6 +675,7 @@ contract FullDeployer is CoreDeployer {
     }
 
     function removeFullDeployerAccess(FullActionBatcher batcher) public {
+        removeCoreDeployerAccess(batcher);
         batcher.revokeFull(_fullReport());
     }
 }
