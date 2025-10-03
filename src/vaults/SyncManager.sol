@@ -17,12 +17,13 @@ import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
+import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 import {ITrustedContractUpdate} from "../core/interfaces/IContractUpdate.sol";
 
-import {UpdateContractMessageLib, UpdateContractType} from "../messaging/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "../utils/UpdateContractMessageLib.sol";
 
 /// @title  Sync Manager
 /// @notice This is the main contract for synchronous ERC-4626 deposits.
@@ -129,37 +130,29 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISyncDepositManager
-    function previewMint(
-        IBaseVault vault_,
-        address,
-        /* sender */
-        uint256 shares
-    ) public view returns (uint256 assets) {
+    function previewMint(IBaseVault vault_, address, uint256 shares) public view returns (uint256 assets) {
         return _shareToAssetAmount(vault_, shares, MathLib.Rounding.Up);
     }
 
     /// @inheritdoc ISyncDepositManager
-    function previewDeposit(
-        IBaseVault vault_,
-        address,
-        /* sender */
-        uint256 assets
-    ) public view returns (uint256 shares) {
+    function previewDeposit(IBaseVault vault_, address, uint256 assets) public view returns (uint256 shares) {
         return convertToShares(vault_, assets);
     }
 
     /// @inheritdoc IDepositManager
-    function maxMint(IBaseVault vault_, address /* owner */ ) public view returns (uint256) {
+    function maxMint(IBaseVault vault_, address owner) public view returns (uint256 shares) {
         VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
         uint128 maxAssets =
             _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
-        return convertToShares(vault_, maxAssets);
+        shares = convertToShares(vault_, maxAssets);
+        if (!_canTransfer(vault_, address(0), owner, shares)) return 0;
     }
 
     /// @inheritdoc IDepositManager
-    function maxDeposit(IBaseVault vault_, address /* owner */ ) public view returns (uint256) {
+    function maxDeposit(IBaseVault vault_, address owner) public view returns (uint256 assets) {
         VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
-        return _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
+        assets = _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
+        if (!_canTransfer(vault_, address(0), owner, assets)) return 0;
     }
 
     /// @inheritdoc ISyncManager
@@ -257,5 +250,12 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
                 poolPerAsset,
                 rounding
             );
+    }
+
+    /// @dev    Checks transfer restrictions for the vault shares. Sender (from) and receiver (to) have to both pass
+    ///         the restrictions for a successful share transfer.
+    function _canTransfer(IBaseVault vault_, address from, address to, uint256 value) internal view returns (bool) {
+        IShareToken share = IShareToken(vault_.share());
+        return share.checkTransferRestriction(from, to, value);
     }
 }

@@ -15,12 +15,11 @@ import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
 import {IRequestManager} from "../../../../src/core/interfaces/IRequestManager.sol";
+import {VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 import {ITokenFactory} from "../../../../src/core/spoke/factories/interfaces/ITokenFactory.sol";
 import {IVaultFactory} from "../../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
 import {IPoolEscrowFactory} from "../../../../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {ISpokeMessageSender, ILocalCentrifugeId} from "../../../../src/core/interfaces/IGatewaySenders.sol";
-
-import {VaultUpdateKind} from "../../../../src/messaging/libraries/MessageLib.sol";
 
 import "forge-std/Test.sol";
 

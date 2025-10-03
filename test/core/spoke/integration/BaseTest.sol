@@ -14,10 +14,9 @@ import {PoolId, newPoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
+import {MAX_MESSAGE_COST} from "../../../../src/core/messaging/interfaces/IGasService.sol";
 import {IVaultFactory} from "../../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
-
-import {MAX_MESSAGE_COST} from "../../../../src/messaging/interfaces/IGasService.sol";
-import {MessageLib, VaultUpdateKind} from "../../../../src/messaging/libraries/MessageLib.sol";
+import {MessageLib, VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {ISafe} from "../../../../src/admin/interfaces/ISafe.sol";
 

@@ -4,31 +4,31 @@ pragma solidity 0.8.28;
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 import {MessageType, MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
-import {Auth} from "../misc/Auth.sol";
-import {D18} from "../misc/types/D18.sol";
-import {CastLib} from "../misc/libraries/CastLib.sol";
-import {BytesLib} from "../misc/libraries/BytesLib.sol";
-import {IRecoverable} from "../misc/interfaces/IRecoverable.sol";
+import {Auth} from "../../misc/Auth.sol";
+import {D18} from "../../misc/types/D18.sol";
+import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {BytesLib} from "../../misc/libraries/BytesLib.sol";
+import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 
-import {PoolId} from "../core/types/PoolId.sol";
-import {AssetId} from "../core/types/AssetId.sol";
-import {IAdapter} from "../core/interfaces/IAdapter.sol";
-import {IGateway} from "../core/interfaces/IGateway.sol";
-import {ShareClassId} from "../core/types/ShareClassId.sol";
-import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
-import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
-import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
-import {IMessageProperties} from "../core/interfaces/IMessageProperties.sol";
+import {IRoot} from "../../admin/interfaces/IRoot.sol";
+import {ITokenRecoverer} from "../../admin/interfaces/ITokenRecoverer.sol";
+
+import {PoolId} from "../types/PoolId.sol";
+import {AssetId} from "../types/AssetId.sol";
+import {IAdapter} from "../interfaces/IAdapter.sol";
+import {IGateway} from "../interfaces/IGateway.sol";
+import {ShareClassId} from "../types/ShareClassId.sol";
+import {IMultiAdapter} from "../interfaces/IMultiAdapter.sol";
+import {IMessageHandler} from "../interfaces/IMessageHandler.sol";
+import {IRequestManager} from "../interfaces/IRequestManager.sol";
+import {IMessageProperties} from "../interfaces/IMessageProperties.sol";
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
     IContractUpdateGatewayHandler,
     IVaultRegistryGatewayHandler
-} from "../core/interfaces/IGatewayHandlers.sol";
-
-import {IRoot} from "../admin/interfaces/IRoot.sol";
-import {ITokenRecoverer} from "../admin/interfaces/ITokenRecoverer.sol";
+} from "../interfaces/IGatewayHandlers.sol";
 
 contract MessageProcessor is Auth, IMessageProcessor {
     using CastLib for *;

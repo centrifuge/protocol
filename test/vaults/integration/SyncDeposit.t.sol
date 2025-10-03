@@ -16,10 +16,8 @@ import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpoke.sol";
+import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {ITransferHook} from "../../../src/core/spoke/interfaces/ITransferHook.sol";
-
-import {MessageLib} from "../../../src/messaging/libraries/MessageLib.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
@@ -137,6 +135,14 @@ contract SyncDepositTest is SyncDepositTestHelper {
 
         assertEq(address(syncVault), address(asyncVault));
 
+        // Will fail - user not member: can not send funds
+        vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
+        syncVault.deposit(amount, self);
+
+        assertEq(syncVault.isPermissioned(self), false);
+        centrifugeChain.updateMember(syncVault.poolId().raw(), syncVault.scId().raw(), self, type(uint64).max);
+        assertEq(syncVault.isPermissioned(self), true);
+
         // Check price and max amounts
         uint256 shares = syncVault.previewDeposit(amount);
         uint256 assetsForShares = syncVault.previewMint(shares);
@@ -148,14 +154,6 @@ contract SyncDepositTest is SyncDepositTestHelper {
             syncVault.convertToShares(MAX_UINT128),
             "syncVault.maxMint(self) != convertToShares(MAX_UINT128)"
         );
-
-        // Will fail - user not member: can not send funds
-        vm.expectRevert(ITransferHook.TransferBlocked.selector);
-        syncVault.deposit(amount, self);
-
-        assertEq(syncVault.isPermissioned(self), false);
-        centrifugeChain.updateMember(syncVault.poolId().raw(), syncVault.scId().raw(), self, type(uint64).max);
-        assertEq(syncVault.isPermissioned(self), true);
 
         // Will fail - user did not give asset allowance to syncVault
         vm.expectPartialRevert(IERC7751.WrappedError.selector);

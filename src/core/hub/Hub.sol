@@ -402,7 +402,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         (bool isPositive, uint128 diff) = holdings.update(poolId, scId, assetId);
         _updateAccountingValue(poolId, scId, assetId, isPositive, diff);
 
-        holdings.checkSnapshot(poolId, scId, assetId.centrifugeId());
+        holdings.callOnSyncSnapshot(poolId, scId, assetId.centrifugeId());
     }
 
     /// @inheritdoc IHub

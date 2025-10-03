@@ -12,12 +12,12 @@ import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet
 import {IBatchedMulticall} from "../../../../src/core/interfaces/IBatchedMulticall.sol";
 import {IContractUpdate, ITrustedContractUpdate} from "../../../../src/core/interfaces/IContractUpdate.sol";
 
-import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
-
 import {QueueManager} from "../../../../src/managers/spoke/QueueManager.sol";
 import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueManager.sol";
 
 import "forge-std/Test.sol";
+
+import {UpdateContractMessageLib} from "../../../../src/utils/UpdateContractMessageLib.sol";
 
 contract IsContract {}
 
