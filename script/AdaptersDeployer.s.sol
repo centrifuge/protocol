@@ -45,21 +45,21 @@ contract AdaptersActionBatcher is CommonActionBatcher {
             report.wormholeAdapter.rely(address(report.common.root));
             // Permanent ward for ongoing adapter maintenance
             report.wormholeAdapter.rely(address(report.common.protocolGuardian));
-            // Temporary ward for initial wire, self-denies after
+            // By design, restricted to initial wiring only
             report.wormholeAdapter.rely(address(report.common.opsGuardian));
         }
         if (address(report.axelarAdapter) != address(0)) {
             report.axelarAdapter.rely(address(report.common.root));
             // Permanent ward for ongoing adapter maintenance
             report.axelarAdapter.rely(address(report.common.protocolGuardian));
-            // Temporary ward for initial wire, self-denies after
+            // By design, restricted to initial wiring only
             report.axelarAdapter.rely(address(report.common.opsGuardian));
         }
         if (address(report.layerZeroAdapter) != address(0)) {
             report.layerZeroAdapter.rely(address(report.common.root));
             // Permanent ward for ongoing adapter maintenance
             report.layerZeroAdapter.rely(address(report.common.protocolGuardian));
-            // Temporary ward for initial wire, self-denies after
+            // By design, restricted to initial wiring only
             report.layerZeroAdapter.rely(address(report.common.opsGuardian));
             // Needed for setDelegate calls
             report.layerZeroAdapter.rely(address(report.common.adminSafe));
