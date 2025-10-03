@@ -31,7 +31,7 @@ contract MockFeeHook is IFeeHook {
         calls[poolId][scId]++;
     }
 
-    function accrued(PoolId poolId, ShareClassId scId) external view returns (uint128 poolAmount) {
+    function accrued(PoolId, ShareClassId sd) external pure returns (uint128 poolAmount) {
         return 0;
     }
 }
