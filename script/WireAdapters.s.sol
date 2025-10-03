@@ -84,7 +84,7 @@ contract WireAdapters is Script {
             console.log("Registered MultiAdapter(", localNetwork, ") for", remoteNetwork);
 
             // Wire WormholeAdapter
-            if (localWormholeAddr != address(0)) {
+            if (localWormholeAddr != address(0) && vm.parseJsonBool(remoteConfig, "$.adapters.wormhole.deploy")) {
                 IWormholeAdapter(localWormholeAddr).wire(
                     remoteCentrifugeId,
                     uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
@@ -95,7 +95,7 @@ contract WireAdapters is Script {
             }
 
             // Wire LayerZeroAdapter
-            if (localLayerZeroAddr != address(0)) {
+            if (localLayerZeroAddr != address(0) && vm.parseJsonBool(remoteConfig, "$.adapters.layerZero.deploy")) {
                 ILayerZeroAdapter(localLayerZeroAddr).wire(
                     remoteCentrifugeId,
                     uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
@@ -106,7 +106,7 @@ contract WireAdapters is Script {
             }
 
             // Wire AxelarAdapter
-            if (localAxelarAddr != address(0)) {
+            if (localAxelarAddr != address(0) && vm.parseJsonBool(remoteConfig, "$.adapters.axelar.deploy")) {
                 IAxelarAdapter(localAxelarAddr).wire(
                     remoteCentrifugeId,
                     vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
