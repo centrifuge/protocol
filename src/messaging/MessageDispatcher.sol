@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -18,7 +19,6 @@ import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
 import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "../core/interfaces/ITokenRecoverer.sol";
-import {IMessageDispatcher} from "../core/interfaces/IMessageDispatcher.sol";
 import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "../core/interfaces/IGatewaySenders.sol";
 import {
     ISpokeGatewayHandler,

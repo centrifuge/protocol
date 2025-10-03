@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IGasService} from "./interfaces/IGasService.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
-import {IGasService} from "../core/interfaces/IGasService.sol";
+import {IMessageLimits} from "../core/interfaces/IMessageLimits.sol";
 
 /// @title  GasService
 /// @notice This contract stores the gas limits (in gas units) for cross-chain message execution.
@@ -14,8 +15,6 @@ contract GasService is IGasService {
 
     /// @dev Takes into account Adapter + Gateway processing + some mismatch happened regarding the input values
     uint128 public constant BASE_COST = 50_000;
-
-    uint128 internal immutable _maxBatchGasLimit;
 
     uint128 public immutable scheduleUpgrade;
     uint128 public immutable cancelUpgrade;
@@ -45,16 +44,14 @@ contract GasService is IGasService {
     uint128 public immutable maxSharePriceAge;
     uint128 public immutable updateGatewayManager;
 
-    constructor(uint128 maxBatchGasLimit_) {
-        _maxBatchGasLimit = maxBatchGasLimit_;
-
+    constructor() {
         // NOTE: Below values should be updated using script/utils/benchmark.sh
         scheduleUpgrade = BASE_COST + 93735;
         cancelUpgrade = BASE_COST + 74142;
         recoverTokens = BASE_COST + 148855;
         registerAsset = BASE_COST + 103825;
         setPoolAdapters = BASE_COST + 481481; // using MAX_ADAPTER_COUNT
-        request = BASE_COST + 220136;
+        request = BASE_COST + 220101;
         notifyPool = BASE_COST + 1150668; // create escrow case
         notifyShareClass = BASE_COST + 1852879;
         notifyPricePoolPerShare = BASE_COST + 106940;
@@ -78,12 +75,7 @@ contract GasService is IGasService {
         updateGatewayManager = BASE_COST + 87952;
     }
 
-    /// @inheritdoc IGasService
-    function maxBatchGasLimit(uint16) public view returns (uint128) {
-        return _maxBatchGasLimit;
-    }
-
-    /// @inheritdoc IGasService
+    /// @inheritdoc IMessageLimits
     function messageGasLimit(uint16, bytes calldata message) public view returns (uint128) {
         MessageType kind = message.messageType();
 

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth, IAuth} from "../../../src/misc/Auth.sol";
-import {Recoverable} from "../../../src/misc/Recoverable.sol";
+import {IAuth} from "../../../src/misc/Auth.sol";
 import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 import {TransientArrayLib} from "../../../src/misc/libraries/TransientArrayLib.sol";
 import {TransientBytesLib} from "../../../src/misc/libraries/TransientBytesLib.sol";
@@ -10,7 +9,8 @@ import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageL
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
-import {Gateway, IRoot, IGasService, IGateway} from "../../../src/core/Gateway.sol";
+import {Gateway, IRoot, IGateway} from "../../../src/core/Gateway.sol";
+import {IMessageLimits} from "../../../src/core/interfaces/IMessageLimits.sol";
 import {IMessageProperties} from "../../../src/core/interfaces/IMessageProperties.sol";
 
 import "forge-std/Test.sol";
@@ -84,11 +84,6 @@ contract MockProcessor is IMessageProperties {
     }
 }
 
-contract MockPoolRefund is Recoverable {
-    constructor(address authorized) Auth(authorized) {}
-    receive() external payable {}
-}
-
 contract NoPayableDestination {}
 
 // -----------------------------------------
@@ -96,8 +91,8 @@ contract NoPayableDestination {}
 // -----------------------------------------
 
 contract GatewayExt is Gateway {
-    constructor(uint16 localCentrifugeId, IRoot root_, IGasService gasService_, address deployer)
-        Gateway(localCentrifugeId, root_, gasService_, deployer)
+    constructor(uint16 localCentrifugeId, IRoot root_, IMessageLimits limits_, address deployer)
+        Gateway(localCentrifugeId, root_, limits_, deployer)
     {}
 
     function batchLocatorsLength() public view returns (uint256) {
@@ -143,12 +138,12 @@ contract GatewayTest is Test {
     uint128 constant EXTRA_GAS_LIMIT = 10;
     bool constant NO_SUBSIDIZED = false;
 
-    IGasService gasService = IGasService(makeAddr("GasService"));
+    IMessageLimits messageLimits = IMessageLimits(makeAddr("MessageLimits"));
     IRoot root = IRoot(makeAddr("Root"));
     IAdapter adapter = IAdapter(makeAddr("Adapter"));
 
     MockProcessor processor = new MockProcessor();
-    GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), gasService, address(this));
+    GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), messageLimits, address(this));
 
     address immutable ANY = makeAddr("ANY");
     address immutable MANAGER = makeAddr("MANAGER");
@@ -172,16 +167,11 @@ contract GatewayTest is Test {
         );
     }
 
-    function _mockGasService() internal {
+    function _mockMessageLimits() internal {
         vm.mockCall(
-            address(gasService),
-            abi.encodeWithSelector(IGasService.messageGasLimit.selector),
+            address(messageLimits),
+            abi.encodeWithSelector(IMessageLimits.messageGasLimit.selector),
             abi.encode(MESSAGE_GAS_LIMIT)
-        );
-        vm.mockCall(
-            address(gasService),
-            abi.encodeWithSelector(IGasService.maxBatchGasLimit.selector),
-            abi.encode(MAX_BATCH_GAS_LIMIT)
         );
     }
 
@@ -194,7 +184,7 @@ contract GatewayTest is Test {
         gateway.file("processor", address(processor));
 
         _mockPause(false);
-        _mockGasService();
+        _mockMessageLimits();
     }
 }
 
@@ -216,8 +206,8 @@ contract GatewayTestFile is GatewayTest {
         gateway.file("processor", address(23));
         assertEq(address(gateway.processor()), address(23));
 
-        gateway.file("gasService", address(42));
-        assertEq(address(gateway.gasService()), address(42));
+        gateway.file("messageLimits", address(42));
+        assertEq(address(gateway.messageLimits()), address(42));
 
         gateway.file("adapter", address(88));
         assertEq(address(gateway.adapter()), address(88));
@@ -428,18 +418,6 @@ contract GatewayTestSend is GatewayTest {
     function testErrEmptyMessage() public {
         vm.expectRevert(IGateway.EmptyMessage.selector);
         gateway.send(REMOTE_CENT_ID, new bytes(0), 0, REFUND);
-    }
-
-    function testErrExceedsMaxBatching() public {
-        gateway.startBatching();
-        uint256 maxMessages = MAX_BATCH_GAS_LIMIT / MESSAGE_GAS_LIMIT;
-
-        for (uint256 i; i < maxMessages; i++) {
-            gateway.send(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes(), 0, REFUND);
-        }
-
-        vm.expectRevert(IGateway.ExceedsMaxGasLimit.selector);
-        gateway.send(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes(), 0, REFUND);
     }
 
     function testErrNotPayable() public {
@@ -876,7 +854,8 @@ contract IntegrationMock is Test {
     }
 
     function _nested() external payable {
-        gateway.withBatch(abi.encodeWithSelector(this._nested.selector), address(0));
+        assertEq(gateway.lockCallback(), address(this));
+        gateway.withBatch(abi.encodeWithSelector(this._success.selector, false, 2), address(0));
     }
 
     function _emptyError() external payable {
@@ -916,12 +895,6 @@ contract GatewayTestWithBatch is GatewayTest {
         integration = new IntegrationMock(gateway);
     }
 
-    function testErrAlreadyBatching() public {
-        vm.prank(ANY);
-        vm.expectRevert(IGateway.AlreadyBatching.selector);
-        integration.callNested(REFUND);
-    }
-
     function testErrCallFailedWithEmptyRevert() public {
         vm.prank(ANY);
         vm.expectRevert(IGateway.CallFailedWithEmptyRevert.selector);
@@ -941,6 +914,13 @@ contract GatewayTestWithBatch is GatewayTest {
 
         assertEq(integration.wasCalled(), true);
         assertEq(REFUND.balance, 1234);
+    }
+
+    function testWithCallbackNested() public {
+        vm.prank(ANY);
+        integration.callNested(REFUND);
+
+        assertEq(integration.wasCalled(), true);
     }
 }
 
