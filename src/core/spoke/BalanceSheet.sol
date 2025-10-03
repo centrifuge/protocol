@@ -4,7 +4,8 @@ pragma solidity 0.8.28;
 import {ISpoke} from "./interfaces/ISpoke.sol";
 import {IPoolEscrow} from "./interfaces/IPoolEscrow.sol";
 import {IShareToken} from "./interfaces/IShareToken.sol";
-import {IPoolEscrowProvider} from "./factories/IPoolEscrowFactory.sol";
+import {IEndorsements} from "./interfaces/IEndorsements.sol";
+import {IPoolEscrowProvider} from "./factories/interfaces/IPoolEscrowFactory.sol";
 import {IBalanceSheet, ShareQueueAmount, AssetQueueAmount} from "./interfaces/IBalanceSheet.sol";
 
 import {Auth} from "../../misc/Auth.sol";
@@ -17,10 +18,10 @@ import {IERC6909} from "../../misc/interfaces/IERC6909.sol";
 import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol";
 
+import {IRoot} from "../../admin/interfaces/IRoot.sol";
+
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
-import {IRoot} from "../../admin/interfaces/IRoot.sol";
-import {IEndorsements} from "./interfaces/IEndorsements.sol";
 import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {BatchedMulticall} from "../BatchedMulticall.sol";

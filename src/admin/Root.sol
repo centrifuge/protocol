@@ -2,9 +2,11 @@
 pragma solidity 0.8.28;
 
 import {IRoot} from "./interfaces/IRoot.sol";
-import {IEndorsements} from "../core/spoke/interfaces/IEndorsements.sol";
+
 import {Auth} from "../misc/Auth.sol";
 import {IAuth} from "../misc/interfaces/IAuth.sol";
+
+import {IEndorsements} from "../core/spoke/interfaces/IEndorsements.sol";
 
 /// @title  Root
 /// @notice Core contract that is a ward on all other deployed contracts.

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IEndorsements} from "../../core/spoke/interfaces/IEndorsements.sol";
 import {IProtocolPauser} from "../../core/interfaces/IProtocolPauser.sol";
+import {IEndorsements} from "../../core/spoke/interfaces/IEndorsements.sol";
 
 interface IRoot is IEndorsements, IProtocolPauser {
     // --- Events ---

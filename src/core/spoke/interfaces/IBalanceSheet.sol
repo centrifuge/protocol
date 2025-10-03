@@ -6,13 +6,14 @@ import {IPoolEscrow} from "./IPoolEscrow.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
 
+import {IRoot} from "../../../admin/interfaces/IRoot.sol";
+
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
-import {IRoot} from "../../../admin/interfaces/IRoot.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IPoolEscrowProvider} from "../factories/IPoolEscrowFactory.sol";
 import {IBatchedMulticall} from "../../interfaces/IBatchedMulticall.sol";
 import {ISpokeMessageSender} from "../../interfaces/IGatewaySenders.sol";
+import {IPoolEscrowProvider} from "../factories/interfaces/IPoolEscrowFactory.sol";
 
 struct ShareQueueAmount {
     // Net queued shares

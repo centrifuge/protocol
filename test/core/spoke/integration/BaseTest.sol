@@ -14,12 +14,12 @@ import {PoolId, newPoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
-import {IVaultFactory} from "../../../../src/core/spoke/factories/IVaultFactory.sol";
+import {IVaultFactory} from "../../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
 
 import {MAX_MESSAGE_COST} from "../../../../src/messaging/interfaces/IGasService.sol";
 import {MessageLib, VaultUpdateKind} from "../../../../src/messaging/libraries/MessageLib.sol";
 
-import {ISafe} from "../../../../src/admin/interfaces/IGuardian.sol";
+import {ISafe} from "../../../../src/admin/interfaces/ISafe.sol";
 
 import {AsyncVault} from "../../../../src/vaults/AsyncVault.sol";
 import {SyncDepositVault} from "../../../../src/vaults/SyncDepositVault.sol";
@@ -81,8 +81,12 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
 
     function setUp() public virtual {
         // deploy core contracts
-        CommonInput memory input =
-            CommonInput({centrifugeId: THIS_CHAIN_ID, adminSafe: ISafe(ADMIN), version: bytes32(0)});
+        CommonInput memory input = CommonInput({
+            centrifugeId: THIS_CHAIN_ID,
+            adminSafe: ISafe(ADMIN),
+            opsSafe: ISafe(ADMIN),
+            version: bytes32(0)
+        });
 
         setDeployer(address(this));
         labelAddresses("");

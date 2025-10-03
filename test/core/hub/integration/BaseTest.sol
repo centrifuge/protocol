@@ -77,7 +77,8 @@ contract BaseTest is ExtendedHubDeployer, Test {
 
     function setUp() public virtual {
         // Deployment
-        CommonInput memory input = CommonInput({centrifugeId: CHAIN_CP, adminSafe: adminSafe, version: bytes32(0)});
+        CommonInput memory input =
+            CommonInput({centrifugeId: CHAIN_CP, adminSafe: adminSafe, opsSafe: adminSafe, version: bytes32(0)});
 
         ExtendedHubActionBatcher batcher = new ExtendedHubActionBatcher();
         labelAddresses("");

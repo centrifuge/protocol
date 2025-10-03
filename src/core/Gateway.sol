@@ -2,11 +2,11 @@
 pragma solidity 0.8.28;
 
 import {PoolId} from "./types/PoolId.sol";
-import {IProtocolPauser} from "./interfaces/IProtocolPauser.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
 import {IMessageLimits} from "./interfaces/IMessageLimits.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
+import {IProtocolPauser} from "./interfaces/IProtocolPauser.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 
 import {Auth} from "../misc/Auth.sol";

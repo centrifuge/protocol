@@ -1,42 +1,37 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ICreatePool} from "./interfaces/ICreatePool.sol";
-import {IGuardian, ISafe} from "./interfaces/IGuardian.sol";
+import {IRoot} from "./interfaces/IRoot.sol";
+import {ISafe} from "./interfaces/ISafe.sol";
+import {IBaseGuardian} from "./interfaces/IBaseGuardian.sol";
+import {IAdapterWiring} from "./interfaces/IAdapterWiring.sol";
+import {IProtocolGuardian} from "./interfaces/IProtocolGuardian.sol";
 
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
-import {AssetId} from "../core/types/AssetId.sol";
-import {IRoot} from "./interfaces/IRoot.sol";
 import {IAdapter} from "../core/interfaces/IAdapter.sol";
 import {IGateway} from "../core/interfaces/IGateway.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
 import {IRootMessageSender} from "../core/interfaces/IGatewaySenders.sol";
 
-contract Guardian is IGuardian {
+contract ProtocolGuardian is IProtocolGuardian {
     using CastLib for address;
 
-    IRoot public immutable root;
+    PoolId public constant GLOBAL_POOL = PoolId.wrap(0);
 
+    IRoot public immutable root;
     ISafe public safe;
     IGateway public gateway;
-    ICreatePool public hub;
-    IRootMessageSender public sender;
     IMultiAdapter public multiAdapter;
+    IRootMessageSender public sender;
 
-    constructor(
-        ISafe safe_,
-        IRoot root_,
-        IGateway gateway_,
-        IMultiAdapter multiAdapter_,
-        IRootMessageSender messageDispatcher_
-    ) {
+    constructor(ISafe safe_, IRoot root_, IGateway gateway_, IMultiAdapter multiAdapter_, IRootMessageSender sender_) {
         safe = safe_;
         root = root_;
         gateway = gateway_;
         multiAdapter = multiAdapter_;
-        sender = messageDispatcher_;
+        sender = sender_;
     }
 
     modifier onlySafe() {
@@ -53,58 +48,59 @@ contract Guardian is IGuardian {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IGuardian
+    /// @inheritdoc IBaseGuardian
     function file(bytes32 what, address data) external onlySafe {
         if (what == "safe") safe = ISafe(data);
-        else if (what == "sender") sender = IRootMessageSender(data);
-        else if (what == "hub") hub = ICreatePool(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
+        else if (what == "sender") sender = IRootMessageSender(data);
         else revert FileUnrecognizedParam();
-
         emit File(what, data);
     }
 
     //----------------------------------------------------------------------------------------------
-    // Admin actions
+    // Emergency Functions
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IGuardian
-    function createPool(PoolId poolId, address admin, AssetId currency) external onlySafe {
-        return hub.createPool(poolId, admin, currency);
-    }
-
-    /// @inheritdoc IGuardian
+    /// @inheritdoc IProtocolGuardian
     function pause() external onlySafeOrOwner {
         root.pause();
     }
 
-    /// @inheritdoc IGuardian
+    /// @inheritdoc IProtocolGuardian
     function unpause() external onlySafe {
         root.unpause();
     }
 
-    /// @inheritdoc IGuardian
+    //----------------------------------------------------------------------------------------------
+    // Permission Management
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IProtocolGuardian
     function scheduleRely(address target) external onlySafe {
         root.scheduleRely(target);
     }
 
-    /// @inheritdoc IGuardian
+    /// @inheritdoc IProtocolGuardian
     function cancelRely(address target) external onlySafe {
         root.cancelRely(target);
     }
 
-    /// @inheritdoc IGuardian
+    //----------------------------------------------------------------------------------------------
+    // Cross-Chain Operations
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IProtocolGuardian
     function scheduleUpgrade(uint16 centrifugeId, address target, address refund) external payable onlySafe {
         sender.sendScheduleUpgrade{value: msg.value}(centrifugeId, target.toBytes32(), refund);
     }
 
-    /// @inheritdoc IGuardian
+    /// @inheritdoc IProtocolGuardian
     function cancelUpgrade(uint16 centrifugeId, address target, address refund) external payable onlySafe {
         sender.sendCancelUpgrade{value: msg.value}(centrifugeId, target.toBytes32(), refund);
     }
 
-    /// @inheritdoc IGuardian
+    /// @inheritdoc IProtocolGuardian
     function recoverTokens(
         uint16 centrifugeId,
         address target,
@@ -119,17 +115,26 @@ contract Guardian is IGuardian {
         );
     }
 
-    /// @inheritdoc IGuardian
+    //----------------------------------------------------------------------------------------------
+    // Adapter Management
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IProtocolGuardian
     function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
         external
         onlySafe
     {
-        multiAdapter.setAdapters(centrifugeId, PoolId.wrap(0), adapters, threshold, recoveryIndex);
+        multiAdapter.setAdapters(centrifugeId, GLOBAL_POOL, adapters, threshold, recoveryIndex);
     }
 
-    /// @inheritdoc IGuardian
-    function updateGatewayManager(address who, bool canManage) external onlySafe {
-        gateway.updateManager(PoolId.wrap(0), who, canManage);
+    /// @inheritdoc IProtocolGuardian
+    function blockOutgoing(uint16 centrifugeId, bool isBlocked) external onlySafe {
+        gateway.blockOutgoing(centrifugeId, GLOBAL_POOL, isBlocked);
+    }
+
+    /// @inheritdoc IBaseGuardian
+    function wire(address adapter, uint16 centrifugeId, bytes memory data) external onlySafe {
+        IAdapterWiring(adapter).wire(centrifugeId, data);
     }
 
     //----------------------------------------------------------------------------------------------

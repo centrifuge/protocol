@@ -53,7 +53,7 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
         report.hubHandler.rely(address(report.common.messageDispatcher));
 
         // Rely others on hub
-        report.hub.rely(address(report.common.guardian));
+        report.hub.rely(address(report.common.opsGuardian));
 
         // Rely root
         report.hubRegistry.rely(address(report.common.root));
@@ -69,7 +69,7 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
 
         report.hub.file("sender", address(report.common.messageDispatcher));
 
-        report.common.guardian.file("hub", address(report.hub));
+        report.common.opsGuardian.file("hub", address(report.hub));
 
         report.hubHandler.file("sender", address(report.common.messageDispatcher));
 

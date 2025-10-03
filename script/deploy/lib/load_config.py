@@ -23,7 +23,8 @@ class EnvironmentLoader:
         self._rpc_url = None
         self._private_key = None
         self._etherscan_api_key = None
-        self._admin_address = None
+        self._protocol_admin_address = None
+        self._ops_admin_address = None
         print_subsection("Loading network configuration")
         self._load_config()
         self.args = args
@@ -52,7 +53,8 @@ class EnvironmentLoader:
 
         # Update or add the relevant keys
         env_vars["ETHERSCAN_API_KEY"] = self.etherscan_api_key
-        env_vars["ADMIN"] = self.admin_address
+        env_vars["PROTOCOL_ADMIN"] = self.protocol_admin_address
+        env_vars["OPS_ADMIN"] = self.ops_admin_address
         env_vars["PRIVATE_KEY"] = self.private_key
         env_vars["RPC_URL"] = self.rpc_url
 
@@ -124,10 +126,16 @@ class EnvironmentLoader:
         return self._private_key
     
     @property
-    def admin_address(self) -> str:
-        if self._admin_address is None:
-            self._admin_address = self._get_admin_address()
-        return self._admin_address
+    def protocol_admin_address(self) -> str:
+        if self._protocol_admin_address is None:
+            self._protocol_admin_address = self._get_protocol_admin_address()
+        return self._protocol_admin_address
+
+    @property
+    def ops_admin_address(self) -> str:
+        if self._ops_admin_address is None:
+            self._ops_admin_address = self._get_ops_admin_address()
+        return self._ops_admin_address
 
     @property
     def chain_id(self) -> str:
@@ -137,20 +145,41 @@ class EnvironmentLoader:
     def is_testnet(self) -> bool:
         return self.config["network"]["environment"] == "testnet"
 
-    def _get_admin_address(self) -> str:
-        """Get admin address based on network type"""
-        print_step("Loading Admin Address")
+    def _get_protocol_admin_address(self) -> str:
+        """Get protocol admin address based on network type"""
+        print_step("Loading Protocol Admin Address")
 
-        if admin_address := self._check_env_file("ADMIN"):
-            return admin_address
-        
+        if protocol_admin_address := self._check_env_file("PROTOCOL_ADMIN"):
+            return protocol_admin_address
+
         if self.is_testnet:
-            admin_address = "0x423420Ae467df6e90291fd0252c0A8a637C1e03f"
+            protocol_admin_address = "0x423420Ae467df6e90291fd0252c0A8a637C1e03f"
         else:
-            admin_address = self.config["network"]["safeAdmin"]
+            if "protocolAdmin" in self.config["network"]:
+                protocol_admin_address = self.config["network"]["protocolAdmin"]
+            else:
+                protocol_admin_address = self.config["network"]["safeAdmin"]
 
-        print_success(f"Admin address loaded: {format_account(admin_address)}")
-        return admin_address
+        print_success(f"Protocol Admin address loaded: {format_account(protocol_admin_address)}")
+        return protocol_admin_address
+
+    def _get_ops_admin_address(self) -> str:
+        """Get ops admin address based on network type"""
+        print_step("Loading Ops Admin Address")
+
+        if ops_admin_address := self._check_env_file("OPS_ADMIN"):
+            return ops_admin_address
+
+        if self.is_testnet:
+            ops_admin_address = "0x423420Ae467df6e90291fd0252c0A8a637C1e03f"
+        else:
+            if "opsAdmin" in self.config["network"]:
+                ops_admin_address = self.config["network"]["opsAdmin"]
+            else:
+                ops_admin_address = self.config["network"]["safeAdmin"]
+
+        print_success(f"Ops Admin address loaded: {format_account(ops_admin_address)}")
+        return ops_admin_address
 
     def _setup_rpc(self) -> str:
         """Setup and test RPC URL"""

@@ -3,9 +3,10 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
-import {Root, IRoot} from "../../../src/admin/Root.sol";
-import {IEndorsements} from "../../../src/core/spoke/interfaces/IEndorsements.sol";
 import {IProtocolPauser} from "../../../src/core/interfaces/IProtocolPauser.sol";
+import {IEndorsements} from "../../../src/core/spoke/interfaces/IEndorsements.sol";
+
+import {Root, IRoot} from "../../../src/admin/Root.sol";
 
 import "forge-std/Test.sol";
 

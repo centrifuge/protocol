@@ -8,12 +8,13 @@ import {TransientBytesLib} from "../../../src/misc/libraries/TransientBytesLib.s
 import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
-import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
-import {IProtocolPauser} from "../../../src/core/interfaces/IProtocolPauser.sol";
 import {Gateway, IGateway} from "../../../src/core/Gateway.sol";
+import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
 import {IMessageLimits} from "../../../src/core/interfaces/IMessageLimits.sol";
+import {IProtocolPauser} from "../../../src/core/interfaces/IProtocolPauser.sol";
 import {IMessageProperties} from "../../../src/core/interfaces/IMessageProperties.sol";
+
+import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 
 import "forge-std/Test.sol";
 

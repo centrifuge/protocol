@@ -6,7 +6,7 @@ import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {PoolEscrow} from "../../../../src/core/spoke/PoolEscrow.sol";
 import {PoolEscrowFactory} from "../../../../src/core/spoke/factories/PoolEscrowFactory.sol";
-import {IPoolEscrowFactory} from "../../../../src/core/spoke/factories/IPoolEscrowFactory.sol";
+import {IPoolEscrowFactory} from "../../../../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
 import "forge-std/Test.sol";
 
