@@ -7,8 +7,6 @@ import {IOpsGuardian} from "./interfaces/IOpsGuardian.sol";
 import {IBaseGuardian} from "./interfaces/IBaseGuardian.sol";
 import {IAdapterWiring} from "./interfaces/IAdapterWiring.sol";
 
-import {IAuth} from "../misc/interfaces/IAuth.sol";
-
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
 import {IAdapter} from "../core/interfaces/IAdapter.sol";
@@ -56,14 +54,12 @@ contract OpsGuardian is IOpsGuardian {
     {
         require(multiAdapter.quorum(centrifugeId, GLOBAL_POOL) == 0, AdaptersAlreadyInitialized());
         multiAdapter.setAdapters(centrifugeId, GLOBAL_POOL, adapters, threshold, recoveryIndex);
-        IAuth(address(multiAdapter)).deny(address(this));
     }
 
     /// @inheritdoc IBaseGuardian
     function wire(address adapter, uint16 centrifugeId, bytes memory data) external onlySafe {
         require(!IAdapterWiring(adapter).isWired(centrifugeId), AdapterAlreadyWired());
         IAdapterWiring(adapter).wire(centrifugeId, data);
-        IAuth(adapter).deny(address(this));
     }
 
     //----------------------------------------------------------------------------------------------

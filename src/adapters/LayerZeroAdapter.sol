@@ -50,7 +50,7 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Administration
+    // Network wiring
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapterWiring

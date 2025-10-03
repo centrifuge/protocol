@@ -65,16 +65,12 @@ contract OpsGuardianTestInitAdapters is OpsGuardianTest {
             abi.encode()
         );
 
-        vm.mockCall(address(multiAdapter), abi.encodeWithSignature("deny(address)", address(opsGuardian)), abi.encode());
-
         vm.expectCall(
             address(multiAdapter),
             abi.encodeWithSelector(
                 IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold, recoveryIndex
             )
         );
-
-        vm.expectCall(address(multiAdapter), abi.encodeWithSignature("deny(address)", address(opsGuardian)));
 
         vm.prank(address(SAFE));
         opsGuardian.initAdapters(CENTRIFUGE_ID, adapters, threshold, recoveryIndex);
@@ -102,46 +98,6 @@ contract OpsGuardianTestInitAdapters is OpsGuardianTest {
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
         opsGuardian.initAdapters(CENTRIFUGE_ID, adapters, 1, 2);
-    }
-
-    function testInitAdaptersSelfDeniesAfterSetup() public {
-        IAdapter[] memory adapters = new IAdapter[](1);
-        adapters[0] = ADAPTER;
-        uint8 threshold = 1;
-        uint8 recoveryIndex = 2;
-
-        // Mock quorum returning 0 (not initialized)
-        vm.mockCall(
-            address(multiAdapter),
-            abi.encodeWithSelector(IMultiAdapter.quorum.selector, CENTRIFUGE_ID, GLOBAL_POOL),
-            abi.encode(uint8(0))
-        );
-
-        // Mock setAdapters call
-        vm.mockCall(
-            address(multiAdapter),
-            abi.encodeWithSelector(
-                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold, recoveryIndex
-            ),
-            abi.encode()
-        );
-
-        // Mock deny call
-        vm.mockCall(address(multiAdapter), abi.encodeWithSignature("deny(address)", address(opsGuardian)), abi.encode());
-
-        // Expect setAdapters to be called FIRST
-        vm.expectCall(
-            address(multiAdapter),
-            abi.encodeWithSelector(
-                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold, recoveryIndex
-            )
-        );
-
-        // Expect deny to be called SECOND (self-revoke)
-        vm.expectCall(address(multiAdapter), abi.encodeWithSignature("deny(address)", address(opsGuardian)));
-
-        vm.prank(address(SAFE));
-        opsGuardian.initAdapters(CENTRIFUGE_ID, adapters, threshold, recoveryIndex);
     }
 }
 
@@ -235,11 +191,9 @@ contract OpsGuardianTestWire is OpsGuardianTest {
         vm.mockCall(
             address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data), abi.encode()
         );
-        vm.mockCall(address(ADAPTER), abi.encodeWithSignature("deny(address)", address(opsGuardian)), abi.encode());
 
         vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.isWired.selector, CENTRIFUGE_ID));
         vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data));
-        vm.expectCall(address(ADAPTER), abi.encodeWithSignature("deny(address)", address(opsGuardian)));
 
         vm.prank(address(SAFE));
         opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);

@@ -61,6 +61,8 @@ contract AdaptersActionBatcher is CommonActionBatcher {
             report.layerZeroAdapter.rely(address(report.common.protocolGuardian));
             // Temporary ward for initial wire, self-denies after
             report.layerZeroAdapter.rely(address(report.common.opsGuardian));
+            // Needed for setDelegate calls
+            report.layerZeroAdapter.rely(address(report.common.adminSafe));
         }
     }
 

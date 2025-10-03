@@ -156,7 +156,6 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         vm.assume(nonWard != address(protocolGuardian));
 
         assertEq(poolEscrowFactory.wards(address(root)), 1);
-        assertEq(poolEscrowFactory.wards(address(protocolGuardian)), 1);
         assertEq(poolEscrowFactory.wards(nonWard), 0);
 
         // dependencies set correctly

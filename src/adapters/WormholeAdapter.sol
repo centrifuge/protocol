@@ -42,7 +42,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Administration
+    // Network wiring
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapterWiring

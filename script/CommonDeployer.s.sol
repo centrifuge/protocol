@@ -88,7 +88,6 @@ contract CommonActionBatcher {
         report.tokenRecoverer.rely(address(report.messageDispatcher));
         report.tokenRecoverer.rely(address(report.messageProcessor));
         report.poolEscrowFactory.rely(address(report.root));
-        report.poolEscrowFactory.rely(address(report.protocolGuardian));
 
         report.gateway.file("processor", address(report.messageProcessor));
         report.gateway.file("adapter", address(report.multiAdapter));

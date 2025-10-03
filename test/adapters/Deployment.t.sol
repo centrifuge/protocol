@@ -125,11 +125,12 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(opsGuardian));
         vm.assume(nonWard != address(protocolGuardian));
+        vm.assume(nonWard != address(adminSafe));
 
         assertEq(layerZeroAdapter.wards(address(root)), 1);
         assertEq(layerZeroAdapter.wards(address(opsGuardian)), 1);
         assertEq(layerZeroAdapter.wards(address(protocolGuardian)), 1);
-        assertEq(layerZeroAdapter.wards(address(adminSafe)), 0);
+        assertEq(layerZeroAdapter.wards(address(adminSafe)), 1);
         assertEq(layerZeroAdapter.wards(nonWard), 0);
 
         // dependencies set correctly
