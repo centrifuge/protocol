@@ -11,7 +11,6 @@ import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
 import {Gateway, IRoot, IGateway} from "../../../src/core/Gateway.sol";
 import {IMessageLimits} from "../../../src/core/interfaces/IMessageLimits.sol";
-import {Gateway, IRoot, IGateway} from "../../../src/core/Gateway.sol";
 import {IMessageProperties} from "../../../src/core/interfaces/IMessageProperties.sol";
 
 import "forge-std/Test.sol";

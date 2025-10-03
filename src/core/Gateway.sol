@@ -5,9 +5,9 @@ import {PoolId} from "./types/PoolId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
+import {IMessageLimits} from "./interfaces/IMessageLimits.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
-import {IMessageLimits} from "./interfaces/IMessageLimits.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
