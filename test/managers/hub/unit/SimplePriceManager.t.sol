@@ -95,12 +95,12 @@ contract SimplePriceManagerTest is Test {
         );
         vm.mockCall(
             shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.issuance.selector, SC_1, CENTRIFUGE_ID_1),
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
             abi.encode(100)
         );
         vm.mockCall(
             shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.issuance.selector, SC_1, CENTRIFUGE_ID_2),
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_2),
             abi.encode(200)
         );
         vm.mockCall(gateway, abi.encodeWithSelector(IGateway.lockCallback.selector), abi.encode(address(this)));
@@ -335,7 +335,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
 
         vm.mockCall(
             shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.issuance.selector, SC_1, CENTRIFUGE_ID_1),
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
             abi.encode(150)
         );
 
@@ -361,7 +361,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
     function testOnUpdateZeroIssuance() public {
         vm.mockCall(
             shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.issuance.selector, SC_1, CENTRIFUGE_ID_1),
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
             abi.encode(0)
         );
 

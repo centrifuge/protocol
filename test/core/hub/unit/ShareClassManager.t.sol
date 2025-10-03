@@ -129,7 +129,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
     }
 
     function testDefaultGetShareClassNavPerShare() public view {
-        (uint128 totalIssuance, D18 pricePoolPerShare) = shareClass.metrics(scId);
+        (uint128 totalIssuance, D18 pricePoolPerShare) = shareClass.metrics(poolId, scId);
         assertEq(totalIssuance, 0);
         assertEq(pricePoolPerShare.raw(), 0);
     }
@@ -140,7 +140,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
     }
 
     function testDefaultMetadata() public view {
-        (string memory name, string memory symbol, bytes32 salt) = shareClass.metadata(scId);
+        (string memory name, string memory symbol, bytes32 salt) = shareClass.metadata(poolId, scId);
         assertEq(name, SC_NAME);
         assertEq(symbol, SC_SYMBOL);
         assertEq(salt, SC_SALT);
@@ -154,7 +154,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         emit IShareClassManager.UpdateMetadata(poolId, scId, name, symbol);
         shareClass.updateMetadata(poolId, scId, name, symbol);
 
-        (string memory name_, string memory symbol_,) = shareClass.metadata(scId);
+        (string memory name_, string memory symbol_,) = shareClass.metadata(poolId, scId);
         assertEq(name, name_, "Metadata name mismatch");
         assertEq(symbol, symbol_, "Metadata symbol mismatch");
     }
@@ -196,7 +196,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         emit IShareClassManager.RemoteIssueShares(centrifugeId, poolId, scId, amount);
         shareClass.updateShares(centrifugeId, poolId, scId, amount, true);
 
-        (uint128 totalIssuance_, D18 pricePoolPerShareMetric) = shareClass.metrics(scId);
+        (uint128 totalIssuance_, D18 pricePoolPerShareMetric) = shareClass.metrics(poolId, scId);
         assertEq(totalIssuance_, amount);
         assertEq(pricePoolPerShareMetric.raw(), 0, "pricePoolPerShare metric should not be updated");
     }
@@ -208,7 +208,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         emit IShareClassManager.RemoteRevokeShares(centrifugeId, poolId, scId, amount);
         shareClass.updateShares(centrifugeId, poolId, scId, amount, false);
 
-        (uint128 totalIssuance_, D18 pricePoolPerShareMetric) = shareClass.metrics(scId);
+        (uint128 totalIssuance_, D18 pricePoolPerShareMetric) = shareClass.metrics(poolId, scId);
         assertEq(totalIssuance_, 0, "TotalIssuance should be reset");
         assertEq(pricePoolPerShareMetric.raw(), 0, "pricePoolPerShare metric should not be updated");
     }

@@ -108,7 +108,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
-        (string memory name, string memory symbol, bytes32 salt) = shareClassManager.metadata(scId);
+        (string memory name, string memory symbol, bytes32 salt) = shareClassManager.metadata(poolId, scId);
         uint8 decimals = hubRegistry.decimals(poolId);
 
         emit NotifyShareClass(centrifugeId, poolId, scId);
@@ -124,7 +124,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     {
         _isManager(poolId);
 
-        (string memory name, string memory symbol,) = shareClassManager.metadata(scId);
+        (string memory name, string memory symbol,) = shareClassManager.metadata(poolId, scId);
 
         emit NotifyShareMetadata(centrifugeId, poolId, scId, name, symbol);
         sender.sendNotifyShareMetadata{value: _payment()}(centrifugeId, poolId, scId, name, symbol, refund);
@@ -145,7 +145,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) public payable {
         _isManager(poolId);
 
-        (, D18 poolPerShare) = shareClassManager.metrics(scId);
+        (, D18 poolPerShare) = shareClassManager.metrics(poolId, scId);
 
         emit NotifySharePrice(centrifugeId, poolId, scId, poolPerShare);
         sender.sendNotifyPricePoolPerShare{value: _payment()}(centrifugeId, poolId, scId, poolPerShare, refund);

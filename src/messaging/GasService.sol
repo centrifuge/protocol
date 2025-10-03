@@ -54,14 +54,14 @@ contract GasService is IGasService {
         recoverTokens = BASE_COST + 148855;
         registerAsset = BASE_COST + 103825;
         setPoolAdapters = BASE_COST + 481481; // using MAX_ADAPTER_COUNT
-        request = BASE_COST + 219471;
+        request = BASE_COST + 220136;
         notifyPool = BASE_COST + 1150668; // create escrow case
         notifyShareClass = BASE_COST + 1852879;
         notifyPricePoolPerShare = BASE_COST + 106940;
         notifyPricePoolPerAsset = BASE_COST + 110946;
         notifyShareMetadata = BASE_COST + 121326;
         updateShareHook = BASE_COST + 96255;
-        initiateTransferShares = BASE_COST + 283170;
+        initiateTransferShares = BASE_COST + 283979;
         executeTransferShares = BASE_COST + 177386;
         updateRestriction = BASE_COST + 114365;
         updateContract = BASE_COST + 144484;
@@ -71,8 +71,8 @@ contract GasService is IGasService {
         updateVaultUnlink = BASE_COST + 133872;
         setRequestManager = BASE_COST + 100432;
         updateBalanceSheetManager = BASE_COST + 103996;
-        updateHoldingAmount = BASE_COST + 304228;
-        updateShares = BASE_COST + 183926;
+        updateHoldingAmount = BASE_COST + 304247;
+        updateShares = BASE_COST + 184290;
         maxAssetPriceAge = BASE_COST + 110037;
         maxSharePriceAge = BASE_COST + 106923;
         updateGatewayManager = BASE_COST + 87952;
