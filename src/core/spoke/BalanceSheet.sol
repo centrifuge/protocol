@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {ISpoke} from "./interfaces/ISpoke.sol";
 import {IPoolEscrow} from "./interfaces/IPoolEscrow.sol";
 import {IShareToken} from "./interfaces/IShareToken.sol";
-import {IPoolEscrowProvider} from "./factories/IPoolEscrowFactory.sol";
+import {IPoolEscrowProvider} from "./factories/interfaces/IPoolEscrowFactory.sol";
 import {IBalanceSheet, ShareQueueAmount, AssetQueueAmount} from "./interfaces/IBalanceSheet.sol";
 
 import {Auth} from "../../misc/Auth.sol";
