@@ -75,7 +75,6 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         assertEq(address(messageProcessor.tokenRecoverer()), address(tokenRecoverer));
         assertEq(address(messageProcessor.multiAdapter()), address(multiAdapter));
         assertEq(address(messageProcessor.gateway()), address(gateway));
-        assertEq(address(messageProcessor.gasService()), address(gasService));
     }
 
     function testMessageDispatcher(address nonWard) public view {
@@ -117,6 +116,7 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         assertEq(address(gateway.root()), address(root));
         assertEq(address(gateway.processor()), address(messageProcessor));
         assertEq(address(gateway.adapter()), address(multiAdapter));
+        assertEq(address(gateway.messageLimits()), address(gasService));
         assertEq(gateway.localCentrifugeId(), CENTRIFUGE_ID);
     }
 

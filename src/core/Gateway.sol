@@ -17,7 +17,7 @@ import {TransientArrayLib} from "../misc/libraries/TransientArrayLib.sol";
 import {TransientBytesLib} from "../misc/libraries/TransientBytesLib.sol";
 import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 
-interface IGatewayProcessor is IMessageHandler, IMessageProperties, IMessageLimits {}
+interface IGatewayProcessor is IMessageHandler, IMessageProperties {}
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages through an adapter
@@ -40,6 +40,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     IRoot public immutable root;
     IAdapter public adapter;
     IGatewayProcessor public processor;
+    IMessageLimits public messageLimits;
 
     // Management
     mapping(PoolId => mapping(address => bool)) public manager;
@@ -54,9 +55,12 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Inbound
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
 
-    constructor(uint16 localCentrifugeId_, IRoot root_, address deployer) Auth(deployer) {
+    constructor(uint16 localCentrifugeId_, IRoot root_, IMessageLimits messageLimits_, address deployer)
+        Auth(deployer)
+    {
         localCentrifugeId = localCentrifugeId_;
         root = root_;
+        messageLimits = messageLimits_;
     }
 
     modifier pauseable() {
@@ -75,7 +79,8 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IGateway
     function file(bytes32 what, address instance) external auth {
-        if (what == "processor") processor = IGatewayProcessor(instance);
+        if (what == "messageLimits") messageLimits = IMessageLimits(instance);
+        else if (what == "processor") processor = IGatewayProcessor(instance);
         else if (what == "adapter") adapter = IAdapter(instance);
         else revert FileUnrecognizedParam();
 
@@ -140,7 +145,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         PoolId poolId = processor.messagePoolId(message);
         emit PrepareMessage(centrifugeId, poolId, message);
 
-        uint128 gasLimit = processor.messageGasLimit(centrifugeId, message) + extraGasLimit;
+        uint128 gasLimit = messageLimits.messageGasLimit(centrifugeId, message) + extraGasLimit;
         if (isBatching) {
             require(msg.value == 0, NotPayable());
             bytes32 batchSlot = _outboundBatchSlot(centrifugeId, poolId);

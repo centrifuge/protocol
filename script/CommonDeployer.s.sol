@@ -183,9 +183,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         messageProcessor = MessageProcessor(
             create3(
                 generateSalt("messageProcessor"),
-                abi.encodePacked(
-                    type(MessageProcessor).creationCode, abi.encode(root, tokenRecoverer, gasService, batcher)
-                )
+                abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, tokenRecoverer, batcher))
             )
         );
 
@@ -193,7 +191,9 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             payable(
                 create3(
                     generateSalt("gateway"),
-                    abi.encodePacked(type(Gateway).creationCode, abi.encode(input.centrifugeId, root, batcher))
+                    abi.encodePacked(
+                        type(Gateway).creationCode, abi.encode(input.centrifugeId, root, gasService, batcher)
+                    )
                 )
             )
         );
