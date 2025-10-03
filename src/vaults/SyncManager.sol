@@ -131,13 +131,11 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
 
     /// @inheritdoc ISyncDepositManager
     function previewMint(IBaseVault vault_, address sender, uint256 shares) public view returns (uint256 assets) {
-        if (!_canTransfer(vault_, address(0), sender, shares)) return 0;
         return _shareToAssetAmount(vault_, shares, MathLib.Rounding.Up);
     }
 
     /// @inheritdoc ISyncDepositManager
     function previewDeposit(IBaseVault vault_, address sender, uint256 assets) public view returns (uint256 shares) {
-        if (!_canTransfer(vault_, address(0), sender, convertToShares(vault_, assets))) return 0;
         return convertToShares(vault_, assets);
     }
 
