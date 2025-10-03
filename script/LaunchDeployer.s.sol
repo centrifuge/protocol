@@ -15,7 +15,7 @@ import {
     WormholeInput,
     AxelarInput,
     LayerZeroInput
-} from "../../script/NewFullDeployer.s.sol";
+} from "../../script/FullDeployer.s.sol";
 
 contract LaunchDeployer is FullDeployer {
     using CastLib for *;

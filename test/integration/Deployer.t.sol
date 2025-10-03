@@ -11,7 +11,7 @@ import {
     WormholeInput,
     AxelarInput,
     LayerZeroInput
-} from "../../script/NewFullDeployer.s.sol";
+} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
