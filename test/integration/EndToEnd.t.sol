@@ -65,7 +65,7 @@ import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} 
 import "forge-std/Test.sol";
 
 import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
-import {UpdateContractMessageLib} from "../../src/utils/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../../src/libraries/UpdateContractMessageLib.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///

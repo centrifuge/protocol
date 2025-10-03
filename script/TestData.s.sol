@@ -38,7 +38,7 @@ import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultF
 
 import "forge-std/Script.sol";
 
-import {UpdateContractMessageLib} from "../src/utils/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../src/libraries/UpdateContractMessageLib.sol";
 
 // Script to deploy Hub and Vaults with a Localhost Adapter.
 contract TestData is LaunchDeployer {

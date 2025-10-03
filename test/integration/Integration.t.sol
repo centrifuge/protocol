@@ -16,7 +16,7 @@ import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} 
 
 import "forge-std/Test.sol";
 
-import {UpdateContractMessageLib} from "../../src/utils/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../../src/libraries/UpdateContractMessageLib.sol";
 
 /// @notice The base contract for integrators that want to tests their contracts.
 /// It assumes a full deployment in one chain.
