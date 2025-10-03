@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import {BaseSetup} from "@chimera/BaseSetup.sol";
 import {vm} from "@chimera/Hevm.sol";
 import {EnumerableSet} from "@recon/EnumerableSet.sol";
-import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 
 /// @dev Source of truth for the vaults being used in the test
 /// @notice No vaults should be used in the suite without being added here first
@@ -25,18 +24,13 @@ abstract contract ReconVaultManager {
     error VaultNotAdded();
 
     /// @notice Returns the current active vault
-    function _getVault() internal view returns (IBaseVault) {
-        return IBaseVault(__vault);
+    function _getVault() internal view returns (address) {
+        return __vault;
     }
 
     /// @notice Returns all vaults being used
-    function _getVaults() internal view returns (IBaseVault[] memory) {
-        address[] memory vaultAddresses = _vaults.values();
-        IBaseVault[] memory vaults = new IBaseVault[](vaultAddresses.length);
-        for (uint256 i = 0; i < vaultAddresses.length; i++) {
-            vaults[i] = IBaseVault(vaultAddresses[i]);
-        }
-        return vaults;
+    function _getVaults() internal view returns (address[] memory) {
+        return _vaults.values();
     }
 
     /// @notice Adds a vault to the list of vaults and sets it as the current vault
@@ -63,8 +57,7 @@ abstract contract ReconVaultManager {
     /// @notice Switches the current vault based on the entropy
     /// @param entropy The entropy to choose a random vault in the array for switching
     function _switchVault(uint256 entropy) internal {
-        address[] memory vaults = _vaults.values();
-        address vault = vaults[entropy % vaults.length];
+        address vault = _vaults.at(entropy % _vaults.length());
         __vault = vault;
     }
 }
