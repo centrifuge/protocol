@@ -64,7 +64,6 @@ contract SpokeDeploymentTest is SpokeDeployer, CommonDeploymentInputTest {
         assertEq(balanceSheet.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(balanceSheet.root()), address(root));
         assertEq(address(balanceSheet.spoke()), address(spoke));
         assertEq(address(balanceSheet.sender()), address(messageDispatcher));
         assertEq(address(balanceSheet.poolEscrowProvider()), address(poolEscrowFactory));

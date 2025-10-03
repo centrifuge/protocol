@@ -10,7 +10,6 @@ import {D18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 
-import {Root} from "../../src/core/Root.sol";
 import {Hub} from "../../src/core/hub/Hub.sol";
 import {Gateway} from "../../src/core/Gateway.sol";
 import {Spoke} from "../../src/core/spoke/Spoke.sol";
@@ -39,6 +38,7 @@ import {MAX_MESSAGE_COST} from "../../src/messaging/interfaces/IGasService.sol";
 import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../../src/messaging/libraries/MessageLib.sol";
 
+import {Root} from "../../src/admin/Root.sol";
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../../src/admin/ProtocolGuardian.sol";

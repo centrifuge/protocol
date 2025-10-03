@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IRoot} from "./interfaces/IRoot.sol";
 import {ISafe} from "./interfaces/ISafe.sol";
 import {IBaseGuardian} from "./interfaces/IBaseGuardian.sol";
 import {IAdapterWiring} from "./interfaces/IAdapterWiring.sol";
@@ -9,7 +10,6 @@ import {IProtocolGuardian} from "./interfaces/IProtocolGuardian.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
-import {IRoot} from "../core/interfaces/IRoot.sol";
 import {IAdapter} from "../core/interfaces/IAdapter.sol";
 import {IGateway} from "../core/interfaces/IGateway.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";

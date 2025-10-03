@@ -18,10 +18,11 @@ import {SignatureLib} from "../misc/libraries/SignatureLib.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
-import {IRoot} from "../core/interfaces/IRoot.sol";
 import {IVault} from "../core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
+
+import {IRoot} from "../admin/interfaces/IRoot.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0

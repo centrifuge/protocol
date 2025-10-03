@@ -17,7 +17,7 @@ import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 import {PoolId} from "../core/types/PoolId.sol";
 import {IGateway} from "../core/interfaces/IGateway.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
-import {BatchedMulticall} from "../core/BatchedMulticall.sol";
+import {BatchedMulticall} from "../core/utils/BatchedMulticall.sol";
 import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 

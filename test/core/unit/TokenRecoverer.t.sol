@@ -4,8 +4,8 @@ pragma solidity ^0.8.28;
 import {IAuth} from "../../../src/misc/Auth.sol";
 import {IRecoverable} from "../../../src/misc/interfaces/IRecoverable.sol";
 
-import {IRoot} from "../../../src/core/interfaces/IRoot.sol";
-import {TokenRecoverer, ITokenRecoverer} from "../../../src/core/TokenRecoverer.sol";
+import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
+import {TokenRecoverer, ITokenRecoverer} from "../../../src/admin/TokenRecoverer.sol";
 
 import "forge-std/Test.sol";
 

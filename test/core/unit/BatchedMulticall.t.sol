@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IGateway} from "../../../src/core/interfaces/IGateway.sol";
-import {BatchedMulticall} from "../../../src/core/BatchedMulticall.sol";
+import {BatchedMulticall} from "../../../src/core/utils/BatchedMulticall.sol";
 
 import "forge-std/Test.sol";
 
