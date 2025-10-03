@@ -14,9 +14,8 @@ import {IGateway} from "../../core/interfaces/IGateway.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../../core/spoke/interfaces/IUpdateContract.sol";
-import {
-    UpdateContractMessageLib, UpdateContractType
-} from "../../core/messaging/libraries/UpdateContractMessageLib.sol";
+
+import {UpdateContractMessageLib, UpdateContractType} from "../../utils/UpdateContractMessageLib.sol";
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified
 ///      (e.g. if the on/off ramp manager is used, or if sync deposits are enabled). This prevents spam.

@@ -14,13 +14,14 @@ import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../../../../src/core/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib} from "../../../../src/core/messaging/libraries/UpdateContractMessageLib.sol";
 
 import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
 import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
 import {IDepositManager, IWithdrawManager} from "../../../../src/managers/spoke/interfaces/IBalanceSheetManager.sol";
 
 import "forge-std/Test.sol";
+
+import {UpdateContractMessageLib} from "../../../../src/utils/UpdateContractMessageLib.sol";
 
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}

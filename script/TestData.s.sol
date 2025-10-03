@@ -19,7 +19,6 @@ import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
 import {IShareToken} from "../src/core/spoke/interfaces/IShareToken.sol";
 import {VaultUpdateKind} from "../src/core/messaging/libraries/MessageLib.sol";
 import {IHubRequestManager} from "../src/core/hub/interfaces/IHubRequestManager.sol";
-import {UpdateContractMessageLib} from "../src/core/messaging/libraries/UpdateContractMessageLib.sol";
 
 import {OpsGuardian} from "../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../src/admin/ProtocolGuardian.sol";
@@ -38,6 +37,8 @@ import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import "forge-std/Script.sol";
+
+import {UpdateContractMessageLib} from "../src/utils/UpdateContractMessageLib.sol";
 
 // Script to deploy Hub and Vaults with a Localhost Adapter.
 contract TestData is FullDeployer {

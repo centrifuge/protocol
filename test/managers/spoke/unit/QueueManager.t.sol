@@ -11,12 +11,13 @@ import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {IBatchedMulticall} from "../../../../src/core/interfaces/IBatchedMulticall.sol";
 import {IUpdateContract} from "../../../../src/core/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib} from "../../../../src/core/messaging/libraries/UpdateContractMessageLib.sol";
 
 import {QueueManager} from "../../../../src/managers/spoke/QueueManager.sol";
 import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueManager.sol";
 
 import "forge-std/Test.sol";
+
+import {UpdateContractMessageLib} from "../../../../src/utils/UpdateContractMessageLib.sol";
 
 contract IsContract {}
 

@@ -18,9 +18,10 @@ import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 import {IUpdateContract} from "../core/spoke/interfaces/IUpdateContract.sol";
 import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
-import {UpdateContractType, UpdateContractMessageLib} from "../core/messaging/libraries/UpdateContractMessageLib.sol";
 
 import {IRoot} from "../admin/interfaces/IRoot.sol";
+
+import {UpdateContractType, UpdateContractMessageLib} from "../utils/UpdateContractMessageLib.sol";
 
 /// @title  BaseTransferHook
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,

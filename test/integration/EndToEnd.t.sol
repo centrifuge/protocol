@@ -34,7 +34,6 @@ import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/MultiAdapter.sol";
 import {ILocalCentrifugeId} from "../../src/core/interfaces/IGatewaySenders.sol";
 import {MAX_MESSAGE_COST} from "../../src/core/messaging/interfaces/IGasService.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
-import {UpdateContractMessageLib} from "../../src/core/messaging/libraries/UpdateContractMessageLib.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {Root} from "../../src/admin/Root.sol";
@@ -66,6 +65,7 @@ import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDep
 import "forge-std/Test.sol";
 
 import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
+import {UpdateContractMessageLib} from "../../src/utils/UpdateContractMessageLib.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///
