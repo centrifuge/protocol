@@ -17,7 +17,6 @@ contract CommonDeploymentInputTest is Test {
             centrifugeId: CENTRIFUGE_ID,
             adminSafe: ADMIN_SAFE,
             opsSafe: OPS_SAFE,
-            maxBatchGasLimit: 0,
             version: bytes32(0)
         });
     }
@@ -129,9 +128,9 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
 
         // dependencies set correctly
         assertEq(address(gateway.root()), address(root));
-        assertEq(address(gateway.gasService()), address(gasService));
         assertEq(address(gateway.processor()), address(messageProcessor));
         assertEq(address(gateway.adapter()), address(multiAdapter));
+        assertEq(address(gateway.messageLimits()), address(gasService));
         assertEq(gateway.localCentrifugeId(), CENTRIFUGE_ID);
     }
 

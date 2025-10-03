@@ -244,4 +244,67 @@ contract NAVManagerIntegrationTest is BaseTest {
         assertEq(globalNAV, 3750e18);
         assertEq(globalIssuance, 3800e18);
     }
+
+    /// forge-config: default.isolate = true
+    function testCloseGainLoss() public {
+        _testInitializeAndUpdate();
+
+        valuation.setPrice(POOL_A, scId, asset1, d18(11, 10)); // 10% increase in value -> 100e18 gain
+        valuation.setPrice(POOL_A, scId, asset3, d18(1, 2)); // 50% decrease in value -> 250e18 loss
+
+        vm.prank(manager);
+        navManager.updateHoldingValue(POOL_A, scId, asset1);
+
+        vm.prank(manager);
+        navManager.updateHoldingValue(POOL_A, scId, asset3);
+
+        (bool spokeGainIsPositive, uint128 spokeGain) =
+            accounting.accountValue(POOL_A, navManager.gainAccount(CHAIN_CV));
+        (bool hubLossIsPositive, uint128 hubLoss) = accounting.accountValue(POOL_A, navManager.lossAccount(CHAIN_CP));
+        (bool spokeEquityIsPositive, uint128 spokeEquityBefore) =
+            accounting.accountValue(POOL_A, navManager.equityAccount(CHAIN_CV));
+        (bool hubEquityIsPositive, uint128 hubEquityBefore) =
+            accounting.accountValue(POOL_A, navManager.equityAccount(CHAIN_CP));
+
+        assertEq(spokeGain, 100e18);
+        assertTrue(spokeGainIsPositive);
+        assertEq(hubLoss, 250e18);
+        assertFalse(hubLossIsPositive);
+        assertEq(spokeEquityBefore, 3300e18);
+        assertTrue(spokeEquityIsPositive);
+        assertEq(hubEquityBefore, 500e18);
+        assertTrue(hubEquityIsPositive);
+
+        vm.prank(manager);
+        navManager.closeGainLoss(POOL_A, CHAIN_CV);
+
+        (bool spokeGainIsPositiveAfter, uint128 spokeGainAfter) =
+            accounting.accountValue(POOL_A, navManager.gainAccount(CHAIN_CV));
+        (bool spokeEquityIsPositiveAfter, uint128 spokeEquityAfter) =
+            accounting.accountValue(POOL_A, navManager.equityAccount(CHAIN_CV));
+
+        assertEq(spokeGainAfter, 0);
+        assertTrue(spokeGainIsPositiveAfter);
+        assertEq(spokeEquityAfter, spokeEquityBefore + spokeGain);
+        assertTrue(spokeEquityIsPositiveAfter);
+
+        vm.prank(manager);
+        navManager.closeGainLoss(POOL_A, CHAIN_CP);
+
+        (bool hubLossIsPositiveAfter, uint128 hubLossAfter) =
+            accounting.accountValue(POOL_A, navManager.lossAccount(CHAIN_CP));
+        (bool hubEquityIsPositiveAfter, uint128 hubEquityAfter) =
+            accounting.accountValue(POOL_A, navManager.equityAccount(CHAIN_CP));
+
+        assertEq(hubLossAfter, 0);
+        assertTrue(hubLossIsPositiveAfter);
+        assertEq(hubEquityAfter, hubEquityBefore - hubLoss);
+        assertTrue(hubEquityIsPositiveAfter);
+
+        uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
+        uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
+
+        assertEq(navHub, 250e18);
+        assertEq(navSpoke, 3400e18);
+    }
 }

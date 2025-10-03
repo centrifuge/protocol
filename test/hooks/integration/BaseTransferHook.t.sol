@@ -24,7 +24,6 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             centrifugeId: LOCAL_CENTRIFUGE_ID,
             adminSafe: adminSafe,
             opsSafe: adminSafe,
-            maxBatchGasLimit: uint128(GAS) * 100,
             version: bytes32(0)
         });
 

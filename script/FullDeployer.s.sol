@@ -116,14 +116,6 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
         uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
         string memory environment = vm.parseJsonString(config, "$.network.environment");
 
-        // Parse maxBatchGasLimit with defaults
-        uint256 maxBatchGasLimit;
-        try vm.parseJsonUint(config, "$.network.maxBatchGasLimit") returns (uint256 _batchGasLimit) {
-            maxBatchGasLimit = _batchGasLimit;
-        } catch {
-            maxBatchGasLimit = 25_000_000; // 25M gas
-        }
-
         console.log("Network:", network);
         console.log("Environment:", environment);
 
@@ -137,7 +129,6 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
             centrifugeId: centrifugeId,
             adminSafe: ISafe(vm.envAddress("ADMIN")),
             opsSafe: ISafe(vm.envAddress("ADMIN")),
-            maxBatchGasLimit: uint128(maxBatchGasLimit),
             // Default to bytes32(0) version to be consistent with CommonDeployer
             version: bytes(versionString).length > 0 ? keccak256(abi.encodePacked(versionString)) : bytes32(0)
         });
