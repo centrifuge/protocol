@@ -26,16 +26,16 @@ abstract contract ReconAssetIdManager {
     error AssetIdNotAdded();
 
     /// @notice Returns the current active assetId
-    function _getAssetId() internal view returns (AssetId) {
-        return AssetId.wrap(__assetId);
+    function _getAssetId() internal view returns (uint128) {
+        return __assetId;
     }
 
     /// @notice Returns all assetIds being used
-    function _getAssetIds() internal view returns (AssetId[] memory) {
+    function _getAssetIds() internal view returns (uint128[] memory) {
         uint256[] memory rawValues = _assetIds.values();
-        AssetId[] memory result = new AssetId[](rawValues.length);
+        uint128[] memory result = new uint128[](rawValues.length);
         for (uint256 i = 0; i < rawValues.length; i++) {
-            result[i] = AssetId.wrap(uint128(rawValues[i]));
+            result[i] = uint128(rawValues[i]);
         }
         return result;
     }
@@ -64,8 +64,7 @@ abstract contract ReconAssetIdManager {
     /// @notice Switches the current assetId based on the entropy
     /// @param entropy The entropy to choose a random assetId in the set for switching
     function _switchAssetId(uint256 entropy) internal {
-        uint256[] memory assetIds = _assetIds.values();
-        uint128 target = uint128(assetIds[entropy % assetIds.length]);
+        uint128 target = uint128(_assetIds.at(entropy % _assetIds.length()));
         __assetId = target;
     }
 }

@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import {ERC20} from "src/misc/ERC20.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
 
 abstract contract SharedStorage {
     /**
@@ -30,7 +29,7 @@ abstract contract SharedStorage {
     // Gateway Mock
     bool RECON_USE_HARDCODED_DECIMALS = false; // Should we use random or hardcoded decimals?
     bool RECON_USE_SINGLE_DEPLOY = true; // NOTE: Actor Properties break if you use multi cause they are
-    // mono-dimensional
+        // mono-dimensional
 
     // TODO: This is broken rn
     // Liquidity Pool functions
@@ -46,10 +45,7 @@ abstract contract SharedStorage {
     // Hash of index + salt, but we use number to be able to cycle
     bytes16 SHARE_ID = bytes16(bytes32(uint256(SHARE_COUNTER)));
     uint16 DEFAULT_DESTINATION_CHAIN = 1;
-    uint128 ASSET_ID =
-        uint128(
-            bytes16(abi.encodePacked(DEFAULT_DESTINATION_CHAIN, uint32(1)))
-        );
+    uint128 ASSET_ID = uint128(bytes16(abi.encodePacked(DEFAULT_DESTINATION_CHAIN, uint32(1))));
 
     // NOTE: TODO
     // ** INCOMPLETE - Deployment, Setup and Cycling of Assets, Shares, Pools and Vaults **/
@@ -91,9 +87,9 @@ abstract contract SharedStorage {
     mapping(address => uint256) sumOfTransfersOut;
 
     // Global-1
-    mapping(address => uint256) sumOfClaimedCancelledDeposits;
+    mapping(address => uint256) cancelRedeemShareTokenPayout;
     // Global-2
-    mapping(address => uint256) sumOfClaimedCancelledRedeemShares;
+    mapping(address => uint256) cancelDepositCurrencyPayout;
 
     // END === invariant_E_1 === //
 
@@ -116,12 +112,12 @@ abstract contract SharedStorage {
      *         - asyncRequests_fulfillCancelRedeemRequest
      *         - asyncRequests_fulfillRedeemRequest // NOTE: Used by E_1
      */
-    mapping(address => uint256) sumOfWithdrawable;
+    mapping(address => uint256) currencyPayout;
     /**
      * See:
      *         - asyncRequests_fulfillDepositRequest
      */
-    mapping(address => uint256) sumOfFulfilledDeposits;
+    mapping(address => uint256) sumOfFullfilledDeposits;
 
     /**
      * See:
@@ -135,6 +131,13 @@ abstract contract SharedStorage {
      *         - asyncRequests_triggerRedeemRequest
      */
     mapping(address => uint256) sumOfRedeemRequests;
+
+    /**
+     * See:
+     *         - asyncRequests_fulfillRedeemRequest
+     */
+    mapping(address => uint256) sumOfClaimedDepositCancelations;
+    mapping(address => uint256) sumOfClaimedRedeemCancelations;
 
     mapping(address asset => uint256) sumOfSyncDepositsAsset;
     mapping(address share => uint256) sumOfSyncDepositsShare;
@@ -174,24 +177,6 @@ abstract contract SharedStorage {
     mapping(address => mapping(address => uint256)) requestDepositAssets;
     mapping(address => mapping(address => uint256)) requestRedeemShares;
 
-    /// === GLOBAL GHOSTS === ///
     mapping(address => uint256) sumOfManagerDeposits;
     mapping(address => uint256) sumOfManagerWithdrawals;
-
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRequestDeposited;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userDepositProcessed;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userCancelledDeposits;
-
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRequestRedeemed;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRequestRedeemedAssets;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRedemptionsProcessed;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userCancelledRedeems;
-
-    mapping(ShareClassId scId => mapping(AssetId assetId => uint256)) approvedDeposits;
-    mapping(ShareClassId scId => mapping(AssetId assetId => uint256)) approvedRedemptions;
-
-    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint256))) issuedHubShares;
-    mapping(PoolId poolId => mapping(ShareClassId scId => uint256)) issuedBalanceSheetShares;
-    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint256))) revokedHubShares;
-    mapping(PoolId poolId => mapping(ShareClassId scId => uint256)) revokedBalanceSheetShares;
 }

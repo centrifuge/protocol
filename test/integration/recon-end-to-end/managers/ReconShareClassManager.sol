@@ -6,7 +6,6 @@ import {vm} from "@chimera/Hevm.sol";
 import {EnumerableSet} from "@recon/EnumerableSet.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 /// @dev Source of truth for the share classes being used in the test
 /// @notice No share classes should be used in the suite without being added here first
@@ -27,16 +26,16 @@ abstract contract ReconShareClassManager {
     error ShareClassNotAdded();
 
     /// @notice Returns the current active share class
-    function _getShareClassId() internal view returns (ShareClassId) {
-        return ShareClassId.wrap(__shareClassId);
+    function _getShareClassId() internal view returns (bytes16) {
+        return __shareClassId;
     }
 
     /// @notice Returns all share classes being used
-    function _getShareClassIds() internal view returns (ShareClassId[] memory) {
+    function _getShareClassIds() internal view returns (bytes16[] memory) {
         bytes32[] memory rawValues = _shareClassIds.values();
-        ShareClassId[] memory result = new ShareClassId[](rawValues.length);
+        bytes16[] memory result = new bytes16[](rawValues.length);
         for (uint256 i = 0; i < rawValues.length; i++) {
-            result[i] = ShareClassId.wrap(bytes16(rawValues[i]));
+            result[i] = bytes16(rawValues[i]);
         }
         return result;
     }
