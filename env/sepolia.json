@@ -19,6 +19,11 @@
       "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
       "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
       "deploy": true
+    },
+    "layerZero": {
+      "layerZeroId": "ethereum-sepolia",
+      "endpoint": "0x6edce65403992e310a62460808c4b910d972f10f",
+      "deploy": true
     }
   },
   "contracts": {
@@ -73,11 +78,6 @@
       "gitCommit": "4df046e3",
       "timestamp": "2025-10-02T14:19:36Z",
       "version": "v3.1.0-beta"
-    },
-    "deploy:adapters": {
-      "gitCommit": "b82250ca",
-      "timestamp": "2025-07-10T00:48:55Z",
-      "version": "v3-main"
     }
   }
 }
