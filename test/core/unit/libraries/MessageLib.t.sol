@@ -659,7 +659,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
 
-        // Check the payload length is correctly encoded as little endian
-        assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
+        // Check the payload length is correctly encoded as little endian (at fixed position 57)
+        assertEq(a.payload.length, uint16(uint8(a.serialize()[58])) | (uint16(uint8(a.serialize()[57])) << 8));
     }
 }

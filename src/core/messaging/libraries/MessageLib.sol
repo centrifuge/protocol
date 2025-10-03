@@ -109,7 +109,7 @@ library MessageLib {
         (41  << (uint8(MessageType.RequestCallback) - 32) * 8) +
         (41  << (uint8(MessageType.SetRequestManager) - 32) * 8) +
         (42  << (uint8(MessageType.UpdateGatewayManager) - 32) * 8) +
-        (89  << (uint8(MessageType.UntrustedContractUpdate) - 32) * 8);
+        (57  << (uint8(MessageType.UntrustedContractUpdate) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -133,7 +133,7 @@ library MessageLib {
         } else if (kind == uint8(MessageType.TrustedContractUpdate)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.UntrustedContractUpdate)) {
-            length += 2 + message.toUint16(length); //payloadLength
+            length += 2 + message.toUint16(length) + 32; //payloadLength + sender
         } else if (kind == uint8(MessageType.Request)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.RequestCallback)) {
