@@ -27,7 +27,6 @@ import {PricingLib} from "../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
 import {VaultRegistry} from "../../src/core/spoke/VaultRegistry.sol";
-import {MAX_MESSAGE_COST} from "../../src/core/interfaces/IGasService.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {IMessageHandler} from "../../src/core/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/MultiAdapter.sol";
@@ -35,6 +34,7 @@ import {ILocalCentrifugeId} from "../../src/core/interfaces/IGatewaySenders.sol"
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 
 import {GasService} from "../../src/messaging/GasService.sol";
+import {MAX_MESSAGE_COST} from "../../src/messaging/interfaces/IGasService.sol";
 import {UpdateContractMessageLib} from "../../src/messaging/libraries/UpdateContractMessageLib.sol";
 import {VaultUpdateKind, MessageType, MessageLib} from "../../src/messaging/libraries/MessageLib.sol";
 
@@ -257,7 +257,6 @@ contract EndToEndDeployment is Test {
         CommonInput memory commonInput = CommonInput({
             centrifugeId: localCentrifugeId,
             adminSafe: adminSafe,
-            maxBatchGasLimit: uint128(GAS) * 100,
             version: bytes32(abi.encodePacked(localCentrifugeId))
         });
 
