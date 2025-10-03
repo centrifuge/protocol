@@ -6,7 +6,7 @@ import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "./
 import {Spoke} from "../src/core/spoke/Spoke.sol";
 import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
 import {VaultRegistry} from "../src/core/spoke/VaultRegistry.sol";
-import {ContractUpdater} from "../src/core/spoke/ContractUpdater.sol";
+import {ContractUpdater} from "../src/core/ContractUpdater.sol";
 import {TokenFactory} from "../src/core/spoke/factories/TokenFactory.sol";
 
 import "forge-std/Script.sol";

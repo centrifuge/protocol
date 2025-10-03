@@ -13,7 +13,7 @@ import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../../core/spoke/interfaces/IContractUpdate.sol";
+import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
 
 import {UpdateContractType, UpdateContractMessageLib} from "../../messaging/libraries/UpdateContractMessageLib.sol";
 

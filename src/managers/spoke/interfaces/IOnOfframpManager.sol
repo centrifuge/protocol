@@ -5,7 +5,7 @@ import {IDepositManager, IWithdrawManager} from "./IBalanceSheetManager.sol";
 
 import {PoolId} from "../../../core/types/PoolId.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
-import {ITrustedContractUpdate} from "../../../core/spoke/interfaces/IContractUpdate.sol";
+import {ITrustedContractUpdate} from "../../../core/interfaces/IContractUpdate.sol";
 
 interface IOnOfframpManager is IDepositManager, IWithdrawManager, ITrustedContractUpdate {
     event UpdateOnramp(address indexed asset, bool isEnabled);

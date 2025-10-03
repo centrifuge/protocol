@@ -10,7 +10,7 @@ import {MerkleProofLib} from "../../misc/libraries/MerkleProofLib.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../../core/spoke/interfaces/IContractUpdate.sol";
+import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
 
 import {UpdateContractMessageLib, UpdateContractType} from "../../messaging/libraries/UpdateContractMessageLib.sol";
 

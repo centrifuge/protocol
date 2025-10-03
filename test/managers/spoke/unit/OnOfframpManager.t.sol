@@ -13,7 +13,7 @@ import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {IContractUpdate} from "../../../../src/core/spoke/interfaces/IContractUpdate.sol";
+import {IContractUpdate} from "../../../../src/core/interfaces/IContractUpdate.sol";
 
 import {UpdateContractMessageLib} from "../../../../src/messaging/libraries/UpdateContractMessageLib.sol";
 
