@@ -65,9 +65,7 @@ contract OpsGuardianTestInitAdapters is OpsGuardianTest {
             abi.encode()
         );
 
-        vm.mockCall(
-            address(multiAdapter), abi.encodeWithSignature("deny(address)", address(opsGuardian)), abi.encode()
-        );
+        vm.mockCall(address(multiAdapter), abi.encodeWithSignature("deny(address)", address(opsGuardian)), abi.encode());
 
         vm.expectCall(
             address(multiAdapter),
@@ -129,9 +127,7 @@ contract OpsGuardianTestInitAdapters is OpsGuardianTest {
         );
 
         // Mock deny call
-        vm.mockCall(
-            address(multiAdapter), abi.encodeWithSignature("deny(address)", address(opsGuardian)), abi.encode()
-        );
+        vm.mockCall(address(multiAdapter), abi.encodeWithSignature("deny(address)", address(opsGuardian)), abi.encode());
 
         // Expect setAdapters to be called FIRST
         vm.expectCall(
