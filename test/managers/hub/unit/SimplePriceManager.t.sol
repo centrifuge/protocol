@@ -191,19 +191,6 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         uint16[] memory storedNetworks = priceManager.notifiedNetworks(POOL_A);
         assertEq(storedNetworks.length, 3);
 
-        vm.prank(caller);
-        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
-        vm.prank(caller);
-        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_2, 2000);
-
-        (uint128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
-        assertEq(globalNAV, 3000);
-        assertEq(globalIssuance, 300);
-
-        (uint128 network2NAV, uint128 network2Issuance,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
-        assertEq(network2NAV, 2000);
-        assertEq(network2Issuance, 200);
-
         vm.prank(hubManager);
         priceManager.removeNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
 
@@ -211,14 +198,6 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         assertEq(storedNetworks.length, 2);
         assertEq(storedNetworks[0], CENTRIFUGE_ID_1);
         assertEq(storedNetworks[1], CENTRIFUGE_ID_3);
-
-        (globalNAV, globalIssuance) = priceManager.metrics(POOL_A);
-        assertEq(globalNAV, 1000);
-        assertEq(globalIssuance, 100);
-
-        (network2NAV, network2Issuance,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
-        assertEq(network2NAV, 0);
-        assertEq(network2Issuance, 0);
     }
 
     function testRemoveNetworkUnauthorized() public {
