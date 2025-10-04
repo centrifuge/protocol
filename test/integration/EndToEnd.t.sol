@@ -1301,7 +1301,12 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.mockCall(
             hubContract,
             abi.encodeWithSelector(
-                IUntrustedContractUpdate.untrustedCall.selector, POOL_A, SC_1, "data", s.centrifugeId, spokeSender.toBytes32()
+                IUntrustedContractUpdate.untrustedCall.selector,
+                POOL_A,
+                SC_1,
+                "data",
+                s.centrifugeId,
+                spokeSender.toBytes32()
             ),
             abi.encode()
         );
