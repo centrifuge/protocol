@@ -137,9 +137,9 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         emit ISimplePriceManager.UpdateNetworks(POOL_A, networks);
 
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
 
-        uint16[] memory storedNetworks = priceManager.networks(POOL_A);
+        uint16[] memory storedNetworks = priceManager.notifiedNetworks(POOL_A);
         assertEq(storedNetworks.length, 1);
         assertEq(storedNetworks[0], CENTRIFUGE_ID_1);
 
@@ -151,9 +151,9 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         emit ISimplePriceManager.UpdateNetworks(POOL_A, networks2);
 
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_2);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
 
-        storedNetworks = priceManager.networks(POOL_A);
+        storedNetworks = priceManager.notifiedNetworks(POOL_A);
         assertEq(storedNetworks.length, 2);
         assertEq(storedNetworks[0], CENTRIFUGE_ID_1);
         assertEq(storedNetworks[1], CENTRIFUGE_ID_2);
@@ -162,7 +162,7 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
     function testAddNetworkUnauthorized() public {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(unauthorized);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
     }
 
     function testAddNetworkInvalidShareClassCount() public {
@@ -177,18 +177,18 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
 
         vm.expectRevert(ISimplePriceManager.InvalidShareClassCount.selector);
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_B, CENTRIFUGE_ID_1);
+        priceManager.addNotifiedNetwork(POOL_B, CENTRIFUGE_ID_1);
     }
 
     function testRemoveNetworkSuccess() public {
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_2);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_3);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_3);
 
-        uint16[] memory storedNetworks = priceManager.networks(POOL_A);
+        uint16[] memory storedNetworks = priceManager.notifiedNetworks(POOL_A);
         assertEq(storedNetworks.length, 3);
 
         vm.prank(caller);
@@ -205,9 +205,9 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         assertEq(network2Issuance, 200);
 
         vm.prank(hubManager);
-        priceManager.removeNetwork(POOL_A, CENTRIFUGE_ID_2);
+        priceManager.removeNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
 
-        storedNetworks = priceManager.networks(POOL_A);
+        storedNetworks = priceManager.notifiedNetworks(POOL_A);
         assertEq(storedNetworks.length, 2);
         assertEq(storedNetworks[0], CENTRIFUGE_ID_1);
         assertEq(storedNetworks[1], CENTRIFUGE_ID_3);
@@ -223,20 +223,20 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
 
     function testRemoveNetworkUnauthorized() public {
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(unauthorized);
-        priceManager.removeNetwork(POOL_A, CENTRIFUGE_ID_1);
+        priceManager.removeNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
     }
 
     function testRemoveNetworkNotFound() public {
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
 
         vm.expectRevert(ISimplePriceManager.NetworkNotFound.selector);
         vm.prank(hubManager);
-        priceManager.removeNetwork(POOL_A, CENTRIFUGE_ID_2);
+        priceManager.removeNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
     }
 }
 
@@ -245,9 +245,9 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         super.setUp();
 
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_2);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
     }
 
     function testOnUpdateFirstUpdate() public {

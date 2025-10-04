@@ -65,8 +65,8 @@ contract NAVManagerIntegrationTest is BaseTest {
 
         navManager.setNAVHook(POOL_A, INAVHook(address(simplePriceManager)));
 
-        simplePriceManager.addNetwork(POOL_A, CHAIN_CP);
-        simplePriceManager.addNetwork(POOL_A, CHAIN_CV);
+        simplePriceManager.addNotifiedNetwork(POOL_A, CHAIN_CP);
+        simplePriceManager.addNotifiedNetwork(POOL_A, CHAIN_CV);
 
         vm.stopPrank();
 

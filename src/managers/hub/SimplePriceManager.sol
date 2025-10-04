@@ -22,7 +22,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     IShareClassManager public immutable shareClassManager;
 
     mapping(PoolId poolId => Metrics) public metrics;
-    mapping(PoolId poolId => uint16[]) internal _networks;
+    mapping(PoolId poolId => uint16[]) internal _notifiedNetworks;
     mapping(PoolId poolId => mapping(uint16 centrifugeId => NetworkMetrics)) public networkMetrics;
 
     constructor(IHub hub_, address deployer) Auth(deployer) {
@@ -42,27 +42,19 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISimplePriceManager
-    function addNetwork(PoolId poolId, uint16 centrifugeId) external onlyHubManager(poolId) {
+    function addNotifiedNetwork(PoolId poolId, uint16 centrifugeId) external onlyHubManager(poolId) {
         require(shareClassManager.shareClassCount(poolId) == 1, InvalidShareClassCount());
 
-        _networks[poolId].push(centrifugeId);
-        emit UpdateNetworks(poolId, _networks[poolId]);
+        _notifiedNetworks[poolId].push(centrifugeId);
+        emit UpdateNetworks(poolId, _notifiedNetworks[poolId]);
     }
 
     /// @inheritdoc ISimplePriceManager
-    function removeNetwork(PoolId poolId, uint16 centrifugeId) external onlyHubManager(poolId) {
-        uint16[] storage networks_ = _networks[poolId];
+    function removeNotifiedNetwork(PoolId poolId, uint16 centrifugeId) external onlyHubManager(poolId) {
+        uint16[] storage networks_ = _notifiedNetworks[poolId];
         uint256 length = networks_.length;
         for (uint256 i; i < length; i++) {
             if (networks_[i] == centrifugeId) {
-                NetworkMetrics storage networkMetrics_ = networkMetrics[poolId][centrifugeId];
-                Metrics storage metrics_ = metrics[poolId];
-
-                metrics_.netAssetValue -= networkMetrics_.netAssetValue;
-                metrics_.issuance -= networkMetrics_.issuance;
-
-                delete networkMetrics[poolId][centrifugeId];
-
                 networks_[i] = networks_[length - 1];
                 networks_.pop();
 
@@ -103,12 +95,12 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         metrics_.issuance = metrics_.issuance + issuance - networkMetrics_.issuance;
         metrics_.netAssetValue = metrics_.netAssetValue + netAssetValue - networkMetrics_.netAssetValue;
 
-        D18 pricePoolPerShare = _pricePoolPerShare(poolId);
+        D18 pricePoolPerShare = pricePoolPerShare(poolId);
 
         networkMetrics_.netAssetValue = netAssetValue;
         networkMetrics_.issuance = issuance;
 
-        uint16[] storage networks_ = _networks[poolId];
+        uint16[] storage networks_ = _notifiedNetworks[poolId];
         uint256 networkCount = networks_.length;
         hub.updateSharePrice(poolId, scId, pricePoolPerShare);
 
@@ -137,19 +129,15 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     }
 
     //----------------------------------------------------------------------------------------------
-    // View methods
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc ISimplePriceManager
-    function networks(PoolId poolId) external view returns (uint16[] memory) {
-        return _networks[poolId];
-    }
-
-    //----------------------------------------------------------------------------------------------
     // Helpers
     //----------------------------------------------------------------------------------------------
 
-    function _pricePoolPerShare(PoolId poolId) internal view returns (D18) {
+    /// @inheritdoc ISimplePriceManager
+    function notifiedNetworks(PoolId poolId) external view returns (uint16[] memory) {
+        return _notifiedNetworks[poolId];
+    }
+
+    function pricePoolPerShare(PoolId poolId) public view returns (D18) {
         Metrics memory metrics_ = metrics[poolId];
         return metrics_.issuance == 0 ? d18(1, 1) : d18(metrics_.netAssetValue) / d18(metrics_.issuance);
     }
