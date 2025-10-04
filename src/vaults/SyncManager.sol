@@ -23,7 +23,7 @@ import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 import {ITrustedContractUpdate} from "../core/interfaces/IContractUpdate.sol";
 
-import {UpdateContractMessageLib, UpdateContractType} from "../utils/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "../libraries/UpdateContractMessageLib.sol";
 
 /// @title  Sync Manager
 /// @notice This is the main contract for synchronous ERC-4626 deposits.

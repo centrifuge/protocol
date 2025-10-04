@@ -21,7 +21,7 @@ import {IDepositManager, IWithdrawManager} from "../../../../src/managers/spoke/
 
 import "forge-std/Test.sol";
 
-import {UpdateContractMessageLib} from "../../../../src/utils/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../../../../src/libraries/UpdateContractMessageLib.sol";
 
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}

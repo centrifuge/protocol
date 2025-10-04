@@ -14,7 +14,7 @@ import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/Updat
 import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
 import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
 
-import {UpdateContractMessageLib} from "../../../../src/utils/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../../../../src/libraries/UpdateContractMessageLib.sol";
 
 abstract contract OnOfframpManagerBaseTest is BaseTest {
     using CastLib for *;

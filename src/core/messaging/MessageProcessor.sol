@@ -38,19 +38,18 @@ contract MessageProcessor is Auth, IMessageProcessor {
     uint16 public constant MAINNET_CENTRIFUGE_ID = 1;
 
     IRoot public immutable root;
-    ITokenRecoverer public immutable tokenRecoverer;
 
     IGateway public gateway;
     IMultiAdapter public multiAdapter;
     ISpokeGatewayHandler public spoke;
     IHubGatewayHandler public hubHandler;
+    ITokenRecoverer public tokenRecoverer;
     IBalanceSheetGatewayHandler public balanceSheet;
     IVaultRegistryGatewayHandler public vaultRegistry;
     IContractUpdateGatewayHandler public contractUpdater;
 
-    constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, address deployer) Auth(deployer) {
+    constructor(IRoot root_, address deployer) Auth(deployer) {
         root = root_;
-        tokenRecoverer = tokenRecoverer_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -66,6 +65,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IContractUpdateGatewayHandler(data);
+        else if (what == "tokenRecoverer") tokenRecoverer = ITokenRecoverer(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);

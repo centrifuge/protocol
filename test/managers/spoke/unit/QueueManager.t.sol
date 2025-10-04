@@ -17,7 +17,7 @@ import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueMan
 
 import "forge-std/Test.sol";
 
-import {UpdateContractMessageLib} from "../../../../src/utils/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../../../../src/libraries/UpdateContractMessageLib.sol";
 
 contract IsContract {}
 

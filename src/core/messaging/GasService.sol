@@ -49,7 +49,7 @@ contract GasService is IGasService {
         // NOTE: Below values should be updated using script/utils/benchmark.sh
         scheduleUpgrade = BASE_COST + 93735;
         cancelUpgrade = BASE_COST + 74142;
-        recoverTokens = BASE_COST + 148855;
+        recoverTokens = BASE_COST + 150962;
         registerAsset = BASE_COST + 103825;
         setPoolAdapters = BASE_COST + 481481; // using MAX_ADAPTER_COUNT
         request = BASE_COST + 220101;

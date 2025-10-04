@@ -19,7 +19,7 @@ import {RequestCallbackMessageLib} from "../../../../src/vaults/libraries/Reques
 
 import "forge-std/Test.sol";
 
-import {UpdateContractMessageLib} from "../../../../src/utils/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../../../../src/libraries/UpdateContractMessageLib.sol";
 
 interface AdapterLike {
     function execute(bytes memory _message) external;
