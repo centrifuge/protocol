@@ -131,32 +131,6 @@ contract QueueManagerConstructorTest is QueueManagerTest {
     }
 }
 
-contract QueueManagerFileTests is QueueManagerTest {
-    function testErrNotAuthorized() public {
-        vm.prank(unauthorized);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        queueManager.file("any", address(0));
-    }
-
-    function testErrFileUnrecognizedParam() public {
-        vm.prank(auth);
-        vm.expectRevert(IQueueManager.FileUnrecognizedParam.selector);
-        queueManager.file("unknown", address(1));
-    }
-
-    function testFileGateway() public {
-        vm.prank(auth);
-        address newGateway = makeAddr("newGateway");
-
-        vm.expectEmit(true, true, true, true);
-        emit IQueueManager.File("gateway", newGateway);
-
-        queueManager.file("gateway", newGateway);
-
-        assertEq(address(queueManager.gateway()), newGateway);
-    }
-}
-
 contract QueueManagerUpdateContractFailureTests is QueueManagerTest {
     using UpdateContractMessageLib for *;
 

@@ -16,7 +16,7 @@ import {IShareClassManager} from "../../core/hub/interfaces/IShareClassManager.s
 
 /// @notice Base share price calculation manager for single share class pools.
 contract SimplePriceManager is ISimplePriceManager, Auth {
-    IGateway public gateway;
+    IGateway public immutable gateway;
     IHub public immutable hub;
     IHubRegistry public immutable hubRegistry;
     IShareClassManager public immutable shareClassManager;
@@ -40,13 +40,6 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc ISimplePriceManager
-    function file(bytes32 what, address data) external auth {
-        if (what == "gateway") gateway = IGateway(data);
-        else revert ISimplePriceManager.FileUnrecognizedParam();
-        emit File(what, data);
-    }
 
     /// @inheritdoc ISimplePriceManager
     function addNetwork(PoolId poolId, uint16 centrifugeId) external onlyHubManager(poolId) {

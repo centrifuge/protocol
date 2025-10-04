@@ -23,7 +23,7 @@ contract QueueManager is Auth, IQueueManager, IUpdateContract {
     using CastLib for *;
     using BitmapLib for *;
 
-    IGateway public gateway;
+    IGateway public immutable gateway;
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
 
@@ -38,13 +38,6 @@ contract QueueManager is Auth, IQueueManager, IUpdateContract {
     //----------------------------------------------------------------------------------------------
     // Owner actions
     //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IQueueManager
-    function file(bytes32 what, address data) external auth {
-        if (what == "gateway") gateway = IGateway(data);
-        else revert FileUnrecognizedParam();
-        emit File(what, data);
-    }
 
     /// @inheritdoc IUpdateContract
     function update(PoolId poolId, ShareClassId scId, bytes calldata payload) external {
