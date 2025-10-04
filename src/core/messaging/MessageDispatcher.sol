@@ -36,31 +36,23 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     using MathLib for uint256;
 
     PoolId internal constant GLOBAL_POOL = PoolId.wrap(0);
+    uint16 public immutable localCentrifugeId;
 
     IRoot public immutable root;
-    ITokenRecoverer public immutable tokenRecoverer;
-
-    uint16 public immutable localCentrifugeId;
 
     IGateway public gateway;
     IMultiAdapter public multiAdapter;
     ISpokeGatewayHandler public spoke;
     IHubGatewayHandler public hubHandler;
+    ITokenRecoverer public tokenRecoverer;
     IBalanceSheetGatewayHandler public balanceSheet;
     IVaultRegistryGatewayHandler public vaultRegistry;
     IUpdateContractGatewayHandler public contractUpdater;
 
-    constructor(
-        uint16 localCentrifugeId_,
-        IRoot root_,
-        IGateway gateway_,
-        ITokenRecoverer tokenRecoverer_,
-        address deployer
-    ) Auth(deployer) {
+    constructor(uint16 localCentrifugeId_, IRoot root_, IGateway gateway_, address deployer) Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
         root = root_;
         gateway = gateway_;
-        tokenRecoverer = tokenRecoverer_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -75,6 +67,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
+        else if (what == "tokenRecoverer") tokenRecoverer = ITokenRecoverer(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);

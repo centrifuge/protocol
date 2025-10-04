@@ -12,15 +12,20 @@ import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {MAX_MESSAGE_COST} from "../../../../src/core/messaging/interfaces/IGasService.sol";
 import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
-import {HubActionBatcher, CommonInput} from "../../../../script/HubDeployer.s.sol";
-import {ExtendedHubDeployer, ExtendedHubActionBatcher} from "../../../../script/ExtendedHubDeployer.s.sol";
+import {
+    FullActionBatcher,
+    FullDeployer,
+    FullInput,
+    noAdaptersInput,
+    CoreInput
+} from "../../../../script/FullDeployer.s.sol";
 
 import {MockVaults} from "../mocks/MockVaults.sol";
 import {MockValuation} from "../../mocks/MockValuation.sol";
 
 import "forge-std/Test.sol";
 
-contract BaseTest is ExtendedHubDeployer, Test {
+contract BaseTest is FullDeployer, Test {
     uint16 constant CHAIN_CP = 5;
     uint16 constant CHAIN_CV = 6;
 
@@ -61,7 +66,7 @@ contract BaseTest is ExtendedHubDeployer, Test {
     MockValuation valuation;
     IHubRequestManager hubRequestManager;
 
-    function _mockStuff(HubActionBatcher batcher) private {
+    function _mockStuff(FullActionBatcher batcher) private {
         vm.startPrank(address(batcher));
 
         cv = new MockVaults(CHAIN_CV, multiAdapter);
@@ -76,14 +81,19 @@ contract BaseTest is ExtendedHubDeployer, Test {
 
     function setUp() public virtual {
         // Deployment
-        CommonInput memory input =
-            CommonInput({centrifugeId: CHAIN_CP, adminSafe: adminSafe, opsSafe: adminSafe, version: bytes32(0)});
-
-        ExtendedHubActionBatcher batcher = new ExtendedHubActionBatcher();
+        FullActionBatcher batcher = new FullActionBatcher();
         labelAddresses("");
-        deployExtendedHub(input, batcher);
+        deployFull(
+            FullInput({
+                core: CoreInput({centrifugeId: CHAIN_CP, version: bytes32(0), root: address(0)}),
+                adminSafe: adminSafe,
+                opsSafe: opsSafe,
+                adapters: noAdaptersInput()
+            }),
+            batcher
+        );
         _mockStuff(batcher);
-        removeExtendedHubDeployerAccess(batcher);
+        removeFullDeployerAccess(batcher);
         hubRequestManager = new MockHubRequestManager();
 
         // Initialize accounts

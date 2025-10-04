@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {FullDeployer} from "./FullDeployer.s.sol";
+import {LaunchDeployer} from "./LaunchDeployer.s.sol";
 
 import {ERC20} from "../src/misc/ERC20.sol";
 import {D18, d18} from "../src/misc/types/D18.sol";
@@ -38,10 +38,10 @@ import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultF
 
 import "forge-std/Script.sol";
 
-import {UpdateContractMessageLib} from "../src/utils/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../src/libraries/UpdateContractMessageLib.sol";
 
 // Script to deploy Hub and Vaults with a Localhost Adapter.
-contract TestData is FullDeployer {
+contract TestData is LaunchDeployer {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
     using UpdateContractMessageLib for *;

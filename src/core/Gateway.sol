@@ -55,12 +55,9 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Inbound
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
 
-    constructor(uint16 localCentrifugeId_, IProtocolPauser pauser_, IMessageLimits messageLimits_, address deployer)
-        Auth(deployer)
-    {
+    constructor(uint16 localCentrifugeId_, IProtocolPauser pauser_, address deployer) Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
         pauser = pauser_;
-        messageLimits = messageLimits_;
     }
 
     modifier pauseable() {

@@ -12,11 +12,11 @@ import {AssetId} from "../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {MAX_MESSAGE_COST as GAS} from "../../src/core/messaging/interfaces/IGasService.sol";
 
-import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
+import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
-import {UpdateContractMessageLib} from "../../src/utils/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../../src/libraries/UpdateContractMessageLib.sol";
 
 /// @notice The base contract for integrators that want to tests their contracts.
 /// It assumes a full deployment in one chain.
@@ -31,17 +31,18 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
 
     function setUp() public virtual {
         // Deployment
-        CommonInput memory input = CommonInput({
-            centrifugeId: LOCAL_CENTRIFUGE_ID,
-            adminSafe: adminSafe,
-            opsSafe: adminSafe,
-            version: bytes32(0)
-        });
-
         FullActionBatcher batcher = new FullActionBatcher();
         super.labelAddresses("");
-        super.deployFull(input, noAdaptersInput(), batcher);
-        super.removeHubDeployerAccess(batcher);
+        super.deployFull(
+            FullInput({
+                core: CoreInput({centrifugeId: LOCAL_CENTRIFUGE_ID, version: bytes32(0), root: address(0)}),
+                adminSafe: adminSafe,
+                opsSafe: adminSafe,
+                adapters: noAdaptersInput()
+            }),
+            batcher
+        );
+        super.removeFullDeployerAccess(batcher);
 
         // Extra deployment
         valuation = new MockValuation(hubRegistry);
