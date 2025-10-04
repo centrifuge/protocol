@@ -103,7 +103,7 @@ contract MathLibTest is Test {
 
     /// forge-config: default.allow_internal_expect_revert = true
     function testToUint32Overflow(uint256 x) public {
-        x = bound(x, type(uint32).max + 1, type(uint256).max);
+        x = bound(x, uint256(type(uint32).max) + 1, type(uint256).max);
 
         vm.expectRevert(MathLib.Uint32_Overflow.selector);
         MathLib.toUint32(x);
@@ -117,7 +117,7 @@ contract MathLibTest is Test {
 
     /// forge-config: default.allow_internal_expect_revert = true
     function testToUint64Overflow(uint256 x) public {
-        x = bound(x, type(uint64).max + 1, type(uint256).max);
+        x = bound(x, uint256(type(uint64).max) + 1, type(uint256).max);
 
         vm.expectRevert(MathLib.Uint64_Overflow.selector);
         MathLib.toUint64(x);
@@ -131,7 +131,7 @@ contract MathLibTest is Test {
 
     /// forge-config: default.allow_internal_expect_revert = true
     function testToUint96Overflow(uint256 x) public {
-        x = bound(x, type(uint96).max + 1, type(uint256).max);
+        x = bound(x, uint256(type(uint96).max) + 1, type(uint256).max);
 
         vm.expectRevert(MathLib.Uint96_Overflow.selector);
         MathLib.toUint96(x);
