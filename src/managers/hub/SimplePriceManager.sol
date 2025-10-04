@@ -95,20 +95,20 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         metrics_.issuance = metrics_.issuance + issuance - networkMetrics_.issuance;
         metrics_.netAssetValue = metrics_.netAssetValue + netAssetValue - networkMetrics_.netAssetValue;
 
-        D18 pricePoolPerShare = pricePoolPerShare(poolId);
+        D18 pricePoolPerShare_ = pricePoolPerShare(poolId);
 
         networkMetrics_.netAssetValue = netAssetValue;
         networkMetrics_.issuance = issuance;
 
         uint16[] storage networks_ = _notifiedNetworks[poolId];
         uint256 networkCount = networks_.length;
-        hub.updateSharePrice(poolId, scId, pricePoolPerShare);
+        hub.updateSharePrice(poolId, scId, pricePoolPerShare_);
 
         for (uint256 i; i < networkCount; i++) {
             hub.notifySharePrice(poolId, scId, networks_[i], address(0));
         }
 
-        emit Update(poolId, scId, metrics_.netAssetValue, metrics_.issuance, pricePoolPerShare);
+        emit Update(poolId, scId, metrics_.netAssetValue, metrics_.issuance, pricePoolPerShare_);
     }
 
     /// @inheritdoc INAVHook
