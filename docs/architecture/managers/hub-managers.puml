@@ -1,0 +1,51 @@
+@startuml hub-managers
+title Hub Managers
+hide empty members
+
+package core {
+    class Hub
+    class Holdings
+    class Accounting
+    class HubRegistry
+    class ShareClassManager
+    interface ISnapshotHook
+}
+
+package managers {
+    class NAVManager
+    class SimplePriceManager
+    interface INAVHook
+}
+
+NAVManager --> Hub
+NAVManager --> Holdings
+NAVManager --> Accounting
+NAVManager --> HubRegistry
+NAVManager -|> ISnapshotHook
+NAVManager --> INAVHook
+
+SimplePriceManager -left|> INAVHook
+SimplePriceManager --> Hub
+SimplePriceManager --> ShareClassManager
+SimplePriceManager --> HubRegistry
+
+Holdings --> ISnapshotHook
+
+note top of NAVManager
+  Abstracts holding management
+  and accounting of net asset value (NAV)
+end note
+
+note top of SimplePriceManager
+  Calculates the share price 
+  for single-share class pools
+  based on NAV and total shares
+end note
+
+note bottom of ISnapshotHook
+  Hook called when a spoke
+  is in a snapshot state
+  or when shares are transferred
+end note
+
+@enduml

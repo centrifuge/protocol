@@ -1,7 +1,8 @@
-@startuml
+@startuml vaults
+title Vaults
 hide empty members
 
-package spoke {
+package core {
     interface IVault
 }
 

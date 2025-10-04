@@ -1,0 +1,127 @@
+@startuml overview
+title Centrifuge Protocol v3 - System Architecture Overview
+
+!define CORE_COLOR #E1F5FE
+!define MESSAGING_COLOR #F3E5F5
+!define ADMIN_COLOR #FFF9C4
+!define MANAGERS_COLOR #E8F5E9
+!define VAULTS_COLOR #FCE4EC
+!define ADAPTERS_COLOR #FFF3E0
+!define HOOKS_COLOR #F1F8E9
+
+package "Core" CORE_COLOR {
+  component Hub
+  component HubHandler
+  component Spoke
+  component Gateway
+  component Root
+  component MultiAdapter
+  component BatchedMulticall
+  component Holdings
+  component Accounting
+  component ShareClassManager
+  component BalanceSheet
+  component VaultRegistry
+  component BatchRequestManager
+}
+
+package "Messaging" MESSAGING_COLOR {
+  component MessageDispatcher
+  component MessageProcessor
+  component GasService
+}
+
+package "Admin" ADMIN_COLOR {
+  component Guardian
+  component TokenRecoverer
+}
+
+package "Adapters" ADAPTERS_COLOR {
+  component AxelarAdapter
+  component WormholeAdapter
+  component LayerZeroAdapter
+  component RecoveryAdapter
+}
+
+package "Managers" MANAGERS_COLOR {
+  package "Hub Managers" {
+    component NAVManager
+    component SimplePriceManager
+  }
+  package "Spoke Managers" {
+    component OnOfframpManager
+    component MerkleProofManager
+    component QueueManager
+  }
+}
+
+package "Vaults" VAULTS_COLOR {
+  component BaseVault
+  component AsyncVault
+  component SyncDepositVault
+  component AsyncRequestManager
+  component SyncManager
+  component VaultRouter
+  component RefundEscrow
+}
+
+package "Hooks" HOOKS_COLOR {
+  component BaseTransferHook
+  component FreelyTransferable
+  component FreezeOnly
+  component FullRestrictions
+  component RedemptionRestrictions
+}
+
+' Core relationships
+Hub --> Holdings
+Hub --> Accounting
+Hub --> ShareClassManager
+Hub --> MessageDispatcher
+Hub --> Gateway
+
+HubHandler --> Hub
+BatchRequestManager --> Hub
+
+Spoke --> BalanceSheet
+Spoke --> VaultRegistry
+Spoke --> MessageDispatcher
+Spoke --> Gateway
+
+Gateway --> MultiAdapter
+Gateway --> GasService
+
+BatchedMulticall --> Gateway
+
+' Messaging flow
+MessageDispatcher --> Gateway
+MessageProcessor --> Gateway
+MessageProcessor --> Hub
+MessageProcessor --> Spoke
+
+' Adapters
+MultiAdapter --> AxelarAdapter
+MultiAdapter --> WormholeAdapter
+MultiAdapter --> LayerZeroAdapter
+MultiAdapter --> RecoveryAdapter
+
+' Managers
+NAVManager --> Hub
+SimplePriceManager --> Hub
+OnOfframpManager --> BalanceSheet
+MerkleProofManager --> BalanceSheet
+QueueManager --> BalanceSheet
+
+' Vaults
+VaultRegistry --> AsyncVault
+VaultRegistry --> SyncDepositVault
+AsyncVault --> AsyncRequestManager
+SyncDepositVault --> SyncManager
+
+' Admin
+Guardian --> Hub
+Guardian --> Root
+Guardian --> Gateway
+TokenRecoverer --> Root
+
+@enduml

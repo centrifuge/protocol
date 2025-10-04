@@ -1,0 +1,35 @@
+@startuml spoke-managers
+title Spoke Managers
+hide empty members
+
+package core {
+    class BalanceSheet
+}
+
+package managers {
+    class OnOfframpManager
+    class MerkleProofManager
+    class QueueManager
+}
+
+OnOfframpManager --> BalanceSheet
+MerkleProofManager --> BalanceSheet
+QueueManager --> BalanceSheet
+
+note top of OnOfframpManager
+  Manages on/off-ramping
+  for assets entering/exiting
+  the protocol
+end note
+
+note top of MerkleProofManager
+  Allows granular permissioned
+  operations with merkle proofs
+end note
+
+note top of QueueManager
+  Manages submission of queued
+  assets and shares
+end note
+
+@enduml
