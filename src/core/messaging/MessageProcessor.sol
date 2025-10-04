@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
+import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 import {MessageType, MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
@@ -9,9 +11,6 @@ import {D18} from "../../misc/types/D18.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
-
-import {IRoot} from "../../admin/interfaces/IRoot.sol";
-import {ITokenRecoverer} from "../../admin/interfaces/ITokenRecoverer.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
@@ -37,19 +36,18 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     uint16 public constant MAINNET_CENTRIFUGE_ID = 1;
 
-    IRoot public immutable root;
-
     IGateway public gateway;
     IMultiAdapter public multiAdapter;
     ISpokeGatewayHandler public spoke;
     IHubGatewayHandler public hubHandler;
     ITokenRecoverer public tokenRecoverer;
+    IScheduleAuth public immutable scheduleAuth;
     IBalanceSheetGatewayHandler public balanceSheet;
     IVaultRegistryGatewayHandler public vaultRegistry;
     IUpdateContractGatewayHandler public contractUpdater;
 
-    constructor(IRoot root_, address deployer) Auth(deployer) {
-        root = root_;
+    constructor(IScheduleAuth scheduleAuth_, address deployer) Auth(deployer) {
+        scheduleAuth = scheduleAuth_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -86,11 +84,11 @@ contract MessageProcessor is Auth, IMessageProcessor {
         if (kind == MessageType.ScheduleUpgrade) {
             require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
-            root.scheduleRely(m.target.toAddress());
+            scheduleAuth.scheduleRely(m.target.toAddress());
         } else if (kind == MessageType.CancelUpgrade) {
             require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.CancelUpgrade memory m = message.deserializeCancelUpgrade();
-            root.cancelRely(m.target.toAddress());
+            scheduleAuth.cancelRely(m.target.toAddress());
         } else if (kind == MessageType.RecoverTokens) {
             require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();

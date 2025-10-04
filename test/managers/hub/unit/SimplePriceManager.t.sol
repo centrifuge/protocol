@@ -137,9 +137,9 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         emit ISimplePriceManager.UpdateNetworks(POOL_A, networks);
 
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
 
-        uint16[] memory storedNetworks = priceManager.networks(POOL_A);
+        uint16[] memory storedNetworks = priceManager.notifiedNetworks(POOL_A);
         assertEq(storedNetworks.length, 1);
         assertEq(storedNetworks[0], CENTRIFUGE_ID_1);
 
@@ -151,9 +151,9 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         emit ISimplePriceManager.UpdateNetworks(POOL_A, networks2);
 
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_2);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
 
-        storedNetworks = priceManager.networks(POOL_A);
+        storedNetworks = priceManager.notifiedNetworks(POOL_A);
         assertEq(storedNetworks.length, 2);
         assertEq(storedNetworks[0], CENTRIFUGE_ID_1);
         assertEq(storedNetworks[1], CENTRIFUGE_ID_2);
@@ -162,7 +162,7 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
     function testAddNetworkUnauthorized() public {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(unauthorized);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
     }
 
     function testAddNetworkInvalidShareClassCount() public {
@@ -177,96 +177,45 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
 
         vm.expectRevert(ISimplePriceManager.InvalidShareClassCount.selector);
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_B, CENTRIFUGE_ID_1);
+        priceManager.addNotifiedNetwork(POOL_B, CENTRIFUGE_ID_1);
     }
 
     function testRemoveNetworkSuccess() public {
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_2);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_3);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_3);
 
-        uint16[] memory storedNetworks = priceManager.networks(POOL_A);
+        uint16[] memory storedNetworks = priceManager.notifiedNetworks(POOL_A);
         assertEq(storedNetworks.length, 3);
 
-        vm.prank(caller);
-        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
-        vm.prank(caller);
-        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_2, 2000);
-
-        (uint128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
-        assertEq(globalNAV, 3000);
-        assertEq(globalIssuance, 300);
-
-        (uint128 network2NAV, uint128 network2Issuance,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
-        assertEq(network2NAV, 2000);
-        assertEq(network2Issuance, 200);
-
         vm.prank(hubManager);
-        priceManager.removeNetwork(POOL_A, CENTRIFUGE_ID_2);
+        priceManager.removeNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
 
-        storedNetworks = priceManager.networks(POOL_A);
+        storedNetworks = priceManager.notifiedNetworks(POOL_A);
         assertEq(storedNetworks.length, 2);
         assertEq(storedNetworks[0], CENTRIFUGE_ID_1);
         assertEq(storedNetworks[1], CENTRIFUGE_ID_3);
-
-        (globalNAV, globalIssuance) = priceManager.metrics(POOL_A);
-        assertEq(globalNAV, 1000);
-        assertEq(globalIssuance, 100);
-
-        (network2NAV, network2Issuance,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
-        assertEq(network2NAV, 0);
-        assertEq(network2Issuance, 0);
     }
 
     function testRemoveNetworkUnauthorized() public {
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(unauthorized);
-        priceManager.removeNetwork(POOL_A, CENTRIFUGE_ID_1);
+        priceManager.removeNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
     }
 
     function testRemoveNetworkNotFound() public {
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
 
         vm.expectRevert(ISimplePriceManager.NetworkNotFound.selector);
         vm.prank(hubManager);
-        priceManager.removeNetwork(POOL_A, CENTRIFUGE_ID_2);
-    }
-}
-
-contract SimplePriceManagerFileTests is SimplePriceManagerTest {
-    function testFileGateway() public {
-        address newGateway = makeAddr("newGateway");
-
-        vm.expectEmit(true, false, true, true);
-        emit ISimplePriceManager.File("gateway", newGateway);
-
-        vm.prank(auth);
-        priceManager.file("gateway", newGateway);
-
-        assertEq(address(priceManager.gateway()), newGateway);
-    }
-
-    function testFileUnrecognizedParam() public {
-        address someAddress = makeAddr("someAddress");
-
-        vm.expectRevert(ISimplePriceManager.FileUnrecognizedParam.selector);
-        vm.prank(auth);
-        priceManager.file("invalid", someAddress);
-    }
-
-    function testFileUnauthorized() public {
-        address newGateway = makeAddr("newGateway");
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(unauthorized);
-        priceManager.file("gateway", newGateway);
+        priceManager.removeNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
     }
 }
 
@@ -275,9 +224,9 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         super.setUp();
 
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_1);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
         vm.prank(hubManager);
-        priceManager.addNetwork(POOL_A, CENTRIFUGE_ID_2);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
     }
 
     function testOnUpdateFirstUpdate() public {

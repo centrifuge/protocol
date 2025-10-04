@@ -7,7 +7,7 @@ import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
 import {IGateway} from "../../../src/core/interfaces/IGateway.sol";
 import {IMultiAdapter} from "../../../src/core/interfaces/IMultiAdapter.sol";
-import {IRootMessageSender} from "../../../src/core/interfaces/IGatewaySenders.sol";
+import {IScheduleAuthMessageSender} from "../../../src/core/interfaces/IGatewaySenders.sol";
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
@@ -27,7 +27,7 @@ contract ProtocolGuardianTest is Test {
     ISafe immutable SAFE = ISafe(address(new IsContract()));
     IGateway immutable gateway = IGateway(address(new IsContract()));
     IMultiAdapter immutable multiAdapter = IMultiAdapter(address(new IsContract()));
-    IRootMessageSender immutable sender = IRootMessageSender(address(new IsContract()));
+    IScheduleAuthMessageSender immutable sender = IScheduleAuthMessageSender(address(new IsContract()));
 
     address immutable OWNER = makeAddr("owner");
     address immutable UNAUTHORIZED = makeAddr("unauthorized");

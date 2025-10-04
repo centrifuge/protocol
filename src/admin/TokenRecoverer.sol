@@ -2,10 +2,11 @@
 pragma solidity 0.8.28;
 
 import {IRoot} from "./interfaces/IRoot.sol";
-import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {IRecoverable} from "../misc/interfaces/IRecoverable.sol";
+
+import {ITokenRecoverer} from "../core/messaging/interfaces/ITokenRecoverer.sol";
 
 contract TokenRecoverer is Auth, ITokenRecoverer {
     IRoot public immutable root;

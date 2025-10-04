@@ -5,6 +5,7 @@ import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
 import {IProtocolPauser} from "../../../src/core/interfaces/IProtocolPauser.sol";
 import {IEndorsements} from "../../../src/core/spoke/interfaces/IEndorsements.sol";
+import {IScheduleAuth} from "../../../src/core/messaging/interfaces/IScheduleAuth.sol";
 
 import {Root, IRoot} from "../../../src/admin/Root.sol";
 
@@ -144,7 +145,7 @@ contract RootTestScheduleRely is RootTest {
     function testScheduleRely() public {
         vm.prank(address(AUTH));
         vm.expectEmit();
-        emit IRoot.ScheduleRely(TARGET, block.timestamp + DELAY);
+        emit IScheduleAuth.ScheduleRely(TARGET, block.timestamp + DELAY);
         root.scheduleRely(TARGET);
 
         assertEq(root.schedule(TARGET), block.timestamp + DELAY);
@@ -170,7 +171,7 @@ contract RootTestCancelRely is RootTest {
 
         vm.prank(address(AUTH));
         vm.expectEmit();
-        emit IRoot.CancelRely(TARGET);
+        emit IScheduleAuth.CancelRely(TARGET);
         root.cancelRely(TARGET);
 
         assertEq(root.schedule(TARGET), 0);

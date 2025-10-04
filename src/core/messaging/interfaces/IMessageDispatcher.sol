@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "../../interfaces/IGatewaySenders.sol";
+import {
+    ISpokeMessageSender, IHubMessageSender, IScheduleAuthMessageSender
+} from "../../interfaces/IGatewaySenders.sol";
 
-interface IMessageDispatcher is IRootMessageSender, ISpokeMessageSender, IHubMessageSender {
+interface IMessageDispatcher is IScheduleAuthMessageSender, ISpokeMessageSender, IHubMessageSender {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
 

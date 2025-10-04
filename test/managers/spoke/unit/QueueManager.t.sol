@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
@@ -128,32 +127,6 @@ contract QueueManagerConstructorTest is QueueManagerTest {
     function testConstructor() public view {
         assertEq(queueManager.contractUpdater(), contractUpdater);
         assertEq(address(queueManager.balanceSheet()), address(balanceSheet));
-    }
-}
-
-contract QueueManagerFileTests is QueueManagerTest {
-    function testErrNotAuthorized() public {
-        vm.prank(unauthorized);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        queueManager.file("any", address(0));
-    }
-
-    function testErrFileUnrecognizedParam() public {
-        vm.prank(auth);
-        vm.expectRevert(IQueueManager.FileUnrecognizedParam.selector);
-        queueManager.file("unknown", address(1));
-    }
-
-    function testFileGateway() public {
-        vm.prank(auth);
-        address newGateway = makeAddr("newGateway");
-
-        vm.expectEmit(true, true, true, true);
-        emit IQueueManager.File("gateway", newGateway);
-
-        queueManager.file("gateway", newGateway);
-
-        assertEq(address(queueManager.gateway()), newGateway);
     }
 }
 

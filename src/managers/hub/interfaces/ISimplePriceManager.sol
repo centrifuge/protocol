@@ -20,12 +20,10 @@ interface ISimplePriceManager is INAVHook {
         uint128 sharesTransferred
     );
     event UpdateNetworks(PoolId indexed poolId, uint16[] networks);
-    event File(bytes32 indexed what, address data);
 
     error InvalidShareClassCount();
     error InvalidShareClass();
     error MismatchedEpochs();
-    error FileUnrecognizedParam();
     error NetworkNotFound();
 
     struct Metrics {
@@ -41,7 +39,7 @@ interface ISimplePriceManager is INAVHook {
     }
 
     function metrics(PoolId poolId) external view returns (uint128 netAssetValue, uint128 issuance);
-    function networks(PoolId poolId) external view returns (uint16[] memory);
+    function notifiedNetworks(PoolId poolId) external view returns (uint16[] memory);
     function networkMetrics(PoolId poolId, uint16 centrifugeId)
         external
         view
@@ -54,12 +52,10 @@ interface ISimplePriceManager is INAVHook {
     /// @notice Add a network to the pool
     /// @param poolId The pool ID
     /// @param centrifugeId Centrifuge ID for the network to add
-    function addNetwork(PoolId poolId, uint16 centrifugeId) external;
+    function addNotifiedNetwork(PoolId poolId, uint16 centrifugeId) external;
 
     /// @notice Remove a network from the pool
     /// @param poolId The pool ID
     /// @param centrifugeId Centrifuge ID for the network to remove
-    function removeNetwork(PoolId poolId, uint16 centrifugeId) external;
-
-    function file(bytes32 what, address data) external;
+    function removeNotifiedNetwork(PoolId poolId, uint16 centrifugeId) external;
 }

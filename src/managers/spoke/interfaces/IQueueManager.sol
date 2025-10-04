@@ -9,14 +9,12 @@ interface IQueueManager {
     event UpdateQueueConfig(
         PoolId indexed poolId, ShareClassId indexed scId, uint64 newMinDelay, uint128 newExtraGasLimit
     );
-    event File(bytes32 indexed what, address data);
 
     error NotContractUpdater();
     error NoUpdates();
     error MinDelayNotElapsed();
     error NoUpdateForAsset();
     error InsufficientFunds();
-    error FileUnrecognizedParam();
 
     struct ShareClassQueueState {
         uint64 minDelay;
@@ -32,6 +30,4 @@ interface IQueueManager {
     ///      and `sync` is called n times up until the moment all asset IDs are included, and the shares
     ///      get synced as well.
     function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds, address refund) external payable;
-
-    function file(bytes32 what, address data) external;
 }

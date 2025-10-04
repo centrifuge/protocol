@@ -3,12 +3,11 @@ pragma solidity >=0.5.0;
 
 import {IProtocolPauser} from "../../core/interfaces/IProtocolPauser.sol";
 import {IEndorsements} from "../../core/spoke/interfaces/IEndorsements.sol";
+import {IScheduleAuth} from "../../core/messaging/interfaces/IScheduleAuth.sol";
 
-interface IRoot is IEndorsements, IProtocolPauser {
+interface IRoot is IEndorsements, IProtocolPauser, IScheduleAuth {
     // --- Events ---
     event File(bytes32 indexed what, uint256 data);
-    event ScheduleRely(address indexed target, uint256 indexed scheduledTime);
-    event CancelRely(address indexed target);
     event RelyContract(address indexed target, address indexed user);
     event DenyContract(address indexed target, address indexed user);
 
@@ -49,12 +48,6 @@ interface IRoot is IEndorsements, IProtocolPauser {
     function unpause() external;
 
     /// --- Timelocked ward management ---
-    /// @notice Schedule relying a new ward after the delay has passed
-    function scheduleRely(address target) external;
-
-    /// @notice Cancel a pending scheduled rely
-    function cancelRely(address target) external;
-
     /// @notice Execute a scheduled rely
     /// @dev    Can be triggered by anyone since the scheduling is protected
     function executeScheduledRely(address target) external;

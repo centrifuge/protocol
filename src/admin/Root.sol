@@ -7,6 +7,7 @@ import {Auth} from "../misc/Auth.sol";
 import {IAuth} from "../misc/interfaces/IAuth.sol";
 
 import {IEndorsements} from "../core/spoke/interfaces/IEndorsements.sol";
+import {IScheduleAuth} from "../core/messaging/interfaces/IScheduleAuth.sol";
 
 /// @title  Root
 /// @notice Core contract that is a ward on all other deployed contracts.
@@ -79,13 +80,13 @@ contract Root is Auth, IRoot {
     // Timelocked ward management
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IRoot
+    /// @inheritdoc IScheduleAuth
     function scheduleRely(address target) external auth {
         schedule[target] = block.timestamp + delay;
         emit ScheduleRely(target, schedule[target]);
     }
 
-    /// @inheritdoc IRoot
+    /// @inheritdoc IScheduleAuth
     function cancelRely(address target) external auth {
         require(schedule[target] != 0, TargetNotScheduled());
         schedule[target] = 0;

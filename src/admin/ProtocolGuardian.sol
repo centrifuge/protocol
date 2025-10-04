@@ -13,7 +13,7 @@ import {PoolId} from "../core/types/PoolId.sol";
 import {IAdapter} from "../core/interfaces/IAdapter.sol";
 import {IGateway} from "../core/interfaces/IGateway.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
-import {IRootMessageSender} from "../core/interfaces/IGatewaySenders.sol";
+import {IScheduleAuthMessageSender} from "../core/interfaces/IGatewaySenders.sol";
 
 contract ProtocolGuardian is IProtocolGuardian {
     using CastLib for address;
@@ -24,9 +24,15 @@ contract ProtocolGuardian is IProtocolGuardian {
     ISafe public safe;
     IGateway public gateway;
     IMultiAdapter public multiAdapter;
-    IRootMessageSender public sender;
+    IScheduleAuthMessageSender public sender;
 
-    constructor(ISafe safe_, IRoot root_, IGateway gateway_, IMultiAdapter multiAdapter_, IRootMessageSender sender_) {
+    constructor(
+        ISafe safe_,
+        IRoot root_,
+        IGateway gateway_,
+        IMultiAdapter multiAdapter_,
+        IScheduleAuthMessageSender sender_
+    ) {
         safe = safe_;
         root = root_;
         gateway = gateway_;
@@ -53,7 +59,7 @@ contract ProtocolGuardian is IProtocolGuardian {
         if (what == "safe") safe = ISafe(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
-        else if (what == "sender") sender = IRootMessageSender(data);
+        else if (what == "sender") sender = IScheduleAuthMessageSender(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
