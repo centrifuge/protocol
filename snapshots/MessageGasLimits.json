@@ -1,5 +1,5 @@
 {
-  "BENCHMARKING_RUN_ID": 1759598538,
+  "BENCHMARKING_RUN_ID": 1759600925,
   "scheduleUpgrade": 93767,
   "cancelUpgrade": 74174,
   "recoverTokens": 150994,
@@ -15,7 +15,7 @@
   "initiateTransferShares": 286537,
   "executeTransferShares": 177428,
   "updateRestriction": 114375,
-  "trustedUpdateContract": 0,
+  "trustedContractUpdate": 144940,
   "requestCallback": 258416,
   "updateVaultDeployAndLink": 2852980,
   "updateVaultLink": 185289,
@@ -27,5 +27,5 @@
   "maxAssetPriceAge": 110172,
   "maxSharePriceAge": 107058,
   "updateGatewayManager": 88376,
-  "untrustedUpdateContract": 0
+  "untrustedContractUpdate": 83741
 }
