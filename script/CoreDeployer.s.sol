@@ -138,7 +138,6 @@ contract CoreActionBatcher is Constants {
         // Rely vaultRegistry
         report.spoke.rely(address(report.vaultRegistry));
         report.messageDispatcher.rely(address(report.vaultRegistry));
-        report.messageProcessor.rely(address(report.vaultRegistry));
 
         // Rely hub
         report.gateway.rely(address(report.hub));
