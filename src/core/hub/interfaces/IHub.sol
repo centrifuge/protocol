@@ -231,7 +231,7 @@ interface IHub is IBatchedMulticall {
 
     /// @notice Update remotely an existing vault.
     /// @param centrifugeId Chain where CV instance lives.
-    /// @param target contract where to execute in CV. Check IUpdateContract interface.
+    /// @param target contract where to execute in CV. Check ITrustedContractUpdate interface.
     /// @param payload content of the update to execute.
     /// @param extraGasLimit extra gas limit used for some extra computation that can happen by some callback in the
     /// remote centrifugeId. Avoid this param if the message applies to the same centrifugeId.

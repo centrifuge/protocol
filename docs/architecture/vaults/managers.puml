@@ -9,7 +9,7 @@ package misc {
 package spoke {
     class Spoke
     class BalanceSheet
-    interface IUpdateContract
+    interface ITrustedContractUpdate
     interface IRequestManager
 }
 
@@ -21,7 +21,7 @@ interface ISyncManager
 IBaseRequestManager -up-|> IRequestManager
 
 IAsyncRequestManager -up-|> IBaseRequestManager
-ISyncManager -up-|> IUpdateContract
+ISyncManager -up-|> ITrustedContractUpdate
 
 AsyncRequestManager -up--> GlobalEscrow
 AsyncRequestManager -up--> BalanceSheet

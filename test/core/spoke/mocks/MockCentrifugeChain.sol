@@ -82,7 +82,7 @@ contract MockCentrifugeChain is Test {
         VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(IBaseVault(vault));
 
         execute(
-            MessageLib.UpdateContract({
+            MessageLib.TrustedContractUpdate({
                 poolId: poolId,
                 scId: scId,
                 target: bytes32(bytes20(address(syncManager))),

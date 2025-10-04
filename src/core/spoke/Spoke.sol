@@ -155,6 +155,22 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         sender.sendRegisterAsset{value: msg.value}(centrifugeId, assetId, decimals, refund);
     }
 
+    /// @inheritdoc ISpoke
+    function updateContract(
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 target,
+        bytes calldata payload,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable {
+        emit UntrustedContractUpdate(poolId.centrifugeId(), poolId, scId, target, payload, msg.sender);
+
+        sender.sendUntrustedContractUpdate{value: msg.value}(
+            poolId, scId, target, payload, msg.sender.toBytes32(), extraGasLimit, refund
+        );
+    }
+
     //----------------------------------------------------------------------------------------------
     // Pool & token management
     //----------------------------------------------------------------------------------------------

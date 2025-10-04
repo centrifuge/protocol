@@ -37,7 +37,7 @@ enum MessageType {
     InitiateTransferShares,
     ExecuteTransferShares,
     UpdateRestriction,
-    UpdateContract,
+    TrustedContractUpdate,
     UpdateVault,
     UpdateBalanceSheetManager,
     UpdateHoldingAmount,
@@ -47,7 +47,8 @@ enum MessageType {
     Request,
     RequestCallback,
     SetRequestManager,
-    UpdateGatewayManager
+    UpdateGatewayManager,
+    UntrustedContractUpdate
 }
 
 /// @dev Used internally in the UpdateVault message (not represent a submessage)
@@ -94,7 +95,7 @@ library MessageLib {
         (91  << uint8(MessageType.InitiateTransferShares) * 8) +
         (73  << uint8(MessageType.ExecuteTransferShares) * 8) +
         (25  << uint8(MessageType.UpdateRestriction) * 8) +
-        (57  << uint8(MessageType.UpdateContract) * 8) +
+        (57  << uint8(MessageType.TrustedContractUpdate) * 8) +
         (74  << uint8(MessageType.UpdateVault) * 8) +
         (42  << uint8(MessageType.UpdateBalanceSheetManager) * 8) +
         (91  << uint8(MessageType.UpdateHoldingAmount) * 8) +
@@ -107,7 +108,8 @@ library MessageLib {
         (41  << (uint8(MessageType.Request) - 32) * 8) +
         (41  << (uint8(MessageType.RequestCallback) - 32) * 8) +
         (41  << (uint8(MessageType.SetRequestManager) - 32) * 8) +
-        (42  << (uint8(MessageType.UpdateGatewayManager) - 32) * 8);
+        (42  << (uint8(MessageType.UpdateGatewayManager) - 32) * 8) +
+        (57  << (uint8(MessageType.UntrustedContractUpdate) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -128,8 +130,10 @@ library MessageLib {
         // Special treatment for messages with dynamic size:
         if (kind == uint8(MessageType.UpdateRestriction)) {
             length += 2 + message.toUint16(length); //payloadLength
-        } else if (kind == uint8(MessageType.UpdateContract)) {
+        } else if (kind == uint8(MessageType.TrustedContractUpdate)) {
             length += 2 + message.toUint16(length); //payloadLength
+        } else if (kind == uint8(MessageType.UntrustedContractUpdate)) {
+            length += 2 + message.toUint16(length) + 32; //payloadLength + sender
         } else if (kind == uint8(MessageType.Request)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.RequestCallback)) {
@@ -158,6 +162,8 @@ library MessageLib {
         } else if (kind == uint8(MessageType.SetPoolAdapters)) {
             return PoolId.wrap(message.toUint64(1)).centrifugeId();
         } else if (kind == uint8(MessageType.UpdateShares) || kind == uint8(MessageType.InitiateTransferShares)) {
+            return 0; // Non centrifugeId associated
+        } else if (kind == uint8(MessageType.UntrustedContractUpdate)) {
             return 0; // Non centrifugeId associated
         } else if (kind == uint8(MessageType.RegisterAsset)) {
             return AssetId.wrap(message.toUint128(1)).centrifugeId();
@@ -537,20 +543,20 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    UpdateContract
+    //    TrustedContractUpdate
     //---------------------------------------
 
-    struct UpdateContract {
+    struct TrustedContractUpdate {
         uint64 poolId;
         bytes16 scId;
         bytes32 target;
         bytes payload; // As sequence of bytes
     }
 
-    function deserializeUpdateContract(bytes memory data) internal pure returns (UpdateContract memory) {
-        require(messageType(data) == MessageType.UpdateContract, UnknownMessageType());
+    function deserializeTrustedContractUpdate(bytes memory data) internal pure returns (TrustedContractUpdate memory) {
+        require(messageType(data) == MessageType.TrustedContractUpdate, UnknownMessageType());
         uint16 payloadLength = data.toUint16(57);
-        return UpdateContract({
+        return TrustedContractUpdate({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             target: data.toBytes32(25),
@@ -558,9 +564,49 @@ library MessageLib {
         });
     }
 
-    function serialize(UpdateContract memory t) internal pure returns (bytes memory) {
+    function serialize(TrustedContractUpdate memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.UpdateContract, t.poolId, t.scId, t.target, t.payload.length.toUint16(), t.payload
+            MessageType.TrustedContractUpdate, t.poolId, t.scId, t.target, t.payload.length.toUint16(), t.payload
+        );
+    }
+
+    //---------------------------------------
+    //    UntrustedContractUpdate
+    //---------------------------------------
+
+    struct UntrustedContractUpdate {
+        uint64 poolId;
+        bytes16 scId;
+        bytes32 target;
+        bytes32 sender;
+        bytes payload;
+    }
+
+    function deserializeUntrustedContractUpdate(bytes memory data)
+        internal
+        pure
+        returns (UntrustedContractUpdate memory)
+    {
+        require(messageType(data) == MessageType.UntrustedContractUpdate, UnknownMessageType());
+        uint16 payloadLength = data.toUint16(57);
+        return UntrustedContractUpdate({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            target: data.toBytes32(25),
+            payload: data.slice(59, payloadLength),
+            sender: data.toBytes32(59 + payloadLength)
+        });
+    }
+
+    function serialize(UntrustedContractUpdate memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(
+            MessageType.UntrustedContractUpdate,
+            t.poolId,
+            t.scId,
+            t.target,
+            t.payload.length.toUint16(),
+            t.payload,
+            t.sender
         );
     }
 

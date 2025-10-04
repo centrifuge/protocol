@@ -12,8 +12,8 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {IContractUpdate} from "../../../../src/core/interfaces/IContractUpdate.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {IUpdateContract} from "../../../../src/core/spoke/interfaces/IUpdateContract.sol";
 
 import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
 import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
@@ -130,7 +130,7 @@ contract OnOfframpManagerTest is Test {
 
     function _enableOnramp() internal {
         vm.prank(contractUpdater);
-        manager.update(
+        manager.trustedCall(
             POOL_A,
             SC_1,
             UpdateContractMessageLib.serialize(
@@ -146,7 +146,7 @@ contract OnOfframpManagerTest is Test {
 
     function _enableRelayer(address relayer_) internal {
         vm.prank(contractUpdater);
-        manager.update(
+        manager.trustedCall(
             POOL_A,
             SC_1,
             UpdateContractMessageLib.serialize(
@@ -162,7 +162,7 @@ contract OnOfframpManagerTest is Test {
 
     function _enableOfframp(address receiver_) internal {
         vm.prank(contractUpdater);
-        manager.update(
+        manager.trustedCall(
             POOL_A,
             SC_1,
             UpdateContractMessageLib.serialize(
@@ -178,7 +178,7 @@ contract OnOfframpManagerTest is Test {
 
     function _disableOfframp(address receiver_) internal {
         vm.prank(contractUpdater);
-        manager.update(
+        manager.trustedCall(
             POOL_A,
             SC_1,
             UpdateContractMessageLib.serialize(
@@ -201,7 +201,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
 
         vm.expectRevert(IOnOfframpManager.NotContractUpdater.selector);
         vm.prank(notContractUpdater);
-        manager.update(
+        manager.trustedCall(
             POOL_A,
             SC_1,
             UpdateContractMessageLib.serialize(
@@ -218,7 +218,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
     function testInvalidPool() public {
         vm.expectRevert(IOnOfframpManager.InvalidPoolId.selector);
         vm.prank(contractUpdater);
-        manager.update(
+        manager.trustedCall(
             POOL_B,
             SC_1,
             UpdateContractMessageLib.serialize(
@@ -237,7 +237,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
 
         vm.expectRevert(IOnOfframpManager.InvalidShareClassId.selector);
         vm.prank(contractUpdater);
-        manager.update(
+        manager.trustedCall(
             POOL_A,
             wrongScId,
             UpdateContractMessageLib.serialize(
@@ -259,7 +259,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
 
         vm.expectRevert(IOnOfframpManager.ERC6909NotSupported.selector);
         vm.prank(contractUpdater);
-        manager.update(
+        manager.trustedCall(
             POOL_A,
             SC_1,
             UpdateContractMessageLib.serialize(
@@ -281,7 +281,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
 
         vm.expectRevert(IOnOfframpManager.ERC6909NotSupported.selector);
         vm.prank(contractUpdater);
-        manager.update(
+        manager.trustedCall(
             POOL_A,
             SC_1,
             UpdateContractMessageLib.serialize(
@@ -298,7 +298,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
     function testUnknownUpdateContractKind() public {
         vm.expectRevert(IOnOfframpManager.UnknownUpdateContractKind.selector);
         vm.prank(contractUpdater);
-        manager.update(
+        manager.trustedCall(
             POOL_A,
             SC_1,
             UpdateContractMessageLib.serialize(
@@ -316,9 +316,9 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
         // Create payload with valid enum but unsupported type (Valuation instead of UpdateAddress)
         bytes memory invalidPayload = abi.encodePacked(uint8(1), bytes32("test"));
 
-        vm.expectRevert(IUpdateContract.UnknownUpdateContractType.selector);
+        vm.expectRevert(IContractUpdate.UnknownUpdateContractType.selector);
         vm.prank(contractUpdater);
-        manager.update(POOL_A, SC_1, invalidPayload);
+        manager.trustedCall(POOL_A, SC_1, invalidPayload);
     }
 }
 
@@ -378,7 +378,7 @@ contract OnOfframpManagerDepositSuccessTests is OnOfframpManagerTest {
         _enableOnramp();
 
         vm.prank(contractUpdater);
-        manager.update(
+        manager.trustedCall(
             POOL_A,
             SC_1,
             UpdateContractMessageLib.serialize(
