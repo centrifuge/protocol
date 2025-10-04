@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {FullDeployer} from "./FullDeployer.s.sol";
+import {LaunchDeployer} from "./LaunchDeployer.s.sol";
 
 import {ERC20} from "../src/misc/ERC20.sol";
 import {D18, d18} from "../src/misc/types/D18.sol";
@@ -17,10 +17,8 @@ import {ShareClassId} from "../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
 import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
 import {IShareToken} from "../src/core/spoke/interfaces/IShareToken.sol";
+import {VaultUpdateKind} from "../src/core/messaging/libraries/MessageLib.sol";
 import {IHubRequestManager} from "../src/core/hub/interfaces/IHubRequestManager.sol";
-
-import {VaultUpdateKind} from "../src/messaging/libraries/MessageLib.sol";
-import {UpdateContractMessageLib} from "../src/messaging/libraries/UpdateContractMessageLib.sol";
 
 import {OpsGuardian} from "../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../src/admin/ProtocolGuardian.sol";
@@ -40,8 +38,10 @@ import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultF
 
 import "forge-std/Script.sol";
 
+import {UpdateContractMessageLib} from "../src/libraries/UpdateContractMessageLib.sol";
+
 // Script to deploy Hub and Vaults with a Localhost Adapter.
-contract TestData is FullDeployer {
+contract TestData is LaunchDeployer {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
     using UpdateContractMessageLib for *;

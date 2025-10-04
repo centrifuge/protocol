@@ -163,7 +163,7 @@ def main():
             print_subsection(f"Deploying core protocol contracts for {args.network}")
             retries = 3
             # Deploy protocol Core contracts
-            while not runner.run_deploy("FullDeployer"):
+            while not runner.run_deploy("LaunchDeployer"):
                 retries -= 1
                 # Add --resume to continue from where we left off after first try
                 if "--resume" not in args.forge_args:
@@ -175,7 +175,7 @@ def main():
                     print_error("Full deployment failed, retrying {retries}/3")
                     time.sleep(10)
             print_section(f"Verifying deployment for {args.network}")
-            if not verifier.verify_contracts("FullDeployer"):
+            if not verifier.verify_contracts("LaunchDeployer"):
                 print_error("Full deployment verification failed. Check logs for details.")
                 sys.exit(1)
             print_success("Full deployment completed successfully")
@@ -196,7 +196,7 @@ def main():
                 runner.build_contracts()
 
             print_subsection(f"Deploying core protocol contracts for {args.network}")
-            deploy_success = runner.run_deploy("FullDeployer")
+            deploy_success = runner.run_deploy("LaunchDeployer")
             print_section(f"Verifying deployment for {args.network}")
             if args.catapulta:
                 print_info("Waiting for catapulta verification to complete...")
@@ -206,14 +206,14 @@ def main():
                 while not verify_success and retries > 0:
                     print_info(f"Verification attempt {4-retries}/3 for catapulta...")
                     time.sleep(120)  # Wait 2 minutes between attempts
-                    verify_success = verifier.verify_contracts("FullDeployer")
+                    verify_success = verifier.verify_contracts("LaunchDeployer")
                     if not verify_success and retries > 1:
                         print_warning("Verification failed, retrying...")
                     retries -= 1
                     print_error("Verification failed after 3 attempts")
             else:
                 # Forge would only get there if the --verify has completed
-                verify_success = verifier.verify_contracts("FullDeployer")
+                verify_success = verifier.verify_contracts("LaunchDeployer")
 
         elif args.step == "wire:adapters":
             print_step(f"Wiring adapters for {args.network}")
@@ -225,7 +225,7 @@ def main():
 
         elif args.step == "verify:protocol":
             print_section(f"Verifying core protocol contracts for {args.network}")
-            verify_success = verifier.verify_contracts("FullDeployer")
+            verify_success = verifier.verify_contracts("LaunchDeployer")
 
         elif args.step == "dump:config":
             print_section(f"Dumping config for {args.network}")

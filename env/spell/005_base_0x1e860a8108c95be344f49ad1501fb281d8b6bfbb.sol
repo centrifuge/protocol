@@ -16,7 +16,7 @@ import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
 import {IntegrationConstants} from "../integration/utils/IntegrationConstants.sol";
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
-import {VaultUpdateKind} from "../../src/messaging/libraries/MessageLib.sol";
+import {VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 /// @notice Base network-specific spell that disables V2 permissions for both JTRSY_USDC and JAAA_USDC
 /// @dev Also deploys V3 JAAA vault on Base spoke

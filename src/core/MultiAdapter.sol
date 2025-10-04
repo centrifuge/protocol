@@ -32,15 +32,9 @@ contract MultiAdapter is Auth, IMultiAdapter {
     mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => Inbound)) public inbound;
     mapping(uint16 centrifugeId => mapping(PoolId => mapping(IAdapter adapter => Adapter))) internal _adapterDetails;
 
-    constructor(
-        uint16 localCentrifugeId_,
-        IMessageHandler gateway_,
-        IMessageProperties messageProperties_,
-        address deployer
-    ) Auth(deployer) {
+    constructor(uint16 localCentrifugeId_, IMessageHandler gateway_, address deployer) Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
         gateway = gateway_;
-        messageProperties = messageProperties_;
     }
 
     //----------------------------------------------------------------------------------------------

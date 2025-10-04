@@ -4,30 +4,30 @@ pragma solidity 0.8.28;
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
-import {Auth} from "../misc/Auth.sol";
-import {D18} from "../misc/types/D18.sol";
-import {CastLib} from "../misc/libraries/CastLib.sol";
-import {MathLib} from "../misc/libraries/MathLib.sol";
-import {BytesLib} from "../misc/libraries/BytesLib.sol";
-import {IRecoverable} from "../misc/interfaces/IRecoverable.sol";
+import {Auth} from "../../misc/Auth.sol";
+import {D18} from "../../misc/types/D18.sol";
+import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {MathLib} from "../../misc/libraries/MathLib.sol";
+import {BytesLib} from "../../misc/libraries/BytesLib.sol";
+import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 
-import {PoolId} from "../core/types/PoolId.sol";
-import {AssetId} from "../core/types/AssetId.sol";
-import {IGateway} from "../core/interfaces/IGateway.sol";
-import {ShareClassId} from "../core/types/ShareClassId.sol";
-import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
-import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
-import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "../core/interfaces/IGatewaySenders.sol";
+import {IRoot} from "../../admin/interfaces/IRoot.sol";
+import {ITokenRecoverer} from "../../admin/interfaces/ITokenRecoverer.sol";
+
+import {PoolId} from "../types/PoolId.sol";
+import {AssetId} from "../types/AssetId.sol";
+import {IGateway} from "../interfaces/IGateway.sol";
+import {ShareClassId} from "../types/ShareClassId.sol";
+import {IMultiAdapter} from "../interfaces/IMultiAdapter.sol";
+import {IRequestManager} from "../interfaces/IRequestManager.sol";
+import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "../interfaces/IGatewaySenders.sol";
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
     IUpdateContractGatewayHandler,
     IVaultRegistryGatewayHandler
-} from "../core/interfaces/IGatewayHandlers.sol";
-
-import {IRoot} from "../admin/interfaces/IRoot.sol";
-import {ITokenRecoverer} from "../admin/interfaces/ITokenRecoverer.sol";
+} from "../interfaces/IGatewayHandlers.sol";
 
 contract MessageDispatcher is Auth, IMessageDispatcher {
     using CastLib for *;
@@ -36,31 +36,23 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     using MathLib for uint256;
 
     PoolId internal constant GLOBAL_POOL = PoolId.wrap(0);
+    uint16 public immutable localCentrifugeId;
 
     IRoot public immutable root;
-    ITokenRecoverer public immutable tokenRecoverer;
-
-    uint16 public immutable localCentrifugeId;
 
     IGateway public gateway;
     IMultiAdapter public multiAdapter;
     ISpokeGatewayHandler public spoke;
     IHubGatewayHandler public hubHandler;
+    ITokenRecoverer public tokenRecoverer;
     IBalanceSheetGatewayHandler public balanceSheet;
     IVaultRegistryGatewayHandler public vaultRegistry;
     IUpdateContractGatewayHandler public contractUpdater;
 
-    constructor(
-        uint16 localCentrifugeId_,
-        IRoot root_,
-        IGateway gateway_,
-        ITokenRecoverer tokenRecoverer_,
-        address deployer
-    ) Auth(deployer) {
+    constructor(uint16 localCentrifugeId_, IRoot root_, IGateway gateway_, address deployer) Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
         root = root_;
         gateway = gateway_;
-        tokenRecoverer = tokenRecoverer_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -75,6 +67,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
+        else if (what == "tokenRecoverer") tokenRecoverer = ITokenRecoverer(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
