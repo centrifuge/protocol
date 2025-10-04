@@ -60,12 +60,12 @@ import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {RefundEscrowFactory} from "../../src/vaults/factories/RefundEscrowFactory.sol";
 
-import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
+import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
 import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
-import {UpdateContractMessageLib} from "../../src/utils/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../../src/libraries/UpdateContractMessageLib.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///
@@ -262,18 +262,23 @@ contract EndToEndDeployment is Test {
         internal
         returns (LocalAdapter adapter)
     {
-        CommonInput memory commonInput = CommonInput({
-            centrifugeId: localCentrifugeId,
-            adminSafe: adminSafe,
-            opsSafe: adminSafe,
-            version: bytes32(abi.encodePacked(localCentrifugeId))
-        });
-
         FullActionBatcher batcher = new FullActionBatcher();
         batcher.setDeployer(address(deploy));
 
         deploy.labelAddresses(string(abi.encodePacked(localCentrifugeId, "-")));
-        deploy.deployFull(commonInput, deploy.noAdaptersInput(), batcher);
+        deploy.deployFull(
+            FullInput({
+                core: CoreInput({
+                    centrifugeId: localCentrifugeId,
+                    version: bytes32(abi.encodePacked(localCentrifugeId)),
+                    root: address(0)
+                }),
+                adminSafe: adminSafe,
+                opsSafe: adminSafe,
+                adapters: noAdaptersInput()
+            }),
+            batcher
+        );
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         _setAdapter(deploy, remoteCentrifugeId, adapter);

@@ -21,7 +21,7 @@ import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../core/spoke/interfaces/
 
 import {IRoot} from "../admin/interfaces/IRoot.sol";
 
-import {UpdateContractType, UpdateContractMessageLib} from "../utils/UpdateContractMessageLib.sol";
+import {UpdateContractType, UpdateContractMessageLib} from "../libraries/UpdateContractMessageLib.sol";
 
 /// @title  BaseTransferHook
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
