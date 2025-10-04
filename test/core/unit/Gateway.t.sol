@@ -94,9 +94,7 @@ contract NoPayableDestination {}
 // -----------------------------------------
 
 contract GatewayExt is Gateway {
-    constructor(uint16 localCentrifugeId, IRoot root_, IMessageLimits limits_, address deployer)
-        Gateway(localCentrifugeId, root_, limits_, deployer)
-    {}
+    constructor(uint16 localCentrifugeId, IRoot root_, address deployer) Gateway(localCentrifugeId, root_, deployer) {}
 
     function batchLocatorsLength() public view returns (uint256) {
         return TransientArrayLib.length(BATCH_LOCATORS_SLOT);
@@ -146,7 +144,7 @@ contract GatewayTest is Test {
     IAdapter adapter = IAdapter(makeAddr("Adapter"));
 
     MockProcessor processor = new MockProcessor();
-    GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), messageLimits, address(this));
+    GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), address(this));
 
     address immutable ANY = makeAddr("ANY");
     address immutable MANAGER = makeAddr("MANAGER");
@@ -185,6 +183,7 @@ contract GatewayTest is Test {
     function setUp() public virtual {
         gateway.file("adapter", address(adapter));
         gateway.file("processor", address(processor));
+        gateway.file("messageLimits", address(messageLimits));
 
         _mockPause(false);
         _mockMessageLimits();
