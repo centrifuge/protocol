@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
+import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
@@ -11,16 +13,13 @@ import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 
-import {IRoot} from "../../admin/interfaces/IRoot.sol";
-import {ITokenRecoverer} from "../../admin/interfaces/ITokenRecoverer.sol";
-
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {IMultiAdapter} from "../interfaces/IMultiAdapter.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
-import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "../interfaces/IGatewaySenders.sol";
+import {ISpokeMessageSender, IHubMessageSender, IScheduleAuthMessageSender} from "../interfaces/IGatewaySenders.sol";
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
@@ -38,20 +37,21 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     PoolId internal constant GLOBAL_POOL = PoolId.wrap(0);
     uint16 public immutable localCentrifugeId;
 
-    IRoot public immutable root;
-
     IGateway public gateway;
     IMultiAdapter public multiAdapter;
     ISpokeGatewayHandler public spoke;
+    IScheduleAuth public immutable scheduleAuth;
     IHubGatewayHandler public hubHandler;
     ITokenRecoverer public tokenRecoverer;
     IBalanceSheetGatewayHandler public balanceSheet;
     IVaultRegistryGatewayHandler public vaultRegistry;
     IUpdateContractGatewayHandler public contractUpdater;
 
-    constructor(uint16 localCentrifugeId_, IRoot root_, IGateway gateway_, address deployer) Auth(deployer) {
+    constructor(uint16 localCentrifugeId_, IScheduleAuth scheduleAuth_, IGateway gateway_, address deployer)
+        Auth(deployer)
+    {
         localCentrifugeId = localCentrifugeId_;
-        root = root_;
+        scheduleAuth = scheduleAuth_;
         gateway = gateway_;
     }
 
@@ -382,27 +382,27 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
-    /// @inheritdoc IRootMessageSender
+    /// @inheritdoc IScheduleAuthMessageSender
     function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target, address refund) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            root.scheduleRely(target.toAddress());
+            scheduleAuth.scheduleRely(target.toAddress());
             _refund(refund);
         } else {
             _send(centrifugeId, MessageLib.ScheduleUpgrade({target: target}).serialize(), 0, refund);
         }
     }
 
-    /// @inheritdoc IRootMessageSender
+    /// @inheritdoc IScheduleAuthMessageSender
     function sendCancelUpgrade(uint16 centrifugeId, bytes32 target, address refund) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            root.cancelRely(target.toAddress());
+            scheduleAuth.cancelRely(target.toAddress());
             _refund(refund);
         } else {
             _send(centrifugeId, MessageLib.CancelUpgrade({target: target}).serialize(), 0, refund);
         }
     }
 
-    /// @inheritdoc IRootMessageSender
+    /// @inheritdoc IScheduleAuthMessageSender
     function sendRecoverTokens(
         uint16 centrifugeId,
         bytes32 target,
