@@ -138,7 +138,7 @@ contract TestData is LaunchDeployer {
         hub.createAccount(state.poolId, AccountId.wrap(0x01), true);
         hub.createAccount(state.poolId, AccountId.wrap(0x02), false);
         hub.createAccount(state.poolId, AccountId.wrap(0x03), false);
-        hub.createAccount(state.poolId, AccountId.wrap(0x04), false);
+        hub.createAccount(state.poolId, AccountId.wrap(0x04), true);
         hub.initializeHolding(
             state.poolId,
             state.scId,
@@ -300,7 +300,7 @@ contract TestData is LaunchDeployer {
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
-        hub.createAccount(poolId, AccountId.wrap(0x04), false);
+        hub.createAccount(poolId, AccountId.wrap(0x04), true);
         hub.initializeHolding(
             poolId,
             scId,

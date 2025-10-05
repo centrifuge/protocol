@@ -448,8 +448,8 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(poolManager);
         hub.hub.createAccount(poolId, ASSET_ACCOUNT, true);
         hub.hub.createAccount(poolId, EQUITY_ACCOUNT, false);
-        hub.hub.createAccount(poolId, LOSS_ACCOUNT, false);
         hub.hub.createAccount(poolId, GAIN_ACCOUNT, false);
+        hub.hub.createAccount(poolId, LOSS_ACCOUNT, true);
         vm.stopPrank();
     }
 
