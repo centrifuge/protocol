@@ -45,6 +45,7 @@ contract BaseTest is FullDeployer, Test {
 
     AssetId immutable USDC_C2 = newAssetId(CHAIN_CV, 1);
     AssetId immutable EUR_STABLE_C2 = newAssetId(CHAIN_CV, 2);
+    AssetId immutable FEE_C2 = newAssetId(CHAIN_CV, 3);
 
     uint128 constant INVESTOR_AMOUNT = 100 * 1e6; // USDC_C2
     uint128 constant SHARE_AMOUNT = 10 * 1e18; // Share from USD
@@ -57,6 +58,8 @@ contract BaseTest is FullDeployer, Test {
     AccountId constant LOSS_ACCOUNT = AccountId.wrap(0x03);
     AccountId constant GAIN_ACCOUNT = AccountId.wrap(0x04);
     AccountId constant ASSET_EUR_STABLE_ACCOUNT = AccountId.wrap(0x05);
+    AccountId constant FEE_ACCOUNT = AccountId.wrap(0x06);
+    AccountId constant LIABILITY_ACCOUNT = AccountId.wrap(0x07);
 
     uint128 constant GAS = MAX_MESSAGE_COST;
     uint128 constant DEFAULT_SUBSIDY = MAX_MESSAGE_COST * 1000;

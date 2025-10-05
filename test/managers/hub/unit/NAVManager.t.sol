@@ -188,7 +188,7 @@ contract NAVManagerConfigureTest is NAVManagerTest {
         );
         vm.expectCall(
             address(hub),
-            abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, navManager.lossAccount(CENTRIFUGE_ID_1), false)
+            abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, navManager.lossAccount(CENTRIFUGE_ID_1), true)
         );
 
         vm.expectEmit(true, false, false, true);
@@ -344,7 +344,7 @@ contract NAVManagerOnSyncTest is NAVManagerTest {
         // NAV = 1000 + 200 - 100 - 50 = 1050
         _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 1000, true);
         _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 200, true);
-        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 100, false);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 100, true);
         _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 50, true);
 
         vm.expectCall(
@@ -381,7 +381,7 @@ contract NAVManagerNetAssetValueTest is NAVManagerTest {
         // Expected NAV = 1000 + 200 - 100 - 50 = 1050
         _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 1000, true);
         _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 200, true);
-        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 100, false);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 100, true);
         _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 50, true);
 
         uint128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
@@ -399,7 +399,7 @@ contract NAVManagerNetAssetValueTest is NAVManagerTest {
         // NAV = 100 + 50 - 200 - 100 = -150
         _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 100, true);
         _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 50, true);
-        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 200, false);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 200, true);
         _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 100, true);
 
         vm.expectRevert();
@@ -442,7 +442,7 @@ contract NAVManagerCloseGainLossTest is NAVManagerTest {
 
     function testCloseGainLossSuccess() public {
         _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, true);
-        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, false);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, true);
 
         JournalEntry[] memory debits = new JournalEntry[](2);
         debits[0] = JournalEntry({value: 100, accountId: navManager.gainAccount(CENTRIFUGE_ID_1)});
@@ -476,7 +476,7 @@ contract NAVManagerCloseGainLossTest is NAVManagerTest {
 
     function testCloseGainLossOnlyLoss() public {
         _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 0, true);
-        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 150, false);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 150, true);
 
         JournalEntry[] memory debits = new JournalEntry[](1);
         debits[0] = JournalEntry({value: 150, accountId: navManager.equityAccount(CENTRIFUGE_ID_1)});
@@ -493,26 +493,6 @@ contract NAVManagerCloseGainLossTest is NAVManagerTest {
     function testCloseGainLossNoGainNoLoss() public {
         _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 0, true);
         _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 0, true);
-
-        vm.expectCall(address(hub), abi.encodeWithSelector(IHub.updateJournal.selector), 0);
-
-        vm.prank(manager);
-        navManager.closeGainLoss(POOL_A, CENTRIFUGE_ID_1);
-    }
-
-    function testCloseGainLossGainNotPositive() public {
-        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, false);
-        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 0, true);
-
-        vm.expectCall(address(hub), abi.encodeWithSelector(IHub.updateJournal.selector), 0);
-
-        vm.prank(manager);
-        navManager.closeGainLoss(POOL_A, CENTRIFUGE_ID_1);
-    }
-
-    function testCloseGainLossLossIsPositive() public {
-        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 0, true);
-        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, true);
 
         vm.expectCall(address(hub), abi.encodeWithSelector(IHub.updateJournal.selector), 0);
 
