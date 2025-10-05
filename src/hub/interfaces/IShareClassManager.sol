@@ -28,7 +28,7 @@ interface IShareClassManager {
         PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index, string name, string symbol, bytes32 salt
     );
     event UpdateMetadata(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol);
-    event UpdateShareClass(PoolId indexed poolId, ShareClassId indexed scId, D18 navPoolPerShare);
+    event UpdateShareClass(PoolId indexed poolId, ShareClassId indexed scId, D18 navPoolPerShare, uint64 navAsOfdate);
     event RemoteIssueShares(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId indexed scId, uint128 amount
     );
@@ -74,7 +74,7 @@ interface IShareClassManager {
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param pricePoolPerShare The price per share of the share class (in the pool currency denomination)
-    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external;
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare, uint64 priceAsOfDate) external;
 
     /// @notice Updates the metadata of a share class.
     ///

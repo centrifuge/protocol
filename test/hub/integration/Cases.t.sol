@@ -181,7 +181,7 @@ contract TestCases is BaseTest {
         valuation.setPrice(poolId, scId, EUR_STABLE_C2, poolPerEurPrice);
 
         vm.startPrank(FM);
-        hub.updateSharePrice(poolId, scId, sharePrice);
+        hub.updateSharePrice(poolId, scId, sharePrice, block.timestamp.toUint64());
         hub.notifyAssetPrice{value: GAS}(poolId, scId, EUR_STABLE_C2, REFUND);
         hub.notifyAssetPrice{value: GAS}(poolId, scId, USDC_C2, REFUND);
         hub.notifySharePrice{value: GAS}(poolId, scId, CHAIN_CV, REFUND);

@@ -556,7 +556,7 @@ contract EndToEndFlows is EndToEndUtils {
         vm.stopPrank();
 
         vm.startPrank(poolManager);
-        hub.hub.updateSharePrice(poolId, shareClassId, sharePrice);
+        hub.hub.updateSharePrice(poolId, shareClassId, sharePrice, 0 /*Testing asOfDate as 0 is fine*/);
         hub.hub.notifySharePrice{value: GAS}(poolId, shareClassId, spoke.centrifugeId, REFUND);
         hub.hub.notifyAssetPrice{value: GAS}(poolId, shareClassId, assetId, REFUND);
 

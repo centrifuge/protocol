@@ -126,7 +126,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateContract(POOL_A, ShareClassId.wrap(0), 0, bytes32(0), bytes(""), 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateSharePrice(POOL_A, ShareClassId.wrap(0), D18.wrap(0));
+        hub.updateSharePrice(POOL_A, ShareClassId.wrap(0), D18.wrap(0), 0);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.initializeHolding(

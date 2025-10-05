@@ -188,8 +188,8 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
 
     function testUpdateSharePrice() public {
         vm.expectEmit();
-        emit IShareClassManager.UpdateShareClass(poolId, scId, d18(2, 1));
-        shareClass.updateSharePrice(poolId, scId, d18(2, 1));
+        emit IShareClassManager.UpdateShareClass(poolId, scId, d18(2, 1), 1234);
+        shareClass.updateSharePrice(poolId, scId, d18(2, 1), 1234);
     }
 
     function testIncreaseShareClassIssuance(uint128 amount) public {
@@ -219,7 +219,7 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
     function testUpdateSharePriceWrongShareClassId() public {
         ShareClassId wrongScId = ShareClassId.wrap(bytes16(uint128(1337)));
         vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        shareClass.updateSharePrice(poolId, wrongScId, d18(2, 1));
+        shareClass.updateSharePrice(poolId, wrongScId, d18(2, 1), 0);
     }
 
     function testUpdateMetadataWrongShareClassId() public {
