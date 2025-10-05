@@ -136,10 +136,22 @@ struct WormholeDestination {
 }
 
 interface IWormholeAdapter is IAdapter, IAdapterWiring, IWormholeReceiver {
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
     event Wire(uint16 indexed centrifugeId, uint16 indexed wormholeId, address adapter);
+
+    //----------------------------------------------------------------------------------------------
+    // Errors
+    //----------------------------------------------------------------------------------------------
 
     error NotWormholeRelayer();
     error InvalidSource();
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Returns the source configuration for a given wormhole chain id
     /// @param wormholeId The remote wormhole id

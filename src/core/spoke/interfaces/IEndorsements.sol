@@ -6,5 +6,7 @@ interface IEndorsements {
     event Veto(address indexed user);
 
     /// @notice Returns whether the user is endorsed
+    /// @param user The address to check for endorsement status
+    /// @return True if the user is endorsed, false otherwise
     function endorsed(address user) external view returns (bool);
 }

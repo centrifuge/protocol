@@ -26,11 +26,15 @@ interface IProtocolGuardian is IBaseGuardian {
 
     /// @notice Schedule an upgrade (scheduled rely) on a specific chain
     /// @dev    Only supports EVM targets today
+    /// @param centrifugeId The chain ID where the upgrade will be scheduled
+    /// @param target The address to schedule as a ward
     /// @param refund Address to receive unused gas refund
     function scheduleUpgrade(uint16 centrifugeId, address target, address refund) external payable;
 
     /// @notice Cancel an upgrade (scheduled rely) on a specific chain
     /// @dev    Only supports EVM targets today
+    /// @param centrifugeId The chain ID where the upgrade will be cancelled
+    /// @param target The address to cancel the scheduled rely for
     /// @param refund Address to receive unused gas refund
     function cancelUpgrade(uint16 centrifugeId, address target, address refund) external payable;
 

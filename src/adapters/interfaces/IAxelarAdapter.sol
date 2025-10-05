@@ -81,7 +81,15 @@ struct AxelarDestination {
 }
 
 interface IAxelarAdapter is IAdapter, IAdapterWiring, IAxelarExecutable {
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
     event Wire(uint16 indexed centrifugeId, string indexed axelarId, string adapter);
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Returns the source configuration for a given axelar chain id
     /// @param axelarId The Axelar ID of the remote chain

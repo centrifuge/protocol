@@ -6,8 +6,10 @@ interface IScheduleAuth {
     event CancelRely(address indexed target);
 
     /// @notice Schedule relying a new ward after the delay has passed
+    /// @param target The address to schedule as a ward
     function scheduleRely(address target) external;
 
     /// @notice Cancel a pending scheduled rely
+    /// @param target The address to cancel the scheduled rely for
     function cancelRely(address target) external;
 }

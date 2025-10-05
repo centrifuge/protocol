@@ -5,10 +5,17 @@ import {IMessageHandler} from "../../interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "../../interfaces/IMessageProperties.sol";
 
 interface IMessageProcessor is IMessageHandler, IMessageProperties {
-    error InvalidSourceChain();
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
 
-    /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
+
+    //----------------------------------------------------------------------------------------------
+    // Errors
+    //----------------------------------------------------------------------------------------------
+
+    error InvalidSourceChain();
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
@@ -16,9 +23,12 @@ interface IMessageProcessor is IMessageHandler, IMessageProperties {
     /// @notice Dispatched when a message is tried to send from a different chain than mainnet
     error OnlyFromMainnet();
 
-    /// @notice Updates a contract parameter.
-    /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'hubRegistry' string value.
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Updates a contract parameter
+    /// @param what Name of the parameter to update (accepts 'hubRegistry')
     /// @param data New value given to the `what` parameter
     function file(bytes32 what, address data) external;
 }
