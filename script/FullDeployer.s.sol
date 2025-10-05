@@ -258,6 +258,8 @@ contract FullActionBatcher is CoreActionBatcher {
         report.redemptionRestrictionsHook.deny(address(this));
 
         report.batchRequestManager.deny(address(this));
+        report.navManager.deny(address(this));
+        report.simplePriceManager.deny(address(this));
 
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.deny(address(this));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));

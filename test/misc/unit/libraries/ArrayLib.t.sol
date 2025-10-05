@@ -11,7 +11,7 @@ contract ArrayLibTest is Test {
     int16[8] storedArray;
 
     function testCountPositiveValues(int16[8] memory array, uint8 valuesToCheck) public pure {
-        vm.assume(valuesToCheck <= 8);
+        valuesToCheck = uint8(bound(valuesToCheck, 0, 8));
 
         uint8 negativeOrZero;
         for (uint256 i; i < valuesToCheck; i++) {
@@ -22,7 +22,8 @@ contract ArrayLibTest is Test {
     }
 
     function testDecreaseFirstNValues(int16[8] memory initialArray, uint8 valuesToDecrease) public {
-        vm.assume(valuesToDecrease <= 8);
+        valuesToDecrease = uint8(bound(valuesToDecrease, 0, 8));
+
         for (uint256 i; i < valuesToDecrease; i++) {
             vm.assume(initialArray[i] > type(int16).min);
         }
@@ -35,8 +36,8 @@ contract ArrayLibTest is Test {
     function testDecreaseFirstNValuesButNotBelowZeroAfterIndex(uint8 valuesToDecrease, uint8 numValuesLowerZeroIndex)
         public
     {
-        vm.assume(valuesToDecrease <= 8);
-        vm.assume(numValuesLowerZeroIndex <= valuesToDecrease);
+        valuesToDecrease = uint8(bound(valuesToDecrease, 0, 8));
+        numValuesLowerZeroIndex = uint8(bound(numValuesLowerZeroIndex, 0, valuesToDecrease));
 
         int16[8] memory initialArray = storedArray;
         storedArray.decreaseFirstNValues(valuesToDecrease, numValuesLowerZeroIndex);
