@@ -5,9 +5,9 @@ import {IDepositManager, IWithdrawManager} from "./IBalanceSheetManager.sol";
 
 import {PoolId} from "../../../core/types/PoolId.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
-import {IUpdateContract} from "../../../core/spoke/interfaces/IUpdateContract.sol";
+import {ITrustedContractUpdate} from "../../../core/interfaces/IContractUpdate.sol";
 
-interface IOnOfframpManager is IDepositManager, IWithdrawManager, IUpdateContract {
+interface IOnOfframpManager is IDepositManager, IWithdrawManager, ITrustedContractUpdate {
     event UpdateOnramp(address indexed asset, bool isEnabled);
     event UpdateRelayer(address indexed relayer, bool isEnabled);
     event UpdateOfframp(address indexed asset, address receiver, bool isEnabled);

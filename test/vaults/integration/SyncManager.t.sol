@@ -106,7 +106,7 @@ contract SyncManagerUnauthorizedTest is SyncManagerBaseTest {
 
     function testUpdate() public {
         _expectUnauthorized();
-        syncManager.update(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
+        syncManager.trustedCall(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
     }
 
     function _expectUnauthorized() internal {

@@ -13,10 +13,10 @@ import {HubHandler} from "../src/core/hub/HubHandler.sol";
 import {MultiAdapter} from "../src/core/MultiAdapter.sol";
 import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
+import {ContractUpdater} from "../src/core/ContractUpdater.sol";
 import {GasService} from "../src/core/messaging/GasService.sol";
 import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
 import {VaultRegistry} from "../src/core/spoke/VaultRegistry.sol";
-import {ContractUpdater} from "../src/core/spoke/ContractUpdater.sol";
 import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
 import {TokenFactory} from "../src/core/spoke/factories/TokenFactory.sol";
 import {MessageProcessor} from "../src/core/messaging/MessageProcessor.sol";
@@ -264,6 +264,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
 
         version = input.version;
 
+        // Core
         gateway = Gateway(
             create3(
                 generateSalt("gateway"),
@@ -278,6 +279,14 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
             )
         );
 
+        contractUpdater = ContractUpdater(
+            create3(
+                generateSalt("contractUpdater"),
+                abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(batcher))
+            )
+        );
+
+        // Messaging
         gasService = GasService(
             create3(generateSalt("gasService-2"), abi.encodePacked(type(GasService).creationCode, abi.encode()))
         );
@@ -298,6 +307,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
             )
         );
 
+        // Spoke
         tokenFactory = TokenFactory(
             create3(
                 generateSalt("tokenFactory"),
@@ -318,13 +328,6 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
             )
         );
 
-        contractUpdater = ContractUpdater(
-            create3(
-                generateSalt("contractUpdater"),
-                abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(batcher))
-            )
-        );
-
         vaultRegistry = VaultRegistry(
             create3(
                 generateSalt("vaultRegistry"), abi.encodePacked(type(VaultRegistry).creationCode, abi.encode(batcher))
@@ -338,6 +341,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
             )
         );
 
+        // Hub
         hubRegistry = HubRegistry(
             create3(generateSalt("hubRegistry"), abi.encodePacked(type(HubRegistry).creationCode, abi.encode(batcher)))
         );
@@ -381,20 +385,24 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
 
         batcher.engageCore(_coreReport(), input.root);
 
+        // Core
         register("gateway", address(gateway));
         register("multiAdapter", address(multiAdapter));
+        register("contractUpdater", address(contractUpdater));
 
+        // Messaging
         register("gasService", address(gasService));
         register("messageProcessor", address(messageProcessor));
         register("messageDispatcher", address(messageDispatcher));
 
+        // Spoke
         register("tokenFactory", address(tokenFactory));
         register("spoke", address(spoke));
         register("balanceSheet", address(balanceSheet));
-        register("contractUpdater", address(contractUpdater));
         register("vaultRegistry", address(vaultRegistry));
         register("poolEscrowFactory", address(poolEscrowFactory));
 
+        // Hub
         register("hubRegistry", address(hubRegistry));
         register("accounting", address(accounting));
         register("holdings", address(holdings));
