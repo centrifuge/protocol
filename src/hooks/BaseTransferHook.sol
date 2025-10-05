@@ -24,6 +24,9 @@ import {IRoot} from "../admin/interfaces/IRoot.sol";
 import {UpdateContractType, UpdateContractMessageLib} from "../libraries/UpdateContractMessageLib.sol";
 
 /// @title  BaseTransferHook
+/// @notice Abstract base contract for share token transfer restrictions that provides memberlist management,
+///         account freezing capabilities, and cross-chain message handling, while encoding member validity
+///         and freeze status in the hookData structure for efficient on-chain verification.
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
 ///         the last bit is used to denote whether the account is frozen.
 abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHook, ITrustedContractUpdate {

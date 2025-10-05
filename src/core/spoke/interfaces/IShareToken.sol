@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {IERC20Metadata} from "../../../misc/interfaces/IERC20.sol";
 import {IERC7575Share} from "../../../misc/interfaces/IERC7575.sol";

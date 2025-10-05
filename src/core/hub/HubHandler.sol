@@ -17,6 +17,10 @@ import {ShareClassId} from "../types/ShareClassId.sol";
 import {IHubMessageSender} from "../interfaces/IGatewaySenders.sol";
 import {IHubGatewayHandler} from "../interfaces/IGatewayHandlers.sol";
 
+/// @title  HubHandler
+/// @notice This contract processes incoming cross-chain messages for the Hub, handling asset registration,
+///         vault requests, holding amount updates, share issuance/revocation, and cross-chain share
+///         transfers while coordinating with the Hub's accounting and holdings systems.
 contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
     IHub public hub;
     IHoldings public holdings;

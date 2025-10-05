@@ -6,6 +6,10 @@ import {Multicall, IMulticall} from "../../misc/Multicall.sol";
 import {IGateway} from "../interfaces/IGateway.sol";
 import {IBatchedMulticall} from "../interfaces/IBatchedMulticall.sol";
 
+/// @title  BatchedMulticall
+/// @notice Abstract contract that extends Multicall with gateway batching support, enabling efficient
+///         aggregation of multiple cross-chain messages into a single batch to reduce transaction costs
+///         while coordinating payment handling across batched operations.
 abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
     IGateway public gateway;
     bool internal transient _isBatching;

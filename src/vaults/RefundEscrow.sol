@@ -5,6 +5,10 @@ import {IRefundEscrow} from "./interfaces/IRefundEscrow.sol";
 
 import {Auth} from "../misc/Auth.sol";
 
+/// @title  RefundEscrow
+/// @notice This contract provides a simple escrow for native token subsidies used to pay for cross-chain
+///         messaging costs, allowing authorized parties to deposit funds and withdraw them to specified
+///         addresses for managing transaction gas refunds.
 contract RefundEscrow is Auth, IRefundEscrow {
     constructor(address owner) Auth(owner) {}
 

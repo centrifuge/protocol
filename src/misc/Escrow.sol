@@ -7,6 +7,8 @@ import {IEscrow} from "./interfaces/IEscrow.sol";
 import {IERC6909} from "./interfaces/IERC6909.sol";
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 
+/// @title  Escrow
+/// @notice This contract provides custody of ERC20 and ERC6909 tokens.
 contract Escrow is Auth, IEscrow {
     constructor(address deployer) Auth(deployer) {}
 

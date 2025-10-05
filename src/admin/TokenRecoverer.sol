@@ -8,6 +8,10 @@ import {IRecoverable} from "../misc/interfaces/IRecoverable.sol";
 
 import {ITokenRecoverer} from "../core/messaging/interfaces/ITokenRecoverer.sol";
 
+/// @title  TokenRecoverer
+/// @notice This contract enables authorized recovery of tokens from protocol contracts by temporarily
+///         granting itself permissions through Root, executing the recovery, and then immediately
+///         removing those permissions.
 contract TokenRecoverer is Auth, ITokenRecoverer {
     IRoot public immutable root;
 
