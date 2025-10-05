@@ -10,10 +10,9 @@ import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {PricingLib} from "../../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {MessageLib} from "../../../../src/core/messaging/libraries/MessageLib.sol";
+import {VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubRequestManager.sol";
-
-import {MessageLib} from "../../../../src/messaging/libraries/MessageLib.sol";
-import {VaultUpdateKind} from "../../../../src/messaging/libraries/MessageLib.sol";
 
 import {RequestCallbackMessageLib} from "../../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 

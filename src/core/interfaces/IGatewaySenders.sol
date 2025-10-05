@@ -3,7 +3,7 @@ pragma solidity >=0.5.0;
 
 import {D18} from "../../misc/types/D18.sol";
 
-import {VaultUpdateKind} from "../../messaging/libraries/MessageLib.sol";
+import {VaultUpdateKind} from "../messaging/libraries/MessageLib.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
