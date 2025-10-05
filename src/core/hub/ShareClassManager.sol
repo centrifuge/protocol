@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
-import {IShareClassManager, ShareClassMetadata, ShareClassMetrics} from "./interfaces/IShareClassManager.sol";
+import {IShareClassManager, ShareClassMetadata, Price} from "./interfaces/IShareClassManager.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
@@ -16,11 +16,12 @@ contract ShareClassManager is Auth, IShareClassManager {
     IHubRegistry public immutable hubRegistry;
 
     mapping(bytes32 salt => bool) public salts;
-    mapping(PoolId poolId => uint32) public shareClassCount;
-    mapping(PoolId poolId => mapping(ShareClassId => bool)) public shareClassIds;
-    mapping(PoolId poolId => mapping(ShareClassId scId => ShareClassMetrics)) public metrics;
-    mapping(PoolId poolId => mapping(ShareClassId scId => ShareClassMetadata)) public metadata;
-    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(uint16 centrifugeId => uint128))) public issuance;
+    mapping(PoolId => uint32) public shareClassCount;
+    mapping(PoolId => mapping(ShareClassId => bool)) public shareClassIds;
+    mapping(PoolId => mapping(ShareClassId => Price)) public pricePoolPerShare;
+    mapping(PoolId => mapping(ShareClassId => uint128)) public totalIssuance;
+    mapping(PoolId => mapping(ShareClassId => ShareClassMetadata)) public metadata;
+    mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => uint128))) public issuance;
 
     constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
         hubRegistry = hubRegistry_;
@@ -47,12 +48,17 @@ contract ShareClassManager is Auth, IShareClassManager {
     }
 
     /// @inheritdoc IShareClassManager
-    function updateSharePrice(PoolId poolId, ShareClassId scId_, D18 pricePoolPerShare) external auth {
+    function updateSharePrice(PoolId poolId, ShareClassId scId_, D18 pricePoolPerShare_, uint64 computedAt)
+        external
+        auth
+    {
         require(exists(poolId, scId_), ShareClassNotFound());
+        Price storage p = pricePoolPerShare[poolId][scId_];
+        require(computedAt <= block.timestamp, CannotSetFuturePrice());
 
-        ShareClassMetrics storage m = metrics[poolId][scId_];
-        m.pricePoolPerShare = pricePoolPerShare;
-        emit UpdateShareClass(poolId, scId_, pricePoolPerShare);
+        p.price = pricePoolPerShare_;
+        p.computedAt = computedAt;
+        emit UpdatePricePoolPerShare(poolId, scId_, pricePoolPerShare_, computedAt);
     }
 
     /// @inheritdoc IShareClassManager
@@ -76,8 +82,8 @@ contract ShareClassManager is Auth, IShareClassManager {
         require(isIssuance || issuance[poolId][scId_][centrifugeId] >= amount, DecreaseMoreThanIssued());
 
         uint128 newTotalIssuance =
-            isIssuance ? metrics[poolId][scId_].totalIssuance + amount : metrics[poolId][scId_].totalIssuance - amount;
-        metrics[poolId][scId_].totalIssuance = newTotalIssuance;
+            isIssuance ? totalIssuance[poolId][scId_] + amount : totalIssuance[poolId][scId_] - amount;
+        totalIssuance[poolId][scId_] = newTotalIssuance;
 
         uint128 newIssuancePerNetwork =
             isIssuance ? issuance[poolId][scId_][centrifugeId] + amount : issuance[poolId][scId_][centrifugeId] - amount;

@@ -573,7 +573,7 @@ contract EndToEndFlows is EndToEndUtils {
         vm.stopPrank();
 
         vm.startPrank(poolManager);
-        hub.hub.updateSharePrice(poolId, shareClassId, sharePrice);
+        hub.hub.updateSharePrice(poolId, shareClassId, sharePrice, uint64(block.timestamp));
         hub.hub.notifySharePrice{value: GAS}(poolId, shareClassId, spoke.centrifugeId, REFUND);
         hub.hub.notifyAssetPrice{value: GAS}(poolId, shareClassId, assetId, REFUND);
 
@@ -660,7 +660,7 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(poolManager);
         uint32 issueEpochId = hub.batchRequestManager.nowIssueEpoch(poolId, shareClassId, assetId);
-        (, D18 sharePrice) = hub.shareClassManager.metrics(poolId, shareClassId);
+        (D18 sharePrice,) = hub.shareClassManager.pricePoolPerShare(poolId, shareClassId);
         hub.batchRequestManager.issueShares{value: GAS}(
             poolId, shareClassId, assetId, issueEpochId, sharePrice, HOOK_GAS, REFUND
         );
@@ -838,7 +838,7 @@ contract EndToEndFlows is EndToEndUtils {
         hub.batchRequestManager.approveRedeems(poolId, shareClassId, assetId, redeemEpochId, shares, pricePoolPerAsset);
 
         uint32 revokeEpochId = hub.batchRequestManager.nowRevokeEpoch(poolId, shareClassId, assetId);
-        (, D18 sharePrice) = hub.shareClassManager.metrics(poolId, shareClassId);
+        (D18 sharePrice,) = hub.shareClassManager.pricePoolPerShare(poolId, shareClassId);
         hub.batchRequestManager.revokeShares{value: GAS}(
             poolId, shareClassId, assetId, revokeEpochId, sharePrice, HOOK_GAS, REFUND
         );
