@@ -28,6 +28,9 @@ import {
     IVaultRegistryGatewayHandler
 } from "../interfaces/IGatewayHandlers.sol";
 
+/// @title  MessageDispatcher
+/// @notice This contract serializes and dispatches outgoing cross-chain messages, handling both local and
+///         remote destinations by either directly invoking local handlers or routing through the gateway.
 contract MessageDispatcher is Auth, IMessageDispatcher {
     using CastLib for *;
     using MessageLib for *;

@@ -15,6 +15,9 @@ import {IGateway} from "../core/interfaces/IGateway.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
 import {IScheduleAuthMessageSender} from "../core/interfaces/IGatewaySenders.sol";
 
+/// @title  ProtocolGuardian
+/// @notice This contract provides emergency controls and protocol-level management including pausing,
+///         permission scheduling, cross-chain upgrade coordination, and adapter configuration.
 contract ProtocolGuardian is IProtocolGuardian {
     using CastLib for address;
 

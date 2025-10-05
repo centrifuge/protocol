@@ -13,6 +13,10 @@ import {MathLib} from "../misc/libraries/MathLib.sol";
 import {ArrayLib} from "../misc/libraries/ArrayLib.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 
+/// @title  MultiAdapter
+/// @notice This contract manages multiple cross-chain messaging adapters and implements a voting mechanism
+///         to ensure message consensus, requiring a configurable threshold of adapter confirmations before
+///         forwarding messages to the gateway for execution.
 contract MultiAdapter is Auth, IMultiAdapter {
     using CastLib for *;
     using BytesLib for bytes;

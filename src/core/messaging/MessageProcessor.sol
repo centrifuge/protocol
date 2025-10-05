@@ -29,6 +29,10 @@ import {
     IVaultRegistryGatewayHandler
 } from "../interfaces/IGatewayHandlers.sol";
 
+/// @title  MessageProcessor
+/// @notice This contract deserializes and processes incoming cross-chain messages, routing them to appropriate
+///         handlers based on message type, validating source chains for privileged operations, and managing
+///         unpaid mode for internal protocol message processing.
 contract MessageProcessor is Auth, IMessageProcessor {
     using CastLib for *;
     using MessageLib for *;
