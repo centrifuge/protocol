@@ -26,7 +26,7 @@ import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
-    IUpdateContractGatewayHandler,
+    IContractUpdateGatewayHandler,
     IVaultRegistryGatewayHandler
 } from "../interfaces/IGatewayHandlers.sol";
 
@@ -46,7 +46,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     ITokenRecoverer public tokenRecoverer;
     IBalanceSheetGatewayHandler public balanceSheet;
     IVaultRegistryGatewayHandler public vaultRegistry;
-    IUpdateContractGatewayHandler public contractUpdater;
+    IContractUpdateGatewayHandler public contractUpdater;
 
     constructor(IRoot root_, address deployer) Auth(deployer) {
         root = root_;
@@ -63,8 +63,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
-        else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
+        else if (what == "contractUpdater") contractUpdater = IContractUpdateGatewayHandler(data);
         else if (what == "tokenRecoverer") tokenRecoverer = ITokenRecoverer(data);
         else revert FileUnrecognizedParam();
 
@@ -161,9 +161,21 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateRestriction) {
             MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
             spoke.updateRestriction(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
-        } else if (kind == MessageType.UpdateContract) {
-            MessageLib.UpdateContract memory m = MessageLib.deserializeUpdateContract(message);
-            contractUpdater.execute(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload);
+        } else if (kind == MessageType.TrustedContractUpdate) {
+            MessageLib.TrustedContractUpdate memory m = MessageLib.deserializeTrustedContractUpdate(message);
+            contractUpdater.trustedCall(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload
+            );
+        } else if (kind == MessageType.UntrustedContractUpdate) {
+            MessageLib.UntrustedContractUpdate memory m = MessageLib.deserializeUntrustedContractUpdate(message);
+            contractUpdater.untrustedCall(
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                m.target.toAddress(),
+                m.payload,
+                centrifugeId,
+                m.sender
+            );
         } else if (kind == MessageType.RequestCallback) {
             MessageLib.RequestCallback memory m = MessageLib.deserializeRequestCallback(message);
             spoke.requestCallback(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
