@@ -256,21 +256,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function callRequestManager(PoolId poolId, uint16 centrifugeId, bytes calldata data) external payable {
-        _isManager(poolId);
-        (bool success, bytes memory returnData) =
-            address(hubRegistry.hubRequestManager(poolId, centrifugeId)).call{value: _payment()}(data);
-        if (!success) {
-            uint256 length = returnData.length;
-            require(length != 0, CallFailedWithEmptyRevert());
-
-            assembly ("memory-safe") {
-                revert(add(32, returnData), length)
-            }
-        }
-    }
-
-    /// @inheritdoc IHub
     function updateRestriction(
         PoolId poolId,
         ShareClassId scId,

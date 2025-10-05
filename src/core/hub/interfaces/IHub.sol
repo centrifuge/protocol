@@ -349,13 +349,6 @@ interface IHub is IBatchedMulticall {
         external
         payable;
 
-    /// @notice Calls the request manager for a specific pool and centrifuge chain
-    /// @dev This is included in the Hub contract in order to be included in multicalls with other Hub methods.
-    /// @param poolId The pool ID
-    /// @param centrifugeId The centrifuge chain ID
-    /// @param data The encoded function call data
-    function callRequestManager(PoolId poolId, uint16 centrifugeId, bytes calldata data) external payable;
-
     function updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
         external
         payable;

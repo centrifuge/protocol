@@ -13,6 +13,8 @@ import "forge-std/Script.sol";
 ///
 ///      Intended for testnet use only.
 contract WireAdapters is Script {
+    IAdapter[] adapters; // Storage array for adapter instances
+
     function fetchConfig(string memory network) internal view returns (string memory) {
         string memory configFile = string.concat("env/", network, ".json");
         string memory config = vm.readFile(configFile);
