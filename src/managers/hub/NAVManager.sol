@@ -24,8 +24,8 @@ contract NAVManager is INAVManager, Auth {
     IHubRegistry public immutable hubRegistry;
 
     mapping(PoolId => INAVHook) public navHook;
-    mapping(PoolId poolId => mapping(address => bool)) public manager;
-    mapping(PoolId poolId => mapping(uint16 centrifugeId => bool)) public initialized;
+    mapping(PoolId => mapping(address => bool)) public manager;
+    mapping(PoolId => mapping(uint16 centrifugeId => bool)) public initialized;
 
     constructor(IHub hub_, address deployer) Auth(deployer) {
         hub = hub_;

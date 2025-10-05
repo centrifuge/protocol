@@ -207,12 +207,12 @@ contract TestCases is BaseTest {
 
         cv.updateShares(poolId, scId, 100, true, IS_SNAPSHOT, 0);
 
-        (uint128 totalIssuance,) = shareClassManager.metrics(poolId, scId);
+        uint128 totalIssuance = shareClassManager.totalIssuance(poolId, scId);
         assertEq(totalIssuance, 100);
 
         cv.updateShares(poolId, scId, 45, false, IS_SNAPSHOT, 1);
 
-        (uint128 totalIssuance2,) = shareClassManager.metrics(poolId, scId);
+        uint128 totalIssuance2 = shareClassManager.totalIssuance(poolId, scId);
         assertEq(totalIssuance2, 55);
     }
 
@@ -226,7 +226,7 @@ contract TestCases is BaseTest {
         valuation.setPrice(poolId, scId, EUR_STABLE_C2, poolPerEurPrice);
 
         vm.startPrank(FM);
-        hub.updateSharePrice(poolId, scId, sharePrice);
+        hub.updateSharePrice(poolId, scId, sharePrice, uint64(block.timestamp));
         hub.notifyAssetPrice{value: GAS}(poolId, scId, EUR_STABLE_C2, REFUND);
         hub.notifyAssetPrice{value: GAS}(poolId, scId, USDC_C2, REFUND);
         hub.notifySharePrice{value: GAS}(poolId, scId, CHAIN_CV, REFUND);

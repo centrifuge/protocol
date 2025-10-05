@@ -49,7 +49,9 @@ interface IHub is IBatchedMulticall {
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, string name, string symbol
     );
     event UpdateShareHook(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 hook);
-    event NotifySharePrice(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, D18 poolPerShare);
+    event NotifySharePrice(
+        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, D18 poolPerShare, uint64 computedAt
+    );
     event NotifyAssetPrice(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset
     );
@@ -324,7 +326,9 @@ interface IHub is IBatchedMulticall {
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param pricePoolPerShare The new price per share
-    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external payable;
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare, uint64 computedAt)
+        external
+        payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
     ///         It will register the different accounts used for holdings.
