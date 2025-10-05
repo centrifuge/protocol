@@ -144,7 +144,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateContract(POOL_A, ShareClassId.wrap(0), 0, bytes32(0), bytes(""), 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateSharePrice(POOL_A, ShareClassId.wrap(0), D18.wrap(0));
+        hub.updateSharePrice(POOL_A, ShareClassId.wrap(0), D18.wrap(0), uint64(block.timestamp));
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.initializeHolding(
@@ -258,7 +258,7 @@ contract TestUpdateSharePrice is TestCommon {
         assertEq(feeHook.calls(POOL_A, SC_A), 0);
 
         vm.prank(ADMIN);
-        hub.updateSharePrice(POOL_A, SC_A, d18(1, 1));
+        hub.updateSharePrice(POOL_A, SC_A, d18(1, 1), uint64(block.timestamp));
 
         assertEq(feeHook.calls(POOL_A, SC_A), 1);
     }

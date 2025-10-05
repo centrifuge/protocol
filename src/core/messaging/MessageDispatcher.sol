@@ -175,11 +175,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         PoolId poolId,
         ShareClassId scId,
         D18 pricePoolPerShare,
+        uint64 computedAt,
         address refund
     ) external payable auth {
-        uint64 timestamp = block.timestamp.toUint64();
         if (chainId == localCentrifugeId) {
-            spoke.updatePricePoolPerShare(poolId, scId, pricePoolPerShare, timestamp);
+            spoke.updatePricePoolPerShare(poolId, scId, pricePoolPerShare, computedAt);
             _refund(refund);
         } else {
             _send(
@@ -188,7 +188,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     price: pricePoolPerShare.raw(),
-                    timestamp: timestamp
+                    timestamp: computedAt
                 }).serialize(),
                 0,
                 refund
