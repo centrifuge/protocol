@@ -173,28 +173,28 @@ contract NAVManager is INAVManager, Auth {
         AccountId gainAccount_ = gainAccount(centrifugeId);
         AccountId lossAccount_ = lossAccount(centrifugeId);
 
-        (bool gainIsPositive, uint128 gainValue) = accounting.accountValue(poolId, gainAccount_);
-        (bool lossIsPositive, uint128 lossValue) = accounting.accountValue(poolId, lossAccount_);
+        (, uint128 gainValue) = accounting.accountValue(poolId, gainAccount_);
+        (, uint128 lossValue) = accounting.accountValue(poolId, lossAccount_);
 
-        uint256 count = (gainIsPositive && gainValue > 0 ? 1 : 0) + (lossIsPositive && lossValue > 0 ? 1 : 0);
+        uint256 count = (gainValue > 0 ? 1 : 0) + (lossValue > 0 ? 1 : 0);
+        if (count == 0) return;
 
+        uint256 index = 0;
         JournalEntry[] memory debits = new JournalEntry[](count);
         JournalEntry[] memory credits = new JournalEntry[](count);
 
-        uint256 index = 0;
-
-        if (gainIsPositive && gainValue > 0) {
+        if (gainValue > 0) {
             debits[index] = JournalEntry({value: gainValue, accountId: gainAccount_});
             credits[index] = JournalEntry({value: gainValue, accountId: equityAccount_});
             index++;
         }
 
-        if (lossIsPositive && lossValue > 0) {
+        if (lossValue > 0) {
             debits[index] = JournalEntry({value: lossValue, accountId: equityAccount_});
             credits[index] = JournalEntry({value: lossValue, accountId: lossAccount_});
         }
 
-        if (count > 0) hub.updateJournal(poolId, debits, credits);
+        hub.updateJournal(poolId, debits, credits);
     }
 
     //----------------------------------------------------------------------------------------------
