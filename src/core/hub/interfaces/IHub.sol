@@ -87,7 +87,7 @@ interface IHub is IBatchedMulticall {
     error FileUnrecognizedParam();
 
     /// @notice Dispatched when the pool is already unlocked.
-    /// It means when calling to `execute()` inside `execute()`.
+    ///         It means when calling to `execute()` inside `execute()`.
     error PoolAlreadyUnlocked();
 
     /// @notice Dispatched when the pool can not be unlocked by the caller

@@ -5,8 +5,8 @@ import {PoolId} from "../../../types/PoolId.sol";
 import {IPoolEscrow} from "../../interfaces/IPoolEscrow.sol";
 
 interface IPoolEscrowProvider {
-    /// @notice Returns the deterministic address of an escrow contract based on a given pool id wrapped into the
-    /// corresponding interface.
+    /// @notice Returns the deterministic address of an escrow contract based on a given pool id
+    ///         wrapped into the corresponding interface.
     ///
     /// @dev Does not check, whether the escrow was already deployed.
     function escrow(PoolId poolId) external view returns (IPoolEscrow);

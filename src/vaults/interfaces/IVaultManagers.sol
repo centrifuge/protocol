@@ -13,8 +13,7 @@ import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol"
 
 interface IDepositManager {
     /// @notice Processes owner's asset deposit after the epoch has been executed on the corresponding CP instance and
-    /// the deposit order
-    ///         has been successfully processed (partial fulfillment possible).
+    ///         the deposit order has been successfully processed (partial fulfillment possible).
     ///         Shares are transferred from the escrow to the receiver. Amount of shares is computed based of the amount
     ///         of assets and the owner's share price.
     /// @dev    The assets required to fulfill the deposit are already locked in escrow upon calling requestDeposit.
@@ -26,8 +25,7 @@ interface IDepositManager {
         returns (uint256 shares);
 
     /// @notice Processes owner's share mint after the epoch has been executed on the corresponding CP instance and the
-    /// deposit order has
-    ///         been successfully processed (partial fulfillment possible).
+    ///         deposit order has been successfully processed (partial fulfillment possible).
     ///         Shares are transferred from the escrow to the receiver. Amount of assets is computed based of the amount
     ///         of shares and the owner's share price.
     /// @dev    The assets required to fulfill the mint are already locked in escrow upon calling requestDeposit.
@@ -87,7 +85,7 @@ interface IAsyncDepositManager is IDepositManager, IBaseRequestManager {
         returns (uint256 assets);
 
     /// @notice Indicates whether a user has pending deposit requests and returns the total deposit request asset
-    /// request value.
+    ///         request value.
     function pendingDepositRequest(IBaseVault vault, address user) external view returns (uint256 assets);
 
     /// @notice Indicates whether a user has pending deposit request cancellations.
@@ -109,8 +107,7 @@ interface IRedeemManager {
     );
 
     /// @notice Processes owner's share redemption after the epoch has been executed on the corresponding CP instance
-    /// and the redeem order
-    ///         has been successfully processed (partial fulfillment possible).
+    ///         and the redeem order has been successfully processed (partial fulfillment possible).
     ///         Assets are transferred from the escrow to the receiver. Amount of assets is computed based of the amount
     ///         of shares and the owner's share price.
     /// @dev    The shares required to fulfill the redemption were already locked in escrow on requestRedeem and burned
@@ -122,8 +119,7 @@ interface IRedeemManager {
         returns (uint256 assets);
 
     /// @notice Processes owner's asset withdrawal after the epoch has been executed on the corresponding CP instance
-    /// and the redeem order
-    ///         has been successfully processed (partial fulfillment possible).
+    ///         and the redeem order has been successfully processed (partial fulfillment possible).
     ///         Assets are transferred from the escrow to the receiver. Amount of shares is computed based of the amount
     ///         of shares and the owner's share price.
     /// @dev    The shares required to fulfill the withdrawal were already locked in escrow on requestRedeem and burned
