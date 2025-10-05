@@ -18,8 +18,8 @@ contract ShareClassManager is Auth, IShareClassManager {
     mapping(bytes32 salt => bool) public salts;
     mapping(PoolId => uint32) public shareClassCount;
     mapping(PoolId => mapping(ShareClassId => bool)) public shareClassIds;
-    mapping(PoolId => mapping(ShareClassId => Price)) public pricePoolPerShare;
     mapping(PoolId => mapping(ShareClassId => uint128)) public totalIssuance;
+    mapping(PoolId => mapping(ShareClassId => Price)) public pricePoolPerShare;
     mapping(PoolId => mapping(ShareClassId => ShareClassMetadata)) public metadata;
     mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => uint128))) public issuance;
 
