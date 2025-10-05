@@ -160,7 +160,7 @@ contract TestData is LaunchDeployer {
             msg.sender
         );
 
-        hub.updateSharePrice(state.poolId, state.scId, pricePoolPerShare);
+        hub.updateSharePrice(state.poolId, state.scId, pricePoolPerShare, uint64(block.timestamp));
         hub.notifySharePrice(state.poolId, state.scId, centrifugeId, msg.sender);
         hub.notifyAssetPrice(state.poolId, state.scId, assetId, msg.sender);
 
@@ -196,7 +196,7 @@ contract TestData is LaunchDeployer {
         state.vault.mint(1_000_000e18, msg.sender);
 
         // Update price, deposit principal + yield
-        hub.updateSharePrice(state.poolId, state.scId, d18(11, 10));
+        hub.updateSharePrice(state.poolId, state.scId, d18(11, 10), uint64(block.timestamp));
         hub.notifySharePrice(state.poolId, state.scId, centrifugeId, msg.sender);
         hub.notifyAssetPrice(state.poolId, state.scId, assetId, msg.sender);
 
@@ -322,7 +322,7 @@ contract TestData is LaunchDeployer {
             msg.sender
         );
 
-        hub.updateSharePrice(poolId, scId, pricePoolPerShare);
+        hub.updateSharePrice(poolId, scId, pricePoolPerShare, uint64(block.timestamp));
         hub.notifySharePrice(poolId, scId, centrifugeId, msg.sender);
         hub.notifyAssetPrice(poolId, scId, assetId, msg.sender);
 

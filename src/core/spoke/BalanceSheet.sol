@@ -44,9 +44,8 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     IPoolEscrowProvider public poolEscrowProvider;
 
     mapping(PoolId => mapping(address => bool)) public manager;
-    mapping(PoolId poolId => mapping(ShareClassId scId => ShareQueueAmount)) public queuedShares;
-    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => AssetQueueAmount))) public
-        queuedAssets;
+    mapping(PoolId => mapping(ShareClassId => ShareQueueAmount)) public queuedShares;
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId => AssetQueueAmount))) public queuedAssets;
 
     constructor(IEndorsements endorsements_, address deployer) Auth(deployer) BatchedMulticall(gateway) {
         endorsements = endorsements_;

@@ -74,6 +74,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         ShareClassId scId,
         D18 pricePoolPerShare,
+        uint64 computedAt,
         address refund
     ) external payable;
 

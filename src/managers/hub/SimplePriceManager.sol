@@ -21,9 +21,9 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     IHubRegistry public immutable hubRegistry;
     IShareClassManager public immutable shareClassManager;
 
-    mapping(PoolId poolId => Metrics) public metrics;
-    mapping(PoolId poolId => uint16[]) internal _notifiedNetworks;
-    mapping(PoolId poolId => mapping(uint16 centrifugeId => NetworkMetrics)) public networkMetrics;
+    mapping(PoolId => Metrics) public metrics;
+    mapping(PoolId => uint16[]) internal _notifiedNetworks;
+    mapping(PoolId => mapping(uint16 centrifugeId => NetworkMetrics)) public networkMetrics;
 
     constructor(IHub hub_, address deployer) Auth(deployer) {
         hub = hub_;
@@ -102,7 +102,7 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
 
         uint16[] storage networks_ = _notifiedNetworks[poolId];
         uint256 networkCount = networks_.length;
-        hub.updateSharePrice(poolId, scId, pricePoolPerShare_);
+        hub.updateSharePrice(poolId, scId, pricePoolPerShare_, uint64(block.timestamp));
 
         for (uint256 i; i < networkCount; i++) {
             hub.notifySharePrice(poolId, scId, networks_[i], address(0));
