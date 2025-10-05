@@ -11,12 +11,6 @@ package core {
     interface ISnapshotHook
 }
 
-package managers {
-    class NAVManager
-    class SimplePriceManager
-    interface INAVHook
-}
-
 NAVManager --> Hub
 NAVManager --> Holdings
 NAVManager --> Accounting

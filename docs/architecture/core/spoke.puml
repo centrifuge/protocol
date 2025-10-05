@@ -1,5 +1,5 @@
 @startuml spoke
-title Core Spoke Components
+title Spoke
 hide empty members
 
 package messaging {

@@ -1,5 +1,5 @@
 @startuml hub
-title Core Hub Components
+title Hub
 hide empty members
 
 package messaging {
@@ -12,13 +12,16 @@ package managers {
     interface INAVHook
 }
 
+package vaults {
+    class BatchRequestManager
+}
+
 class Hub
 class HubHandler
 class Holdings
 class HubRegistry
 class ShareClassManager
 class Accounting
-class BatchRequestManager
 
 interface ISnapshotHook
 interface IValuation

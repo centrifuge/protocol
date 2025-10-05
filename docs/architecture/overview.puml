@@ -1,5 +1,5 @@
 @startuml overview
-title Centrifuge Protocol v3 - System Architecture Overview
+title Centrifuge Protocol - Architecture Overview
 
 !define CORE_COLOR #E1F5FE
 !define MESSAGING_COLOR #F3E5F5
@@ -9,12 +9,13 @@ title Centrifuge Protocol v3 - System Architecture Overview
 !define ADAPTERS_COLOR #FFF3E0
 !define HOOKS_COLOR #F1F8E9
 
+left to right direction
+
 package "Core" CORE_COLOR {
   component Hub
   component HubHandler
   component Spoke
   component Gateway
-  component Root
   component MultiAdapter
   component BatchedMulticall
   component Holdings
@@ -22,7 +23,6 @@ package "Core" CORE_COLOR {
   component ShareClassManager
   component BalanceSheet
   component VaultRegistry
-  component BatchRequestManager
 }
 
 package "Messaging" MESSAGING_COLOR {
@@ -32,7 +32,9 @@ package "Messaging" MESSAGING_COLOR {
 }
 
 package "Admin" ADMIN_COLOR {
-  component Guardian
+  component Root
+  component OpsGuardian
+  component ProtocolGuardian
   component TokenRecoverer
 }
 
@@ -63,6 +65,7 @@ package "Vaults" VAULTS_COLOR {
   component SyncManager
   component VaultRouter
   component RefundEscrow
+  component BatchRequestManager
 }
 
 package "Hooks" HOOKS_COLOR {
@@ -73,7 +76,7 @@ package "Hooks" HOOKS_COLOR {
   component RedemptionRestrictions
 }
 
-' Core relationships
+' Core
 Hub --> Holdings
 Hub --> Accounting
 Hub --> ShareClassManager
@@ -93,7 +96,7 @@ Gateway --> GasService
 
 BatchedMulticall --> Gateway
 
-' Messaging flow
+' Messaging
 MessageDispatcher --> Gateway
 MessageProcessor --> Gateway
 MessageProcessor --> Hub
@@ -106,11 +109,11 @@ MultiAdapter --> LayerZeroAdapter
 MultiAdapter --> RecoveryAdapter
 
 ' Managers
-NAVManager --> Hub
-SimplePriceManager --> Hub
-OnOfframpManager --> BalanceSheet
-MerkleProofManager --> BalanceSheet
-QueueManager --> BalanceSheet
+NAVManager -left-> Hub
+SimplePriceManager -left-> Hub
+OnOfframpManager -right-> BalanceSheet
+MerkleProofManager -right-> BalanceSheet
+QueueManager -right-> BalanceSheet
 
 ' Vaults
 VaultRegistry --> AsyncVault
@@ -119,9 +122,12 @@ AsyncVault --> AsyncRequestManager
 SyncDepositVault --> SyncManager
 
 ' Admin
-Guardian --> Hub
-Guardian --> Root
-Guardian --> Gateway
+OpsGuardian --> Hub
+OpsGuardian --> Root
+OpsGuardian --> Gateway
+ProtocolGuardian --> Hub
+ProtocolGuardian --> Root
+ProtocolGuardian --> Gateway
 TokenRecoverer --> Root
 
 @enduml
