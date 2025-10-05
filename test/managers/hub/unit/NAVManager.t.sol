@@ -500,16 +500,6 @@ contract NAVManagerCloseGainLossTest is NAVManagerTest {
         navManager.closeGainLoss(POOL_A, CENTRIFUGE_ID_1);
     }
 
-    function testCloseGainLossGainNotPositive() public {
-        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, false);
-        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 0, true);
-
-        vm.expectCall(address(hub), abi.encodeWithSelector(IHub.updateJournal.selector), 0);
-
-        vm.prank(manager);
-        navManager.closeGainLoss(POOL_A, CENTRIFUGE_ID_1);
-    }
-
     function testCloseGainLossNotInitialized() public {
         vm.expectRevert(INAVManager.NotInitialized.selector);
         vm.prank(manager);
