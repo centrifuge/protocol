@@ -90,8 +90,8 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeUpdateContract() public {
-        MessageLib.deserializeUpdateContract(_prepareFor());
+    function testDeserializeTrustedContractUpdate() public {
+        MessageLib.deserializeTrustedContractUpdate(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -137,6 +137,11 @@ contract TestMessageLibIds is Test {
     /// forge-config: default.allow_internal_expect_revert = true
     function testDeserializeSetRequestManager() public {
         MessageLib.deserializeSetRequestManager(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeUntrustedContractUpdate() public {
+        MessageLib.deserializeUntrustedContractUpdate(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -407,10 +412,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 
-    function testUpdateContract(uint64 poolId, bytes16 scId, bytes32 target, bytes memory payload) public pure {
-        MessageLib.UpdateContract memory a =
-            MessageLib.UpdateContract({poolId: poolId, scId: scId, target: target, payload: payload});
-        MessageLib.UpdateContract memory b = MessageLib.deserializeUpdateContract(a.serialize());
+    function testTrustedContractUpdate(uint64 poolId, bytes16 scId, bytes32 target, bytes memory payload) public pure {
+        MessageLib.TrustedContractUpdate memory a =
+            MessageLib.TrustedContractUpdate({poolId: poolId, scId: scId, target: target, payload: payload});
+        MessageLib.TrustedContractUpdate memory b = MessageLib.deserializeTrustedContractUpdate(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
@@ -626,5 +631,35 @@ contract TestMessageLibIdentities is Test {
         assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
+    }
+
+    function testUntrustedContractUpdate(
+        uint64 poolId,
+        bytes16 scId,
+        bytes32 target,
+        bytes memory payload,
+        bytes32 sender
+    ) public pure {
+        MessageLib.UntrustedContractUpdate memory a = MessageLib.UntrustedContractUpdate({
+            poolId: poolId,
+            scId: scId,
+            target: target,
+            payload: payload,
+            sender: sender
+        });
+        MessageLib.UntrustedContractUpdate memory b = MessageLib.deserializeUntrustedContractUpdate(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.target, b.target);
+        assertEq(a.payload, b.payload);
+        assertEq(a.sender, b.sender);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageSourceCentrifugeId(), 0);
+
+        // Check the payload length is correctly encoded as little endian (at fixed position 57)
+        assertEq(a.payload.length, uint16(uint8(a.serialize()[58])) | (uint16(uint8(a.serialize()[57])) << 8));
     }
 }

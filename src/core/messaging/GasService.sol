@@ -31,7 +31,7 @@ contract GasService is IGasService {
     uint128 public immutable initiateTransferShares;
     uint128 public immutable executeTransferShares;
     uint128 public immutable updateRestriction;
-    uint128 public immutable updateContract;
+    uint128 public immutable trustedContractUpdate;
     uint128 public immutable requestCallback;
     uint128 public immutable updateVaultDeployAndLink;
     uint128 public immutable updateVaultLink;
@@ -43,36 +43,38 @@ contract GasService is IGasService {
     uint128 public immutable maxAssetPriceAge;
     uint128 public immutable maxSharePriceAge;
     uint128 public immutable updateGatewayManager;
+    uint128 public immutable untrustedContractUpdate;
 
     constructor() {
         // NOTE: Below values should be updated using script/utils/benchmark.sh
-        scheduleUpgrade = BASE_COST + 93801;
-        cancelUpgrade = BASE_COST + 74208;
-        recoverTokens = BASE_COST + 151028;
-        registerAsset = BASE_COST + 103891;
-        setPoolAdapters = BASE_COST + 481547; // using MAX_ADAPTER_COUNT
-        request = BASE_COST + 220255;
-        notifyPool = BASE_COST + 1150734; // create escrow case
-        notifyShareClass = BASE_COST + 1852945;
-        notifyPricePoolPerShare = BASE_COST + 107006;
-        notifyPricePoolPerAsset = BASE_COST + 111012;
-        notifyShareMetadata = BASE_COST + 121392;
-        updateShareHook = BASE_COST + 96321;
-        initiateTransferShares = BASE_COST + 286593;
-        executeTransferShares = BASE_COST + 177452;
-        updateRestriction = BASE_COST + 114431;
-        updateContract = BASE_COST + 144550;
-        requestCallback = BASE_COST + 258036; // approve deposit case
-        updateVaultDeployAndLink = BASE_COST + 2852889;
-        updateVaultLink = BASE_COST + 185220;
-        updateVaultUnlink = BASE_COST + 133938;
-        setRequestManager = BASE_COST + 100498;
-        updateBalanceSheetManager = BASE_COST + 104062;
-        updateHoldingAmount = BASE_COST + 304206;
-        updateShares = BASE_COST + 184356;
-        maxAssetPriceAge = BASE_COST + 110103;
-        maxSharePriceAge = BASE_COST + 106989;
-        updateGatewayManager = BASE_COST + 88040;
+        scheduleUpgrade = BASE_COST + 93833;
+        cancelUpgrade = BASE_COST + 74240;
+        recoverTokens = BASE_COST + 151060;
+        registerAsset = BASE_COST + 103955;
+        setPoolAdapters = BASE_COST + 481579; // using MAX_ADAPTER_COUNT
+        request = BASE_COST + 220609;
+        notifyPool = BASE_COST + 1150798; // create escrow case
+        notifyShareClass = BASE_COST + 1853009;
+        notifyPricePoolPerShare = BASE_COST + 107070;
+        notifyPricePoolPerAsset = BASE_COST + 111076;
+        notifyShareMetadata = BASE_COST + 121478;
+        updateShareHook = BASE_COST + 96407;
+        initiateTransferShares = BASE_COST + 286625;
+        executeTransferShares = BASE_COST + 177494;
+        updateRestriction = BASE_COST + 114441;
+        trustedContractUpdate = BASE_COST + 145006;
+        requestCallback = BASE_COST + 258482; // approve deposit case
+        updateVaultDeployAndLink = BASE_COST + 2853046;
+        updateVaultLink = BASE_COST + 185355;
+        updateVaultUnlink = BASE_COST + 134073;
+        setRequestManager = BASE_COST + 100900;
+        updateBalanceSheetManager = BASE_COST + 104175;
+        updateHoldingAmount = BASE_COST + 304319;
+        updateShares = BASE_COST + 184437;
+        maxAssetPriceAge = BASE_COST + 110238;
+        maxSharePriceAge = BASE_COST + 107124;
+        updateGatewayManager = BASE_COST + 88442;
+        untrustedContractUpdate = BASE_COST + 83807;
     }
 
     /// @inheritdoc IMessageLimits
@@ -94,7 +96,7 @@ contract GasService is IGasService {
         if (kind == MessageType.InitiateTransferShares) return initiateTransferShares;
         if (kind == MessageType.ExecuteTransferShares) return executeTransferShares;
         if (kind == MessageType.UpdateRestriction) return updateRestriction;
-        if (kind == MessageType.UpdateContract) return updateContract;
+        if (kind == MessageType.TrustedContractUpdate) return trustedContractUpdate;
         if (kind == MessageType.RequestCallback) return requestCallback;
         if (kind == MessageType.UpdateVault) {
             VaultUpdateKind vaultKind = VaultUpdateKind(message.deserializeUpdateVault().kind);
@@ -110,6 +112,7 @@ contract GasService is IGasService {
         if (kind == MessageType.MaxAssetPriceAge) return maxAssetPriceAge;
         if (kind == MessageType.MaxSharePriceAge) return maxSharePriceAge;
         if (kind == MessageType.UpdateGatewayManager) return updateGatewayManager;
+        if (kind == MessageType.UntrustedContractUpdate) return untrustedContractUpdate;
         revert InvalidMessageType(); // Unreachable
     }
 }

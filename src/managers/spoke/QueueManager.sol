@@ -13,13 +13,13 @@ import {AssetId} from "../../core/types/AssetId.sol";
 import {IGateway} from "../../core/interfaces/IGateway.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {IUpdateContract} from "../../core/spoke/interfaces/IUpdateContract.sol";
+import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
 
 import {UpdateContractMessageLib, UpdateContractType} from "../../libraries/UpdateContractMessageLib.sol";
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified
 ///      (e.g. if the on/off ramp manager is used, or if sync deposits are enabled). This prevents spam.
-contract QueueManager is Auth, IQueueManager, IUpdateContract {
+contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
     using CastLib for *;
     using BitmapLib for *;
 
@@ -39,8 +39,8 @@ contract QueueManager is Auth, IQueueManager, IUpdateContract {
     // Owner actions
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IUpdateContract
-    function update(PoolId poolId, ShareClassId scId, bytes calldata payload) external {
+    /// @inheritdoc ITrustedContractUpdate
+    function trustedCall(PoolId poolId, ShareClassId scId, bytes calldata payload) external {
         require(msg.sender == contractUpdater, NotContractUpdater());
 
         uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));

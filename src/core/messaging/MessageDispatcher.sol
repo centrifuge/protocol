@@ -24,7 +24,7 @@ import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
-    IUpdateContractGatewayHandler,
+    IContractUpdateGatewayHandler,
     IVaultRegistryGatewayHandler
 } from "../interfaces/IGatewayHandlers.sol";
 
@@ -48,7 +48,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ITokenRecoverer public tokenRecoverer;
     IBalanceSheetGatewayHandler public balanceSheet;
     IVaultRegistryGatewayHandler public vaultRegistry;
-    IUpdateContractGatewayHandler public contractUpdater;
+    IContractUpdateGatewayHandler public contractUpdater;
 
     constructor(uint16 localCentrifugeId_, IScheduleAuth scheduleAuth_, IGateway gateway_, address deployer)
         Auth(deployer)
@@ -68,8 +68,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
-        else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
+        else if (what == "contractUpdater") contractUpdater = IContractUpdateGatewayHandler(data);
         else if (what == "tokenRecoverer") tokenRecoverer = ITokenRecoverer(data);
         else revert FileUnrecognizedParam();
 
@@ -247,7 +247,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendUpdateContract(
+    function sendTrustedContractUpdate(
         uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
@@ -257,13 +257,17 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address refund
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            contractUpdater.execute(poolId, scId, target.toAddress(), payload);
+            contractUpdater.trustedCall(poolId, scId, target.toAddress(), payload);
             _refund(refund);
         } else {
             _send(
                 centrifugeId,
-                MessageLib.UpdateContract({poolId: poolId.raw(), scId: scId.raw(), target: target, payload: payload})
-                    .serialize(),
+                MessageLib.TrustedContractUpdate({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    target: target,
+                    payload: payload
+                }).serialize(),
                 extraGasLimit,
                 refund
             );
@@ -600,6 +604,37 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 MessageLib.Request({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw(), payload: payload})
                     .serialize(),
                 0,
+                refund
+            );
+        }
+    }
+
+    /// @inheritdoc ISpokeMessageSender
+    function sendUntrustedContractUpdate(
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 target,
+        bytes calldata payload,
+        bytes32 sender,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable auth {
+        uint16 hubCentrifugeId = poolId.centrifugeId();
+
+        if (hubCentrifugeId == localCentrifugeId) {
+            contractUpdater.untrustedCall(poolId, scId, target.toAddress(), payload, localCentrifugeId, sender);
+            _refund(refund);
+        } else {
+            _send(
+                hubCentrifugeId,
+                MessageLib.UntrustedContractUpdate({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    target: target,
+                    payload: payload,
+                    sender: sender
+                }).serialize(),
+                extraGasLimit,
                 refund
             );
         }
