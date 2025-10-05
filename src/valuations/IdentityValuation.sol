@@ -12,6 +12,10 @@ import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IValuation} from "../core/hub/interfaces/IValuation.sol";
 import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
 
+/// @title  IdentityValuation
+/// @notice This contract provides a 1:1 valuation implementation that always returns a price of 1.0,
+///         performing only decimal conversion between assets and pool currency without any price
+///         adjustments, suitable for stablecoins or pegged assets.
 contract IdentityValuation is IIdentityValuation {
     IHubRegistry public immutable hubRegistry;
 
