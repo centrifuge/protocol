@@ -5,8 +5,8 @@ import {BaseSetup} from "@chimera/BaseSetup.sol";
 import {vm} from "@chimera/Hevm.sol";
 import {EnumerableSet} from "@recon/EnumerableSet.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
 
 /// @dev Source of truth for the assets being used in the test
 /// @notice No assets should be used in the suite without being added here first

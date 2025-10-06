@@ -6,18 +6,18 @@ import {console2} from "forge-std/console2.sol";
 import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
+import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/core/types/AssetId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {AccountId, AccountType} from "src/hub/interfaces/IHub.sol";
-import {PoolEscrow} from "src/common/PoolEscrow.sol";
+import {AccountId, AccountType} from "src/core/hub/interfaces/IHub.sol";
+import {PoolEscrow} from "src/core/spoke/PoolEscrow.sol";
 
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
-import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
+import {RequestCallbackMessageLib} from "src/vaults/libraries/RequestCallbackMessageLib.sol";
 
 /// @dev sanity tests for the fuzzing suite setup
 // forge test --match-contract CryticSanity --match-path test/integration/recon-end-to-end/CryticSanity.sol -vv
@@ -34,9 +34,10 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
     function nowDepositEpoch() private view returns (uint32) {
         IBaseVault vault = IBaseVault(_getVault());
         return
-            shareClassManager.nowDepositEpoch(
+            batchRequestManager.nowDepositEpoch(
+                vault.poolId(),
                 vault.scId(),
-                spoke.vaultDetails(vault).assetId
+                vaultRegistry.vaultDetails(vault).assetId
             );
     }
 
@@ -44,9 +45,10 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
     function nowRedeemEpoch() private view returns (uint32) {
         IBaseVault vault = IBaseVault(_getVault());
         return
-            shareClassManager.nowRedeemEpoch(
+            batchRequestManager.nowRedeemEpoch(
+                vault.poolId(),
                 vault.scId(),
-                spoke.vaultDetails(vault).assetId
+                vaultRegistry.vaultDetails(vault).assetId
             );
     }
 

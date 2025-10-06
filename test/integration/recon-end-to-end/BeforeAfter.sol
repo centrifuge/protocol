@@ -5,14 +5,14 @@ import {MockERC20} from "@recon/MockERC20.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {D18} from "src/misc/types/D18.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {UserOrder, EpochId} from "src/hub/interfaces/IShareClassManager.sol";
+import {AccountId} from "src/core/types/AccountId.sol";
+import {AssetId} from "src/core/types/AssetId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
+import {UserOrder, EpochId} from "src/vaults/interfaces/IBatchRequestManager.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
 
 import {BaseVault} from "src/vaults/BaseVaults.sol";
 import {AsyncInvestmentState} from "src/vaults/interfaces/IVaultManagers.sol";
@@ -198,7 +198,7 @@ abstract contract BeforeAfter is Setup {
             uint32 redeemEpochId,
             uint32 issueEpochId,
             uint32 revokeEpochId
-        ) = shareClassManager.epochId(scId, assetId);
+        ) = batchRequestManager.epochId(poolId, scId, assetId);
         _structToUpdate.ghostEpochId[scId][assetId] = EpochId({
             deposit: depositEpochId,
             redeem: redeemEpochId,
@@ -230,8 +230,8 @@ abstract contract BeforeAfter is Setup {
         address[] memory _actors = _getActors();
         for (uint256 k = 0; k < _actors.length; k++) {
             bytes32 actor = CastLib.toBytes32(_actors[k]);
-            (uint128 pendingRedeem, uint32 lastUpdate) = shareClassManager
-                .redeemRequest(scId, assetId, actor);
+            (uint128 pendingRedeem, uint32 lastUpdate) = batchRequestManager
+                .redeemRequest(poolId, scId, assetId, actor);
             _structToUpdate.ghostRedeemRequest[scId][assetId][
                 actor
             ] = UserOrder({pending: pendingRedeem, lastUpdate: lastUpdate});

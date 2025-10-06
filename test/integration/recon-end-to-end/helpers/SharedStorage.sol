@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 import {ERC20} from "src/misc/ERC20.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/core/types/AssetId.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
 
 abstract contract SharedStorage {
     /**

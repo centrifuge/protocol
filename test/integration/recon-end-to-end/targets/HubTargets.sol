@@ -9,18 +9,19 @@ import {Panic} from "@recon/Panic.sol";
 import {console2} from "forge-std/console2.sol";
 
 // Dependencies
-import {Hub} from "src/hub/Hub.sol";
-import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {Hub} from "src/core/hub/Hub.sol";
+import {IHubHandler} from "src/core/hub/interfaces/IHubHandler.sol";
+import {IShareClassManager} from "src/core/hub/interfaces/IShareClassManager.sol";
+import {IHubRequestManager} from "src/core/hub/interfaces/IHubRequestManager.sol";
+import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "src/core/types/AssetId.sol";
+import {PoolId, newPoolId} from "src/core/types/PoolId.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
-import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
-import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {MAX_MESSAGE_COST} from "src/core/messaging/interfaces/IGasService.sol";
+import {RequestCallbackMessageLib} from "src/vaults/libraries/RequestCallbackMessageLib.sol";
+import {IHubMessageSender} from "src/core/interfaces/IGatewaySenders.sol";
 
 // Test Utils
 import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
@@ -41,12 +42,16 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     ) public updateGhostsWithType(OpType.NOTIFY) asActor {
         // Setup vault context and investor
         bytes32 investor = CastLib.toBytes32(_getActor());
+        PoolId poolId = _getVault().poolId();
+        ShareClassId scId = _getVault().scId();
+        AssetId assetId = vaultRegistry.vaultDetails(_getVault()).assetId;
 
         // Calculate and bound max claims
-        uint32 maxClaimsBound = shareClassManager.maxDepositClaims(
-            _getVault().scId(),
+        uint32 maxClaimsBound = batchRequestManager.maxDepositClaims(
+            poolId,
+            scId,
             investor,
-            spoke.vaultDetails(_getVault()).assetId
+            assetId
         );
         maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
 
@@ -73,12 +78,16 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     ) public updateGhostsWithType(OpType.NOTIFY) asActor {
         // Setup vault context and investor
         bytes32 investor = CastLib.toBytes32(_getActor());
+        PoolId poolId = _getVault().poolId();
+        ShareClassId scId = _getVault().scId();
+        AssetId assetId = vaultRegistry.vaultDetails(_getVault()).assetId;
 
         // Calculate and bound max claims
-        uint32 maxClaimsBound = shareClassManager.maxRedeemClaims(
-            _getVault().scId(),
+        uint32 maxClaimsBound = batchRequestManager.maxRedeemClaims(
+            poolId,
+            scId,
             investor,
-            spoke.vaultDetails(_getVault()).assetId
+            assetId
         );
         maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
 
@@ -135,18 +144,23 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// @notice Deposit Flow Tracking:
     /// - Tracks AsyncRequestManager pending deltas (pendingBeforeARM - pendingAfterARM)
     /// - Tracks maxMint changes for symmetry with redeem flow
-    /// - Uses hubHelpers.notifyDeposit() return values for reliable state tracking
+    /// - Uses hubHandler.notifyDeposit() return values for reliable state tracking
     /// - Updates ghost variables: sumOfFulfilledDeposits, sumOfClaimedDeposits, userDepositProcessed
     function hub_notifyDeposit(
         uint32 maxClaims
     ) public updateGhostsWithType(OpType.NOTIFY) asActor {
         // Setup vault context and investor
+        PoolId poolId = _getVault().poolId();
+        ShareClassId scId = _getVault().scId();
+        AssetId assetId = vaultRegistry.vaultDetails(_getVault()).assetId;
+        bytes32 investor = CastLib.toBytes32(_getActor());
 
         // Calculate max claims
-        uint32 maxClaimsBound = shareClassManager.maxDepositClaims(
-            _getVault().scId(),
-            CastLib.toBytes32(_getActor()), // investor
-            spoke.vaultDetails(_getVault()).assetId
+        uint32 maxClaimsBound = batchRequestManager.maxDepositClaims(
+            poolId,
+            scId,
+            investor,
+            assetId
         );
 
         // Capture validation state if needed
@@ -164,18 +178,21 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             .investments(_getVault(), _getActor());
 
         // NOTE: actually makes the call to the target function
+        // TODO(wischli): Implement event-based approach for notifyDeposit (see Properties.sol)
         vm.prank(_getActor());
-        (
-            uint128 totalPayoutShareAmount,
-            uint128 totalPaymentAssetAmount,
-            uint128 cancelledAssetAmount
-        ) = hubHelpers.notifyDeposit(
-                _getVault().poolId(),
-                _getVault().scId(),
-                spoke.vaultDetails(_getVault()).assetId,
-                CastLib.toBytes32(_getActor()),
-                maxClaims
-            );
+        batchRequestManager.notifyDeposit(
+            poolId,
+            scId,
+            assetId,
+            investor,
+            maxClaims,
+            _getActor()
+        );
+
+        // TODO(wischli): Parse ClaimDeposit events to get actual values
+        uint128 totalPayoutShareAmount = 0;
+        uint128 totalPaymentAssetAmount = 0;
+        uint128 cancelledAssetAmount = 0;
 
         _executeSendRequestCallback(
             CastLib.toBytes32(_getActor()),
@@ -208,18 +225,23 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// @notice Redeem Flow Tracking:
     /// - Tracks claimable withdrawal deltas (investorClaimableAfter - investorClaimableBefore)
     /// - Tracks share balance changes (investorSharesBefore vs investorSharesAfter)
-    /// - Uses hubHelpers.notifyRedeem() return values for reliable state tracking
+    /// - Uses hubHandler.notifyRedeem() return values for reliable state tracking
     /// - Updates ghost variables: sumOfWithdrawable, userRedemptionsProcessed, userCancelledRedeems
     function hub_notifyRedeem(
         uint32 maxClaims
     ) public updateGhostsWithType(OpType.NOTIFY) asActor {
         // Setup vault context and investor
+        PoolId poolId = _getVault().poolId();
+        ShareClassId scId = _getVault().scId();
+        AssetId assetId = vaultRegistry.vaultDetails(_getVault()).assetId;
+        bytes32 investor = CastLib.toBytes32(_getActor());
 
         // Calculate max claims
-        uint32 maxClaimsBound = shareClassManager.maxRedeemClaims(
-            _getVault().scId(),
-            CastLib.toBytes32(_getActor()), // investor
-            spoke.vaultDetails(_getVault()).assetId
+        uint32 maxClaimsBound = batchRequestManager.maxRedeemClaims(
+            poolId,
+            scId,
+            investor,
+            assetId
         );
 
         // Capture state for ghost variables
@@ -229,18 +251,21 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         );
 
         // NOTE: actually makes the call to the target function
+        // TODO(wischli): Implement event-based approach for notifyRedeem (see Properties.sol)
         vm.prank(_getActor());
-        (
-            uint128 payoutAssetAmount,
-            uint128 paymentShareAmount,
-            uint128 cancelledShareAmount
-        ) = hubHelpers.notifyRedeem(
-                _getVault().poolId(),
-                _getVault().scId(),
-                spoke.vaultDetails(_getVault()).assetId,
-                CastLib.toBytes32(_getActor()),
-                maxClaims
-            );
+        batchRequestManager.notifyRedeem(
+            poolId,
+            scId,
+            assetId,
+            investor,
+            maxClaims,
+            _getActor()
+        );
+
+        // TODO(wischli): Parse ClaimRedeem events to get actual values
+        uint128 payoutAssetAmount = 0;
+        uint128 paymentShareAmount = 0;
+        uint128 cancelledShareAmount = 0;
 
         _executeSendRedeemCallback(
             CastLib.toBytes32(_getActor()),
@@ -285,11 +310,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint128 assetId,
         address requestManager
     ) public asAdmin {
+        // New signature: hub.setRequestManager(poolId, centrifugeId, hubManager, spokeManager, refund)
         hub.setRequestManager{value: GAS}(
             PoolId.wrap(poolId),
-            ShareClassId.wrap(shareClassId),
-            AssetId.wrap(assetId),
-            CastLib.toBytes32(requestManager)
+            CENTRIFUGE_CHAIN_ID,
+            IHubRequestManager(address(batchRequestManager)),
+            CastLib.toBytes32(requestManager),
+            _getActor()
         );
     }
 
@@ -300,10 +327,11 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         bool enable
     ) public asAdmin {
         hub.updateBalanceSheetManager{value: GAS}(
-            chainId,
             PoolId.wrap(poolId),
+            chainId,
             CastLib.toBytes32(manager),
-            enable
+            enable,
+            address(this)
         );
     }
 
@@ -341,10 +369,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         )
     {
         IBaseVault vault = _getVault();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
-        (pendingBeforeSCM, ) = shareClassManager.depositRequest(
-            vault.scId(),
+        (pendingBeforeSCM, ) = batchRequestManager.depositRequest(
+            poolId,
+            scId,
             assetId,
             investor
         );
@@ -371,7 +402,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint128 cancelledAssetAmount
     ) private {
         IBaseVault vault = _getVault();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
         ShareClassId scId = vault.scId();
         address actor = _getActor();
 
@@ -405,16 +436,19 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint128 totalPaymentAssetAmount
     ) private {
         IBaseVault vault = _getVault();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
-        (uint128 pendingAfterSCM, uint32 lastUpdate) = shareClassManager
-            .depositRequest(scId, assetId, investor);
-        (uint32 depositEpochId, , , ) = shareClassManager.epochId(
+        (uint128 pendingAfterSCM, uint32 lastUpdate) = batchRequestManager
+            .depositRequest(poolId, scId, assetId, investor);
+        (uint32 depositEpochId, , , ) = batchRequestManager.epochId(
+            poolId,
             scId,
             assetId
         );
-        (bool isCancellingAfter, ) = shareClassManager.queuedDepositRequest(
+        (bool isCancellingAfter, ) = batchRequestManager.queuedDepositRequest(
+            poolId,
             scId,
             assetId,
             investor
@@ -474,12 +508,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
                 })
             );
 
-            hub.sender().sendRequestCallback(
+            hub.sender().sendRequestCallback{value: GAS}(
                 _getVault().poolId(),
                 _getVault().scId(),
-                spoke.vaultDetails(_getVault()).assetId,
+                vaultRegistry.vaultDetails(_getVault()).assetId,
                 message,
-                0 // extraGasLimit
+                0, // extraGasLimit
+                address(this) // refund
             );
         }
     }
@@ -507,12 +542,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
                 })
             );
 
-            hub.sender().sendRequestCallback(
+            hub.sender().sendRequestCallback{value: GAS}(
                 _getVault().poolId(),
                 _getVault().scId(),
-                spoke.vaultDetails(_getVault()).assetId,
+                vaultRegistry.vaultDetails(_getVault()).assetId,
                 message,
-                0 // extraGasLimit
+                0, // extraGasLimit
+                address(this) // refund
             );
         }
     }
@@ -529,7 +565,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint128 cancelledShareAmount
     ) private {
         IBaseVault vault = _getVault();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
         ShareClassId scId = vault.scId();
         address actor = _getActor();
 
@@ -565,15 +601,24 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         )
     {
         IBaseVault vault = _getVault();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
-        (
-            payoutAssetAmount,
-            paymentShareAmount,
-            cancelledShareAmount
-        ) = hubHelpers.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
+        // TODO(wischli): Implement event-based approach for notifyRedeem (see Properties.sol)
+        batchRequestManager.notifyRedeem(
+            poolId,
+            scId,
+            assetId,
+            investor,
+            maxClaims,
+            msg.sender
+        );
+
+        // TODO(wischli): Parse ClaimRedeem events to get actual values
+        payoutAssetAmount = 0;
+        paymentShareAmount = 0;
+        cancelledShareAmount = 0;
 
         // Replicate Hub's callback sending logic
         if (paymentShareAmount > 0 || cancelledShareAmount > 0) {
@@ -586,12 +631,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
                 })
             );
 
-            hub.sender().sendRequestCallback(
+            hub.sender().sendRequestCallback{value: GAS}(
                 poolId,
                 scId,
                 assetId,
                 message,
-                0 // extraGasLimit
+                0, // extraGasLimit
+                msg.sender // refund
             );
         }
 

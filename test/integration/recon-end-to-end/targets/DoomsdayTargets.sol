@@ -11,10 +11,10 @@ import {console2} from "forge-std/console2.sol";
 // Dependencies
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
+import {AccountId} from "src/core/types/AccountId.sol";
 import {BaseVault} from "src/vaults/BaseVaults.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
 
 // Test Utils
 import {Properties} from "../properties/Properties.sol";

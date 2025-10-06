@@ -10,11 +10,11 @@ import {console2} from "forge-std/console2.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageLib} from "src/core/messaging/libraries/MessageLib.sol";
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
+import {AssetId} from "src/core/types/AssetId.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 import {Properties} from "../properties/Properties.sol";
@@ -72,7 +72,8 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         .registerAsset{value: 0.1 ether}(
             DEFAULT_DESTINATION_CHAIN,
             assetAddress,
-            erc6909TokenId
+            erc6909TokenId,
+            address(this) // refund address
         ).raw();
 
         // Only if successful
@@ -126,7 +127,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         address vault;
         if (isAsync) {
             vault = address(
-                spoke.deployVault(
+                vaultRegistry.deployVault(
                     _getPool(),
                     _getShareClassId(),
                     _getAssetId(),
@@ -135,7 +136,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
             );
         } else {
             vault = address(
-                spoke.deployVault(
+                vaultRegistry.deployVault(
                     _getPool(),
                     _getShareClassId(),
                     _getAssetId(),
@@ -157,10 +158,8 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     function spoke_setRequestManager(address vault) public asAdmin {
         IBaseVault vaultInstance = IBaseVault(vault);
         PoolId poolId = vaultInstance.poolId();
-        ShareClassId scId = vaultInstance.scId();
-        AssetId assetId = _getAssetId();
 
-        spoke.setRequestManager(poolId, scId, assetId, asyncRequestManager);
+        spoke.setRequestManager(poolId, asyncRequestManager);
     }
 
     // Step 6- link the vault
@@ -169,7 +168,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vaultInstance.poolId();
         ShareClassId scId = vaultInstance.scId();
         AssetId assetId = _getAssetId();
-        spoke.linkVault(poolId, scId, assetId, IBaseVault(vault));
+        vaultRegistry.linkVault(poolId, scId, assetId, IBaseVault(vault));
     }
 
     function spoke_linkVault_clamped() public {
@@ -178,7 +177,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
 
     // Extra 7 - remove the vault
     function spoke_unlinkVault() public asAdmin {
-        spoke.unlinkVault(
+        vaultRegistry.unlinkVault(
             _getPool(),
             _getShareClassId(),
             _getAssetId(),
