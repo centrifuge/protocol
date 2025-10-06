@@ -47,11 +47,11 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     mapping(PoolId => Pool) public pool;
     mapping(PoolId => IRequestManager) public requestManager;
-    mapping(PoolId => mapping(ShareClassId scId => ShareClassDetails)) public shareClass;
+    mapping(PoolId => mapping(ShareClassId => ShareClassDetails)) public shareClass;
 
     uint64 internal _assetCounter;
     mapping(AssetId => AssetIdKey) internal _idToAsset;
-    mapping(address asset => mapping(uint256 tokenId => AssetId assetId)) internal _assetToId;
+    mapping(address asset => mapping(uint256 tokenId => AssetId)) internal _assetToId;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => Price))) internal _pricePoolPerAsset;
 
     constructor(ITokenFactory tokenFactory_, address deployer) Auth(deployer) {

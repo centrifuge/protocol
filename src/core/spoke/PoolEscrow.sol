@@ -16,7 +16,7 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     /// @dev The underlying pool id
     PoolId public immutable poolId;
 
-    mapping(ShareClassId scId => mapping(address asset => mapping(uint256 tokenId => Holding))) public holding;
+    mapping(ShareClassId => mapping(address asset => mapping(uint256 tokenId => Holding))) public holding;
 
     constructor(PoolId poolId_, address deployer) Escrow(deployer) {
         poolId = poolId_;

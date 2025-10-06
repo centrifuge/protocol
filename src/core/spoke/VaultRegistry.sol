@@ -24,9 +24,7 @@ contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatew
     ISpoke public spoke;
 
     mapping(IVault => VaultDetails) internal _vaultDetails;
-    mapping(
-        PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => mapping(IRequestManager => IVault)))
-    ) public vault;
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(IRequestManager => IVault)))) public vault;
 
     constructor(address initialWard) Auth(initialWard) {}
 
@@ -34,8 +32,7 @@ contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatew
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'spoke'
+    /// @inheritdoc IVaultRegistry
     function file(bytes32 what, address data) external auth {
         if (what == "spoke") spoke = ISpoke(data);
         else revert FileUnrecognizedParam();

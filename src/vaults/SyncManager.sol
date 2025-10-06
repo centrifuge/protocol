@@ -37,8 +37,8 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     IBalanceSheet public balanceSheet;
     IVaultRegistry public vaultRegistry;
 
-    mapping(PoolId => mapping(ShareClassId scId => ISyncDepositValuation)) public valuation;
-    mapping(PoolId => mapping(ShareClassId scId => mapping(address asset => mapping(uint256 tokenId => uint128))))
+    mapping(PoolId => mapping(ShareClassId => ISyncDepositValuation)) public valuation;
+    mapping(PoolId => mapping(ShareClassId => mapping(address asset => mapping(uint256 tokenId => uint128))))
         public maxReserve;
 
     constructor(address deployer) Auth(deployer) {}
