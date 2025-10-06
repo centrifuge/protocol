@@ -2080,10 +2080,12 @@ abstract contract Properties is
     // Property 3.1 & 3.2: Issue/Revoke Logic Correctness
     /// @notice Verifies that the share queue delta and isPositive flag correctly represent the net position
     function property_shareQueueFlipLogic() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            for (uint256 j = 0; j < activeShareClasses[poolId].length; j++) {
-                ShareClassId scId = activeShareClasses[poolId][j];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
                 bytes32 key = _poolShareKey(poolId, scId);
 
                 (uint128 delta, bool isPositive, , ) = balanceSheet
@@ -2130,10 +2132,12 @@ abstract contract Properties is
     // Property 3.3: Verify flip detection and boundaries
     /// @notice Verifies that flips between positive and negative net positions are correctly detected
     function property_shareQueueFlipBoundaries() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            for (uint256 j = 0; j < activeShareClasses[poolId].length; j++) {
-                ShareClassId scId = activeShareClasses[poolId][j];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
                 bytes32 key = _poolShareKey(poolId, scId);
 
                 // Get before and after states
@@ -2171,10 +2175,12 @@ abstract contract Properties is
         // Best tested through specific handler sequences in integration tests
         // Here we verify the mathematical invariant holds
 
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            for (uint256 j = 0; j < activeShareClasses[poolId].length; j++) {
-                ShareClassId scId = activeShareClasses[poolId][j];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
                 bytes32 key = _poolShareKey(poolId, scId);
 
                 // Net position should equal total issued minus total revoked
@@ -2195,10 +2201,12 @@ abstract contract Properties is
     // Property 3.6 & 3.7: Queue Reset and Snapshot Logic
     /// @notice Verifies queue submission logic and reset behavior
     function property_shareQueueSubmission() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            for (uint256 j = 0; j < activeShareClasses[poolId].length; j++) {
-                ShareClassId scId = activeShareClasses[poolId][j];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
                 bytes32 key = _poolShareKey(poolId, scId);
 
                 (
@@ -2230,10 +2238,12 @@ abstract contract Properties is
     // Property 3.8: Asset Counter Consistency
     /// @notice Verifies that the asset counter accurately reflects non-empty asset queues
     function property_shareQueueAssetCounter() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            for (uint256 j = 0; j < activeShareClasses[poolId].length; j++) {
-                ShareClassId scId = activeShareClasses[poolId][j];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
 
                 (, , uint32 actualCounter, ) = balanceSheet.queuedShares(
                     poolId,
@@ -2242,8 +2252,9 @@ abstract contract Properties is
 
                 // Count actual non-empty asset queues
                 uint256 expectedCounter = 0;
-                for (uint256 k = 0; k < trackedAssets.length; k++) {
-                    AssetId assetId = trackedAssets[k];
+                AssetId[] memory assets = _getAssetIds();
+                for (uint256 k = 0; k < assets.length; k++) {
+                    AssetId assetId = assets[k];
                     (uint128 deposits, uint128 withdrawals) = balanceSheet
                         .queuedAssets(poolId, scId, assetId);
 
@@ -2261,7 +2272,7 @@ abstract contract Properties is
                 // Counter should never exceed total possible assets
                 lte(
                     uint256(actualCounter),
-                    trackedAssets.length,
+                    assets.length,
                     "SHARE-QUEUE-09: Counter cannot exceed total tracked assets"
                 );
             }
@@ -2277,9 +2288,10 @@ abstract contract Properties is
     /// includes asset a
     /// Ensures counter accurately tracks non-empty queues
     function property_assetQueueCounterConsistency() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            ShareClassId[] memory shareClassIds = activeShareClasses[poolId];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClassIds = _getPoolShareClasses(poolId);
 
             for (uint256 j = 0; j < shareClassIds.length; j++) {
                 ShareClassId scId = shareClassIds[j];
@@ -2292,8 +2304,9 @@ abstract contract Properties is
                 uint256 nonEmptyAssetCount = 0;
 
                 // Count non-empty asset queues
-                for (uint256 k = 0; k < trackedAssets.length; k++) {
-                    AssetId assetId = trackedAssets[k];
+                AssetId[] memory assets = _getAssetIds();
+                for (uint256 k = 0; k < assets.length; k++) {
+                    AssetId assetId = assets[k];
                     (uint128 deposits, uint128 withdrawals) = balanceSheet
                         .queuedAssets(poolId, scId, assetId);
 
@@ -2325,9 +2338,12 @@ abstract contract Properties is
     /// Definition: Sum of individual asset queue counters ≤ total queuedAssetCounter for share class
     /// Prevents counter overflow or manipulation
     function property_assetCounterBounds() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            ShareClassId[] memory shareClassIds = activeShareClasses[poolId];
+        PoolId[] memory pools = _getPools();
+        AssetId[] memory assets = _getAssetIds();
+
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClassIds = _getPoolShareClasses(poolId);
 
             for (uint256 j = 0; j < shareClassIds.length; j++) {
                 ShareClassId scId = shareClassIds[j];
@@ -2340,7 +2356,7 @@ abstract contract Properties is
                 // Counter should not exceed total number of tracked assets
                 lte(
                     uint256(queuedAssetCounter),
-                    trackedAssets.length,
+                    assets.length,
                     "property_assetCounterBounds: counter exceeds max possible"
                 );
             }
@@ -2351,15 +2367,17 @@ abstract contract Properties is
     /// Definition: Asset queues can never underflow (deposits/withdrawals ≥ 0)
     /// Mathematical consistency of accumulation
     function property_assetQueueNonNegative() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            ShareClassId[] memory shareClassIds = activeShareClasses[poolId];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClassIds = _getPoolShareClasses(poolId);
 
             for (uint256 j = 0; j < shareClassIds.length; j++) {
                 ShareClassId scId = shareClassIds[j];
 
-                for (uint256 k = 0; k < trackedAssets.length; k++) {
-                    AssetId assetId = trackedAssets[k];
+                AssetId[] memory assets = _getAssetIds();
+                for (uint256 k = 0; k < assets.length; k++) {
+                    AssetId assetId = assets[k];
                     (uint128 deposits, uint128 withdrawals) = balanceSheet
                         .queuedAssets(poolId, scId, assetId);
 
@@ -2402,9 +2420,10 @@ abstract contract Properties is
     /// This property covers the complete biconditional relationship and replaces the need
     /// for separate zero-delta checking as it encompasses all possible states.
     function property_shareQueueFlagConsistency() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            ShareClassId[] memory shareClassIds = activeShareClasses[poolId];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClassIds = _getPoolShareClasses(poolId);
 
             for (uint256 j = 0; j < shareClassIds.length; j++) {
                 ShareClassId scId = shareClassIds[j];
@@ -2433,9 +2452,10 @@ abstract contract Properties is
     /// Definition: Nonce strictly increases with each submission
     /// Ensures proper message ordering
     function property_nonceMonotonicity() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            ShareClassId[] memory shareClassIds = activeShareClasses[poolId];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClassIds = _getPoolShareClasses(poolId);
 
             for (uint256 j = 0; j < shareClassIds.length; j++) {
                 ShareClassId scId = shareClassIds[j];
@@ -2471,15 +2491,17 @@ abstract contract Properties is
     /// @dev Property 2.6: Reserve/Unreserve Balance Integrity
     /// @notice Ensures reserve operations maintain balance consistency
     function property_reserveUnreserveBalanceIntegrity() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
 
             for (uint256 j = 0; j < shareClasses.length; j++) {
                 ShareClassId scId = shareClasses[j];
 
-                for (uint256 k = 0; k < trackedAssets.length; k++) {
-                    AssetId assetId = trackedAssets[k];
+                AssetId[] memory assets = _getAssetIds();
+                for (uint256 k = 0; k < assets.length; k++) {
+                    AssetId assetId = assets[k];
                     bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
 
                     // Skip if no reserve operations occurred
@@ -2556,15 +2578,17 @@ abstract contract Properties is
     /// @dev Property 2.4: Escrow Balance Sufficiency
     /// @notice Ensures available balance always covers withdrawals
     function property_escrowBalanceSufficiency() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
 
             for (uint256 j = 0; j < shareClasses.length; j++) {
                 ShareClassId scId = shareClasses[j];
 
-                for (uint256 k = 0; k < trackedAssets.length; k++) {
-                    AssetId assetId = trackedAssets[k];
+                AssetId[] memory assets = _getAssetIds();
+                for (uint256 k = 0; k < assets.length; k++) {
+                    AssetId assetId = assets[k];
                     bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
 
                     // Skip if not tracked
@@ -2633,8 +2657,9 @@ abstract contract Properties is
     /// @dev Property 2.7: Authorization Boundary Enforcement
     /// @notice Ensures only authorized parties perform privileged operations
     function property_authorizationBoundaryEnforcement() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
             bytes32 poolKey = keccak256(abi.encode(poolId));
 
             // No unauthorized operations should succeed
@@ -2650,7 +2675,7 @@ abstract contract Properties is
                 "Authorization checks were bypassed"
             );
 
-            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
             for (uint256 j = 0; j < shareClasses.length; j++) {
                 ShareClassId scId = shareClasses[j];
                 bytes32 key = keccak256(abi.encode(poolId, scId));
@@ -2728,9 +2753,10 @@ abstract contract Properties is
     /// @dev Property 2.8: Share Transfer Restrictions
     /// @notice Ensures transfers from endorsed contracts are blocked
     function property_shareTransferRestrictions() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
 
             for (uint256 j = 0; j < shareClasses.length; j++) {
                 ShareClassId scId = shareClasses[j];
@@ -2792,9 +2818,10 @@ abstract contract Properties is
     /// @dev Property 2.1: Share Token Supply Consistency
     /// @notice Ensures total supply always equals sum of balances
     function property_shareTokenSupplyConsistency() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
 
             for (uint256 j = 0; j < shareClasses.length; j++) {
                 ShareClassId scId = shareClasses[j];
@@ -2870,18 +2897,18 @@ abstract contract Properties is
     /// Ensures that when assets are deposited, shares are issued proportionally based on current exchange rates
     /// This prevents unbacked share creation that could dilute existing holders
     function property_assetShareProportionalityDeposits() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
 
             for (uint256 j = 0; j < shareClasses.length; j++) {
-                ShareClassId scId = shareClasses[j];
-
                 // Iterate through all tracked assets for this pool/shareClass
-                for (uint256 k = 0; k < trackedAssets.length; k++) {
-                    AssetId assetId = trackedAssets[k];
+                AssetId[] memory assets = _getAssetIds();
+                for (uint256 k = 0; k < assets.length; k++) {
+                    AssetId assetId = assets[k];
                     bytes32 assetKey = keccak256(
-                        abi.encode(poolId, scId, assetId)
+                        abi.encode(poolId, shareClasses[j], assetId)
                     );
 
                     // Skip if no deposit proportionality tracking occurred
@@ -2910,19 +2937,19 @@ abstract contract Properties is
                     // Fetch prices for direct PricingLib calls (handles zero prices internally)
                     D18 pricePerAsset = spoke.pricePoolPerAsset(
                         poolId,
-                        scId,
+                        shareClasses[j],
                         assetId,
                         true
                     );
                     D18 pricePerShare = spoke.pricePoolPerShare(
                         poolId,
-                        scId,
+                        shareClasses[j],
                         false
                     );
 
                     // Get real addresses for proper decimal handling
                     address shareToken = address(
-                        spoke.shareToken(poolId, scId)
+                        spoke.shareToken(poolId, shareClasses[j])
                     );
                     (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
 
@@ -2985,16 +3012,18 @@ abstract contract Properties is
     /// Ensures that when assets are withdrawn, they are proportional to shares revoked based on current exchange rates
     /// This prevents extracting more value than share ownership represents and maintains fairness across redemptions
     function property_assetShareProportionalityWithdrawals() public {
-        for (uint256 i = 0; i < activePools.length; i++) {
-            PoolId poolId = activePools[i];
-            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+        PoolId[] memory pools = _getPools();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
 
             for (uint256 j = 0; j < shareClasses.length; j++) {
                 ShareClassId scId = shareClasses[j];
 
                 // Iterate through all tracked assets for this pool/shareClass
-                for (uint256 k = 0; k < trackedAssets.length; k++) {
-                    AssetId assetId = trackedAssets[k];
+                AssetId[] memory assets = _getAssetIds();
+                for (uint256 k = 0; k < assets.length; k++) {
+                    AssetId assetId = assets[k];
                     bytes32 assetKey = keccak256(
                         abi.encode(poolId, scId, assetId)
                     );

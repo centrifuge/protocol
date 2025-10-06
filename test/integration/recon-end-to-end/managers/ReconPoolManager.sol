@@ -6,17 +6,22 @@ import {vm} from "@chimera/Hevm.sol";
 import {EnumerableSet} from "@recon/EnumerableSet.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 /// @dev Source of truth for the assets being used in the test
 /// @notice No assets should be used in the suite without being added here first
 abstract contract ReconPoolManager {
     using EnumerableSet for EnumerableSet.UintSet;
+    using EnumerableSet for EnumerableSet.Bytes32Set;
 
     /// @notice The current target for this set of variables
     uint64 private __pool;
 
     /// @notice The list of all assets being used
     EnumerableSet.UintSet private _pools;
+    
+    /// @notice Mapping of pool to share classes
+    mapping(PoolId => EnumerableSet.Bytes32Set) private _poolShareClasses;
 
     // If the current target is address(0) then it has not been setup yet and should revert
     error PoolNotSetup();
@@ -67,5 +72,39 @@ abstract contract ReconPoolManager {
         uint256[] memory pools = _pools.values();
         uint64 target = uint64(pools[entropy % pools.length]);
         __pool = target;
+    }
+
+    /// @notice Adds a share class to a specific pool
+    /// @param poolId The pool to add the share class to
+    /// @param scId The share class ID to add
+    function _addShareClassToPool(PoolId poolId, ShareClassId scId) internal {
+        _poolShareClasses[poolId].add(bytes32(ShareClassId.unwrap(scId)));
+    }
+
+    /// @notice Removes a share class from a specific pool
+    /// @param poolId The pool to remove the share class from
+    /// @param scId The share class ID to remove
+    function _removeShareClassFromPool(PoolId poolId, ShareClassId scId) internal {
+        _poolShareClasses[poolId].remove(bytes32(ShareClassId.unwrap(scId)));
+    }
+
+    /// @notice Returns all share classes for a given pool
+    /// @param poolId The pool to get share classes for
+    /// @return Share class IDs for the pool
+    function _getPoolShareClasses(PoolId poolId) internal view returns (ShareClassId[] memory) {
+        bytes32[] memory rawValues = _poolShareClasses[poolId].values();
+        ShareClassId[] memory result = new ShareClassId[](rawValues.length);
+        for (uint256 i = 0; i < rawValues.length; i++) {
+            result[i] = ShareClassId.wrap(bytes16(rawValues[i]));
+        }
+        return result;
+    }
+
+    /// @notice Checks if a share class exists for a pool
+    /// @param poolId The pool to check
+    /// @param scId The share class ID to check
+    /// @return True if the share class exists for the pool
+    function _poolHasShareClass(PoolId poolId, ShareClassId scId) internal view returns (bool) {
+        return _poolShareClasses[poolId].contains(bytes32(ShareClassId.unwrap(scId)));
     }
 }

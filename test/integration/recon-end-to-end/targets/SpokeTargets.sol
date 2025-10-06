@@ -115,6 +115,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         );
 
         _addShareClassId(scId);
+        _addShareClassToPool(_getPool(), ShareClassId.wrap(scId));
         _addShareToken(newToken);
 
         return (newToken, scId);

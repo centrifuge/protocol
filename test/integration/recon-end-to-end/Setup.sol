@@ -144,9 +144,10 @@ abstract contract Setup is
     uint64 internal POOL_ID_COUNTER = 1;
 
     // Pool tracking for property iteration
-    PoolId[] public activePools; // All created pools
-    mapping(PoolId => ShareClassId[]) public activeShareClasses; // Share classes per pool
-    AssetId[] public trackedAssets; // All registered assets
+    // NOTE: removed because all tracking now handled by Recon managers
+    // PoolId[] public activePools; // Replaced by ReconPoolManager
+    // mapping(PoolId => ShareClassId[]) public activeShareClasses; // Replaced by ReconPoolManager
+    // AssetId[] public trackedAssets; // Replaced by ReconAssetIdManager
 
     int256 maxDepositGreater;
     int256 maxDepositLess;
@@ -481,48 +482,39 @@ abstract contract Setup is
     }
 
     /// @notice Track pools and share classes for property iteration
-    function _trackPoolAndShareClass(
-        PoolId poolId,
-        ShareClassId scId
-    ) internal {
-        // Check if pool is already tracked
-        bool poolExists = false;
-        for (uint256 i = 0; i < activePools.length; i++) {
-            if (PoolId.unwrap(activePools[i]) == PoolId.unwrap(poolId)) {
-                poolExists = true;
-                break;
-            }
-        }
-        if (!poolExists) {
-            activePools.push(poolId);
-        }
+    // function _trackPoolAndShareClass(
+    //     PoolId poolId,
+    //     ShareClassId scId
+    // ) internal {
+    //     // Check if pool is already tracked using ReconPoolManager
+    //     PoolId[] memory pools = _getPools();
+    //     bool poolExists = false;
+    //     for (uint256 i = 0; i < pools.length; i++) {
+    //         if (PoolId.unwrap(pools[i]) == PoolId.unwrap(poolId)) {
+    //             poolExists = true;
+    //             break;
+    //         }
+    //     }
+    //     if (!poolExists) {
+    //         _addPool(PoolId.unwrap(poolId));
+    //     }
 
-        // Check if share class is already tracked for this pool
-        ShareClassId[] storage shareClasses = activeShareClasses[poolId];
-        bool scExists = false;
-        for (uint256 i = 0; i < shareClasses.length; i++) {
-            if (
-                ShareClassId.unwrap(shareClasses[i]) ==
-                ShareClassId.unwrap(scId)
-            ) {
-                scExists = true;
-                break;
-            }
-        }
-        if (!scExists) {
-            shareClasses.push(scId);
-        }
-    }
+    //     // Check if share class is already tracked for this pool
+    //     if (!_poolHasShareClass(poolId, scId)) {
+    //         _addShareClassToPool(poolId, scId);
+    //     }
+    // }
 
     /// @notice Track asset for property iteration
     function _trackAsset(AssetId assetId) internal {
-        // Check if asset is already tracked
-        for (uint256 i = 0; i < trackedAssets.length; i++) {
-            if (AssetId.unwrap(trackedAssets[i]) == AssetId.unwrap(assetId)) {
+        // Check if asset is already tracked using ReconAssetIdManager
+        AssetId[] memory assets = _getAssetIds();
+        for (uint256 i = 0; i < assets.length; i++) {
+            if (AssetId.unwrap(assets[i]) == AssetId.unwrap(assetId)) {
                 return; // Already tracked
             }
         }
-        trackedAssets.push(assetId);
+        _addAssetId(AssetId.unwrap(assetId));
     }
 
     // Authorization helper functions
@@ -562,8 +554,9 @@ abstract contract Setup is
             newLevel = AuthLevel.WARD;
         } else {
             // Check if user is manager for any tracked pool
-            for (uint256 i = 0; i < activePools.length; i++) {
-                if (balanceSheet.manager(activePools[i], user)) {
+            PoolId[] memory pools = _getPools();
+            for (uint256 i = 0; i < pools.length; i++) {
+                if (balanceSheet.manager(pools[i], user)) {
                     newLevel = AuthLevel.MANAGER;
                     break;
                 }

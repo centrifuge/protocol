@@ -45,8 +45,9 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         _trackAuthorization(_getActor(), poolId);
 
         // Track for property iteration
-        _trackPoolAndShareClass(poolId, scId);
-        _trackAsset(assetId);
+        // NOTE: replaced with values from manager
+        // _trackPoolAndShareClass(poolId, scId);
+        // _trackAsset(assetId);
 
         // Update queue ghost variables
         bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
@@ -118,7 +119,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         _trackAuthorization(_getActor(), poolId);
 
         // Track for property iteration
-        _trackPoolAndShareClass(poolId, scId);
+        // _trackPoolAndShareClass(poolId, scId);
 
         // Track previous net position for flip detection
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
@@ -133,7 +134,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
         // Track asset-share proportionality for share issuance
         // Track shares issued for deposits - need to iterate through tracked assets for this pool/shareClass
-        AssetId[] memory assets = trackedAssets;
+        AssetId[] memory assets = _getAssetIds();
         for (uint256 i = 0; i < assets.length; i++) {
             bytes32 assetKey = keccak256(abi.encode(poolId, scId, assets[i]));
             // If this asset has proportionality tracking enabled, update cumulative shares
@@ -263,7 +264,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         _trackAuthorization(_getActor(), poolId);
 
         // Track for property iteration
-        _trackPoolAndShareClass(poolId, scId);
+        // _trackPoolAndShareClass(poolId, scId);
 
         // Track previous net position for flip detection
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
@@ -277,7 +278,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
         // Track share revocation for withdrawals
         // Track shares revoked for all assets in this pool/shareClass
-        AssetId[] memory assets = trackedAssets;
+        AssetId[] memory assets = _getAssetIds();
         for (uint256 i = 0; i < assets.length; i++) {
             bytes32 assetKey = keccak256(abi.encode(poolId, scId, assets[i]));
             // If withdrawal proportionality tracking is enabled for this asset, update cumulative shares
