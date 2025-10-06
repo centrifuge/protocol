@@ -2,41 +2,34 @@
 title Hub Managers
 hide empty members
 
+skinparam linetype ortho
+
 package core {
-    class Hub
     class Holdings
-    class Accounting
-    class HubRegistry
-    class ShareClassManager
     interface ISnapshotHook
 }
 
-NAVManager --> Hub
-NAVManager --> Holdings
-NAVManager --> Accounting
-NAVManager --> HubRegistry
-NAVManager -|> ISnapshotHook
-NAVManager --> INAVHook
+class NAVManager
+class SimplePriceManager
+interface INAVHook
 
-SimplePriceManager -left|> INAVHook
-SimplePriceManager --> Hub
-SimplePriceManager --> ShareClassManager
-SimplePriceManager --> HubRegistry
+NAVManager -down-> INAVHook
+SimplePriceManager -up-|> INAVHook
+NAVManager -left-|> ISnapshotHook
+Holdings .up[dotted].> ISnapshotHook
 
-Holdings --> ISnapshotHook
-
-note top of NAVManager
+note left of NAVManager
   Abstracts holding management
   and accounting of net asset value (NAV)
 end note
 
-note top of SimplePriceManager
+note left of SimplePriceManager
   Calculates the share price 
   for single-share class pools
   based on NAV and total shares
 end note
 
-note bottom of ISnapshotHook
+note top of ISnapshotHook
   Hook called when a spoke
   is in a snapshot state
   or when shares are transferred

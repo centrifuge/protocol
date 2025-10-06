@@ -3,18 +3,12 @@ title Spoke Managers
 hide empty members
 
 package core {
-    class BalanceSheet
+    interface IBalanceSheet
 }
 
-package managers {
-    class OnOfframpManager
-    class MerkleProofManager
-    class QueueManager
-}
-
-OnOfframpManager --> BalanceSheet
-MerkleProofManager --> BalanceSheet
-QueueManager --> BalanceSheet
+OnOfframpManager --> IBalanceSheet
+MerkleProofManager --> IBalanceSheet
+QueueManager --> IBalanceSheet
 
 note top of OnOfframpManager
   Manages on/off-ramping

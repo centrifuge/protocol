@@ -36,7 +36,7 @@ Spoke <-> IRequestManager
 Spoke <-- IMessageProcessor
 
 VaultRegistry --> IVaultFactory
-VaultRegistry o-- "n" IVault
+VaultRegistry o-[norank]- "n" IVault
 
 BalanceSheet --> Spoke
 BalanceSheet --> ISpokeMessageSender
@@ -45,7 +45,6 @@ PoolEscrowFactory o-- "n" PoolEscrow
 PoolEscrowFactory ..> PoolEscrow
 
 ShareToken .[dotted].> ITransferHook
-ShareToken o-- "n" IVault
 
 TokenFactory ..> ShareToken
 IVaultFactory ..> IVault
