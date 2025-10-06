@@ -82,73 +82,6 @@ interface IBalanceSheet is IBatchedMulticall {
     error CannotTransferFromEndorsedContract();
 
     //----------------------------------------------------------------------------------------------
-    // View methods
-    //----------------------------------------------------------------------------------------------
-
-    /// @notice Returns the spoke contract
-    /// @return The spoke contract instance
-    function spoke() external view returns (ISpoke);
-
-    /// @notice Returns the message sender contract
-    /// @return The message sender contract instance
-    function sender() external view returns (ISpokeMessageSender);
-
-    /// @notice Returns the endorsements contract
-    /// @return The endorsements contract instance
-    function endorsements() external view returns (IEndorsements);
-
-    /// @notice Returns the pool escrow provider
-    /// @return The pool escrow provider instance
-    function poolEscrowProvider() external view returns (IPoolEscrowProvider);
-
-    /// @notice Checks if an address is a manager for a pool
-    /// @param poolId The pool identifier
-    /// @param manager The address to check
-    /// @return Whether the address is a manager
-    function manager(PoolId poolId, address manager) external view returns (bool);
-
-    /// @notice Returns the queued shares for a share class
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @return delta Net queued shares
-    /// @return isPositive Whether the net queued shares lead to an issuance or revocation
-    /// @return queuedAssetCounter Number of queued asset IDs for this share class
-    /// @return nonce Nonce for share + asset messages to the hub
-    function queuedShares(PoolId poolId, ShareClassId scId)
-        external
-        view
-        returns (uint128 delta, bool isPositive, uint32 queuedAssetCounter, uint64 nonce);
-
-    /// @notice Returns the queued assets for a share class and asset
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param assetId The asset identifier
-    /// @return increase Queued deposits
-    /// @return decrease Queued withdrawals
-    function queuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId)
-        external
-        view
-        returns (uint128 increase, uint128 decrease);
-
-    /// @notice Returns the pool escrow.
-    /// @dev    Assets for pending deposit requests are not held by the pool escrow.
-    /// @param poolId The pool identifier
-    /// @return The pool escrow instance
-    function escrow(PoolId poolId) external view returns (IPoolEscrow);
-
-    /// @notice Returns the amount of assets that can be withdrawn from the balance sheet.
-    /// @dev    Assets that are locked for redemption requests are reserved and not available for withdrawals.
-    /// @param  poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param asset The asset address
-    /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
-    /// @return The available balance
-    function availableBalanceOf(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId)
-        external
-        view
-        returns (uint128);
-
-    //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
 
@@ -303,4 +236,71 @@ interface IBalanceSheet is IBatchedMulticall {
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external payable;
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Returns the spoke contract
+    /// @return The spoke contract instance
+    function spoke() external view returns (ISpoke);
+
+    /// @notice Returns the message sender contract
+    /// @return The message sender contract instance
+    function sender() external view returns (ISpokeMessageSender);
+
+    /// @notice Returns the endorsements contract
+    /// @return The endorsements contract instance
+    function endorsements() external view returns (IEndorsements);
+
+    /// @notice Returns the pool escrow provider
+    /// @return The pool escrow provider instance
+    function poolEscrowProvider() external view returns (IPoolEscrowProvider);
+
+    /// @notice Checks if an address is a manager for a pool
+    /// @param poolId The pool identifier
+    /// @param manager The address to check
+    /// @return Whether the address is a manager
+    function manager(PoolId poolId, address manager) external view returns (bool);
+
+    /// @notice Returns the queued shares for a share class
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @return delta Net queued shares
+    /// @return isPositive Whether the net queued shares lead to an issuance or revocation
+    /// @return queuedAssetCounter Number of queued asset IDs for this share class
+    /// @return nonce Nonce for share + asset messages to the hub
+    function queuedShares(PoolId poolId, ShareClassId scId)
+        external
+        view
+        returns (uint128 delta, bool isPositive, uint32 queuedAssetCounter, uint64 nonce);
+
+    /// @notice Returns the queued assets for a share class and asset
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param assetId The asset identifier
+    /// @return increase Queued deposits
+    /// @return decrease Queued withdrawals
+    function queuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        view
+        returns (uint128 increase, uint128 decrease);
+
+    /// @notice Returns the pool escrow.
+    /// @dev    Assets for pending deposit requests are not held by the pool escrow.
+    /// @param poolId The pool identifier
+    /// @return The pool escrow instance
+    function escrow(PoolId poolId) external view returns (IPoolEscrow);
+
+    /// @notice Returns the amount of assets that can be withdrawn from the balance sheet.
+    /// @dev    Assets that are locked for redemption requests are reserved and not available for withdrawals.
+    /// @param  poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param asset The asset address
+    /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
+    /// @return The available balance
+    function availableBalanceOf(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId)
+        external
+        view
+        returns (uint128);
 }
