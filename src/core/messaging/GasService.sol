@@ -62,7 +62,7 @@ contract GasService is IGasService {
         initiateTransferShares = BASE_COST + 286613;
         executeTransferShares = BASE_COST + 177494;
         updateRestriction = BASE_COST + 114441;
-        trustedContractUpdate = BASE_COST + 145006;
+        trustedContractUpdate = BASE_COST + 142247;
         requestCallback = BASE_COST + 258482; // approve deposit case
         updateVaultDeployAndLink = BASE_COST + 2853046;
         updateVaultLink = BASE_COST + 185355;
