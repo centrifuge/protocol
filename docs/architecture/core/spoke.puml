@@ -2,29 +2,16 @@
 title Spoke
 hide empty members
 
+skinparam linetype ortho
+
+package core {
+    interface IGateway
+    interface IRequestManager
+}
+
 package messaging {
-    class MessageDispatcher
-}
-
-package managers {
-    class OnOfframpManager
-    class MerkleProofManager
-    class QueueManager
-}
-
-package hooks {
-    class FreelyTransferable
-    class FreezeOnly
-    class FullRestrictions
-    class RedemptionRestrictions
-}
-
-package vaults {
-    class AsyncVault
-    class SyncDepositVault
-    class AsyncRequestManager
-    class SyncManager
-    class VaultRouter
+    interface ISpokeMessageSender
+    interface IMessageProcessor
 }
 
 class Spoke
@@ -32,60 +19,33 @@ class ShareToken
 class BalanceSheet
 class TokenFactory
 class VaultRegistry
-class ContractUpdater
 class PoolEscrowFactory
 class PoolEscrow
-class Gateway
 
 interface IVaultFactory
 interface IVault
-interface IRequestManager
 interface ITransferHook
-interface IUpdateContract
 
 Spoke --> TokenFactory
 Spoke --> PoolEscrowFactory
-Spoke --> "n" ShareToken
-Spoke --> Gateway
-Spoke --> MessageDispatcher
+Spoke o-- "n" ShareToken
+Spoke --> IGateway
+Spoke --> ISpokeMessageSender
 Spoke --> VaultRegistry
-Spoke -[norank]-> IRequestManager
+Spoke <-> IRequestManager
+Spoke <-- IMessageProcessor
 
-VaultRegistry --> "n" IVaultFactory
-VaultRegistry --> "n" AsyncVault
-VaultRegistry --> "n" SyncDepositVault
+VaultRegistry --> IVaultFactory
+VaultRegistry o-- "n" IVault
 
-AsyncVault -up-|> IVault
-SyncDepositVault -up-|> IVault
-
-AsyncVault --> AsyncRequestManager
-SyncDepositVault --> SyncManager
-
-AsyncRequestManager -up-|> IRequestManager
-SyncManager -up-|> IRequestManager
-
-VaultRouter --> VaultRegistry
-
-ContractUpdater --> IUpdateContract
-
-BalanceSheet --> PoolEscrowFactory
 BalanceSheet --> Spoke
-BalanceSheet --> MessageDispatcher
-BalanceSheet --> Gateway
+BalanceSheet --> ISpokeMessageSender
 
+PoolEscrowFactory o-- "n" PoolEscrow
 PoolEscrowFactory ..> PoolEscrow
 
-OnOfframpManager --> BalanceSheet
-MerkleProofManager --> BalanceSheet
-QueueManager --> BalanceSheet
-
-ShareToken ..> ITransferHook
-ShareToken --> IVault
-
-ITransferHook <|-- FreelyTransferable
-ITransferHook <|-- FreezeOnly
-ITransferHook <|-- FullRestrictions
-ITransferHook <|-- RedemptionRestrictions
+ShareToken .[dotted].> ITransferHook
+ShareToken o-- "n" IVault
 
 TokenFactory ..> ShareToken
 IVaultFactory ..> IVault

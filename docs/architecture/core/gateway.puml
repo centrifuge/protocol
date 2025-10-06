@@ -2,63 +2,31 @@
 title Gateway
 hide empty members
 
+skinparam linetype ortho
+
 package messaging {
-    class MessageDispatcher
-    class MessageProcessor
-    class GasService
-}
-
-package admin {
-    class Guardian
-    class Root
-    class TokenRecoverer
-}
-
-package adapters {
-    class AxelarAdapter
-    class WormholeAdapter
-    class LayerZeroAdapter
-    class RecoveryAdapter
+    interface IMessageDispatcher
+    interface IMessageProcessor
 }
 
 class Gateway
-class BatchedMulticall
 class MultiAdapter
-class PoolEscrow
+class Spoke
+class HubHandler
 
 interface IAdapter
 
-BatchedMulticall --> Gateway
+Spoke <-> IMessageDispatcher
+HubHandler <-> IMessageDispatcher
+IMessageProcessor --> HubHandler
+IMessageProcessor --> Spoke
 
-Gateway --> GasService
-Gateway --> Root
-Gateway --> MultiAdapter
-Gateway --> PoolEscrow
+IMessageDispatcher --> Gateway
+
+Gateway --> IMessageProcessor
+Gateway <-> MultiAdapter
 
 MultiAdapter --> "n" IAdapter
-
-IAdapter <|-- AxelarAdapter
-IAdapter <|-- WormholeAdapter
-IAdapter <|-- LayerZeroAdapter
-IAdapter <|-- RecoveryAdapter
-
-AxelarAdapter --> Gateway
-WormholeAdapter --> Gateway
-LayerZeroAdapter --> Gateway
-RecoveryAdapter --> Gateway
-
-MessageProcessor --> Root
-MessageProcessor --> TokenRecoverer
-MessageProcessor <--> Gateway
-
-MessageDispatcher <--> Root
-MessageDispatcher <--> TokenRecoverer
-MessageDispatcher <--> Gateway
-
-Guardian --> Root
-Guardian --> MessageDispatcher
-Guardian --> MultiAdapter
-
-TokenRecoverer --> Root
+IAdapter --> Gateway
 
 @enduml

@@ -2,18 +2,15 @@
 title Hub
 hide empty members
 
-package messaging {
-    class MessageDispatcher
-}
-
-package managers {
-    class NAVManager
-    class SimplePriceManager
-    interface INAVHook
-}
+skinparam linetype ortho
 
 package vaults {
-    class BatchRequestManager
+    interface IBatchRequestManager
+}
+
+package messaging {
+    interface IMessageDispatcher
+    interface IMesssageProcessor
 }
 
 class Hub
@@ -31,24 +28,16 @@ Hub --> Holdings
 Hub --> HubRegistry
 Hub --> ShareClassManager
 Hub --> Accounting
-Hub --> MessageDispatcher
+Hub --> IMessageDispatcher
 Hub --> Gateway
-Hub ..> IFeeHook
+Hub .[dotted].> IFeeHook
 
 HubHandler --> Hub
+IMesssageProcessor --> HubHandler
 
-BatchRequestManager --> Hub
+IBatchRequestManager --> Hub
 
-Holdings --> HubRegistry
 Holdings --> IValuation
-Holdings ..> ISnapshotHook
-
-ShareClassManager --> HubRegistry
-Accounting --> HubRegistry
-
-NAVManager -up-|> ISnapshotHook
-NAVManager -down-|> INAVHook
-
-SimplePriceManager -|> INAVHook
+Holdings .[dotted].> ISnapshotHook
 
 @enduml
