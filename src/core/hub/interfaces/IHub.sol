@@ -477,6 +477,12 @@ interface IHub is IBatchedMulticall {
         external
         payable;
 
+    /// @notice Helper used to add hub request manager methods to the same multicall
+    /// @param poolId The pool identifier
+    /// @param centrifugeId Chain associated to the registered hub request manager
+    /// @param data abi encoded method call to a hub request manager. PoolId must be first param.
+    function callRequestManager(PoolId poolId, uint16 centrifugeId, bytes calldata data) external payable;
+
     //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------

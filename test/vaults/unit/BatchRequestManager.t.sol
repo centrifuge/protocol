@@ -2927,7 +2927,7 @@ contract BatchRequestManagerRoundingEdgeCasesRedeem is BatchRequestManagerBaseTe
 contract BatchRequestManagerERC165Support is BatchRequestManagerBaseTest {
     function testERC165SupportBRM(bytes4 unsupportedInterfaceId) public view {
         bytes4 erc165 = 0x01ffc9a7;
-        bytes4 hubRequestManager = 0x2f6c33bf;
+        bytes4 hubRequestManager = 0xd9b27603;
         bytes4 hubRequestManagerNotifications = 0x3a2d9da4;
         bytes4 batchRequestManagerID = 0xaf00afbd;
 

@@ -10,6 +10,8 @@ import {ShareClassId} from "../../types/ShareClassId.sol";
 interface IHubRequestManager is IERC165 {
     /// @notice Handles a request originating from the Hub side, similar to HubHelpers.request
     function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
+
+    function callFromHub(bytes memory data) external;
 }
 
 interface IHubRequestManagerNotifications is IERC165 {

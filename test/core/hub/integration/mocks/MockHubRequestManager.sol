@@ -7,7 +7,9 @@ import {ShareClassId} from "../../../../../src/core/types/ShareClassId.sol";
 import {IHubRequestManager} from "../../../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
 contract MockHubRequestManager is IHubRequestManager {
-    function request(PoolId, ShareClassId, AssetId, bytes calldata) external override {}
+    function request(PoolId, ShareClassId, AssetId, bytes calldata) external {}
+
+    function callFromHub(bytes memory data) external {}
 
     function supportsInterface(bytes4) public pure returns (bool) {
         return true;
