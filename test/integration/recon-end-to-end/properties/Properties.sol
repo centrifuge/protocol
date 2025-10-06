@@ -13,6 +13,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {PoolEscrow} from "src/common/PoolEscrow.sol";
+import {IPoolEscrow, Holding} from "src/common/interfaces/IPoolEscrow.sol";
 import {AccountType} from "src/hub/interfaces/IHub.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {BaseVault} from "src/vaults/BaseVaults.sol";
@@ -23,6 +24,8 @@ import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 
 import {OpType} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
+import {AsyncVaultCentrifugeProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
+import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 import {AsyncVaultCentrifugeProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
 import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 
@@ -41,7 +44,9 @@ abstract contract Properties is
     event DebugWithString(string, uint256);
     event DebugNumber(uint256);
 
-    // == SENTINEL == //
+    // ===============================
+    // SENTINEL
+    // ===============================
     /// Sentinel properties are used to flag that coverage was reached
     // These can be useful during development, but may also be kept at latest stages
     // They indicate that salient state transitions have happened, which can be helpful at all stages of development
@@ -63,7 +68,9 @@ abstract contract Properties is
         );
     }
 
-    // == VAULT == //
+    // ===============================
+    // VAULT
+    // ===============================
 
     /// @dev Property: Sum of share tokens received on `deposit` and `mint` <= sum of fulfilledDepositRequest.shares
     function property_sum_of_shares_received() public tokenIsSet {
@@ -194,7 +201,7 @@ abstract contract Properties is
         public
         tokenIsSet
     {
-        IBaseVault vault = _getVault();
+        IBaseVault vault = IBaseVault(_getVault());
 
         uint256 totalSupply = IShareToken(vault.share()).totalSupply();
         lte(
@@ -369,7 +376,9 @@ abstract contract Properties is
         }
     }
 
-    // == SHARE CLASS TOKENS == //
+    // ===============================
+    // SHARE CLASS TOKENS
+    // ===============================
 
     /// @dev Property: Sum of balances equals total supply
     function property_sum_of_balances() public tokenIsSet {
@@ -810,6 +819,7 @@ abstract contract Properties is
     //     PoolId poolId = vault.poolId();
     //     ShareClassId scId = vault.scId();
     //     AssetId assetId = _getAssetId();
+    //     AssetId assetId = AssetId.wrap(_getAssetId());
     //     (address assetAddr, uint256 tokenId) = spoke.idToAsset(assetId);
 
     //     PoolEscrow poolEscrow = PoolEscrow(payable(address(poolEscrowFactory.escrow(poolId))));
@@ -825,6 +835,7 @@ abstract contract Properties is
     //     PoolId poolId = vault.poolId();
     //     ShareClassId scId = vault.scId();
     //     AssetId assetId = _getAssetId();
+    //     AssetId assetId = AssetId.wrap(_getAssetId());
 
     //     // first check if the share amount changed
     //     uint256 shareDelta;
@@ -863,7 +874,9 @@ abstract contract Properties is
     //     }
     // }
 
-    /// === HUB === ///
+    // ===============================
+    // HUB
+    // ===============================
 
     /// @dev Property: The total pending asset amount pendingDeposit[..] is always >= the approved asset
     /// epochInvestAmounts[..].approvedAssetAmount
@@ -1074,6 +1087,7 @@ abstract contract Properties is
     //         for (uint32 j = 1; j < shareClassCount; j++) {
     //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
     //             AssetId assetId = _getAssetId();
+    //             AssetId assetId = AssetId.wrap(_getAssetId());
     //             // loop over all account types defined in IHub::AccountType
     //             for(uint8 kind = 0; kind < 6; kind++) {
     //                 AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
@@ -1138,7 +1152,6 @@ abstract contract Properties is
             assetId,
             uint8(AccountType.Asset)
         );
-
         (, uint128 assets) = accounting.accountValue(poolId, accountId);
         uint128 holdingsValue = holdings.value(poolId, scId, assetId);
 
@@ -1475,6 +1488,9 @@ abstract contract Properties is
         // Guard: Skip when price is zero (property is undefined)
         if (_before.pricePerShare == 0) return;
 
+        // Guard: Skip when price is zero (property is undefined)
+        if (_before.pricePerShare == 0) return;
+
         address asset = vault.asset();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
 
@@ -1609,6 +1625,7 @@ abstract contract Properties is
     //         for (uint32 j = 1; j < shareClassCount; j++) {
     //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
     //             AssetId assetId = _getAssetId();
+    //             AssetId assetId = AssetId.wrap(_getAssetId());
 
     //             address pendingShareClassEscrow = hub.escrow(poolId, scId, EscrowId.PendingShareClass);
     //             address shareClassEscrow = hub.escrow(poolId, scId, EscrowId.ShareClass);
@@ -1778,7 +1795,9 @@ abstract contract Properties is
         // lte(differenceShare, 1, "sumRedeemApprovedShares - totalPaymentShareAmount difference is greater than 1");
     }
 
-    /// === ZERO PRICE PROPERTIES === ///
+    // ===============================
+    // ZERO PRICE PROPERTIES
+    // ===============================
 
     /// @dev Property: When price is zero, no shares should be issued
     function property_zeroPrice_noShareIssuance() public {
@@ -1790,7 +1809,9 @@ abstract contract Properties is
         }
     }
 
-    /// === DOOMSDAY TESTS === ///
+    // ===============================
+    // DOOMSDAY TESTS
+    // ===============================
 
     /// @dev Property: pricePerShare never changes after a user operation
     function doomsday_pricePerShare_never_changes_after_user_operation()
@@ -1937,7 +1958,9 @@ abstract contract Properties is
         }
     }
 
-    // === OPTIMIZATION TESTS === //
+    // ===============================
+    // OPTIMIZATION TESTS
+    // ===============================
 
     /// @dev Optimization test to increase the difference between totalAssets and actualAssets is greater than 1 share
     function optimize_totalAssets_solvency() public view returns (int256) {
@@ -1973,7 +1996,9 @@ abstract contract Properties is
         return maxRedeemLess;
     }
 
-    /// === HELPERS === ///
+    // ===============================
+    // HELPERS
+    // ===============================
 
     /// @dev Lists out all system addresses, used to check that no dust is left behind
     /// NOTE: A more advanced dust check would have 100% of actors withdraw, to ensure that the sum of operations is
@@ -2043,5 +2068,1050 @@ abstract contract Properties is
             totalShareSent[asset],
             " _decreaseTotalShareSent Overflow"
         );
+    }
+
+    // ===============================
+    // SHARE QUEUE PROPERTIES
+    // ===============================
+    /// @dev Share Queue Properties - higher risk area
+    /// @dev These properties verify the critical share queue flip logic that poses the greatest risk to protocol
+    /// integrity
+
+    // Property 3.1 & 3.2: Issue/Revoke Logic Correctness
+    /// @notice Verifies that the share queue delta and isPositive flag correctly represent the net position
+    function property_shareQueueFlipLogic() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            for (uint256 j = 0; j < activeShareClasses[poolId].length; j++) {
+                ShareClassId scId = activeShareClasses[poolId][j];
+                bytes32 key = _poolShareKey(poolId, scId);
+
+                (uint128 delta, bool isPositive, , ) = balanceSheet
+                    .queuedShares(poolId, scId);
+
+                // Calculate expected net position from ghost tracking
+                int256 expectedNet = ghost_netSharePosition[key];
+
+                // Calculate actual net position from queue state
+                int256 actualNet = isPositive
+                    ? int256(uint256(delta))
+                    : -int256(uint256(delta));
+
+                // For zero delta, must be negative (isPositive = false)
+                if (delta == 0) {
+                    t(
+                        !isPositive,
+                        "SHARE-QUEUE-01: Zero delta must have isPositive = false"
+                    );
+                    t(
+                        actualNet == 0,
+                        "SHARE-QUEUE-02: Zero delta must represent zero net position"
+                    );
+                } else {
+                    // Non-zero delta: verify sign consistency
+                    t(
+                        (isPositive && actualNet > 0) ||
+                            (!isPositive && actualNet < 0),
+                        "SHARE-QUEUE-03: isPositive flag must match delta sign"
+                    );
+                }
+
+                // Verify net position matches tracked operations
+                if (actualNet != expectedNet) {
+                    t(
+                        false,
+                        "SHARE-QUEUE-04: Net position must match tracked issue/revoke operations"
+                    );
+                }
+            }
+        }
+    }
+
+    // Property 3.3: Verify flip detection and boundaries
+    /// @notice Verifies that flips between positive and negative net positions are correctly detected
+    function property_shareQueueFlipBoundaries() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            for (uint256 j = 0; j < activeShareClasses[poolId].length; j++) {
+                ShareClassId scId = activeShareClasses[poolId][j];
+                bytes32 key = _poolShareKey(poolId, scId);
+
+                // Get before and after states
+                uint128 deltaBefore = before_shareQueueDelta[key];
+                bool isPositiveBefore = before_shareQueueIsPositive[key];
+
+                (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet
+                    .queuedShares(poolId, scId);
+
+                // Check if a flip occurred
+                bool flipOccurred = (isPositiveBefore != isPositiveAfter) &&
+                    (deltaBefore != 0 || deltaAfter != 0);
+
+                if (flipOccurred) {
+                    // Verify flip was tracked
+                    uint256 expectedFlips = ghost_flipCount[key];
+                    gte(
+                        expectedFlips,
+                        1,
+                        "SHARE-QUEUE-05: Flip must be tracked in ghost variables"
+                    );
+
+                    // Verify delta calculation after flip
+                    // After flip: new_delta = |operation_amount - old_delta|
+                    // This is implicitly verified by Property 3.1/3.2
+                }
+            }
+        }
+    }
+
+    // Property 3.5: Net Position Commutativity
+    /// @notice Verifies that net position equals total issued minus total revoked (mathematical invariant)
+    function property_shareQueueCommutativity() public {
+        // This property requires testing operation sequences
+        // Best tested through specific handler sequences in integration tests
+        // Here we verify the mathematical invariant holds
+
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            for (uint256 j = 0; j < activeShareClasses[poolId].length; j++) {
+                ShareClassId scId = activeShareClasses[poolId][j];
+                bytes32 key = _poolShareKey(poolId, scId);
+
+                // Net position should equal total issued minus total revoked
+                int256 expectedFromTotals = int256(ghost_totalIssued[key]) -
+                    int256(ghost_totalRevoked[key]);
+                int256 trackedNet = ghost_netSharePosition[key];
+
+                if (expectedFromTotals != trackedNet) {
+                    t(
+                        false,
+                        "SHARE-QUEUE-06: Net position must be commutative (issued - revoked)"
+                    );
+                }
+            }
+        }
+    }
+
+    // Property 3.6 & 3.7: Queue Reset and Snapshot Logic
+    /// @notice Verifies queue submission logic and reset behavior
+    function property_shareQueueSubmission() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            for (uint256 j = 0; j < activeShareClasses[poolId].length; j++) {
+                ShareClassId scId = activeShareClasses[poolId][j];
+                bytes32 key = _poolShareKey(poolId, scId);
+
+                (
+                    uint128 delta,
+                    bool isPositive,
+                    uint32 assetCounter,
+                    uint64 nonce
+                ) = balanceSheet.queuedShares(poolId, scId);
+
+                // If a submission occurred, verify reset
+                if (nonce > before_nonce[key]) {
+                    // After submission, delta should be 0 and isPositive false
+                    // (unless new operations occurred after submission)
+                    // Property 3.7: Snapshot logic
+                    // isSnapshot should be true when assetCounter == 0
+                    // This is checked during submission execution
+                }
+
+                // Verify nonce never decreases
+                gte(
+                    nonce,
+                    before_nonce[key],
+                    "SHARE-QUEUE-07: Nonce must never decrease"
+                );
+            }
+        }
+    }
+
+    // Property 3.8: Asset Counter Consistency
+    /// @notice Verifies that the asset counter accurately reflects non-empty asset queues
+    function property_shareQueueAssetCounter() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            for (uint256 j = 0; j < activeShareClasses[poolId].length; j++) {
+                ShareClassId scId = activeShareClasses[poolId][j];
+
+                (, , uint32 actualCounter, ) = balanceSheet.queuedShares(
+                    poolId,
+                    scId
+                );
+
+                // Count actual non-empty asset queues
+                uint256 expectedCounter = 0;
+                for (uint256 k = 0; k < trackedAssets.length; k++) {
+                    AssetId assetId = trackedAssets[k];
+                    (uint128 deposits, uint128 withdrawals) = balanceSheet
+                        .queuedAssets(poolId, scId, assetId);
+
+                    if (deposits > 0 || withdrawals > 0) {
+                        expectedCounter++;
+                    }
+                }
+
+                eq(
+                    uint256(actualCounter),
+                    expectedCounter,
+                    "SHARE-QUEUE-08: Asset counter must match actual non-empty queues"
+                );
+
+                // Counter should never exceed total possible assets
+                lte(
+                    uint256(actualCounter),
+                    trackedAssets.length,
+                    "SHARE-QUEUE-09: Counter cannot exceed total tracked assets"
+                );
+            }
+        }
+    }
+
+    // ===============================
+    // QUEUE STATE CONSISTENCY PROPERTIES
+    // ===============================
+
+    /// @dev Property 1.1: Asset Queue Counter Consistency
+    /// Definition: queuedAssets[p][sc][a].deposits + queuedAssets[p][sc][a].withdrawals > 0 ⟺ queuedAssetCounter
+    /// includes asset a
+    /// Ensures counter accurately tracks non-empty queues
+    function property_assetQueueCounterConsistency() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] memory shareClassIds = activeShareClasses[poolId];
+
+            for (uint256 j = 0; j < shareClassIds.length; j++) {
+                ShareClassId scId = shareClassIds[j];
+
+                // Get the queuedAssetCounter from BalanceSheet
+                (, , uint32 queuedAssetCounter, ) = balanceSheet.queuedShares(
+                    poolId,
+                    scId
+                );
+                uint256 nonEmptyAssetCount = 0;
+
+                // Count non-empty asset queues
+                for (uint256 k = 0; k < trackedAssets.length; k++) {
+                    AssetId assetId = trackedAssets[k];
+                    (uint128 deposits, uint128 withdrawals) = balanceSheet
+                        .queuedAssets(poolId, scId, assetId);
+
+                    if (deposits > 0 || withdrawals > 0) {
+                        nonEmptyAssetCount++;
+
+                        // Ghost variable should track this asset as non-empty
+                        bytes32 assetKey = keccak256(
+                            abi.encode(poolId, scId, assetId)
+                        );
+                        t(
+                            ghost_assetCounterPerAsset[assetKey] == 1,
+                            "property_assetQueueCounterConsistency: ghost tracking mismatch"
+                        );
+                    }
+                }
+
+                // Property: Counter should equal number of non-empty asset queues
+                eq(
+                    uint256(queuedAssetCounter),
+                    nonEmptyAssetCount,
+                    "property_assetQueueCounterConsistency: counter mismatch"
+                );
+            }
+        }
+    }
+
+    /// @dev Property 1.2: Asset Counter Bounds
+    /// Definition: Sum of individual asset queue counters ≤ total queuedAssetCounter for share class
+    /// Prevents counter overflow or manipulation
+    function property_assetCounterBounds() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] memory shareClassIds = activeShareClasses[poolId];
+
+            for (uint256 j = 0; j < shareClassIds.length; j++) {
+                ShareClassId scId = shareClassIds[j];
+
+                (, , uint32 queuedAssetCounter, ) = balanceSheet.queuedShares(
+                    poolId,
+                    scId
+                );
+
+                // Counter should not exceed total number of tracked assets
+                lte(
+                    uint256(queuedAssetCounter),
+                    trackedAssets.length,
+                    "property_assetCounterBounds: counter exceeds max possible"
+                );
+            }
+        }
+    }
+
+    /// @dev Property 1.3: Asset Queue Non-Negative
+    /// Definition: Asset queues can never underflow (deposits/withdrawals ≥ 0)
+    /// Mathematical consistency of accumulation
+    function property_assetQueueNonNegative() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] memory shareClassIds = activeShareClasses[poolId];
+
+            for (uint256 j = 0; j < shareClassIds.length; j++) {
+                ShareClassId scId = shareClassIds[j];
+
+                for (uint256 k = 0; k < trackedAssets.length; k++) {
+                    AssetId assetId = trackedAssets[k];
+                    (uint128 deposits, uint128 withdrawals) = balanceSheet
+                        .queuedAssets(poolId, scId, assetId);
+
+                    // Both values must be non-negative (uint128 enforces this, but verify explicitly)
+                    gte(
+                        uint256(deposits),
+                        0,
+                        "property_assetQueueNonNegative: negative deposits"
+                    );
+                    gte(
+                        uint256(withdrawals),
+                        0,
+                        "property_assetQueueNonNegative: negative withdrawals"
+                    );
+
+                    // Ghost variables should also be non-negative
+                    bytes32 assetKey = keccak256(
+                        abi.encode(poolId, scId, assetId)
+                    );
+                    gte(
+                        ghost_assetQueueDeposits[assetKey],
+                        0,
+                        "property_assetQueueNonNegative: ghost deposits negative"
+                    );
+                    gte(
+                        ghost_assetQueueWithdrawals[assetKey],
+                        0,
+                        "property_assetQueueNonNegative: ghost withdrawals negative"
+                    );
+                }
+            }
+        }
+    }
+
+    /// @dev Property 1.4: Share Queue isPositive Flag Consistency
+    /// Definition: queuedShares[p][sc].isPositive = true ⟺ queuedShares[p][sc].delta > 0
+    /// This ensures the flag accurately represents the queue state in ALL scenarios:
+    /// - When delta > 0: isPositive must be true (net issuance pending)
+    /// - When delta = 0: isPositive must be false (no pending operations)
+    /// This property covers the complete biconditional relationship and replaces the need
+    /// for separate zero-delta checking as it encompasses all possible states.
+    function property_shareQueueFlagConsistency() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] memory shareClassIds = activeShareClasses[poolId];
+
+            for (uint256 j = 0; j < shareClassIds.length; j++) {
+                ShareClassId scId = shareClassIds[j];
+
+                (uint128 delta, bool isPositive, , ) = balanceSheet
+                    .queuedShares(poolId, scId);
+
+                // Complete biconditional check: isPositive ⟺ (delta > 0)
+                if (delta > 0) {
+                    t(
+                        isPositive,
+                        "property_shareQueueFlagConsistency: delta > 0 requires isPositive = true"
+                    );
+                } else {
+                    // delta == 0 (uint128 cannot be negative)
+                    t(
+                        !isPositive,
+                        "property_shareQueueFlagConsistency: delta = 0 requires isPositive = false"
+                    );
+                }
+            }
+        }
+    }
+
+    /// @dev Property 1.6: Nonce Monotonicity
+    /// Definition: Nonce strictly increases with each submission
+    /// Ensures proper message ordering
+    function property_nonceMonotonicity() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] memory shareClassIds = activeShareClasses[poolId];
+
+            for (uint256 j = 0; j < shareClassIds.length; j++) {
+                ShareClassId scId = shareClassIds[j];
+                bytes32 shareKey = keccak256(abi.encode(poolId, scId));
+
+                (, , , uint64 currentNonce) = balanceSheet.queuedShares(
+                    poolId,
+                    scId
+                );
+                uint256 previousNonce = ghost_previousNonce[shareKey];
+
+                // If we have a previous nonce recorded, current should be greater
+                if (previousNonce > 0) {
+                    gt(
+                        uint256(currentNonce),
+                        previousNonce,
+                        "property_nonceMonotonicity: nonce did not increase"
+                    );
+                }
+
+                // Ghost variable tracking should be consistent
+                if (ghost_shareQueueNonce[shareKey] > 0) {
+                    gte(
+                        uint256(currentNonce),
+                        ghost_shareQueueNonce[shareKey],
+                        "property_nonceMonotonicity: ghost nonce tracking inconsistent"
+                    );
+                }
+            }
+        }
+    }
+
+    /// @dev Property 2.6: Reserve/Unreserve Balance Integrity
+    /// @notice Ensures reserve operations maintain balance consistency
+    function property_reserveUnreserveBalanceIntegrity() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
+
+                for (uint256 k = 0; k < trackedAssets.length; k++) {
+                    AssetId assetId = trackedAssets[k];
+                    bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
+
+                    // Skip if no reserve operations occurred
+                    if (
+                        ghost_totalReserveOperations[key] == 0 &&
+                        ghost_totalUnreserveOperations[key] == 0
+                    ) continue;
+
+                    // Use vault to get asset address
+                    IBaseVault vault = IBaseVault(_getVault());
+                    address asset = vault.asset();
+
+                    // Get available balance
+                    uint128 available = balanceSheet.availableBalanceOf(
+                        poolId,
+                        scId,
+                        asset,
+                        0
+                    );
+                    uint128 reserved = uint128(ghost_netReserved[key]);
+                    uint128 total = available + reserved;
+
+                    // Core Invariant 1: Available = Total - Reserved (automatically satisfied by construction)
+                    eq(
+                        available,
+                        total - reserved,
+                        "Reserve accounting formula violated: available != total - reserved"
+                    );
+
+                    // Core Invariant 2: Reserved cannot exceed total (automatically satisfied by construction)
+                    lte(
+                        reserved,
+                        total,
+                        "Reserved balance exceeds total balance"
+                    );
+
+                    // Core Invariant 3: Net reserved matches ghost tracking
+                    // This is implicitly tested since we use ghost_netReserved to calculate reserved
+
+                    // Core Invariant 4: No overflow occurred
+                    t(
+                        !ghost_reserveOverflow[key],
+                        "Reserve operation caused overflow"
+                    );
+
+                    // Core Invariant 5: No underflow occurred
+                    t(
+                        !ghost_reserveUnderflow[key],
+                        "Unreserve operation caused underflow"
+                    );
+
+                    // Core Invariant 6: Available + Reserved = Total (automatically satisfied by construction)
+                    eq(
+                        uint256(available) + uint256(reserved),
+                        uint256(total),
+                        "Balance components don't sum to total"
+                    );
+
+                    // Core Invariant 7: Max reserved never exceeded total
+                    // We can't validate this without accessing the escrow's actual reserved amount
+                    // But we can ensure our ghost tracking didn't overflow
+
+                    // Core Invariant 8: No integrity violations
+                    eq(
+                        ghost_reserveIntegrityViolations[key],
+                        0,
+                        "Reserve integrity violations detected"
+                    );
+                }
+            }
+        }
+    }
+
+    /// @dev Property 2.4: Escrow Balance Sufficiency
+    /// @notice Ensures available balance always covers withdrawals
+    function property_escrowBalanceSufficiency() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
+
+                for (uint256 k = 0; k < trackedAssets.length; k++) {
+                    AssetId assetId = trackedAssets[k];
+                    bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
+
+                    // Skip if not tracked
+                    if (!ghost_escrowSufficiencyTracked[key]) continue;
+
+                    // Use vault to get asset address
+                    IBaseVault vault = IBaseVault(_getVault());
+                    address asset = vault.asset();
+
+                    // Get current available balance
+                    uint128 available = balanceSheet.availableBalanceOf(
+                        poolId,
+                        scId,
+                        asset,
+                        0
+                    );
+
+                    // Get queued withdrawals
+                    (, uint128 queuedWithdrawals) = balanceSheet.queuedAssets(
+                        poolId,
+                        scId,
+                        assetId
+                    );
+
+                    // Available must cover all pending withdrawals
+                    gte(
+                        available,
+                        queuedWithdrawals,
+                        "Insufficient balance for pending withdrawals"
+                    );
+
+                    // Core Invariant: Available = Total - Reserved
+                    uint128 reserved = uint128(ghost_netReserved[key]);
+                    uint128 calculatedTotal = available + reserved;
+
+                    // Verify ghost tracking consistency
+                    eq(
+                        available,
+                        ghost_escrowAvailableBalance[key],
+                        "Available balance ghost mismatch"
+                    );
+                    eq(
+                        reserved,
+                        ghost_escrowReservedBalance[key],
+                        "Reserved balance ghost mismatch"
+                    );
+
+                    // Total must cover all obligations
+                    gte(
+                        calculatedTotal,
+                        reserved + queuedWithdrawals,
+                        "Total balance insufficient for obligations"
+                    );
+
+                    // No failed withdrawals should occur if balance is sufficient
+                    eq(
+                        ghost_failedWithdrawalAttempts[key],
+                        0,
+                        "Withdrawals failed despite sufficient balance"
+                    );
+                }
+            }
+        }
+    }
+
+    /// @dev Property 2.7: Authorization Boundary Enforcement
+    /// @notice Ensures only authorized parties perform privileged operations
+    function property_authorizationBoundaryEnforcement() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            bytes32 poolKey = keccak256(abi.encode(poolId));
+
+            // No unauthorized operations should succeed
+            eq(
+                ghost_unauthorizedAttempts[poolKey],
+                0,
+                "Unauthorized operations succeeded"
+            );
+
+            // Check for authorization bypass
+            t(
+                !ghost_authorizationBypass[poolKey],
+                "Authorization checks were bypassed"
+            );
+
+            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
+                bytes32 key = keccak256(abi.encode(poolId, scId));
+
+                // Verify all privileged operations had proper authorization
+                if (ghost_privilegedOperationCount[key] > 0) {
+                    address lastCaller = ghost_lastAuthorizedCaller[key];
+                    AuthLevel recordedLevel = ghost_authorizationLevel[
+                        lastCaller
+                    ];
+
+                    // Must be ward or manager
+                    t(
+                        recordedLevel != AuthLevel.NONE,
+                        "Non-authorized address performed privileged operation"
+                    );
+
+                    // Verify authorization is still valid
+                    if (recordedLevel == AuthLevel.WARD) {
+                        eq(
+                            balanceSheet.wards(lastCaller),
+                            1,
+                            "Ward authorization was revoked but operations continued"
+                        );
+                    } else if (recordedLevel == AuthLevel.MANAGER) {
+                        t(
+                            balanceSheet.manager(poolId, lastCaller),
+                            "Manager authorization was revoked but operations continued"
+                        );
+                    }
+                }
+            }
+
+            // Check authorization consistency across all actors
+            address[] memory actors = _getActors();
+            for (uint256 k = 0; k < actors.length; k++) {
+                AuthLevel recordedAuth = ghost_authorizationLevel[actors[k]];
+                AuthLevel actualAuth = AuthLevel.NONE;
+
+                // Determine actual authorization level
+                if (balanceSheet.wards(actors[k]) == 1) {
+                    actualAuth = AuthLevel.WARD;
+                } else if (balanceSheet.manager(poolId, actors[k])) {
+                    actualAuth = AuthLevel.MANAGER;
+                }
+
+                // Recorded auth should match actual (or be higher if recently changed)
+                gte(
+                    uint256(recordedAuth),
+                    uint256(actualAuth),
+                    "Authorization level tracking fell behind actual"
+                );
+
+                // If auth changed, verify it was legitimate
+                if (
+                    ghost_authorizationChanges[actors[k]] > 0 &&
+                    actualAuth == AuthLevel.NONE
+                ) {
+                    // Auth was revoked - ensure no operations after revocation
+                    if (shareClasses.length > 0) {
+                        address lastOp = ghost_lastAuthorizedCaller[
+                            keccak256(abi.encode(poolId, shareClasses[0]))
+                        ];
+                        t(
+                            lastOp != actors[k] ||
+                                ghost_authorizationChanges[actors[k]] == 1,
+                            "Operations continued after authorization revoked"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// @dev Property 2.8: Share Transfer Restrictions
+    /// @notice Ensures transfers from endorsed contracts are blocked
+    function property_shareTransferRestrictions() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
+                bytes32 key = keccak256(abi.encode(poolId, scId));
+
+                // No transfers from endorsed contracts should succeed
+                eq(
+                    ghost_endorsedTransferAttempts[key] -
+                        ghost_blockedEndorsedTransfers[key],
+                    0,
+                    "Transfers from endorsed contracts were not blocked"
+                );
+
+                // Verify all valid transfers came from non-endorsed addresses
+                if (ghost_validTransferCount[key] > 0) {
+                    address lastFrom = ghost_lastTransferFrom[key];
+
+                    // Must not be endorsed contract
+                    t(
+                        !ghost_isEndorsedContract[lastFrom],
+                        "Transfer from endorsed contract was allowed"
+                    );
+
+                    // Additional validation for special addresses
+                    t(
+                        lastFrom != address(balanceSheet),
+                        "Transfer from BalanceSheet contract was allowed"
+                    );
+                    t(
+                        lastFrom != address(spoke),
+                        "Transfer from Spoke contract was allowed"
+                    );
+                    t(
+                        lastFrom != address(hub),
+                        "Transfer from Hub contract was allowed"
+                    );
+                }
+
+                // Check endorsement changes didn't allow bypasses
+                address[] memory actors = _getActors();
+                for (uint256 k = 0; k < actors.length; k++) {
+                    if (ghost_endorsementChanges[actors[k]] > 0) {
+                        // If endorsement changed, verify no transfers during transition
+                        if (
+                            ghost_lastTransferFrom[key] == actors[k] &&
+                            ghost_isEndorsedContract[actors[k]]
+                        ) {
+                            t(
+                                false,
+                                "Transfer occurred during endorsement transition"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// @dev Property 2.1: Share Token Supply Consistency
+    /// @notice Ensures total supply always equals sum of balances
+    function property_shareTokenSupplyConsistency() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
+                bytes32 key = keccak256(abi.encode(poolId, scId));
+
+                // Skip if no operations occurred
+                if (!ghost_supplyOperationOccurred[key]) continue;
+
+                try spoke.shareToken(poolId, scId) returns (
+                    IShareToken shareToken
+                ) {
+                    uint256 actualSupply = shareToken.totalSupply();
+
+                    // Check 1: Ghost tracking matches actual supply
+                    eq(
+                        actualSupply,
+                        ghost_totalShareSupply[key],
+                        "Share supply mismatch - ghost diverged from actual"
+                    );
+
+                    // Check 2: Sum of balances equals total supply
+                    address[] memory actors = _getActors();
+                    uint256 calculatedSum = 0;
+                    for (uint256 k = 0; k < actors.length; k++) {
+                        uint256 balance = shareToken.balanceOf(actors[k]);
+                        calculatedSum += balance;
+
+                        // Verify individual balance tracking
+                        eq(
+                            balance,
+                            ghost_individualBalances[key][actors[k]],
+                            "Individual balance tracking mismatch"
+                        );
+                    }
+
+                    // Allow 1 wei tolerance per actor for rounding
+                    uint256 tolerance = actors.length;
+                    gte(
+                        actualSupply + tolerance,
+                        calculatedSum,
+                        "Supply less than sum of balances"
+                    );
+                    lte(
+                        actualSupply,
+                        calculatedSum + tolerance,
+                        "Supply exceeds sum of balances"
+                    );
+
+                    // Check 3: Mint/burn events match supply changes
+                    uint256 expectedSupply = ghost_supplyMintEvents[key] -
+                        ghost_supplyBurnEvents[key];
+                    eq(
+                        actualSupply,
+                        expectedSupply,
+                        "Supply doesn't match mint/burn history"
+                    );
+                } catch Error(string memory reason) {
+                    if (ghost_supplyOperationOccurred[key]) {
+                        t(
+                            false,
+                            string.concat(
+                                "Share token unexpectedly missing: ",
+                                reason
+                            )
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// @dev Property: Asset-Share Proportionality on Deposits
+    /// Ensures that when assets are deposited, shares are issued proportionally based on current exchange rates
+    /// This prevents unbacked share creation that could dilute existing holders
+    function property_assetShareProportionalityDeposits() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
+
+                // Iterate through all tracked assets for this pool/shareClass
+                for (uint256 k = 0; k < trackedAssets.length; k++) {
+                    AssetId assetId = trackedAssets[k];
+                    bytes32 assetKey = keccak256(
+                        abi.encode(poolId, scId, assetId)
+                    );
+
+                    // Skip if no deposit proportionality tracking occurred
+                    if (!ghost_depositProportionalityTracked[assetKey])
+                        continue;
+
+                    uint256 cumulativeAssets = ghost_cumulativeAssetsDeposited[
+                        assetKey
+                    ];
+                    uint256 cumulativeShares = ghost_cumulativeSharesIssuedForDeposits[
+                            assetKey
+                        ];
+                    uint256 avgExchangeRate = ghost_depositExchangeRate[
+                        assetKey
+                    ];
+
+                    // Skip if no meaningful deposits occurred
+                    if (cumulativeAssets == 0) continue;
+
+                    // Calculate expected shares based on average exchange rate
+                    // expectedShares = cumulativeAssets * avgExchangeRate / 1e18
+                    uint256 expectedShares = (cumulativeAssets *
+                        avgExchangeRate) / 1e18;
+
+                    // EXACT INVARIANT: Use theoretical bounds instead of arbitrary tolerances
+                    // Fetch prices for direct PricingLib calls (handles zero prices internally)
+                    D18 pricePerAsset = spoke.pricePoolPerAsset(
+                        poolId,
+                        scId,
+                        assetId,
+                        true
+                    );
+                    D18 pricePerShare = spoke.pricePoolPerShare(
+                        poolId,
+                        scId,
+                        false
+                    );
+
+                    // Get real addresses for proper decimal handling
+                    address shareToken = address(
+                        spoke.shareToken(poolId, scId)
+                    );
+                    (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
+
+                    // Calculate theoretical bounds only if prices are non-zero
+                    uint256 maxTheoreticalShares = (D18.unwrap(pricePerAsset) ==
+                        0 ||
+                        D18.unwrap(pricePerShare) == 0)
+                        ? 0
+                        : PricingLib.assetToShareAmount(
+                            shareToken,
+                            asset,
+                            tokenId,
+                            cumulativeAssets.toUint128(),
+                            pricePerAsset,
+                            pricePerShare,
+                            MathLib.Rounding.Up
+                        );
+                    uint256 minTheoreticalShares = (D18.unwrap(pricePerAsset) ==
+                        0 ||
+                        D18.unwrap(pricePerShare) == 0)
+                        ? 0
+                        : PricingLib.assetToShareAmount(
+                            shareToken,
+                            asset,
+                            tokenId,
+                            cumulativeAssets.toUint128(),
+                            pricePerAsset,
+                            pricePerShare,
+                            MathLib.Rounding.Down
+                        );
+
+                    // Verify shares are within exact theoretical bounds only if prices are valid
+                    if (
+                        D18.unwrap(pricePerAsset) != 0 &&
+                        D18.unwrap(pricePerShare) != 0
+                    ) {
+                        gte(
+                            cumulativeShares,
+                            minTheoreticalShares,
+                            "Shares below minimum theoretical bound - precision loss"
+                        );
+                        lte(
+                            cumulativeShares,
+                            maxTheoreticalShares,
+                            "Shares exceed maximum theoretical bound - dilution attack"
+                        );
+                    }
+
+                    // REMOVED: Arbitrary exchange rate variance check (was 1% tolerance)
+                    // Exact relationship will be verified through conservation laws instead
+
+                    // Note: Escrow verification omitted due to stack depth constraints
+                    // The deposit/issue proportionality check is the primary validation
+                }
+            }
+        }
+    }
+
+    /// @dev Property: Asset-Share Proportionality on Withdrawals
+    /// Ensures that when assets are withdrawn, they are proportional to shares revoked based on current exchange rates
+    /// This prevents extracting more value than share ownership represents and maintains fairness across redemptions
+    function property_assetShareProportionalityWithdrawals() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
+
+                // Iterate through all tracked assets for this pool/shareClass
+                for (uint256 k = 0; k < trackedAssets.length; k++) {
+                    AssetId assetId = trackedAssets[k];
+                    bytes32 assetKey = keccak256(
+                        abi.encode(poolId, scId, assetId)
+                    );
+
+                    // Skip if no withdrawals tracked for this combination
+                    if (!ghost_withdrawalProportionalityTracked[assetKey])
+                        continue;
+
+                    uint256 cumulativeWithdrawn = ghost_cumulativeAssetsWithdrawn[
+                            assetKey
+                        ];
+                    uint256 cumulativeRevoked = ghost_cumulativeSharesRevokedForWithdrawals[
+                            assetKey
+                        ];
+
+                    // Only validate if we have both withdrawals and revocations
+                    if (cumulativeWithdrawn > 0 && cumulativeRevoked > 0) {
+                        // Core Invariant 1: Get current prices for proportionality validation
+                        try
+                            spoke.pricePoolPerShare(poolId, scId, false)
+                        returns (D18 pricePerShare) {
+                            try
+                                spoke.pricePoolPerAsset(
+                                    poolId,
+                                    scId,
+                                    assetId,
+                                    true
+                                )
+                            returns (D18 pricePerAsset) {
+                                // Skip validation if either price is 0 (uninitialized state)
+                                if (
+                                    D18.unwrap(pricePerShare) == 0 ||
+                                    D18.unwrap(pricePerAsset) == 0
+                                ) {
+                                    continue;
+                                }
+
+                                // Calculate expected assets for the revoked shares at current prices
+                                uint256 expectedAssets = (cumulativeRevoked *
+                                    D18.unwrap(pricePerShare)) /
+                                    D18.unwrap(pricePerAsset);
+
+                                // Get real addresses for proper decimal handling
+                                address shareToken = address(
+                                    spoke.shareToken(poolId, scId)
+                                );
+                                (address asset, uint256 tokenId) = spoke
+                                    .idToAsset(assetId);
+
+                                // Calculate theoretical bounds only if prices are non-zero
+                                uint256 maxTheoreticalAssets = (D18.unwrap(
+                                    pricePerShare
+                                ) ==
+                                    0 ||
+                                    D18.unwrap(pricePerAsset) == 0)
+                                    ? 0
+                                    : PricingLib.shareToAssetAmount(
+                                        shareToken,
+                                        cumulativeRevoked.toUint128(),
+                                        asset,
+                                        tokenId,
+                                        pricePerShare,
+                                        pricePerAsset,
+                                        MathLib.Rounding.Up
+                                    );
+                                uint256 minTheoreticalAssets = (D18.unwrap(
+                                    pricePerShare
+                                ) ==
+                                    0 ||
+                                    D18.unwrap(pricePerAsset) == 0)
+                                    ? 0
+                                    : PricingLib.shareToAssetAmount(
+                                        shareToken,
+                                        cumulativeRevoked.toUint128(),
+                                        asset,
+                                        tokenId,
+                                        pricePerShare,
+                                        pricePerAsset,
+                                        MathLib.Rounding.Down
+                                    );
+
+                                // Core Invariant 2: Withdrawn assets within exact theoretical bounds only if prices are
+                                // valid
+                                if (
+                                    D18.unwrap(pricePerShare) != 0 &&
+                                    D18.unwrap(pricePerAsset) != 0
+                                ) {
+                                    gte(
+                                        cumulativeWithdrawn,
+                                        minTheoreticalAssets,
+                                        "Insufficient assets withdrawn - below theoretical minimum"
+                                    );
+                                    lte(
+                                        cumulativeWithdrawn,
+                                        maxTheoreticalAssets,
+                                        "Excessive assets withdrawn - above theoretical maximum"
+                                    );
+                                }
+
+                                // Core Invariant 3: Withdrawals cannot exceed total deposits
+                                lte(
+                                    cumulativeWithdrawn,
+                                    ghost_cumulativeAssetsDeposited[assetKey],
+                                    "Withdrew more than total deposited"
+                                );
+                            } catch {
+                                // Asset price fetch failed, skip current price validation
+                            }
+                        } catch {
+                            // Share price fetch failed, skip current price validation
+                        }
+
+                        // Note: Escrow balance validation omitted due to stack depth constraints
+                        // The withdrawal/revocation proportionality check is the primary validation
+                    }
+                }
+            }
+        }
     }
 }

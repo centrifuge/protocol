@@ -230,7 +230,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 eq(pendingAfter, 0, "pending is not zero");
             }
         } catch (bytes memory reason) {
-            // Checks that should be made if there's a revert
             (depositEpochId, , , ) = shareClassManager.epochId(
                 vault.scId(),
                 spoke.vaultDetails(vault).assetId
@@ -334,7 +333,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 eq(pendingAfter, 0, "pending != 0");
             }
         } catch (bytes memory reason) {
-            // Checks that should be made if there's a revert
             (, uint32 redeemEpochId, , ) = shareClassManager.epochId(
                 vault.scId(),
                 spoke.vaultDetails(vault).assetId
@@ -438,6 +436,35 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             userRequestDeposited[vault.scId()][
                 spoke.vaultDetails(vault).assetId
             ][_getActor()] += assets;
+        }
+
+        // Bal after
+        uint256 shareUserAfter = IShareToken(vault.share()).balanceOf(
+            _getActor()
+        );
+        uint256 shareEscrowAfter = IShareToken(vault.share()).balanceOf(
+            address(globalEscrow)
+        );
+
+        // Extra check | // TODO: This math will prob overflow
+        // NOTE: Unchecked so we get broken property and debug faster
+        unchecked {
+            uint256 deltaUser = shareUserAfter - shareUserB4; // B4 - after -> They pay
+            uint256 deltaEscrow = shareEscrowB4 - shareEscrowAfter; // After - B4 -> They gain
+            emit DebugNumber(deltaUser);
+            emit DebugNumber(assets);
+            emit DebugNumber(deltaEscrow);
+
+            if (RECON_EXACT_BAL_CHECK) {
+                eq(deltaUser, assets, "Extra LP-2");
+            }
+
+            // NOTE: async vaults transfer shares from global escrow
+            if (isAsyncVault) {
+                eq(deltaUser, deltaEscrow, "7540-13");
+            }
+
+            // NOTE: sync vaults mint shares directly to the user
         }
     }
     // Given a random value, see if the other one would yield more shares or lower cost

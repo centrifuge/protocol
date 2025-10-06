@@ -24,6 +24,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
 import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
+import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 
 /// @dev Admin functions called by the admin actor
 /// @dev These explicitly clamp the investor to always be one of the actors
@@ -268,6 +269,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         uint256 escrowShareDelta = escrowSharesAfter - escrowSharesBefore;
         executedInvestments[_getShareToken()] += escrowShareDelta;
         sumOfFulfilledDeposits[_getShareToken()] += escrowShareDelta;
+        sumOfFulfilledDeposits[_getShareToken()] += escrowShareDelta;
         issuedHubShares[poolId][scId][assetId] += issuedShareAmount;
 
         // TODO: Refactor this to work with new issuance update logic
@@ -354,6 +356,8 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
             address(globalEscrow)
         );
         uint256 burnedShares = sharesBefore - sharesAfter;
+        // (uint128 totalIssuanceAfter,) = shareClassManager.metrics(scId); // Unused
+        // (uint128 balanceSheetSharesAfter,,,) = balanceSheet.queuedShares(poolId, scId); // Unused
         // (uint128 totalIssuanceAfter,) = shareClassManager.metrics(scId); // Unused
         // (uint128 balanceSheetSharesAfter,,,) = balanceSheet.queuedShares(poolId, scId); // Unused
 
@@ -536,6 +540,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
 
     function hub_updateJournal_clamped(
         uint64 /* poolEntropy */,
+        uint64 /* poolEntropy */,
         uint8 accountToUpdate,
         uint128 debitAmount,
         uint128 creditAmount
@@ -583,48 +588,6 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     }
 
     /// === Hub === ///
-    function balanceSheet_submitQueuedAssets(
-        uint128 extraGasLimit
-    ) public asAdmin {
-        PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
-        AssetId assetId = _getAssetId();
-
-        balanceSheet.submitQueuedAssets(poolId, scId, assetId, extraGasLimit);
-    }
-
-    function balanceSheet_submitQueuedShares(
-        uint128 extraGasLimit
-    ) public asAdmin {
-        PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
-
-        balanceSheet.submitQueuedShares(poolId, scId, extraGasLimit);
-    }
-
-    function balanceSheet_reserve(
-        uint256 tokenId,
-        uint128 amount
-    ) public asAdmin {
-        PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
-        AssetId assetId = _getAssetId();
-        (address asset, ) = spoke.idToAsset(assetId);
-
-        balanceSheet.reserve(poolId, scId, asset, tokenId, amount);
-    }
-
-    function balanceSheet_unreserve(
-        uint256 tokenId,
-        uint128 amount
-    ) public asAdmin {
-        PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
-        AssetId assetId = _getAssetId();
-        (address asset, ) = spoke.idToAsset(assetId);
-
-        balanceSheet.unreserve(poolId, scId, asset, tokenId, amount);
-    }
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
 }

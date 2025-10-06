@@ -14,12 +14,16 @@ import {ShareToken} from "src/spoke/ShareToken.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {PoolEscrow} from "src/common/PoolEscrow.sol";
+import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
+import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
 import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
@@ -52,6 +56,9 @@ abstract contract TargetFunctions is
     // ═══════════════════════════════════════════════════════════════
     // CANARIES
     // ═══════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════
+    // CANARIES
+    // ═══════════════════════════════════════════════════════════════
     function canary_doesTokenGetDeployed() public view returns (bool) {
         if (RECON_TOGGLE_CANARY_TESTS) {
             return _getAssets().length < 10;
@@ -76,6 +83,9 @@ abstract contract TargetFunctions is
         return true;
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // SHORTCUT FUNCTIONS
+    // ═══════════════════════════════════════════════════════════════
     // ═══════════════════════════════════════════════════════════════
     // SHORTCUT FUNCTIONS
     // ═══════════════════════════════════════════════════════════════
@@ -179,6 +189,24 @@ abstract contract TargetFunctions is
                     GAIN_ACCOUNT
                 );
             }
+        }
+
+        // 4a. Register request manager on hub side BEFORE deploying vaults (critical for async operations)
+        {
+            hub_setRequestManager(
+                _getPool().raw(),
+                _scId,
+                _getAssetId().raw(),
+                address(asyncRequestManager)
+            );
+
+            // Update balance sheet manager for async request manager
+            hub_updateBalanceSheetManager(
+                CENTRIFUGE_CHAIN_ID,
+                _getPool().raw(),
+                address(asyncRequestManager),
+                true
+            );
         }
 
         // 4a. Register request manager on hub side BEFORE deploying vaults (critical for async operations)
@@ -307,6 +335,7 @@ abstract contract TargetFunctions is
             _getShareClassId(),
             _getAssetId()
         );
+
         shortcut_approve_and_issue_shares_safe(
             uint128(amount),
             depositEpoch,

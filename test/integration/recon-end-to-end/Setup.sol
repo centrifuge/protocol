@@ -143,7 +143,11 @@ abstract contract Setup is
     uint32 internal LIABILITY_ACCOUNT = 6;
     uint64 internal POOL_ID_COUNTER = 1;
 
-    /// === OPTIMIZATION === ///
+    // Pool tracking for property iteration
+    PoolId[] public activePools; // All created pools
+    mapping(PoolId => ShareClassId[]) public activeShareClasses; // Share classes per pool
+    AssetId[] public trackedAssets; // All registered assets
+
     int256 maxDepositGreater;
     int256 maxDepositLess;
     int256 maxRedeemGreater;
@@ -443,5 +447,169 @@ abstract contract Setup is
         // Rely messageDispatcher - these contracts rely on messageDispatcher, not the other way around
         spoke.rely(address(messageDispatcher));
         balanceSheet.rely(address(messageDispatcher));
+    }
+
+    // ===============================
+    // HELPER FUNCTIONS FOR SHARE QUEUE PROPERTIES
+    // ===============================
+
+    /// @notice Capture share queue state before operation
+    function _captureShareQueueState(
+        PoolId poolId,
+        ShareClassId scId
+    ) internal {
+        bytes32 key = _poolShareKey(poolId, scId);
+
+        (
+            uint128 delta,
+            bool isPositive,
+            uint32 queuedAssetCounter,
+            uint64 nonce
+        ) = balanceSheet.queuedShares(poolId, scId);
+
+        before_shareQueueDelta[key] = delta;
+        before_shareQueueIsPositive[key] = isPositive;
+        before_nonce[key] = nonce;
+    }
+
+    /// @notice Generate consistent key for pool-share class combination
+    function _poolShareKey(
+        PoolId poolId,
+        ShareClassId scId
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(poolId, scId));
+    }
+
+    /// @notice Track pools and share classes for property iteration
+    function _trackPoolAndShareClass(
+        PoolId poolId,
+        ShareClassId scId
+    ) internal {
+        // Check if pool is already tracked
+        bool poolExists = false;
+        for (uint256 i = 0; i < activePools.length; i++) {
+            if (PoolId.unwrap(activePools[i]) == PoolId.unwrap(poolId)) {
+                poolExists = true;
+                break;
+            }
+        }
+        if (!poolExists) {
+            activePools.push(poolId);
+        }
+
+        // Check if share class is already tracked for this pool
+        ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+        bool scExists = false;
+        for (uint256 i = 0; i < shareClasses.length; i++) {
+            if (
+                ShareClassId.unwrap(shareClasses[i]) ==
+                ShareClassId.unwrap(scId)
+            ) {
+                scExists = true;
+                break;
+            }
+        }
+        if (!scExists) {
+            shareClasses.push(scId);
+        }
+    }
+
+    /// @notice Track asset for property iteration
+    function _trackAsset(AssetId assetId) internal {
+        // Check if asset is already tracked
+        for (uint256 i = 0; i < trackedAssets.length; i++) {
+            if (AssetId.unwrap(trackedAssets[i]) == AssetId.unwrap(assetId)) {
+                return; // Already tracked
+            }
+        }
+        trackedAssets.push(assetId);
+    }
+
+    // Authorization helper functions
+
+    /// @notice Track authorization for a caller performing privileged operation
+    function _trackAuthorization(address caller, PoolId poolId) internal {
+        bytes32 key = keccak256(abi.encode(poolId));
+
+        // Check actual authorization
+        bool isWard = balanceSheet.wards(caller) == 1;
+        bool isManager = balanceSheet.manager(poolId, caller);
+
+        // Update ghost tracking
+        if (isWard) {
+            ghost_authorizationLevel[caller] = AuthLevel.WARD;
+        } else if (isManager) {
+            ghost_authorizationLevel[caller] = AuthLevel.MANAGER;
+        } else {
+            ghost_authorizationLevel[caller] = AuthLevel.NONE;
+            ghost_unauthorizedAttempts[key]++;
+        }
+
+        if (isWard || isManager) {
+            ghost_privilegedOperationCount[key]++;
+            ghost_lastAuthorizedCaller[key] = caller;
+        }
+    }
+
+    /// @notice Check and record authorization level changes
+    function _checkAndRecordAuthChange(address user) internal {
+        AuthLevel oldLevel = ghost_authorizationLevel[user];
+        AuthLevel newLevel = AuthLevel.NONE;
+
+        // Check all pools for manager permissions - simplified for testing
+        // In a full implementation, this would check all tracked pools
+        if (balanceSheet.wards(user) == 1) {
+            newLevel = AuthLevel.WARD;
+        } else {
+            // Check if user is manager for any tracked pool
+            for (uint256 i = 0; i < activePools.length; i++) {
+                if (balanceSheet.manager(activePools[i], user)) {
+                    newLevel = AuthLevel.MANAGER;
+                    break;
+                }
+            }
+        }
+
+        if (oldLevel != newLevel) {
+            ghost_authorizationChanges[user]++;
+            ghost_authorizationLevel[user] = newLevel;
+        }
+    }
+
+    // Endorsement helper functions
+
+    /// @dev Check if an address is an endorsed contract
+    function _isEndorsedContract(address addr) internal view returns (bool) {
+        // Check if address is endorsed by root
+        return root.endorsed(addr);
+    }
+
+    /// @dev Track transfer attempts for endorsement validation
+    function _trackEndorsedTransfer(
+        address from,
+        address to,
+        PoolId poolId,
+        ShareClassId scId
+    ) internal {
+        bytes32 key = keccak256(abi.encode(poolId, scId));
+
+        // Track transfer details
+        ghost_lastTransferFrom[key] = from;
+
+        // Check if from is endorsed
+        if (_isEndorsedContract(from)) {
+            ghost_endorsedTransferAttempts[key]++;
+            ghost_isEndorsedContract[from] = true;
+        }
+
+        // Track system contracts as implicitly endorsed
+        if (
+            from == address(balanceSheet) ||
+            from == address(spoke) ||
+            from == address(hub)
+        ) {
+            ghost_isEndorsedContract[from] = true;
+            ghost_endorsedTransferAttempts[key]++;
+        }
     }
 }
