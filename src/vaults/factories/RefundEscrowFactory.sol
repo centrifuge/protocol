@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {IRefundEscrowFactory} from "./interfaces/IRefundEscrowFactory.sol";
 
 import {Auth} from "../../misc/Auth.sol";
+import {IAuth} from "../../misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 
@@ -23,21 +24,17 @@ contract RefundEscrowFactory is Auth, IRefundEscrowFactory {
 
     /// @inheritdoc IRefundEscrowFactory
     function newEscrow(PoolId poolId) external auth returns (IRefundEscrow escrow) {
-        escrow = new RefundEscrow{salt: bytes32(uint256(poolId.raw()))}(address(controller));
+        escrow = new RefundEscrow{salt: bytes32(uint256(poolId.raw()))}();
+        IAuth(address(escrow)).rely(controller);
+        IAuth(address(escrow)).deny(address(this));
         emit DeployRefundEscrow(poolId, address(escrow));
     }
 
     /// @inheritdoc IRefundEscrowFactory
     function get(PoolId poolId) public view returns (IRefundEscrow) {
         bytes32 salt = bytes32(uint256(poolId.raw()));
-        bytes32 hash = keccak256(
-            abi.encodePacked(
-                bytes1(0xff),
-                address(this),
-                salt,
-                keccak256(abi.encodePacked(type(RefundEscrow).creationCode, abi.encode(address(controller))))
-            )
-        );
+        bytes32 hash =
+            keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, keccak256(type(RefundEscrow).creationCode)));
 
         return IRefundEscrow(address(uint160(uint256(hash))));
     }
