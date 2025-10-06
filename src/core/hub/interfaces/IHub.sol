@@ -326,6 +326,7 @@ interface IHub is IBatchedMulticall {
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param pricePoolPerShare The new price per share
+    /// @param computedAt Timestamp when the price was computed (must be <= block.timestamp)
     function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare, uint64 computedAt)
         external
         payable;
