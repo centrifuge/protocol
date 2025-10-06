@@ -109,7 +109,10 @@ interface IShareClassManager {
     /// @param scId Identifier of the share class
     /// @return pricePoolPerShare The amount of pool units per unit share
     /// @return computedAt Timestamp when the price was computed
-    function pricePoolPerShare(PoolId poolId, ShareClassId scId) external view returns (D18 price, uint64 computedAt);
+    function pricePoolPerShare(PoolId poolId, ShareClassId scId)
+        external
+        view
+        returns (D18 pricePoolPerShare, uint64 computedAt);
 
     /// @notice Exposes total number of shares known to the Hub side
     /// @param poolId Identifier of the pool

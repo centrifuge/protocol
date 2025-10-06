@@ -3,7 +3,10 @@ pragma solidity >=0.5.0;
 
 /// @title  Escrow for holding assets
 interface IEscrow {
-    // --- Events ---
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Emitted when an authTransferTo is made
     /// @dev Needed as allowances increase attack surface
     event AuthTransferTo(address indexed asset, uint256 indexed tokenId, address receiver, uint256 value);

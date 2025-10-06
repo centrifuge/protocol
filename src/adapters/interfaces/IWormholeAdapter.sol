@@ -135,6 +135,9 @@ struct WormholeDestination {
     address addr;
 }
 
+/// @title  IWormholeAdapter
+/// @notice Cross-chain messaging adapter for Wormhole network
+/// @dev    Bridges messages between Centrifuge chains using Wormhole's automatic relayer
 interface IWormholeAdapter is IAdapter, IAdapterWiring, IWormholeReceiver {
     //----------------------------------------------------------------------------------------------
     // Events

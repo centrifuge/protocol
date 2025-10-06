@@ -9,6 +9,9 @@ struct JournalEntry {
     AccountId accountId;
 }
 
+/// @title  IAccounting
+/// @notice Double-entry accounting system for pool financial operations
+/// @dev    Manages debits, credits, and account balances with journal entry tracking
 interface IAccounting {
     /// @notice Emitted when a an entry is done
     event Credit(PoolId indexed poolId, AccountId indexed account, uint128 value);

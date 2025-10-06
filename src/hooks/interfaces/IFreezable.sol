@@ -2,15 +2,24 @@
 pragma solidity >=0.5.0;
 
 interface IFreezable {
-    // --- Events ---
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
     event Freeze(address indexed token, address indexed user);
     event Unfreeze(address indexed token, address indexed user);
 
-    // --- Errors ---
+    //----------------------------------------------------------------------------------------------
+    // Errors
+    //----------------------------------------------------------------------------------------------
+
     error CannotFreezeZeroAddress();
     error EndorsedUserCannotBeFrozen();
 
-    // --- Handling freezes ---
+    //----------------------------------------------------------------------------------------------
+    // Handling freezes
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Freeze a user balance. Frozen users cannot receive nor send tokens
     function freeze(address token, address user) external;
 

@@ -5,6 +5,9 @@ import {PoolId} from "../../../core/types/PoolId.sol";
 
 import {IRefundEscrow} from "../../interfaces/IRefundEscrow.sol";
 
+/// @title  IRefundEscrowFactory
+/// @notice Factory for deploying refund escrow contracts for vault operations
+/// @dev    Each pool has a unique refund escrow for handling failed deposits
 interface IRefundEscrowFactory {
     event File(bytes32 what, address data);
     event DeployRefundEscrow(PoolId indexed poolId, address indexed escrow);
