@@ -3,9 +3,9 @@ pragma solidity ^0.8.28;
 
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
+import {MessageProcessor} from "../../src/core/messaging/MessageProcessor.sol";
 import {IScheduleAuth} from "../../src/core/messaging/interfaces/IScheduleAuth.sol";
 import {IMessageProcessor} from "../../src/core/messaging/interfaces/IMessageProcessor.sol";
-import {MessageProcessor} from "../../src/core/messaging/MessageProcessor.sol";
 
 import "forge-std/Test.sol";
 
