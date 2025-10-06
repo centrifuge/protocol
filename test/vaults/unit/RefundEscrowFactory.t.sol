@@ -14,6 +14,7 @@ contract RefundEscrowFactoryTest is Test {
     address immutable ANY = makeAddr("any");
     address immutable AUTH = makeAddr("auth");
     address immutable CONTROLLER = makeAddr("receiver");
+    address immutable ROOT = makeAddr("root");
 
     PoolId constant POOL_A = PoolId.wrap(1);
 
@@ -53,11 +54,15 @@ contract RefundEscrowFactoryTestNewEscrow is RefundEscrowFactoryTest {
         factory.file("controller", CONTROLLER);
 
         vm.prank(AUTH);
+        factory.file("root", ROOT);
+
+        vm.prank(AUTH);
         IRefundEscrow escrow = factory.newEscrow(POOL_A);
 
         assertEq(address(escrow), address(factory.get(POOL_A)));
-        assertEq(IAuth(address(escrow)).wards(CONTROLLER), 1);
-        assertEq(IAuth(address(escrow)).wards(address(factory)), 0); // Factory revoked itself
+        assertEq(IAuth(address(escrow)).wards(CONTROLLER), 1, "Controller should have ward");
+        assertEq(IAuth(address(escrow)).wards(ROOT), 1, "Root should have ward");
+        assertEq(IAuth(address(escrow)).wards(address(factory)), 0, "Factory should not have ward");
     }
 
     function testCannotDeployTwiceForSamePool() external {

@@ -12,12 +12,14 @@ import {RefundEscrow, IRefundEscrow} from "../RefundEscrow.sol";
 
 contract RefundEscrowFactory is Auth, IRefundEscrowFactory {
     address public controller;
+    address public root;
 
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IRefundEscrowFactory
     function file(bytes32 what, address data) external auth {
         if (what == "controller") controller = data;
+        else if (what == "root") root = data;
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -25,6 +27,7 @@ contract RefundEscrowFactory is Auth, IRefundEscrowFactory {
     /// @inheritdoc IRefundEscrowFactory
     function newEscrow(PoolId poolId) external auth returns (IRefundEscrow escrow) {
         escrow = new RefundEscrow{salt: bytes32(uint256(poolId.raw()))}();
+        IAuth(address(escrow)).rely(root);
         IAuth(address(escrow)).rely(controller);
         IAuth(address(escrow)).deny(address(this));
         emit DeployRefundEscrow(poolId, address(escrow));
