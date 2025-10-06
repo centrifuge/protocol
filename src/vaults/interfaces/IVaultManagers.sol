@@ -11,6 +11,10 @@ import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
 
+//----------------------------------------------------------------------------------------------
+// Deposit Manager Interfaces
+//----------------------------------------------------------------------------------------------
+
 interface IDepositManager {
     /// @notice Processes owner's asset deposit after the epoch has been executed on the corresponding CP instance and
     ///         the deposit order has been successfully processed (partial fulfillment possible).
@@ -95,6 +99,10 @@ interface IAsyncDepositManager is IDepositManager, IBaseRequestManager {
     ///         value in assets.
     function claimableCancelDepositRequest(IBaseVault vault, address user) external view returns (uint256 assets);
 }
+
+//----------------------------------------------------------------------------------------------
+// Redeem Manager Interfaces
+//----------------------------------------------------------------------------------------------
 
 interface IRedeemManager {
     event TriggerRedeemRequest(
@@ -192,6 +200,10 @@ interface IAsyncRedeemManager is IRedeemManager, IBaseRequestManager {
     function claimableCancelRedeemRequest(IBaseVault vault, address user) external view returns (uint256 shares);
 }
 
+//----------------------------------------------------------------------------------------------
+// Price Data Structures
+//----------------------------------------------------------------------------------------------
+
 /// @dev Solely used locally as protection against stack-too-deep
 struct Prices {
     /// @dev Price of 1 asset unit per share unit
@@ -201,6 +213,10 @@ struct Prices {
     /// @dev Price of 1 pool unit per share unit
     D18 poolPerShare;
 }
+
+//----------------------------------------------------------------------------------------------
+// Sync Manager Interfaces
+//----------------------------------------------------------------------------------------------
 
 interface ISyncDepositValuation {
     /// @notice Returns the pool price per share for a given pool and share class, asset, and asset id.
@@ -254,6 +270,10 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
         external;
 }
 
+//----------------------------------------------------------------------------------------------
+// Async Investment Data Structures
+//----------------------------------------------------------------------------------------------
+
 /// @dev Vault requests and deposit/redeem bookkeeping per user
 struct AsyncInvestmentState {
     /// @dev Shares that can be claimed using `mint()`
@@ -279,6 +299,10 @@ struct AsyncInvestmentState {
     /// @dev Indicates whether the redeemRequest was requested to be cancelled
     bool pendingCancelRedeemRequest;
 }
+
+//----------------------------------------------------------------------------------------------
+// Async Request Manager Interface
+//----------------------------------------------------------------------------------------------
 
 interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, ITrustedContractUpdate {
     event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
@@ -351,7 +375,6 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, ITr
         D18 pricePoolPerShare
     ) external;
 
-    // --- Deposits ---
     /// @notice Fulfills pending deposit requests after successful epoch execution on Hub.
     ///         The amount of shares that can be claimed by the user is minted and moved to the escrow contract.
     ///         The maxMint and claimableCancelDepositRequest bookkeeping values are updated.
@@ -370,7 +393,6 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, ITr
         uint128 cancelledAssetAmount
     ) external;
 
-    // --- Redeems ---
     /// @notice Fulfills pending redeem requests after successful epoch execution on Hub.
     ///         The amount of redeemed shares is burned. The amount of assets that can be claimed by the user in
     ///         return is locked in the escrow contract.
