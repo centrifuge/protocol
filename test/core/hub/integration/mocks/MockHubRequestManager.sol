@@ -9,7 +9,7 @@ import {IHubRequestManager} from "../../../../../src/core/hub/interfaces/IHubReq
 contract MockHubRequestManager is IHubRequestManager {
     function request(PoolId, ShareClassId, AssetId, bytes calldata) external {}
 
-    function callFromHub(bytes memory data) external {}
+    function callFromHub(PoolId, bytes memory) external {}
 
     function supportsInterface(bytes4) public pure returns (bool) {
         return true;

@@ -8,10 +8,14 @@ import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 
 interface IHubRequestManager is IERC165 {
+    error CallFromDifferentPool();
+
     /// @notice Handles a request originating from the Hub side, similar to HubHelpers.request
     function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
 
-    function callFromHub(bytes memory data) external;
+    /// @notice Handles a method call from Hub side
+    /// @param data is an encoded call to be called in the implementation, starting by a PoolId
+    function callFromHub(PoolId poolId, bytes memory data) external;
 }
 
 interface IHubRequestManagerNotifications is IERC165 {
