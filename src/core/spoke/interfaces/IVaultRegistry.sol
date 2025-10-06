@@ -45,6 +45,14 @@ interface IVaultRegistry {
     error FileUnrecognizedParam();
 
     //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Updates a contract parameter
+    /// @param what Accepts a bytes32 representation of 'spoke'
+    function file(bytes32 what, address data) external;
+
+    //----------------------------------------------------------------------------------------------
     // Vault management
     //----------------------------------------------------------------------------------------------
 
