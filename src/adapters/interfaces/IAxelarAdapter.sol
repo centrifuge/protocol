@@ -80,8 +80,19 @@ struct AxelarDestination {
     string addr;
 }
 
+/// @title  IAxelarAdapter
+/// @notice Cross-chain messaging adapter for Axelar network
+/// @dev    Bridges messages between Centrifuge chains using Axelar's General Message Passing (GMP)
 interface IAxelarAdapter is IAdapter, IAdapterWiring, IAxelarExecutable {
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
     event Wire(uint16 indexed centrifugeId, string indexed axelarId, string adapter);
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Returns the source configuration for a given axelar chain id
     /// @param axelarId The Axelar ID of the remote chain

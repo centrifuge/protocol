@@ -87,12 +87,27 @@ struct LayerZeroDestination {
     address addr;
 }
 
+/// @title  ILayerZeroAdapter
+/// @notice Cross-chain messaging adapter for LayerZero V2 network
+/// @dev    Bridges messages between Centrifuge chains using LayerZero's omnichain messaging protocol
 interface ILayerZeroAdapter is IAdapter, IAdapterWiring, ILayerZeroReceiver {
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
     event Wire(uint16 indexed centrifugeId, uint32 indexed layerZeroEid, address adapter);
     event SetDelegate(address indexed newDelegate);
 
+    //----------------------------------------------------------------------------------------------
+    // Errors
+    //----------------------------------------------------------------------------------------------
+
     error NotLayerZeroEndpoint();
     error InvalidSource();
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Returns the source configuration for a given layerzero endpoint id
     /// @param layerZeroEid The remote LayerZero Endpoint ID

@@ -6,6 +6,9 @@ import {IMessageLimits} from "../../interfaces/IMessageLimits.sol";
 /// @dev Max cost. No messages will take more that this
 uint128 constant MAX_MESSAGE_COST = 3_000_000;
 
+/// @title  IGasService
+/// @notice Interface for estimating gas costs for cross-chain messages
+/// @dev    Provides gas cost estimates for each message type in the protocol
 interface IGasService is IMessageLimits {
     error InvalidMessageType();
 

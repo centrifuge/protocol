@@ -6,5 +6,6 @@ interface IProtocolPauser {
     event Unpause();
 
     /// @notice Returns whether the root is paused
+    /// @return True if the protocol is paused, false otherwise
     function paused() external view returns (bool);
 }

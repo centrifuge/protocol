@@ -15,11 +15,11 @@ import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
 
 /// @dev Centrifuge pools
 struct Pool {
-    /// @dev Timestamp of pool creation.
+    /// @dev Timestamp of pool creation
     uint64 createdAt;
 }
 
-/// @dev Each Centrifuge pool is associated to 1 or more shar classes
+/// @dev Each Centrifuge pool is associated to 1 or more share classes
 struct ShareClassDetails {
     IShareToken shareToken;
     /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
@@ -45,6 +45,10 @@ struct AssetIdKey {
 }
 
 interface ISpoke {
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
     event File(bytes32 indexed what, address data);
     event RegisterAsset(
         uint16 centrifugeId,
@@ -56,7 +60,6 @@ interface ISpoke {
         uint8 decimals,
         bool isInitialization
     );
-    event File(bytes32 indexed what, address factory, bool status);
     event AddPool(PoolId indexed poolId);
     event AddShareClass(PoolId indexed poolId, ShareClassId indexed scId, IShareToken token);
     event DeployVault(
@@ -108,6 +111,10 @@ interface ISpoke {
         address indexed sender
     );
 
+    //----------------------------------------------------------------------------------------------
+    // Errors
+    //----------------------------------------------------------------------------------------------
+
     error FileUnrecognizedParam();
     error TooFewDecimals();
     error TooManyDecimals();
@@ -136,38 +143,42 @@ interface ISpoke {
     error AlreadyLinkedVault();
     error AlreadyUnlinkedVault();
 
-    /// @notice Returns the asset address and tokenId associated with a given asset id.
-    /// @dev Reverts if asset id does not exist
-    ///
-    /// @param assetId The underlying internal uint128 assetId.
-    /// @return asset The address of the asset linked to the given asset id.
-    /// @return tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
-    function idToAsset(AssetId assetId) external view returns (address asset, uint256 tokenId);
-
-    /// @notice Returns assetId given the asset address and tokenId.
-    /// @dev Reverts if asset id does not exist
-    ///
-    /// @param asset The address of the asset linked to the given asset id.
-    /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
-    /// @return assetId The underlying internal uint128 assetId.
-    function assetToId(address asset, uint256 tokenId) external view returns (AssetId assetId);
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'gateway', 'investmentManager', 'tokenFactory',
-    ///                or 'gasService'
+    /// @param what Accepts a bytes32 representation of 'gateway', 'investmentManager', 'tokenFactory', or 'gasService'
+    /// @param data The new address
     function file(bytes32 what, address data) external;
 
+    /// @notice Links a share token to a pool and share class
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param shareToken The share token contract
+    function linkToken(PoolId poolId, ShareClassId scId, IShareToken shareToken) external;
+
+    /// @notice Updates a share token's vault reference for a specific asset
+    /// @param poolId The pool ID
+    /// @param scId The share class ID
+    /// @param asset The asset address
+    /// @param vault The vault address to set (or address(0) to unset)
+    function setShareTokenVault(PoolId poolId, ShareClassId scId, address asset, address vault) external;
+
+    //----------------------------------------------------------------------------------------------
+    // Outgoing methods
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Transfers share class tokens to a cross-chain recipient address
-    /// @dev    To transfer to evm chains, pad a 20 byte evm address with 12 bytes of 0
-    /// @param  centrifugeId The destination chain id
-    /// @param  poolId The centrifuge pool id
-    /// @param  scId The share class id
-    /// @param  receiver A bytes32 representation of the receiver address
-    /// @param  amount The amount of tokens to transfer
-    /// @param  extraGasLimit extra gas limit used for some extra computation that could happen on the intermediary hub
-    /// @param  remoteExtraGasLimit extra gas limit used for some extra computation that could happen in the chain where
-    /// the transfer is executed.
-    /// @param  refund address to refund the excedent of the payment
+    /// @dev To transfer to evm chains, pad a 20 byte evm address with 12 bytes of 0
+    /// @param centrifugeId The destination chain id
+    /// @param poolId The centrifuge pool id
+    /// @param scId The share class id
+    /// @param receiver A bytes32 representation of the receiver address
+    /// @param amount The amount of tokens to transfer
+    /// @param extraGasLimit Extra gas limit used for computation on the intermediary hub
+    /// @param remoteExtraGasLimit Extra gas limit used for computation in the destination chain
+    /// @param refund Address to refund the excess of the payment
     function crosschainTransferShares(
         uint16 centrifugeId,
         PoolId poolId,
@@ -179,7 +190,14 @@ interface ISpoke {
         address refund
     ) external payable;
 
+    /// @notice Transfers share class tokens to a cross-chain recipient address (legacy)
     /// @dev Maintained for retrocompatibility. New implementers should use the above
+    /// @param centrifugeId The centrifuge id of chain to where the shares are transferred
+    /// @param poolId The centrifuge pool id
+    /// @param scId The share class id
+    /// @param receiver A bytes32 representation of the receiver address
+    /// @param amount The amount of tokens to transfer
+    /// @param remoteExtraGasLimit Extra gas limit used for computation in the destination chain
     function crosschainTransferShares(
         uint16 centrifugeId,
         PoolId poolId,
@@ -196,8 +214,8 @@ interface ISpoke {
     /// @param centrifugeId The centrifuge id of chain to where the shares are transferred
     /// @param asset The address of the asset to be registered
     /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
+    /// @param refund Address to refund the excess of the payment
     /// @return assetId The underlying internal uint128 assetId.
-    /// @param refund address to refund the excedent of the payment
     function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId, address refund)
         external
         payable
@@ -220,13 +238,13 @@ interface ISpoke {
         address refund
     ) external payable;
 
-    function linkToken(PoolId poolId, ShareClassId scId, IShareToken shareToken) external;
-
-    /// @notice Handles a request originating from the Spoke side.
-    /// @param  poolId The pool id
-    /// @param  scId The share class id
-    /// @param  assetId The asset id
-    /// @param  payload The request payload to be processed
+    /// @notice Handles a request originating from the Spoke side
+    /// @param poolId The pool id
+    /// @param scId The share class id
+    /// @param assetId The asset id
+    /// @param payload The request payload to be processed
+    /// @param refund Address to refund excess payment
+    /// @param unpaid Whether to allow unpaid mode
     function request(
         PoolId poolId,
         ShareClassId scId,
@@ -236,21 +254,41 @@ interface ISpoke {
         bool unpaid
     ) external payable;
 
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Returns the asset address and tokenId associated with a given asset id.
+    /// @dev Reverts if asset id does not exist
+    ///
+    /// @param assetId The underlying internal uint128 assetId.
+    /// @return asset The address of the asset linked to the given asset id.
+    /// @return tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
+    function idToAsset(AssetId assetId) external view returns (address asset, uint256 tokenId);
+
+    /// @notice Returns assetId given the asset address and tokenId.
+    /// @dev Reverts if asset id does not exist
+    ///
+    /// @param asset The address of the asset linked to the given asset id.
+    /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
+    /// @return assetId The underlying internal uint128 assetId.
+    function assetToId(address asset, uint256 tokenId) external view returns (AssetId assetId);
+
     /// @notice Returns whether the given pool id is active
+    /// @param poolId The pool id
+    /// @return Whether the pool is active
     function isPoolActive(PoolId poolId) external view returns (bool);
 
-    /// @notice Returns the share class token for a given pool and share class id.
+    /// @notice Returns the share class token for a given pool and share class id
     /// @dev Reverts if share class does not exists
-    ///
     /// @param poolId The pool id
     /// @param scId The share class id
-    /// @return address The address of the share token
+    /// @return The address of the share token
     function shareToken(PoolId poolId, ShareClassId scId) external view returns (IShareToken);
 
-    /// @notice Returns the price per share for a given pool and share class. The Provided price is defined as
-    /// POOL_UNIT/SHARE_UNIT.
-    /// @dev Conditionally checks if price is valid.
-    ///
+    /// @notice Returns the price per share for a given pool and share class
+    /// @dev The provided price is defined as POOL_UNIT/SHARE_UNIT
+    /// @dev Conditionally checks if price is valid
     /// @param poolId The pool id
     /// @param scId The share class id
     /// @param checkValidity Whether to check if the price is valid
@@ -260,13 +298,12 @@ interface ISpoke {
         view
         returns (D18 price);
 
-    /// @notice Returns the price per asset for a given pool, share class and the underlying asset id. The Provided
-    /// price is defined as POOL_UNIT/ASSET_UNIT.
-    /// @dev Conditionally checks if price is valid.
-    ///
+    /// @notice Returns the price per asset for a given pool, share class and the underlying asset id
+    /// @dev The provided price is defined as POOL_UNIT/ASSET_UNIT
+    /// @dev Conditionally checks if price is valid
     /// @param poolId The pool id
     /// @param scId The share class id
-    /// @param assetId The asset id for which we want to know the POOL_UNIT/ASSET_UNIT.
+    /// @param assetId The asset id for which we want to know the POOL_UNIT/ASSET_UNIT
     /// @param checkValidity Whether to check if the price is valid
     /// @return price The pool price per asset unit
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
@@ -274,10 +311,9 @@ interface ISpoke {
         view
         returns (D18 price);
 
-    /// @notice Returns the both prices per pool for a given pool, share class and the underlying asset id. The Provided
-    /// prices is defined as POOL_UNIT/ASSET_UNIT and POOL_UNIT/SHARE_UNIT.
-    /// @dev Conditionally checks if prices are valid.
-    ///
+    /// @notice Returns both prices per pool for a given pool, share class and the underlying asset id
+    /// @dev The provided prices are defined as POOL_UNIT/ASSET_UNIT and POOL_UNIT/SHARE_UNIT
+    /// @dev Conditionally checks if prices are valid
     /// @param poolId The pool id
     /// @param scId The share class id
     /// @param assetId The asset id for which we want to know pool price per asset
@@ -290,7 +326,6 @@ interface ISpoke {
         returns (D18 pricePoolPerAsset, D18 pricePoolPerShare);
 
     /// @notice Returns the age related markers for a share class price
-    ///
     /// @param poolId The pool id
     /// @param scId The share class id
     /// @return computedAt The timestamp when this price was computed
@@ -302,7 +337,6 @@ interface ISpoke {
         returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
 
     /// @notice Returns the age related markers for an asset price
-    ///
     /// @param poolId The pool id
     /// @param scId The share class id
     /// @param assetId The asset id for which we want to know pool price per asset
@@ -318,11 +352,4 @@ interface ISpoke {
     /// @param poolId The pool id
     /// @return manager The request manager for the pool
     function requestManager(PoolId poolId) external view returns (IRequestManager manager);
-
-    /// @notice Updates a share token's vault reference for a specific asset
-    /// @param poolId The pool ID
-    /// @param scId The share class ID
-    /// @param asset The asset address
-    /// @param vault The vault address to set (or address(0) to unset)
-    function setShareTokenVault(PoolId poolId, ShareClassId scId, address asset, address vault) external;
 }

@@ -10,15 +10,19 @@ uint8 constant MAX_ADAPTER_COUNT = 8;
 
 /// @notice Interface for handling several adapters transparently
 interface IMultiAdapter is IAdapter, IMessageHandler {
+    //----------------------------------------------------------------------------------------------
+    // Structs
+    //----------------------------------------------------------------------------------------------
+
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
         uint8 id;
         /// @notice Number of configured adapters
         uint8 quorum;
-        /// @notice Number of votes required for a message to be executed. Less-equal to quorum.
+        /// @notice Number of votes required for a message to be executed. Less-equal to quorum
         uint8 threshold;
-        /// @notice Index in the adapter array to start consider the adapter as recovery adapter.
+        /// @notice Index in the adapter array to start consider the adapter as recovery adapter
         uint8 recoveryIndex;
         /// @notice Each time the quorum is decreased, a new session starts which invalidates old votes
         uint64 activeSessionId;
@@ -28,16 +32,18 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
         /// @dev Counts are stored as integers (instead of boolean values) to accommodate duplicate
         ///      messages (e.g. two investments from the same user with the same amount) being
         ///      processed in parallel. The entire struct is packed in a single bytes32 slot.
-        ///      Max int16 = 32,767 so at most 32,767 duplicate messages can be processed in parallel.
+        ///      Max int16 = 32,767 so at most 32,767 duplicate messages can be processed in parallel
         int16[MAX_ADAPTER_COUNT] votes;
         /// @notice Each time adapters are updated, a new session starts which invalidates old votes
         uint64 sessionId;
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
     event File(bytes32 indexed what, address addr);
-
     event SetAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] adapters, uint8 threshold, uint8 recoveryIndex);
-
     event HandlePayload(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
     event SendPayload(
         uint16 indexed centrifugeId,
@@ -47,6 +53,10 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
         bytes32 adapterData,
         address refund
     );
+
+    //----------------------------------------------------------------------------------------------
+    // Errors
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
@@ -66,12 +76,16 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @notice Dispatched when the contract is configured with duplicate adapters.
     error NoDuplicatesAllowed();
 
-    /// @notice Dispatched when the contract tries to handle a message from an adaptet not contained in the adapter set.
+    /// @notice Dispatched when the contract tries to handle a message from an adapter not contained in the adapter set.
     error InvalidAdapter();
 
-    /// @notice Used to update an address ( state variable ) on very rare occasions.
-    /// @param  what The name of the variable to be updated.
-    /// @param  data New address.
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Used to update an address (state variable) on very rare occasions
+    /// @param what The name of the variable to be updated
+    /// @param data New address
     function file(bytes32 what, address data) external;
 
     /// @notice Configure new adapters for a determined pool.
@@ -100,32 +114,34 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
         uint8 recoveryIndex
     ) external;
 
-    /// @notice Number of total configured adapters for a pool.
-    /// @param  centrifugeId Chain where the adapter is configured for
-    /// @param  poolId PoolId associated to the adapters
-    /// @return  Needed amount
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Number of total configured adapters for a pool
+    /// @param centrifugeId Chain where the adapter is configured for
+    /// @param poolId PoolId associated to the adapters
+    /// @return Needed amount
     function quorum(uint16 centrifugeId, PoolId poolId) external view returns (uint8);
 
-    /// @notice Number of required votes to consider a message valid for processing. It's lower-equal than quorum.
-    /// @param  centrifugeId Chain where the adapter is configured for
-    /// @param  poolId PoolId associated to the adapters
-    /// return  Needed amount
+    /// @notice Number of required votes to consider a message valid for processing
+    /// @dev It's lower-equal than quorum
+    /// @param centrifugeId Chain where the adapter is configured for
+    /// @param poolId PoolId associated to the adapters
+    /// @return Needed amount
     function threshold(uint16 centrifugeId, PoolId poolId) external view returns (uint8);
 
-    /// @notice Index in the adapter array to start consider the adapter as recovery adapter.
-    /// @param  centrifugeId Chain where the adapter is configured for
-    /// @param  poolId PoolId associated to the adapters
-    /// return  Needed amount
+    /// @notice Index in the adapter array to start consider the adapter as recovery adapter
+    /// @param centrifugeId Chain where the adapter is configured for
+    /// @param poolId PoolId associated to the adapters
+    /// @return Recovery index
     function recoveryIndex(uint16 centrifugeId, PoolId poolId) external view returns (uint8);
 
-    /// @notice Gets the current active routers session id.
-    /// @dev    When the adapters are updated with new ones,
-    ///         each new set of adapters has their own sessionId.
-    ///         Currently it uses sessionId of the previous set and
-    ///         increments it by 1. The idea of an activeSessionId is
-    ///         to invalidate any incoming messages from previously used adapters.
-    /// @param  centrifugeId Chain where the adapters are configured for
-    /// @param  poolId PoolId associated to the adapters
+    /// @notice Gets the current active routers session id
+    /// @dev When the adapters are updated with new ones, each new set of adapters has their own sessionId
+    /// @param centrifugeId Chain where the adapters are configured for
+    /// @param poolId PoolId associated to the adapters
+    /// @return The active session id
     function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint64);
 
     /// @notice Counts how many times each incoming messages has been received per adapter.
@@ -134,16 +150,19 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     ///         i.e. Same user would like to deposit same underlying asset with the same amount more then once.
     /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  payloadHash The hash value of the incoming message.
+    /// @return The votes array
     function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (int16[MAX_ADAPTER_COUNT] memory);
 
-    /// @notice Returns the address of the adapter at the given id.
-    /// @param  centrifugeId Chain where the adapters are configured for
-    /// @param  poolId PoolId associated to the adapters
+    /// @notice Returns the address of the adapter at the given id
+    /// @param centrifugeId Chain where the adapters are configured for
+    /// @param poolId PoolId associated to the adapters
+    /// @param id The adapter id
+    /// @return The adapter at the specified id
     function adapters(uint16 centrifugeId, PoolId poolId, uint256 id) external view returns (IAdapter);
 
-    /// @notice Returns the list of adapters that will be used for a pool.
-    /// @param  centrifugeId Chain where the adapters are configured for
-    /// @param  poolId PoolId associated to the adapters
-    /// @return pool adapters or global adapters if they were not configured
+    /// @notice Returns the list of adapters that will be used for a pool
+    /// @param centrifugeId Chain where the adapters are configured for
+    /// @param poolId PoolId associated to the adapters
+    /// @return Pool adapters or global adapters if they were not configured
     function poolAdapters(uint16 centrifugeId, PoolId poolId) external view returns (IAdapter[] memory);
 }
