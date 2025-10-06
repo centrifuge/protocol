@@ -107,6 +107,8 @@ interface IShareClassManager {
     function pricePoolPerShare(PoolId poolId, ShareClassId scId) external view returns (D18 price, uint64 computedAt);
 
     /// @notice Returns the total issuance across all networks for a share class
+    /// @dev     This is only updated when queued shares on the spoke are updated to the hub, so can
+    ///                maybe out of sync and not reflect the exact latest issuance across networks.
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
