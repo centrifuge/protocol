@@ -2,6 +2,8 @@
 title Vault Request Managers
 hide empty members
 
+skinparam linetype ortho
+
 package misc {
     class "Escrow" as GlobalEscrow<<global>>
     class "Escrow" as RouterEscrow<<router>>
