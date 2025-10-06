@@ -10,8 +10,8 @@ import {IMessageProcessor} from "../../src/core/messaging/interfaces/IMessagePro
 import "forge-std/Test.sol";
 
 contract TestCommon is Test {
-    address immutable AUTH = makeAddr("auth");
     address immutable ANY = makeAddr("any");
+    address immutable AUTH = makeAddr("auth");
 
     IScheduleAuth immutable scheduleAuth = IScheduleAuth(makeAddr("ScheduleAuth"));
 
