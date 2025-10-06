@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 
 import {VaultPermissionSpell} from "./VaultPermissionSpell.sol";
 
-import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
 
 /**
  * @title VaultPermissionSpellArbitrum

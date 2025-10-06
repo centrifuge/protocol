@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ESCROW_HOOK_ID} from "../../../src/common/interfaces/ITransferHook.sol";
+import {ESCROW_HOOK_ID} from "../../../src/core/spoke/interfaces/ITransferHook.sol";
 
 import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
 
-import {FullDeployer, FullActionBatcher, CommonInput} from "../../../script/FullDeployer.s.sol";
+import {
+    FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput
+} from "../../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -20,21 +22,23 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     FullRestrictions public correctHook;
 
     function setUp() public {
-        CommonInput memory input = CommonInput({
-            centrifugeId: LOCAL_CENTRIFUGE_ID,
-            adminSafe: adminSafe,
-            maxBatchGasLimit: uint128(GAS) * 100,
-            version: bytes32(0)
-        });
-
         FullActionBatcher batcher = new FullActionBatcher();
         super.labelAddresses("");
-        super.deployFull(input, noAdaptersInput(), batcher);
-        super.removeHubDeployerAccess(batcher);
+        super.deployFull(
+            FullInput({
+                core: CoreInput({centrifugeId: LOCAL_CENTRIFUGE_ID, version: bytes32(0), root: address(0)}),
+                adminSafe: adminSafe,
+                opsSafe: adminSafe,
+                adapters: noAdaptersInput()
+            }),
+            batcher
+        );
+        super.removeFullDeployerAccess(batcher);
 
         vm.startPrank(ADMIN);
-        correctHook =
-            new FullRestrictions(address(root), address(balanceSheet), address(globalEscrow), address(spoke), ADMIN);
+        correctHook = new FullRestrictions(
+            address(root), address(root), address(balanceSheet), address(globalEscrow), address(spoke), ADMIN
+        );
         vm.stopPrank();
     }
 

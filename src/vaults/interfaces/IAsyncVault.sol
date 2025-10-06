@@ -15,16 +15,25 @@ interface IAsyncRedeemVault is IERC7540Redeem, IERC7887Redeem, IBaseVault {
     event RedeemClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
     event CancelRedeemClaimable(address indexed controller, uint256 indexed requestId, uint256 shares);
 
-    /// @notice Callback when a redeem Request is triggered externally;
+    /// @notice Callback invoked when a redeem request is triggered externally
+    /// @param controller The address controlling the request
+    /// @param owner The address that owns the shares
+    /// @param shares The amount of shares to redeem
     function onRedeemRequest(address controller, address owner, uint256 shares) external;
 
-    /// @notice Callback when a redeem Request becomes claimable
+    /// @notice Callback invoked when a redeem request becomes claimable
+    /// @param owner The address that can claim the assets
+    /// @param assets The amount of assets available to claim
+    /// @param shares The amount of shares that were redeemed
     function onRedeemClaimable(address owner, uint256 assets, uint256 shares) external;
 
-    /// @notice Callback when a claim redeem Request becomes claimable
+    /// @notice Callback invoked when a cancelled redeem request becomes claimable
+    /// @param owner The address that can claim the returned shares
+    /// @param shares The amount of shares being returned
     function onCancelRedeemClaimable(address owner, uint256 shares) external;
 
-    /// @notice Retrieve the asynchronous redeem manager
+    /// @notice Get the asynchronous redeem manager for this vault
+    /// @return The async redeem manager contract
     function asyncRedeemManager() external view returns (IAsyncRedeemManager);
 }
 
@@ -35,9 +44,14 @@ interface IAsyncVault is IERC7540Deposit, IERC7887Deposit, IAsyncRedeemVault {
     error InvalidOwner();
     error RequestDepositFailed();
 
-    /// @notice Callback when a deposit Request becomes claimable
+    /// @notice Callback invoked when a deposit request becomes claimable
+    /// @param owner The address that can claim the shares
+    /// @param assets The amount of assets that were deposited
+    /// @param shares The amount of shares available to claim
     function onDepositClaimable(address owner, uint256 assets, uint256 shares) external;
 
-    /// @notice Callback when a claim deposit Request becomes claimable
+    /// @notice Callback invoked when a cancelled deposit request becomes claimable
+    /// @param owner The address that can claim the returned assets
+    /// @param assets The amount of assets being returned
     function onCancelDepositClaimable(address owner, uint256 assets) external;
 }

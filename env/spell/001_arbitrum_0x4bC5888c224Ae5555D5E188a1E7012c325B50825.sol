@@ -4,12 +4,12 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
+import {IRoot} from "src/core/interfaces/IRoot.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
 
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {ISpoke} from "src/core/spoke/interfaces/ISpoke.sol";
+import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
 
 struct LinkShareTokenParams {
     PoolId poolId;

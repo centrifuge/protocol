@@ -3,10 +3,12 @@ pragma solidity 0.8.28;
 
 import {Auth} from "../../../src/misc/Auth.sol";
 
-import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
+import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
+
+import {MessageBenchmarker} from "../utils/MessageBenchmarker.sol";
 
 /// An adapter that sends the message to another MessageHandler and acts as MessageHandler too.
 contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
@@ -15,6 +17,9 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
     IMessageHandler public endpoint;
     uint128 public refundedValue;
 
+    bytes public lastReceivedPayload;
+    MessageBenchmarker public benchmarker = new MessageBenchmarker();
+
     constructor(uint16 localCentrifugeId_, IMessageHandler entrypoint_, address deployer) Auth(deployer) {
         entrypoint = entrypoint_;
         localCentrifugeId = localCentrifugeId_;
@@ -22,6 +27,7 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
 
     function setEndpoint(IMessageHandler endpoint_) public {
         endpoint = endpoint_;
+        benchmarker.setHandler(endpoint);
     }
 
     function setRefundedValue(uint128 refundedValue_) public {
@@ -45,10 +51,17 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
         // Local messages must be bypassed
         assertNotEq(remoteCentrifugeId, localCentrifugeId, "Local messages must be bypassed");
 
-        // The other handler will receive the message as coming from this
-        endpoint.handle(localCentrifugeId, payload);
+        // Only run the benchmarks if using one thread to avoid concurrence issues writing the json
+        // Example of command: RAYON_NUM_THREADS=1 BENCHMARKING_RUN_ID="$(date +%s)" forge test EndToEnd
+        if (vm.envOr("RAYON_NUM_THREADS", uint256(0)) == 1) {
+            benchmarker.handle(localCentrifugeId, payload);
+        } else {
+            // The other handler will receive the message as coming from this
+            endpoint.handle(localCentrifugeId, payload);
+        }
 
         adapterData = bytes32("");
+        lastReceivedPayload = payload;
 
         (bool success,) = payable(refund).call{value: refundedValue}(new bytes(0));
         assertEq(success, true, "Refund must success");
