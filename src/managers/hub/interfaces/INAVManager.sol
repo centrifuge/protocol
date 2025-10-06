@@ -35,7 +35,7 @@ interface INAVHook {
 
 /// @title  INAVManager
 /// @notice Manager for multi-network net asset value (NAV) accounting and price calculations
-/// @dev    Tracks NAV across multiple networks using double-entry accounting with equity, liability, gain, and loss accounts
+/// @dev    Tracks NAV across multiple networks using double-entry accounting accounts
 interface INAVManager is ISnapshotHook {
     event UpdateManager(PoolId indexed poolId, address indexed manager, bool canManage);
     event SetNavHook(PoolId indexed poolId, address indexed navHook);
