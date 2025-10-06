@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 // Recon Deps
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {vm} from "@chimera/Hevm.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 import {Panic} from "@recon/Panic.sol";
 import {console2} from "forge-std/console2.sol";
@@ -33,6 +34,20 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     // TARGET FUNCTIONS - Public entry points for invariant testing
     // ═══════════════════════════════════════════════════════════════
     uint128 constant GAS = MAX_MESSAGE_COST;
+
+    // Struct to reduce stack pressure in complex functions
+    struct NotifyDepositParams {
+        address actor;
+        PoolId poolId;
+        ShareClassId scId;
+        AssetId assetId;
+        bytes32 investor;
+        uint32 maxClaims;
+        bool hasClaimedAll;
+        uint128 pendingBeforeSCM;
+        uint256 maxMintBefore;
+        uint128 pendingBeforeARM;
+    }
 
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
@@ -149,11 +164,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     function hub_notifyDeposit(
         uint32 maxClaims
     ) public updateGhostsWithType(OpType.NOTIFY) asActor {
-        // Setup vault context and investor
-        PoolId poolId = _getVault().poolId();
-        ShareClassId scId = _getVault().scId();
-        AssetId assetId = vaultRegistry.vaultDetails(_getVault()).assetId;
-        bytes32 investor = CastLib.toBytes32(_getActor());
+        address actor = _getActor();
+        IBaseVault vault = _getVault();
+        bytes32 investor = CastLib.toBytes32(actor);
+
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
         // Calculate max claims
         uint32 maxClaimsBound = batchRequestManager.maxDepositClaims(
@@ -168,52 +185,69 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint128 pendingBeforeSCM;
         uint256 maxMintBefore;
         if (hasClaimedAll) {
-            (pendingBeforeSCM, , maxMintBefore) = _captureDepositStateBefore(
-                CastLib.toBytes32(_getActor())
-            );
+            (pendingBeforeSCM, , maxMintBefore) = _captureDepositStateBefore(investor);
         }
 
         // Capture state for ghost variables
-        (, , , , uint128 pendingBeforeARM, , , , , ) = asyncRequestManager
-            .investments(_getVault(), _getActor());
+        (, , , , uint128 pendingBeforeARM, , , , , ) = asyncRequestManager.investments(vault, actor);
 
-        // NOTE: actually makes the call to the target function
-        // TODO(wischli): Implement event-based approach for notifyDeposit (see Properties.sol)
-        vm.prank(_getActor());
-        batchRequestManager.notifyDeposit(
-            poolId,
-            scId,
-            assetId,
-            investor,
-            maxClaims,
-            _getActor()
+        // Execute call and validation in separate function (fresh stack frame)
+        _executeNotifyDepositAndValidate(NotifyDepositParams({
+            actor: actor,
+            poolId: poolId,
+            scId: scId,
+            assetId: assetId,
+            investor: investor,
+            maxClaims: maxClaims,
+            hasClaimedAll: hasClaimedAll,
+            pendingBeforeSCM: pendingBeforeSCM,
+            maxMintBefore: maxMintBefore,
+            pendingBeforeARM: pendingBeforeARM
+        }));
+    }
+
+    function _executeNotifyDepositAndValidate(NotifyDepositParams memory params) private {
+        // Capture cancellation state before call
+        uint128 cancelledAssetAmount = _captureDepositCancellationState(
+            params.poolId, params.scId, params.assetId, params.investor, params.maxClaims
         );
 
-        // TODO(wischli): Parse ClaimDeposit events to get actual values
-        uint128 totalPayoutShareAmount = 0;
-        uint128 totalPaymentAssetAmount = 0;
-        uint128 cancelledAssetAmount = 0;
+        // Record events during call
+        Vm(address(vm)).recordLogs();
+        vm.prank(params.actor);
+        batchRequestManager.notifyDeposit(
+            params.poolId,
+            params.scId,
+            params.assetId,
+            params.investor,
+            params.maxClaims,
+            params.actor
+        );
+
+        // Parse events to extract return values
+        (uint128 totalPaymentAssetAmount, uint128 totalPayoutShareAmount) =
+            _parseClaimDepositEvents(params.investor);
 
         _executeSendRequestCallback(
-            CastLib.toBytes32(_getActor()),
+            params.investor,
             totalPaymentAssetAmount,
             totalPayoutShareAmount,
             cancelledAssetAmount
         );
 
         _updateDepositGhostVariables(
-            pendingBeforeARM,
+            params.pendingBeforeARM,
             totalPayoutShareAmount,
             totalPaymentAssetAmount,
             cancelledAssetAmount
         );
 
         // Handle validation
-        if (hasClaimedAll) {
+        if (params.hasClaimedAll) {
             _validateDepositClaimComplete(
-                CastLib.toBytes32(_getActor()),
-                pendingBeforeSCM,
-                maxMintBefore,
+                params.investor,
+                params.pendingBeforeSCM,
+                params.maxMintBefore,
                 totalPaymentAssetAmount
             );
         }
@@ -250,8 +284,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             _getActor()
         );
 
-        // NOTE: actually makes the call to the target function
-        // TODO(wischli): Implement event-based approach for notifyRedeem (see Properties.sol)
+        // Capture cancellation state before call
+        uint128 cancelledShareAmount = _captureRedeemCancellationState(
+            poolId, scId, assetId, investor, maxClaims
+        );
+
+        // Record events during call
+        Vm(address(vm)).recordLogs();
         vm.prank(_getActor());
         batchRequestManager.notifyRedeem(
             poolId,
@@ -262,10 +301,9 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             _getActor()
         );
 
-        // TODO(wischli): Parse ClaimRedeem events to get actual values
-        uint128 payoutAssetAmount = 0;
-        uint128 paymentShareAmount = 0;
-        uint128 cancelledShareAmount = 0;
+        // Parse events to extract return values
+        (uint128 paymentShareAmount, uint128 payoutAssetAmount) =
+            _parseClaimRedeemEvents(investor);
 
         _executeSendRedeemCallback(
             CastLib.toBytes32(_getActor()),
@@ -386,6 +424,120 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         maxMintBefore = asyncRequestManager.maxMint(vault, _getActor());
     }
 
+    /// @dev Captures cancellation state before notifyDeposit call
+    /// @param poolId Pool identifier
+    /// @param scId Share class identifier
+    /// @param assetId Asset identifier
+    /// @param investor Investor address as bytes32
+    /// @param maxClaims Number of claims to process
+    /// @return cancelledAssetAmount Cancelled amount if applicable, else 0
+    function _captureDepositCancellationState(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 investor,
+        uint32 maxClaims
+    ) private view returns (uint128 cancelledAssetAmount) {
+        (bool isCancelling, uint128 queuedAmount) =
+            batchRequestManager.queuedDepositRequest(poolId, scId, assetId, investor);
+
+        if (!isCancelling) return 0;
+
+        (uint128 pending, uint32 lastUpdate) =
+            batchRequestManager.depositRequest(poolId, scId, assetId, investor);
+
+        uint32 nowEpoch = batchRequestManager.nowDepositEpoch(poolId, scId, assetId);
+
+        // Check if claiming to last epoch
+        if (lastUpdate + maxClaims >= nowEpoch) {
+            cancelledAssetAmount = pending + queuedAmount;
+        }
+    }
+
+    /// @dev Captures cancellation state before notifyRedeem call
+    /// @param poolId Pool identifier
+    /// @param scId Share class identifier
+    /// @param assetId Asset identifier
+    /// @param investor Investor address as bytes32
+    /// @param maxClaims Number of claims to process
+    /// @return cancelledShareAmount Cancelled amount if applicable, else 0
+    function _captureRedeemCancellationState(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 investor,
+        uint32 maxClaims
+    ) private view returns (uint128 cancelledShareAmount) {
+        (bool isCancelling, uint128 queuedAmount) =
+            batchRequestManager.queuedRedeemRequest(poolId, scId, assetId, investor);
+
+        if (!isCancelling) return 0;
+
+        (uint128 pending, uint32 lastUpdate) =
+            batchRequestManager.redeemRequest(poolId, scId, assetId, investor);
+
+        uint32 nowEpoch = batchRequestManager.nowRedeemEpoch(poolId, scId, assetId);
+
+        // Check if claiming to last epoch
+        if (lastUpdate + maxClaims >= nowEpoch) {
+            cancelledShareAmount = pending + queuedAmount;
+        }
+    }
+
+    /// @dev Parses ClaimDeposit events from recorded logs
+    /// @param investor Investor address as bytes32
+    /// @return totalPaymentAssetAmount Sum of payment assets
+    /// @return totalPayoutShareAmount Sum of payout shares
+    function _parseClaimDepositEvents(
+        bytes32 investor
+    ) private returns (uint128 totalPaymentAssetAmount, uint128 totalPayoutShareAmount) {
+        Vm.Log[] memory logs = Vm(address(vm)).getRecordedLogs();
+        bytes32 claimDepositSig = keccak256(
+            "ClaimDeposit(uint64,uint64,uint32,bytes32,uint128,uint128,uint128,uint128,uint64)"
+        );
+
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == claimDepositSig) {
+                // Decode non-indexed parameters
+                (bytes32 eventInvestor, , uint128 paymentAssetAmount, , uint128 payoutShareAmount, ) =
+                    abi.decode(logs[i].data, (bytes32, uint128, uint128, uint128, uint128, uint64));
+
+                // Only sum events for target investor
+                if (eventInvestor == investor) {
+                    totalPaymentAssetAmount += paymentAssetAmount;
+                    totalPayoutShareAmount += payoutShareAmount;
+                }
+            }
+        }
+    }
+
+    /// @dev Parses ClaimRedeem events from recorded logs
+    /// @param investor Investor address as bytes32
+    /// @return totalPaymentShareAmount Sum of payment shares
+    /// @return totalPayoutAssetAmount Sum of payout assets
+    function _parseClaimRedeemEvents(
+        bytes32 investor
+    ) private returns (uint128 totalPaymentShareAmount, uint128 totalPayoutAssetAmount) {
+        Vm.Log[] memory logs = Vm(address(vm)).getRecordedLogs();
+        bytes32 claimRedeemSig = keccak256(
+            "ClaimRedeem(uint64,uint64,uint32,bytes32,uint128,uint128,uint128,uint128,uint64)"
+        );
+
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == claimRedeemSig) {
+                // Decode non-indexed parameters
+                (bytes32 eventInvestor, , uint128 paymentShareAmount, , uint128 payoutAssetAmount, ) =
+                    abi.decode(logs[i].data, (bytes32, uint128, uint128, uint128, uint128, uint64));
+
+                // Only sum events for target investor
+                if (eventInvestor == investor) {
+                    totalPaymentShareAmount += paymentShareAmount;
+                    totalPayoutAssetAmount += payoutAssetAmount;
+                }
+            }
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // GHOST VARIABLE UPDATES - Tracking for invariant properties
     // ═══════════════════════════════════════════════════════════════
@@ -435,45 +587,81 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint256 maxMintBefore,
         uint128 totalPaymentAssetAmount
     ) private {
+        _validateDepositEpochUpdate(investor);
+        _validateNoCancellationQueued(investor);
+        _validateDepositPendingDelta(investor, pendingBeforeSCM, totalPaymentAssetAmount);
+        _validateMaxMintDecrease(maxMintBefore, totalPaymentAssetAmount);
+    }
+
+    /// @dev Validates that deposit epoch update occurred correctly
+    /// @param investor The investor's address as bytes32
+    function _validateDepositEpochUpdate(bytes32 investor) private {
         IBaseVault vault = _getVault();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
-        (uint128 pendingAfterSCM, uint32 lastUpdate) = batchRequestManager
-            .depositRequest(poolId, scId, assetId, investor);
-        (uint32 depositEpochId, , , ) = batchRequestManager.epochId(
-            poolId,
-            scId,
-            assetId
-        );
-        (bool isCancellingAfter, ) = batchRequestManager.queuedDepositRequest(
-            poolId,
-            scId,
-            assetId,
-            investor
-        );
-        uint256 maxMintAfter = asyncRequestManager.maxMint(vault, _getActor());
+        (, uint32 lastUpdate) = batchRequestManager.depositRequest(poolId, scId, assetId, investor);
+        (uint32 depositEpochId, , , ) = batchRequestManager.epochId(poolId, scId, assetId);
 
         eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
+    }
 
-        t(
-            !isCancellingAfter,
-            "queued cancellation post claiming should not be possible"
-        );
+    /// @dev Validates no cancellation is queued after claiming
+    /// @param investor The investor's address as bytes32
+    function _validateNoCancellationQueued(bytes32 investor) private {
+        IBaseVault vault = _getVault();
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+
+        (bool isCancellingAfter, ) = batchRequestManager.queuedDepositRequest(poolId, scId, assetId, investor);
+
+        t(!isCancellingAfter, "queued cancellation post claiming should not be possible");
+    }
+
+    /// @dev Validates pending deposit amount delta
+    /// @param investor The investor's address as bytes32
+    /// @param pendingBeforeSCM Pending amount before claim
+    /// @param totalPaymentAssetAmount Total assets used for payment
+    function _validateDepositPendingDelta(
+        bytes32 investor,
+        uint128 pendingBeforeSCM,
+        uint128 totalPaymentAssetAmount
+    ) private {
+        IBaseVault vault = _getVault();
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+
+        (uint128 pendingAfterSCM, ) = batchRequestManager.depositRequest(poolId, scId, assetId, investor);
 
         uint128 pendingDelta = pendingBeforeSCM >= pendingAfterSCM
             ? pendingBeforeSCM - pendingAfterSCM
             : 0;
+
         gte(
             pendingDelta,
             totalPaymentAssetAmount,
             "pending delta should be greater (if cancel queued) or equal to the payment asset amount"
         );
+    }
 
+    /// @dev Validates maxMint decrease after claiming
+    /// @param maxMintBefore Maximum mint capacity before claim
+    /// @param totalPaymentAssetAmount Total assets used for payment
+    function _validateMaxMintDecrease(
+        uint256 maxMintBefore,
+        uint128 totalPaymentAssetAmount
+    ) private {
+        IBaseVault vault = _getVault();
+        address actor = _getActor();
+
+        uint256 maxMintAfter = asyncRequestManager.maxMint(vault, actor);
         uint256 expectedMaxMint = maxMintBefore >= totalPaymentAssetAmount
             ? maxMintBefore - totalPaymentAssetAmount
             : 0;
+
         gte(
             maxMintAfter,
             expectedMaxMint,
@@ -605,7 +793,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
-        // TODO(wischli): Implement event-based approach for notifyRedeem (see Properties.sol)
+        // Capture cancellation state before call
+        cancelledShareAmount = _captureRedeemCancellationState(
+            poolId, scId, assetId, investor, maxClaims
+        );
+
+        // Record events during call
+        Vm(address(vm)).recordLogs();
         batchRequestManager.notifyRedeem(
             poolId,
             scId,
@@ -615,10 +809,9 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             msg.sender
         );
 
-        // TODO(wischli): Parse ClaimRedeem events to get actual values
-        payoutAssetAmount = 0;
-        paymentShareAmount = 0;
-        cancelledShareAmount = 0;
+        // Parse events to extract return values
+        (paymentShareAmount, payoutAssetAmount) =
+            _parseClaimRedeemEvents(investor);
 
         // Replicate Hub's callback sending logic
         if (paymentShareAmount > 0 || cancelledShareAmount > 0) {

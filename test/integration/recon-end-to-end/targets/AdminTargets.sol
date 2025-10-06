@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 // Recon Deps
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {vm} from "@chimera/Hevm.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 import {Panic} from "@recon/Panic.sol";
 import {console2} from "forge-std/console2.sol";
@@ -25,13 +26,82 @@ import {MAX_MESSAGE_COST} from "src/core/messaging/interfaces/IGasService.sol";
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
 import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
-import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 
 /// @dev Admin functions called by the admin actor
 /// @dev These explicitly clamp the investor to always be one of the actors
 abstract contract AdminTargets is BaseTargetFunctions, Properties {
     using CastLib for *;
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
+
+    /// @dev Parses IssueShares event from recorded logs
+    /// @param poolId Pool identifier to filter events
+    /// @param scId Share class identifier to filter events
+    /// @param assetId Asset identifier to filter events
+    /// @return issuedShareAmount Total amount of shares issued
+    function _parseIssueSharesEvent(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId
+    ) private returns (uint128 issuedShareAmount) {
+        Vm.Log[] memory logs = Vm(address(vm)).getRecordedLogs();
+        bytes32 issueSharesSig = keccak256(
+            "IssueShares(uint64,bytes16,uint128,uint32,uint128,uint128,uint128)"
+        );
+
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == issueSharesSig) {
+                // Check indexed parameters match
+                if (
+                    logs[i].topics[1] == bytes32(uint256(PoolId.unwrap(poolId))) &&
+                    logs[i].topics[2] == bytes32(ShareClassId.unwrap(scId)) &&
+                    logs[i].topics[3] == bytes32(uint256(AssetId.unwrap(assetId)))
+                ) {
+                    // Decode non-indexed parameters
+                    (uint32 epochId, D18 pricePoolPerShare, D18 priceAssetPerShare, uint128 issued) =
+                        abi.decode(logs[i].data, (uint32, D18, D18, uint128));
+                    issuedShareAmount += issued;
+                }
+            }
+        }
+    }
+
+    /// @dev Parses RevokeShares event from recorded logs
+    /// @param poolId Pool identifier to filter events
+    /// @param scId Share class identifier to filter events
+    /// @param assetId Asset identifier to filter events
+    /// @return revokedShareAmount Total amount of shares revoked
+    function _parseRevokeSharesEvent(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId
+    ) private returns (uint128 revokedShareAmount) {
+        Vm.Log[] memory logs = Vm(address(vm)).getRecordedLogs();
+        bytes32 revokeSharesSig = keccak256(
+            "RevokeShares(uint64,bytes16,uint128,uint32,uint128,uint128,uint128,uint128,uint128)"
+        );
+
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == revokeSharesSig) {
+                // Check indexed parameters match
+                if (
+                    logs[i].topics[1] == bytes32(uint256(PoolId.unwrap(poolId))) &&
+                    logs[i].topics[2] == bytes32(ShareClassId.unwrap(scId)) &&
+                    logs[i].topics[3] == bytes32(uint256(AssetId.unwrap(assetId)))
+                ) {
+                    // Decode non-indexed parameters
+                    (
+                        uint32 epochId,
+                        D18 pricePoolPerShare,
+                        D18 priceAssetPerShare,
+                        uint128 approvedShareAmount,
+                        uint128 payoutAssetAmount,
+                        uint128 payoutPoolAmount
+                    ) = abi.decode(logs[i].data, (uint32, D18, D18, uint128, uint128, uint128));
+                    revokedShareAmount += approvedShareAmount;
+                }
+            }
+        }
+    }
 
     /// === SyncManager === ///
     function syncManager_setValuation(address valuation) public updateGhosts {
@@ -259,6 +329,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         // (totalIssuanceBefore,) = shareClassManager.metrics(scId);
         // (uint128 balanceSheetSharesBefore,,,) = balanceSheet.queuedShares(poolId, scId);
 
+        Vm(address(vm)).recordLogs();
         batchRequestManager.issueShares{value: MAX_MESSAGE_COST}(
             poolId,
             scId,
@@ -268,7 +339,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
             SHARE_HOOK_GAS,
             REFUND
         );
-        uint128 issuedShareAmount = 0; // TODO(wischli): Parse from event if needed
+        uint128 issuedShareAmount = _parseIssueSharesEvent(poolId, scId, assetId);
 
         uint256 escrowSharesAfter = IShareToken(_getShareToken()).balanceOf(
             address(globalEscrow)
@@ -353,6 +424,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         // (uint128 totalIssuanceBefore,) = shareClassManager.metrics(scId); // Unused
         // (uint128 balanceSheetSharesBefore,,,) = balanceSheet.queuedShares(poolId, scId); // Unused
 
+        Vm(address(vm)).recordLogs();
         batchRequestManager.revokeShares{value: MAX_MESSAGE_COST}(
             poolId,
             scId,
@@ -362,7 +434,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
             SHARE_HOOK_GAS,
             REFUND
         );
-        uint128 revokedShareAmount = 0; // TODO(wischli): Parse from event if needed
+        uint128 revokedShareAmount = _parseRevokeSharesEvent(poolId, scId, payoutAssetId);
 
         uint256 sharesAfter = IShareToken(_getShareToken()).balanceOf(
             address(globalEscrow)

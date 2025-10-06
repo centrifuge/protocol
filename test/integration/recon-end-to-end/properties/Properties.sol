@@ -51,6 +51,44 @@ abstract contract Properties is
     event DebugWithString(string, uint256);
     event DebugNumber(uint256);
 
+    /// @dev Parses RevokeShares event to extract payout asset amount
+    /// @param poolId Pool identifier to filter events
+    /// @param scId Share class identifier to filter events
+    /// @param assetId Asset identifier to filter events
+    /// @return payoutAssetAmount Total asset amount paid out
+    function _parseRevokeSharesPayoutAmount(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId
+    ) private returns (uint128 payoutAssetAmount) {
+        Vm.Log[] memory logs = Vm(address(vm)).getRecordedLogs();
+        bytes32 revokeSharesSig = keccak256(
+            "RevokeShares(uint64,bytes16,uint128,uint32,uint128,uint128,uint128,uint128,uint128)"
+        );
+
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == revokeSharesSig) {
+                // Check indexed parameters match
+                if (
+                    logs[i].topics[1] == bytes32(uint256(PoolId.unwrap(poolId))) &&
+                    logs[i].topics[2] == bytes32(ShareClassId.unwrap(scId)) &&
+                    logs[i].topics[3] == bytes32(uint256(AssetId.unwrap(assetId)))
+                ) {
+                    // Decode non-indexed parameters
+                    (
+                        uint32 epochId,
+                        D18 pricePoolPerShare,
+                        D18 priceAssetPerShare,
+                        uint128 approvedShareAmount,
+                        uint128 payout,
+                        uint128 payoutPoolAmount
+                    ) = abi.decode(logs[i].data, (uint32, D18, D18, uint128, uint128, uint128));
+                    payoutAssetAmount += payout;
+                }
+            }
+        }
+    }
+
     // ===============================
     // SENTINEL
     // ===============================
@@ -1978,6 +2016,7 @@ abstract contract Properties is
         }
 
         uint32 nowRevokeEpoch = batchRequestManager.nowRevokeEpoch(poolId, scId, assetId);
+        Vm(address(vm)).recordLogs();
         try
             batchRequestManager.revokeShares(
                 poolId,
@@ -1989,12 +2028,12 @@ abstract contract Properties is
                 REFUND
             )
         {
-            // TODO(wischli): Derive from logs
-            // eq(
-            //     assetAmount,
-            //     0,
-            //     "revoked asset amount should return 0 at zero price"
-            // );
+            uint128 payoutAssetAmount = _parseRevokeSharesPayoutAmount(poolId, scId, assetId);
+            eq(
+                payoutAssetAmount,
+                0,
+                "revoked asset amount should return 0 at zero price"
+            );
         } catch (bytes memory reason) {
             bool expectedRevert = checkError(reason, "EpochNotFound()");
             t(
