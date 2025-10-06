@@ -11,9 +11,9 @@ import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 
-/// -----------------------------------------------------
-///  Hub Handlers
-/// -----------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+// Hub Handlers
+//--------------------------------------------------------------------------------------------------
 
 /// @notice Interface for Hub methods called by messages
 interface IHubGatewayHandler {
@@ -64,9 +64,9 @@ interface IHubGatewayHandler {
     ) external;
 }
 
-/// -----------------------------------------------------
-///  Vaults Handlers
-/// -----------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+// Spoke Handlers
+//--------------------------------------------------------------------------------------------------
 
 /// @notice Interface for spoke related methods called by messages
 interface ISpokeGatewayHandler {

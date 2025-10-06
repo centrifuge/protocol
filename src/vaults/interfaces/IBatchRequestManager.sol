@@ -199,16 +199,40 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     // Incoming requests
     //----------------------------------------------------------------------------------------------
 
+    /// @notice Submit a deposit request to invest assets into a pool's share class
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param amount The amount of assets to deposit
+    /// @param investor The investor's address as bytes32
+    /// @param depositAssetId The asset identifier for the deposit
     function requestDeposit(PoolId poolId, ShareClassId scId, uint128 amount, bytes32 investor, AssetId depositAssetId)
         external;
 
+    /// @notice Cancel a pending deposit request and return the deposited assets
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param investor The investor's address as bytes32
+    /// @param depositAssetId The asset identifier for the deposit
+    /// @return cancelledAssetAmount The amount of assets returned to the investor
     function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external
         returns (uint128 cancelledAssetAmount);
 
+    /// @notice Submit a redemption request to redeem shares for assets
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param amount The amount of shares to redeem
+    /// @param investor The investor's address as bytes32
+    /// @param payoutAssetId The asset identifier for the payout
     function requestRedeem(PoolId poolId, ShareClassId scId, uint128 amount, bytes32 investor, AssetId payoutAssetId)
         external;
 
+    /// @notice Cancel a pending redemption request and return the shares
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param investor The investor's address as bytes32
+    /// @param payoutAssetId The asset identifier for the payout
+    /// @return cancelledShareAmount The amount of shares returned to the investor
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external
         returns (uint128 cancelledShareAmount);
@@ -217,6 +241,15 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     // Manager actions
     //----------------------------------------------------------------------------------------------
 
+    /// @notice Approve pending deposit requests for an epoch
+    /// @dev This function approves a specific amount of assets from the current deposit epoch
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param depositAssetId The asset identifier for deposits
+    /// @param nowDepositEpochId The current deposit epoch identifier
+    /// @param approvedAssetAmount The amount of assets approved for this epoch
+    /// @param pricePoolPerAsset The price of pool currency per asset unit
+    /// @param refund Address to receive unused gas refund
     function approveDeposits(
         PoolId poolId,
         ShareClassId scId,
@@ -227,6 +260,14 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         address refund
     ) external payable;
 
+    /// @notice Approve pending redemption requests for an epoch
+    /// @dev This function approves a specific amount of shares from the current redeem epoch
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param payoutAssetId The asset identifier for payouts
+    /// @param nowRedeemEpochId The current redeem epoch identifier
+    /// @param approvedShareAmount The amount of shares approved for redemption
+    /// @param pricePoolPerAsset The price of pool currency per asset unit
     function approveRedeems(
         PoolId poolId,
         ShareClassId scId,
@@ -236,6 +277,15 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         D18 pricePoolPerAsset
     ) external payable;
 
+    /// @notice Issue shares to investors based on approved deposits
+    /// @dev This function mints shares for the approved deposit epoch using the provided share price
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param depositAssetId The asset identifier for deposits
+    /// @param nowIssueEpochId The current issue epoch identifier
+    /// @param pricePoolPerShare The price of pool currency per share unit
+    /// @param extraGasLimit Additional gas limit for cross-chain operations
+    /// @param refund Address to receive unused gas refund
     function issueShares(
         PoolId poolId,
         ShareClassId scId,
@@ -246,6 +296,15 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         address refund
     ) external payable;
 
+    /// @notice Revoke shares and prepare asset payouts for redemptions
+    /// @dev This function burns shares for the approved redeem epoch and calculates asset payouts
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param payoutAssetId The asset identifier for payouts
+    /// @param nowRevokeEpochId The current revoke epoch identifier
+    /// @param pricePoolPerShare The price of pool currency per share unit
+    /// @param extraGasLimit Additional gas limit for cross-chain operations
+    /// @param refund Address to receive unused gas refund
     function revokeShares(
         PoolId poolId,
         ShareClassId scId,
@@ -256,6 +315,13 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         address refund
     ) external payable;
 
+    /// @notice Force cancel a user's deposit request (manager action)
+    /// @dev This allows the manager to cancel a deposit request on behalf of a user
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param investor The investor's address as bytes32
+    /// @param depositAssetId The asset identifier for the deposit
+    /// @param refund Address to receive unused gas refund
     function forceCancelDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -264,6 +330,13 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         address refund
     ) external payable;
 
+    /// @notice Force cancel a user's redemption request (manager action)
+    /// @dev This allows the manager to cancel a redemption request on behalf of a user
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param investor The investor's address as bytes32
+    /// @param payoutAssetId The asset identifier for the payout
+    /// @param refund Address to receive unused gas refund
     function forceCancelRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -276,19 +349,51 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     // View methods
     //----------------------------------------------------------------------------------------------
 
+    /// @notice Get the current deposit epoch identifier
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param depositAssetId The asset identifier for deposits
+    /// @return The current deposit epoch ID
     function nowDepositEpoch(PoolId poolId, ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
 
+    /// @notice Get the current issue epoch identifier
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param depositAssetId The asset identifier for deposits
+    /// @return The current issue epoch ID
     function nowIssueEpoch(PoolId poolId, ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
 
+    /// @notice Get the current redeem epoch identifier
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param depositAssetId The asset identifier for payouts
+    /// @return The current redeem epoch ID
     function nowRedeemEpoch(PoolId poolId, ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
 
+    /// @notice Get the current revoke epoch identifier
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param depositAssetId The asset identifier for payouts
+    /// @return The current revoke epoch ID
     function nowRevokeEpoch(PoolId poolId, ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
 
+    /// @notice Get the maximum number of deposit claims available for an investor
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param investor The investor's address as bytes32
+    /// @param depositAssetId The asset identifier for deposits
+    /// @return The maximum number of claimable deposit epochs
     function maxDepositClaims(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external
         view
         returns (uint32);
 
+    /// @notice Get the maximum number of redeem claims available for an investor
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param investor The investor's address as bytes32
+    /// @param payoutAssetId The asset identifier for payouts
+    /// @return The maximum number of claimable redeem epochs
     function maxRedeemClaims(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external
         view
@@ -298,6 +403,17 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     // Epoch data access
     //----------------------------------------------------------------------------------------------
 
+    /// @notice Get detailed investment amounts and pricing for a specific epoch
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param assetId The asset identifier
+    /// @param epochId The epoch identifier
+    /// @return pendingAssetAmount Assets waiting to be approved
+    /// @return approvedAssetAmount Assets approved for investment
+    /// @return approvedPoolAmount Pool currency amount after asset-to-pool conversion
+    /// @return pricePoolPerAsset Price of pool currency per asset unit
+    /// @return pricePoolPerShare Price of pool currency per share unit
+    /// @return issuedAt Timestamp when shares were issued
     function epochInvestAmounts(PoolId poolId, ShareClassId scId, AssetId assetId, uint32 epochId)
         external
         view
@@ -310,6 +426,17 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
             uint64 issuedAt
         );
 
+    /// @notice Get detailed redemption amounts and pricing for a specific epoch
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param assetId The asset identifier
+    /// @param epochId The epoch identifier
+    /// @return approvedShareAmount Shares approved for redemption
+    /// @return pendingShareAmount Shares waiting to be approved
+    /// @return pricePoolPerAsset Price of pool currency per asset unit
+    /// @return pricePoolPerShare Price of pool currency per share unit
+    /// @return payoutAssetAmount Asset amount to be paid out
+    /// @return revokedAt Timestamp when shares were revoked
     function epochRedeemAmounts(PoolId poolId, ShareClassId scId, AssetId assetId, uint32 epochId)
         external
         view

@@ -11,7 +11,10 @@ import {IBatchedMulticall} from "../../core/interfaces/IBatchedMulticall.sol";
 import {BaseSyncDepositVault} from "../BaseVaults.sol";
 
 interface IVaultRouter is IBatchedMulticall {
-    // --- Events ---
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
     event LockDepositRequest(
         IBaseVault indexed vault, address indexed controller, address indexed owner, address sender, uint256 amount
     );
@@ -30,7 +33,10 @@ interface IVaultRouter is IBatchedMulticall {
     /// @dev    This is a getter method
     function lockedRequests(address controller, IBaseVault vault) external view returns (uint256 amount);
 
-    // --- Manage permissionless claiming ---
+    //----------------------------------------------------------------------------------------------
+    // Manage permissionless claiming
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Enable permissionless claiming
     /// @dev    After this is called, anyone can claim tokens to msg.sender.
     ///         Even any requests submitted directly to the vault (not through the VaultRouter) will be
@@ -40,7 +46,10 @@ interface IVaultRouter is IBatchedMulticall {
     /// @notice Disable permissionless claiming
     function disable(IBaseVault vault) external payable;
 
-    // --- Deposit ---
+    //----------------------------------------------------------------------------------------------
+    // Deposit
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Check `IERC7540Deposit.requestDeposit`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
     ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
@@ -134,7 +143,10 @@ interface IVaultRouter is IBatchedMulticall {
     /// @param  controller Check  IERC7887Deposit.claimCancelDepositRequest.controller
     function claimCancelDepositRequest(IAsyncVault vault, address receiver, address controller) external payable;
 
-    // --- Redeem ---
+    //----------------------------------------------------------------------------------------------
+    // Redeem
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Check `IERC7540Redeem.requestRedeem`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
     ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
@@ -168,7 +180,10 @@ interface IVaultRouter is IBatchedMulticall {
     /// @param  controller Check  IERC7887Redeem.claimCancelRedeemRequest.controller
     function claimCancelRedeemRequest(IAsyncVault vault, address receiver, address controller) external payable;
 
-    // --- Cross-chain transfers ---
+    //----------------------------------------------------------------------------------------------
+    // Cross-chain transfers
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Intended to be used in a batch with `deposit` or `claimRedeem`,
     ///         with `receiver=address(this)`
     function crosschainTransferShares(
@@ -182,13 +197,19 @@ interface IVaultRouter is IBatchedMulticall {
         address refund
     ) external payable;
 
-    // --- ERC20 permit ---
+    //----------------------------------------------------------------------------------------------
+    // ERC20 permit
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Check IERC20.permit
     function permit(address asset, address spender, uint256 assets, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
         external
         payable;
 
-    // --- View Methods ---
+    //----------------------------------------------------------------------------------------------
+    // View Methods
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Check ISpoke.getVault
     function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address);
 

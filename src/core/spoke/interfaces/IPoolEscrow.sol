@@ -12,9 +12,12 @@ struct Holding {
     uint128 reserved;
 }
 
-/// @title PerPoolEscrow separating funds by pool and share class
+/// @title Per-Pool Escrow separating funds by pool and share class
 interface IPoolEscrow is IEscrow, IRecoverable {
-    // --- Events ---
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Emitted when a deposit is made
     /// @param asset The address of the deposited asset
     /// @param tokenId The id of the asset - 0 for ERC20
@@ -30,7 +33,7 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param poolId The id of the pool
     /// @param scId The id of the share class
-    /// @param value The delta amount reserved
+    /// @param delta The delta amount reserved
     /// @param value The new absolute amount reserved
     event IncreaseReserve(
         address indexed asset,
@@ -46,7 +49,7 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param poolId The id of the pool
     /// @param scId The id of the share class
-    /// @param value The delta amount unreserved
+    /// @param delta The delta amount unreserved
     /// @param value The new absolute amount reserved
     event DecreaseReserve(
         address indexed asset,
@@ -68,22 +71,26 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     );
 
     /// @notice Emitted when ETH is transferred to the escrow
-    /// @param amount transferred
+    /// @param who The address that sent the ETH
+    /// @param amount The amount transferred
     event ReceiveNativeTokens(address who, uint256 amount);
 
-    // --- Errors ---
+    //----------------------------------------------------------------------------------------------
+    // Errors
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Dispatched when the balance of the escrow did not increase sufficiently
     error InsufficientDeposit();
 
     /// @notice Dispatched when the outstanding reserved amount is insufficient for the decrease
     error InsufficientReservedAmount();
 
-    // --- Functions ---
+    //----------------------------------------------------------------------------------------------
+    // Functions
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Deposits `value` of `asset` in underlying `poolId` and given `scId`
-    ///
-    /// @dev NOTE: Must ensure balance sufficiency, i.e. that the depositing amount does not exceed the balance of
-    /// escrow
-    ///
+    /// @dev NOTE: Must ensure balance sufficiency, i.e. that the depositing amount does not exceed the balance of escrow
     /// @param scId The id of the share class
     /// @param asset The address of the asset to be deposited
     /// @param tokenId The id of the asset - 0 for ERC20

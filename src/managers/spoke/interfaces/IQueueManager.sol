@@ -5,6 +5,9 @@ import {PoolId} from "../../../core/types/PoolId.sol";
 import {AssetId} from "../../../core/types/AssetId.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 
+/// @title  IQueueManager
+/// @notice Interface for managing queued asset and share synchronization across chains
+/// @dev    Handles delayed sync operations with configurable minimum delays and gas limits
 interface IQueueManager {
     event UpdateQueueConfig(
         PoolId indexed poolId, ShareClassId indexed scId, uint64 newMinDelay, uint128 newExtraGasLimit

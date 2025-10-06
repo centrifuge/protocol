@@ -17,7 +17,7 @@ interface IMessageDispatcher is IScheduleAuthMessageSender, ISpokeMessageSender,
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'hubRegistry' string value.
+    ///         Accepts a `bytes32` representation of 'hubRegistry' string value.
     /// @param data New value given to the `what` parameter
     function file(bytes32 what, address data) external;
 }

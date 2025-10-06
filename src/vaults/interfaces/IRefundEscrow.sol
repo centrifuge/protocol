@@ -10,5 +10,7 @@ interface IRefundEscrow {
     function depositFunds() external payable;
 
     /// @notice Withdraw `value` funds to `to` address
+    /// @param to The address to send the withdrawn funds to
+    /// @param value The amount of native tokens to withdraw
     function withdrawFunds(address to, uint256 value) external;
 }
