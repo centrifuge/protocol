@@ -15,9 +15,13 @@ contract RefundEscrowTest is Test {
     address immutable RECEIVER = makeAddr("receiver");
     address immutable NO_RECEIVER = address(new NoReceivable());
 
-    RefundEscrow escrow = new RefundEscrow(AUTH);
+    RefundEscrow escrow;
 
     function setUp() external {
+        escrow = new RefundEscrow();
+        IAuth(address(escrow)).rely(AUTH); // Mimic controller behavior
+        IAuth(address(escrow)).deny(address(this)); // Mimic factory behavior
+
         vm.deal(ANY, 1 ether);
         vm.deal(AUTH, 1 ether);
     }
