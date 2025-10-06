@@ -8,6 +8,8 @@ import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 import {IValuation} from "../../../core/hub/interfaces/IValuation.sol";
 import {ISnapshotHook} from "../../../core/hub/interfaces/ISnapshotHook.sol";
 
+/// @title  INAVHook
+/// @notice Interface for receiving net asset value (NAV) update callbacks
 interface INAVHook {
     /// @notice Callback when there is a new net asset value (NAV) on a specific network.
     /// @param poolId The pool ID
@@ -31,6 +33,9 @@ interface INAVHook {
     ) external;
 }
 
+/// @title  INAVManager
+/// @notice Manager for multi-network net asset value (NAV) accounting and price calculations
+/// @dev    Tracks NAV across multiple networks using double-entry accounting with equity, liability, gain, and loss accounts
 interface INAVManager is ISnapshotHook {
     event UpdateManager(PoolId indexed poolId, address indexed manager, bool canManage);
     event SetNavHook(PoolId indexed poolId, address indexed navHook);

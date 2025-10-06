@@ -7,6 +7,9 @@ import {PoolId} from "../../../core/types/PoolId.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 import {ITrustedContractUpdate} from "../../../core/interfaces/IContractUpdate.sol";
 
+/// @title  IOnOfframpManager
+/// @notice Interface for managing onramp (deposits) and offramp (withdrawals) operations for a specific pool and share class
+/// @dev    Combines deposit, withdraw, and contract update functionality with relayer and asset whitelisting
 interface IOnOfframpManager is IDepositManager, IWithdrawManager, ITrustedContractUpdate {
     event UpdateOnramp(address indexed asset, bool isEnabled);
     event UpdateRelayer(address indexed relayer, bool isEnabled);
@@ -22,6 +25,11 @@ interface IOnOfframpManager is IDepositManager, IWithdrawManager, ITrustedContra
     error ERC6909NotSupported();
     error UnknownUpdateContractKind();
 
+    /// @notice Get the pool ID this manager is configured for
+    /// @return The pool identifier
     function poolId() external view returns (PoolId);
+
+    /// @notice Get the share class ID this manager is configured for
+    /// @return The share class identifier
     function scId() external view returns (ShareClassId);
 }

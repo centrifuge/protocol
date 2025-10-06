@@ -80,6 +80,9 @@ struct AxelarDestination {
     string addr;
 }
 
+/// @title  IAxelarAdapter
+/// @notice Cross-chain messaging adapter for Axelar network
+/// @dev    Bridges messages between Centrifuge chains using Axelar's General Message Passing (GMP)
 interface IAxelarAdapter is IAdapter, IAdapterWiring, IAxelarExecutable {
     //----------------------------------------------------------------------------------------------
     // Events

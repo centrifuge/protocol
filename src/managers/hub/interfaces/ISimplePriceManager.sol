@@ -8,6 +8,9 @@ import {D18} from "../../../misc/types/D18.sol";
 import {PoolId} from "../../../core/types/PoolId.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 
+/// @title  ISimplePriceManager
+/// @notice Manager for tracking pool metrics and share prices across multiple networks
+/// @dev    Implements INAVHook to receive NAV updates and calculate share prices
 interface ISimplePriceManager is INAVHook {
     event Update(
         PoolId indexed poolId, ShareClassId scId, uint128 newNAV, uint128 newIssuance, D18 newPricePoolPerShare

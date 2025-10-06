@@ -6,6 +6,9 @@ import {IVault} from "../../interfaces/IVault.sol";
 import {IShareToken} from "../../interfaces/IShareToken.sol";
 import {ShareClassId} from "../../../types/ShareClassId.sol";
 
+/// @title  IVaultFactory
+/// @notice Factory for deploying vault contracts for pool share classes
+/// @dev    Creates vaults linking pool IDs, share class IDs, assets, and tokens
 interface IVaultFactory {
     error UnsupportedTokenId();
 
