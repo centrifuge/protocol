@@ -10,7 +10,7 @@ import {Auth} from "../misc/Auth.sol";
 ///         messaging costs, allowing authorized parties to deposit funds and withdraw them to specified
 ///         addresses for managing transaction gas refunds.
 contract RefundEscrow is Auth, IRefundEscrow {
-    constructor(address owner) Auth(owner) {}
+    constructor() Auth(msg.sender) {}
 
     receive() external payable {}
 
