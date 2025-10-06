@@ -13,9 +13,8 @@ contract TestCommon is Test {
     address immutable ANY = makeAddr("any");
     address immutable AUTH = makeAddr("auth");
 
-    IScheduleAuth immutable scheduleAuth = IScheduleAuth(makeAddr("ScheduleAuth"));
-
     MessageProcessor processor;
+    IScheduleAuth immutable scheduleAuth = IScheduleAuth(makeAddr("ScheduleAuth"));
 
     function setUp() external {
         processor = new MessageProcessor(scheduleAuth, AUTH);
