@@ -111,6 +111,8 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     /// @inheritdoc IAdapter
     function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256) {
         AxelarDestination memory destination = destinations[centrifugeId];
+        require(bytes(destination.axelarId).length != 0, UnknownChainId());
+
         return axelarGasService.estimateGasFee(
             destination.axelarId, destination.addr, payload, gasLimit + RECEIVE_COST, bytes("")
         );

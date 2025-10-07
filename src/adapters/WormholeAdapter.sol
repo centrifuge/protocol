@@ -104,7 +104,9 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         view
         returns (uint256 nativePriceQuote)
     {
-        (nativePriceQuote,) =
-            relayer.quoteEVMDeliveryPrice(destinations[centrifugeId].wormholeId, 0, gasLimit + RECEIVE_COST);
+        WormholeDestination memory destination = destinations[centrifugeId];
+        require(destination.wormholeId != 0, UnknownChainId());
+
+        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(destination.wormholeId, 0, gasLimit + RECEIVE_COST);
     }
 }

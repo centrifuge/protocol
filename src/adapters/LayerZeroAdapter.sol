@@ -121,6 +121,8 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     /// @inheritdoc IAdapter
     function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256) {
         LayerZeroDestination memory destination = destinations[centrifugeId];
+        require(destination.layerZeroEid != 0, UnknownChainId());
+
         MessagingFee memory fee = endpoint.quote(_params(destination, payload, gasLimit + RECEIVE_COST), address(this));
         return fee.nativeFee;
     }
