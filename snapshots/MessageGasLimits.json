@@ -1,8 +1,8 @@
 {
-  "BENCHMARKING_RUN_ID": 1759748861,
+  "BENCHMARKING_RUN_ID": 1759831058,
   "scheduleUpgrade": 93833,
   "cancelUpgrade": 74240,
-  "recoverTokens": 151060,
+  "recoverTokens": 151038,
   "registerAsset": 103955,
   "setPoolAdapters": 481579,
   "request": 220587,
@@ -26,6 +26,6 @@
   "updateShares": 201531,
   "maxAssetPriceAge": 110238,
   "maxSharePriceAge": 107124,
-  "updateGatewayManager": 88442,
+  "updateGatewayManager": 88420,
   "untrustedContractUpdate": 83807
 }

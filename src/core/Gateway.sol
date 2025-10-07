@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "./types/PoolId.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
-import {IGateway} from "./interfaces/IGateway.sol";
+import {IGateway, GAS_FAIL_MESSAGE_STORAGE} from "./interfaces/IGateway.sol";
 import {IMessageLimits} from "./interfaces/IMessageLimits.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IProtocolPauser} from "./interfaces/IProtocolPauser.sol";
@@ -31,7 +31,6 @@ contract Gateway is Auth, Recoverable, IGateway {
     using BytesLib for bytes;
     using TransientStorageLib for bytes32;
 
-    uint256 public constant GAS_FAIL_MESSAGE_STORAGE = 40_000; // check testMessageFailBenchmark
     bytes32 public constant BATCH_LOCATORS_SLOT = bytes32(uint256(keccak256("Centrifuge/batch-locators")) - 1);
 
     uint16 public immutable localCentrifugeId;
