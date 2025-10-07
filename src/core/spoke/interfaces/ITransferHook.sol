@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {IERC165} from "../../../misc/interfaces/IERC7575.sol";
 
@@ -32,9 +32,16 @@ address constant ESCROW_HOOK_ID = address(uint160(0x1CF60));
 ///
 ///         Endorsed refers to core protocol contracts, which can be retrieved using root.endorsed(addr)
 interface ITransferHook is IERC165 {
-    // --- Errors ---
+    //----------------------------------------------------------------------------------------------
+    // Errors
+    //----------------------------------------------------------------------------------------------
+
     error TransferBlocked();
     error InvalidUpdate();
+
+    //----------------------------------------------------------------------------------------------
+    // Callbacks
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Callback on standard ERC20 transfer.
     /// @dev    MUST return bytes4(keccak256("onERC20Transfer(address,address,uint256,(bytes16,bytes16))"))
@@ -50,11 +57,18 @@ interface ITransferHook is IERC165 {
         external
         returns (bytes4);
 
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
     /// @notice Check if given transfer can be performed
     function checkERC20Transfer(address from, address to, uint256 value, HookData calldata hookData)
         external
         view
         returns (bool);
+
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Update a set of restriction for a token
     /// @dev    MAY be user specific, which would be included in the encoded `update` value

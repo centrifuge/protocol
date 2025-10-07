@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "../../interfaces/IGatewaySenders.sol";
+import {
+    ISpokeMessageSender, IHubMessageSender, IScheduleAuthMessageSender
+} from "../../interfaces/IGatewaySenders.sol";
 
-interface IMessageDispatcher is IRootMessageSender, ISpokeMessageSender, IHubMessageSender {
+interface IMessageDispatcher is IScheduleAuthMessageSender, ISpokeMessageSender, IHubMessageSender {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
 
@@ -15,7 +17,7 @@ interface IMessageDispatcher is IRootMessageSender, ISpokeMessageSender, IHubMes
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'hubRegistry' string value.
+    ///         Accepts a `bytes32` representation of 'hubRegistry' string value.
     /// @param data New value given to the `what` parameter
     function file(bytes32 what, address data) external;
 }

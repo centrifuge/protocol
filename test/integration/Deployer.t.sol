@@ -169,7 +169,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(messageDispatcher.localCentrifugeId(), CENTRIFUGE_ID);
-        assertEq(address(messageDispatcher.root()), address(root));
+        assertEq(address(messageDispatcher.scheduleAuth()), address(root));
         assertEq(address(messageDispatcher.tokenRecoverer()), address(tokenRecoverer));
         assertEq(address(messageDispatcher.gateway()), address(gateway));
         assertEq(address(messageDispatcher.spoke()), address(spoke));
@@ -187,7 +187,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(messageProcessor.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(messageProcessor.root()), address(root));
+        assertEq(address(messageProcessor.scheduleAuth()), address(root));
         assertEq(address(messageProcessor.tokenRecoverer()), address(tokenRecoverer));
         assertEq(address(messageProcessor.multiAdapter()), address(multiAdapter));
         assertEq(address(messageProcessor.gateway()), address(gateway));

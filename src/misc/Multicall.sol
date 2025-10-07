@@ -7,6 +7,8 @@ pragma solidity ^0.8.28;
 import {IMulticall} from "./interfaces/IMulticall.sol";
 import {ReentrancyProtection} from "./ReentrancyProtection.sol";
 
+/// @title  Multicall
+/// @notice Abstract contract that enables batch execution of multiple function calls in a single transaction.
 abstract contract Multicall is ReentrancyProtection, IMulticall {
     function multicall(bytes[] calldata data) public payable virtual protected {
         uint256 totalBytes = data.length;

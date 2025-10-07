@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
+import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
@@ -11,24 +13,24 @@ import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 
-import {IRoot} from "../../admin/interfaces/IRoot.sol";
-import {ITokenRecoverer} from "../../admin/interfaces/ITokenRecoverer.sol";
-
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {IMultiAdapter} from "../interfaces/IMultiAdapter.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
-import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "../interfaces/IGatewaySenders.sol";
+import {ISpokeMessageSender, IHubMessageSender, IScheduleAuthMessageSender} from "../interfaces/IGatewaySenders.sol";
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
-    IUpdateContractGatewayHandler,
+    IContractUpdateGatewayHandler,
     IVaultRegistryGatewayHandler
 } from "../interfaces/IGatewayHandlers.sol";
 
+/// @title  MessageDispatcher
+/// @notice This contract serializes and dispatches outgoing cross-chain messages, handling both local and
+///         remote destinations by either directly invoking local handlers or routing through the gateway.
 contract MessageDispatcher is Auth, IMessageDispatcher {
     using CastLib for *;
     using MessageLib for *;
@@ -38,20 +40,21 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     PoolId internal constant GLOBAL_POOL = PoolId.wrap(0);
     uint16 public immutable localCentrifugeId;
 
-    IRoot public immutable root;
-
     IGateway public gateway;
     IMultiAdapter public multiAdapter;
     ISpokeGatewayHandler public spoke;
+    IScheduleAuth public immutable scheduleAuth;
     IHubGatewayHandler public hubHandler;
     ITokenRecoverer public tokenRecoverer;
     IBalanceSheetGatewayHandler public balanceSheet;
     IVaultRegistryGatewayHandler public vaultRegistry;
-    IUpdateContractGatewayHandler public contractUpdater;
+    IContractUpdateGatewayHandler public contractUpdater;
 
-    constructor(uint16 localCentrifugeId_, IRoot root_, IGateway gateway_, address deployer) Auth(deployer) {
+    constructor(uint16 localCentrifugeId_, IScheduleAuth scheduleAuth_, IGateway gateway_, address deployer)
+        Auth(deployer)
+    {
         localCentrifugeId = localCentrifugeId_;
-        root = root_;
+        scheduleAuth = scheduleAuth_;
         gateway = gateway_;
     }
 
@@ -65,8 +68,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
-        else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
+        else if (what == "contractUpdater") contractUpdater = IContractUpdateGatewayHandler(data);
         else if (what == "tokenRecoverer") tokenRecoverer = ITokenRecoverer(data);
         else revert FileUnrecognizedParam();
 
@@ -172,11 +175,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         PoolId poolId,
         ShareClassId scId,
         D18 pricePoolPerShare,
+        uint64 computedAt,
         address refund
     ) external payable auth {
-        uint64 timestamp = block.timestamp.toUint64();
         if (chainId == localCentrifugeId) {
-            spoke.updatePricePoolPerShare(poolId, scId, pricePoolPerShare, timestamp);
+            spoke.updatePricePoolPerShare(poolId, scId, pricePoolPerShare, computedAt);
             _refund(refund);
         } else {
             _send(
@@ -185,7 +188,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     price: pricePoolPerShare.raw(),
-                    timestamp: timestamp
+                    timestamp: computedAt
                 }).serialize(),
                 0,
                 refund
@@ -244,7 +247,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendUpdateContract(
+    function sendTrustedContractUpdate(
         uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
@@ -254,13 +257,17 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address refund
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            contractUpdater.execute(poolId, scId, target.toAddress(), payload);
+            contractUpdater.trustedCall(poolId, scId, target.toAddress(), payload);
             _refund(refund);
         } else {
             _send(
                 centrifugeId,
-                MessageLib.UpdateContract({poolId: poolId.raw(), scId: scId.raw(), target: target, payload: payload})
-                    .serialize(),
+                MessageLib.TrustedContractUpdate({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    target: target,
+                    payload: payload
+                }).serialize(),
                 extraGasLimit,
                 refund
             );
@@ -382,27 +389,27 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
-    /// @inheritdoc IRootMessageSender
+    /// @inheritdoc IScheduleAuthMessageSender
     function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target, address refund) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            root.scheduleRely(target.toAddress());
+            scheduleAuth.scheduleRely(target.toAddress());
             _refund(refund);
         } else {
             _send(centrifugeId, MessageLib.ScheduleUpgrade({target: target}).serialize(), 0, refund);
         }
     }
 
-    /// @inheritdoc IRootMessageSender
+    /// @inheritdoc IScheduleAuthMessageSender
     function sendCancelUpgrade(uint16 centrifugeId, bytes32 target, address refund) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            root.cancelRely(target.toAddress());
+            scheduleAuth.cancelRely(target.toAddress());
             _refund(refund);
         } else {
             _send(centrifugeId, MessageLib.CancelUpgrade({target: target}).serialize(), 0, refund);
         }
     }
 
-    /// @inheritdoc IRootMessageSender
+    /// @inheritdoc IScheduleAuthMessageSender
     function sendRecoverTokens(
         uint16 centrifugeId,
         bytes32 target,
@@ -597,6 +604,37 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 MessageLib.Request({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw(), payload: payload})
                     .serialize(),
                 0,
+                refund
+            );
+        }
+    }
+
+    /// @inheritdoc ISpokeMessageSender
+    function sendUntrustedContractUpdate(
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 target,
+        bytes calldata payload,
+        bytes32 sender,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable auth {
+        uint16 hubCentrifugeId = poolId.centrifugeId();
+
+        if (hubCentrifugeId == localCentrifugeId) {
+            contractUpdater.untrustedCall(poolId, scId, target.toAddress(), payload, localCentrifugeId, sender);
+            _refund(refund);
+        } else {
+            _send(
+                hubCentrifugeId,
+                MessageLib.UntrustedContractUpdate({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    target: target,
+                    payload: payload,
+                    sender: sender
+                }).serialize(),
+                extraGasLimit,
                 refund
             );
         }

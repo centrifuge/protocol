@@ -13,6 +13,7 @@ import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IValuation} from "../core/hub/interfaces/IValuation.sol";
 import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
 
+/// @title  OracleValuation
 /// @notice Provides an implementation for valuation of assets by trusted price feeders.
 ///         Prices should be denominated in the pool currency.
 ///         Quorum is always 1, i.e. there is no aggregation of prices across multiple feeders.

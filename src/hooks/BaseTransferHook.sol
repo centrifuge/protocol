@@ -16,7 +16,7 @@ import {PoolId} from "../core/types/PoolId.sol";
 import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
-import {IUpdateContract} from "../core/spoke/interfaces/IUpdateContract.sol";
+import {ITrustedContractUpdate} from "../core/interfaces/IContractUpdate.sol";
 import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
 
 import {IRoot} from "../admin/interfaces/IRoot.sol";
@@ -24,9 +24,12 @@ import {IRoot} from "../admin/interfaces/IRoot.sol";
 import {UpdateContractType, UpdateContractMessageLib} from "../libraries/UpdateContractMessageLib.sol";
 
 /// @title  BaseTransferHook
+/// @notice Abstract base contract for share token transfer restrictions that provides memberlist management,
+///         account freezing capabilities, and cross-chain message handling, while encoding member validity
+///         and freeze status in the hookData structure for efficient on-chain verification.
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
 ///         the last bit is used to denote whether the account is frozen.
-abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHook, IUpdateContract {
+abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHook, ITrustedContractUpdate {
     using BitmapLib for *;
     using UpdateRestrictionMessageLib for *;
     using BytesLib for bytes;
@@ -154,8 +157,8 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IUpdateContract
-    function update(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
+    /// @inheritdoc ITrustedContractUpdate
+    function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
         uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
 
         if (kind == uint8(UpdateContractType.UpdateAddress)) {

@@ -65,8 +65,8 @@ contract NAVManagerIntegrationTest is BaseTest {
 
         navManager.setNAVHook(POOL_A, INAVHook(address(simplePriceManager)));
 
-        simplePriceManager.addNetwork(POOL_A, CHAIN_CP);
-        simplePriceManager.addNetwork(POOL_A, CHAIN_CV);
+        simplePriceManager.addNotifiedNetwork(POOL_A, CHAIN_CP);
+        simplePriceManager.addNotifiedNetwork(POOL_A, CHAIN_CV);
 
         vm.stopPrank();
 
@@ -153,7 +153,7 @@ contract NAVManagerIntegrationTest is BaseTest {
         assertEq(spokeGain, 100e18);
         assertTrue(spokeGainIsPositive);
         assertEq(hubLoss, 250e18);
-        assertFalse(hubLossIsPositive);
+        assertTrue(hubLossIsPositive);
         assertEq(navHub, 250e18);
 
         assertEq(navSpoke, 3400e18);
@@ -269,7 +269,7 @@ contract NAVManagerIntegrationTest is BaseTest {
         assertEq(spokeGain, 100e18);
         assertTrue(spokeGainIsPositive);
         assertEq(hubLoss, 250e18);
-        assertFalse(hubLossIsPositive);
+        assertTrue(hubLossIsPositive);
         assertEq(spokeEquityBefore, 3300e18);
         assertTrue(spokeEquityIsPositive);
         assertEq(hubEquityBefore, 500e18);

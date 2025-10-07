@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
+import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 import {MessageType, MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
@@ -9,9 +11,6 @@ import {D18} from "../../misc/types/D18.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
-
-import {IRoot} from "../../admin/interfaces/IRoot.sol";
-import {ITokenRecoverer} from "../../admin/interfaces/ITokenRecoverer.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
@@ -26,10 +25,14 @@ import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
-    IUpdateContractGatewayHandler,
+    IContractUpdateGatewayHandler,
     IVaultRegistryGatewayHandler
 } from "../interfaces/IGatewayHandlers.sol";
 
+/// @title  MessageProcessor
+/// @notice This contract deserializes and processes incoming cross-chain messages, routing them to appropriate
+///         handlers based on message type, validating source chains for privileged operations, and managing
+///         unpaid mode for internal protocol message processing.
 contract MessageProcessor is Auth, IMessageProcessor {
     using CastLib for *;
     using MessageLib for *;
@@ -37,19 +40,18 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     uint16 public constant MAINNET_CENTRIFUGE_ID = 1;
 
-    IRoot public immutable root;
-
     IGateway public gateway;
     IMultiAdapter public multiAdapter;
     ISpokeGatewayHandler public spoke;
     IHubGatewayHandler public hubHandler;
     ITokenRecoverer public tokenRecoverer;
+    IScheduleAuth public immutable scheduleAuth;
     IBalanceSheetGatewayHandler public balanceSheet;
     IVaultRegistryGatewayHandler public vaultRegistry;
-    IUpdateContractGatewayHandler public contractUpdater;
+    IContractUpdateGatewayHandler public contractUpdater;
 
-    constructor(IRoot root_, address deployer) Auth(deployer) {
-        root = root_;
+    constructor(IScheduleAuth scheduleAuth_, address deployer) Auth(deployer) {
+        scheduleAuth = scheduleAuth_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -63,8 +65,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
-        else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
+        else if (what == "contractUpdater") contractUpdater = IContractUpdateGatewayHandler(data);
         else if (what == "tokenRecoverer") tokenRecoverer = ITokenRecoverer(data);
         else revert FileUnrecognizedParam();
 
@@ -86,11 +88,11 @@ contract MessageProcessor is Auth, IMessageProcessor {
         if (kind == MessageType.ScheduleUpgrade) {
             require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
-            root.scheduleRely(m.target.toAddress());
+            scheduleAuth.scheduleRely(m.target.toAddress());
         } else if (kind == MessageType.CancelUpgrade) {
             require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.CancelUpgrade memory m = message.deserializeCancelUpgrade();
-            root.cancelRely(m.target.toAddress());
+            scheduleAuth.cancelRely(m.target.toAddress());
         } else if (kind == MessageType.RecoverTokens) {
             require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();
@@ -161,9 +163,21 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateRestriction) {
             MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
             spoke.updateRestriction(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
-        } else if (kind == MessageType.UpdateContract) {
-            MessageLib.UpdateContract memory m = MessageLib.deserializeUpdateContract(message);
-            contractUpdater.execute(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload);
+        } else if (kind == MessageType.TrustedContractUpdate) {
+            MessageLib.TrustedContractUpdate memory m = MessageLib.deserializeTrustedContractUpdate(message);
+            contractUpdater.trustedCall(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload
+            );
+        } else if (kind == MessageType.UntrustedContractUpdate) {
+            MessageLib.UntrustedContractUpdate memory m = MessageLib.deserializeUntrustedContractUpdate(message);
+            contractUpdater.untrustedCall(
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                m.target.toAddress(),
+                m.payload,
+                centrifugeId,
+                m.sender
+            );
         } else if (kind == MessageType.RequestCallback) {
             MessageLib.RequestCallback memory m = MessageLib.deserializeRequestCallback(message);
             spoke.requestCallback(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);

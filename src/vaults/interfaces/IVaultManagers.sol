@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {IBaseVault} from "./IBaseVault.sol";
 import {IBaseRequestManager} from "./IBaseRequestManager.sol";
@@ -9,12 +9,15 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IUpdateContract} from "../../core/spoke/interfaces/IUpdateContract.sol";
+import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
+
+//----------------------------------------------------------------------------------------------
+// Deposit Manager Interfaces
+//----------------------------------------------------------------------------------------------
 
 interface IDepositManager {
     /// @notice Processes owner's asset deposit after the epoch has been executed on the corresponding CP instance and
-    /// the deposit order
-    ///         has been successfully processed (partial fulfillment possible).
+    ///         the deposit order has been successfully processed (partial fulfillment possible).
     ///         Shares are transferred from the escrow to the receiver. Amount of shares is computed based of the amount
     ///         of assets and the owner's share price.
     /// @dev    The assets required to fulfill the deposit are already locked in escrow upon calling requestDeposit.
@@ -26,8 +29,7 @@ interface IDepositManager {
         returns (uint256 shares);
 
     /// @notice Processes owner's share mint after the epoch has been executed on the corresponding CP instance and the
-    /// deposit order has
-    ///         been successfully processed (partial fulfillment possible).
+    ///         deposit order has been successfully processed (partial fulfillment possible).
     ///         Shares are transferred from the escrow to the receiver. Amount of assets is computed based of the amount
     ///         of shares and the owner's share price.
     /// @dev    The assets required to fulfill the mint are already locked in escrow upon calling requestDeposit.
@@ -87,7 +89,7 @@ interface IAsyncDepositManager is IDepositManager, IBaseRequestManager {
         returns (uint256 assets);
 
     /// @notice Indicates whether a user has pending deposit requests and returns the total deposit request asset
-    /// request value.
+    ///         request value.
     function pendingDepositRequest(IBaseVault vault, address user) external view returns (uint256 assets);
 
     /// @notice Indicates whether a user has pending deposit request cancellations.
@@ -97,6 +99,10 @@ interface IAsyncDepositManager is IDepositManager, IBaseRequestManager {
     ///         value in assets.
     function claimableCancelDepositRequest(IBaseVault vault, address user) external view returns (uint256 assets);
 }
+
+//----------------------------------------------------------------------------------------------
+// Redeem Manager Interfaces
+//----------------------------------------------------------------------------------------------
 
 interface IRedeemManager {
     event TriggerRedeemRequest(
@@ -109,8 +115,7 @@ interface IRedeemManager {
     );
 
     /// @notice Processes owner's share redemption after the epoch has been executed on the corresponding CP instance
-    /// and the redeem order
-    ///         has been successfully processed (partial fulfillment possible).
+    ///         and the redeem order has been successfully processed (partial fulfillment possible).
     ///         Assets are transferred from the escrow to the receiver. Amount of assets is computed based of the amount
     ///         of shares and the owner's share price.
     /// @dev    The shares required to fulfill the redemption were already locked in escrow on requestRedeem and burned
@@ -122,8 +127,7 @@ interface IRedeemManager {
         returns (uint256 assets);
 
     /// @notice Processes owner's asset withdrawal after the epoch has been executed on the corresponding CP instance
-    /// and the redeem order
-    ///         has been successfully processed (partial fulfillment possible).
+    ///         and the redeem order has been successfully processed (partial fulfillment possible).
     ///         Assets are transferred from the escrow to the receiver. Amount of shares is computed based of the amount
     ///         of shares and the owner's share price.
     /// @dev    The shares required to fulfill the withdrawal were already locked in escrow on requestRedeem and burned
@@ -196,6 +200,10 @@ interface IAsyncRedeemManager is IRedeemManager, IBaseRequestManager {
     function claimableCancelRedeemRequest(IBaseVault vault, address user) external view returns (uint256 shares);
 }
 
+//----------------------------------------------------------------------------------------------
+// Price Data Structures
+//----------------------------------------------------------------------------------------------
+
 /// @dev Solely used locally as protection against stack-too-deep
 struct Prices {
     /// @dev Price of 1 asset unit per share unit
@@ -205,6 +213,10 @@ struct Prices {
     /// @dev Price of 1 pool unit per share unit
     D18 poolPerShare;
 }
+
+//----------------------------------------------------------------------------------------------
+// Sync Manager Interfaces
+//----------------------------------------------------------------------------------------------
 
 interface ISyncDepositValuation {
     /// @notice Returns the pool price per share for a given pool and share class, asset, and asset id.
@@ -216,7 +228,7 @@ interface ISyncDepositValuation {
     function pricePoolPerShare(PoolId poolId, ShareClassId scId) external view returns (D18 price);
 }
 
-interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, IUpdateContract {
+interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedContractUpdate {
     event SetValuation(PoolId indexed poolId, ShareClassId indexed scId, address valuation);
     event SetMaxReserve(
         PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 maxReserve
@@ -258,6 +270,10 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, IUpdateCon
         external;
 }
 
+//----------------------------------------------------------------------------------------------
+// Async Investment Data Structures
+//----------------------------------------------------------------------------------------------
+
 /// @dev Vault requests and deposit/redeem bookkeeping per user
 struct AsyncInvestmentState {
     /// @dev Shares that can be claimed using `mint()`
@@ -284,7 +300,11 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IUpdateContract {
+//----------------------------------------------------------------------------------------------
+// Async Request Manager Interface
+//----------------------------------------------------------------------------------------------
+
+interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, ITrustedContractUpdate {
     event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
     event WithdrawSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
 
@@ -355,7 +375,6 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IUp
         D18 pricePoolPerShare
     ) external;
 
-    // --- Deposits ---
     /// @notice Fulfills pending deposit requests after successful epoch execution on Hub.
     ///         The amount of shares that can be claimed by the user is minted and moved to the escrow contract.
     ///         The maxMint and claimableCancelDepositRequest bookkeeping values are updated.
@@ -374,7 +393,6 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IUp
         uint128 cancelledAssetAmount
     ) external;
 
-    // --- Redeems ---
     /// @notice Fulfills pending redeem requests after successful epoch execution on Hub.
     ///         The amount of redeemed shares is burned. The amount of assets that can be claimed by the user in
     ///         return is locked in the escrow contract.

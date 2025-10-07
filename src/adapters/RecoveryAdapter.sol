@@ -6,7 +6,10 @@ import {Auth} from "../misc/Auth.sol";
 import {IAdapter} from "../core/interfaces/IAdapter.sol";
 import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
 
-/// @notice An adapter used to recover messages. It skips any outgoing message.
+/// @title  RecoveryAdapter
+/// @notice An adapter used to recover messages that allows authenticated parties to inject messages
+///         directly into the protocol entrypoint, bypassing normal cross-chain messaging, while
+///         skipping any outgoing messages to prevent unintended external communication.
 contract RecoveryAdapter is Auth, IAdapter, IMessageHandler {
     IMessageHandler public immutable entrypoint;
 

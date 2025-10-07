@@ -32,7 +32,7 @@ import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
-import {IUpdateContract} from "../core/spoke/interfaces/IUpdateContract.sol";
+import {ITrustedContractUpdate} from "../core/interfaces/IContractUpdate.sol";
 
 import {UpdateContractMessageLib, UpdateContractType} from "../libraries/UpdateContractMessageLib.sol";
 
@@ -207,8 +207,8 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
     // Gateway handlers
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IUpdateContract
-    function update(PoolId poolId, ShareClassId, bytes memory payload) external auth {
+    /// @inheritdoc ITrustedContractUpdate
+    function trustedCall(PoolId poolId, ShareClassId, bytes memory payload) external auth {
         uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
 
         if (kind == uint8(UpdateContractType.Withdraw)) {

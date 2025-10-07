@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {IShareToken} from "../../interfaces/IShareToken.sol";
 
+/// @title  ITokenFactory
+/// @notice Factory for deploying deterministic share class tokens using CREATE2
+/// @dev    Enables same-address deployments across different EVM chains using salt
 interface ITokenFactory {
     event File(bytes32 what, address[] addr);
 

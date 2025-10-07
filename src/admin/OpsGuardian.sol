@@ -12,6 +12,9 @@ import {AssetId} from "../core/types/AssetId.sol";
 import {IAdapter} from "../core/interfaces/IAdapter.sol";
 import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
 
+/// @title  OpsGuardian
+/// @notice This contract manages operational aspects of the protocol including adapter initialization,
+///         network wiring, and pool creation.
 contract OpsGuardian is IOpsGuardian {
     PoolId public constant GLOBAL_POOL = PoolId.wrap(0);
 

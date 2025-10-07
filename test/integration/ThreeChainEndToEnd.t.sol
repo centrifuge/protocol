@@ -99,7 +99,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         _testConfigurePool(direction);
 
         vm.startPrank(FM);
-        h.hub.updateSharePrice(POOL_A, SC_1, d18(1, 1));
+        h.hub.updateSharePrice(POOL_A, SC_1, d18(1, 1), uint64(block.timestamp));
         h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, sB.centrifugeId, REFUND);
 
         // B: Mint shares

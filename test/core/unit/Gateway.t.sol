@@ -872,6 +872,10 @@ contract IntegrationMock is Test {
         wasCalled = true;
     }
 
+    function _justLock() external payable {
+        gateway.lockCallback();
+    }
+
     function callNested(address refund) external {
         gateway.withBatch(abi.encodeWithSelector(this._nested.selector), refund);
     }
@@ -889,12 +893,32 @@ contract IntegrationMock is Test {
     }
 }
 
+contract AttackerIntegrationMock is Test {
+    IntegrationMock prey;
+    IGateway gateway;
+
+    constructor(IGateway gateway_, IntegrationMock prey_) {
+        gateway = gateway_;
+        prey = prey_;
+    }
+
+    function callAttack(address refund) external {
+        gateway.withBatch(abi.encodeWithSelector(this._attack.selector), refund);
+    }
+
+    function _attack() external payable {
+        prey._justLock();
+    }
+}
+
 contract GatewayTestWithBatch is GatewayTest {
     IntegrationMock integration;
+    AttackerIntegrationMock attacker;
 
     function setUp() public override {
         super.setUp();
         integration = new IntegrationMock(gateway);
+        attacker = new AttackerIntegrationMock(gateway, integration);
     }
 
     function testErrCallFailedWithEmptyRevert() public {
@@ -907,6 +931,12 @@ contract GatewayTestWithBatch is GatewayTest {
         vm.prank(ANY);
         vm.expectRevert(IGateway.CallbackWasNotLocked.selector);
         integration.callNotLocked(REFUND);
+    }
+
+    function testErrCallbackWasNotFromSender() public {
+        vm.prank(ANY);
+        vm.expectRevert(IGateway.CallbackWasNotFromSender.selector);
+        attacker.callAttack(REFUND);
     }
 
     function testWithCallback() public {

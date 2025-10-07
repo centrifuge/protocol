@@ -11,9 +11,9 @@ import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 
-/// -----------------------------------------------------
-///  Hub Handlers
-/// -----------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+// Hub Handlers
+//--------------------------------------------------------------------------------------------------
 
 /// @notice Interface for Hub methods called by messages
 interface IHubGatewayHandler {
@@ -64,9 +64,9 @@ interface IHubGatewayHandler {
     ) external;
 }
 
-/// -----------------------------------------------------
-///  Vaults Handlers
-/// -----------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+// Spoke Handlers
+//--------------------------------------------------------------------------------------------------
 
 /// @notice Interface for spoke related methods called by messages
 interface ISpokeGatewayHandler {
@@ -149,13 +149,27 @@ interface ISpokeGatewayHandler {
 }
 
 /// @notice Interface for the update contract method, called by message
-interface IUpdateContractGatewayHandler {
-    /// @notice Updates the target address. Generic update function from Hub to Vaults
+interface IContractUpdateGatewayHandler {
+    /// @notice Updates the target address. Generic update function from Hub to Spoke
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
     /// @param  target The target address to be called
     /// @param  update The payload to be processed by the target address
-    function execute(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
+    function trustedCall(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
+
+    /// @notice Updates the target address. Generic update function from Spoke to Hub
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  target The target address to be called
+    /// @param  update The payload to be processed by the target address
+    function untrustedCall(
+        PoolId poolId,
+        ShareClassId scId,
+        address target,
+        bytes memory update,
+        uint16 centrifugeId,
+        bytes32 sender
+    ) external;
 }
 
 /// @notice Interface for methods implemented by a balance sheet

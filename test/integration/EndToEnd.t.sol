@@ -33,6 +33,7 @@ import {IMessageHandler} from "../../src/core/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/MultiAdapter.sol";
 import {ILocalCentrifugeId} from "../../src/core/interfaces/IGatewaySenders.sol";
 import {MAX_MESSAGE_COST} from "../../src/core/messaging/interfaces/IGasService.sol";
+import {IUntrustedContractUpdate} from "../../src/core/interfaces/IContractUpdate.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
@@ -326,6 +327,8 @@ contract EndToEndDeployment is Test {
     }
 }
 
+contract IsContract {}
+
 /// Common and generic utilities ready to be used in different tests
 contract EndToEndUtils is EndToEndDeployment {
     using MathLib for *;
@@ -445,8 +448,8 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(poolManager);
         hub.hub.createAccount(poolId, ASSET_ACCOUNT, true);
         hub.hub.createAccount(poolId, EQUITY_ACCOUNT, false);
-        hub.hub.createAccount(poolId, LOSS_ACCOUNT, false);
         hub.hub.createAccount(poolId, GAIN_ACCOUNT, false);
+        hub.hub.createAccount(poolId, LOSS_ACCOUNT, true);
         vm.stopPrank();
     }
 
@@ -570,7 +573,7 @@ contract EndToEndFlows is EndToEndUtils {
         vm.stopPrank();
 
         vm.startPrank(poolManager);
-        hub.hub.updateSharePrice(poolId, shareClassId, sharePrice);
+        hub.hub.updateSharePrice(poolId, shareClassId, sharePrice, uint64(block.timestamp));
         hub.hub.notifySharePrice{value: GAS}(poolId, shareClassId, spoke.centrifugeId, REFUND);
         hub.hub.notifyAssetPrice{value: GAS}(poolId, shareClassId, assetId, REFUND);
 
@@ -657,7 +660,7 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(poolManager);
         uint32 issueEpochId = hub.batchRequestManager.nowIssueEpoch(poolId, shareClassId, assetId);
-        (, D18 sharePrice) = hub.shareClassManager.metrics(poolId, shareClassId);
+        (D18 sharePrice,) = hub.shareClassManager.pricePoolPerShare(poolId, shareClassId);
         hub.batchRequestManager.issueShares{value: GAS}(
             poolId, shareClassId, assetId, issueEpochId, sharePrice, HOOK_GAS, REFUND
         );
@@ -835,7 +838,7 @@ contract EndToEndFlows is EndToEndUtils {
         hub.batchRequestManager.approveRedeems(poolId, shareClassId, assetId, redeemEpochId, shares, pricePoolPerAsset);
 
         uint32 revokeEpochId = hub.batchRequestManager.nowRevokeEpoch(poolId, shareClassId, assetId);
-        (, D18 sharePrice) = hub.shareClassManager.metrics(poolId, shareClassId);
+        (D18 sharePrice,) = hub.shareClassManager.pricePoolPerShare(poolId, shareClassId);
         hub.batchRequestManager.revokeShares{value: GAS}(
             poolId, shareClassId, assetId, revokeEpochId, sharePrice, HOOK_GAS, REFUND
         );
@@ -1286,5 +1289,30 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         );
 
         assertEq(RECEIVER.balance, VALUE);
+    }
+
+    /// forge-config: default.isolate = true
+    function testUntrustedContractUpdate(bool sameChain) public {
+        _setSpoke(sameChain);
+
+        address hubContract = address(new IsContract());
+        address spokeSender = makeAddr("SpokeSender");
+
+        vm.mockCall(
+            hubContract,
+            abi.encodeWithSelector(
+                IUntrustedContractUpdate.untrustedCall.selector,
+                POOL_A,
+                SC_1,
+                "data",
+                s.centrifugeId,
+                spokeSender.toBytes32()
+            ),
+            abi.encode()
+        );
+
+        vm.startPrank(spokeSender);
+        vm.deal(spokeSender, GAS);
+        s.spoke.updateContract{value: GAS}(POOL_A, SC_1, hubContract.toBytes32(), "data", EXTRA_GAS, REFUND);
     }
 }

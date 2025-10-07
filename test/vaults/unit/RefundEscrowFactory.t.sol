@@ -14,6 +14,7 @@ contract RefundEscrowFactoryTest is Test {
     address immutable ANY = makeAddr("any");
     address immutable AUTH = makeAddr("auth");
     address immutable CONTROLLER = makeAddr("receiver");
+    address immutable ROOT = makeAddr("root");
 
     PoolId constant POOL_A = PoolId.wrap(1);
 
@@ -53,9 +54,46 @@ contract RefundEscrowFactoryTestNewEscrow is RefundEscrowFactoryTest {
         factory.file("controller", CONTROLLER);
 
         vm.prank(AUTH);
+        factory.file("root", ROOT);
+
+        vm.prank(AUTH);
         IRefundEscrow escrow = factory.newEscrow(POOL_A);
 
         assertEq(address(escrow), address(factory.get(POOL_A)));
-        assertEq(IAuth(address(escrow)).wards(CONTROLLER), 1);
+        assertEq(IAuth(address(escrow)).wards(CONTROLLER), 1, "Controller should have ward");
+        assertEq(IAuth(address(escrow)).wards(ROOT), 1, "Root should have ward");
+        assertEq(IAuth(address(escrow)).wards(address(factory)), 0, "Factory should not have ward");
+    }
+
+    function testCannotDeployTwiceForSamePool() external {
+        vm.prank(AUTH);
+        factory.file("controller", CONTROLLER);
+
+        vm.prank(AUTH);
+        factory.newEscrow(POOL_A);
+
+        // Second deployment should revert (CREATE2 constraint)
+        vm.prank(AUTH);
+        vm.expectRevert();
+        factory.newEscrow(POOL_A);
+    }
+}
+
+contract RefundEscrowFactoryTestControllerMigration is RefundEscrowFactoryTest {
+    function testControllerMigrationMaintainsAddresses() external {
+        address controller1 = makeAddr("controller1");
+        address controller2 = makeAddr("controller2");
+
+        vm.prank(AUTH);
+        factory.file("controller", controller1);
+
+        vm.prank(AUTH);
+        IRefundEscrow escrow = factory.newEscrow(POOL_A);
+        address escrowAddress = address(escrow);
+        assertEq(IAuth(address(escrow)).wards(controller1), 1);
+
+        vm.prank(AUTH);
+        factory.file("controller", controller2);
+        assertEq(address(factory.get(POOL_A)), escrowAddress, "Address changed after controller migration");
     }
 }

@@ -33,6 +33,10 @@ contract GasServiceTest is Test {
             vm.assume(vaultKind <= uint8(type(VaultUpdateKind).max));
         }
 
+        if (message.messageCode() == uint8(MessageType.UntrustedContractUpdate)) {
+            vm.assume(message.length >= 91); // Minimum length without payload
+        }
+
         uint256 messageGasLimit = service.messageGasLimit(CENTRIFUGE_ID, message);
         assert(messageGasLimit > service.BASE_COST());
         assert(messageGasLimit <= MAX_MESSAGE_COST);

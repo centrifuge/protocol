@@ -16,7 +16,7 @@ interface ILocalCentrifugeId {
 }
 
 /// @notice Interface for dispatch-only gateway
-interface IRootMessageSender {
+interface IScheduleAuthMessageSender {
     /// @notice Creates and send the message
     function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target, address refund) external payable;
 
@@ -74,6 +74,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         ShareClassId scId,
         D18 pricePoolPerShare,
+        uint64 computedAt,
         address refund
     ) external payable;
 
@@ -97,7 +98,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external payable;
 
     /// @notice Creates and send the message
-    function sendUpdateContract(
+    function sendTrustedContractUpdate(
         uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
@@ -231,4 +232,22 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
     function sendRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload, address refund)
         external
         payable;
+
+    /// @notice Creates and sends an UntrustedContractUpdate message
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param target The hub-side target contract (as bytes32)
+    /// @param sender The spoke-side initiator (as bytes32)
+    /// @param payload The update payload
+    /// @param extraGasLimit Additional gas for cross-chain execution
+    /// @param refund Address to refund excess payment
+    function sendUntrustedContractUpdate(
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 target,
+        bytes calldata payload,
+        bytes32 sender,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 }

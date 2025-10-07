@@ -24,8 +24,8 @@ contract NAVManager is INAVManager, Auth {
     IHubRegistry public immutable hubRegistry;
 
     mapping(PoolId => INAVHook) public navHook;
-    mapping(PoolId poolId => mapping(address => bool)) public manager;
-    mapping(PoolId poolId => mapping(uint16 centrifugeId => bool)) public initialized;
+    mapping(PoolId => mapping(address => bool)) public manager;
+    mapping(PoolId => mapping(uint16 centrifugeId => bool)) public initialized;
 
     constructor(IHub hub_, address deployer) Auth(deployer) {
         hub = hub_;
@@ -71,7 +71,7 @@ contract NAVManager is INAVManager, Auth {
         hub.createAccount(poolId, equityAccount(centrifugeId), false);
         hub.createAccount(poolId, liabilityAccount(centrifugeId), false);
         hub.createAccount(poolId, gainAccount(centrifugeId), false);
-        hub.createAccount(poolId, lossAccount(centrifugeId), false);
+        hub.createAccount(poolId, lossAccount(centrifugeId), true);
 
         initialized[poolId][centrifugeId] = true;
 
@@ -173,31 +173,28 @@ contract NAVManager is INAVManager, Auth {
         AccountId gainAccount_ = gainAccount(centrifugeId);
         AccountId lossAccount_ = lossAccount(centrifugeId);
 
-        (bool gainIsPositive, uint128 gainValue) = accounting.accountValue(poolId, gainAccount_);
-        (bool lossIsPositive, uint128 lossValue) = accounting.accountValue(poolId, lossAccount_);
+        (, uint128 gainValue) = accounting.accountValue(poolId, gainAccount_);
+        (, uint128 lossValue) = accounting.accountValue(poolId, lossAccount_);
 
-        uint256 count = (gainIsPositive && gainValue > 0 ? 1 : 0) + (!lossIsPositive && lossValue > 0 ? 1 : 0);
+        uint256 count = (gainValue > 0 ? 1 : 0) + (lossValue > 0 ? 1 : 0);
+        if (count == 0) return;
 
+        uint256 index = 0;
         JournalEntry[] memory debits = new JournalEntry[](count);
         JournalEntry[] memory credits = new JournalEntry[](count);
 
-        uint256 index = 0;
-
-        // Because we're crediting the gain account for gains and debiting the loss account for losses (and loss is
-        // credit-normal), gain should never be negative, and loss should never be positive.
-        // Still, double-check here.
-        if (gainIsPositive && gainValue > 0) {
+        if (gainValue > 0) {
             debits[index] = JournalEntry({value: gainValue, accountId: gainAccount_});
             credits[index] = JournalEntry({value: gainValue, accountId: equityAccount_});
             index++;
         }
 
-        if (!lossIsPositive && lossValue > 0) {
+        if (lossValue > 0) {
             debits[index] = JournalEntry({value: lossValue, accountId: equityAccount_});
             credits[index] = JournalEntry({value: lossValue, accountId: lossAccount_});
         }
 
-        if (count > 0) hub.updateJournal(poolId, debits, credits);
+        hub.updateJournal(poolId, debits, credits);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -211,9 +208,7 @@ contract NAVManager is INAVManager, Auth {
         (bool lossIsPositive, uint128 loss) = accounting.accountValue(poolId, lossAccount(centrifugeId));
         (bool liabilityIsPositive, uint128 liability) = accounting.accountValue(poolId, liabilityAccount(centrifugeId));
 
-        require(
-            equityIsPositive && gainIsPositive && liabilityIsPositive && (!lossIsPositive || loss == 0), InvalidNAV()
-        );
+        require(equityIsPositive && gainIsPositive && lossIsPositive && liabilityIsPositive, InvalidNAV());
 
         return equity + gain - loss - liability;
     }

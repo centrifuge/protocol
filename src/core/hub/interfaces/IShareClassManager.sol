@@ -15,20 +15,23 @@ struct ShareClassMetadata {
     bytes32 salt;
 }
 
-struct ShareClassMetrics {
-    /// @dev Total number of shares
-    uint128 totalIssuance;
-    /// @dev The latest net asset value per share class token
-    D18 pricePoolPerShare;
+struct Price {
+    /// @dev The latest price per share class token
+    D18 price;
+    /// @dev Timestamp when the price pool per share was computed
+    uint64 computedAt;
 }
 
 interface IShareClassManager {
-    /// Events
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
     event AddShareClass(
         PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index, string name, string symbol, bytes32 salt
     );
     event UpdateMetadata(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol);
-    event UpdateShareClass(PoolId indexed poolId, ShareClassId indexed scId, D18 pricePoolPerShare);
+    event UpdatePricePoolPerShare(PoolId indexed poolId, ShareClassId indexed scId, D18 price, uint64 computedAt);
     event RemoteIssueShares(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId indexed scId, uint128 amount
     );
@@ -36,7 +39,10 @@ interface IShareClassManager {
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId indexed scId, uint128 amount
     );
 
-    /// Errors
+    //----------------------------------------------------------------------------------------------
+    // Errors
+    //----------------------------------------------------------------------------------------------
+
     error InvalidMetadataSize();
     error InvalidMetadataName();
     error InvalidMetadataSymbol();
@@ -45,21 +51,22 @@ interface IShareClassManager {
     error PoolMissing();
     error ShareClassNotFound();
     error DecreaseMoreThanIssued();
+    error CannotSetFuturePrice();
 
-    /// Functions
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Update the share class issuance
-    ///
     /// @param centrifugeId Identifier of the chain
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
-    /// @param amount The amount to increase the share class issuance by
+    /// @param amount The amount to increase or decrease the share class issuance by
     /// @param isIssuance Whether it is an issuance or revocation
     function updateShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint128 amount, bool isIssuance)
         external;
 
-    /// @notice Adds a new share class to the given pool.
-    ///
+    /// @notice Adds a new share class to the given pool
     /// @param poolId Identifier of the pool
     /// @param name The name of the share class
     /// @param symbol The symbol of the share class
@@ -70,65 +77,70 @@ interface IShareClassManager {
         returns (ShareClassId scId);
 
     /// @notice Updates the price pool unit per share unit of a share class
-    ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param pricePoolPerShare The price per share of the share class (in the pool currency denomination)
-    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external;
+    /// @param computedAt Timestamp when the price was computed (must be <= block.timestamp)
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare, uint64 computedAt) external;
 
-    /// @notice Updates the metadata of a share class.
-    ///
+    /// @notice Updates the metadata of a share class
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param name The name of the share class
     /// @param symbol The symbol of the share class
     function updateMetadata(PoolId poolId, ShareClassId scId, string calldata name, string calldata symbol) external;
 
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Returns the number of share classes for the given pool
-    ///
     /// @param poolId Identifier of the pool in question
     /// @return count Number of share classes for the given pool
     function shareClassCount(PoolId poolId) external view returns (uint32 count);
 
-    /// @notice Checks the existence of a share class.
+    /// @notice Checks the existence of a share class
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    /// @return Whether the share class exists
+    function exists(PoolId poolId, ShareClassId scId) external view returns (bool);
+
+    /// @notice Returns the current price per share and when it was computed
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
-    function exists(PoolId poolId, ShareClassId scId) external view returns (bool);
+    /// @return price The latest price per share (in pool currency denomination)
+    /// @return computedAt Timestamp when the price was computed (may be earlier than submission time)
+    function pricePoolPerShare(PoolId poolId, ShareClassId scId) external view returns (D18 price, uint64 computedAt);
 
-    /// @notice Exposes relevant metrics for a share class
+    /// @notice Returns the total issuance across all networks for a share class
+    /// @dev     This is only updated when queued shares on the spoke are updated to the hub, so can
+    ///                maybe out of sync and not reflect the exact latest issuance across networks.
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @return totalIssuance The total number of shares known to the Hub side
-    /// @return pricePoolPerShare The amount of pool units per unit share
-    function metrics(PoolId poolId, ShareClassId scId)
-        external
-        view
-        returns (uint128 totalIssuance, D18 pricePoolPerShare);
+    function totalIssuance(PoolId poolId, ShareClassId scId) external view returns (uint128 totalIssuance);
 
     /// @notice Exposes issuance of a share class on a given network
-    ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param centrifugeId Identifier of the chain
+    /// @return The share issuance on the specified network
     function issuance(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external view returns (uint128);
 
-    /// @notice Determines the next share class id for the given pool.
-    ///
+    /// @notice Determines the next share class id for the given pool
     /// @param poolId Identifier of the pool
     /// @return scId Identifier of the next share class
     function previewNextShareClassId(PoolId poolId) external view returns (ShareClassId scId);
 
-    /// @notice Determines the share class id for the given pool and index.
-    ///
+    /// @notice Determines the share class id for the given pool and index
     /// @param poolId Identifier of the pool
     /// @param index The pool-internal index of the share class id
     /// @return scId Identifier of the underlying share class
     function previewShareClassId(PoolId poolId, uint32 index) external pure returns (ShareClassId scId);
 
-    /// @notice returns The metadata of the share class.
-    ///
+    /// @notice Returns the metadata of the share class
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @return name The registered name of the share class token

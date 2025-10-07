@@ -145,10 +145,12 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) public payable {
         _isManager(poolId);
 
-        (, D18 poolPerShare) = shareClassManager.metrics(poolId, scId);
+        (D18 pricePoolPerShare, uint64 computedAt) = shareClassManager.pricePoolPerShare(poolId, scId);
 
-        emit NotifySharePrice(centrifugeId, poolId, scId, poolPerShare);
-        sender.sendNotifyPricePoolPerShare{value: _payment()}(centrifugeId, poolId, scId, poolPerShare, refund);
+        emit NotifySharePrice(centrifugeId, poolId, scId, pricePoolPerShare, computedAt);
+        sender.sendNotifyPricePoolPerShare{value: _payment()}(
+            centrifugeId, poolId, scId, pricePoolPerShare, computedAt, refund
+        );
     }
 
     /// @inheritdoc IHub
@@ -256,21 +258,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function callRequestManager(PoolId poolId, uint16 centrifugeId, bytes calldata data) external payable {
-        _isManager(poolId);
-        (bool success, bytes memory returnData) =
-            address(hubRegistry.hubRequestManager(poolId, centrifugeId)).call{value: _payment()}(data);
-        if (!success) {
-            uint256 length = returnData.length;
-            require(length != 0, CallFailedWithEmptyRevert());
-
-            assembly ("memory-safe") {
-                revert(add(32, returnData), length)
-            }
-        }
-    }
-
-    /// @inheritdoc IHub
     function updateRestriction(
         PoolId poolId,
         ShareClassId scId,
@@ -320,14 +307,19 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         emit UpdateContract(centrifugeId, poolId, scId, target, payload);
-        sender.sendUpdateContract{value: _payment()}(centrifugeId, poolId, scId, target, payload, extraGasLimit, refund);
+        sender.sendTrustedContractUpdate{value: _payment()}(
+            centrifugeId, poolId, scId, target, payload, extraGasLimit, refund
+        );
     }
 
     /// @inheritdoc IHub
-    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) public payable {
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare, uint64 computedAt)
+        public
+        payable
+    {
         _isManager(poolId);
 
-        shareClassManager.updateSharePrice(poolId, scId, pricePoolPerShare);
+        shareClassManager.updateSharePrice(poolId, scId, pricePoolPerShare, computedAt);
 
         if (address(feeHook) != address(0)) feeHook.accrue(poolId, scId);
     }

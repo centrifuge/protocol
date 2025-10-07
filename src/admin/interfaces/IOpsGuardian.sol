@@ -23,8 +23,12 @@ interface IOpsGuardian is IBaseGuardian {
         external;
 
     /// @notice Registers a new pool
+    /// @param poolId The pool identifier
+    /// @param admin The admin address for the pool
+    /// @param currency The currency asset ID for the pool
     function createPool(PoolId poolId, address admin, AssetId currency) external;
 
     /// @notice Return the linked operational safe
+    /// @return The operational safe contract
     function opsSafe() external view returns (ISafe);
 }

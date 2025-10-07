@@ -6,6 +6,9 @@ import {IMessageLimits} from "../../interfaces/IMessageLimits.sol";
 /// @dev Max cost. No messages will take more that this
 uint128 constant MAX_MESSAGE_COST = 3_000_000;
 
+/// @title  IGasService
+/// @notice Interface for estimating gas costs for cross-chain messages
+/// @dev    Provides gas cost estimates for each message type in the protocol
 interface IGasService is IMessageLimits {
     error InvalidMessageType();
 
@@ -24,7 +27,7 @@ interface IGasService is IMessageLimits {
     function initiateTransferShares() external view returns (uint128);
     function executeTransferShares() external view returns (uint128);
     function updateRestriction() external view returns (uint128);
-    function updateContract() external view returns (uint128);
+    function trustedContractUpdate() external view returns (uint128);
     function requestCallback() external view returns (uint128);
     function updateVaultDeployAndLink() external view returns (uint128);
     function updateVaultLink() external view returns (uint128);
@@ -36,4 +39,5 @@ interface IGasService is IMessageLimits {
     function maxAssetPriceAge() external view returns (uint128);
     function maxSharePriceAge() external view returns (uint128);
     function updateGatewayManager() external view returns (uint128);
+    function untrustedContractUpdate() external view returns (uint128);
 }
