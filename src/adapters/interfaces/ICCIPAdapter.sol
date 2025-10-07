@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IAdapter} from "../../core/interfaces/IAdapter.sol";
+import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
 
 import {IAdapterWiring} from "../../admin/interfaces/IAdapterWiring.sol";
 
