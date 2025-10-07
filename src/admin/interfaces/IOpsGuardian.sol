@@ -6,7 +6,7 @@ import {IBaseGuardian} from "./IBaseGuardian.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
-import {IAdapter} from "../../core/interfaces/IAdapter.sol";
+import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
 
 interface IOpsGuardian is IBaseGuardian {
     error AdaptersAlreadyInitialized();

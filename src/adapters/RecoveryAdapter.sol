@@ -3,8 +3,8 @@ pragma solidity 0.8.28;
 
 import {Auth} from "../misc/Auth.sol";
 
-import {IAdapter} from "../core/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
+import {IAdapter} from "../core/messaging/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../core/messaging/interfaces/IMessageHandler.sol";
 
 /// @title  RecoveryAdapter
 /// @notice An adapter used to recover messages that allows authenticated parties to inject messages

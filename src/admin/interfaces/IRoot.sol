@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IProtocolPauser} from "../../core/interfaces/IProtocolPauser.sol";
 import {IEndorsements} from "../../core/spoke/interfaces/IEndorsements.sol";
 import {IScheduleAuth} from "../../core/messaging/interfaces/IScheduleAuth.sol";
+import {IProtocolPauser} from "../../core/messaging/interfaces/IProtocolPauser.sol";
 
 interface IRoot is IEndorsements, IProtocolPauser, IScheduleAuth {
     //----------------------------------------------------------------------------------------------

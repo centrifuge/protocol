@@ -660,9 +660,25 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         assertEq(address(navManager.hub()), address(hub));
     }
 
-    function testSimplePriceManager() public view {
+    function testSimplePriceManager(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(navManager));
+
+        assertEq(simplePriceManager.wards(address(navManager)), 1);
+        assertEq(simplePriceManager.wards(nonWard), 0);
+
         // dependencies set correctly
         assertEq(address(simplePriceManager.hub()), address(hub));
+    }
+
+    function testBatchRequestManager(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(hub));
+        vm.assume(nonWard != address(hubHandler));
+
+        assertEq(batchRequestManager.wards(address(hub)), 1);
+        assertEq(batchRequestManager.wards(address(hubHandler)), 1);
+        assertEq(batchRequestManager.wards(nonWard), 0);
     }
 
     function testWormholeAdapter(address nonWard) public view {
