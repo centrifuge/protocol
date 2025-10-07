@@ -79,8 +79,13 @@ contract WireAdapters is Script {
             opsGuardian.initAdapters(remoteCentrifugeId, adapters, uint8(adapters.length), uint8(adapters.length));
             console.log("Registered MultiAdapter(", localNetwork, ") for", remoteNetwork);
 
-            // Wire WormholeAdapter
-            if (localWormholeAddr != address(0)) {
+        // Wire WormholeAdapter (only if both sides have it and remote deploy flag is true)
+        if (localWormholeAddr != address(0)) {
+            bool remoteWormholeDeploy = false;
+            try vm.parseJsonBool(remoteConfig, "$.adapters.wormhole.deploy") returns (bool value) {
+                remoteWormholeDeploy = value;
+            } catch {}
+            if (remoteWormholeDeploy) {
                 bytes memory wormholeData = abi.encode(
                     uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
                     vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter")
@@ -89,9 +94,15 @@ contract WireAdapters is Script {
 
                 console.log("Wired WormholeAdapter from", localNetwork, "to", remoteNetwork);
             }
+            }
 
-            // Wire LayerZeroAdapter
-            if (localLayerZeroAddr != address(0)) {
+        // Wire LayerZeroAdapter (only if both sides have it and remote deploy flag is true)
+        if (localLayerZeroAddr != address(0)) {
+            bool remoteLayerZeroDeploy = false;
+            try vm.parseJsonBool(remoteConfig, "$.adapters.layerZero.deploy") returns (bool value) {
+                remoteLayerZeroDeploy = value;
+            } catch {}
+            if (remoteLayerZeroDeploy) {
                 bytes memory layerZeroData = abi.encode(
                     uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
                     vm.parseJsonAddress(remoteConfig, "$.contracts.layerZeroAdapter")
@@ -100,9 +111,15 @@ contract WireAdapters is Script {
 
                 console.log("Wired LayerZeroAdapter from", localNetwork, "to", remoteNetwork);
             }
+            }
 
-            // Wire AxelarAdapter
-            if (localAxelarAddr != address(0)) {
+        // Wire AxelarAdapter (only if both sides have it and remote deploy flag is true)
+        if (localAxelarAddr != address(0)) {
+            bool remoteAxelarDeploy = false;
+            try vm.parseJsonBool(remoteConfig, "$.adapters.axelar.deploy") returns (bool value) {
+                remoteAxelarDeploy = value;
+            } catch {}
+            if (remoteAxelarDeploy) {
                 bytes memory axelarData = abi.encode(
                     vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
                     vm.toString(vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter"))
@@ -110,6 +127,7 @@ contract WireAdapters is Script {
                 opsGuardian.wire(localAxelarAddr, remoteCentrifugeId, axelarData);
 
                 console.log("Wired AxelarAdapter from", localNetwork, "to", remoteNetwork);
+            }
             }
         }
         vm.stopBroadcast();
