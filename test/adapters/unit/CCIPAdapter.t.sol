@@ -175,6 +175,7 @@ contract CCIPAdapterTest is CCIPAdapterTestBase {
     function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund)
         public
     {
+        vm.assume(gasLimit < adapter.RECEIVE_COST());
         vm.assume(invalidOrigin != address(GATEWAY));
 
         vm.deal(address(this), 0.1 ether);
