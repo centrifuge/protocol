@@ -45,49 +45,10 @@ abstract contract Properties is
 
     // Constants for new API parameters
     uint128 internal constant SHARE_HOOK_GAS = 0;
-    // TODO(wischli): Maybe use msg.sender as default?
-    address internal constant REFUND = address(0);
 
     event DebugWithString(string, uint256);
     event DebugNumber(uint256);
 
-    /// @dev Parses RevokeShares event to extract payout asset amount
-    /// @param poolId Pool identifier to filter events
-    /// @param scId Share class identifier to filter events
-    /// @param assetId Asset identifier to filter events
-    /// @return payoutAssetAmount Total asset amount paid out
-    function _parseRevokeSharesPayoutAmount(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId
-    ) private returns (uint128 payoutAssetAmount) {
-        Vm.Log[] memory logs = Vm(address(vm)).getRecordedLogs();
-        bytes32 revokeSharesSig = keccak256(
-            "RevokeShares(uint64,bytes16,uint128,uint32,uint128,uint128,uint128,uint128,uint128)"
-        );
-
-        for (uint256 i = 0; i < logs.length; i++) {
-            if (logs[i].topics[0] == revokeSharesSig) {
-                // Check indexed parameters match
-                if (
-                    logs[i].topics[1] == bytes32(uint256(PoolId.unwrap(poolId))) &&
-                    logs[i].topics[2] == bytes32(ShareClassId.unwrap(scId)) &&
-                    logs[i].topics[3] == bytes32(uint256(AssetId.unwrap(assetId)))
-                ) {
-                    // Decode non-indexed parameters
-                    (
-                        uint32 epochId,
-                        D18 pricePoolPerShare,
-                        D18 priceAssetPerShare,
-                        uint128 approvedShareAmount,
-                        uint128 payout,
-                        uint128 payoutPoolAmount
-                    ) = abi.decode(logs[i].data, (uint32, D18, D18, uint128, uint128, uint128));
-                    payoutAssetAmount += payout;
-                }
-            }
-        }
-    }
 
     // ===============================
     // SENTINEL
@@ -1740,10 +1701,10 @@ abstract contract Properties is
         uint128 totalPayoutAssetAmount;
         uint128 totalPayoutShareAmount;
 
-        Vm(address(vm)).recordLogs();
+        // Use harness to get amounts directly instead of parsing events
         for (uint256 k = 0; k < _actors.length; k++) {
             address actor = _actors[k];
-            batchRequestManager.notifyDeposit(
+            (uint128 payoutShareAmount, uint128 paymentAssetAmount, ) = batchRequestManager.notifyDepositWithReturn(
                 poolId,
                 scId,
                 assetId,
@@ -1751,19 +1712,8 @@ abstract contract Properties is
                 MAX_CLAIMS,
                 actor // refund address
             );
-        }
-
-        // Parse ClaimDeposit events to get payout amounts
-        Vm.Log[] memory logs = Vm(address(vm)).getRecordedLogs();
-        bytes32 claimDepositSig = keccak256("ClaimDeposit(uint64,uint64,uint32,bytes32,uint128,uint128,uint128,uint128,uint64)");
-        for (uint256 i = 0; i < logs.length; i++) {
-            if (logs[i].topics[0] == claimDepositSig) {
-                // Decode: (assetId, paymentAssetAmount, pendingAssetAmount, payoutShareAmount, issuedAt)
-                (, uint128 paymentAssetAmount, , uint128 payoutShareAmount, ) =
-                    abi.decode(logs[i].data, (uint128, uint128, uint128, uint128, uint64));
-                totalPayoutAssetAmount += paymentAssetAmount;
-                totalPayoutShareAmount += payoutShareAmount;
-            }
+            totalPayoutAssetAmount += paymentAssetAmount;
+            totalPayoutShareAmount += payoutShareAmount;
         }
 
         lte(
@@ -1825,10 +1775,11 @@ abstract contract Properties is
         // sum eligible user claim payoutAssetAmount for the epoch
         uint128 totalPayoutAssetAmount;
         uint128 totalPaymentShareAmount;
-        Vm(address(vm)).recordLogs();
+
+        // Use harness to get amounts directly instead of parsing events
         for (uint256 k = 0; k < _actors.length; k++) {
             address actor = _actors[k];
-            batchRequestManager.notifyRedeem(
+            (uint128 payoutAssetAmount, uint128 paymentShareAmount, ) = batchRequestManager.notifyRedeemWithReturn(
                 poolId,
                 scId,
                 assetId,
@@ -1836,19 +1787,8 @@ abstract contract Properties is
                 MAX_CLAIMS,
                 actor // refund address
             );
-        }
-
-        // Parse ClaimRedeem events to get payout amounts
-        Vm.Log[] memory logs = Vm(address(vm)).getRecordedLogs();
-        bytes32 claimRedeemSig = keccak256("ClaimRedeem(uint64,uint64,uint32,bytes32,uint128,uint128,uint128,uint128,uint64)");
-        for (uint256 i = 0; i < logs.length; i++) {
-            if (logs[i].topics[0] == claimRedeemSig) {
-                // Decode: (assetId, paymentShareAmount, pendingShareAmount, payoutAssetAmount, revokedAt)
-                (, uint128 paymentShareAmount, , uint128 payoutAssetAmount, ) =
-                    abi.decode(logs[i].data, (uint128, uint128, uint128, uint128, uint64));
-                totalPayoutAssetAmount += payoutAssetAmount;
-                totalPaymentShareAmount += paymentShareAmount;
-            }
+            totalPayoutAssetAmount += payoutAssetAmount;
+            totalPaymentShareAmount += paymentShareAmount;
         }
 
         lte(
@@ -2003,7 +1943,7 @@ abstract contract Properties is
                 nowIssueEpoch,
                 D18.wrap(0),
                 SHARE_HOOK_GAS,
-                REFUND
+                address(this)
             )
         {
             // eq(issued, 0, "issued shares should return 0 at zero price");
@@ -2016,7 +1956,6 @@ abstract contract Properties is
         }
 
         uint32 nowRevokeEpoch = batchRequestManager.nowRevokeEpoch(poolId, scId, assetId);
-        Vm(address(vm)).recordLogs();
         try
             batchRequestManager.revokeShares(
                 poolId,
@@ -2025,10 +1964,16 @@ abstract contract Properties is
                 nowRevokeEpoch,
                 D18.wrap(0),
                 SHARE_HOOK_GAS,
-                REFUND
+                address(this)
             )
         {
-            uint128 payoutAssetAmount = _parseRevokeSharesPayoutAmount(poolId, scId, assetId);
+            // Read payout amount from storage instead of parsing events
+            (,,,, uint128 payoutAssetAmount,) = batchRequestManager.epochRedeemAmounts(
+                poolId,
+                scId,
+                assetId,
+                nowRevokeEpoch
+            );
             eq(
                 payoutAssetAmount,
                 0,

@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 // Recon Deps
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {vm} from "@chimera/Hevm.sol";
-import {Vm} from "forge-std/Vm.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 import {Panic} from "@recon/Panic.sol";
 import {console2} from "forge-std/console2.sol";
@@ -21,6 +20,9 @@ import {PoolId} from "src/core/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MAX_MESSAGE_COST} from "src/core/messaging/interfaces/IGasService.sol";
+import {PricingLib} from "src/core/libraries/PricingLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {EpochInvestAmounts, EpochRedeemAmounts} from "src/vaults/interfaces/IBatchRequestManager.sol";
 
 // Test Utils
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";
@@ -33,75 +35,59 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     using CastLib for *;
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
-    /// @dev Parses IssueShares event from recorded logs
-    /// @param poolId Pool identifier to filter events
-    /// @param scId Share class identifier to filter events
-    /// @param assetId Asset identifier to filter events
-    /// @return issuedShareAmount Total amount of shares issued
-    function _parseIssueSharesEvent(
+    /// @dev Helper to calculate issued shares to avoid stack depth issues
+    function _calculateIssuedShares(
         PoolId poolId,
         ShareClassId scId,
-        AssetId assetId
-    ) private returns (uint128 issuedShareAmount) {
-        Vm.Log[] memory logs = Vm(address(vm)).getRecordedLogs();
-        bytes32 issueSharesSig = keccak256(
-            "IssueShares(uint64,bytes16,uint128,uint32,uint128,uint128,uint128)"
-        );
+        AssetId assetId,
+        uint32 nowIssueEpochId,
+        uint128 navPerShare
+    ) private view returns (uint128) {
+        // First, just get the approved asset amount and price
+        (
+            ,  // approvedPoolAmount
+            uint128 approvedAssetAmount,
+            ,  // pendingAssetAmount
+            D18 pricePoolPerAsset,
+            ,  // pricePoolPerShare
+               // issuedAt
+        ) = batchRequestManager.epochInvestAmounts(poolId, scId, assetId, nowIssueEpochId);
 
-        for (uint256 i = 0; i < logs.length; i++) {
-            if (logs[i].topics[0] == issueSharesSig) {
-                // Check indexed parameters match
-                if (
-                    logs[i].topics[1] == bytes32(uint256(PoolId.unwrap(poolId))) &&
-                    logs[i].topics[2] == bytes32(ShareClassId.unwrap(scId)) &&
-                    logs[i].topics[3] == bytes32(uint256(AssetId.unwrap(assetId)))
-                ) {
-                    // Decode non-indexed parameters
-                    (uint32 epochId, D18 pricePoolPerShare, D18 priceAssetPerShare, uint128 issued) =
-                        abi.decode(logs[i].data, (uint32, D18, D18, uint128));
-                    issuedShareAmount += issued;
-                }
-            }
+        if (navPerShare == 0 || !pricePoolPerAsset.isNotZero()) {
+            return 0;
         }
+
+        // Calculate in separate step to avoid stack depth
+        return PricingLib.assetToShareAmount(
+            approvedAssetAmount,
+            hubRegistry.decimals(assetId),
+            hubRegistry.decimals(poolId),
+            pricePoolPerAsset,
+            D18.wrap(navPerShare),
+            MathLib.Rounding.Down
+        );
     }
 
-    /// @dev Parses RevokeShares event from recorded logs
-    /// @param poolId Pool identifier to filter events
-    /// @param scId Share class identifier to filter events
-    /// @param assetId Asset identifier to filter events
-    /// @return revokedShareAmount Total amount of shares revoked
-    function _parseRevokeSharesEvent(
+    /// @dev Helper to calculate revoked shares to avoid stack depth issues
+    function _calculateRevokedShares(
         PoolId poolId,
         ShareClassId scId,
-        AssetId assetId
-    ) private returns (uint128 revokedShareAmount) {
-        Vm.Log[] memory logs = Vm(address(vm)).getRecordedLogs();
-        bytes32 revokeSharesSig = keccak256(
-            "RevokeShares(uint64,bytes16,uint128,uint32,uint128,uint128,uint128,uint128,uint128)"
-        );
+        AssetId payoutAssetId,
+        uint32 nowRevokeEpochId
+    ) private view returns (uint128) {
+        (
+            uint128 approvedShareAmount,
+            uint128 pendingShareAmount,
+            D18 pricePoolPerAsset,
+            D18 pricePoolPerShareEpoch,
+            uint128 payoutAssetAmountEpoch,
+            uint64 revokedAt
+        ) = batchRequestManager.epochRedeemAmounts(poolId, scId, payoutAssetId, nowRevokeEpochId);
 
-        for (uint256 i = 0; i < logs.length; i++) {
-            if (logs[i].topics[0] == revokeSharesSig) {
-                // Check indexed parameters match
-                if (
-                    logs[i].topics[1] == bytes32(uint256(PoolId.unwrap(poolId))) &&
-                    logs[i].topics[2] == bytes32(ShareClassId.unwrap(scId)) &&
-                    logs[i].topics[3] == bytes32(uint256(AssetId.unwrap(assetId)))
-                ) {
-                    // Decode non-indexed parameters
-                    (
-                        uint32 epochId,
-                        D18 pricePoolPerShare,
-                        D18 priceAssetPerShare,
-                        uint128 approvedShareAmount,
-                        uint128 payoutAssetAmount,
-                        uint128 payoutPoolAmount
-                    ) = abi.decode(logs[i].data, (uint32, D18, D18, uint128, uint128, uint128));
-                    revokedShareAmount += approvedShareAmount;
-                }
-            }
-        }
+        // Return the approved share amount which represents the revoked shares
+        return approvedShareAmount;
     }
+
 
     /// === SyncManager === ///
     function syncManager_setValuation(address valuation) public updateGhosts {
@@ -316,20 +302,13 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         uint32 nowIssueEpochId,
         uint128 navPerShare
     ) public updateGhostsWithType(OpType.ADD) {
-        // TODO(wischli): Investigate with Balance Sheet property impl
-        // uint128 totalIssuanceBefore;
-        // uint128 totalIssuanceAfter;
-
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
         uint256 escrowSharesBefore = IShareToken(_getShareToken()).balanceOf(
             address(globalEscrow)
         );
-        // (totalIssuanceBefore,) = shareClassManager.metrics(scId);
-        // (uint128 balanceSheetSharesBefore,,,) = balanceSheet.queuedShares(poolId, scId);
 
-        Vm(address(vm)).recordLogs();
         batchRequestManager.issueShares{value: MAX_MESSAGE_COST}(
             poolId,
             scId,
@@ -337,15 +316,21 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
             nowIssueEpochId,
             D18.wrap(navPerShare),
             SHARE_HOOK_GAS,
-            REFUND
+            _getActor()
         );
-        uint128 issuedShareAmount = _parseIssueSharesEvent(poolId, scId, assetId);
+
+        // Calculate issued amount in separate function to avoid stack depth
+        uint128 issuedShareAmount = _calculateIssuedShares(
+            poolId,
+            scId,
+            assetId,
+            nowIssueEpochId,
+            navPerShare
+        );
 
         uint256 escrowSharesAfter = IShareToken(_getShareToken()).balanceOf(
             address(globalEscrow)
         );
-        // (totalIssuanceAfter,) = shareClassManager.metrics(scId);
-        // (uint128 balanceSheetSharesAfter,,,) = balanceSheet.queuedShares(poolId, scId);
 
         uint256 escrowShareDelta = escrowSharesAfter - escrowSharesBefore;
         executedInvestments[_getShareToken()] += escrowShareDelta;
@@ -368,7 +353,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
 
     function hub_notifyPool(uint16 centrifugeId) public updateGhosts {
         PoolId poolId = _getPool();
-        hub.notifyPool{value: MAX_MESSAGE_COST}(poolId, centrifugeId, REFUND);
+        hub.notifyPool{value: MAX_MESSAGE_COST}(poolId, centrifugeId, _getActor());
     }
 
     function hub_notifyPool_clamped() public {
@@ -381,7 +366,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     ) public updateGhosts {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
-        hub.notifyShareClass{value: MAX_MESSAGE_COST}(poolId, scId, centrifugeId, bytes32(hookAsUint), REFUND);
+        hub.notifyShareClass{value: MAX_MESSAGE_COST}(poolId, scId, centrifugeId, bytes32(hookAsUint), _getActor());
     }
 
     function hub_notifyShareClass_clamped(uint256 hookAsUint) public {
@@ -393,7 +378,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     ) public updateGhostsWithType(OpType.UPDATE) {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
-        hub.notifySharePrice{value: MAX_MESSAGE_COST}(poolId, scId, centrifugeId, REFUND);
+        hub.notifySharePrice{value: MAX_MESSAGE_COST}(poolId, scId, centrifugeId, _getActor());
     }
 
     function hub_notifySharePrice_clamped() public {
@@ -404,7 +389,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
-        hub.notifyAssetPrice{value: MAX_MESSAGE_COST}(poolId, scId, assetId, REFUND);
+        hub.notifyAssetPrice{value: MAX_MESSAGE_COST}(poolId, scId, assetId, _getActor());
     }
 
     /// @dev Property: After FM performs approveRedeems and revokeShares with non-zero navPerShare, the total issuance
@@ -421,10 +406,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         uint256 sharesBefore = IShareToken(_getShareToken()).balanceOf(
             address(globalEscrow)
         );
-        // (uint128 totalIssuanceBefore,) = shareClassManager.metrics(scId); // Unused
-        // (uint128 balanceSheetSharesBefore,,,) = balanceSheet.queuedShares(poolId, scId); // Unused
 
-        Vm(address(vm)).recordLogs();
         batchRequestManager.revokeShares{value: MAX_MESSAGE_COST}(
             poolId,
             scId,
@@ -432,18 +414,21 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
             nowRevokeEpochId,
             D18.wrap(navPerShare),
             SHARE_HOOK_GAS,
-            REFUND
+            _getActor()
         );
-        uint128 revokedShareAmount = _parseRevokeSharesEvent(poolId, scId, payoutAssetId);
+
+        // Get and process epoch data in separate function to avoid stack depth
+        uint128 revokedShareAmount = _calculateRevokedShares(
+            poolId,
+            scId,
+            payoutAssetId,
+            nowRevokeEpochId
+        );
 
         uint256 sharesAfter = IShareToken(_getShareToken()).balanceOf(
             address(globalEscrow)
         );
         uint256 burnedShares = sharesBefore - sharesAfter;
-        // (uint128 totalIssuanceAfter,) = shareClassManager.metrics(scId); // Unused
-        // (uint128 balanceSheetSharesAfter,,,) = balanceSheet.queuedShares(poolId, scId); // Unused
-        // (uint128 totalIssuanceAfter,) = shareClassManager.metrics(scId); // Unused
-        // (uint128 balanceSheetSharesAfter,,,) = balanceSheet.queuedShares(poolId, scId); // Unused
 
         // NOTE: shares are burned on revoke
         executedRedemptions[vault.share()] += burnedShares;
@@ -537,7 +522,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         bytes memory payload = abi.encodePacked(payloadAsUint);
-        hub.updateRestriction{value: MAX_MESSAGE_COST}(poolId, scId, chainId, payload, 0, REFUND);
+        hub.updateRestriction{value: MAX_MESSAGE_COST}(poolId, scId, chainId, payload, 0, _getActor());
     }
 
     function hub_updateRestriction_clamped(uint256 payloadAsUint) public {
@@ -563,7 +548,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         bytes32 investor = _getActor().toBytes32();
         AssetId depositAssetId = _getAssetId();
 
-        batchRequestManager.forceCancelDepositRequest{value: MAX_MESSAGE_COST}(poolId, scId, investor, depositAssetId, REFUND);
+        batchRequestManager.forceCancelDepositRequest{value: MAX_MESSAGE_COST}(poolId, scId, investor, depositAssetId, _getActor());
     }
 
     function hub_forceCancelRedeemRequest() public updateGhosts {
@@ -573,7 +558,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         bytes32 investor = _getActor().toBytes32();
         AssetId payoutAssetId = _getAssetId();
 
-        batchRequestManager.forceCancelRedeemRequest{value: MAX_MESSAGE_COST}(poolId, scId, investor, payoutAssetId, REFUND);
+        batchRequestManager.forceCancelRedeemRequest{value: MAX_MESSAGE_COST}(poolId, scId, investor, payoutAssetId, _getActor());
     }
 
     function hub_setMaxAssetPriceAge(uint32 maxAge) public updateGhosts {
@@ -582,7 +567,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
 
-        hub.setMaxAssetPriceAge{value: MAX_MESSAGE_COST}(poolId, scId, assetId, uint64(maxAge), REFUND);
+        hub.setMaxAssetPriceAge{value: MAX_MESSAGE_COST}(poolId, scId, assetId, uint64(maxAge), _getActor());
     }
 
     function hub_setMaxSharePriceAge(
@@ -593,7 +578,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
-        hub.setMaxSharePriceAge{value: MAX_MESSAGE_COST}(poolId, scId, centrifugeId, uint64(maxAge), REFUND);
+        hub.setMaxSharePriceAge{value: MAX_MESSAGE_COST}(poolId, scId, centrifugeId, uint64(maxAge), _getActor());
     }
 
     function hub_updateHoldingValue() public updateGhosts {

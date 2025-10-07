@@ -32,7 +32,7 @@ import {Gateway} from "src/core/Gateway.sol";
 import {Holdings} from "src/core/hub/Holdings.sol";
 import {Hub} from "src/core/hub/Hub.sol";
 import {ShareClassManager} from "src/core/hub/ShareClassManager.sol";
-import {BatchRequestManager} from "src/vaults/BatchRequestManager.sol";
+import {BatchRequestManagerHarness} from "test/integration/recon-end-to-end/mocks/BatchRequestManagerHarness.sol";
 import {IdentityValuation} from "src/valuations/IdentityValuation.sol";
 import {MessageProcessor} from "src/core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "src/core/messaging/MessageDispatcher.sol";
@@ -129,7 +129,7 @@ abstract contract Setup is
     Hub hub;
     HubHandler hubHandler;
     ShareClassManager shareClassManager;
-    BatchRequestManager batchRequestManager;
+    BatchRequestManagerHarness batchRequestManager;
     MockValuation transientValuation;
     IdentityValuation identityValuation;
 
@@ -306,7 +306,7 @@ abstract contract Setup is
             IHubRegistry(address(hubRegistry)),
             address(this)
         );
-        batchRequestManager = new BatchRequestManager(
+        batchRequestManager = new BatchRequestManagerHarness(
             IHubRegistry(address(hubRegistry)),
             address(this)
         );
