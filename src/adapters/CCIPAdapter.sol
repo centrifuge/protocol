@@ -76,7 +76,7 @@ contract CCIPAdapter is Auth, ICCIPAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapter
-    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund)
+    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address)
         external
         payable
         returns (bytes32 adapterData)
