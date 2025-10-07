@@ -405,18 +405,15 @@ abstract contract BeforeAfter is Setup {
         ) {
             _structToUpdate.pricePoolPerShare[poolId][scId] = _priceShare;
         } catch (bytes memory reason) {
-            bool shareTokenDoesNotExist = checkError(
-                reason,
-                "ShareTokenDoesNotExist()"
-            );
-            bool invalidPrice = checkError(reason, "InvalidPrice()");
-            if (shareTokenDoesNotExist || invalidPrice) {
-                _structToUpdate.pricePerShare = 0;
-                return;
-            } else {
-                _structToUpdate.pricePerShare = BaseVault(address(_getVault()))
-                    .pricePerShare();
-            }
+            _structToUpdate.pricePoolPerShare[poolId][scId] = D18.wrap(0);
+        }
+
+        try BaseVault(address(_getVault())).pricePerShare() returns (
+            uint256 _pricePerShare
+        ) {
+            _structToUpdate.pricePerShare = _pricePerShare;
+        } catch {
+            _structToUpdate.pricePerShare = 0;
         }
     }
 }
