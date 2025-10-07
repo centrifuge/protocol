@@ -200,8 +200,9 @@ contract CCIPAdapterTest is CCIPAdapterTestBase {
         assertEq(ccipRouter.values_address("feeToken"), address(0)); // Native token
 
         // Verify extraArgs contain the gas limit
-        bytes memory expectedExtraArgs =
-            abi.encodeWithSelector(EVM_EXTRA_ARGS_V1_TAG, IClient.EVMExtraArgsV1({gasLimit: gasLimit}));
+        bytes memory expectedExtraArgs = abi.encodeWithSelector(
+            EVM_EXTRA_ARGS_V1_TAG, IClient.EVMExtraArgsV1({gasLimit: gasLimit + adapter.RECEIVE_COST()})
+        );
         assertEq(ccipRouter.values_bytes("extraArgs"), expectedExtraArgs);
     }
 }
