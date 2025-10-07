@@ -64,7 +64,8 @@ contract LaunchDeployer is FullDeployer {
                 layerZero: LayerZeroInput({
                     shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.layerZero.deploy"),
                     endpoint: _parseJsonAddressOrDefault(config, "$.adapters.layerZero.endpoint"),
-                    delegate: _parseJsonAddressOrDefault(config, "$.adapters.layerZero.delegate")
+                    // Use protocol admin safe as LayerZero delegate (centralized, not JSON-driven)
+                    delegate: vm.envAddress("PROTOCOL_ADMIN")
                 })
             })
         });

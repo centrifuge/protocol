@@ -6,6 +6,7 @@ import {IAdapter} from "../src/core/interfaces/IAdapter.sol";
 import {IOpsGuardian} from "../src/admin/interfaces/IOpsGuardian.sol";
 
 import "forge-std/Script.sol";
+import "forge-std/console.sol";
 
 /// @dev Configures the local network's adapters to communicate with remote networks.
 ///      This script only sets up one-directional communication (local → remote).
@@ -13,7 +14,14 @@ import "forge-std/Script.sol";
 ///
 ///      Intended for testnet use only.
 contract WireAdapters is Script {
-    IAdapter[] adapters; // Storage array for adapter instances
+    // helpers
+    function _safeParseBool(string memory json, string memory path) internal view returns (bool b) {
+        try vm.parseJsonBool(json, path) returns (bool v) { b = v; } catch { b = false; }
+    }
+
+    function _safeParseAddress(string memory json, string memory path) internal view returns (address a) {
+        try vm.parseJsonAddress(json, path) returns (address v) { a = v; } catch { a = address(0); }
+    }
 
     function fetchConfig(string memory network) internal view returns (string memory) {
         string memory configFile = string.concat("env/", network, ".json");
@@ -71,16 +79,56 @@ contract WireAdapters is Script {
             string memory remoteConfig = fetchConfig(remoteNetwork);
             uint16 remoteCentrifugeId = uint16(vm.parseJsonUint(remoteConfig, "$.network.centrifugeId"));
 
-            // Register ALL adapters for this destination chain
+            // Determine which adapters are active on BOTH sides
+            bool useWH = localWormholeAddr != address(0) && _safeParseBool(remoteConfig, "$.adapters.wormhole.deploy");
+            address remoteWH = _safeParseAddress(remoteConfig, "$.contracts.wormholeAdapter");
+            if (remoteWH == address(0)) useWH = false;
+
+            bool useLZ = localLayerZeroAddr != address(0) && _safeParseBool(remoteConfig, "$.adapters.layerZero.deploy");
+            address remoteLZ = _safeParseAddress(remoteConfig, "$.contracts.layerZeroAdapter");
+            if (remoteLZ == address(0)) useLZ = false;
+
+            bool useAX = localAxelarAddr != address(0) && _safeParseBool(remoteConfig, "$.adapters.axelar.deploy");
+            address remoteAX = _safeParseAddress(remoteConfig, "$.contracts.axelarAdapter");
+            if (remoteAX == address(0)) useAX = false;
+
+            uint8 count;
+            if (useWH) count++;
+            if (useLZ) count++;
+            if (useAX) count++;
+
+            IAdapter[] memory active = new IAdapter[](count);
+            uint8 idx;
+            if (useWH) active[idx++] = IAdapter(localWormholeAddr);
+            if (useLZ) active[idx++] = IAdapter(localLayerZeroAddr);
+            if (useAX) active[idx++] = IAdapter(localAxelarAddr);
+
+            // Register ONLY matching adapters for this destination chain
             IOpsGuardian opsGuardian = IOpsGuardian(vm.parseJsonAddress(localConfig, "$.contracts.opsGuardian"));
-            opsGuardian.initAdapters(remoteCentrifugeId, adapters, uint8(adapters.length), uint8(adapters.length));
-            console.log("Registered MultiAdapter(", localNetwork, ") for", remoteNetwork);
+            if (active.length > 0) {
+                opsGuardian.initAdapters(remoteCentrifugeId, active, uint8(active.length), uint8(active.length));
+                string memory msg1 = string.concat(
+                    "Registered MultiAdapter(",
+                    localNetwork,
+                    ") for ",
+                    remoteNetwork,
+                    " with ",
+                    vm.toString(active.length),
+                    " adapters"
+                );
+                console.log(msg1);
+            } else {
+                string memory msg2 = string.concat(
+                    "No shared adapters between ", localNetwork, " and ", remoteNetwork, " - skipping registration"
+                );
+                console.log(msg2);
+            }
 
             // Wire WormholeAdapter
-            if (localWormholeAddr != address(0)) {
+            if (useWH) {
                 bytes memory wormholeData = abi.encode(
                     uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
-                    vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter")
+                    remoteWH
                 );
                 opsGuardian.wire(localWormholeAddr, remoteCentrifugeId, wormholeData);
 
@@ -88,10 +136,10 @@ contract WireAdapters is Script {
             }
 
             // Wire LayerZeroAdapter
-            if (localLayerZeroAddr != address(0)) {
+            if (useLZ) {
                 bytes memory layerZeroData = abi.encode(
                     uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
-                    vm.parseJsonAddress(remoteConfig, "$.contracts.layerZeroAdapter")
+                    remoteLZ
                 );
                 opsGuardian.wire(localLayerZeroAddr, remoteCentrifugeId, layerZeroData);
 
@@ -99,10 +147,10 @@ contract WireAdapters is Script {
             }
 
             // Wire AxelarAdapter
-            if (localAxelarAddr != address(0)) {
+            if (useAX) {
                 bytes memory axelarData = abi.encode(
                     vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
-                    vm.toString(vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter"))
+                    vm.toString(remoteAX)
                 );
                 opsGuardian.wire(localAxelarAddr, remoteCentrifugeId, axelarData);
 
