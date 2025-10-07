@@ -338,7 +338,7 @@ contract OnOfframpManagerDepositFailureTests is OnOfframpManagerTest {
     }
 
     function testInsufficientBalance(uint128 amount) public {
-        vm.assume(amount > 0);
+        amount = bound(amount, 1, type(uint128).max);
 
         _enableOnramp();
         _mockManagerPermissions(true);
@@ -353,7 +353,7 @@ contract OnOfframpManagerDepositFailureTests is OnOfframpManagerTest {
 
 contract OnOfframpManagerDepositSuccessTests is OnOfframpManagerTest {
     function testDeposit(uint128 amount) public {
-        vm.assume(amount > 0);
+        amount = bound(amount, 1, type(uint128).max);
 
         _enableOnramp();
         _mockManagerPermissions(true);
@@ -411,7 +411,7 @@ contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerTest {
     }
 
     function testInvalidDestination(uint128 amount) public {
-        vm.assume(amount > 0);
+        amount = bound(amount, 1, type(uint128).max);
 
         _enableRelayer(relayer);
         _mockManagerPermissions(true);
@@ -422,7 +422,7 @@ contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerTest {
     }
 
     function testDisabledDestination(uint128 amount) public {
-        vm.assume(amount > 0);
+        amount = bound(amount, 1, type(uint128).max);
 
         _enableRelayer(relayer);
         _disableOfframp(receiver);
@@ -445,7 +445,7 @@ contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerTest {
     }
 
     function testInsufficientBalance(uint128 amount) public {
-        vm.assume(amount > 0);
+        amount = bound(amount, 1, type(uint128).max);
 
         _enableOfframp(receiver);
         _enableRelayer(relayer);
@@ -461,7 +461,7 @@ contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerTest {
 
 contract OnOfframpManagerWithdrawSuccessTests is OnOfframpManagerTest {
     function testWithdraw(uint128 amount) public {
-        vm.assume(amount > 0);
+        amount = bound(amount, 1, type(uint128).max);
 
         _enableOfframp(receiver);
         _enableRelayer(relayer);

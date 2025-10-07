@@ -387,7 +387,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
     }
 
     function testSyncWithExtraGasLimit(uint128 extraGasLimit) public {
-        vm.assume(extraGasLimit <= 50_000_000);
+        extraGasLimit = bound(extraGasLimit, 0, 50_000_000);
 
         vm.prank(contractUpdater);
         queueManager.trustedCall(

@@ -113,8 +113,7 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
     }
 
     function testEstimate(uint256 gasLimit) public {
-        vm.assume(gasLimit > 0);
-        vm.assume(gasLimit < adapter.RECEIVE_COST());
+        gasLimit = bound(gasLimit, 1, adapter.RECEIVE_COST() - 1);
 
         adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR));
 
