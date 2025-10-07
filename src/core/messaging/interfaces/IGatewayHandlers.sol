@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IRequestManager} from "./IRequestManager.sol";
+import {D18} from "../../../misc/types/D18.sol";
 
-import {D18} from "../../misc/types/D18.sol";
-
-import {VaultUpdateKind} from "../messaging/libraries/MessageLib.sol";
-
-import {PoolId} from "../types/PoolId.sol";
-import {AssetId} from "../types/AssetId.sol";
-import {ShareClassId} from "../types/ShareClassId.sol";
+import {PoolId} from "../../types/PoolId.sol";
+import {AssetId} from "../../types/AssetId.sol";
+import {ShareClassId} from "../../types/ShareClassId.sol";
+import {VaultUpdateKind} from "../libraries/MessageLib.sol";
+import {IRequestManager} from "../../interfaces/IRequestManager.sol";
 
 //--------------------------------------------------------------------------------------------------
 // Hub Handlers

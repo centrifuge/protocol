@@ -3,7 +3,7 @@ pragma solidity >=0.5.0;
 
 import {IBaseGuardian} from "./IBaseGuardian.sol";
 
-import {IAdapter} from "../../core/interfaces/IAdapter.sol";
+import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
 
 interface IProtocolGuardian is IBaseGuardian {
     error NotTheAuthorizedSafeOrItsOwner();

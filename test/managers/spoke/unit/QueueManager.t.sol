@@ -5,11 +5,11 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
-import {IGateway} from "../../../../src/core/interfaces/IGateway.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IContractUpdate} from "../../../../src/core/interfaces/IContractUpdate.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {IBatchedMulticall} from "../../../../src/core/interfaces/IBatchedMulticall.sol";
+import {IBatchedMulticall} from "../../../../src/core/utils/interfaces/IBatchedMulticall.sol";
 
 import {QueueManager} from "../../../../src/managers/spoke/QueueManager.sol";
 import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueManager.sol";

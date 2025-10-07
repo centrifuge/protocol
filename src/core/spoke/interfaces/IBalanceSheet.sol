@@ -7,11 +7,12 @@ import {IEndorsements} from "./IEndorsements.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
 
+import {ISpokeMessageSender} from "../../messaging/interfaces/IGatewaySenders.sol";
+
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IBatchedMulticall} from "../../interfaces/IBatchedMulticall.sol";
-import {ISpokeMessageSender} from "../../interfaces/IGatewaySenders.sol";
+import {IBatchedMulticall} from "../../utils/interfaces/IBatchedMulticall.sol";
 import {IPoolEscrowProvider} from "../factories/interfaces/IPoolEscrowFactory.sol";
 
 struct ShareQueueAmount {

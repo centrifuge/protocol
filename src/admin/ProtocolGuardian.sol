@@ -10,10 +10,10 @@ import {IProtocolGuardian} from "./interfaces/IProtocolGuardian.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
-import {IAdapter} from "../core/interfaces/IAdapter.sol";
-import {IGateway} from "../core/interfaces/IGateway.sol";
-import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
-import {IScheduleAuthMessageSender} from "../core/interfaces/IGatewaySenders.sol";
+import {IAdapter} from "../core/messaging/interfaces/IAdapter.sol";
+import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
+import {IMultiAdapter} from "../core/messaging/interfaces/IMultiAdapter.sol";
+import {IScheduleAuthMessageSender} from "../core/messaging/interfaces/IGatewaySenders.sol";
 
 /// @title  ProtocolGuardian
 /// @notice This contract provides emergency controls and protocol-level management including pausing,

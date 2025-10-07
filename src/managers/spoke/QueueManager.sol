@@ -10,8 +10,8 @@ import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol"
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
-import {IGateway} from "../../core/interfaces/IGateway.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
 

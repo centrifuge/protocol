@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {PoolId} from "./types/PoolId.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "./interfaces/IMultiAdapter.sol";
 
-import {Auth} from "../misc/Auth.sol";
-import {CastLib} from "../misc/libraries/CastLib.sol";
-import {MathLib} from "../misc/libraries/MathLib.sol";
-import {ArrayLib} from "../misc/libraries/ArrayLib.sol";
-import {BytesLib} from "../misc/libraries/BytesLib.sol";
+import {Auth} from "../../misc/Auth.sol";
+import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {MathLib} from "../../misc/libraries/MathLib.sol";
+import {ArrayLib} from "../../misc/libraries/ArrayLib.sol";
+import {BytesLib} from "../../misc/libraries/BytesLib.sol";
+
+import {PoolId} from "../types/PoolId.sol";
 
 /// @title  MultiAdapter
 /// @notice This contract manages multiple cross-chain messaging adapters and implements a voting mechanism

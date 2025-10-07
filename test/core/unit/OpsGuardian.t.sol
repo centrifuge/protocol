@@ -3,8 +3,8 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
-import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
-import {IMultiAdapter} from "../../../src/core/interfaces/IMultiAdapter.sol";
+import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
