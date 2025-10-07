@@ -526,6 +526,26 @@ abstract contract Properties is
             address(globalEscrow)
         );
 
+        console2.log(
+            "sumOfFulfilledDeposits[address(shareToken)]: ",
+            sumOfFulfilledDeposits[address(shareToken)]
+        );
+        console2.log(
+            "sumOfRedeemRequests[address(shareToken)]: ",
+            sumOfRedeemRequests[address(shareToken)]
+        );
+        console2.log(
+            "sumOfClaimedDeposits[address(shareToken)]: ",
+            sumOfClaimedDeposits[address(shareToken)]
+        );
+        console2.log(
+            "executedRedemptions[address(shareToken)]: ",
+            executedRedemptions[address(shareToken)]
+        );
+        console2.log(
+            "sumOfClaimedCancelledRedeemShares[address(shareToken)])): ",
+            sumOfClaimedCancelledRedeemShares[address(shareToken)]
+        );
         unchecked {
             ghostBalanceOfEscrow = ((sumOfFulfilledDeposits[
                 address(shareToken)
@@ -1394,13 +1414,10 @@ abstract contract Properties is
         PoolId[] memory _createdPools = _getPools();
         for (uint256 i = 0; i < _createdPools.length; i++) {
             PoolId poolId = _createdPools[i];
-            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
             // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = shareClassManager.previewShareClassId(
-                    poolId,
-                    j
-                );
+            for (uint32 j = 1; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
                 AssetId assetId = _getAssetId();
 
                 // get the account ids for each account
@@ -2096,8 +2113,11 @@ abstract contract Properties is
                 bytes32 key = _poolShareKey(poolId, scId);
 
                 // Check if there are any async vaults for this pool/shareclass combination
-                bool hasAsyncVault = _hasAsyncVaultForPoolShareClass(poolId, scId);
-                
+                bool hasAsyncVault = _hasAsyncVaultForPoolShareClass(
+                    poolId,
+                    scId
+                );
+
                 // Skip pools/shareclasses that don't have async vaults as queuedShares only apply to async operations
                 if (!hasAsyncVault) {
                     continue;
@@ -2334,6 +2354,10 @@ abstract contract Properties is
                         // Ghost variable should track this asset as non-empty
                         bytes32 assetKey = keccak256(
                             abi.encode(poolId, scId, assetId)
+                        );
+                        console2.log(
+                            "ghost_assetCounterPerAsset[assetKey]: ",
+                            ghost_assetCounterPerAsset[assetKey]
                         );
                         t(
                             ghost_assetCounterPerAsset[assetKey] == 1,
@@ -3166,13 +3190,16 @@ abstract contract Properties is
     /// @param poolId The pool ID to check
     /// @param scId The share class ID to check
     /// @return hasAsync True if there are async vaults for this pool/shareclass combination
-    function _hasAsyncVaultForPoolShareClass(PoolId poolId, ShareClassId scId) internal view returns (bool hasAsync) {
+    function _hasAsyncVaultForPoolShareClass(
+        PoolId poolId,
+        ShareClassId scId
+    ) internal view returns (bool hasAsync) {
         // Get all vaults from the system
         IBaseVault[] memory vaults = _getVaults();
-        
+
         for (uint256 i = 0; i < vaults.length; i++) {
             IBaseVault vault = vaults[i];
-            
+
             // Check if this vault belongs to the specified pool and shareclass
             if (vault.poolId() == poolId && vault.scId() == scId) {
                 // Check if this vault is async using the helper function
@@ -3181,7 +3208,7 @@ abstract contract Properties is
                 }
             }
         }
-        
+
         return false;
     }
 }
