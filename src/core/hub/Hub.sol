@@ -18,17 +18,18 @@ import {Recoverable} from "../../misc/Recoverable.sol";
 import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 
+import {IAdapter} from "../messaging/interfaces/IAdapter.sol";
+import {IGateway} from "../messaging/interfaces/IGateway.sol";
+import {IMultiAdapter} from "../messaging/interfaces/IMultiAdapter.sol";
+import {IHubMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
+
 import {ICreatePool} from "../../admin/interfaces/ICreatePool.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {AccountId} from "../types/AccountId.sol";
-import {IAdapter} from "../interfaces/IAdapter.sol";
-import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {IMultiAdapter} from "../interfaces/IMultiAdapter.sol";
 import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
-import {IHubMessageSender} from "../interfaces/IGatewaySenders.sol";
 
 /// @title  Hub
 /// @notice Central pool management contract, that brings together all functions in one place.

@@ -1630,7 +1630,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
     using MathLib for *;
 
     function testClaimDepositSkippedEpochsNoPayout(uint8 skippedEpochs) public {
-        vm.assume(skippedEpochs > 0);
+        skippedEpochs = uint8(bound(skippedEpochs, 1, type(uint8).max));
 
         D18 pricePoolPerShare = d18(1e18);
         uint128 approvedAmountUsdc = 1;
@@ -1669,7 +1669,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
     }
 
     function testClaimDepositSkippedEpochsNothingRemaining(uint128 depositAmountUsdc_, uint8 skippedEpochs) public {
-        vm.assume(skippedEpochs > 0);
+        skippedEpochs = uint8(bound(skippedEpochs, 1, type(uint8).max));
 
         D18 nonZeroPrice = d18(1e18);
         uint128 depositAmountUsdc = uint128(bound(depositAmountUsdc_, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
@@ -1756,7 +1756,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
     }
 
     function testClaimRedeemSkippedEpochsNoPayout(uint8 skippedEpochs) public {
-        vm.assume(skippedEpochs > 0);
+        skippedEpochs = uint8(bound(skippedEpochs, 1, type(uint8).max));
 
         D18 pricePoolPerShare = d18(1e18);
         uint128 approvedShares = 1;
@@ -1795,7 +1795,7 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
     }
 
     function testClaimRedeemSkippedEpochsNothingRemaining(uint128 amount, uint8 skippedEpochs) public {
-        vm.assume(skippedEpochs > 0);
+        skippedEpochs = uint8(bound(skippedEpochs, 1, type(uint8).max));
 
         D18 nonZeroPrice = d18(1e18);
         uint128 redeemShares = uint128(bound(amount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));

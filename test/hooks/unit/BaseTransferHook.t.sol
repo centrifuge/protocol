@@ -545,7 +545,7 @@ contract BaseTransferHookTestFuzz is BaseTransferHookTestBase {
     }
 
     function testFuzzMembershipTimestamp(uint64 validUntil) public {
-        vm.assume(validUntil >= block.timestamp);
+        validUntil = uint64(bound(validUntil, block.timestamp, type(uint64).max));
 
         _updateMemberValidUntil(user1, validUntil);
 
