@@ -118,6 +118,10 @@ contract GasService is IGasService {
         revert InvalidMessageType(); // Unreachable
     }
 
+    /// @dev - BASE_COST adds some offset to the benchmarked message
+    ///      - GAS_FAIL_MESSAGE_STORAGE is an extra required to process a possible message failure
+    ///      - Multiply by 64/63 is because EIP-150 pass 63/64 gas to each method call,
+    ///        so we add here the adapter call required gas.
     function _gasValue(uint128 value) internal pure returns (uint128) {
         return BASE_COST + uint128(GAS_FAIL_MESSAGE_STORAGE) + 64 * value / 63;
     }
