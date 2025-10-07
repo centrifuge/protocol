@@ -116,6 +116,8 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
         vm.assume(gasLimit > 0);
         vm.assume(gasLimit < adapter.RECEIVE_COST());
 
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR));
+
         bytes memory payload = "irrelevant";
 
         axelarGasService.setReturn("estimateGasFee", gasLimit - 1);

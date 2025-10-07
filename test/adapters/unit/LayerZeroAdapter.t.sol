@@ -141,7 +141,9 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         assertEq(adapter.wards(address(this)), 1);
     }
 
-    function testEstimate(uint64 gasLimit) public view {
+    function testEstimate(uint64 gasLimit) public {
+        adapter.wire(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
+
         bytes memory payload = "irrelevant";
         assertEq(adapter.estimate(CENTRIFUGE_ID, payload, gasLimit), 200_000);
     }
