@@ -147,7 +147,10 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             ) {
                 t(false, "LP-2 Must Revert");
             }
-        } catch {}
+        } catch {
+            // used to still allow reverts for failing calls to be pruned in shrinking
+            require(false);
+        }
     }
 
     function vault_requestRedeem_clamped(
