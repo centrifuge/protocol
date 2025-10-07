@@ -61,6 +61,20 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             ][to] += assets;
             sumOfDepositRequests[_getVault().asset()] += assets;
             requestDepositAssets[to][_getVault().asset()] += assets;
+
+            // If not member
+            (bool isMemberTo, ) = fullRestrictions.isMember(
+                _getVault().share(),
+                to
+            );
+            if (!isMemberTo) {
+                t(false, "LP-1 Must Revert");
+            }
+
+            // If to address is frozen
+            if (fullRestrictions.isFrozen(_getVault().share(), to)) {
+                t(false, "LP-2 Must Revert");
+            }
         } catch (bytes memory reason) {
             // precondition: check that it wasn't an overflow because we only care about underflow
             uint128 pendingDeposit = shareClassManager.pendingDeposit(
@@ -79,20 +93,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                     !arithmeticRevert,
                     "depositRequest reverts with arithmetic panic"
                 );
-            }
-
-            // If not member
-            (bool isMemberTo, ) = fullRestrictions.isMember(
-                _getVault().share(),
-                to
-            );
-            if (!isMemberTo) {
-                t(false, "LP-1 Must Revert");
-            }
-
-            // If to address is frozen
-            if (fullRestrictions.isFrozen(_getVault().share(), to)) {
-                t(false, "LP-2 Must Revert");
             }
         }
     }
@@ -140,14 +140,14 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             userRequestRedeemedAssets[vault.scId()][
                 spoke.vaultDetails(vault).assetId
             ][to] += vault.convertToAssets(shares);
-        } catch {
+
             if (
                 fullRestrictions.isFrozen(vault.share(), _getActor()) == true ||
                 fullRestrictions.isFrozen(vault.share(), to) == true
             ) {
                 t(false, "LP-2 Must Revert");
             }
-        }
+        } catch {}
     }
 
     function vault_requestRedeem_clamped(

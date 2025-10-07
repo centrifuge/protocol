@@ -86,9 +86,6 @@ abstract contract TargetFunctions is
     // ═══════════════════════════════════════════════════════════════
     // SHORTCUT FUNCTIONS
     // ═══════════════════════════════════════════════════════════════
-    // ═══════════════════════════════════════════════════════════════
-    // SHORTCUT FUNCTIONS
-    // ═══════════════════════════════════════════════════════════════
     /// @dev This is the main system setup function done like this to explore more possible states
     /// @dev Deploy new asset, add asset to pool, deploy share class, deploy vault
     function shortcut_deployNewTokenPoolAndShare(
