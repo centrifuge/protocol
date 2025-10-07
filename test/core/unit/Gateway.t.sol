@@ -10,10 +10,10 @@ import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageL
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {Gateway} from "../../../src/core/messaging/Gateway.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
-import {IGateway, GAS_FAIL_MESSAGE_STORAGE} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {IMessageLimits} from "../../../src/core/messaging/interfaces/IMessageLimits.sol";
 import {IProtocolPauser} from "../../../src/core/messaging/interfaces/IProtocolPauser.sol";
 import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
+import {IGateway, GAS_FAIL_MESSAGE_STORAGE} from "../../../src/core/messaging/interfaces/IGateway.sol";
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 

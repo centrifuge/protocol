@@ -3,9 +3,8 @@ pragma solidity 0.8.28;
 
 import {IGasService} from "./interfaces/IGasService.sol";
 import {IMessageLimits} from "./interfaces/IMessageLimits.sol";
+import {GAS_FAIL_MESSAGE_STORAGE} from "./interfaces/IGateway.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
-
-import {GAS_FAIL_MESSAGE_STORAGE} from "../messaging/interfaces/IGateway.sol";
 
 /// @title  GasService
 /// @notice This contract stores the gas limits (in gas units) for cross-chain message execution.
