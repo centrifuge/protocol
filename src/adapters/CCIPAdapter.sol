@@ -24,6 +24,9 @@ import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 contract CCIPAdapter is Auth, ICCIPAdapter {
     using CastLib for *;
 
+    /// @dev Cost of executing `ccipReceive()` except entrypoint.handle()
+    uint256 public constant RECEIVE_COST = 4000;
+
     IRouterClient public immutable ccipRouter;
     IMessageHandler public immutable entrypoint;
 
@@ -90,7 +93,7 @@ contract CCIPAdapter is Auth, ICCIPAdapter {
             data: payload,
             tokenAmounts: new IClient.EVMTokenAmount[](0),
             feeToken: address(0), // Pay in native token
-            extraArgs: _argsToBytes(IClient.EVMExtraArgsV1({gasLimit: gasLimit}))
+            extraArgs: _argsToBytes(IClient.EVMExtraArgsV1({gasLimit: gasLimit + RECEIVE_COST}))
         });
 
         adapterData = ccipRouter.ccipSend{value: msg.value}(destination.chainSelector, ccipMessage);
@@ -106,7 +109,7 @@ contract CCIPAdapter is Auth, ICCIPAdapter {
             data: payload,
             tokenAmounts: new IClient.EVMTokenAmount[](0),
             feeToken: address(0),
-            extraArgs: _argsToBytes(IClient.EVMExtraArgsV1({gasLimit: gasLimit}))
+            extraArgs: _argsToBytes(IClient.EVMExtraArgsV1({gasLimit: gasLimit + RECEIVE_COST}))
         });
 
         return ccipRouter.getFee(destination.chainSelector, ccipMessage);
