@@ -1,31 +1,37 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ICCIPAdapter, IAdapter, CCIPSource, CCIPDestination} from "./interfaces/ICCIPAdapter.sol";
+import {
+    ICCIPAdapter,
+    IAdapter,
+    CCIPSource,
+    CCIPDestination,
+    IRouterClient,
+    IClient,
+    EVM_EXTRA_ARGS_V1_TAG,
+    IAny2EVMMessageReceiver
+} from "./interfaces/ICCIPAdapter.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
-import {IMessageHandler} from "../common/interfaces/IMessageHandler.sol";
-import {IRouterClient} from "@chainlink-ccip/interfaces/IRouterClient.sol";
-import {Client} from "@chainlink-ccip/libraries/Client.sol";
+import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
+
+import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 
 /// @title  CCIP Adapter
 /// @notice Routing contract that integrates with Chainlink CCIP
 contract CCIPAdapter is Auth, ICCIPAdapter {
     using CastLib for *;
 
-    IMessageHandler public immutable entrypoint;
+    /// @dev Cost of executing `ccipReceive()` except entrypoint.handle()
+    uint256 public constant RECEIVE_COST = 4000;
+
     IRouterClient public immutable ccipRouter;
+    IMessageHandler public immutable entrypoint;
 
     mapping(uint64 chainSelector => CCIPSource) public sources;
     mapping(uint16 centrifugeId => CCIPDestination) public destinations;
-
-    error InvalidRouter();
-    error InvalidSourceChain();
-    error InvalidSourceAddress();
-    error InsufficientFeeTokenAmount();
-    error RefundFailed();
 
     constructor(IMessageHandler entrypoint_, address ccipRouter_, address deployer) Auth(deployer) {
         entrypoint = entrypoint_;
@@ -36,19 +42,27 @@ contract CCIPAdapter is Auth, ICCIPAdapter {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc ICCIPAdapter
-    function wire(uint16 centrifugeId, uint64 chainSelector, address adapter) external auth {
+    /// @inheritdoc IAdapterWiring
+    function wire(uint16 centrifugeId, bytes memory data) external auth {
+        (uint64 chainSelector, address adapter) = abi.decode(data, (uint64, address));
+        require(ccipRouter.isChainSupported(chainSelector), UnsupportedChain());
+
         sources[chainSelector] = CCIPSource(centrifugeId, keccak256(abi.encodePacked(adapter)));
         destinations[centrifugeId] = CCIPDestination(chainSelector, adapter);
         emit Wire(centrifugeId, chainSelector, adapter);
+    }
+
+    /// @inheritdoc IAdapterWiring
+    function isWired(uint16 centrifugeId) external view returns (bool) {
+        return destinations[centrifugeId].chainSelector != 0;
     }
 
     //----------------------------------------------------------------------------------------------
     // Incoming
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc ICCIPAdapter
-    function ccipReceive(Client.Any2EVMMessage calldata message) external {
+    /// @inheritdoc IAny2EVMMessageReceiver
+    function ccipReceive(IClient.Any2EVMMessage calldata message) external {
         require(msg.sender == address(ccipRouter), InvalidRouter());
 
         CCIPSource memory source = sources[message.sourceChainSelector];
@@ -65,40 +79,24 @@ contract CCIPAdapter is Auth, ICCIPAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapter
-    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund)
-    external
-    payable
-    returns (bytes32 adapterData)
+    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address)
+        external
+        payable
+        returns (bytes32 adapterData)
     {
         require(msg.sender == address(entrypoint), NotEntrypoint());
         CCIPDestination memory destination = destinations[centrifugeId];
         require(destination.chainSelector != 0, UnknownChainId());
 
-        // Build CCIP message
-        Client.EVM2AnyMessage memory ccipMessage = Client.EVM2AnyMessage({
-            receiver: abi.encode(destination.adapter),
+        IClient.EVM2AnyMessage memory ccipMessage = IClient.EVM2AnyMessage({
+            receiver: abi.encode(destination.addr),
             data: payload,
-            tokenAmounts: new Client.EVMTokenAmount[](0),
+            tokenAmounts: new IClient.EVMTokenAmount[](0),
             feeToken: address(0), // Pay in native token
-            extraArgs: Client._argsToBytes(Client.EVMExtraArgsV1({gasLimit: gasLimit}))
+            extraArgs: _argsToBytes(IClient.EVMExtraArgsV1({gasLimit: gasLimit + RECEIVE_COST}))
         });
 
-        // Get exact fee amount needed
-        uint256 fee = ccipRouter.getFee(destination.chainSelector, ccipMessage);
-        require(msg.value >= fee, InsufficientFeeTokenAmount());
-
-        // Send message with exact fee
-        bytes32 messageId = ccipRouter.ccipSend{value: fee}(destination.chainSelector, ccipMessage);
-
-        // Refund entire contract ETH balance to the specified recipient
-        uint256 leftover = address(this).balance;
-        if (leftover > 0 && refund != address(0)) {
-            (bool success,) = refund.call{value: leftover}("");
-            require(success, RefundFailed());
-            emit LeftoverRefund(refund, leftover);
-        }
-
-        adapterData = messageId;
+        adapterData = ccipRouter.ccipSend{value: msg.value}(destination.chainSelector, ccipMessage);
     }
 
     /// @inheritdoc IAdapter
@@ -106,17 +104,19 @@ contract CCIPAdapter is Auth, ICCIPAdapter {
         CCIPDestination memory destination = destinations[centrifugeId];
         require(destination.chainSelector != 0, UnknownChainId());
 
-        Client.EVM2AnyMessage memory ccipMessage = Client.EVM2AnyMessage({
-            receiver: abi.encode(destination.adapter),
+        IClient.EVM2AnyMessage memory ccipMessage = IClient.EVM2AnyMessage({
+            receiver: abi.encode(destination.addr),
             data: payload,
-            tokenAmounts: new Client.EVMTokenAmount[](0),
+            tokenAmounts: new IClient.EVMTokenAmount[](0),
             feeToken: address(0),
-            extraArgs: Client._argsToBytes(Client.EVMExtraArgsV1({gasLimit: gasLimit}))
+            extraArgs: _argsToBytes(IClient.EVMExtraArgsV1({gasLimit: gasLimit + RECEIVE_COST}))
         });
 
         return ccipRouter.getFee(destination.chainSelector, ccipMessage);
     }
 
-    /// @notice Allow contract to receive ETH
-    receive() external payable {}
+    // Based on https://github.com/smartcontractkit/chainlink-ccip/blob/06f2720ee9a0c987a18a9bb226c672adfcf24bcd/chains/evm/contracts/libraries/Client.sol#L36
+    function _argsToBytes(IClient.EVMExtraArgsV1 memory extraArgs) internal pure returns (bytes memory bts) {
+        return abi.encodeWithSelector(EVM_EXTRA_ARGS_V1_TAG, extraArgs);
+    }
 }
