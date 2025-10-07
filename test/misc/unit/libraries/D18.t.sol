@@ -8,15 +8,15 @@ import "forge-std/Test.sol";
 
 contract D18Test is Test {
     function testFuzzAdd(uint128 a, uint128 b) public pure {
-        vm.assume(a <= type(uint128).max / 2);
-        vm.assume(b <= type(uint128).max / 2);
+        a = uint128(bound(a, 0, type(uint128).max / 2));
+        b = uint128(bound(b, 0, type(uint128).max / 2));
 
         D18 c = d18(a) + d18(b);
         assertEqDecimal(c.raw(), a + b, 18);
     }
 
     function testFuzzSub(uint128 a, uint128 b) public pure {
-        vm.assume(a >= b);
+        b = uint128(bound(b, 0, a));
 
         D18 c = d18(a) - d18(b);
         assertEqDecimal(c.raw(), a - b, 18);
