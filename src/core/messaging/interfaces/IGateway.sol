@@ -7,6 +7,8 @@ import {IRecoverable} from "../../../misc/interfaces/IRecoverable.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 
+uint256 constant GAS_FAIL_MESSAGE_STORAGE = 40_000; // check testMessageFailBenchmark
+
 /// @notice Interface for dispatch-only gateway
 interface IGateway is IMessageHandler, IRecoverable {
     //----------------------------------------------------------------------------------------------
