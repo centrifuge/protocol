@@ -377,11 +377,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             tokenId
         );
 
-        // Check if withdrawal would exceed available balance (track failures)
-        if (amount > prevAvailable) {
-            ghost_failedWithdrawalAttempts[assetKey]++;
-        }
-
         try
             balanceSheet.withdraw(
                 poolId,
@@ -405,13 +400,14 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             // Track withdrawal proportionality
             ghost_withdrawalProportionalityTracked[assetKey] = true;
             ghost_cumulativeAssetsWithdrawn[assetKey] += amount;
+            ghost_assetQueueWithdrawals[assetKey] += amount;
+            sumOfManagerWithdrawals[vault.asset()] += amount;
         } catch {
-            // Failed withdrawal tracked above
+            // Check if withdrawal was possible with available balance (track failures)
+            if (amount <= prevAvailable) {
+                ghost_failedWithdrawalAttempts[assetKey]++;
+            }
         }
-
-        sumOfManagerWithdrawals[vault.asset()] += amount;
-
-        ghost_assetQueueWithdrawals[assetKey] += amount;
     }
 
     // ===============================
