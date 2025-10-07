@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.28;
 
+import {IBatchedMulticall} from "./interfaces/IBatchedMulticall.sol";
+
 import {Multicall, IMulticall} from "../../misc/Multicall.sol";
 
-import {IGateway} from "../interfaces/IGateway.sol";
-import {IBatchedMulticall} from "../interfaces/IBatchedMulticall.sol";
+import {IGateway} from "../messaging/interfaces/IGateway.sol";
 
 /// @title  BatchedMulticall
 /// @notice Abstract contract that extends Multicall with gateway batching support, enabling efficient
