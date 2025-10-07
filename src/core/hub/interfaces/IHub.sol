@@ -103,8 +103,6 @@ interface IHub is IBatchedMulticall {
 
     error InvalidRequestManager();
 
-    error RequestManagerCallFailed();
-
     //----------------------------------------------------------------------------------------------
     // System methods
     //----------------------------------------------------------------------------------------------

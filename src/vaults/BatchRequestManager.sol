@@ -141,9 +141,19 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     }
 
     /// @inheritdoc IHubRequestManager
-    function callFromHub(PoolId poolId, bytes calldata data) external auth {
-        // We assume first parameter from data is always a PoolId
-        require(poolId == PoolId.wrap(data.toUint256(4).toUint64()), CallFromDifferentPool());
+    function callFromHub(PoolId, bytes calldata data) external auth {
+        bytes4 selector = data.toBytes4(0);
+
+        // forgefmt: disable-next-item
+        require(
+            selector == this.approveDeposits.selector ||
+            selector == this.approveRedeems.selector ||
+            selector == this.issueShares.selector ||
+            selector == this.revokeShares.selector ||
+            selector == this.forceCancelDepositRequest.selector ||
+            selector == this.forceCancelRedeemRequest.selector,
+            InvalidMethodCalledFromHub()
+        );
 
         (bool success, bytes memory returnData) = address(this).delegatecall(data);
 

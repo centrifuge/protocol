@@ -69,4 +69,9 @@ contract BytesLibTest is Test {
         bytes memory value = bytes.concat(bytes.concat(randomStart, abi.encodePacked(data)), randomEnd);
         assertEq(BytesLib.toBytes16(value, randomStart.length), data);
     }
+
+    function testToBytes4(bytes4 data, bytes memory randomStart, bytes memory randomEnd) public pure {
+        bytes memory value = bytes.concat(bytes.concat(randomStart, abi.encodePacked(data)), randomEnd);
+        assertEq(BytesLib.toBytes4(value, randomStart.length), data);
+    }
 }

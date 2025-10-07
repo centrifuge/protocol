@@ -195,6 +195,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     error CancellationInitializationRequired();
     error CancellationQueued();
     error CallFailedWithEmptyRevert();
+    error InvalidMethodCalledFromHub();
 
     //----------------------------------------------------------------------------------------------
     // Incoming requests

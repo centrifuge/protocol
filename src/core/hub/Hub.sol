@@ -504,6 +504,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     /// @inheritdoc IHub
     function callRequestManager(PoolId poolId, uint16 centrifugeId, bytes calldata data) external payable {
         _isManager(poolId);
+        require(poolId == PoolId.wrap(data.toUint256(4).toUint64()), NotManager());
 
         hubRegistry.hubRequestManager(poolId, centrifugeId).callFromHub(poolId, data);
     }
