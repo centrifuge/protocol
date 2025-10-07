@@ -145,7 +145,6 @@ abstract contract AsyncVaultCentrifugeProperties is
         uint256 depositAmount
     ) public {
         uint256 maxDepositBefore = _getVault().maxDeposit(_getActor());
-        require(maxDepositBefore > 0, "must be able to deposit");
 
         depositAmount = between(depositAmount, 1, maxDepositBefore);
 

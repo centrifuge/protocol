@@ -21,6 +21,8 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
+import {IVault, VaultKind} from "src/spoke/interfaces/IVault.sol";
+import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 
 import {OpType} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
@@ -1891,9 +1893,14 @@ abstract contract Properties is
 
         // === VAULT OPERATION TESTS === //
         try vault.maxDeposit(_getActor()) returns (uint256 max) {
+            console2.log("DEBUG: maxDeposit returned:", max);
+            console2.log(
+                "DEBUG: pool per share:",
+                D18.unwrap(spoke.pricePoolPerShare(poolId, scId, false))
+            );
             eq(max, 0, "maxDeposit handled zero price");
         } catch {
-            t(false, "maxDeposit shout not revert at zero price");
+            t(false, "maxDeposit should not revert at zero price");
         }
 
         try vault.maxMint(_getActor()) returns (uint256 max) {
@@ -2088,6 +2095,14 @@ abstract contract Properties is
                 ShareClassId scId = shareClasses[j];
                 bytes32 key = _poolShareKey(poolId, scId);
 
+                // Check if there are any async vaults for this pool/shareclass combination
+                bool hasAsyncVault = _hasAsyncVaultForPoolShareClass(poolId, scId);
+                
+                // Skip pools/shareclasses that don't have async vaults as queuedShares only apply to async operations
+                if (!hasAsyncVault) {
+                    continue;
+                }
+
                 (uint128 delta, bool isPositive, , ) = balanceSheet
                     .queuedShares(poolId, scId);
 
@@ -2119,7 +2134,10 @@ abstract contract Properties is
                 }
 
                 // Verify net position matches tracked operations
+                // NOTE: implemented like this because comparing int256 values
                 if (actualNet != expectedNet) {
+                    console2.log("actualNet: ", actualNet);
+                    console2.log("expectedNet: ", expectedNet);
                     t(
                         false,
                         "SHARE-QUEUE-04: Net position must match tracked issue/revoke operations"
@@ -3142,5 +3160,28 @@ abstract contract Properties is
                 }
             }
         }
+    }
+
+    /// @notice Helper function to check if a pool/shareclass has any async vaults
+    /// @param poolId The pool ID to check
+    /// @param scId The share class ID to check
+    /// @return hasAsync True if there are async vaults for this pool/shareclass combination
+    function _hasAsyncVaultForPoolShareClass(PoolId poolId, ShareClassId scId) internal view returns (bool hasAsync) {
+        // Get all vaults from the system
+        IBaseVault[] memory vaults = _getVaults();
+        
+        for (uint256 i = 0; i < vaults.length; i++) {
+            IBaseVault vault = vaults[i];
+            
+            // Check if this vault belongs to the specified pool and shareclass
+            if (vault.poolId() == poolId && vault.scId() == scId) {
+                // Check if this vault is async using the helper function
+                if (Helpers.isAsyncVault(address(vault))) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     }
 }
