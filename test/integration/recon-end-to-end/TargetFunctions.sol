@@ -86,9 +86,6 @@ abstract contract TargetFunctions is
     // ═══════════════════════════════════════════════════════════════
     // SHORTCUT FUNCTIONS
     // ═══════════════════════════════════════════════════════════════
-    // ═══════════════════════════════════════════════════════════════
-    // SHORTCUT FUNCTIONS
-    // ═══════════════════════════════════════════════════════════════
     /// @dev This is the main system setup function done like this to explore more possible states
     /// @dev Deploy new asset, add asset to pool, deploy share class, deploy vault
     function shortcut_deployNewTokenPoolAndShare(
@@ -264,382 +261,382 @@ abstract contract TargetFunctions is
         return (_token, _shareToken, _vault, _assetId, _scId);
     }
 
-    function shortcut_request_deposit(
-        uint64 /* pricePoolPerShare */,
-        uint128 priceValuation,
-        uint256 amount,
-        uint256 toEntropy
-    ) public {
-        transientValuation_setPrice_clamped(priceValuation);
+    // function shortcut_request_deposit(
+    //     uint64 /* pricePoolPerShare */,
+    //     uint128 priceValuation,
+    //     uint256 amount,
+    //     uint256 toEntropy
+    // ) public {
+    //     transientValuation_setPrice_clamped(priceValuation);
 
-        hub_notifySharePrice_clamped();
-        hub_notifyAssetPrice();
-        spoke_updateMember(type(uint64).max);
+    //     hub_notifySharePrice_clamped();
+    //     hub_notifyAssetPrice();
+    //     spoke_updateMember(type(uint64).max);
 
-        vault_requestDeposit(amount, toEntropy);
-    }
+    //     vault_requestDeposit(amount, toEntropy);
+    // }
 
-    function shortcut_deposit_sync(uint256 assets, uint128 navPerShare) public {
-        IBaseVault vault = _getVault();
+    // function shortcut_deposit_sync(uint256 assets, uint128 navPerShare) public {
+    //     IBaseVault vault = _getVault();
 
-        transientValuation_setPrice_clamped(navPerShare);
-        hub_updateSharePrice(
-            vault.poolId().raw(),
-            uint128(vault.scId().raw()),
-            navPerShare
-        );
+    //     transientValuation_setPrice_clamped(navPerShare);
+    //     hub_updateSharePrice(
+    //         vault.poolId().raw(),
+    //         uint128(vault.scId().raw()),
+    //         navPerShare
+    //     );
 
-        hub_notifyAssetPrice();
-        hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);
+    //     hub_notifyAssetPrice();
+    //     hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);
 
-        spoke_updateMember(type(uint64).max);
+    //     spoke_updateMember(type(uint64).max);
 
-        vault_deposit(assets);
-    }
+    //     vault_deposit(assets);
+    // }
 
-    function shortcut_mint_sync(uint256 shares, uint128 navPerShare) public {
-        IBaseVault vault = _getVault();
+    // function shortcut_mint_sync(uint256 shares, uint128 navPerShare) public {
+    //     IBaseVault vault = _getVault();
 
-        transientValuation_setPrice_clamped(navPerShare);
-        hub_updateSharePrice(
-            vault.poolId().raw(),
-            uint128(vault.scId().raw()),
-            navPerShare
-        );
+    //     transientValuation_setPrice_clamped(navPerShare);
+    //     hub_updateSharePrice(
+    //         vault.poolId().raw(),
+    //         uint128(vault.scId().raw()),
+    //         navPerShare
+    //     );
 
-        hub_notifyAssetPrice();
-        hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);
+    //     hub_notifyAssetPrice();
+    //     hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);
 
-        spoke_updateMember(type(uint64).max);
+    //     spoke_updateMember(type(uint64).max);
 
-        vault_mint(shares);
-    }
+    //     vault_mint(shares);
+    // }
 
-    function shortcut_deposit_and_claim(
-        uint64 pricePoolPerShare,
-        uint128 priceValuation,
-        uint256 amount,
-        uint128 navPerShare,
-        uint256 toEntropy
-    ) public {
-        // Request 2x amount to ensure sufficient pending after claiming the approved amount
-        // This prevents assertion failures in hub_notifyDeposit when pending delta < payment amount
-        shortcut_request_deposit(
-            pricePoolPerShare,
-            priceValuation,
-            amount * 2,
-            toEntropy
-        );
+    // function shortcut_deposit_and_claim(
+    //     uint64 pricePoolPerShare,
+    //     uint128 priceValuation,
+    //     uint256 amount,
+    //     uint128 navPerShare,
+    //     uint256 toEntropy
+    // ) public {
+    //     // Request 2x amount to ensure sufficient pending after claiming the approved amount
+    //     // This prevents assertion failures in hub_notifyDeposit when pending delta < payment amount
+    //     shortcut_request_deposit(
+    //         pricePoolPerShare,
+    //         priceValuation,
+    //         amount * 2,
+    //         toEntropy
+    //     );
 
-        uint32 depositEpoch = shareClassManager.nowDepositEpoch(
-            _getShareClassId(),
-            _getAssetId()
-        );
+    //     uint32 depositEpoch = shareClassManager.nowDepositEpoch(
+    //         _getShareClassId(),
+    //         _getAssetId()
+    //     );
 
-        shortcut_approve_and_issue_shares_safe(
-            uint128(amount),
-            depositEpoch,
-            navPerShare
-        );
+    //     shortcut_approve_and_issue_shares_safe(
+    //         uint128(amount),
+    //         depositEpoch,
+    //         navPerShare
+    //     );
 
-        hub_notifyDeposit(MAX_CLAIMS);
-        vault_deposit(amount);
-    }
+    //     hub_notifyDeposit(MAX_CLAIMS);
+    //     vault_deposit(amount);
+    // }
 
-    function shortcut_deposit_and_cancel(
-        uint64 pricePoolPerShare,
-        uint128 priceValuation,
-        uint256 amount,
-        uint128 /* navPerShare */,
-        uint256 toEntropy
-    ) public {
-        shortcut_request_deposit(
-            pricePoolPerShare,
-            priceValuation,
-            amount,
-            toEntropy
-        );
+    // function shortcut_deposit_and_cancel(
+    //     uint64 pricePoolPerShare,
+    //     uint128 priceValuation,
+    //     uint256 amount,
+    //     uint128 /* navPerShare */,
+    //     uint256 toEntropy
+    // ) public {
+    //     shortcut_request_deposit(
+    //         pricePoolPerShare,
+    //         priceValuation,
+    //         amount,
+    //         toEntropy
+    //     );
 
-        vault_cancelDepositRequest();
-    }
+    //     vault_cancelDepositRequest();
+    // }
 
-    function shortcut_deposit_queue_cancel(
-        uint64 pricePoolPerShare,
-        uint128 priceValuation,
-        uint256 depositAmount,
-        uint128 approveAmount,
-        uint128 navPerShare,
-        uint256 toEntropy
-    ) public {
-        shortcut_request_deposit(
-            pricePoolPerShare,
-            priceValuation,
-            depositAmount,
-            toEntropy
-        );
+    // function shortcut_deposit_queue_cancel(
+    //     uint64 pricePoolPerShare,
+    //     uint128 priceValuation,
+    //     uint256 depositAmount,
+    //     uint128 approveAmount,
+    //     uint128 navPerShare,
+    //     uint256 toEntropy
+    // ) public {
+    //     shortcut_request_deposit(
+    //         pricePoolPerShare,
+    //         priceValuation,
+    //         depositAmount,
+    //         toEntropy
+    //     );
 
-        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(
-            _getShareClassId(),
-            _getAssetId()
-        );
-        hub_approveDeposits(nowDepositEpoch, approveAmount);
-        hub_issueShares(nowDepositEpoch, navPerShare);
+    //     uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(
+    //         _getShareClassId(),
+    //         _getAssetId()
+    //     );
+    //     hub_approveDeposits(nowDepositEpoch, approveAmount);
+    //     hub_issueShares(nowDepositEpoch, navPerShare);
 
-        vault_cancelDepositRequest();
-    }
+    //     vault_cancelDepositRequest();
+    // }
 
-    function shortcut_deposit_cancel_claim(
-        uint64 pricePoolPerShare,
-        uint128 priceValuation,
-        uint256 amount,
-        uint128 /* navPerShare */,
-        uint256 toEntropy
-    ) public {
-        shortcut_request_deposit(
-            pricePoolPerShare,
-            priceValuation,
-            amount,
-            toEntropy
-        );
+    // function shortcut_deposit_cancel_claim(
+    //     uint64 pricePoolPerShare,
+    //     uint128 priceValuation,
+    //     uint256 amount,
+    //     uint128 /* navPerShare */,
+    //     uint256 toEntropy
+    // ) public {
+    //     shortcut_request_deposit(
+    //         pricePoolPerShare,
+    //         priceValuation,
+    //         amount,
+    //         toEntropy
+    //     );
 
-        vault_cancelDepositRequest();
+    //     vault_cancelDepositRequest();
 
-        vault_claimCancelDepositRequest(toEntropy);
-    }
+    //     vault_claimCancelDepositRequest(toEntropy);
+    // }
 
-    function shortcut_queue_deposit(
-        uint64 pricePoolPerShare,
-        uint128 priceValuation,
-        uint256 depositAmount,
-        uint128 navPerShare,
-        uint256 toEntropy,
-        uint128 shares
-    ) public {
-        shortcut_request_deposit(
-            pricePoolPerShare,
-            priceValuation,
-            depositAmount,
-            toEntropy
-        );
+    // function shortcut_queue_deposit(
+    //     uint64 pricePoolPerShare,
+    //     uint128 priceValuation,
+    //     uint256 depositAmount,
+    //     uint128 navPerShare,
+    //     uint256 toEntropy,
+    //     uint128 shares
+    // ) public {
+    //     shortcut_request_deposit(
+    //         pricePoolPerShare,
+    //         priceValuation,
+    //         depositAmount,
+    //         toEntropy
+    //     );
 
-        uint32 redeemEpoch = shareClassManager.nowDepositEpoch(
-            _getShareClassId(),
-            _getAssetId()
-        );
-        shortcut_approve_and_revoke_shares_safe(
-            shares,
-            redeemEpoch,
-            navPerShare
-        );
-    }
+    //     uint32 redeemEpoch = shareClassManager.nowDepositEpoch(
+    //         _getShareClassId(),
+    //         _getAssetId()
+    //     );
+    //     shortcut_approve_and_revoke_shares_safe(
+    //         shares,
+    //         redeemEpoch,
+    //         navPerShare
+    //     );
+    // }
 
-    function shortcut_queue_redemption(
-        uint256 shares,
-        uint128 navPerShare,
-        uint256 toEntropy
-    ) public {
-        // Clamp shares to user's actual share balance to prevent insufficient balance errors
-        IBaseVault vault = _getVault();
-        uint256 userShareBalance = MockERC20(address(vault.share())).balanceOf(
-            _getActor()
-        );
+    // function shortcut_queue_redemption(
+    //     uint256 shares,
+    //     uint128 navPerShare,
+    //     uint256 toEntropy
+    // ) public {
+    //     // Clamp shares to user's actual share balance to prevent insufficient balance errors
+    //     IBaseVault vault = _getVault();
+    //     uint256 userShareBalance = MockERC20(address(vault.share())).balanceOf(
+    //         _getActor()
+    //     );
 
-        // Request 2x shares to ensure sufficient pending after claiming the approved amount
-        // But clamp to available balance
-        uint256 requestShares = shares * 2;
-        if (requestShares > userShareBalance) {
-            requestShares = userShareBalance;
-        }
+    //     // Request 2x shares to ensure sufficient pending after claiming the approved amount
+    //     // But clamp to available balance
+    //     uint256 requestShares = shares * 2;
+    //     if (requestShares > userShareBalance) {
+    //         requestShares = userShareBalance;
+    //     }
 
-        vault_requestRedeem(requestShares, toEntropy);
+    //     vault_requestRedeem(requestShares, toEntropy);
 
-        uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(
-            _getShareClassId(),
-            _getAssetId()
-        );
-        shortcut_approve_and_revoke_shares_safe(
-            uint128(shares),
-            redeemEpoch,
-            navPerShare
-        );
-    }
+    //     uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(
+    //         _getShareClassId(),
+    //         _getAssetId()
+    //     );
+    //     shortcut_approve_and_revoke_shares_safe(
+    //         uint128(shares),
+    //         redeemEpoch,
+    //         navPerShare
+    //     );
+    // }
 
-    function shortcut_claim_withdrawal(
-        uint256 assets,
-        uint256 toEntropy
-    ) public {
-        hub_notifyRedeem(MAX_CLAIMS);
+    // function shortcut_claim_withdrawal(
+    //     uint256 assets,
+    //     uint256 toEntropy
+    // ) public {
+    //     hub_notifyRedeem(MAX_CLAIMS);
 
-        vault_withdraw(assets, toEntropy);
-    }
+    //     vault_withdraw(assets, toEntropy);
+    // }
 
-    function shortcut_claim_redemption(
-        uint256 shares,
-        uint256 toEntropy
-    ) public {
-        hub_notifyRedeem(MAX_CLAIMS);
+    // function shortcut_claim_redemption(
+    //     uint256 shares,
+    //     uint256 toEntropy
+    // ) public {
+    //     hub_notifyRedeem(MAX_CLAIMS);
 
-        vault_redeem(shares, toEntropy);
-    }
+    //     vault_redeem(shares, toEntropy);
+    // }
 
-    function shortcut_redeem_and_claim(
-        uint256 shares,
-        uint128 navPerShare,
-        uint256 toEntropy
-    ) public {
-        shortcut_queue_redemption(shares, navPerShare, toEntropy);
-        shortcut_claim_withdrawal(shares, toEntropy);
-    }
+    // function shortcut_redeem_and_claim(
+    //     uint256 shares,
+    //     uint128 navPerShare,
+    //     uint256 toEntropy
+    // ) public {
+    //     shortcut_queue_redemption(shares, navPerShare, toEntropy);
+    //     shortcut_claim_withdrawal(shares, toEntropy);
+    // }
 
-    function shortcut_withdraw_and_claim_clamped(
-        uint256 shares,
-        uint128 navPerShare,
-        uint256 toEntropy
-    ) public {
-        // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(_getVault().share())).balanceOf(
-            _getActor()
-        ) + 1);
-        uint256 sharesAsAssets = _getVault().convertToAssets(shares);
+    // function shortcut_withdraw_and_claim_clamped(
+    //     uint256 shares,
+    //     uint128 navPerShare,
+    //     uint256 toEntropy
+    // ) public {
+    //     // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
+    //     shares %= (MockERC20(address(_getVault().share())).balanceOf(
+    //         _getActor()
+    //     ) + 1);
+    //     uint256 sharesAsAssets = _getVault().convertToAssets(shares);
 
-        shortcut_queue_redemption(shares, navPerShare, toEntropy);
-        shortcut_claim_withdrawal(sharesAsAssets, toEntropy);
-    }
+    //     shortcut_queue_redemption(shares, navPerShare, toEntropy);
+    //     shortcut_claim_withdrawal(sharesAsAssets, toEntropy);
+    // }
 
-    function shortcut_redeem_and_claim_clamped(
-        uint256 shares,
-        uint128 navPerShare,
-        uint256 toEntropy
-    ) public {
-        // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(_getVault().share())).balanceOf(
-            _getActor()
-        ) + 1);
-        shortcut_queue_redemption(shares, navPerShare, toEntropy);
-        shortcut_claim_redemption(shares, toEntropy);
-    }
+    // function shortcut_redeem_and_claim_clamped(
+    //     uint256 shares,
+    //     uint128 navPerShare,
+    //     uint256 toEntropy
+    // ) public {
+    //     // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
+    //     shares %= (MockERC20(address(_getVault().share())).balanceOf(
+    //         _getActor()
+    //     ) + 1);
+    //     shortcut_queue_redemption(shares, navPerShare, toEntropy);
+    //     shortcut_claim_redemption(shares, toEntropy);
+    // }
 
-    function shortcut_cancel_redeem_clamped(
-        uint256 shares,
-        uint128,
-        /* navPerShare */ uint256 toEntropy
-    ) public {
-        // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(_getVault().share())).balanceOf(
-            _getActor()
-        ) + 1);
-        vault_requestRedeem(shares, toEntropy);
+    // function shortcut_cancel_redeem_clamped(
+    //     uint256 shares,
+    //     uint128,
+    //     /* navPerShare */ uint256 toEntropy
+    // ) public {
+    //     // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
+    //     shares %= (MockERC20(address(_getVault().share())).balanceOf(
+    //         _getActor()
+    //     ) + 1);
+    //     vault_requestRedeem(shares, toEntropy);
 
-        vault_cancelRedeemRequest();
-    }
+    //     vault_cancelRedeemRequest();
+    // }
 
-    function shortcut_cancel_redeem_immediately_issue_and_revoke_clamped(
-        uint256 shares,
-        uint128 navPerShare,
-        uint256 toEntropy
-    ) public {
-        shares %= (MockERC20(address(_getVault().share())).balanceOf(
-            _getActor()
-        ) + 1);
-        shortcut_queue_redemption(shares, navPerShare, toEntropy);
+    // function shortcut_cancel_redeem_immediately_issue_and_revoke_clamped(
+    //     uint256 shares,
+    //     uint128 navPerShare,
+    //     uint256 toEntropy
+    // ) public {
+    //     shares %= (MockERC20(address(_getVault().share())).balanceOf(
+    //         _getActor()
+    //     ) + 1);
+    //     shortcut_queue_redemption(shares, navPerShare, toEntropy);
 
-        vault_cancelRedeemRequest();
+    //     vault_cancelRedeemRequest();
 
-        // After cancellation, check if there's still pending redeem to approve/revoke
-        uint128 pendingRedeem = shareClassManager.pendingRedeem(
-            _getShareClassId(),
-            _getAssetId()
-        );
+    //     // After cancellation, check if there's still pending redeem to approve/revoke
+    //     uint128 pendingRedeem = shareClassManager.pendingRedeem(
+    //         _getShareClassId(),
+    //         _getAssetId()
+    //     );
 
-        // Throw iff pending redeem == 0 to signal pruning
-        uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(
-            _getShareClassId(),
-            _getAssetId()
-        );
-        // Use safe approval function that will revert if pendingRedeem becomes 0
-        shortcut_approve_and_revoke_shares_safe(
-            pendingRedeem,
-            redeemEpoch,
-            navPerShare
-        );
-    }
+    //     // Throw iff pending redeem == 0 to signal pruning
+    //     uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(
+    //         _getShareClassId(),
+    //         _getAssetId()
+    //     );
+    //     // Use safe approval function that will revert if pendingRedeem becomes 0
+    //     shortcut_approve_and_revoke_shares_safe(
+    //         pendingRedeem,
+    //         redeemEpoch,
+    //         navPerShare
+    //     );
+    // }
 
-    function shortcut_cancel_redeem_claim_clamped(
-        uint256 shares,
-        uint128,
-        /* navPerShare */ uint256 toEntropy
-    ) public {
-        // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(_getVault().share())).balanceOf(
-            _getActor()
-        ) + 1);
-        vault_requestRedeem(shares, toEntropy);
+    // function shortcut_cancel_redeem_claim_clamped(
+    //     uint256 shares,
+    //     uint128,
+    //     /* navPerShare */ uint256 toEntropy
+    // ) public {
+    //     // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
+    //     shares %= (MockERC20(address(_getVault().share())).balanceOf(
+    //         _getActor()
+    //     ) + 1);
+    //     vault_requestRedeem(shares, toEntropy);
 
-        vault_cancelRedeemRequest();
-        vault_claimCancelRedeemRequest(toEntropy);
-    }
+    //     vault_cancelRedeemRequest();
+    //     vault_claimCancelRedeemRequest(toEntropy);
+    // }
 
-    // ═══════════════════════════════════════════════════════════════
-    // POOL ADMIN SHORTCUTS
-    // ═══════════════════════════════════════════════════════════════
-    function shortcut_approve_and_issue_shares(
-        uint128 maxApproval,
-        uint32 nowDepositEpochId,
-        uint128 navPerShare
-    ) public {
-        hub_approveDeposits(nowDepositEpochId, maxApproval);
-        hub_issueShares(nowDepositEpochId, navPerShare);
-    }
+    // // ═══════════════════════════════════════════════════════════════
+    // // POOL ADMIN SHORTCUTS
+    // // ═══════════════════════════════════════════════════════════════
+    // function shortcut_approve_and_issue_shares(
+    //     uint128 maxApproval,
+    //     uint32 nowDepositEpochId,
+    //     uint128 navPerShare
+    // ) public {
+    //     hub_approveDeposits(nowDepositEpochId, maxApproval);
+    //     hub_issueShares(nowDepositEpochId, navPerShare);
+    // }
 
-    function shortcut_approve_and_revoke_shares(
-        uint128 maxApproval,
-        uint32 epochId,
-        uint128 navPerShare
-    ) public {
-        hub_approveRedeems(epochId, maxApproval);
-        hub_revokeShares(epochId, navPerShare);
-    }
+    // function shortcut_approve_and_revoke_shares(
+    //     uint128 maxApproval,
+    //     uint32 epochId,
+    //     uint128 navPerShare
+    // ) public {
+    //     hub_approveRedeems(epochId, maxApproval);
+    //     hub_revokeShares(epochId, navPerShare);
+    // }
 
-    // ═══════════════════════════════════════════════════════════════
-    // SAFE APPROVAL SHORTCUTS (WITH EXPLICIT REVERTS)
-    // ═══════════════════════════════════════════════════════════════
-    function shortcut_approve_and_issue_shares_safe(
-        uint128 maxApproval,
-        uint32 nowDepositEpochId,
-        uint128 navPerShare
-    ) public {
-        uint128 pendingDeposit = shareClassManager.pendingDeposit(
-            _getShareClassId(),
-            _getAssetId()
-        );
-        require(pendingDeposit > 0, "InsufficientPending: pendingDeposit is 0");
-        require(
-            maxApproval <= pendingDeposit,
-            "ExceedsPending: approval exceeds pending deposit"
-        );
+    // // ═══════════════════════════════════════════════════════════════
+    // // SAFE APPROVAL SHORTCUTS (WITH EXPLICIT REVERTS)
+    // // ═══════════════════════════════════════════════════════════════
+    // function shortcut_approve_and_issue_shares_safe(
+    //     uint128 maxApproval,
+    //     uint32 nowDepositEpochId,
+    //     uint128 navPerShare
+    // ) public {
+    //     uint128 pendingDeposit = shareClassManager.pendingDeposit(
+    //         _getShareClassId(),
+    //         _getAssetId()
+    //     );
+    //     require(pendingDeposit > 0, "InsufficientPending: pendingDeposit is 0");
+    //     require(
+    //         maxApproval <= pendingDeposit,
+    //         "ExceedsPending: approval exceeds pending deposit"
+    //     );
 
-        hub_approveDeposits(nowDepositEpochId, maxApproval);
-        hub_issueShares(nowDepositEpochId, navPerShare);
-    }
+    //     hub_approveDeposits(nowDepositEpochId, maxApproval);
+    //     hub_issueShares(nowDepositEpochId, navPerShare);
+    // }
 
-    function shortcut_approve_and_revoke_shares_safe(
-        uint128 maxApproval,
-        uint32 epochId,
-        uint128 navPerShare
-    ) public {
-        uint128 pendingRedeem = shareClassManager.pendingRedeem(
-            _getShareClassId(),
-            _getAssetId()
-        );
-        require(pendingRedeem > 0, "InsufficientPending: pendingRedeem is 0");
-        require(
-            maxApproval <= pendingRedeem,
-            "ExceedsPending: approval exceeds pending redeem"
-        );
+    // function shortcut_approve_and_revoke_shares_safe(
+    //     uint128 maxApproval,
+    //     uint32 epochId,
+    //     uint128 navPerShare
+    // ) public {
+    //     uint128 pendingRedeem = shareClassManager.pendingRedeem(
+    //         _getShareClassId(),
+    //         _getAssetId()
+    //     );
+    //     require(pendingRedeem > 0, "InsufficientPending: pendingRedeem is 0");
+    //     require(
+    //         maxApproval <= pendingRedeem,
+    //         "ExceedsPending: approval exceeds pending redeem"
+    //     );
 
-        hub_approveRedeems(epochId, maxApproval);
-        hub_revokeShares(epochId, navPerShare);
-    }
+    //     hub_approveRedeems(epochId, maxApproval);
+    //     hub_revokeShares(epochId, navPerShare);
+    // }
 
     // ═══════════════════════════════════════════════════════════════
     // TRANSIENT VALUATION
