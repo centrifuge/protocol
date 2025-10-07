@@ -11,7 +11,7 @@ contract CastLibTest is Test {
     }
 
     function testToAddressInvalid(address addr, bytes12 nonZero) public {
-        vm.assume(uint96(nonZero) > 0);
+        nonZero = bytes12(uint96(bound(uint96(nonZero), 1, type(uint96).max)));
 
         bytes32 input = bytes32(bytes.concat(bytes20(addr), nonZero));
 

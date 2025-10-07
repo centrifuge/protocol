@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 
 contract PoolIdTest is Test {
     function testPoolId(uint48 id, uint16 centrifugeId) public pure {
-        vm.assume(id > 0);
+        id = uint48(bound(id, 1, type(uint48).max));
         PoolId poolId = newPoolId(centrifugeId, id);
 
         assertEq(poolId.isNull(), false);
