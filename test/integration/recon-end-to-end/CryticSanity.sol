@@ -376,6 +376,8 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         transientValuation_setPrice_clamped(1e18);
         hub_notifyAssetPrice();
         hub_notifySharePrice_clamped();
+        // For same-chain testing, directly update spoke prices
+        spoke_updatePricePoolPerShare(1e18, uint64(block.timestamp));
         spoke_updateMember(type(uint64).max);
 
         // Issue shares - verify no revert
@@ -390,6 +392,8 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         transientValuation_setPrice_clamped(1e18);
         hub_notifyAssetPrice();
         hub_notifySharePrice_clamped();
+        // For same-chain testing, directly update spoke prices
+        spoke_updatePricePoolPerShare(1e18, uint64(block.timestamp));
         spoke_updateMember(type(uint64).max);
 
         // Issue shares first
@@ -432,6 +436,8 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         transientValuation_setPrice_clamped(1e18);
         hub_notifyAssetPrice();
         hub_notifySharePrice_clamped();
+        // For same-chain testing, directly update spoke prices
+        spoke_updatePricePoolPerShare(1e18, uint64(block.timestamp));
         spoke_updateMember(type(uint64).max);
 
         // Queue some shares
@@ -466,6 +472,8 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         transientValuation_setPrice_clamped(1e18);
         hub_notifyAssetPrice();
         hub_notifySharePrice_clamped();
+        // For same-chain testing, directly update spoke prices
+        spoke_updatePricePoolPerShare(1e18, uint64(block.timestamp));
         spoke_updateMember(type(uint64).max);
 
         // Issue initial batch

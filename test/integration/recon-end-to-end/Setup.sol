@@ -258,14 +258,15 @@ abstract contract Setup is
         // set dependencies
         asyncRequestManager.file("spoke", address(spoke));
         asyncRequestManager.file("balanceSheet", address(balanceSheet));
+        asyncRequestManager.file("vaultRegistry", address(vaultRegistry));
         syncManager.file("spoke", address(spoke));
         syncManager.file("balanceSheet", address(balanceSheet));
+        syncManager.file("vaultRegistry", address(vaultRegistry));
         vaultRegistry.file("spoke", address(spoke));
         spoke.file("gateway", address(gateway));
         spoke.file("sender", address(messageDispatcher));
         spoke.file("tokenFactory", address(tokenFactory));
         spoke.file("poolEscrowFactory", address(poolEscrowFactory));
-        spoke.file("vaultRegistry", address(vaultRegistry));
         balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
@@ -349,6 +350,9 @@ abstract contract Setup is
 
         accounting.rely(address(hubHandler));
         shareClassManager.rely(address(hubHandler));
+        hubRegistry.rely(address(hubHandler));
+        holdings.rely(address(hubHandler));
+        hub.rely(address(hubHandler));
         // Hub needs permission to call HubHelpers functions
         hubHandler.rely(address(hub));
 
@@ -375,9 +379,8 @@ abstract contract Setup is
 
         // set dependencies
         hub.file("sender", address(messageDispatcher));
-        hub.file("poolEscrowFactory", address(poolEscrowFactory));
 
-        messageDispatcher.file("hub", address(hub));
+        messageDispatcher.file("hubHandler", address(hubHandler));
         messageDispatcher.file("spoke", address(spoke));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
 
@@ -413,7 +416,9 @@ abstract contract Setup is
 
         // Rely Spoke (from SpokeDeployer)
         asyncVaultFactory.rely(address(spoke));
+        asyncVaultFactory.rely(address(vaultRegistry));
         syncVaultFactory.rely(address(spoke));
+        syncVaultFactory.rely(address(vaultRegistry));
         tokenFactory.rely(address(spoke));
         asyncRequestManager.rely(address(spoke));
         syncManager.rely(address(spoke));
@@ -456,6 +461,7 @@ abstract contract Setup is
 
         // Rely Root (from all deployers)
         spoke.rely(address(root));
+        spoke.rely(address(vaultRegistry));
         asyncRequestManager.rely(address(root));
         syncManager.rely(address(root));
         balanceSheet.rely(address(root));

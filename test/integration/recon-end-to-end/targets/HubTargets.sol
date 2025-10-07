@@ -228,12 +228,6 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         (uint128 totalPaymentAssetAmount, uint128 totalPayoutShareAmount) =
             _parseClaimDepositEvents(params.investor);
 
-        _executeSendRequestCallback(
-            params.investor,
-            totalPaymentAssetAmount,
-            totalPayoutShareAmount,
-            cancelledAssetAmount
-        );
 
         _updateDepositGhostVariables(
             params.pendingBeforeARM,
@@ -305,12 +299,6 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         (uint128 paymentShareAmount, uint128 payoutAssetAmount) =
             _parseClaimRedeemEvents(investor);
 
-        _executeSendRedeemCallback(
-            CastLib.toBytes32(_getActor()),
-            payoutAssetAmount,
-            paymentShareAmount,
-            cancelledShareAmount
-        );
 
         _updateRedeemGhostVariables(
             investorClaimableBefore,
@@ -673,73 +661,6 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     // EXECUTION HELPERS - Core logic for notify operations
     // ═══════════════════════════════════════════════════════════════
 
-    /// @dev Executes redeem claim with accurate cancellation tracking
-    /// @notice Replicates Hub.sol logic: processes claims then sends callback
-    /// @param investor The investor's address as bytes32
-    /// @param totalPaymentAssetAmount Amount of assets used for payment
-    /// @param totalPayoutShareAmount Amount of shares paid out
-    /// @param cancelledAssetAmount Amount of assets cancelled (accurate)
-    function _executeSendRequestCallback(
-        bytes32 investor,
-        uint128 totalPaymentAssetAmount,
-        uint128 totalPayoutShareAmount,
-        uint128 cancelledAssetAmount
-    ) private {
-        // Replicate Hub's callback sending logic
-        if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
-            bytes memory message = RequestCallbackMessageLib.serialize(
-                RequestCallbackMessageLib.FulfilledDepositRequest({
-                    investor: investor,
-                    fulfilledAssetAmount: totalPaymentAssetAmount,
-                    fulfilledShareAmount: totalPayoutShareAmount,
-                    cancelledAssetAmount: cancelledAssetAmount
-                })
-            );
-
-            hub.sender().sendRequestCallback{value: GAS}(
-                _getVault().poolId(),
-                _getVault().scId(),
-                vaultRegistry.vaultDetails(_getVault()).assetId,
-                message,
-                0, // extraGasLimit
-                address(this) // refund
-            );
-        }
-    }
-
-    /// @dev Executes redeem callback sending logic
-    /// @notice Replicates Hub.sol logic for redeem callbacks
-    /// @param investor The investor's address as bytes32
-    /// @param payoutAssetAmount Amount of assets paid out
-    /// @param paymentShareAmount Amount of shares used for payment
-    /// @param cancelledShareAmount Amount of shares cancelled
-    function _executeSendRedeemCallback(
-        bytes32 investor,
-        uint128 payoutAssetAmount,
-        uint128 paymentShareAmount,
-        uint128 cancelledShareAmount
-    ) private {
-        // Replicate Hub's callback sending logic
-        if (paymentShareAmount > 0 || cancelledShareAmount > 0) {
-            bytes memory message = RequestCallbackMessageLib.serialize(
-                RequestCallbackMessageLib.FulfilledRedeemRequest({
-                    investor: investor,
-                    fulfilledAssetAmount: payoutAssetAmount,
-                    fulfilledShareAmount: paymentShareAmount,
-                    cancelledShareAmount: cancelledShareAmount
-                })
-            );
-
-            hub.sender().sendRequestCallback{value: GAS}(
-                _getVault().poolId(),
-                _getVault().scId(),
-                vaultRegistry.vaultDetails(_getVault()).assetId,
-                message,
-                0, // extraGasLimit
-                address(this) // refund
-            );
-        }
-    }
 
     /// @dev Updates all ghost variables after redeem claim
     /// @param investorClaimableBefore Claimable amount before claim
