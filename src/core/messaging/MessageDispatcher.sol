@@ -1,10 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IGateway} from "./interfaces/IGateway.sol";
+import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
 import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
+import {ISpokeMessageSender, IHubMessageSender, IScheduleAuthMessageSender} from "./interfaces/IGatewaySenders.sol";
+import {
+    ISpokeGatewayHandler,
+    IBalanceSheetGatewayHandler,
+    IHubGatewayHandler,
+    IContractUpdateGatewayHandler,
+    IVaultRegistryGatewayHandler
+} from "./interfaces/IGatewayHandlers.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
@@ -15,18 +25,8 @@ import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
-import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {IMultiAdapter} from "../interfaces/IMultiAdapter.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
-import {ISpokeMessageSender, IHubMessageSender, IScheduleAuthMessageSender} from "../interfaces/IGatewaySenders.sol";
-import {
-    ISpokeGatewayHandler,
-    IBalanceSheetGatewayHandler,
-    IHubGatewayHandler,
-    IContractUpdateGatewayHandler,
-    IVaultRegistryGatewayHandler
-} from "../interfaces/IGatewayHandlers.sol";
 
 /// @title  MessageDispatcher
 /// @notice This contract serializes and dispatches outgoing cross-chain messages, handling both local and

@@ -3,9 +3,9 @@ pragma solidity >=0.5.0;
 
 import {IMessageHandler} from "./IMessageHandler.sol";
 
-import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
+import {IRecoverable} from "../../../misc/interfaces/IRecoverable.sol";
 
-import {PoolId} from "../types/PoolId.sol";
+import {PoolId} from "../../types/PoolId.sol";
 
 uint256 constant GAS_FAIL_MESSAGE_STORAGE = 40_000; // check testMessageFailBenchmark
 

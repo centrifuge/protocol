@@ -6,7 +6,7 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {Mock} from "../../core/mocks/Mock.sol";
 
-import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
+import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
 

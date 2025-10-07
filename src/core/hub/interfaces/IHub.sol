@@ -11,15 +11,15 @@ import {IShareClassManager} from "./IShareClassManager.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
 
+import {IAdapter} from "../../messaging/interfaces/IAdapter.sol";
 import {VaultUpdateKind} from "../../messaging/libraries/MessageLib.sol";
+import {IHubMessageSender} from "../../messaging/interfaces/IGatewaySenders.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {AccountId} from "../../types/AccountId.sol";
-import {IAdapter} from "../../interfaces/IAdapter.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IHubMessageSender} from "../../interfaces/IGatewaySenders.sol";
-import {IBatchedMulticall} from "../../interfaces/IBatchedMulticall.sol";
+import {IBatchedMulticall} from "../../utils/interfaces/IBatchedMulticall.sol";
 
 /// @notice Account types used by Hub
 enum AccountType {

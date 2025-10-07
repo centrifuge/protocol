@@ -4,10 +4,10 @@ pragma solidity 0.8.28;
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
-import {IGateway} from "../../../src/core/interfaces/IGateway.sol";
-import {IMultiAdapter} from "../../../src/core/interfaces/IMultiAdapter.sol";
-import {IScheduleAuthMessageSender} from "../../../src/core/interfaces/IGatewaySenders.sol";
+import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
+import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
+import {IScheduleAuthMessageSender} from "../../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";

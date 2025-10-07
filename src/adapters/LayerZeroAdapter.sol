@@ -18,7 +18,7 @@ import {Auth} from "../misc/Auth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 
-import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
+import {IMessageHandler} from "../core/messaging/interfaces/IMessageHandler.sol";
 
 import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 

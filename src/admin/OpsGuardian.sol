@@ -9,8 +9,8 @@ import {IAdapterWiring} from "./interfaces/IAdapterWiring.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
-import {IAdapter} from "../core/interfaces/IAdapter.sol";
-import {IMultiAdapter} from "../core/interfaces/IMultiAdapter.sol";
+import {IAdapter} from "../core/messaging/interfaces/IAdapter.sol";
+import {IMultiAdapter} from "../core/messaging/interfaces/IMultiAdapter.sol";
 
 /// @title  OpsGuardian
 /// @notice This contract manages operational aspects of the protocol including adapter initialization,
