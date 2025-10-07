@@ -625,9 +625,15 @@ class WardCoverageChecker:
 
 def main():
     """Main entry point"""
-    repo_root = Path(__file__).parent.parent
+    repo_root = Path(__file__).parent.parent.parent
 
-    print("🔍 Analyzing ward/file relationships and test coverage...\n")
+    print("🔍 Analyzing ward/file relationships and test coverage...")
+    print(f"📁 Repository root: {repo_root.resolve()}")
+    print(f"📂 Checking directories:")
+    print(f"   - src/: {'✓ exists' if (repo_root / 'src').exists() else '✗ NOT FOUND'}")
+    print(f"   - script/: {'✓ exists' if (repo_root / 'script').exists() else '✗ NOT FOUND'}")
+    print(f"   - test/: {'✓ exists' if (repo_root / 'test').exists() else '✗ NOT FOUND'}")
+    print()
 
     checker = WardCoverageChecker(repo_root)
     result = checker.check_coverage()

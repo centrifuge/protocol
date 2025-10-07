@@ -1,13 +1,13 @@
-name: Ward Coverage Check
+name: CI
 
 on:
   pull_request:
     paths:
-      - 'src/**/*.sol'
-      - 'script/**/*.sol'
-      - 'script/utils/check_ward_coverage.py'
-      - 'test/integration/Deployer.t.sol'
-      - '.github/workflows/ward-coverage.yml'
+      - "src/**/*.sol"
+      - "script/**/*.sol"
+      - "script/utils/check_ward_coverage.py"
+      - "test/integration/Deployer.t.sol"
+      - ".github/workflows/ward-coverage.yml"
   push:
     branches:
       - main
@@ -24,7 +24,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Run Ward Coverage Check
         id: ward_check
