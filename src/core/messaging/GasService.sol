@@ -53,7 +53,7 @@ contract GasService is IGasService {
         recoverTokens = _gasValue(151038);
         registerAsset = _gasValue(103955);
         setPoolAdapters = _gasValue(481579); // using MAX_ADAPTER_COUNT
-        request = _gasValue(220587);
+        request = _gasValue(220673);
         notifyPool = _gasValue(1150798); // create escrow case
         notifyShareClass = _gasValue(1853009);
         notifyPricePoolPerShare = _gasValue(107070);
