@@ -40,6 +40,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 assets,
         uint256 toEntropy
     ) public updateGhostsWithType(OpType.REQUEST_DEPOSIT) {
+        IBaseVault vault = _getVault();
+        _captureShareQueueState(vault.poolId(), vault.scId());
+        
         assets = between(assets, 0, _getTokenAndBalanceForVault());
         address to = _getRandomActor(toEntropy);
 
@@ -117,6 +120,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     ) public updateGhostsWithType(OpType.REQUEST_REDEEM) {
         address to = _getRandomActor(toEntropy); // TODO: donation / changes
         IBaseVault vault = _getVault();
+        _captureShareQueueState(vault.poolId(), vault.scId());
 
         vm.prank(_getActor());
         IShareToken(vault.share()).approve(address(_getVault()), shares);
@@ -179,6 +183,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     {
         address controller = _getActor();
         IBaseVault vault = _getVault();
+        _captureShareQueueState(vault.poolId(), vault.scId());
 
         (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager
             .depositRequest(
@@ -281,6 +286,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     {
         address controller = _getActor();
         IBaseVault vault = _getVault();
+        _captureShareQueueState(vault.poolId(), vault.scId());
 
         (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager
             .redeemRequest(
@@ -400,6 +406,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         bool isAsyncVault = Helpers.isAsyncVault(address(_getVault()));
         // Get vault
         IBaseVault vault = _getVault();
+        _captureShareQueueState(vault.poolId(), vault.scId());
 
         uint256 shareUserB4 = IShareToken(vault.share()).balanceOf(_getActor());
         uint256 shareEscrowB4 = IShareToken(vault.share()).balanceOf(
@@ -484,6 +491,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         address to = _getActor();
         // Get vault
         IBaseVault vault = _getVault();
+        _captureShareQueueState(vault.poolId(), vault.scId());
 
         // check if vault is sync or async
         bool isAsyncVault = Helpers.isAsyncVault(address(_getVault()));
@@ -541,9 +549,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 shares,
         uint256 toEntropy
     ) public updateGhostsWithType(OpType.REMOVE) {
+        IBaseVault vault = _getVault();
+        _captureShareQueueState(vault.poolId(), vault.scId());
+        
         address to = _getRandomActor(toEntropy);
         address escrow = address(
-            poolEscrowFactory.escrow(_getVault().poolId())
+            poolEscrowFactory.escrow(vault.poolId())
         );
 
         // Bal b4
@@ -594,9 +605,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 assets,
         uint256 toEntropy
     ) public updateGhostsWithType(OpType.REMOVE) {
+        IBaseVault vault = _getVault();
+        _captureShareQueueState(vault.poolId(), vault.scId());
+        
         // address to = _getRandomActor(toEntropy); // Unused
         address escrow = address(
-            poolEscrowFactory.escrow(_getVault().poolId())
+            poolEscrowFactory.escrow(vault.poolId())
         );
 
         // Bal b4

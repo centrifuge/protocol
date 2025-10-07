@@ -40,6 +40,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
+        _captureShareQueueState(poolId, scId);
 
         // Track authorization - deposit() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -114,6 +115,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
+        _captureShareQueueState(poolId, scId);
 
         // Track authorization - issue() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -124,7 +126,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track previous net position for flip detection
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
         bytes32 userKey = keccak256(abi.encode(shareKey, _getActor()));
-        int256 prevNetPosition = ghost_netSharePosition[shareKey];
 
         // Track supply operations
         ghost_supplyOperationOccurred[shareKey] = true;
@@ -152,8 +153,17 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ghost_totalIssued[shareKey] += shares;
         ghost_netSharePosition[shareKey] += int256(uint256(shares));
 
-        // Check for position flip
-        if (prevNetPosition < 0 && ghost_netSharePosition[shareKey] >= 0) {
+        // Check for share queue flip based on actual queue state changes
+        (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet
+            .queuedShares(poolId, scId);
+        bytes32 key = _poolShareKey(poolId, scId);
+        uint128 deltaBefore = before_shareQueueDelta[key];
+        bool isPositiveBefore = before_shareQueueIsPositive[key];
+
+        // Detect flip in queue state (replaces ghost position flip detection)
+        bool queueFlipOccurred = (isPositiveBefore != isPositiveAfter) &&
+            (deltaBefore != 0 || deltaAfter != 0);
+        if (queueFlipOccurred) {
             ghost_flipCount[shareKey]++;
         }
     }
@@ -259,6 +269,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
+        _captureShareQueueState(poolId, scId);
 
         // Track authorization - revoke() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -268,7 +279,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
         // Track previous net position for flip detection
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
-        int256 prevNetPosition = ghost_netSharePosition[shareKey];
 
         // Track supply operations
         ghost_supplyOperationOccurred[shareKey] = true;
@@ -296,8 +306,17 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ghost_totalRevoked[shareKey] += shares;
         ghost_netSharePosition[shareKey] -= int256(uint256(shares));
 
-        // Check for position flip
-        if (prevNetPosition > 0 && ghost_netSharePosition[shareKey] <= 0) {
+        // Check for share queue flip based on actual queue state changes
+        (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet
+            .queuedShares(poolId, scId);
+        bytes32 key = _poolShareKey(poolId, scId);
+        uint128 deltaBefore = before_shareQueueDelta[key];
+        bool isPositiveBefore = before_shareQueueIsPositive[key];
+
+        // Detect flip in queue state (replaces ghost position flip detection)
+        bool queueFlipOccurred = (isPositiveBefore != isPositiveAfter) &&
+            (deltaBefore != 0 || deltaAfter != 0);
+        if (queueFlipOccurred) {
             ghost_flipCount[shareKey]++;
         }
     }
@@ -309,6 +328,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
+        _captureShareQueueState(poolId, scId);
 
         // Track authorization - transferSharesFrom() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -354,6 +374,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
+        _captureShareQueueState(poolId, scId);
 
         // Track authorization - withdraw() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -526,6 +547,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
+        _captureShareQueueState(poolId, scId);
 
         // Track authorization - submitQueuedShares() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
