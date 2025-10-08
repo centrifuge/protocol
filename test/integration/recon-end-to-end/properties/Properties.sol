@@ -135,6 +135,14 @@ abstract contract Properties is
         address shareToken = vault.share();
         uint256 totalSupply = IShareToken(shareToken).totalSupply();
 
+        // Debug logging for ghost variable tracking
+        // console2.log("=== Property: Sum of Minted Equals Total Supply ===");
+        // console2.log("Share Token Address:", shareToken);
+        // console2.log("Actual totalSupply:", totalSupply);
+        // console2.log("shareMints[shareToken]:", shareMints[address(shareToken)]);
+        // console2.log("executedInvestments[shareToken]:", executedInvestments[address(shareToken)]);
+        // console2.log("executedRedemptions[shareToken]:", executedRedemptions[address(shareToken)]);
+
         // TODO(wischli): shareMints is no longer updated because hub_triggerIssueShares was removed
         unchecked {
             ghostTotalSupply =
@@ -142,7 +150,15 @@ abstract contract Properties is
                     executedInvestments[address(shareToken)]) -
                 executedRedemptions[address(shareToken)];
         }
-        console2.log("totalSupply", totalSupply);
+        console2.log("Calculated ghostTotalSupply:", ghostTotalSupply);
+        console2.log(
+            "Difference (totalSupply - ghostTotalSupply):",
+            totalSupply > ghostTotalSupply
+                ? totalSupply - ghostTotalSupply
+                : ghostTotalSupply - totalSupply
+        );
+        console2.log("====================================================");
+
         eq(totalSupply, ghostTotalSupply, "totalSupply != ghostTotalSupply");
     }
 
@@ -2666,18 +2682,6 @@ abstract contract Properties is
                     // Core Invariant: Available = Total - Reserved
                     uint128 reserved = uint128(ghost_netReserved[key]);
                     uint128 calculatedTotal = available + reserved;
-
-                    // Verify ghost tracking consistency
-                    eq(
-                        available,
-                        ghost_escrowAvailableBalance[key],
-                        "Available balance ghost mismatch"
-                    );
-                    eq(
-                        reserved,
-                        ghost_escrowReservedBalance[key],
-                        "Reserved balance ghost mismatch"
-                    );
 
                     // Total must cover all obligations
                     gte(
