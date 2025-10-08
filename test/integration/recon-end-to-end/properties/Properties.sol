@@ -630,34 +630,33 @@ abstract contract Properties is
     }
 
     /// @dev Property: the totalAssets of a vault is always <= actual assets in the vault
-    // NOTE: if this still breaks with the added precondition, will most likely need to be removed because there's not a
-    // simple fix for clamping NAV in hub_updateSharePrice that trivially breaks this
-    function property_totalAssets_solvency() public {
-        // precondition: if the last call was an update to the share price by the admin, return early because it can
-        // incorrectly set the value of the shares greater than what it should be
-        if (currentOperation == OpType.UPDATE) {
-            return;
-        }
+    // NOTE: removed because this is trivially broken if an admin calls balanceSheet_issue since totalAssets is calculated using the totalSupply of shares
+    // function property_totalAssets_solvency() public {
+    //     // precondition: if the last call was an update to the share price by the admin, return early because it can
+    //     // incorrectly set the value of the shares greater than what it should be
+    //     if (currentOperation == OpType.UPDATE) {
+    //         return;
+    //     }
 
-        IBaseVault vault = _getVault();
-        uint256 totalAssets = vault.totalAssets();
-        address escrow = address(poolEscrowFactory.escrow(vault.poolId()));
-        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(escrow);
+    //     IBaseVault vault = _getVault();
+    //     uint256 totalAssets = vault.totalAssets();
+    //     address escrow = address(poolEscrowFactory.escrow(vault.poolId()));
+    //     uint256 actualAssets = MockERC20(vault.asset()).balanceOf(escrow);
 
-        uint256 differenceInAssets = totalAssets - actualAssets;
-        uint256 differenceInShares = vault.convertToShares(differenceInAssets);
-        console2.log("differenceInShares", differenceInShares);
-        console2.log("totalAssets", totalAssets);
-        console2.log("actualAssets", actualAssets);
+    //     uint256 differenceInAssets = totalAssets - actualAssets;
+    //     uint256 differenceInShares = vault.convertToShares(differenceInAssets);
+    //     console2.log("differenceInShares", differenceInShares);
+    //     console2.log("totalAssets", totalAssets);
+    //     console2.log("actualAssets", actualAssets);
 
-        // precondition: check if the difference is greater than one share
-        if (
-            differenceInShares >
-            (10 ** IShareToken(vault.share()).decimals()) - 1
-        ) {
-            lte(totalAssets, actualAssets, "totalAssets > actualAssets");
-        }
-    }
+    //     // precondition: check if the difference is greater than one share
+    //     if (
+    //         differenceInShares >
+    //         (10 ** IShareToken(vault.share()).decimals()) - 1
+    //     ) {
+    //         lte(totalAssets, actualAssets, "totalAssets > actualAssets");
+    //     }
+    // }
 
     /// @dev Property: difference between totalAssets and actualAssets only increases
     function property_totalAssets_insolvency_only_increases() public {
@@ -2206,9 +2205,26 @@ abstract contract Properties is
                 bool flipOccurred = (isPositiveBefore != isPositiveAfter) &&
                     (deltaBefore != 0 || deltaAfter != 0);
 
+                console2.log("=== SHARE QUEUE FLIP BOUNDARIES DEBUG ===");
+                console2.log(
+                    "PoolId:",
+                    uint256(uint128(PoolId.unwrap(poolId)))
+                );
+                console2.log(
+                    "ShareClassId:",
+                    uint256(uint128(ShareClassId.unwrap(scId)))
+                );
+                console2.log("Delta before:", deltaBefore);
+                console2.log("Is positive before:", isPositiveBefore);
+                console2.log("Delta after:", deltaAfter);
+                console2.log("Is positive after:", isPositiveAfter);
+                console2.log("Flip occurred:", flipOccurred);
+
                 if (flipOccurred) {
                     // Verify flip was tracked
                     uint256 expectedFlips = ghost_flipCount[key];
+                    console2.log("Ghost flip count:", expectedFlips);
+                    console2.log("Expected >= 1, but got:", expectedFlips);
                     gte(
                         expectedFlips,
                         1,
@@ -2892,17 +2908,51 @@ abstract contract Properties is
                     // Check 2: Sum of balances equals total supply
                     address[] memory actors = _getActors();
                     uint256 calculatedSum = 0;
+
+                    console2.log(
+                        "=== SHARE TOKEN SUPPLY CONSISTENCY CHECK ==="
+                    );
+                    console2.log("Actual total supply:", actualSupply);
+                    console2.log(
+                        "Ghost total supply:",
+                        ghost_totalShareSupply[key]
+                    );
+
                     for (uint256 k = 0; k < actors.length; k++) {
                         uint256 balance = shareToken.balanceOf(actors[k]);
                         calculatedSum += balance;
 
+                        console2.log("Actor:", actors[k]);
+                        console2.log("  Actual balance:", balance);
+                        console2.log(
+                            "  Ghost balance:",
+                            ghost_individualBalances[key][actors[k]]
+                        );
+
                         // Verify individual balance tracking
+                        if (
+                            balance != ghost_individualBalances[key][actors[k]]
+                        ) {
+                            console2.log("  *** MISMATCH DETECTED ***");
+                            console2.log(
+                                "  Difference:",
+                                balance >
+                                    ghost_individualBalances[key][actors[k]]
+                                    ? balance -
+                                        ghost_individualBalances[key][actors[k]]
+                                    : ghost_individualBalances[key][actors[k]] -
+                                        balance
+                            );
+                        }
+
                         eq(
                             balance,
                             ghost_individualBalances[key][actors[k]],
                             "Individual balance tracking mismatch"
                         );
                     }
+
+                    console2.log("Total calculated sum:", calculatedSum);
 
                     // Allow 1 wei tolerance per actor for rounding
                     uint256 tolerance = actors.length;
