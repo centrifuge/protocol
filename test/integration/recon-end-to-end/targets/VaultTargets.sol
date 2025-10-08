@@ -475,7 +475,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             );
             ghost_totalIssued[shareKey] += shares;
             ghost_netSharePosition[shareKey] += int256(uint256(shares));
-            
+
             // Update ghost_individualBalances when shares are minted to user
             ghost_individualBalances[shareKey][_getActor()] += shares;
 
@@ -505,7 +505,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // for sync vaults, deposits are fulfilled and claimed immediately
         if (!isAsyncVault) {
             if (pendingBefore >= pendingAfter) {
-                sumOfFulfilledDeposits[vault.share()] += shares;
                 sumOfClaimedDeposits[vault.share()] += (pendingBefore -
                     pendingAfter);
             }
@@ -591,7 +590,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             );
             ghost_totalIssued[shareKey] += shares;
             ghost_netSharePosition[shareKey] += int256(uint256(shares));
-            
+
             // Update ghost_individualBalances when shares are minted to user
             ghost_individualBalances[shareKey][to] += shares;
 
@@ -637,7 +636,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
             sumOfSyncDepositsShare[vault.share()] += shares;
             if (pendingBefore >= pendingAfter) {
-                sumOfFulfilledDeposits[vault.share()] += shares;
                 sumOfClaimedDeposits[vault.share()] += (pendingBefore -
                     pendingAfter);
             }
