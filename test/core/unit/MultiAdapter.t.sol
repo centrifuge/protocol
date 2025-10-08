@@ -584,3 +584,12 @@ contract MultiAdapterTestEstimate is MultiAdapterTest {
         assertEq(multiAdapter.estimate(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT), estimation);
     }
 }
+
+contract MultiAdapterTestGetters is MultiAdapterTest {
+    function testGettersOnEmptyState() public view {
+        assertEq(multiAdapter.quorum(REMOTE_CENT_ID, POOL_A), 0);
+        assertEq(multiAdapter.threshold(REMOTE_CENT_ID, POOL_A), 0);
+        assertEq(multiAdapter.recoveryIndex(REMOTE_CENT_ID, POOL_A), 0);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 0);
+    }
+}
