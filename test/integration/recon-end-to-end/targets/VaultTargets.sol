@@ -49,6 +49,15 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         MockERC20(_getVault().asset()).approve(address(_getVault()), assets);
 
+        // Track asset counter for Queue State Consistency properties - check before request  
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+        
+        (uint128 prevDeposits, uint128 prevWithdrawals) = balanceSheet
+            .queuedAssets(poolId, scId, assetId);
+
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
         try
@@ -58,6 +67,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 _getActor()
             )
         {
+            // If the request was successful and the queue was previously empty, 
+            // we can assume it became non-empty (even if not immediately visible)
+            if (prevDeposits == 0 && prevWithdrawals == 0 && assets > 0) {
+                ghost_assetCounterPerAsset[assetKey] = 1; // Asset queue becomes non-empty
+            }
+            
             // ghost tracking
             userRequestDeposited[_getVault().scId()][
                 spoke.vaultDetails(_getVault()).assetId
