@@ -531,22 +531,26 @@ contract EndToEndFlows is EndToEndUtils {
         );
     }
 
-    //----------------------------------------------------------------------------------------------
-    // Async Deposit Flows
-    //----------------------------------------------------------------------------------------------
+    function _testAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
+        _configurePool(sameChain);
+        _configurePricesForFlow(nonZeroPrices);
 
-    function _executeAsyncDepositRequest(IAsyncVault vault, uint128 amount) internal {
+        vm.startPrank(FM);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
+        );
+        vm.stopPrank();
+        IAsyncVault vault = IAsyncVault(address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
+
         vm.startPrank(INVESTOR_A);
-        ERC20(vault.asset()).approve(address(vault), amount);
-        vault.requestDeposit(amount, INVESTOR_A, INVESTOR_A);
-    }
+        ERC20(vault.asset()).approve(address(vault), USDC_AMOUNT_1);
+        vault.requestDeposit(USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
 
-    function _processAsyncDepositApproval(uint128 amount) internal {
         vm.startPrank(FM);
         uint32 depositEpochId = h.batchRequestManager.nowDepositEpoch(POOL_A, SC_1, s.usdcId);
         D18 pricePoolPerAsset = h.hub.pricePoolPerAsset(POOL_A, SC_1, s.usdcId);
         h.batchRequestManager.approveDeposits{value: GAS}(
-            POOL_A, SC_1, s.usdcId, depositEpochId, amount, pricePoolPerAsset, REFUND
+            POOL_A, SC_1, s.usdcId, depositEpochId, USDC_AMOUNT_1, pricePoolPerAsset, REFUND
         );
 
         vm.startPrank(FM);
@@ -555,11 +559,8 @@ contract EndToEndFlows is EndToEndUtils {
         h.batchRequestManager.issueShares{value: GAS}(
             POOL_A, SC_1, s.usdcId, issueEpochId, sharePrice, HOOK_GAS, REFUND
         );
-    }
 
-    function _processAsyncDepositClaim(IAsyncVault vault, uint128 amount) internal {
         vm.startPrank(ANY);
-        vm.deal(ANY, GAS);
         h.batchRequestManager.notifyDeposit{value: GAS}(
             POOL_A,
             SC_1,
@@ -573,38 +574,19 @@ contract EndToEndFlows is EndToEndUtils {
         vault.mint(vault.maxMint(INVESTOR_A), INVESTOR_A);
 
         // CHECKS
-        assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), assetToShare(amount), "expected shares");
+        assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), assetToShare(USDC_AMOUNT_1), "expected shares");
     }
 
-    function _testAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
+    function _testSyncDeposit(bool sameChain, bool nonZeroPrices) public {
         _configurePool(sameChain);
         _configurePricesForFlow(nonZeroPrices);
 
         vm.startPrank(FM);
         h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
+            POOL_A, SC_1, s.usdcId, s.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
         );
-        vm.stopPrank();
-        IAsyncVault vault = IAsyncVault(address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
+        IBaseVault vault = IBaseVault(address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
 
-        _executeAsyncDepositRequest(vault, USDC_AMOUNT_1);
-        _processAsyncDepositApproval(USDC_AMOUNT_1);
-        _processAsyncDepositClaim(vault, USDC_AMOUNT_1);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Sync Deposit Flows
-    //----------------------------------------------------------------------------------------------
-
-    function _configureSyncDepositVault() internal {
-        vm.startPrank(FM);
-        // Check if vault already exists (for live tests)
-        address existingVault = address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager));
-        if (existingVault == address(0)) {
-            h.hub.updateVault{value: GAS}(
-                POOL_A, SC_1, s.usdcId, s.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
-            );
-        }
         h.hub.updateContract{value: GAS}(
             POOL_A,
             SC_1,
@@ -614,52 +596,44 @@ contract EndToEndFlows is EndToEndUtils {
             EXTRA_GAS,
             REFUND
         );
-    }
-
-    function _processSyncDeposit(uint128 amount) internal {
-        IBaseVault vault = IBaseVault(address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
 
         vm.startPrank(INVESTOR_A);
-        s.usdc.approve(address(vault), amount);
-        vault.deposit(amount, INVESTOR_A);
+        s.usdc.approve(address(vault), USDC_AMOUNT_1);
+        vault.deposit(USDC_AMOUNT_1, INVESTOR_A);
 
-        assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), assetToShare(amount), "expected shares");
+        assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), assetToShare(USDC_AMOUNT_1), "expected shares");
     }
 
-    function _testSyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _configurePool(sameChain);
+    function _testAsyncRedeem(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) internal {
+        (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, true) : _testSyncDeposit(sameChain, true);
         _configurePricesForFlow(nonZeroPrices);
-        _configureSyncDepositVault();
-        _processSyncDeposit(USDC_AMOUNT_1);
-    }
 
-    //----------------------------------------------------------------------------------------------
-    // Async Redeem Flows
-    //----------------------------------------------------------------------------------------------
-
-    function _configureAsyncRedeemRestriction() internal {
         vm.startPrank(FM);
         h.hub.updateRestriction{value: GAS}(
             POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A), EXTRA_GAS, REFUND
         );
-    }
 
-    function _processAsyncRedeemApproval(uint128 shares) internal {
+        // Get vault from manager
+        IAsyncRedeemVault vault =
+            IAsyncRedeemVault(address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
+
+        vm.startPrank(INVESTOR_A);
+        uint128 shares = uint128(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A));
+        vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A);
+
         vm.startPrank(FM);
         uint32 redeemEpochId = h.batchRequestManager.nowRedeemEpoch(POOL_A, SC_1, s.usdcId);
         D18 pricePoolPerAsset = h.hub.pricePoolPerAsset(POOL_A, SC_1, s.usdcId);
         h.batchRequestManager.approveRedeems(POOL_A, SC_1, s.usdcId, redeemEpochId, shares, pricePoolPerAsset);
 
+        vm.startPrank(FM);
         uint32 revokeEpochId = h.batchRequestManager.nowRevokeEpoch(POOL_A, SC_1, s.usdcId);
         (D18 sharePrice,) = h.shareClassManager.pricePoolPerShare(POOL_A, SC_1);
         h.batchRequestManager.revokeShares{value: GAS}(
             POOL_A, SC_1, s.usdcId, revokeEpochId, sharePrice, HOOK_GAS, REFUND
         );
-    }
 
-    function _processAsyncRedeemClaim(IAsyncRedeemVault vault, uint128 shares) internal {
         vm.startPrank(ANY);
-        vm.deal(ANY, GAS);
         h.batchRequestManager.notifyRedeem{value: GAS}(
             POOL_A,
             SC_1,
@@ -673,23 +647,6 @@ contract EndToEndFlows is EndToEndUtils {
         vault.withdraw(vault.maxWithdraw(INVESTOR_A), INVESTOR_A, INVESTOR_A);
 
         assertEq(s.usdc.balanceOf(INVESTOR_A), shareToAsset(shares), "expected assets");
-    }
-
-    function _testAsyncRedeem(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) internal {
-        (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, true) : _testSyncDeposit(sameChain, true);
-        _configurePricesForFlow(nonZeroPrices);
-        _configureAsyncRedeemRestriction();
-
-        // Get vault from manager
-        IAsyncRedeemVault vault =
-            IAsyncRedeemVault(address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
-
-        vm.startPrank(INVESTOR_A);
-        uint128 shares = uint128(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A));
-        vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A);
-
-        _processAsyncRedeemApproval(shares);
-        _processAsyncRedeemClaim(vault, shares);
     }
 
     //----------------------------------------------------------------------------------------------
