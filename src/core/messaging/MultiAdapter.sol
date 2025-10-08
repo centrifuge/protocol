@@ -201,16 +201,9 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @dev Internal helper to get the first adapter's details for a pool, handling empty cases
-    function _getFirstAdapterDetails(uint16 centrifugeId, PoolId poolId)
-        internal
-        view
-        returns (Adapter memory)
-    {
+    function _getFirstAdapterDetails(uint16 centrifugeId, PoolId poolId) internal view returns (Adapter memory) {
         IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
-        // Fallback for an uninitialized network
-        if (adapters_.length == 0) {
-            return Adapter(0, 0, 0, 0, 0);
-        }
+        if (adapters_.length == 0) return Adapter(0, 0, 0, 0, 0);
         return _poolAdapterDetails(centrifugeId, poolId, adapters_[0]);
     }
 
