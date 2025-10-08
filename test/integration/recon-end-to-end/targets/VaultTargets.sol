@@ -42,19 +42,19 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     ) public updateGhostsWithType(OpType.REQUEST_DEPOSIT) {
         IBaseVault vault = _getVault();
         _captureShareQueueState(vault.poolId(), vault.scId());
-        
+
         assets = between(assets, 0, _getTokenAndBalanceForVault());
         address to = _getRandomActor(toEntropy);
 
         vm.prank(_getActor());
         MockERC20(_getVault().asset()).approve(address(_getVault()), assets);
 
-        // Track asset counter for Queue State Consistency properties - check before request  
+        // Track asset counter for Queue State Consistency properties - check before request
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
         bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
-        
+
         (uint128 prevDeposits, uint128 prevWithdrawals) = balanceSheet
             .queuedAssets(poolId, scId, assetId);
 
@@ -67,12 +67,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 _getActor()
             )
         {
-            // If the request was successful and the queue was previously empty, 
+            // If the request was successful and the queue was previously empty,
             // we can assume it became non-empty (even if not immediately visible)
             if (prevDeposits == 0 && prevWithdrawals == 0 && assets > 0) {
                 ghost_assetCounterPerAsset[assetKey] = 1; // Asset queue becomes non-empty
             }
-            
+
             // ghost tracking
             userRequestDeposited[_getVault().scId()][
                 spoke.vaultDetails(_getVault()).assetId
@@ -112,6 +112,10 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                     "depositRequest reverts with arithmetic panic"
                 );
             }
+
+            // revert like it normally would if no properties break for proper shrinking
+            // this make testing global properties not require a check for the call succeeding
+            require(false);
         }
     }
 
@@ -566,11 +570,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     ) public updateGhostsWithType(OpType.REMOVE) {
         IBaseVault vault = _getVault();
         _captureShareQueueState(vault.poolId(), vault.scId());
-        
+
         address to = _getRandomActor(toEntropy);
-        address escrow = address(
-            poolEscrowFactory.escrow(vault.poolId())
-        );
+        address escrow = address(poolEscrowFactory.escrow(vault.poolId()));
 
         // Bal b4
         uint256 tokenUserB4 = MockERC20(_getVault().asset()).balanceOf(
@@ -622,11 +624,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     ) public updateGhostsWithType(OpType.REMOVE) {
         IBaseVault vault = _getVault();
         _captureShareQueueState(vault.poolId(), vault.scId());
-        
+
         // address to = _getRandomActor(toEntropy); // Unused
-        address escrow = address(
-            poolEscrowFactory.escrow(vault.poolId())
-        );
+        address escrow = address(poolEscrowFactory.escrow(vault.poolId()));
 
         // Bal b4
         uint256 tokenEscrowB4 = MockERC20(_getVault().asset()).balanceOf(
