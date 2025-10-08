@@ -164,6 +164,11 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 spoke.vaultDetails(vault).assetId
             ][to] += vault.convertToAssets(shares);
 
+            bytes32 shareKey = keccak256(
+                abi.encode(vault.poolId(), vault.scId())
+            );
+            ghost_individualBalances[shareKey][_getActor()] -= shares;
+
             if (
                 fullRestrictions.isFrozen(vault.share(), _getActor()) == true ||
                 fullRestrictions.isFrozen(vault.share(), to) == true
@@ -412,7 +417,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     ) public updateGhosts asActor {
         address to = _getRandomActor(toEntropy);
         IBaseVault vault = _getVault();
-        
+
         // Capture balances before claiming
         uint256 shareBalanceBefore = IShareToken(vault.share()).balanceOf(to);
 
@@ -421,7 +426,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // Capture balances after claiming
         uint256 shareBalanceAfter = IShareToken(vault.share()).balanceOf(to);
-        
+
         console2.log("=== VAULT CLAIM CANCEL REDEEM REQUEST ===");
         console2.log("Actor:", _getActor());
         console2.log("To:", to);
@@ -429,17 +434,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         console2.log("Share balance before:", shareBalanceBefore);
         console2.log("Share balance after:", shareBalanceAfter);
         console2.log("Balance change:", shareBalanceAfter - shareBalanceBefore);
-        
+
         // Track the ghost variables
         bytes32 shareKey = keccak256(abi.encode(vault.poolId(), vault.scId()));
-        console2.log("Ghost balance before:", ghost_individualBalances[shareKey][to]);
 
         sumOfClaimedCancelledRedeemShares[_getVault().share()] += shares;
-        
-        // BUG: ghost_individualBalances is not being updated here!
-        // The shares are returned to the user but the ghost tracking is not updated
-        console2.log("Ghost balance after (UNCHANGED):", ghost_individualBalances[shareKey][to]);
-        console2.log("Expected ghost balance should be:", ghost_individualBalances[shareKey][to] + shares);
+        ghost_individualBalances[shareKey][to] += shares;
     }
 
     function vault_deposit(
@@ -464,23 +464,32 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
         uint256 shares = vault.deposit(assets, _getActor());
-        
+
         console2.log("=== VAULT DEPOSIT CAUSED SHARE ISSUE ===");
         console2.log("Shares issued:", shares);
 
         // Add ghost flip tracking for share queue state changes
         {
-            bytes32 shareKey = keccak256(abi.encode(vault.poolId(), vault.scId()));
+            bytes32 shareKey = keccak256(
+                abi.encode(vault.poolId(), vault.scId())
+            );
             ghost_totalIssued[shareKey] += shares;
             ghost_netSharePosition[shareKey] += int256(uint256(shares));
             
+            // Update ghost_individualBalances when shares are minted to user
+            ghost_individualBalances[shareKey][_getActor()] += shares;
+
             // Check for share queue flip
-            (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet.queuedShares(vault.poolId(), vault.scId());
+            (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet
+                .queuedShares(vault.poolId(), vault.scId());
             bytes32 key = _poolShareKey(vault.poolId(), vault.scId());
             uint128 deltaBefore = before_shareQueueDelta[key];
             bool isPositiveBefore = before_shareQueueIsPositive[key];
-            
-            if ((isPositiveBefore != isPositiveAfter) && (deltaBefore != 0 || deltaAfter != 0)) {
+
+            if (
+                (isPositiveBefore != isPositiveAfter) &&
+                (deltaBefore != 0 || deltaAfter != 0)
+            ) {
                 ghost_flipCount[shareKey]++;
                 console2.log("=== FLIP DETECTED IN VAULT_DEPOSIT ===");
             }
@@ -577,17 +586,26 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // Add ghost flip tracking for share queue state changes
         {
-            bytes32 shareKey = keccak256(abi.encode(vault.poolId(), vault.scId()));
+            bytes32 shareKey = keccak256(
+                abi.encode(vault.poolId(), vault.scId())
+            );
             ghost_totalIssued[shareKey] += shares;
             ghost_netSharePosition[shareKey] += int256(uint256(shares));
             
+            // Update ghost_individualBalances when shares are minted to user
+            ghost_individualBalances[shareKey][to] += shares;
+
             // Check for share queue flip
-            (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet.queuedShares(vault.poolId(), vault.scId());
+            (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet
+                .queuedShares(vault.poolId(), vault.scId());
             bytes32 key = _poolShareKey(vault.poolId(), vault.scId());
             uint128 deltaBefore = before_shareQueueDelta[key];
             bool isPositiveBefore = before_shareQueueIsPositive[key];
-            
-            if ((isPositiveBefore != isPositiveAfter) && (deltaBefore != 0 || deltaAfter != 0)) {
+
+            if (
+                (isPositiveBefore != isPositiveAfter) &&
+                (deltaBefore != 0 || deltaAfter != 0)
+            ) {
                 ghost_flipCount[shareKey]++;
                 console2.log("=== FLIP DETECTED IN VAULT_MINT ===");
             }
