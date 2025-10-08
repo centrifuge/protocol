@@ -215,19 +215,20 @@ abstract contract Properties is
 
     // TODO(wischli): Breaks for ever `revokedShares` which reduced totalSupply
     /// @dev Property: Total cancelled redeem shares <= total supply
-    function property_total_cancelled_redeem_shares_lte_total_supply()
-        public
-        tokenIsSet
-    {
-        IBaseVault vault = IBaseVault(_getVault());
+    // NOTE: removed because can't be implemented without better tracking of cancelled redemptions
+    // function property_total_cancelled_redeem_shares_lte_total_supply()
+    //     public
+    //     tokenIsSet
+    // {
+    //     IBaseVault vault = IBaseVault(_getVault());
 
-        uint256 totalSupply = IShareToken(vault.share()).totalSupply();
-        lte(
-            sumOfClaimedCancelledRedeemShares[address(vault.share())],
-            totalSupply,
-            "Ghost: sumOfClaimedCancelledRedeemShares exceeds totalSupply"
-        );
-    }
+    //     uint256 totalSupply = IShareToken(vault.share()).totalSupply();
+    //     lte(
+    //         sumOfClaimedCancelledRedeemShares[address(vault.share())],
+    //         totalSupply,
+    //         "Ghost: sumOfClaimedCancelledRedeemShares exceeds totalSupply"
+    //     );
+    // }
 
     /// @dev Property (inductive): Sum of share class tokens received on claimCancelRedeemRequest <= sum of
     /// fulfillCancelRedeemRequest.shares
