@@ -314,6 +314,9 @@ contract FullDeployer is CoreDeployer {
         adminSafe = input.adminSafe;
         opsSafe = input.opsSafe;
 
+        // Ensure salts incorporate the intended version for ALL contracts, including root which is deployed first
+        version = input.core.version;
+
         if (input.core.root == address(0)) {
             root = Root(
                 create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher)))
