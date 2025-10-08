@@ -200,28 +200,38 @@ contract MultiAdapter is Auth, IMultiAdapter {
         }
     }
 
+    /// @dev Internal helper to get the first adapter's details for a pool, handling empty cases
+    function _getFirstAdapterDetails(uint16 centrifugeId, PoolId poolId)
+        internal
+        view
+        returns (Adapter memory)
+    {
+        IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
+        // Fallback for an uninitialized network
+        if (adapters_.length == 0) {
+            return Adapter(0, 0, 0, 0, 0);
+        }
+        return _poolAdapterDetails(centrifugeId, poolId, adapters_[0]);
+    }
+
     /// @inheritdoc IMultiAdapter
     function quorum(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {
-        IAdapter adapter = poolAdapters(centrifugeId, poolId)[0];
-        return _adapterDetails[centrifugeId][poolId][adapter].quorum;
+        return _getFirstAdapterDetails(centrifugeId, poolId).quorum;
     }
 
     /// @inheritdoc IMultiAdapter
     function threshold(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {
-        IAdapter adapter = poolAdapters(centrifugeId, poolId)[0];
-        return _adapterDetails[centrifugeId][poolId][adapter].threshold;
+        return _getFirstAdapterDetails(centrifugeId, poolId).threshold;
     }
 
     /// @inheritdoc IMultiAdapter
     function recoveryIndex(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {
-        IAdapter adapter = poolAdapters(centrifugeId, poolId)[0];
-        return _adapterDetails[centrifugeId][poolId][adapter].recoveryIndex;
+        return _getFirstAdapterDetails(centrifugeId, poolId).recoveryIndex;
     }
 
     /// @inheritdoc IMultiAdapter
     function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint64) {
-        IAdapter adapter = poolAdapters(centrifugeId, poolId)[0];
-        return _adapterDetails[centrifugeId][poolId][adapter].activeSessionId;
+        return _getFirstAdapterDetails(centrifugeId, poolId).activeSessionId;
     }
 
     /// @inheritdoc IMultiAdapter
