@@ -210,11 +210,9 @@ contract NAVManager is INAVManager, Auth {
 
         require(equityIsPositive && gainIsPositive && lossIsPositive && liabilityIsPositive, InvalidNAV());
 
-        uint128 assets = equity + gain - loss;
+        if (liability + loss >= equity + gain) return 0;
 
-        if (liability >= assets) return 0;
-
-        return assets - liability;
+        return equity + gain - loss - liability;
     }
 
     //----------------------------------------------------------------------------------------------

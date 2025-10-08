@@ -393,20 +393,7 @@ contract NAVManagerNetAssetValueTest is NAVManagerTest {
         assertEq(nav, 0);
     }
 
-    function testNetAssetValueNegative() public {
-        // Mock values that result in negative NAV
-        // equity=100, gain=50, loss=200, liability=100
-        // NAV = 100 + 50 - 200 - 100 = -150
-        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 100, true);
-        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 50, true);
-        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 200, true);
-        _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 100, true);
-
-        vm.expectRevert();
-        navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
-    }
-
-    function testNetAssetValueZeroWhenLiabilitiesExceedAssets() public {
+    function testNetAssetValueZeroWhenNegative() public {
         _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 500, true);
         _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, true);
         _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, true);
@@ -414,6 +401,22 @@ contract NAVManagerNetAssetValueTest is NAVManagerTest {
 
         uint128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
         assertEq(nav, 0);
+    }
+
+    function testNetAssetValueInvalid(
+        bool equityIsPositive,
+        bool gainIsPositive,
+        bool lossIsPositive,
+        bool liabilityIsPositive
+    ) public {
+        vm.assume(!equityIsPositive || !gainIsPositive || !lossIsPositive || !liabilityIsPositive);
+        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 100, equityIsPositive);
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, gainIsPositive);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, lossIsPositive);
+        _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 50, liabilityIsPositive);
+
+        vm.expectRevert(INAVManager.InvalidNAV.selector);
+        navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
     }
 }
 
