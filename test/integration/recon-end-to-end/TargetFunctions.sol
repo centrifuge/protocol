@@ -576,26 +576,26 @@ abstract contract TargetFunctions is
     //     vault_claimCancelRedeemRequest(toEntropy);
     // }
 
-    // // ═══════════════════════════════════════════════════════════════
-    // // POOL ADMIN SHORTCUTS
-    // // ═══════════════════════════════════════════════════════════════
-    // function shortcut_approve_and_issue_shares(
-    //     uint128 maxApproval,
-    //     uint32 nowDepositEpochId,
-    //     uint128 navPerShare
-    // ) public {
-    //     hub_approveDeposits(nowDepositEpochId, maxApproval);
-    //     hub_issueShares(nowDepositEpochId, navPerShare);
-    // }
+    // ═══════════════════════════════════════════════════════════════
+    // POOL ADMIN SHORTCUTS
+    // ═══════════════════════════════════════════════════════════════
+    function shortcut_approve_and_issue_shares(
+        uint128 maxApproval,
+        uint32 nowDepositEpochId,
+        uint128 navPerShare
+    ) public {
+        hub_approveDeposits(nowDepositEpochId, maxApproval);
+        hub_issueShares(nowDepositEpochId, navPerShare);
+    }
 
-    // function shortcut_approve_and_revoke_shares(
-    //     uint128 maxApproval,
-    //     uint32 epochId,
-    //     uint128 navPerShare
-    // ) public {
-    //     hub_approveRedeems(epochId, maxApproval);
-    //     hub_revokeShares(epochId, navPerShare);
-    // }
+    function shortcut_approve_and_revoke_shares(
+        uint128 maxApproval,
+        uint32 epochId,
+        uint128 navPerShare
+    ) public {
+        hub_approveRedeems(epochId, maxApproval);
+        hub_revokeShares(epochId, navPerShare);
+    }
 
     // // ═══════════════════════════════════════════════════════════════
     // // SAFE APPROVAL SHORTCUTS (WITH EXPLICIT REVERTS)
