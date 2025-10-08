@@ -162,7 +162,7 @@ interface IGateway is IMessageHandler, IRecoverable {
     ///             }
     ///
     ///             function callback(PoolId poolId) external {
-    ///                 // Avoid reentrancy and ensure it's called from withBatch in the same contract:
+    ///                 // Avoid direct reentrancy to the callback and ensure it's called from withBatch in the same contract:
     ///                 address msgSender = gateway.lockCallback();
     ///
     ///                 // Call several hub, balance sheet, or spoke methods that trigger cross-chain transactions
@@ -177,9 +177,9 @@ interface IGateway is IMessageHandler, IRecoverable {
 
     /// @notice Returns the current caller used to call withBatch and block any reentrancy.
     /// @dev calling this at the very beginning inside the multicall means:
-    ///         - The callback that uses this can only be called once.
     ///         - The callback is called from the gateway under `withBatch`.
     ///         - The callback is called from the same contract, because withBatch uses `msg.sender` as target for the callback
+    ///         - The callback that uses this can only be called once inside withBatch scope.
     /// @return The locked callback sender
     function lockCallback() external returns (address);
 
