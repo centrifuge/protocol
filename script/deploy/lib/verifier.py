@@ -187,8 +187,10 @@ class ContractVerifier:
                     'timestamp': deployment_timestamp,
                 }
 
-            if os.environ.get("VERSION"):
-                config_data['deploymentInfo'][self.args.step]['version'] = os.environ.get("VERSION")
+            # Always include VERSION key in deploymentInfo (may be empty string if not set)
+            if self.args.step not in config_data['deploymentInfo']:
+                config_data['deploymentInfo'][self.args.step] = {}
+            config_data['deploymentInfo'][self.args.step]['version'] = os.environ.get("VERSION", "Null / NotSet")
 
             # Write updated config
             with open(network_config, 'w') as f:
