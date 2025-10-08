@@ -5,11 +5,11 @@ import {IAuth} from "../../../src/misc/Auth.sol";
 import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {MultiAdapter} from "../../../src/core/MultiAdapter.sol";
-import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
-import {IMessageProperties} from "../../../src/core/interfaces/IMessageProperties.sol";
-import {IMultiAdapter, MAX_ADAPTER_COUNT} from "../../../src/core/interfaces/IMultiAdapter.sol";
+import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
+import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
+import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
+import {IMultiAdapter, MAX_ADAPTER_COUNT} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 
 import "forge-std/Test.sol";
 
@@ -582,5 +582,14 @@ contract MultiAdapterTestEstimate is MultiAdapterTest {
         uint256 estimation = GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
 
         assertEq(multiAdapter.estimate(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT), estimation);
+    }
+}
+
+contract MultiAdapterTestGetters is MultiAdapterTest {
+    function testGettersOnEmptyState() public view {
+        assertEq(multiAdapter.quorum(REMOTE_CENT_ID, POOL_A), 0);
+        assertEq(multiAdapter.threshold(REMOTE_CENT_ID, POOL_A), 0);
+        assertEq(multiAdapter.recoveryIndex(REMOTE_CENT_ID, POOL_A), 0);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 0);
     }
 }

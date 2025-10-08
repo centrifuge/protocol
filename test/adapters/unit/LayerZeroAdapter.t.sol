@@ -6,8 +6,8 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {Mock} from "../../core/mocks/Mock.sol";
 
-import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
+import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
 
@@ -141,7 +141,9 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         assertEq(adapter.wards(address(this)), 1);
     }
 
-    function testEstimate(uint64 gasLimit) public view {
+    function testEstimate(uint64 gasLimit) public {
+        adapter.wire(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
+
         bytes memory payload = "irrelevant";
         assertEq(adapter.estimate(CENTRIFUGE_ID, payload, gasLimit), 200_000);
     }
@@ -203,7 +205,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         public
     {
         vm.assume(invalidOrigin != address(GATEWAY));
-        vm.assume(gasLimit < adapter.RECEIVE_COST());
+        gasLimit = uint128(bound(gasLimit, 0, adapter.RECEIVE_COST() - 1));
 
         vm.deal(address(this), 0.1 ether);
         vm.expectRevert(IAdapter.NotEntrypoint.selector);

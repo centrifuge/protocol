@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
+import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import "forge-std/Test.sol";

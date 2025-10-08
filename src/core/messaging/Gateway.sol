@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {PoolId} from "./types/PoolId.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IMessageLimits} from "./interfaces/IMessageLimits.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
@@ -9,13 +8,15 @@ import {IProtocolPauser} from "./interfaces/IProtocolPauser.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {IGateway, GAS_FAIL_MESSAGE_STORAGE} from "./interfaces/IGateway.sol";
 
-import {Auth} from "../misc/Auth.sol";
-import {Recoverable} from "../misc/Recoverable.sol";
-import {MathLib} from "../misc/libraries/MathLib.sol";
-import {BytesLib} from "../misc/libraries/BytesLib.sol";
-import {TransientArrayLib} from "../misc/libraries/TransientArrayLib.sol";
-import {TransientBytesLib} from "../misc/libraries/TransientBytesLib.sol";
-import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
+import {Auth} from "../../misc/Auth.sol";
+import {Recoverable} from "../../misc/Recoverable.sol";
+import {MathLib} from "../../misc/libraries/MathLib.sol";
+import {BytesLib} from "../../misc/libraries/BytesLib.sol";
+import {TransientArrayLib} from "../../misc/libraries/TransientArrayLib.sol";
+import {TransientBytesLib} from "../../misc/libraries/TransientBytesLib.sol";
+import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol";
+
+import {PoolId} from "../types/PoolId.sol";
 
 interface IGatewayProcessor is IMessageHandler, IMessageProperties {}
 
