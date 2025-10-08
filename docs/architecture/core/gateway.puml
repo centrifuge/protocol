@@ -24,7 +24,7 @@ IMessageProcessor --> Spoke
 IMessageDispatcher --> Gateway
 
 Gateway --> IMessageProcessor
-Gateway <-> MultiAdapter
+Gateway <-down-> MultiAdapter
 MultiAdapter <-down-> "n" IAdapter
 
 

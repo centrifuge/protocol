@@ -1,5 +1,6 @@
 @startuml overview
 title Centrifuge Protocol - Architecture Overview
+hide empty members
 
 !define CORE_COLOR #E1F5FE
 !define MESSAGING_COLOR #F3E5F5
@@ -9,125 +10,61 @@ title Centrifuge Protocol - Architecture Overview
 !define ADAPTERS_COLOR #FFF3E0
 !define HOOKS_COLOR #F1F8E9
 
-left to right direction
+skinparam linetype ortho
+skinparam nodesep 50
+skinparam ranksep 150
+allowmixing
 
 package "Core" CORE_COLOR {
-  component Hub
-  component HubHandler
-  component Spoke
-  component Gateway
-  component MultiAdapter
-  component BatchedMulticall
-  component Holdings
-  component Accounting
-  component ShareClassManager
-  component BalanceSheet
-  component VaultRegistry
+  interface IGateway
+  interface IAuth
+  package "Core/Hub" {
+    interface IHub
+  }
+  package "Core/Spoke" {
+    interface ISpoke
+    interface IBalanceSheet
+  }
 }
 
 package "Messaging" MESSAGING_COLOR {
-  component MessageDispatcher
-  component MessageProcessor
-  component GasService
+  interface IMessageDispatcher
+  interface IMessageProcessor
 }
 
 package "Admin" ADMIN_COLOR {
-  component Root
-  component OpsGuardian
-  component ProtocolGuardian
-  component TokenRecoverer
-}
-
-package "Adapters" ADAPTERS_COLOR {
-  component AxelarAdapter
-  component WormholeAdapter
-  component LayerZeroAdapter
-  component RecoveryAdapter
+  interface IRoot
 }
 
 package "Managers" MANAGERS_COLOR {
-  package "Hub Managers" {
-    component NAVManager
-    component SimplePriceManager
+  package "Managers/Hub" {
+    ' interface IHubManager
+    rectangle HubManagers
   }
-  package "Spoke Managers" {
-    component OnOfframpManager
-    component MerkleProofManager
-    component QueueManager
+  package "Managers/Spoke" {
+    rectangle BalanceSheetManagers
   }
 }
 
 package "Vaults" VAULTS_COLOR {
-  component BaseVault
-  component AsyncVault
-  component SyncDepositVault
-  component AsyncRequestManager
-  component SyncManager
-  component VaultRouter
-  component RefundEscrow
-  component BatchRequestManager
+  interface IRequestManager
 }
 
 package "Hooks" HOOKS_COLOR {
-  component BaseTransferHook
-  component FreelyTransferable
-  component FreezeOnly
-  component FullRestrictions
-  component RedemptionRestrictions
+  interface ITransferHook
 }
 
-' Core
-Hub --> Holdings
-Hub --> Accounting
-Hub --> ShareClassManager
-Hub --> MessageDispatcher
-Hub --> Gateway
-
-HubHandler --> Hub
-BatchRequestManager --> Hub
-
-Spoke --> BalanceSheet
-Spoke --> VaultRegistry
-Spoke --> MessageDispatcher
-Spoke --> Gateway
-
-Gateway --> MultiAdapter
-Gateway --> GasService
-
-BatchedMulticall --> Gateway
-
-' Messaging
-MessageDispatcher --> Gateway
-MessageProcessor --> Gateway
-MessageProcessor --> Hub
-MessageProcessor --> Spoke
-
-' Adapters
-MultiAdapter --> AxelarAdapter
-MultiAdapter --> WormholeAdapter
-MultiAdapter --> LayerZeroAdapter
-MultiAdapter --> RecoveryAdapter
-
-' Managers
-NAVManager -left-> Hub
-SimplePriceManager -left-> Hub
-OnOfframpManager -right-> BalanceSheet
-MerkleProofManager -right-> BalanceSheet
-QueueManager -right-> BalanceSheet
-
-' Vaults
-VaultRegistry --> AsyncVault
-VaultRegistry --> SyncDepositVault
-AsyncVault --> AsyncRequestManager
-SyncDepositVault --> SyncManager
-
-' Admin
-OpsGuardian --> Hub
-OpsGuardian --> Root
-OpsGuardian --> Gateway
-ProtocolGuardian --> Hub
-ProtocolGuardian --> Root
-ProtocolGuardian --> Gateway
-TokenRecoverer --> Root
+IHub --> IMessageDispatcher
+ISpoke --> IMessageDispatcher
+IGateway --> IMessageProcessor
+IMessageProcessor --> IHub
+IMessageProcessor --> ISpoke
+IRequestManager --> IBalanceSheet
+IRequestManager -[norank]-> IMessageDispatcher
+IMessageDispatcher --> IGateway
+HubManagers --> IHub
+BalanceSheetManagers --> IBalanceSheet
+IRoot --> IAuth
+ISpoke --> ITransferHook
 
 @enduml
