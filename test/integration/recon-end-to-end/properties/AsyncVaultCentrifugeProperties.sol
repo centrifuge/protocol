@@ -143,7 +143,7 @@ abstract contract AsyncVaultCentrifugeProperties is
         uint64 poolEntropy,
         uint32 scEntropy,
         uint256 depositAmount
-    ) public {
+    ) public statelessTest {
         uint256 maxDepositBefore = _getVault().maxDeposit(_getActor());
 
         depositAmount = between(depositAmount, 1, maxDepositBefore);
@@ -457,7 +457,7 @@ abstract contract AsyncVaultCentrifugeProperties is
         uint64 poolEntropy,
         uint32 scEntropy,
         uint256 redeemAmount
-    ) public {
+    ) public statelessTest {
         uint256 maxRedeemBefore = _getVault().maxRedeem(_getActor());
         require(maxRedeemBefore > 0, "must be able to redeem");
 
