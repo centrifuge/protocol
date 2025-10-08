@@ -1520,8 +1520,8 @@ abstract contract Properties is
     function property_holdings_balance_equals_escrow_balance() public {
         IBaseVault vault = _getVault();
 
-        // Guard: Skip when price is zero (property is undefined)
-        if (_before.pricePerShare == 0) return;
+        // this property only applies to async vaults
+        if (!Helpers.isAsyncVault(address(vault))) return;
 
         // Guard: Skip when price is zero (property is undefined)
         if (_before.pricePerShare == 0) return;
