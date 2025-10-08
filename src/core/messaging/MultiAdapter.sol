@@ -200,13 +200,6 @@ contract MultiAdapter is Auth, IMultiAdapter {
         }
     }
 
-    /// @dev Internal helper to get the first adapter's details for a pool, handling empty cases
-    function _getFirstAdapterDetails(uint16 centrifugeId, PoolId poolId) internal view returns (Adapter memory) {
-        IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
-        if (adapters_.length == 0) return Adapter(0, 0, 0, 0, 0);
-        return _poolAdapterDetails(centrifugeId, poolId, adapters_[0]);
-    }
-
     /// @inheritdoc IMultiAdapter
     function quorum(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {
         return _getFirstAdapterDetails(centrifugeId, poolId).quorum;
@@ -230,5 +223,12 @@ contract MultiAdapter is Auth, IMultiAdapter {
     /// @inheritdoc IMultiAdapter
     function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (int16[MAX_ADAPTER_COUNT] memory) {
         return inbound[centrifugeId][payloadHash].votes;
+    }
+
+    /// @dev Internal helper to get the first adapter's details for a pool, handling empty cases
+    function _getFirstAdapterDetails(uint16 centrifugeId, PoolId poolId) internal view returns (Adapter memory) {
+        IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
+        if (adapters_.length == 0) return Adapter(0, 0, 0, 0, 0);
+        return _poolAdapterDetails(centrifugeId, poolId, adapters_[0]);
     }
 }
