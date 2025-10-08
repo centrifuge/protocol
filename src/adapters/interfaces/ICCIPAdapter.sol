@@ -103,7 +103,6 @@ interface ICCIPAdapter is IAdapter, IAdapterWiring, IAny2EVMMessageReceiver {
     // Errors
     //----------------------------------------------------------------------------------------------
 
-    error UnsupportedChain();
     error InvalidRouter();
     error InvalidSourceChain();
     error InvalidSourceAddress();

@@ -73,11 +73,6 @@ contract CCIPAdapterTestWire is CCIPAdapterTestBase {
         adapter.wire(CENTRIFUGE_ID, abi.encode(CCIP_CHAIN_SELECTOR, REMOTE_CCIP_ADDR));
     }
 
-    function testWireErrUnsupportedChain() public {
-        vm.expectRevert(ICCIPAdapter.UnsupportedChain.selector);
-        adapter.wire(CENTRIFUGE_ID, abi.encode(uint64(0), REMOTE_CCIP_ADDR));
-    }
-
     function testWire() public {
         vm.expectEmit();
         emit ICCIPAdapter.Wire(CENTRIFUGE_ID, CCIP_CHAIN_SELECTOR, REMOTE_CCIP_ADDR);

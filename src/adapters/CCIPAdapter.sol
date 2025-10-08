@@ -45,8 +45,6 @@ contract CCIPAdapter is Auth, ICCIPAdapter {
     /// @inheritdoc IAdapterWiring
     function wire(uint16 centrifugeId, bytes memory data) external auth {
         (uint64 chainSelector, address adapter) = abi.decode(data, (uint64, address));
-        require(ccipRouter.isChainSupported(chainSelector), UnsupportedChain());
-
         sources[chainSelector] = CCIPSource(centrifugeId, adapter);
         destinations[centrifugeId] = CCIPDestination(chainSelector, adapter);
         emit Wire(centrifugeId, chainSelector, adapter);
