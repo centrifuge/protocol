@@ -88,15 +88,9 @@ contract CCIPAdapter is Auth, ICCIPAdapter {
         CCIPDestination memory destination = destinations[centrifugeId];
         require(destination.chainSelector != 0, UnknownChainId());
 
-        IClient.EVM2AnyMessage memory ccipMessage = IClient.EVM2AnyMessage({
-            receiver: abi.encode(destination.addr),
-            data: payload,
-            tokenAmounts: new IClient.EVMTokenAmount[](0),
-            feeToken: address(0), // Pay in native token
-            extraArgs: _argsToBytes(IClient.EVMExtraArgsV1({gasLimit: gasLimit + RECEIVE_COST}))
-        });
-
-        adapterData = ccipRouter.ccipSend{value: msg.value}(destination.chainSelector, ccipMessage);
+        adapterData = ccipRouter.ccipSend{value: msg.value}(
+            destination.chainSelector, _createMessage(destination, payload, gasLimit)
+        );
     }
 
     /// @inheritdoc IAdapter
@@ -104,15 +98,21 @@ contract CCIPAdapter is Auth, ICCIPAdapter {
         CCIPDestination memory destination = destinations[centrifugeId];
         require(destination.chainSelector != 0, UnknownChainId());
 
-        IClient.EVM2AnyMessage memory ccipMessage = IClient.EVM2AnyMessage({
+        return ccipRouter.getFee(destination.chainSelector, _createMessage(destination, payload, gasLimit));
+    }
+
+    function _createMessage(CCIPDestination memory destination, bytes calldata payload, uint256 gasLimit)
+        internal
+        view
+        returns (IClient.EVM2AnyMessage memory)
+    {
+        return IClient.EVM2AnyMessage({
             receiver: abi.encode(destination.addr),
             data: payload,
             tokenAmounts: new IClient.EVMTokenAmount[](0),
             feeToken: address(0),
             extraArgs: _argsToBytes(IClient.EVMExtraArgsV1({gasLimit: gasLimit + RECEIVE_COST}))
         });
-
-        return ccipRouter.getFee(destination.chainSelector, ccipMessage);
     }
 
     // Based on https://github.com/smartcontractkit/chainlink-ccip/blob/06f2720ee9a0c987a18a9bb226c672adfcf24bcd/chains/evm/contracts/libraries/Client.sol#L36
