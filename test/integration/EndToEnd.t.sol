@@ -72,8 +72,8 @@ import {UpdateContractMessageLib} from "../../src/libraries/UpdateContractMessag
 ///
 /// This EndToEnd tests emulates two chains fully deployed and connected through an adapter
 /// Each test case can receive a fuzzed boolean parameter to be tested in both cases:
-/// - If sameChain: HUB is in CENTRIFUGE_ID_A and CV is in CENTRIFUGE_ID_A
-/// - If !sameChain: HUB is in CENTRIFUGE_ID_A and CV is in CENTRIFUGE_ID_B
+/// - If sameChain: hub is in CENTRIFUGE_ID_A and spoke is in CENTRIFUGE_ID_A
+/// - If !sameChain: hub is in CENTRIFUGE_ID_A and spoke is in CENTRIFUGE_ID_B
 ///
 /// NOTE: All contracts used needs to be placed in the below structs to avoid external calls each time a contract is
 /// chosen from a deployment. If not, it has two side effects:
@@ -91,13 +91,14 @@ contract EndToEndDeployment is Test {
 
     struct CHub {
         uint16 centrifugeId;
-        // Common
-        Root root;
-        ProtocolGuardian protocolGuardian;
-        OpsGuardian opsGuardian;
+        // Core
         Gateway gateway;
         MultiAdapter multiAdapter;
         GasService gasService;
+        // Admin
+        Root root;
+        ProtocolGuardian protocolGuardian;
+        OpsGuardian opsGuardian;
         // Hub
         HubRegistry hubRegistry;
         Accounting accounting;
@@ -114,16 +115,18 @@ contract EndToEndDeployment is Test {
 
     struct CSpoke {
         uint16 centrifugeId;
-        // Common
+        // Core
+        Gateway gateway;
+        MultiAdapter multiAdapter;
+        // Admin
         Root root;
         ProtocolGuardian protocolGuardian;
         OpsGuardian opsGuardian;
-        Gateway gateway;
-        MultiAdapter multiAdapter;
-        // Vaults
+        // Spoke
         BalanceSheet balanceSheet;
         Spoke spoke;
         VaultRegistry vaultRegistry;
+        // Vaults
         VaultRouter router;
         bytes32 asyncVaultFactory;
         bytes32 syncDepositVaultFactory;
