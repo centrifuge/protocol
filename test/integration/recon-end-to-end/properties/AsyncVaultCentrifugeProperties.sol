@@ -293,7 +293,7 @@ abstract contract AsyncVaultCentrifugeProperties is
             _validateMaxValueChange(
                 maxMintBefore,
                 maxMintAfter,
-                mintAmount,
+                assets,
                 "Mint",
                 escrowState
             );
@@ -787,29 +787,14 @@ abstract contract AsyncVaultCentrifugeProperties is
             // Instead, it follows: maxDeposit = maxReserve - availableBalance
             // The "critical" state only means total ≤ reserved, not that maxDeposit = 0
 
-            // Validate that both values follow the same logic pattern
-            if (maxValueBefore == type(uint128).max) {
-                // When maxReserve = uint128.max, expect consistent large values
-                t(
-                    maxValueAfter >= maxValueBefore - operationAmount - 1 &&
-                        maxValueAfter <= maxValueBefore - operationAmount + 1,
-                    string.concat(
-                        "Sync Critical->Critical: max",
-                        operationName,
-                        " should decrease by ~operation amount (+/-1 wei)"
-                    )
-                );
-            } else {
-                // Standard case: regular maxReserve value
-                t(
-                    maxValueAfter == maxValueBefore - operationAmount,
-                    string.concat(
-                        "Sync Critical->Critical: max",
-                        operationName,
-                        " should decrease by exact operation amount"
-                    )
-                );
-            }
+            t(
+                maxValueAfter == maxValueBefore,
+                string.concat(
+                    "Sync Critical->Critical: max",
+                    operationName,
+                    " should not decrease due to availableBalance being zero"
+                )
+            );
         } else if (!state.isNormalStateBefore && state.isNormalStateAfter) {
             // Scenario 3: Critical -> Normal (total ≤ reserved before, total > reserved after)
             // SyncVault: Both before and after follow maxReserve - availableBalance calculation
