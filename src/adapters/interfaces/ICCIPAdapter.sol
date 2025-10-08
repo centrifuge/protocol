@@ -83,7 +83,7 @@ interface IRouterClient {
 
 struct CCIPSource {
     uint16 centrifugeId;
-    bytes32 addressHash;
+    address addr;
 }
 
 struct CCIPDestination {
@@ -117,8 +117,8 @@ interface ICCIPAdapter is IAdapter, IAdapterWiring, IAny2EVMMessageReceiver {
     /// @notice Returns the source configuration for a given CCIP chain id
     /// @param chainSelector The CCIP chain selector
     /// @return centrifugeId The remote chain id
-    /// @return addressHash Hash of the address of the remote CCIP adapter
-    function sources(uint64 chainSelector) external view returns (uint16 centrifugeId, bytes32 addressHash);
+    /// @return addr Address of the remote CCIP adapter
+    function sources(uint64 chainSelector) external view returns (uint16 centrifugeId, address addr);
 
     /// @notice Returns the destination configuration for a given chain id
     /// @param centrifugeId The remote chain id

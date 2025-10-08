@@ -83,13 +83,13 @@ contract CCIPAdapterTestWire is CCIPAdapterTestBase {
         emit ICCIPAdapter.Wire(CENTRIFUGE_ID, CCIP_CHAIN_SELECTOR, REMOTE_CCIP_ADDR);
         adapter.wire(CENTRIFUGE_ID, abi.encode(CCIP_CHAIN_SELECTOR, REMOTE_CCIP_ADDR));
 
-        (uint16 centrifugeId, bytes32 addressHash) = adapter.sources(CCIP_CHAIN_SELECTOR);
+        (uint16 centrifugeId, address addr) = adapter.sources(CCIP_CHAIN_SELECTOR);
         assertEq(centrifugeId, CENTRIFUGE_ID);
-        assertEq(addressHash, keccak256(abi.encodePacked(REMOTE_CCIP_ADDR)));
-
-        (uint64 chainSelector, address addr) = adapter.destinations(CENTRIFUGE_ID);
-        assertEq(chainSelector, CCIP_CHAIN_SELECTOR);
         assertEq(addr, REMOTE_CCIP_ADDR);
+
+        (uint64 chainSelector, address addr2) = adapter.destinations(CENTRIFUGE_ID);
+        assertEq(chainSelector, CCIP_CHAIN_SELECTOR);
+        assertEq(addr2, REMOTE_CCIP_ADDR);
     }
 
     function testIsWired() public {

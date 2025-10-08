@@ -47,7 +47,7 @@ contract CCIPAdapter is Auth, ICCIPAdapter {
         (uint64 chainSelector, address adapter) = abi.decode(data, (uint64, address));
         require(ccipRouter.isChainSupported(chainSelector), UnsupportedChain());
 
-        sources[chainSelector] = CCIPSource(centrifugeId, keccak256(abi.encodePacked(adapter)));
+        sources[chainSelector] = CCIPSource(centrifugeId, adapter);
         destinations[centrifugeId] = CCIPDestination(chainSelector, adapter);
         emit Wire(centrifugeId, chainSelector, adapter);
     }
@@ -66,10 +66,10 @@ contract CCIPAdapter is Auth, ICCIPAdapter {
         require(msg.sender == address(ccipRouter), InvalidRouter());
 
         CCIPSource memory source = sources[message.sourceChainSelector];
-        require(source.addressHash != bytes32(""), InvalidSourceChain());
+        require(source.addr != address(0), InvalidSourceChain());
 
         address sourceAddress = abi.decode(message.sender, (address));
-        require(source.addressHash == keccak256(abi.encodePacked(sourceAddress)), InvalidSourceAddress());
+        require(source.addr == sourceAddress, InvalidSourceAddress());
 
         entrypoint.handle(source.centrifugeId, message.data);
     }
@@ -103,7 +103,7 @@ contract CCIPAdapter is Auth, ICCIPAdapter {
 
     function _createMessage(CCIPDestination memory destination, bytes calldata payload, uint256 gasLimit)
         internal
-        view
+        pure
         returns (IClient.EVM2AnyMessage memory)
     {
         return IClient.EVM2AnyMessage({
