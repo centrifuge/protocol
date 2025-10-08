@@ -405,6 +405,16 @@ contract NAVManagerNetAssetValueTest is NAVManagerTest {
         vm.expectRevert();
         navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
     }
+
+    function testNetAssetValueZeroWhenLiabilitiesExceedAssets() public {
+        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 500, true);
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, true);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, true);
+        _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 600, true);
+
+        uint128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
+        assertEq(nav, 0);
+    }
 }
 
 contract NAVManagerUpdateHoldingTest is NAVManagerTest {
