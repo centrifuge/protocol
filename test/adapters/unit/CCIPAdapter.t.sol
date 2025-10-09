@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+import {IERC165} from "../../../src/misc/interfaces/IERC7575.sol";
 
 import {Mock} from "../../core/mocks/Mock.sol";
 
@@ -200,5 +201,20 @@ contract CCIPAdapterTest is CCIPAdapterTestBase {
             EVM_EXTRA_ARGS_V1_TAG, IClient.EVMExtraArgsV1({gasLimit: gasLimit + adapter.RECEIVE_COST()})
         );
         assertEq(ccipRouter.values_bytes("extraArgs"), expectedExtraArgs);
+    }
+
+    function testERC165Support(bytes4 unsupportedInterfaceId) public view {
+        bytes4 erc165 = 0x01ffc9a7;
+        bytes4 any2EVMMessageReceiver = 0x85572ffb;
+
+        vm.assume(unsupportedInterfaceId != erc165 && unsupportedInterfaceId != any2EVMMessageReceiver);
+
+        assertEq(type(IERC165).interfaceId, erc165);
+        assertEq(type(IAny2EVMMessageReceiver).interfaceId, any2EVMMessageReceiver);
+
+        assertEq(adapter.supportsInterface(erc165), true);
+        assertEq(adapter.supportsInterface(any2EVMMessageReceiver), true);
+
+        assertEq(adapter.supportsInterface(unsupportedInterfaceId), false);
     }
 }

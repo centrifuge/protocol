@@ -14,6 +14,7 @@ import {
 
 import {Auth} from "../misc/Auth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
+import {IERC165} from "../misc/interfaces/IERC7575.sol";
 
 import {IMessageHandler} from "../core/messaging/interfaces/IMessageHandler.sol";
 
@@ -116,5 +117,14 @@ contract CCIPAdapter is Auth, ICCIPAdapter {
     // Based on https://github.com/smartcontractkit/chainlink-ccip/blob/06f2720ee9a0c987a18a9bb226c672adfcf24bcd/chains/evm/contracts/libraries/Client.sol#L36
     function _argsToBytes(IClient.EVMExtraArgsV1 memory extraArgs) internal pure returns (bytes memory bts) {
         return abi.encodeWithSelector(EVM_EXTRA_ARGS_V1_TAG, extraArgs);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // ERC-165
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
+        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
 }

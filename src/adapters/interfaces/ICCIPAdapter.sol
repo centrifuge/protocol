@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IERC165} from "../../misc/interfaces/IERC7575.sol";
+
 import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
 
 import {IAdapterWiring} from "../../admin/interfaces/IAdapterWiring.sol";
@@ -39,7 +41,7 @@ interface IClient {
 }
 
 // From https://github.com/smartcontractkit/chainlink-ccip/blob/06f2720ee9a0c987a18a9bb226c672adfcf24bcd/chains/evm/contracts/interfaces/IAny2EVMMessageReceiver.sol#L7
-interface IAny2EVMMessageReceiver {
+interface IAny2EVMMessageReceiver is IERC165 {
     /// @notice Called by the Router to deliver a message. If this reverts, any token transfers also revert.
     /// The message will move to a FAILED state and become available for manual execution.
     /// @param message CCIP Message.
