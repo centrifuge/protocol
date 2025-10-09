@@ -78,16 +78,15 @@ class DeploymentRunner:
             print_success("Catapulta finished successfully")
             print_info("Check catapulta dashboard: https://catapulta.sh/project/68317077d1b8de690e3569e9")
         else:
-            # Assume forge
             print_step(f"Running forge script")
+            
             # 1. Deploy without verification
-
             print_info(f"Deploying scripts (without verification)...")            
             if not self._run_command(base_cmd):
                 return False
             print_success("Forge contracts deployed successfully")
-            # 2. Verify (only for protocol and adapter scripts)
-            if self.env_loader.network_name != "anvil" and script_name not in ["TestData"]:
+            # 2. Verify (only for protocol and adapter scripts, skip for anvil environments)
+            if not  "localhost" in self.env_loader.rpc_url and script_name not in ["TestData"]:
                 cmd = base_cmd.copy()
                 cmd.append("--verify")
                 if "--resume" not in cmd:
@@ -137,7 +136,6 @@ class DeploymentRunner:
             base_cmd = [
                 "forge", "script", str(self.script_path),
                 "--tc", script_name,
-                "--optimize",
                 "--rpc-url", self.env_loader.rpc_url,
                 "--chain-id", self.env_loader.chain_id,
                 *auth_args,
@@ -193,7 +191,6 @@ class DeploymentRunner:
                     return True
                 else:
                     print_error(f"Verification failed with exit code: {result.returncode}")
-                    print_error(f"Check the log file for details: {log_file}")
                     return False
                 
         except subprocess.CalledProcessError as e:
@@ -227,8 +224,6 @@ class DeploymentRunner:
         """Build contracts with forge"""
         print_subsection("Building contracts")
         
-        # Clean first
-        subprocess.run(["forge", "clean"], check=True)
         
         # Build with parallel jobs
         cpu_count = multiprocessing.cpu_count()
