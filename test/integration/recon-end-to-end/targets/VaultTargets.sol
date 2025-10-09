@@ -465,9 +465,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         uint256 shares = vault.deposit(assets, _getActor());
 
-        console2.log("=== VAULT DEPOSIT CAUSED SHARE ISSUE ===");
-        console2.log("Shares issued:", shares);
-
         // Add ghost flip tracking for share queue state changes
         {
             bytes32 shareKey = keccak256(
@@ -508,6 +505,33 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 sumOfClaimedDeposits[vault.share()] += (pendingBefore -
                     pendingAfter);
             }
+
+            // Track asset counter for Queue State Consistency properties
+            if (assets > 0) {
+                bytes32 assetKey = keccak256(
+                    abi.encode(
+                        vault.poolId(),
+                        vault.scId(),
+                        spoke.vaultDetails(vault).assetId
+                    )
+                );
+
+                // Check if asset queue became non-empty after deposit
+                (
+                    uint128 currentDeposits,
+                    uint128 currentWithdrawals
+                ) = balanceSheet.queuedAssets(
+                        vault.poolId(),
+                        vault.scId(),
+                        spoke.vaultDetails(vault).assetId
+                    );
+
+                // For sync deposits, the asset queue becomes non-empty during processing
+                if (currentDeposits > 0 || currentWithdrawals > 0) {
+                    ghost_assetCounterPerAsset[assetKey] = 1; // Asset queue becomes non-empty
+                }
+            }
+
             executedInvestments[vault.share()] += shares;
 
             sumOfSyncDepositsAsset[vault.asset()] += assets;
@@ -606,7 +630,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 (deltaBefore != 0 || deltaAfter != 0)
             ) {
                 ghost_flipCount[shareKey]++;
-                console2.log("=== FLIP DETECTED IN VAULT_MINT ===");
             }
         }
 
@@ -616,16 +639,36 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             to.toBytes32()
         );
 
-        // Bal after
-        uint256 shareUserAfter = IShareToken(vault.share()).balanceOf(to);
-        uint256 shareEscrowAfter = IShareToken(vault.share()).balanceOf(
-            address(globalEscrow)
-        );
-
         // Processed Deposit | E-2
         // for sync vaults, deposits are fulfilled immediately
         // NOTE: async vaults don't request deposits but we need to track this value for the escrow balance property
         if (!isAsyncVault) {
+            // Track asset counter for Queue State Consistency properties
+            if (assets > 0) {
+                bytes32 assetKey = keccak256(
+                    abi.encode(
+                        vault.poolId(),
+                        vault.scId(),
+                        spoke.vaultDetails(vault).assetId
+                    )
+                );
+
+                // Check if asset queue became non-empty after deposit
+                (
+                    uint128 currentDeposits,
+                    uint128 currentWithdrawals
+                ) = balanceSheet.queuedAssets(
+                        vault.poolId(),
+                        vault.scId(),
+                        spoke.vaultDetails(vault).assetId
+                    );
+
+                // For sync deposits, the asset queue becomes non-empty during processing
+                if (currentDeposits > 0 || currentWithdrawals > 0) {
+                    ghost_assetCounterPerAsset[assetKey] = 1; // Asset queue becomes non-empty
+                }
+            }
+
             userRequestDeposited[vault.scId()][
                 spoke.vaultDetails(vault).assetId
             ][_getActor()] += assets;
