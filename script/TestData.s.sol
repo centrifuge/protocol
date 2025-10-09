@@ -270,6 +270,21 @@ contract TestData is LaunchDeployer {
             AccountId.wrap(0x04)
         );
         hub.updateHoldingValue(state.poolId, state.scId, wBtcId);
+
+        // Submit a new deposit request for cancellation testing
+        token.approve(address(state.vault), 500_000e6);
+        state.vault.requestDeposit(500_000e6, msg.sender, msg.sender);
+
+        // Submit cancellation of the deposit request
+        state.vault.cancelDepositRequest(0, msg.sender);
+
+        // Force cancel the deposit request (manager action)
+        batchRequestManager.forceCancelDepositRequest(
+            state.poolId, state.scId, msg.sender.toBytes32(), assetId, msg.sender
+        );
+
+        // Claim the cancelled deposit request
+        state.vault.claimCancelDepositRequest(0, msg.sender, msg.sender);
     }
 
     function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
