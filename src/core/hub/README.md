@@ -1,59 +1,162 @@
 # Hub
 
-The Hub module in the Centrifuge Protocol serves as the core orchestration layer for decentralized pool management. It acts as the central controller that connects various components of a pool’s lifecycle - from registration and accounting to share class configuration and metadata handling.
+The Hub module serves as the central orchestration layer for pool management in the Centrifuge Protocol. It coordinates all core pool operations including registration, accounting, holdings management, share class configuration, and cross-chain message handling.
 
-![](https://docs.centrifuge.io/assets/images/hub-6be4376fec347560ff43a733f09f933f.png)
+## Architecture
+
+```plantuml
+@startuml hub
+title Hub
+hide empty members
+
+skinparam linetype ortho
+
+package vaults {
+    interface IBatchRequestManager
+}
+
+package messaging {
+    interface IMessageDispatcher
+    interface IMesssageProcessor
+}
+
+class Hub
+class HubHandler
+class Holdings
+class HubRegistry
+class ShareClassManager
+class Accounting
+
+interface ISnapshotHook
+interface IValuation
+interface IFeeHook
+
+Hub --> Holdings
+Hub --> HubRegistry
+Hub --> ShareClassManager
+Hub --> Accounting
+Hub --> IMessageDispatcher
+Hub --> Gateway
+Hub .[dotted].> IFeeHook
+
+HubHandler --> Hub
+IMesssageProcessor --> HubHandler
+
+IBatchRequestManager --> Hub
+
+Holdings --> IValuation
+Holdings .[dotted].> ISnapshotHook
+
+@enduml
+```
 
 ## Contracts
 
-It contains six smart contracts:
-
 ### Hub
 
-* **Description**: The central pool management contract.
-* **Responsibilities**:
+The central pool management contract that aggregates all core pool functions in a single interface.
 
-  * Aggregates and exposes all core pool functions in a single interface.
-  * Allows pools to assign hub managers — trusted entities with full permissions over the pool lifecycle.
-  * Coordinates pool creation, share class setup, metadata updates, and notification hooks.
+**Key Responsibilities:**
+- Pool administration and manager assignment
+- Share class notifications and metadata updates
+- Asset price broadcasting across chains
+- Holdings initialization and updates
+- Accounting coordination and double-entry bookkeeping
+- Cross-chain message coordination via Gateway
+- Fee hook integration for pool-level fee accrual
 
-### HubHelpers
+**Notable Features:**
+- Managers have full rights over all pool actions
+- Supports batched multicall operations
+- Integrates with optional fee hooks for custom fee logic
+- Coordinates with ShareClassManager, Holdings, Accounting, and HubRegistry
 
-* **Description**: Extension of the `Hub`.
-* **Responsibilities**:
+### HubHandler
 
-  * Additional functionality for the `Hub` contract.
+Processes incoming cross-chain messages for the Hub, acting as the message receiver from the Gateway.
 
-### HubRegistry
+**Key Responsibilities:**
+- Asset registration from remote chains
+- Processing vault request callbacks
+- Updating holding amounts based on cross-chain activity
+- Handling share issuance and revocation messages
+- Processing cross-chain share transfers
+- Managing snapshot synchronization across chains
 
-* **Description**: A global registry of all pools, assets, and currencies used in the protocol.
-* **Responsibilities**:
-
-  * Stores `PoolId` objects mapped from external identifiers (e.g., Centrifuge IDs).
-  * Enables canonical lookup of pools and related resources.
-  * Ensures system-wide uniqueness and integrity of registered identifiers.
+**Notable Features:**
+- Auth-protected handlers called exclusively by the Gateway's MessageProcessor
+- Coordinates state updates across Hub, Holdings, and ShareClassManager
+- Validates and routes request callbacks to appropriate HubRequestManagers
+- Maintains snapshot state for cross-chain consistency
 
 ### Holdings
 
-* **Description**: Ledger of holdings per pool, tied to accounting IDs.
-* **Responsibilities**:
+Ledger of holdings per pool, tracking assets and their accounting associations.
 
-  * Tracks internal balances and positions for each pool.
-  * Associates each holding with a unique accounting ID for traceability.
+**Key Responsibilities:**
+- Initializing holdings with valuation contracts and account mappings
+- Tracking holding amounts per pool, share class, and asset
+- Increasing and decreasing holding amounts with price validation
+- Computing pool-denominated values using IValuation contracts
+- Managing snapshot state for cross-chain synchronization
+- Optional ISnapshotHook integration for custom snapshot logic
+
+**Notable Features:**
+- Associates each holding with an IValuation for price conversion
+- Supports liability vs. asset holdings
+- Maintains snapshot state per chain to ensure data consistency
+- Maps holdings to accounting IDs for double-entry bookkeeping
+
+### HubRegistry
+
+Global registry of all pools, assets, currencies, and pool-level dependencies.
+
+**Key Responsibilities:**
+- Registering pools with their initial manager and currency
+- Registering assets with their decimal precision
+- Managing pool managers (adding/removing)
+- Storing pool metadata
+- Managing pool dependencies (e.g., HubRequestManagers per chain)
+- Validating pool and asset existence
+
+**Notable Features:**
+- Canonical source of truth for pool and asset registration
+- Supports multiple managers per pool
+- Tracks HubRequestManagers per pool and destination chain
+- Enforces uniqueness of pools and assets
 
 ### Accounting
 
-* **Description**: A robust double-entry bookkeeping system.
-* **Responsibilities**:
+Double-entry bookkeeping system for all pool financial operations.
 
-  * Manages debits and credits across accounting IDs.
-  * Ensures every operation maintains a balanced ledger.
-  * Forms the financial backbone for audits and reporting.
+**Key Responsibilities:**
+- Creating accounts with debit or credit normal balances
+- Recording journal entries (debits and credits)
+- Enforcing balanced transactions via lock/unlock mechanism
+- Tracking account balances and last update timestamps
+- Generating unique journal IDs per pool per transaction
+
+**Notable Features:**
+- Transient storage for in-flight journal state
+- Requires unlock before entries, lock to commit
+- Enforces debits equal credits invariant
+- Supports account metadata for additional context
+- Shares journal IDs across interleaved entries for the same pool
 
 ### ShareClassManager
 
-* **Description**: Manages share classes across pools and chains.
-* **Responsibilities**:
+Manages share classes across pools and chains, tracking issuance and metadata.
 
-  * Handles **epoch-based workflows**, including request submission, approval, and fulfillment.
-  * Generates share class IDs and manages cross-chain state.
+**Key Responsibilities:**
+- Creating new share classes with unique IDs, names, symbols, and salts
+- Tracking total issuance and per-chain issuance
+- Updating share prices (price per share in pool currency)
+- Managing share class metadata (name, symbol)
+- Issuing and revoking shares based on cross-chain activity
+
+**Notable Features:**
+- Deterministic share class ID generation from pool and index
+- Prevents salt reuse for share class uniqueness
+- Tracks share issuance separately per chain
+- Validates price timestamps to prevent future-dated prices
+- Provides preview functions for next share class ID
