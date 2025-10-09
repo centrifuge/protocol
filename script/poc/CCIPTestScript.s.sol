@@ -18,11 +18,10 @@ address constant CCIP_SEPOLIA_BASE_ROUTER = 0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6
 uint64 constant CCIP_SEPOLIA_ETHEREUM_ID = 16015286601757825753;
 address constant CCIP_SEPOLIA_ETHEREUM_ROUTER = 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59;
 
-bytes constant ENTRYPOINT_NAME = "MockEntrypoint-cfg"; // 0x6bB60C397FDD8a274E1cb8E098F10d4f9499b784
+bytes constant ENTRYPOINT_NAME = "MockEntrypoint-cfg"; //0xbd3873aEd2dB4680a6D84586c9F3F691B54462cb
 bytes constant CCIP_ADAPTER_NAME = "CCIPAdapter-cfg"; //0x6bB60C397FDD8a274E1cb8E098F10d4f9499b784
 
 contract MockEntrypoint is IMessageHandler {
-    // Check event in https://sepolia.basescan.org/address/0xbd3873aEd2dB4680a6D84586c9F3F691B54462cb#events
     event MsgReceived(bytes);
 
     function handle(uint16, bytes memory message) external {
