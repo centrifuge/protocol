@@ -1,6 +1,7 @@
 # Hub
 
 The Hub module serves as the central orchestration layer for pool management in the Centrifuge Protocol. It coordinates all core pool operations including registration, accounting, holdings management, share class configuration, and cross-chain message handling.
+
 ![Hub architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/c8eba945b734afcabcead556b7c8c00561828268/docs/architecture/core/hub.puml)
 
 ### Hub
