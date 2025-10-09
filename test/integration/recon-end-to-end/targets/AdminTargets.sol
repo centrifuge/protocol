@@ -290,14 +290,18 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
         ghost_totalIssued[shareKey] += issuedShareAmount;
         ghost_netSharePosition[shareKey] += int256(uint256(issuedShareAmount));
-        
+
         // Check for share queue flip
-        (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet.queuedShares(poolId, scId);
+        (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet
+            .queuedShares(poolId, scId);
         bytes32 key = _poolShareKey(poolId, scId);
         uint128 deltaBefore = before_shareQueueDelta[key];
         bool isPositiveBefore = before_shareQueueIsPositive[key];
-        
-        if ((isPositiveBefore != isPositiveAfter) && (deltaBefore != 0 || deltaAfter != 0)) {
+
+        if (
+            (isPositiveBefore != isPositiveAfter) &&
+            (deltaBefore != 0 || deltaAfter != 0)
+        ) {
             ghost_flipCount[shareKey]++;
         }
 
@@ -348,7 +352,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);
     }
 
-    function hub_notifyAssetPrice() public updateGhosts {
+    function hub_notifyAssetPrice() public updateGhostsWithType(OpType.ADMIN) {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
@@ -398,14 +402,18 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
         ghost_totalRevoked[shareKey] += revokedShareAmount;
         ghost_netSharePosition[shareKey] -= int256(uint256(revokedShareAmount));
-        
+
         // Check for share queue flip
-        (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet.queuedShares(poolId, scId);
+        (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet
+            .queuedShares(poolId, scId);
         bytes32 key = _poolShareKey(poolId, scId);
         uint128 deltaBefore = before_shareQueueDelta[key];
         bool isPositiveBefore = before_shareQueueIsPositive[key];
-        
-        if ((isPositiveBefore != isPositiveAfter) && (deltaBefore != 0 || deltaAfter != 0)) {
+
+        if (
+            (isPositiveBefore != isPositiveAfter) &&
+            (deltaBefore != 0 || deltaAfter != 0)
+        ) {
             ghost_flipCount[shareKey]++;
         }
 

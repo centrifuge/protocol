@@ -49,6 +49,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             spoke.vaultDetails(_getVault()).assetId
         );
         maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
+        console2.log("maxClaims: ", maxClaims);
 
         // Capture validation state if needed
         bool hasClaimedAll = _hasClaimedAllEpochs(maxClaims, maxClaimsBound);
@@ -290,7 +291,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     ) public asAdmin {
         // Track authorization - setRequestManager requires admin auth
         _trackAuthorization(_getActor(), PoolId.wrap(poolId));
-        
+
         hub.setRequestManager{value: GAS}(
             PoolId.wrap(poolId),
             ShareClassId.wrap(shareClassId),
@@ -307,7 +308,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     ) public asAdmin {
         // Track authorization - updateBalanceSheetManager requires admin auth
         _trackAuthorization(_getActor(), PoolId.wrap(poolId));
-        
+
         hub.updateBalanceSheetManager{value: GAS}(
             chainId,
             PoolId.wrap(poolId),
@@ -395,7 +396,6 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         sumOfClaimedDeposits[vault.share()] += totalPayoutShareAmount;
         userDepositProcessed[scId][assetId][actor] += totalPaymentAssetAmount;
         userCancelledDeposits[scId][assetId][actor] += cancelledAssetAmount;
-        sumOfClaimedCancelledDeposits[vault.asset()] += cancelledAssetAmount;
     }
 
     // ═══════════════════════════════════════════════════════════════
