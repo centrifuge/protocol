@@ -2200,7 +2200,7 @@ abstract contract Properties is
 
         // Skip pools/shareclasses that don't have async vaults as queuedShares only apply to async operations
         if (!hasAsyncVault) {
-            continue;
+            return;
         }
 
         (uint128 delta, bool isPositive, , ) = balanceSheet.queuedShares(
