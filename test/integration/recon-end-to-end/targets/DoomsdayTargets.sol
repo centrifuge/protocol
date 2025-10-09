@@ -26,7 +26,10 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     /// @dev Property: user should always be able to deposit less than maxMint
     function doomsday_deposit(uint256 assets) public statelessTest {
         uint256 ppfsBefore = BaseVault(address(_getVault())).pricePerShare();
-        (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
+        (uint128 maxMint, , , , , , , , , ) = asyncRequestManager.investments(
+            _getVault(),
+            _getActor()
+        );
         uint256 maxMintAsAssets = _getVault().convertToAssets(maxMint);
 
         uint256 sharesReceived;
@@ -34,20 +37,50 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         try _getVault().deposit(assets, _getActor()) returns (uint256 shares) {
             sharesReceived = shares;
         } catch {
-            bool isFrozen = fullRestrictions.isFrozen(address(_getVault()), _getActor());
-            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
+            bool isFrozen = fullRestrictions.isFrozen(
+                address(_getVault()),
+                _getActor()
+            );
+            (bool isMember, ) = fullRestrictions.isMember(
+                _getShareToken(),
+                _getActor()
+            );
             if (assets < maxMintAsAssets && !isFrozen && isMember) {
                 t(false, "cant deposit less than maxMint");
             }
         }
         uint256 sharesAsAssets = _getVault().convertToAssets(sharesReceived);
 
-        uint256 expectedAssetsSpent = (sharesReceived * ppfsBefore) + (10 ** MockERC20(_getAsset()).decimals());
-        uint256 expectedSharesReceived = (assets / ppfsBefore) - (10 ** IShareToken(_getShareToken()).decimals());
+        console2.log(
+            "sharesReceived * ppfsBefore: %e",
+            sharesReceived * ppfsBefore
+        );
+        console2.log("sharesReceived: %e", sharesReceived);
+        console2.log("ppfsBefore: ", ppfsBefore);
+        console2.log(
+            "sharesReceived * ppfsBefore adjusted: %e",
+            ((sharesReceived / 10 ** MockERC20(_getAsset()).decimals()) *
+                ppfsBefore)
+        );
+        console2.log("asset decimals: ", MockERC20(_getAsset()).decimals());
+        console2.log(
+            "share decimals: ",
+            MockERC20(_getShareToken()).decimals()
+        );
+        uint256 expectedAssetsSpent = (sharesReceived * ppfsBefore) / 1e18;
+        uint256 expectedSharesReceived = ((assets * 1e18) / ppfsBefore);
 
         // should always round in protocol's favor, requiring more assets to be spent than shares received
-        gte(sharesAsAssets, expectedAssetsSpent, "sharesAsAssets < expectedAssetsSpent");
-        lte(sharesReceived, expectedSharesReceived, "sharesReceived > expectedSharesReceived");
+        gte(
+            sharesAsAssets,
+            expectedAssetsSpent,
+            "sharesAsAssets < expectedAssetsSpent"
+        );
+        lte(
+            sharesReceived,
+            expectedSharesReceived,
+            "sharesReceived > expectedSharesReceived"
+        );
     }
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare -
@@ -55,26 +88,45 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     /// @dev Property: user should always be able to mint less than maxMint
     function doomsday_mint(uint256 shares) public statelessTest {
         uint256 ppfsBefore = BaseVault(address(_getVault())).pricePerShare();
-        (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
+        (uint128 maxMint, , , , , , , , , ) = asyncRequestManager.investments(
+            _getVault(),
+            _getActor()
+        );
 
         vm.prank(_getActor());
         uint256 assetsSpent;
         try _getVault().mint(shares, _getActor()) returns (uint256 assets) {
             assetsSpent = assets;
         } catch {
-            bool isFrozen = fullRestrictions.isFrozen(address(_getVault()), _getActor());
-            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
+            bool isFrozen = fullRestrictions.isFrozen(
+                address(_getVault()),
+                _getActor()
+            );
+            (bool isMember, ) = fullRestrictions.isMember(
+                _getShareToken(),
+                _getActor()
+            );
             if (shares < maxMint && !isFrozen && isMember) {
                 t(false, "cant mint less than maxMint");
             }
         }
         uint256 assetsAsShares = _getVault().convertToShares(assetsSpent);
 
-        uint256 expectedAssetsSpent = (assetsAsShares * ppfsBefore) + (10 ** MockERC20(_getAsset()).decimals());
-        uint256 expectedSharesReceived = (assetsSpent / ppfsBefore) - (10 ** IShareToken(_getShareToken()).decimals());
+        uint256 expectedAssetsSpent = (assetsAsShares * ppfsBefore) +
+            (10 ** MockERC20(_getAsset()).decimals());
+        uint256 expectedSharesReceived = (assetsSpent / ppfsBefore) -
+            (10 ** IShareToken(_getShareToken()).decimals());
 
-        gte(assetsSpent, expectedAssetsSpent, "assetsSpent < expectedAssetsSpent");
-        lte(assetsAsShares, expectedSharesReceived, "assetsAsShares > expectedSharesReceived");
+        gte(
+            assetsSpent,
+            expectedAssetsSpent,
+            "assetsSpent < expectedAssetsSpent"
+        );
+        lte(
+            assetsAsShares,
+            expectedSharesReceived,
+            "assetsAsShares > expectedSharesReceived"
+        );
     }
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare -
@@ -82,28 +134,42 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     /// @dev Property: user should always be able to redeem less than maxWithdraw
     function doomsday_redeem(uint256 shares) public statelessTest {
         uint256 ppfsBefore = BaseVault(address(_getVault())).pricePerShare();
-        (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
+        (, uint128 maxWithdraw, , , , , , , , ) = asyncRequestManager
+            .investments(_getVault(), _getActor());
         uint256 maxWithdrawAsShares = _getVault().convertToShares(maxWithdraw);
 
         vm.prank(_getActor());
         uint256 assetsReceived;
-        try _getVault().redeem(shares, _getActor(), _getActor()) returns (uint256 assets) {
+        try _getVault().redeem(shares, _getActor(), _getActor()) returns (
+            uint256 assets
+        ) {
             assetsReceived = assets;
         } catch {
-            bool isFrozen = fullRestrictions.isFrozen(address(_getVault()), _getActor());
-            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
+            bool isFrozen = fullRestrictions.isFrozen(
+                address(_getVault()),
+                _getActor()
+            );
+            (bool isMember, ) = fullRestrictions.isMember(
+                _getShareToken(),
+                _getActor()
+            );
             if (shares < maxWithdrawAsShares && !isFrozen && isMember) {
                 t(false, "cant redeem less than maxWithdraw");
             }
         }
         uint256 assetsAsShares = _getVault().convertToShares(assetsReceived);
 
-        uint256 expectedAssets = (shares * ppfsBefore) + (10 ** IShareToken(_getShareToken()).decimals());
-        uint256 expectedAssetsAsShares = (_getVault().convertToAssets(shares) / ppfsBefore)
-            - (10 ** IShareToken(_getShareToken()).decimals());
+        uint256 expectedAssets = (shares * ppfsBefore) +
+            (10 ** IShareToken(_getShareToken()).decimals());
+        uint256 expectedAssetsAsShares = (_getVault().convertToAssets(shares) /
+            ppfsBefore) - (10 ** IShareToken(_getShareToken()).decimals());
 
         lte(assetsReceived, expectedAssets, "assetsReceived > expectedAssets");
-        gte(assetsAsShares, expectedAssetsAsShares, "assetsAsShares < expectedAssetsAsShares");
+        gte(
+            assetsAsShares,
+            expectedAssetsAsShares,
+            "assetsAsShares < expectedAssetsAsShares"
+        );
     }
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare -
@@ -112,25 +178,40 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     function doomsday_withdraw(uint256 assets) public statelessTest {
         uint256 ppfsBefore = BaseVault(address(_getVault())).pricePerShare();
         uint256 assetsAsSharesBefore = _getVault().convertToShares(assets);
-        (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
+        (, uint128 maxWithdraw, , , , , , , , ) = asyncRequestManager
+            .investments(_getVault(), _getActor());
 
         vm.prank(_getActor());
         uint256 sharesReceived;
-        try _getVault().withdraw(assets, _getActor(), _getActor()) returns (uint256 shares) {
+        try _getVault().withdraw(assets, _getActor(), _getActor()) returns (
+            uint256 shares
+        ) {
             sharesReceived = shares;
         } catch {
-            bool isFrozen = fullRestrictions.isFrozen(address(_getVault()), _getActor());
-            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
+            bool isFrozen = fullRestrictions.isFrozen(
+                address(_getVault()),
+                _getActor()
+            );
+            (bool isMember, ) = fullRestrictions.isMember(
+                _getShareToken(),
+                _getActor()
+            );
             if (assets < maxWithdraw && !isFrozen && isMember) {
                 t(false, "cant withdraw less than maxWithdraw");
             }
         }
         uint256 sharesAsAssets = _getVault().convertToAssets(sharesReceived);
 
-        uint256 expectedAssets = (assetsAsSharesBefore * ppfsBefore) + (10 ** IShareToken(_getShareToken()).decimals());
-        uint256 expectedAssetsAsShares = (assets / ppfsBefore) - (10 ** IShareToken(_getShareToken()).decimals());
+        uint256 expectedAssets = (assetsAsSharesBefore * ppfsBefore) +
+            (10 ** IShareToken(_getShareToken()).decimals());
+        uint256 expectedAssetsAsShares = (assets / ppfsBefore) -
+            (10 ** IShareToken(_getShareToken()).decimals());
 
         gte(sharesAsAssets, expectedAssets, "sharesAsAssets < expectedAssets");
-        lte(sharesReceived, expectedAssetsAsShares, "sharesReceived > expectedAssetsAsShares");
+        lte(
+            sharesReceived,
+            expectedAssetsAsShares,
+            "sharesReceived > expectedAssetsAsShares"
+        );
     }
 }
