@@ -4,51 +4,7 @@ The Hub module serves as the central orchestration layer for pool management in 
 
 ## Architecture
 
-```plantuml
-@startuml hub
-title Hub
-hide empty members
-
-skinparam linetype ortho
-
-package vaults {
-    interface IBatchRequestManager
-}
-
-package messaging {
-    interface IMessageDispatcher
-    interface IMesssageProcessor
-}
-
-class Hub
-class HubHandler
-class Holdings
-class HubRegistry
-class ShareClassManager
-class Accounting
-
-interface ISnapshotHook
-interface IValuation
-interface IFeeHook
-
-Hub --> Holdings
-Hub --> HubRegistry
-Hub --> ShareClassManager
-Hub --> Accounting
-Hub --> IMessageDispatcher
-Hub --> Gateway
-Hub .[dotted].> IFeeHook
-
-HubHandler --> Hub
-IMesssageProcessor --> HubHandler
-
-IBatchRequestManager --> Hub
-
-Holdings --> IValuation
-Holdings .[dotted].> ISnapshotHook
-
-@enduml
-```
+![Hub architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://github.com/centrifuge/protocol/blob/readme-updates/docs/architecture/core/hub.puml)
 
 ## Contracts
 
