@@ -423,9 +423,10 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             ghost_cumulativeAssetsWithdrawn[assetKey] += amount;
             ghost_assetQueueWithdrawals[assetKey] += amount;
             sumOfManagerWithdrawals[vault.asset()] += amount;
-        } catch {
+        } catch (bytes memory err) {
+            bool expectedError = checkError(err, "InvalidPrice()");
             // Check if withdrawal was possible with available balance (track failures)
-            if (amount <= prevAvailable) {
+            if (!expectedError && amount <= prevAvailable) {
                 ghost_failedWithdrawalAttempts[assetKey]++;
             }
         }
