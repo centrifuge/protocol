@@ -18,6 +18,9 @@ address constant CCIP_SEPOLIA_BASE_ROUTER = 0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6
 uint64 constant CCIP_SEPOLIA_ETHEREUM_ID = 16015286601757825753;
 address constant CCIP_SEPOLIA_ETHEREUM_ROUTER = 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59;
 
+bytes constant ENTRYPOINT_NAME = "centrifuge-MockEntrypoint-4";
+bytes constant CCIP_ADAPTER_NAME = "centrifuge-CCIPAdapter-4";
+
 contract MockEntrypoint is IMessageHandler {
     event MsgReceived(bytes);
 
@@ -26,19 +29,18 @@ contract MockEntrypoint is IMessageHandler {
     }
 }
 
-contract CCIPEthTestScript is Script, CreateXScript {
+contract CCIPEthereumTestScript is Script, CreateXScript {
     function run() public {
         vm.startBroadcast();
 
         setUpCreateXFactory();
 
-        MockEntrypoint entrypoint = MockEntrypoint(
-            create3(keccak256("centrifuge-MockEntrypoint"), abi.encodePacked(type(MockEntrypoint).creationCode))
-        );
+        MockEntrypoint entrypoint =
+            MockEntrypoint(create3(keccak256(ENTRYPOINT_NAME), abi.encodePacked(type(MockEntrypoint).creationCode)));
 
         CCIPAdapter ccip = CCIPAdapter(
             create3(
-                keccak256("centrifuge-CCIPAdapter"),
+                keccak256(CCIP_ADAPTER_NAME),
                 abi.encodePacked(
                     type(CCIPAdapter).creationCode, abi.encode(entrypoint, CCIP_SEPOLIA_ETHEREUM_ROUTER, msg.sender)
                 )
@@ -61,13 +63,12 @@ contract CCIPBaseTestScript is Script, CreateXScript {
 
         setUpCreateXFactory();
 
-        MockEntrypoint entrypoint = MockEntrypoint(
-            create3(keccak256("centrifuge-MockEntrypoint"), abi.encodePacked(type(MockEntrypoint).creationCode))
-        );
+        MockEntrypoint entrypoint =
+            MockEntrypoint(create3(keccak256(ENTRYPOINT_NAME), abi.encodePacked(type(MockEntrypoint).creationCode)));
 
         CCIPAdapter ccip = CCIPAdapter(
             create3(
-                keccak256("centrifuge-CCIPAdapter"),
+                keccak256(CCIP_ADAPTER_NAME),
                 abi.encodePacked(
                     type(CCIPAdapter).creationCode, abi.encode(entrypoint, CCIP_SEPOLIA_BASE_ROUTER, msg.sender)
                 )
