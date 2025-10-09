@@ -432,31 +432,32 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         hub.setAccountMetadata(poolId, account, metadata);
     }
 
-    function hub_setHoldingAccountId(
-        uint128 assetIdAsUint,
-        uint8 kind,
-        uint32 accountIdAsInt
-    ) public updateGhosts {
-        PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
-        AssetId assetId = AssetId.wrap(assetIdAsUint);
-        AccountId accountId = AccountId.wrap(accountIdAsInt);
-        hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
-    }
+    // NOTE: removed because it introduces too many false positives with no added benefit
+    // function hub_setHoldingAccountId(
+    //     uint128 assetIdAsUint,
+    //     uint8 kind,
+    //     uint32 accountIdAsInt
+    // ) public updateGhosts {
+    //     PoolId poolId = _getPool();
+    //     ShareClassId scId = _getShareClassId();
+    //     AssetId assetId = AssetId.wrap(assetIdAsUint);
+    //     AccountId accountId = AccountId.wrap(accountIdAsInt);
+    //     hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
+    // }
 
-    function hub_setHoldingAccountId_clamped(
-        uint128 assetIdAsUint,
-        uint8 kind,
-        uint32 accountIdAsInt
-    ) public updateGhosts {
-        PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
-        AssetId assetId = _getAssetId();
+    // function hub_setHoldingAccountId_clamped(
+    //     uint128 assetIdAsUint,
+    //     uint8 kind,
+    //     uint32 accountIdAsInt
+    // ) public updateGhosts {
+    //     PoolId poolId = _getPool();
+    //     ShareClassId scId = _getShareClassId();
+    //     AssetId assetId = _getAssetId();
 
-        accountIdAsInt %= 5; // 4 possible accountId types in Setup
-        AccountId accountId = AccountId.wrap(accountIdAsInt);
-        hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
-    }
+    //     accountIdAsInt %= 5; // 4 possible accountId types in Setup
+    //     AccountId accountId = AccountId.wrap(accountIdAsInt);
+    //     hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
+    // }
 
     function hub_setPoolMetadata(uint256 metadataAsUint) public updateGhosts {
         PoolId poolId = _getPool();
