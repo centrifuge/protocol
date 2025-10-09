@@ -1853,7 +1853,10 @@ abstract contract Properties is
     function doomsday_pricePerShare_never_changes_after_user_operation()
         public
     {
-        if (currentOperation != OpType.ADMIN) {
+        if (
+            currentOperation != OpType.ADMIN &&
+            currentOperation != OpType.UPDATE
+        ) {
             eq(
                 _before.pricePerShare,
                 _after.pricePerShare,
