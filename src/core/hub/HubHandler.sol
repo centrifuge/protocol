@@ -11,11 +11,12 @@ import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
 
+import {IHubMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
+import {IHubGatewayHandler} from "../messaging/interfaces/IGatewayHandlers.sol";
+
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {IHubMessageSender} from "../interfaces/IGatewaySenders.sol";
-import {IHubGatewayHandler} from "../interfaces/IGatewayHandlers.sol";
 
 /// @title  HubHandler
 /// @notice This contract processes incoming cross-chain messages for the Hub, handling asset registration,

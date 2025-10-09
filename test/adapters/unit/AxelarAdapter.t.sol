@@ -6,7 +6,7 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {Mock} from "../../core/mocks/Mock.sol";
 
-import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
+import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
 
@@ -113,8 +113,9 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
     }
 
     function testEstimate(uint256 gasLimit) public {
-        vm.assume(gasLimit > 0);
-        vm.assume(gasLimit < adapter.RECEIVE_COST());
+        gasLimit = uint128(bound(gasLimit, 1, adapter.RECEIVE_COST() - 1));
+
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR));
 
         bytes memory payload = "irrelevant";
 

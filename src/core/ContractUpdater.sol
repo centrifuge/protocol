@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "./types/PoolId.sol";
 import {ShareClassId} from "./types/ShareClassId.sol";
-import {IContractUpdateGatewayHandler} from "./interfaces/IGatewayHandlers.sol";
+import {IContractUpdateGatewayHandler} from "./messaging/interfaces/IGatewayHandlers.sol";
 import {ITrustedContractUpdate, IUntrustedContractUpdate} from "./interfaces/IContractUpdate.sol";
 
 import {Auth} from "../misc/Auth.sol";

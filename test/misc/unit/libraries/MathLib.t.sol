@@ -44,7 +44,8 @@ contract MathLibTest is Test {
 
     /// forge-config: default.allow_internal_expect_revert = true
     function testMulDivUpUnderverflow(uint256 x, uint256 y) public {
-        vm.assume(x > 0 && y > 0);
+        x = bound(x, 1, type(uint256).max);
+        y = bound(y, 1, type(uint256).max);
 
         vm.expectRevert();
         MathLib.mulDiv(x, y, 0, MathLib.Rounding.Up);
@@ -64,7 +65,7 @@ contract MathLibTest is Test {
 
     /// forge-config: default.allow_internal_expect_revert = true
     function testToUint128Overflow(uint128 x) public {
-        vm.assume(x > 0);
+        x = uint128(bound(x, 1, type(uint128).max));
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
         MathLib.toUint128(uint256(type(uint128).max) + x);
     }
@@ -77,7 +78,7 @@ contract MathLibTest is Test {
 
     /// forge-config: default.allow_internal_expect_revert = true
     function testToUint8Overflow(uint256 x) public {
-        vm.assume(x > type(uint8).max);
+        x = bound(x, uint256(type(uint8).max) + 1, type(uint256).max);
         vm.expectRevert(MathLib.Uint8_Overflow.selector);
         MathLib.toUint8(x);
     }
@@ -90,7 +91,7 @@ contract MathLibTest is Test {
 
     /// forge-config: default.allow_internal_expect_revert = true
     function testToUint16Overflow(uint256 x) public {
-        vm.assume(x > type(uint16).max);
+        x = bound(x, uint256(type(uint16).max) + 1, type(uint256).max);
         vm.expectRevert(MathLib.Uint16_Overflow.selector);
         MathLib.toUint16(x);
     }

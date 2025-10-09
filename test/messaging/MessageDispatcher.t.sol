@@ -6,12 +6,12 @@ import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
-import {IGateway} from "../../src/core/interfaces/IGateway.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
 import {MessageDispatcher} from "../../src/core/messaging/MessageDispatcher.sol";
-import {ISpokeMessageSender} from "../../src/core/interfaces/IGatewaySenders.sol";
 import {VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 import {IScheduleAuth} from "../../src/core/messaging/interfaces/IScheduleAuth.sol";
+import {ISpokeMessageSender} from "../../src/core/messaging/interfaces/IGatewaySenders.sol";
 import {IMessageDispatcher} from "../../src/core/messaging/interfaces/IMessageDispatcher.sol";
 
 import "forge-std/Test.sol";

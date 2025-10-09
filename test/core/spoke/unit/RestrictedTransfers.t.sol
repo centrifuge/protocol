@@ -40,7 +40,7 @@ contract FullRestrictionsTest is Test {
     }
 
     function testAddMember(uint64 validUntil) public {
-        vm.assume(validUntil >= block.timestamp);
+        validUntil = uint64(bound(validUntil, block.timestamp, type(uint64).max));
 
         vm.expectRevert(IMemberlist.InvalidValidUntil.selector);
         fullRestrictionsHook.updateMember(address(token), address(this), uint64(block.timestamp - 1));
@@ -52,7 +52,7 @@ contract FullRestrictionsTest is Test {
     }
 
     function testIsMember(uint64 validUntil) public {
-        vm.assume(validUntil >= block.timestamp);
+        validUntil = uint64(bound(validUntil, block.timestamp, type(uint64).max));
 
         fullRestrictionsHook.updateMember(address(token), address(this), validUntil);
         (bool _isMember, uint64 _validUntil) = fullRestrictionsHook.isMember(address(token), address(this));
@@ -72,7 +72,7 @@ contract FullRestrictionsTest is Test {
     }
 
     function testAddMemberAndFreeze(uint64 validUntil) public {
-        vm.assume(validUntil >= block.timestamp);
+        validUntil = uint64(bound(validUntil, block.timestamp, type(uint64).max));
 
         fullRestrictionsHook.updateMember(address(token), address(this), validUntil);
         (bool _isMember, uint64 _validUntil) = fullRestrictionsHook.isMember(address(token), address(this));

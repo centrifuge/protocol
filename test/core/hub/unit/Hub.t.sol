@@ -8,19 +8,19 @@ import {Hub} from "../../../../src/core/hub/Hub.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {AccountId} from "../../../../src/core/types/AccountId.sol";
-import {IAdapter} from "../../../../src/core/interfaces/IAdapter.sol";
-import {IGateway} from "../../../../src/core/interfaces/IGateway.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IFeeHook} from "../../../../src/core/hub/interfaces/IFeeHook.sol";
 import {IHoldings} from "../../../../src/core/hub/interfaces/IHoldings.sol";
 import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
-import {IMultiAdapter} from "../../../../src/core/interfaces/IMultiAdapter.sol";
+import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IHub, VaultUpdateKind} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {ISnapshotHook} from "../../../../src/core/hub/interfaces/ISnapshotHook.sol";
-import {IHubMessageSender} from "../../../../src/core/interfaces/IGatewaySenders.sol";
+import {IMultiAdapter} from "../../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {IAccounting, JournalEntry} from "../../../../src/core/hub/interfaces/IAccounting.sol";
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
+import {IHubMessageSender} from "../../../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
 import "forge-std/Test.sol";
 

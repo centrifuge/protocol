@@ -246,3 +246,16 @@ jobs:
         run: ./script/utils/benchmarks.sh check
         env:
           FOUNDRY_PROFILE: ci
+
+  ward-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Check ward coverage
+        run: python3 script/utils/check_ward_coverage.py
