@@ -474,7 +474,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             ghost_netSharePosition[shareKey] += int256(uint256(shares));
 
             // Update ghost_individualBalances when shares are minted to user
-            ghost_individualBalances[shareKey][_getActor()] += shares;
+            // For sync vaults, shares are minted immediately. For async vaults, they're minted later.
+            if (!isAsyncVault) {
+                ghost_individualBalances[shareKey][_getActor()] += shares;
+                ghost_totalShareSupply[shareKey] += shares;
+                ghost_supplyMintEvents[shareKey] += shares;
+            }
 
             // Check for share queue flip
             (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet
@@ -617,6 +622,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
             // Update ghost_individualBalances when shares are minted to user
             ghost_individualBalances[shareKey][to] += shares;
+            ghost_totalShareSupply[shareKey] += shares;
+            ghost_supplyMintEvents[shareKey] += shares;
 
             // Check for share queue flip
             (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet
