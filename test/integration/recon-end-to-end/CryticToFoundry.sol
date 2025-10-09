@@ -20,6 +20,7 @@ import {D18} from "src/misc/types/D18.sol";
 import {RequestMessageLib} from "src/common/libraries/RequestMessageLib.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
+import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {CryticSanity} from "./CryticSanity.sol";
 
@@ -65,6 +66,20 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         property_shareQueueFlipBoundaries();
     }
 
+    // forge test --match-test test_asyncVault_maxMint_5 -vvv
+    function test_asyncVault_maxMint_5() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        hub_updateHoldingValuation_clamped(true);
+
+        shortcut_mint_sync(0, 10113300624483719658505168383208138);
+
+        // check if vault is async
+        console2.log("is async: ", Helpers.isAsyncVault(address(_getVault())));
+
+        asyncVault_maxMint(0, 0, 0);
+    }
+
     /// === Categorized Issues === ///
     // forge test --match-test test_asyncVault_maxMint_2 -vvv
     // TODO: come back to this to refactor inline checks
@@ -78,9 +93,40 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     // forge test --match-test test_doomsday_zeroPrice_noPanics_3 -vvv
     // NOTE: doesn't return 0 for maxDeposit if there's a nonzero maxReserve set
+    // NOTE: see issue here: https://github.com/Recon-Fuzz/centrifuge-invariants/issues/3
     function test_doomsday_zeroPrice_noPanics_3() public {
         shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
 
         doomsday_zeroPrice_noPanics();
+    }
+
+    // forge test --match-test test_asyncVault_maxDeposit_1 -vvv
+    // NOTE: see issue here: https://github.com/Recon-Fuzz/centrifuge-invariants/issues/4
+    function test_asyncVault_maxDeposit_1() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        hub_updateHoldingValuation_clamped(true);
+
+        shortcut_mint_sync(10, 10112129893619390379128678749327912);
+
+        shortcut_queue_redemption(
+            1,
+            8842148328038016815231732,
+            1032506440027076166413381894971835202787810407249498930384303114617337
+        );
+
+        asyncVault_maxDeposit(0, 0, 2);
+    }
+
+    // forge test --match-test test_property_authorizationBoundaryEnforcement_17 -vvv
+    // TODO: figure out solution for this, either remove call to _trackAuthorization entirely or adjust it to track manager permissions in call to hub_createAccount
+    function test_property_authorizationBoundaryEnforcement_17() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        balanceSheet_deny();
+
+        hub_createAccount(0, false);
+
+        property_authorizationBoundaryEnforcement();
     }
 }
