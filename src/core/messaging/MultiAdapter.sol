@@ -156,7 +156,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         for (uint256 i = 0; i < adapters_.length; i++) {
             uint256 cost = adapters_[i].estimate(centrifugeId, payload, gasLimit);
             bytes32 adapterData = adapters_[i].send{value: cost}(centrifugeId, payload, gasLimit, refund);
-            emit SendPayload(centrifugeId, payloadId, payload, adapters_[i], adapterData, refund);
+            emit SendPayload(centrifugeId, payloadId, payload, adapters_[i], adapterData, refund, cost);
         }
 
         return bytes32(0);
