@@ -24,7 +24,7 @@ The contract coordinates with `PoolEscrow` for asset custody, `Spoke` for share 
 
 The following diagram shows how deposits and withdrawals impact the state of the balance sheet and pool escrow:
 
-![Balance sheet diagram](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/readme-updates/docs/architecture/spoke/balance-sheet.puml)
+![Balance sheet diagram](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/readme-updates/docs/architecture/core/spoke/balance-sheet.puml)
 
 ### `PoolEscrow`
 
