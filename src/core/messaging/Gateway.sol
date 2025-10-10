@@ -94,13 +94,14 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Incoming
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IMessageHandler
-    function handle(uint16 centrifugeId, bytes memory batch) public pauseable auth {
+    /// @inheritdoc IGateway
+    function handle(uint16 centrifugeId, PoolId poolId, bytes memory batch) public pauseable auth {
         bytes memory remaining = batch;
-
         while (remaining.length > 0) {
             uint256 length = processor.messageLength(remaining);
             bytes memory message = remaining.slice(0, length);
+            require(processor.messagePoolId(message) == poolId, MismatchingPoolId());
+
             remaining = remaining.slice(length, remaining.length - length);
             bytes32 messageHash = keccak256(message);
 
