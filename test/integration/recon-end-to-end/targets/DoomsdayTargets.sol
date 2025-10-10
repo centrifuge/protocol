@@ -51,22 +51,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         }
         uint256 sharesAsAssets = _getVault().convertToAssets(sharesReceived);
 
-        console2.log(
-            "sharesReceived * ppfsBefore: %e",
-            sharesReceived * ppfsBefore
-        );
-        console2.log("sharesReceived: %e", sharesReceived);
-        console2.log("ppfsBefore: ", ppfsBefore);
-        console2.log(
-            "sharesReceived * ppfsBefore adjusted: %e",
-            ((sharesReceived / 10 ** MockERC20(_getAsset()).decimals()) *
-                ppfsBefore)
-        );
-        console2.log("asset decimals: ", MockERC20(_getAsset()).decimals());
-        console2.log(
-            "share decimals: ",
-            MockERC20(_getShareToken()).decimals()
-        );
+        // price is in 18 decimal precision
         uint256 expectedAssetsSpent = (sharesReceived * ppfsBefore) / 1e18;
         uint256 expectedSharesReceived = ((assets * 1e18) / ppfsBefore);
 
@@ -213,5 +198,158 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             expectedAssetsAsShares,
             "sharesReceived > expectedAssetsAsShares"
         );
+    }
+
+    /// @dev Property: pricePerShare never changes after a user operation
+    function doomsday_pricePerShare_never_changes_after_user_operation()
+        public
+    {
+        if (
+            currentOperation != OpType.ADMIN &&
+            currentOperation != OpType.UPDATE
+        ) {
+            eq(
+                _before.pricePerShare,
+                _after.pricePerShare,
+                "pricePerShare changed after user operation"
+            );
+        }
+    }
+
+    /// @dev Property: implied pricePerShare (totalAssets / totalSupply) never changes after a user operation
+    function doomsday_impliedPricePerShare_never_changes_after_user_operation()
+        public
+    {
+        if (currentOperation != OpType.ADMIN) {
+            uint256 impliedPricePerShareBefore = _before.totalAssets /
+                _before.totalShareSupply;
+            uint256 impliedPricePerShareAfter = _after.totalAssets /
+                _after.totalShareSupply;
+            eq(
+                impliedPricePerShareBefore,
+                impliedPricePerShareAfter,
+                "impliedPricePerShare changed after user operation"
+            );
+        }
+    }
+
+    /// @dev Property: accounting.accountValue should never revert
+    function doomsday_accountValue(
+        uint64 poolIdAsUint,
+        uint32 accountAsInt
+    ) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        AccountId account = AccountId.wrap(accountAsInt);
+
+        try accounting.accountValue(poolId, account) {} catch (
+            bytes memory reason
+        ) {
+            bool expectedRevert = checkError(reason, "AccountDoesNotExist()");
+            t(expectedRevert, "accountValue should never revert");
+        }
+    }
+
+    /// @dev Doomsday test: System handles all operations gracefully at zero price
+    function doomsday_zeroPrice_noPanics() public statelessTest {
+        IBaseVault vault = _getVault();
+        if (address(vault) == address(0)) return;
+
+        // Set zero price directly
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        hub.updateSharePrice(poolId, scId, D18.wrap(0));
+
+        // === CONVERSION FUNCTION TESTS === //
+        try vault.convertToShares(1e18) returns (uint256 shares) {
+            eq(shares, 0, "convertToShares should return 0 at zero price");
+        } catch {
+            t(false, "convertToShares should not panic at zero price");
+        }
+
+        try vault.convertToAssets(1e18) returns (uint256 assets) {
+            eq(assets, 0, "convertToAssets should return 0 at zero price");
+        } catch {
+            t(false, "convertToAssets should not panic at zero price");
+        }
+
+        try BaseVault(address(vault)).pricePerShare() returns (uint256 pps) {
+            eq(pps, 0, "pricePerShare should be 0");
+        } catch {
+            t(false, "pricePerShare should not panic at zero price");
+        }
+
+        // === VAULT OPERATION TESTS === //
+        try vault.maxDeposit(_getActor()) returns (uint256 max) {
+            console2.log("DEBUG: maxDeposit returned:", max);
+            console2.log(
+                "DEBUG: pool per share:",
+                D18.unwrap(spoke.pricePoolPerShare(poolId, scId, false))
+            );
+            eq(max, 0, "maxDeposit handled zero price");
+        } catch {
+            t(false, "maxDeposit should not revert at zero price");
+        }
+
+        try vault.maxMint(_getActor()) returns (uint256 max) {
+            eq(max, 0, "maxMint should return 0 at zero price");
+        } catch {
+            t(false, "maxMint shout not revert at zero price");
+        }
+
+        try vault.maxRedeem(_getActor()) returns (uint256 max) {
+            eq(max, 0, "maxRedeem should return 0 at zero price");
+        } catch {
+            t(false, "maxRedeem shout not revert at zero price");
+        }
+
+        try vault.maxWithdraw(_getActor()) returns (uint256 max) {
+            eq(max, 0, "maxWithdraw should return 0 at zero price");
+        } catch {
+            t(false, "maxWithdraw shout not revert at zero price");
+        }
+
+        // === SHARE CLASS MANAGER OPERATIONS === //
+        uint32 nowIssueEpoch = shareClassManager.nowIssueEpoch(scId, assetId);
+        try
+            shareClassManager.issueShares(
+                poolId,
+                scId,
+                assetId,
+                nowIssueEpoch,
+                D18.wrap(0)
+            )
+        returns (uint128 issued, uint128, uint128) {
+            eq(issued, 0, "issued shares should return 0 at zero price");
+        } catch (bytes memory reason) {
+            bool expectedRevert = checkError(reason, "EpochNotFound()");
+            t(
+                expectedRevert,
+                "issueShares shout not revert at zero price apart from EpochNotFound"
+            );
+        }
+
+        uint32 nowRevokeEpoch = shareClassManager.nowRevokeEpoch(scId, assetId);
+        try
+            shareClassManager.revokeShares(
+                poolId,
+                scId,
+                assetId,
+                nowRevokeEpoch,
+                D18.wrap(0)
+            )
+        returns (uint128, uint128 assetAmount, uint128) {
+            eq(
+                assetAmount,
+                0,
+                "revoked asset amount should return 0 at zero price"
+            );
+        } catch (bytes memory reason) {
+            bool expectedRevert = checkError(reason, "EpochNotFound()");
+            t(
+                expectedRevert,
+                "issueShares shout not revert at zero price apart from EpochNotFound"
+            );
+        }
     }
 }
