@@ -51,7 +51,7 @@ abstract contract BeforeAfter is Setup {
         mapping(address vault => mapping(address investor => PriceVars)) investorsGlobals; // global ghost variable only updated as needed
         mapping(address investor => AsyncInvestmentState) investments;
         mapping(address user => uint256 balance) shareTokenBalance;
-        mapping(address user => uint256 balance) assetTokenBalance;
+        mapping(address user => uint256 balance) assetTokenBalance; // uses vault's underyling asset as source of truth instead of _getAsset()
         mapping(address vault => uint256 price) pricePerShare;
         uint256 escrowAssetBalance;
         uint256 escrowShareTokenBalance;
@@ -106,7 +106,7 @@ abstract contract BeforeAfter is Setup {
 
         _before.shareTokenBalance[_getActor()] = IShareToken(_getShareToken())
             .balanceOf(_getActor());
-        _before.assetTokenBalance[_getActor()] = MockERC20(_getAsset())
+        _before.assetTokenBalance[_getActor()] = MockERC20(_getVault().asset())
             .balanceOf(_getActor());
 
         _updateEpochId(true);
@@ -134,7 +134,7 @@ abstract contract BeforeAfter is Setup {
 
         _after.shareTokenBalance[_getActor()] = IShareToken(_getShareToken())
             .balanceOf(_getActor());
-        _after.assetTokenBalance[_getActor()] = MockERC20(_getAsset())
+        _after.assetTokenBalance[_getActor()] = MockERC20(_getVault().asset())
             .balanceOf(_getActor());
 
         _updateEpochId(false);
