@@ -1,0 +1,31 @@
+@startuml admin
+title Admin
+hide empty members
+
+skinparam linetype ortho
+skinparam nodesep 120
+skinparam ranksep 50
+
+package core {
+    interface IGateway
+    interface IMultiAdapter
+    interface IRootMessageSender
+    interface IHub
+    interface IAuth
+}
+
+class OpsGuardian
+class ProtocolGuardian
+class Root
+
+OpsGuardian --> IMultiAdapter : initAdapters/wire
+OpsGuardian --> IHub : createPool
+
+ProtocolGuardian --> Root : relyContract
+ProtocolGuardian --> IGateway : blockOutgoing
+ProtocolGuardian --> IMultiAdapter : setAdapters/wire
+ProtocolGuardian -right-> IRootMessageSender : recoverTokens/scheduleUpgrade
+
+Root .[dotted].> IAuth
+
+@enduml
