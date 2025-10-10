@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 
 contract AssetIdTest is Test {
     function testAssetId(uint32 counter, uint16 centrifugeId) public pure {
-        vm.assume(centrifugeId > 0);
+        centrifugeId = uint16(bound(centrifugeId, 1, type(uint16).max));
         AssetId assetId = newAssetId(centrifugeId, counter);
 
         assertEq(assetId.isNull(), false);
@@ -16,7 +16,7 @@ contract AssetIdTest is Test {
     }
 
     function testAssetIdIso(uint32 isoCode) public pure {
-        vm.assume(isoCode > 0);
+        isoCode = uint32(bound(isoCode, 1, type(uint32).max));
         AssetId assetId = newAssetId(isoCode);
 
         assertEq(assetId.isNull(), false);

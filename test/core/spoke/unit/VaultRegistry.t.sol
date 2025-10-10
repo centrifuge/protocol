@@ -7,10 +7,10 @@ import {IERC6909MetadataExt} from "../../../../src/misc/interfaces/IERC6909.sol"
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {Spoke, ISpoke} from "../../../../src/core/spoke/Spoke.sol";
-import {IGateway} from "../../../../src/core/interfaces/IGateway.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {VaultRegistry} from "../../../../src/core/spoke/VaultRegistry.sol";
+import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
@@ -19,7 +19,7 @@ import {VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageL
 import {ITokenFactory} from "../../../../src/core/spoke/factories/interfaces/ITokenFactory.sol";
 import {IVaultFactory} from "../../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
 import {IPoolEscrowFactory} from "../../../../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
-import {ISpokeMessageSender, ILocalCentrifugeId} from "../../../../src/core/interfaces/IGatewaySenders.sol";
+import {ISpokeMessageSender, ILocalCentrifugeId} from "../../../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
 import "forge-std/Test.sol";
 

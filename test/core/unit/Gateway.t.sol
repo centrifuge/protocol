@@ -8,11 +8,12 @@ import {TransientBytesLib} from "../../../src/misc/libraries/TransientBytesLib.s
 import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {Gateway, IGateway} from "../../../src/core/Gateway.sol";
-import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
-import {IMessageLimits} from "../../../src/core/interfaces/IMessageLimits.sol";
-import {IProtocolPauser} from "../../../src/core/interfaces/IProtocolPauser.sol";
-import {IMessageProperties} from "../../../src/core/interfaces/IMessageProperties.sol";
+import {Gateway} from "../../../src/core/messaging/Gateway.sol";
+import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IMessageLimits} from "../../../src/core/messaging/interfaces/IMessageLimits.sol";
+import {IProtocolPauser} from "../../../src/core/messaging/interfaces/IProtocolPauser.sol";
+import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
+import {IGateway, GAS_FAIL_MESSAGE_STORAGE} from "../../../src/core/messaging/interfaces/IGateway.sol";
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 
@@ -247,7 +248,7 @@ contract GatewayTestHandle is GatewayTest {
 
     function testErrNotEnoughGasToProcess() public {
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        uint256 notEnough = gateway.GAS_FAIL_MESSAGE_STORAGE();
+        uint256 notEnough = GAS_FAIL_MESSAGE_STORAGE;
 
         vm.expectRevert(IGateway.NotEnoughGasToProcess.selector);
 
