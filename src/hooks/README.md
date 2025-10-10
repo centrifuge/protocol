@@ -2,7 +2,7 @@
 
 Transfer hooks provide customizable transfer restriction logic for share tokens in the Centrifuge Protocol. They enable pools to enforce compliance requirements, manage memberlists, freeze accounts, and control which operations require whitelisting. All hooks implement the `ITransferHook` interface and integrate with `ShareToken` for transfer validation.
 
-![Hooks architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/readme-updates/docs/architecture/hooks.puml)
+![Hooks architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/hooks.puml)
 
 ### `BaseTransferHook`
 

@@ -2,7 +2,7 @@
 
 Hub managers provide higher-level abstractions for pool management on the Hub, including NAV (Net Asset Value) tracking, accounting integration, and share price calculation for single-share-class pools. These managers coordinate with `Holdings`, `Accounting`, and `ShareClassManager` to maintain pool financial state.
 
-![Hub Managers architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/c8eba945b734afcabcead556b7c8c00561828268/docs/architecture/managers/hub-managers.puml)
+![Hub Managers architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/managers/hub-managers.puml)
 
 ### `NAVManager`
 

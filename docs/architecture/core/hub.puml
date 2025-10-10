@@ -4,10 +4,6 @@ hide empty members
 
 skinparam linetype ortho
 
-package vaults {
-    interface IBatchRequestManager
-}
-
 package messaging {
     interface IMessageDispatcher
     interface IMesssageProcessor
@@ -23,19 +19,19 @@ class Accounting
 interface ISnapshotHook
 interface IValuation
 interface IFeeHook
+interface IHubRequestManager
 
 Hub --> Holdings
 Hub --> HubRegistry
 Hub --> ShareClassManager
 Hub --> Accounting
 Hub --> IMessageDispatcher
-Hub --> Gateway
 Hub .[dotted].> IFeeHook
 
 HubHandler --> Hub
 IMesssageProcessor --> HubHandler
 
-IBatchRequestManager --> Hub
+IHubRequestManager --> Hub
 
 Holdings --> IValuation
 Holdings .[dotted].> ISnapshotHook
