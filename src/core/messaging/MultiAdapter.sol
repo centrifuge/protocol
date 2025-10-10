@@ -160,6 +160,19 @@ contract MultiAdapter is Auth, IMultiAdapter {
         return bytes32(0);
     }
 
+    function _sendToAdapter(
+        uint16 centrifugeId,
+        bytes32 payloadId,
+        bytes calldata payload,
+        IAdapter adapter,
+        uint256 gasLimit,
+        address refund
+    ) internal {
+        uint256 cost = adapter.estimate(centrifugeId, payload, gasLimit);
+        bytes32 adapterData = adapter.send{value: cost}(centrifugeId, payload, gasLimit, refund);
+        emit SendPayload(centrifugeId, payloadId, payload, adapter, adapterData, refund, gasLimit, cost);
+    }
+
     /// @inheritdoc IAdapter
     function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit)
         external
@@ -172,23 +185,6 @@ contract MultiAdapter is Auth, IMultiAdapter {
         for (uint256 i; i < adapters_.length; i++) {
             total += adapters_[i].estimate(centrifugeId, payload, gasLimit);
         }
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Internal helpers
-    //----------------------------------------------------------------------------------------------
-
-    function _sendToAdapter(
-        uint16 centrifugeId,
-        bytes32 payloadId,
-        bytes calldata payload,
-        IAdapter adapter,
-        uint256 gasLimit,
-        address refund
-    ) internal {
-        uint256 cost = adapter.estimate(centrifugeId, payload, gasLimit);
-        bytes32 adapterData = adapter.send{value: cost}(centrifugeId, payload, gasLimit, refund);
-        emit SendPayload(centrifugeId, payloadId, payload, adapter, adapterData, refund, gasLimit, cost);
     }
 
     //----------------------------------------------------------------------------------------------
