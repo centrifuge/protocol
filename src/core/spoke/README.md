@@ -2,7 +2,7 @@
 
 The `Spoke` module manages the local state and operations for pools and share classes on each chain. It handles share token deployment, vault registration, asset tracking, cross-chain transfers, and coordinates with the `BalanceSheet` for pool-level balance management and escrow operations.
 
-![Spoke architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/c8eba945b734afcabcead556b7c8c00561828268/docs/architecture/core/spoke.puml)
+![Spoke architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/core/spoke.puml)
 
 ### `Spoke`
 
@@ -24,7 +24,7 @@ The contract coordinates with `PoolEscrow` for asset custody, `Spoke` for share 
 
 The following diagram shows how deposits and withdrawals impact the state of the balance sheet and pool escrow:
 
-![Balance sheet diagram](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/readme-updates/docs/architecture/core/spoke/balance-sheet.puml)
+![Balance sheet diagram](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/core/spoke/balance-sheet.puml)
 
 ### `PoolEscrow`
 

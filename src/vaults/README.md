@@ -2,7 +2,7 @@
 
 The vaults module implements ERC-4626 and ERC-7540 tokenized vault standards for Centrifuge pools, providing both synchronous and asynchronous deposit/redeem workflows. It includes vault implementations, request managers for handling epoch-based operations, and routing infrastructure for simplified user interactions.
 
-![Vaults architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/readme-updates/docs/architecture/vaults/vaults.puml)
+![Vaults architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/vaults/vaults.puml)
 
 ### `AsyncVault`
 
@@ -30,7 +30,7 @@ The contract handles cross-chain request callbacks from the Hub, processing appr
 
 The following diagram shows how funds flow in and out of the escrow:
 
-![Flow of funds](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/readme-updates/docs/architecture/vaults/flow-of-funds.puml)
+![Flow of funds](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/vaults/flow-of-funds.puml)
 
 ### `SyncManager`
 
