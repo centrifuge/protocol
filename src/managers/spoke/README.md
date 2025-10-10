@@ -2,7 +2,7 @@
 
 Spoke managers provide specialized interfaces for balance sheet operations on spoke chains, including on/off-ramping for asset custody, merkle-proof-based permissioned operations for strategist workflows, and queue management for batched cross-chain synchronization.
 
-![Spoke Managers architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/c8eba945b734afcabcead556b7c8c00561828268/docs/architecture/managers/spoke-managers.puml)
+![Spoke Managers architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/managers/spoke-managers.puml)
 
 ### `OnOfframpManager`
 

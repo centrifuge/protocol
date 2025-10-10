@@ -2,7 +2,7 @@
 
 The messaging module handles all cross-chain message serialization, dispatching, and processing in the Centrifuge Protocol. It provides a unified interface for outgoing messages, routes incoming messages to appropriate handlers, and manages gas estimation for cross-chain execution.
 
-![Messaging architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/readme-updates/docs/architecture/core/messaging.puml)
+![Messaging architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/core/messaging.puml)
 
 ### `MessageDispatcher`
 

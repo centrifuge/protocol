@@ -2,7 +2,7 @@
 
 The admin module provides protocol governance and emergency controls, including timelocked permission management, pause functionality, cross-chain upgrade coordination, and token recovery. It separates operational duties (pool creation, adapter wiring) from protocol-level security controls (pausing, emergency recovery).
 
-![Admin architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/c8eba945b734afcabcead556b7c8c00561828268/docs/architecture/admin.puml)
+![Admin architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/admin.puml)
 
 ### `Root`
 
