@@ -1,5 +1,5 @@
-@startuml gateway
-title Gateway
+@startuml messaging
+title Messaging
 hide empty members
 
 skinparam linetype ortho

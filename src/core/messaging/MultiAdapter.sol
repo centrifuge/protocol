@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {PoolId} from "./types/PoolId.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "./interfaces/IMultiAdapter.sol";
 
-import {Auth} from "../misc/Auth.sol";
-import {CastLib} from "../misc/libraries/CastLib.sol";
-import {MathLib} from "../misc/libraries/MathLib.sol";
-import {ArrayLib} from "../misc/libraries/ArrayLib.sol";
-import {BytesLib} from "../misc/libraries/BytesLib.sol";
+import {Auth} from "../../misc/Auth.sol";
+import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {MathLib} from "../../misc/libraries/MathLib.sol";
+import {ArrayLib} from "../../misc/libraries/ArrayLib.sol";
+import {BytesLib} from "../../misc/libraries/BytesLib.sol";
+
+import {PoolId} from "../types/PoolId.sol";
 
 /// @title  MultiAdapter
 /// @notice This contract manages multiple cross-chain messaging adapters and implements a voting mechanism
@@ -201,30 +202,33 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     /// @inheritdoc IMultiAdapter
     function quorum(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {
-        IAdapter adapter = poolAdapters(centrifugeId, poolId)[0];
-        return _adapterDetails[centrifugeId][poolId][adapter].quorum;
+        return _getFirstAdapterDetails(centrifugeId, poolId).quorum;
     }
 
     /// @inheritdoc IMultiAdapter
     function threshold(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {
-        IAdapter adapter = poolAdapters(centrifugeId, poolId)[0];
-        return _adapterDetails[centrifugeId][poolId][adapter].threshold;
+        return _getFirstAdapterDetails(centrifugeId, poolId).threshold;
     }
 
     /// @inheritdoc IMultiAdapter
     function recoveryIndex(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {
-        IAdapter adapter = poolAdapters(centrifugeId, poolId)[0];
-        return _adapterDetails[centrifugeId][poolId][adapter].recoveryIndex;
+        return _getFirstAdapterDetails(centrifugeId, poolId).recoveryIndex;
     }
 
     /// @inheritdoc IMultiAdapter
     function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint64) {
-        IAdapter adapter = poolAdapters(centrifugeId, poolId)[0];
-        return _adapterDetails[centrifugeId][poolId][adapter].activeSessionId;
+        return _getFirstAdapterDetails(centrifugeId, poolId).activeSessionId;
     }
 
     /// @inheritdoc IMultiAdapter
     function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (int16[MAX_ADAPTER_COUNT] memory) {
         return inbound[centrifugeId][payloadHash].votes;
+    }
+
+    /// @dev Internal helper to get the first adapter's details for a pool, handling empty cases
+    function _getFirstAdapterDetails(uint16 centrifugeId, PoolId poolId) internal view returns (Adapter memory) {
+        IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
+        if (adapters_.length == 0) return Adapter(0, 0, 0, 0, 0);
+        return _poolAdapterDetails(centrifugeId, poolId, adapters_[0]);
     }
 }

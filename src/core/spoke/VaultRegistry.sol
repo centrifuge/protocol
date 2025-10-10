@@ -11,12 +11,12 @@ import {Auth} from "../../misc/Auth.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
 
 import {VaultUpdateKind} from "../messaging/libraries/MessageLib.sol";
+import {IVaultRegistryGatewayHandler} from "../messaging/interfaces/IGatewayHandlers.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
-import {IVaultRegistryGatewayHandler} from "../interfaces/IGatewayHandlers.sol";
 
 /// @title  VaultRegistry
 /// @notice This contract manages vault deployment, linking, and unlinking operations for pools and share classes

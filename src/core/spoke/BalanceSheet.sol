@@ -18,13 +18,14 @@ import {IERC6909} from "../../misc/interfaces/IERC6909.sol";
 import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol";
 
+import {IGateway} from "../messaging/interfaces/IGateway.sol";
+import {ISpokeMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
+import {IBalanceSheetGatewayHandler} from "../messaging/interfaces/IGatewayHandlers.sol";
+
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
-import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
-import {ISpokeMessageSender} from "../interfaces/IGatewaySenders.sol";
-import {IBalanceSheetGatewayHandler} from "../interfaces/IGatewayHandlers.sol";
 
 /// @title  Balance Sheet
 /// @notice Management contract that integrates all balance sheet functions of a pool:
