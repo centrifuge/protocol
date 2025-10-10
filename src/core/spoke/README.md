@@ -22,6 +22,10 @@ The `BalanceSheet` contract manages all balance sheet operations for pools inclu
 
 The contract coordinates with `PoolEscrow` for asset custody, `Spoke` for share token and asset lookups, and the `Gateway`'s message sender for cross-chain communication. It supports forced share transfers for special scenarios and integrates with an endorsements contract for additional validation. Queued updates track both issuance and revocation amounts, with separate queues per share class and asset, enabling fine-grained control over when state is synchronized across chains.
 
+The following diagram shows how deposits and withdrawals impact the state of the balance sheet and pool escrow:
+
+![Balance sheet diagram](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/readme-updates/docs/architecture/spoke/balance-sheet.puml)
+
 ### `PoolEscrow`
 
 `PoolEscrow` provides pool-specific asset custody separated by share class. Each escrow is tied to a single pool and holds assets across multiple share classes, tracking both total holdings and reserved amounts per asset. Reserved amounts enable pending operations like withdrawal requests to lock funds without fully removing them from the pool.
