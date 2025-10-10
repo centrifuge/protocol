@@ -104,9 +104,8 @@ abstract contract BeforeAfter is Setup {
         // if the vault isn't deployed, values below can't be updated
         if (address(_getVault()) == address(0)) return;
 
-        _before.shareTokenBalance[_getActor()] = IShareToken(
-            _getVault().share()
-        ).balanceOf(_getActor());
+        _before.shareTokenBalance[_getActor()] = IShareToken(_getShareToken())
+            .balanceOf(_getActor());
         _before.assetTokenBalance[_getActor()] = MockERC20(_getAsset())
             .balanceOf(_getActor());
 
@@ -133,7 +132,7 @@ abstract contract BeforeAfter is Setup {
         // if the vault isn't deployed, values below can't be updated
         if (address(_getVault()) == address(0)) return;
 
-        _after.shareTokenBalance[_getActor()] = IShareToken(_getVault().share())
+        _after.shareTokenBalance[_getActor()] = IShareToken(_getShareToken())
             .balanceOf(_getActor());
         _after.assetTokenBalance[_getActor()] = MockERC20(_getAsset())
             .balanceOf(_getActor());
@@ -339,7 +338,7 @@ abstract contract BeforeAfter is Setup {
 
         if (_getShareToken() != address(0)) {
             _structToUpdate.escrowShareTokenBalance = MockERC20(
-                _getVault().share()
+                _getShareToken()
             ).balanceOf(address(globalEscrow));
             _structToUpdate.totalShareSupply = MockERC20(_getShareToken())
                 .totalSupply();
