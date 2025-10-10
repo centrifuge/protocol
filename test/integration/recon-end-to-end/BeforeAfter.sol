@@ -52,12 +52,12 @@ abstract contract BeforeAfter is Setup {
         mapping(address investor => AsyncInvestmentState) investments;
         mapping(address user => uint256 balance) shareTokenBalance;
         mapping(address user => uint256 balance) assetTokenBalance;
+        mapping(address vault => uint256 price) pricePerShare;
         uint256 escrowAssetBalance;
         uint256 escrowTrancheTokenBalance;
         uint256 poolEscrowAssetBalance;
         uint256 totalAssets;
         uint256 actualAssets;
-        uint256 pricePerShare;
         uint256 totalShareSupply;
         uint128 ghostDebited;
         uint128 ghostCredited;
@@ -411,9 +411,11 @@ abstract contract BeforeAfter is Setup {
         try BaseVault(address(_getVault())).pricePerShare() returns (
             uint256 _pricePerShare
         ) {
-            _structToUpdate.pricePerShare = _pricePerShare;
+            _structToUpdate.pricePerShare[
+                address(_getVault())
+            ] = _pricePerShare;
         } catch {
-            _structToUpdate.pricePerShare = 0;
+            _structToUpdate.pricePerShare[address(_getVault())] = 0;
         }
     }
 }

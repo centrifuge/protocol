@@ -15,6 +15,9 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {BaseVault} from "src/vaults/BaseVaults.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {D18} from "src/misc/types/D18.sol";
 
 // Test Utils
 import {Properties} from "../properties/Properties.sol";
@@ -209,8 +212,8 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             currentOperation != OpType.UPDATE
         ) {
             eq(
-                _before.pricePerShare,
-                _after.pricePerShare,
+                _before.pricePerShare[address(_getVault())],
+                _after.pricePerShare[address(_getVault())],
                 "pricePerShare changed after user operation"
             );
         }
