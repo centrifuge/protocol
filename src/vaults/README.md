@@ -46,4 +46,4 @@ The contract supports permit-based approvals (ERC-2612) to reduce transaction ov
 
 ### `RefundEscrow`
 
-`RefundEscrow` holds ETH subsidies per pool to refund users for cross-chain message gas costs. Pools can deposit subsidies that are used to pay for requests requiring cross-chain communication. The escrow tracks balances per pool and provides withdrawal functions for pool managers.
+`RefundEscrow` holds ETH subsidies per pool to pay the cost of cross-chain messages for users. Pools can deposit subsidies that are used to pay for requests requiring cross-chain communication. The escrow tracks balances per pool and provides withdrawal functions for pool managers.
