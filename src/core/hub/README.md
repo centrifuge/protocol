@@ -30,9 +30,7 @@ Beyond basic registration, `HubRegistry` manages pool metadata storage and track
 
 ### `Accounting`
 
-A double-entry bookkeeping system that maintains financial integrity for all pool operations. It uses a lock/unlock mechanism where a specific pool must be unlocked before journal entries can be recorded, and must be locked to commit the transaction. During the locked period, the contract enforces that total debits equal total credits, ensuring balanced transactions. Transient storage tracks the in-flight journal state, including debited and credited amounts for the current transaction.
-
-Accounts are created with either debit-normal or credit-normal balances, following traditional accounting conventions. The system generates unique journal IDs per pool per transaction, with interleaved entries for the same pool sharing the same journal ID for traceability. Each account tracks its balance, last update timestamp, and optional metadata for additional context.
+A double-entry bookkeeping system that maintains financial integrity for all pool operations. Accounts are created with either debit-normal or credit-normal balances, following traditional accounting conventions. It uses a lock/unlock mechanism where a specific pool must be unlocked before journal entries can be recorded, and must be locked to commit the transaction. During the locked period, the contract enforces that total debits equal total credits, ensuring balanced transactions. Transient storage tracks the in-flight journal state, including debited and credited amounts for the current transaction.
 
 ### `ShareClassManager`
 

@@ -4,7 +4,6 @@ The vaults module implements ERC-4626 and ERC-7540 tokenized vault standards for
 
 ![Vaults architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/readme-updates/docs/architecture/vaults/vaults.puml)
 
-
 ### `AsyncVault`
 
 `AsyncVault` implements the ERC-7540 asynchronous tokenized vault standard, extending ERC-4626 with request-based deposit and redeem workflows. Users submit deposit and redeem requests that are queued for execution in the next epoch. After epoch execution, users can claim their shares or assets using standard ERC-4626 methods. The vault integrates with `AsyncRequestManager` for request handling and supports ERC-7887 cancellation flows.
@@ -27,7 +26,11 @@ The contract implements `IHubRequestManager` and receives request callbacks from
 
 `AsyncRequestManager` is the primary spoke-side contract that vaults interact with for deposit and redeem request handling. It manages request submission, cancellation, and claim workflows, coordinating with `BalanceSheet` for share issuance/burning and the global escrow for asset custody. The manager tracks per-vault, per-investor state including pending requests, claimable amounts, and cancellation status.
 
-The contract handles cross-chain request callbacks from the Hub, processing approvals, rejections, and cancellation confirmations. It manages refund escrows per pool for returning gas subsidies to users who pay for cross-chain operations. The manager supports both deposit and redeem flows, validating request transitions and ensuring users can only claim what's been approved by the Hub.
+The contract handles cross-chain request callbacks from the Hub, processing approvals, rejections, and cancellation confirmations. It manages refund escrows per pool for subsidizing gas for cross-chain transactions. The manager supports both deposit and redeem flows, validating request transitions and ensuring users can only claim what's been approved by the Hub.
+
+The following diagram shows how funds flow in and out of the escrow:
+
+![Escrow flows](https://img.plantuml.biz/plantuml/png/bLRHRjCm57ttLrYRX42Yqc3QmoOLhODjy324LiIxwzmsLXqxs4wxWNZb2_Q5V0dNTf8wMTgkxalYUwxlkSV7JY-jOyPLXIHsALJ932keXPyLA0uJO_JwUoxuKe6rz3I1p1XVBeokLFPHIsteEXSE1fQumqIsW8aK2qKvA0ScGHNieGPCnI-WPoSdIJ2iphLHOEYxD61pbkcrK0iwPzAcLJEOiqgw6wtSLrO0FRhJIjkISSYEXc6XxlipCa2T_YOKHn0XDdby6aQOlj8FLzfaOEhGUHXjg2VFySsv_uNmBSwNdTn964cmdtqT1lb32ECE9xwe5LXyg5-lc6H8U9e3k3kcK4v3i1Sdk2YPSlI7xxOpCx6FYj_xHkrWngtKCoQlBSVUEu6qL2VmJUiX_ETgLfF4fwOIKTe1rIi8isy7sGJffVG0-k_lqn26SbqKbHASEQ5Lo43H75ZgSdnOv7HQwYNGLnHfMJlYEHEAHiEXUmYeZ7ecX8p7LDIIeZbAROMpT3mcf16QZZv45Ua5DP74fuXx_OR4m0WXgMo8T8OfEqUYp5fmDjJ9iP-Yvi_Aqg0AiTH67r_CjttH0BAwbiLYFe3n8JakoD3iSrway-hZcytRmdeMjnsF7kvxotyjN9uPjeuD3BZGCqsdSVKcfmEdVGuaUHlr5cdRtQkli1QLyFU5sI5oG4q3fj7tO86xJVPwUswCGk3HYBIYlDfXCsA1orawh-HSI5dWPHbrrMv35lqgveyRx-sasopLUBgnRjVmN39HRBUxvxen-NuljMia-vEqsfQrrQm8b38eId-06tRx3juzPa3nedDNrzrrjE9gVkUt-zn0oHuFCNcjztCVx3regNqDhF3wsklV2EiQU9iX8ZPhmI-xCEYiCgeHSrjAfpK4Wbb1vmevqEFjDh_CuYR0TpeyiTesYpMtKyTTXrq57HqgrLEYTwyD7PP6iqlyFk7_ily0)
 
 ### `SyncManager`
 
@@ -43,6 +46,4 @@ The contract supports permit-based approvals (ERC-2612) to reduce transaction ov
 
 ### `RefundEscrow`
 
-`RefundEscrow` holds ETH subsidies per pool to refund users for cross-chain message gas costs. Pools can deposit subsidies that are distributed to users when they submit requests requiring cross-chain communication. The escrow tracks balances per pool and provides withdrawal functions for pool managers.
-
-This mechanism enables pools to subsidize user gas costs for deposits and redemptions, improving UX by reducing the upfront cost for users. The refund amount is determined by the request manager based on gas estimates and available subsidy balance.
+`RefundEscrow` holds ETH subsidies per pool to refund users for cross-chain message gas costs. Pools can deposit subsidies that are used to pay for requests requiring cross-chain communication. The escrow tracks balances per pool and provides withdrawal functions for pool managers.
