@@ -543,7 +543,7 @@ contract MultiAdapterTestSend is MultiAdapterTest {
             ADAPTER_DATA_1,
             address(REFUND),
             GAS_LIMIT,
-            ADAPTER_ESTIMATE_1
+            GAS_LIMIT + ADAPTER_ESTIMATE_1
         );
         vm.expectEmit();
         emit IMultiAdapter.SendPayload(
@@ -554,7 +554,7 @@ contract MultiAdapterTestSend is MultiAdapterTest {
             ADAPTER_DATA_2,
             address(REFUND),
             GAS_LIMIT,
-            ADAPTER_ESTIMATE_2
+            GAS_LIMIT + ADAPTER_ESTIMATE_2
         );
         vm.expectEmit();
         emit IMultiAdapter.SendPayload(
@@ -565,7 +565,7 @@ contract MultiAdapterTestSend is MultiAdapterTest {
             ADAPTER_DATA_3,
             address(REFUND),
             GAS_LIMIT,
-            ADAPTER_ESTIMATE_3
+            GAS_LIMIT + ADAPTER_ESTIMATE_3
         );
         multiAdapter.send{value: cost}(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
     }

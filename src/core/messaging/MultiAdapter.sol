@@ -154,9 +154,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
         bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, keccak256(payload)));
         for (uint256 i = 0; i < adapters_.length; i++) {
-            uint256 cost = adapters_[i].estimate(centrifugeId, payload, gasLimit);
-            bytes32 adapterData = adapters_[i].send{value: cost}(centrifugeId, payload, gasLimit, refund);
-            emit SendPayload(centrifugeId, payloadId, payload, adapters_[i], adapterData, refund, cost);
+            _sendToAdapter(centrifugeId, payloadId, payload, adapters_[i], gasLimit, refund);
         }
 
         return bytes32(0);
@@ -174,6 +172,23 @@ contract MultiAdapter is Auth, IMultiAdapter {
         for (uint256 i; i < adapters_.length; i++) {
             total += adapters_[i].estimate(centrifugeId, payload, gasLimit);
         }
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Internal helpers
+    //----------------------------------------------------------------------------------------------
+
+    function _sendToAdapter(
+        uint16 centrifugeId,
+        bytes32 payloadId,
+        bytes calldata payload,
+        IAdapter adapter,
+        uint256 gasLimit,
+        address refund
+    ) internal {
+        uint256 cost = adapter.estimate(centrifugeId, payload, gasLimit);
+        bytes32 adapterData = adapter.send{value: cost}(centrifugeId, payload, gasLimit, refund);
+        emit SendPayload(centrifugeId, payloadId, payload, adapter, adapterData, refund, gasLimit, cost);
     }
 
     //----------------------------------------------------------------------------------------------
