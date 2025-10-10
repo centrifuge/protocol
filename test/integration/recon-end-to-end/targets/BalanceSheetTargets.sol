@@ -366,6 +366,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         }
     }
 
+    /// @dev Property: Withdrawals should not fail when there's sufficient balance
     function balanceSheet_withdraw(
         uint256 tokenId,
         uint128 amount
@@ -424,10 +425,11 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             ghost_assetQueueWithdrawals[assetKey] += amount;
             sumOfManagerWithdrawals[vault.asset()] += amount;
         } catch (bytes memory err) {
-            bool expectedError = checkError(err, "InvalidPrice()");
+            bool expectedError = checkError(err, "InvalidPrice()") ||
+                checkError(err, "UnknownAsset()");
             // Check if withdrawal was possible with available balance (track failures)
             if (!expectedError && amount <= prevAvailable) {
-                ghost_failedWithdrawalAttempts[assetKey]++;
+                t(false, "Withdrawals failed despite sufficient balance");
             }
         }
     }

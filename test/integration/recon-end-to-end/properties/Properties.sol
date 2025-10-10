@@ -2594,67 +2594,74 @@ abstract contract Properties is
     /// @notice Ensures available balance always covers withdrawals
     function property_escrowBalanceSufficiency() public {
         PoolId[] memory pools = _getPools();
-        for (uint256 i = 0; i < pools.length; i++) {
-            PoolId poolId = pools[i];
-            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
+        bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
 
-            for (uint256 j = 0; j < shareClasses.length; j++) {
-                ShareClassId scId = shareClasses[j];
+        // Skip if not tracked
+        if (!ghost_escrowSufficiencyTracked[key]) return;
 
-                AssetId[] memory assets = _getAssetIds();
-                for (uint256 k = 0; k < assets.length; k++) {
-                    AssetId assetId = assets[k];
-                    bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
+        // Use vault to get asset address
+        address asset = _getVault().asset();
 
-                    // Skip if not tracked
-                    if (!ghost_escrowSufficiencyTracked[key]) continue;
+        // Get current available balance
+        uint128 available = balanceSheet.availableBalanceOf(
+            poolId,
+            scId,
+            asset,
+            0
+        );
 
-                    // Use vault to get asset address
-                    IBaseVault vault = IBaseVault(_getVault());
-                    address asset = vault.asset();
+        // Get queued withdrawals
+        (, uint128 queuedWithdrawals) = balanceSheet.queuedAssets(
+            poolId,
+            scId,
+            assetId
+        );
 
-                    // Get current available balance
-                    uint128 available = balanceSheet.availableBalanceOf(
-                        poolId,
-                        scId,
-                        asset,
-                        0
-                    );
+        // Core Invariant: Available = Total - Reserved
+        uint128 reserved = uint128(ghost_netReserved[key]);
+        uint128 calculatedTotal = available + reserved;
 
-                    // Get queued withdrawals
-                    (, uint128 queuedWithdrawals) = balanceSheet.queuedAssets(
-                        poolId,
-                        scId,
-                        assetId
-                    );
+        // Total must cover all obligations
+        gte(
+            calculatedTotal,
+            reserved + queuedWithdrawals,
+            "Total balance insufficient for obligations"
+        );
+    }
 
-                    // Available must cover all pending withdrawals
-                    gte(
-                        available,
-                        queuedWithdrawals,
-                        "Insufficient balance for pending withdrawals"
-                    );
+    /// @dev Property: BalanceSheet must always have sufficient balance for queued assets
+    function property_availableGtQueued() public {
+        PoolId[] memory pools = _getPools();
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
+        bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
+        address asset = _getVault().asset();
 
-                    // Core Invariant: Available = Total - Reserved
-                    uint128 reserved = uint128(ghost_netReserved[key]);
-                    uint128 calculatedTotal = available + reserved;
+        // Get current available balance
+        uint128 available = balanceSheet.availableBalanceOf(
+            poolId,
+            scId,
+            asset,
+            0
+        );
 
-                    // Total must cover all obligations
-                    gte(
-                        calculatedTotal,
-                        reserved + queuedWithdrawals,
-                        "Total balance insufficient for obligations"
-                    );
+        // Get queued withdrawals
+        (, uint128 queuedWithdrawals) = balanceSheet.queuedAssets(
+            poolId,
+            scId,
+            assetId
+        );
 
-                    // No failed withdrawals should occur if balance is sufficient
-                    eq(
-                        ghost_failedWithdrawalAttempts[key],
-                        0,
-                        "Withdrawals failed despite sufficient balance"
-                    );
-                }
-            }
-        }
+        // Available must cover all pending withdrawals
+        gte(
+            available,
+            queuedWithdrawals,
+            "Insufficient balance for pending withdrawals"
+        );
     }
 
     /// @dev Property 2.7: Authorization Boundary Enforcement

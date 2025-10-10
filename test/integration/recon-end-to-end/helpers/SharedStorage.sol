@@ -279,5 +279,4 @@ abstract contract SharedStorage {
     mapping(bytes32 => uint256) public ghost_escrowReservedBalance;
     mapping(bytes32 => uint256) public ghost_escrowAvailableBalance;
     mapping(bytes32 => bool) public ghost_escrowSufficiencyTracked;
-    mapping(bytes32 => uint256) public ghost_failedWithdrawalAttempts;
 }
