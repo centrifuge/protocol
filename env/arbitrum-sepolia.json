@@ -24,7 +24,7 @@
     },
     "layerZero": {
       "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
-      "layerZeroEid": 40203,
+      "layerZeroEid": 40231,
       "deploy": true
     }
   },
