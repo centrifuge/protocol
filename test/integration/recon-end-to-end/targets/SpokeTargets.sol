@@ -68,7 +68,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     function spoke_registerAsset(
         address assetAddress,
         uint256 erc6909TokenId
-    ) public asAdmin returns (uint128 assetId) {
+    ) public updateGhosts asAdmin returns (uint128 assetId) {
         assetId = spoke
         .registerAsset{value: 0.1 ether}(
             DEFAULT_DESTINATION_CHAIN,
@@ -89,7 +89,10 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 2
-    function spoke_addPool() public asAdmin {
+    function spoke_addPool() public updateGhosts asAdmin {
+        // Track authorization - addPool requires admin auth
+        _trackAuthorization(_getActor(), PoolId.wrap(0)); // Global operation
+
         spoke.addPool(_getPool());
     }
 
@@ -98,10 +101,13 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         uint128 scIdAsUint,
         uint8 decimals,
         address hook
-    ) public asAdmin returns (address, bytes16) {
+    ) public updateGhosts asAdmin returns (address, bytes16) {
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
         bytes16 scId = bytes16(scIdAsUint);
+
+        // Track authorization - addShareClass requires admin auth
+        _trackAuthorization(_getActor(), _getPool());
 
         spoke.addShareClass(
             _getPool(),
@@ -124,7 +130,12 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 4 - deploy the pool
-    function spoke_deployVault(bool isAsync) public asAdmin returns (address) {
+    function spoke_deployVault(
+        bool isAsync
+    ) public updateGhosts asAdmin returns (address) {
+        // Track authorization - deployVault requires admin auth
+        _trackAuthorization(_getActor(), _getPool());
+
         address vault;
         if (isAsync) {
             vault = address(
@@ -156,7 +167,9 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 5 - set the request manager
-    function spoke_setRequestManager(address vault) public asAdmin {
+    function spoke_setRequestManager(
+        address vault
+    ) public updateGhosts asAdmin {
         IBaseVault vaultInstance = IBaseVault(vault);
         PoolId poolId = vaultInstance.poolId();
 
@@ -164,11 +177,15 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 6- link the vault
-    function spoke_linkVault(address vault) public asAdmin {
+    function spoke_linkVault(address vault) public updateGhosts asAdmin {
         IBaseVault vaultInstance = IBaseVault(vault);
         PoolId poolId = vaultInstance.poolId();
         ShareClassId scId = vaultInstance.scId();
         AssetId assetId = _getAssetId();
+
+        // Track authorization - linkVault requires admin auth
+        _trackAuthorization(_getActor(), poolId);
+
         vaultRegistry.linkVault(poolId, scId, assetId, IBaseVault(vault));
     }
 
@@ -177,7 +194,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // Extra 7 - remove the vault
-    function spoke_unlinkVault() public asAdmin {
+    function spoke_unlinkVault() public updateGhosts asAdmin {
         vaultRegistry.unlinkVault(
             _getPool(),
             _getShareClassId(),
@@ -189,7 +206,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     /**
      * NOTE: All of these are implicitly clamped using values set in shortcut_deployNewTokenPoolAndShare
      */
-    function spoke_updateMember(uint64 validUntil) public asAdmin {
+    function spoke_updateMember(uint64 validUntil) public updateGhosts asAdmin {
         spoke.updateRestriction(
             _getPool(),
             _getShareClassId(),
@@ -214,7 +231,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     function spoke_updateShareMetadata(
         string memory tokenName,
         string memory tokenSymbol
-    ) public asAdmin {
+    ) public updateGhosts asAdmin {
         spoke.updateShareMetadata(
             _getPool(),
             _getShareClassId(),
@@ -223,7 +240,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         );
     }
 
-    function spoke_freeze() public asAdmin {
+    function spoke_freeze() public updateGhosts asAdmin {
         spoke.updateRestriction(
             _getPool(),
             _getShareClassId(),
@@ -235,7 +252,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         );
     }
 
-    function spoke_unfreeze() public asAdmin {
+    function spoke_unfreeze() public updateGhosts asAdmin {
         spoke.updateRestriction(
             _getPool(),
             _getShareClassId(),

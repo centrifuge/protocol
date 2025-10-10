@@ -51,13 +51,13 @@ abstract contract BeforeAfter is Setup {
         mapping(address vault => mapping(address investor => PriceVars)) investorsGlobals; // global ghost variable only updated as needed
         mapping(address investor => AsyncInvestmentState) investments;
         mapping(address user => uint256 balance) shareTokenBalance;
-        mapping(address user => uint256 balance) assetTokenBalance;
+        mapping(address user => uint256 balance) assetTokenBalance; // uses vault's underyling asset as source of truth instead of _getAsset()
+        mapping(address vault => uint256 price) pricePerShare;
         uint256 escrowAssetBalance;
-        uint256 escrowTrancheTokenBalance;
+        uint256 escrowShareTokenBalance;
         uint256 poolEscrowAssetBalance;
         uint256 totalAssets;
         uint256 actualAssets;
-        uint256 pricePerShare;
         uint256 totalShareSupply;
         uint128 ghostDebited;
         uint128 ghostCredited;
@@ -104,10 +104,9 @@ abstract contract BeforeAfter is Setup {
         // if the vault isn't deployed, values below can't be updated
         if (address(_getVault()) == address(0)) return;
 
-        _before.shareTokenBalance[_getActor()] = IShareToken(
-            _getVault().share()
-        ).balanceOf(_getActor());
-        _before.assetTokenBalance[_getActor()] = MockERC20(_getAsset())
+        _before.shareTokenBalance[_getActor()] = IShareToken(_getShareToken())
+            .balanceOf(_getActor());
+        _before.assetTokenBalance[_getActor()] = MockERC20(_getVault().asset())
             .balanceOf(_getActor());
 
         _updateEpochId(true);
@@ -133,9 +132,9 @@ abstract contract BeforeAfter is Setup {
         // if the vault isn't deployed, values below can't be updated
         if (address(_getVault()) == address(0)) return;
 
-        _after.shareTokenBalance[_getActor()] = IShareToken(_getVault().share())
+        _after.shareTokenBalance[_getActor()] = IShareToken(_getShareToken())
             .balanceOf(_getActor());
-        _after.assetTokenBalance[_getActor()] = MockERC20(_getAsset())
+        _after.assetTokenBalance[_getActor()] = MockERC20(_getVault().asset())
             .balanceOf(_getActor());
 
         _updateEpochId(false);
@@ -338,7 +337,7 @@ abstract contract BeforeAfter is Setup {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
         if (_getShareToken() != address(0)) {
-            _structToUpdate.escrowTrancheTokenBalance = MockERC20(
+            _structToUpdate.escrowShareTokenBalance = MockERC20(
                 _getShareToken()
             ).balanceOf(address(globalEscrow));
             _structToUpdate.totalShareSupply = MockERC20(_getShareToken())
@@ -405,18 +404,17 @@ abstract contract BeforeAfter is Setup {
         ) {
             _structToUpdate.pricePoolPerShare[poolId][scId] = _priceShare;
         } catch (bytes memory reason) {
-            bool shareTokenDoesNotExist = checkError(
-                reason,
-                "ShareTokenDoesNotExist()"
-            );
-            bool invalidPrice = checkError(reason, "InvalidPrice()");
-            if (shareTokenDoesNotExist || invalidPrice) {
-                _structToUpdate.pricePerShare = 0;
-                return;
-            } else {
-                _structToUpdate.pricePerShare = BaseVault(address(_getVault()))
-                    .pricePerShare();
-            }
+            _structToUpdate.pricePoolPerShare[poolId][scId] = D18.wrap(0);
+        }
+
+        try BaseVault(address(_getVault())).pricePerShare() returns (
+            uint256 _pricePerShare
+        ) {
+            _structToUpdate.pricePerShare[
+                address(_getVault())
+            ] = _pricePerShare;
+        } catch {
+            _structToUpdate.pricePerShare[address(_getVault())] = 0;
         }
     }
 }

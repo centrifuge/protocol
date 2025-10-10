@@ -70,6 +70,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             assetId
         );
         maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
+        console2.log("maxClaims: ", maxClaims);
 
         // Capture validation state if needed
         bool hasClaimedAll = _hasClaimedAllEpochs(maxClaims, maxClaimsBound);
@@ -133,6 +134,9 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     ) public updateGhosts asActor returns (PoolId poolId) {
         PoolId _poolId = PoolId.wrap(poolIdAsUint);
         AssetId _assetId = AssetId.wrap(assetIdAsUint);
+
+        // Track authorization - createPool requires auth
+        _trackAuthorization(_getActor(), PoolId.wrap(0)); // Global operation
 
         hub.createPool(_poolId, admin, _assetId);
 
@@ -312,7 +316,9 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint128 assetId,
         address requestManager
     ) public asAdmin {
-        // New signature: hub.setRequestManager(poolId, centrifugeId, hubManager, spokeManager, refund)
+        // Track authorization - setRequestManager requires admin auth
+        _trackAuthorization(_getActor(), PoolId.wrap(poolId));
+
         hub.setRequestManager{value: GAS}(
             PoolId.wrap(poolId),
             CENTRIFUGE_CHAIN_ID,
@@ -328,6 +334,9 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         address manager,
         bool enable
     ) public asAdmin {
+        // Track authorization - updateBalanceSheetManager requires admin auth
+        _trackAuthorization(_getActor(), PoolId.wrap(poolId));
+
         hub.updateBalanceSheetManager{value: GAS}(
             PoolId.wrap(poolId),
             chainId,
@@ -480,7 +489,6 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         sumOfClaimedDeposits[vault.share()] += totalPayoutShareAmount;
         userDepositProcessed[scId][assetId][actor] += totalPaymentAssetAmount;
         userCancelledDeposits[scId][assetId][actor] += cancelledAssetAmount;
-        sumOfClaimedCancelledDeposits[vault.asset()] += cancelledAssetAmount;
     }
 
     // ═══════════════════════════════════════════════════════════════

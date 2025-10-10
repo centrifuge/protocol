@@ -32,14 +32,12 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         balanceSheet.deny(_getActor());
     }
 
-    function balanceSheet_deposit(
-        uint256 tokenId,
-        uint128 amount
-    ) public updateGhosts asActor {
+    function balanceSheet_deposit(uint256 tokenId, uint128 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        _captureShareQueueState(poolId, scId);
 
         // Track authorization - deposit() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -53,20 +51,14 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
 
         // Track asset counter for Queue State Consistency properties
-        (uint128 prevDeposits, uint128 prevWithdrawals) = balanceSheet
-            .queuedAssets(poolId, scId, assetId);
+        (uint128 prevDeposits, uint128 prevWithdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
         if (prevDeposits == 0 && prevWithdrawals == 0) {
             ghost_assetCounterPerAsset[assetKey] = 1; // Asset queue becomes non-empty
         }
 
         // Track escrow balance sufficiency
         ghost_escrowSufficiencyTracked[assetKey] = true;
-        uint128 prevAvailable = balanceSheet.availableBalanceOf(
-            poolId,
-            scId,
-            vault.asset(),
-            tokenId
-        );
+        uint128 prevAvailable = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
 
         // Track asset-share proportionality for deposits
         // Track deposit amounts and exchange rate before deposit
@@ -74,9 +66,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ghost_depositProportionalityTracked[assetKey] = true;
 
         // Get current exchange rate (price per asset in pool terms)
-        try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (
-            D18 pricePerAsset
-        ) {
+        try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 pricePerAsset) {
             // Store weighted average exchange rate
             uint256 totalOps = 1; // Simplified tracking
             if (totalOps == 1) {
@@ -84,9 +74,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             } else {
                 // Update running average: new_avg = (old_avg * (n-1) + new_value) / n
                 uint256 oldAvg = ghost_depositExchangeRate[assetKey];
-                ghost_depositExchangeRate[assetKey] =
-                    (oldAvg * (totalOps - 1) + D18.unwrap(pricePerAsset)) /
-                    totalOps;
+                ghost_depositExchangeRate[assetKey] = (oldAvg * (totalOps - 1) + D18.unwrap(pricePerAsset)) / totalOps;
             }
         } catch {
             // If price fetch fails, use 1:1 ratio as fallback
@@ -100,12 +88,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ghost_assetQueueDeposits[assetKey] += amount;
 
         // Update escrow tracking: total balance increases by deposit amount
-        uint128 newAvailable = balanceSheet.availableBalanceOf(
-            poolId,
-            scId,
-            vault.asset(),
-            tokenId
-        );
+        uint128 newAvailable = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
         ghost_escrowAvailableBalance[assetKey] = newAvailable;
         ghost_escrowReservedBalance[assetKey] = ghost_netReserved[assetKey];
     }
@@ -114,6 +97,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
+        _captureShareQueueState(poolId, scId);
 
         // Track authorization - issue() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -124,7 +108,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track previous net position for flip detection
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
         bytes32 userKey = keccak256(abi.encode(shareKey, _getActor()));
-        int256 prevNetPosition = ghost_netSharePosition[shareKey];
 
         // Track supply operations
         ghost_supplyOperationOccurred[shareKey] = true;
@@ -152,16 +135,20 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ghost_totalIssued[shareKey] += shares;
         ghost_netSharePosition[shareKey] += int256(uint256(shares));
 
-        // Check for position flip
-        if (prevNetPosition < 0 && ghost_netSharePosition[shareKey] >= 0) {
+        // Check for share queue flip based on actual queue state changes
+        (uint128 deltaAfter, bool isPositiveAfter,,) = balanceSheet.queuedShares(poolId, scId);
+        bytes32 key = _poolShareKey(poolId, scId);
+        uint128 deltaBefore = before_shareQueueDelta[key];
+        bool isPositiveBefore = before_shareQueueIsPositive[key];
+
+        // Detect flip in queue state (replaces ghost position flip detection)
+        bool queueFlipOccurred = (isPositiveBefore != isPositiveAfter) && (deltaBefore != 0 || deltaAfter != 0);
+        if (queueFlipOccurred) {
             ghost_flipCount[shareKey]++;
         }
     }
 
-    function balanceSheet_noteDeposit(
-        uint256 tokenId,
-        uint128 amount
-    ) public updateGhosts asActor {
+    function balanceSheet_noteDeposit(uint256 tokenId, uint128 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
@@ -177,50 +164,30 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ghost_assetQueueDeposits[assetKey] += amount;
     }
 
-    function balanceSheet_overridePricePoolPerAsset(
-        D18 value
-    ) public updateGhosts asActor {
+    function balanceSheet_overridePricePoolPerAsset(D18 value) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
         // Track authorization - overridePricePoolPerAsset() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), vault.poolId());
 
-        balanceSheet.overridePricePoolPerAsset(
-            vault.poolId(),
-            vault.scId(),
-            assetId,
-            value
-        );
+        balanceSheet.overridePricePoolPerAsset(vault.poolId(), vault.scId(), assetId, value);
     }
 
-    function balanceSheet_overridePricePoolPerShare(
-        D18 value
-    ) public updateGhosts asActor {
+    function balanceSheet_overridePricePoolPerShare(D18 value) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
 
         // Track authorization - overridePricePoolPerShare() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), vault.poolId());
 
-        balanceSheet.overridePricePoolPerShare(
-            vault.poolId(),
-            vault.scId(),
-            value
-        );
+        balanceSheet.overridePricePoolPerShare(vault.poolId(), vault.scId(), value);
     }
 
-    function balanceSheet_recoverTokens(
-        address token,
-        uint256 amount
-    ) public updateGhosts asActor {
+    function balanceSheet_recoverTokens(address token, uint256 amount) public updateGhosts asActor {
         balanceSheet.recoverTokens(token, _getActor(), amount);
     }
 
-    function balanceSheet_recoverTokens(
-        address token,
-        uint256 tokenId,
-        uint256 amount
-    ) public updateGhosts asActor {
+    function balanceSheet_recoverTokens(address token, uint256 tokenId, uint256 amount) public updateGhosts asActor {
         balanceSheet.recoverTokens(token, tokenId, _getActor(), amount);
     }
 
@@ -239,11 +206,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track authorization - resetPricePoolPerAsset() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), vault.poolId());
 
-        balanceSheet.resetPricePoolPerAsset(
-            vault.poolId(),
-            vault.scId(),
-            assetId
-        );
+        balanceSheet.resetPricePoolPerAsset(vault.poolId(), vault.scId(), assetId);
     }
 
     function balanceSheet_resetPricePoolPerShare() public updateGhosts asActor {
@@ -259,6 +222,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
+        _captureShareQueueState(poolId, scId);
 
         // Track authorization - revoke() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -268,7 +232,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
         // Track previous net position for flip detection
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
-        int256 prevNetPosition = ghost_netSharePosition[shareKey];
 
         // Track supply operations
         ghost_supplyOperationOccurred[shareKey] = true;
@@ -296,19 +259,24 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ghost_totalRevoked[shareKey] += shares;
         ghost_netSharePosition[shareKey] -= int256(uint256(shares));
 
-        // Check for position flip
-        if (prevNetPosition > 0 && ghost_netSharePosition[shareKey] <= 0) {
+        // Check for share queue flip based on actual queue state changes
+        (uint128 deltaAfter, bool isPositiveAfter,,) = balanceSheet.queuedShares(poolId, scId);
+        bytes32 key = _poolShareKey(poolId, scId);
+        uint128 deltaBefore = before_shareQueueDelta[key];
+        bool isPositiveBefore = before_shareQueueIsPositive[key];
+
+        // Detect flip in queue state (replaces ghost position flip detection)
+        bool queueFlipOccurred = (isPositiveBefore != isPositiveAfter) && (deltaBefore != 0 || deltaAfter != 0);
+        if (queueFlipOccurred) {
             ghost_flipCount[shareKey]++;
         }
     }
 
-    function balanceSheet_transferSharesFrom(
-        address to,
-        uint256 amount
-    ) public updateGhosts asActor {
+    function balanceSheet_transferSharesFrom(address to, uint256 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
+        _captureShareQueueState(poolId, scId);
 
         // Track authorization - transferSharesFrom() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -321,16 +289,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         bytes32 key = keccak256(abi.encode(poolId, scId));
 
         // Attempt the transfer - will revert if from is endorsed
-        try
-            balanceSheet.transferSharesFrom(
-                poolId,
-                scId,
-                from,
-                from,
-                recipient,
-                amount
-            )
-        {
+        try balanceSheet.transferSharesFrom(poolId, scId, from, from, recipient, amount) {
             // Transfer succeeded - track as valid
             ghost_validTransferCount[key]++;
 
@@ -346,14 +305,13 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    function balanceSheet_withdraw(
-        uint256 tokenId,
-        uint128 amount
-    ) public updateGhosts asActor {
+    /// @dev Property: Withdrawals should not fail when there's sufficient balance
+    function balanceSheet_withdraw(uint256 tokenId, uint128 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        _captureShareQueueState(poolId, scId);
 
         // Track authorization - withdraw() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -362,66 +320,40 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
 
         // Track asset counter for Queue State Consistency properties
-        (uint128 prevDeposits, uint128 prevWithdrawals) = balanceSheet
-            .queuedAssets(poolId, scId, assetId);
+        (uint128 prevDeposits, uint128 prevWithdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
         if (prevDeposits == 0 && prevWithdrawals == 0) {
             ghost_assetCounterPerAsset[assetKey] = 1; // Asset queue becomes non-empty
         }
 
         // Track escrow balance sufficiency
         ghost_escrowSufficiencyTracked[assetKey] = true;
-        uint128 prevAvailable = balanceSheet.availableBalanceOf(
-            poolId,
-            scId,
-            vault.asset(),
-            tokenId
-        );
+        uint128 prevAvailable = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
 
-        // Check if withdrawal would exceed available balance (track failures)
-        if (amount > prevAvailable) {
-            ghost_failedWithdrawalAttempts[assetKey]++;
-        }
-
-        try
-            balanceSheet.withdraw(
-                poolId,
-                scId,
-                vault.asset(),
-                tokenId,
-                _getActor(),
-                amount
-            )
-        {
+        try balanceSheet.withdraw(poolId, scId, vault.asset(), tokenId, _getActor(), amount) {
             // Successful withdrawal
-            uint128 newAvailable = balanceSheet.availableBalanceOf(
-                poolId,
-                scId,
-                vault.asset(),
-                tokenId
-            );
+            uint128 newAvailable = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
             ghost_escrowAvailableBalance[assetKey] = newAvailable;
             ghost_escrowReservedBalance[assetKey] = ghost_netReserved[assetKey];
 
             // Track withdrawal proportionality
             ghost_withdrawalProportionalityTracked[assetKey] = true;
             ghost_cumulativeAssetsWithdrawn[assetKey] += amount;
-        } catch {
-            // Failed withdrawal tracked above
+            ghost_assetQueueWithdrawals[assetKey] += amount;
+            sumOfManagerWithdrawals[vault.asset()] += amount;
+        } catch (bytes memory err) {
+            bool expectedError = checkError(err, "InvalidPrice()") || checkError(err, "UnknownAsset()");
+            // Check if withdrawal was possible with available balance (track failures)
+            if (!expectedError && amount <= prevAvailable) {
+                t(false, "Withdrawals failed despite sufficient balance");
+            }
         }
-
-        sumOfManagerWithdrawals[vault.asset()] += amount;
-
-        ghost_assetQueueWithdrawals[assetKey] += amount;
     }
 
     // ===============================
     // QUEUE OPERATIONS
     // ===============================
 
-    function balanceSheet_reserve(
-        uint256 tokenId,
-        uint128 amount
-    ) public updateGhosts asAdmin {
+    function balanceSheet_reserve(uint256 tokenId, uint128 amount) public updateGhosts asAdmin {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
@@ -449,20 +381,12 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
         // Track escrow balance sufficiency
         ghost_escrowSufficiencyTracked[key] = true;
-        uint128 newAvailable = balanceSheet.availableBalanceOf(
-            poolId,
-            scId,
-            vault.asset(),
-            tokenId
-        );
+        uint128 newAvailable = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
         ghost_escrowAvailableBalance[key] = newAvailable;
         ghost_escrowReservedBalance[key] = ghost_netReserved[key];
     }
 
-    function balanceSheet_unreserve(
-        uint256 tokenId,
-        uint128 amount
-    ) public updateGhosts asAdmin {
+    function balanceSheet_unreserve(uint256 tokenId, uint128 amount) public updateGhosts asAdmin {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
@@ -488,19 +412,12 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
         // Track escrow balance sufficiency
         ghost_escrowSufficiencyTracked[key] = true;
-        uint128 newAvailable = balanceSheet.availableBalanceOf(
-            poolId,
-            scId,
-            vault.asset(),
-            tokenId
-        );
+        uint128 newAvailable = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
         ghost_escrowAvailableBalance[key] = newAvailable;
         ghost_escrowReservedBalance[key] = ghost_netReserved[key];
     }
 
-    function balanceSheet_submitQueuedAssets(
-        uint128 extraGasLimit
-    ) public updateGhosts asAdmin {
+    function balanceSheet_submitQueuedAssets(uint128 extraGasLimit) public updateGhosts asAdmin {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
@@ -514,8 +431,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
 
         // Get current nonce to track monotonicity
-        (, , uint32 queuedAssetCounter, uint64 currentNonce) = balanceSheet
-            .queuedShares(poolId, scId);
+        (,, uint32 queuedAssetCounter, uint64 currentNonce) = balanceSheet.queuedShares(poolId, scId);
         ghost_previousNonce[shareKey] = currentNonce;
 
         balanceSheet.submitQueuedAssets{value: 0.1 ether}(poolId, scId, assetId, extraGasLimit, address(this));
@@ -524,12 +440,11 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ghost_assetCounterPerAsset[assetKey] = 0;
     }
 
-    function balanceSheet_submitQueuedShares(
-        uint128 extraGasLimit
-    ) public updateGhosts asAdmin {
+    function balanceSheet_submitQueuedShares(uint128 extraGasLimit) public updateGhosts asAdmin {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
+        _captureShareQueueState(poolId, scId);
 
         // Track authorization - submitQueuedShares() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -538,8 +453,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
 
         // Get current nonce to track monotonicity
-        (, , uint32 queuedAssetCounter, uint64 currentNonce) = balanceSheet
-            .queuedShares(poolId, scId);
+        (,, uint32 queuedAssetCounter, uint64 currentNonce) = balanceSheet.queuedShares(poolId, scId);
         ghost_previousNonce[shareKey] = currentNonce;
 
         ghost_shareQueueNonce[shareKey]++;

@@ -108,6 +108,10 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = _getPool();
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
+
+        // Track authorization - addShareClass requires authOrManager(poolId)
+        _trackAuthorization(_getActor(), poolId);
+
         hub.addShareClass(poolId, name, symbol, bytes32(salt));
     }
 
@@ -189,6 +193,10 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     ) public updateGhosts {
         PoolId poolId = _getPool();
         AccountId account = AccountId.wrap(accountAsInt);
+
+        // Track authorization - createAccount requires authOrManager(poolId)
+        _trackAuthorization(_getActor(), poolId);
+
         hub.createAccount(poolId, account, isDebitNormal);
 
         createdAccountIds.push(account);
@@ -204,6 +212,9 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
+
+        // Track authorization - initializeHolding requires authOrManager(poolId)
+        _trackAuthorization(_getActor(), poolId);
 
         hub.initializeHolding(
             poolId,
@@ -261,6 +272,10 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
+
+        // Track authorization - initializeLiability requires authOrManager(poolId)
+        _trackAuthorization(_getActor(), poolId);
+
         hub.initializeLiability(
             poolId,
             scId,
@@ -335,8 +350,26 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         uint256 escrowShareDelta = escrowSharesAfter - escrowSharesBefore;
         executedInvestments[_getShareToken()] += escrowShareDelta;
         sumOfFulfilledDeposits[_getShareToken()] += escrowShareDelta;
-        sumOfFulfilledDeposits[_getShareToken()] += escrowShareDelta;
         issuedHubShares[poolId][scId][assetId] += issuedShareAmount;
+
+        // Update ghost variables for share queue tracking
+        bytes32 shareKey = keccak256(abi.encode(poolId, scId));
+        ghost_totalIssued[shareKey] += issuedShareAmount;
+        ghost_netSharePosition[shareKey] += int256(uint256(issuedShareAmount));
+
+        // Check for share queue flip
+        (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet
+            .queuedShares(poolId, scId);
+        bytes32 key = _poolShareKey(poolId, scId);
+        uint128 deltaBefore = before_shareQueueDelta[key];
+        bool isPositiveBefore = before_shareQueueIsPositive[key];
+
+        if (
+            (isPositiveBefore != isPositiveAfter) &&
+            (deltaBefore != 0 || deltaAfter != 0)
+        ) {
+            ghost_flipCount[shareKey]++;
+        }
 
         // TODO: Refactor this to work with new issuance update logic
         // if(navPerShare > 0) {
@@ -385,7 +418,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);
     }
 
-    function hub_notifyAssetPrice() public updateGhosts {
+    function hub_notifyAssetPrice() public updateGhostsWithType(OpType.ADMIN) {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
@@ -434,6 +467,25 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         executedRedemptions[vault.share()] += burnedShares;
         revokedHubShares[poolId][scId][payoutAssetId] += revokedShareAmount;
 
+        // Update ghost variables for share queue tracking
+        bytes32 shareKey = keccak256(abi.encode(poolId, scId));
+        ghost_totalRevoked[shareKey] += revokedShareAmount;
+        ghost_netSharePosition[shareKey] -= int256(uint256(revokedShareAmount));
+
+        // Check for share queue flip
+        (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet
+            .queuedShares(poolId, scId);
+        bytes32 key = _poolShareKey(poolId, scId);
+        uint128 deltaBefore = before_shareQueueDelta[key];
+        bool isPositiveBefore = before_shareQueueIsPositive[key];
+
+        if (
+            (isPositiveBefore != isPositiveAfter) &&
+            (deltaBefore != 0 || deltaAfter != 0)
+        ) {
+            ghost_flipCount[shareKey]++;
+        }
+
         // if(navPerShare > 0) {
         //     lt(totalIssuanceAfter, totalIssuanceBefore, "total issuance is not decreased after revokeShares");
         // }
@@ -449,31 +501,32 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         hub.setAccountMetadata(poolId, account, metadata);
     }
 
-    function hub_setHoldingAccountId(
-        uint128 assetIdAsUint,
-        uint8 kind,
-        uint32 accountIdAsInt
-    ) public updateGhosts {
-        PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
-        AssetId assetId = AssetId.wrap(assetIdAsUint);
-        AccountId accountId = AccountId.wrap(accountIdAsInt);
-        hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
-    }
+    // NOTE: removed because it introduces too many false positives with no added benefit
+    // function hub_setHoldingAccountId(
+    //     uint128 assetIdAsUint,
+    //     uint8 kind,
+    //     uint32 accountIdAsInt
+    // ) public updateGhosts {
+    //     PoolId poolId = _getPool();
+    //     ShareClassId scId = _getShareClassId();
+    //     AssetId assetId = AssetId.wrap(assetIdAsUint);
+    //     AccountId accountId = AccountId.wrap(accountIdAsInt);
+    //     hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
+    // }
 
-    function hub_setHoldingAccountId_clamped(
-        uint128 assetIdAsUint,
-        uint8 kind,
-        uint32 accountIdAsInt
-    ) public updateGhosts {
-        PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
-        AssetId assetId = _getAssetId();
+    // function hub_setHoldingAccountId_clamped(
+    //     uint128 assetIdAsUint,
+    //     uint8 kind,
+    //     uint32 accountIdAsInt
+    // ) public updateGhosts {
+    //     PoolId poolId = _getPool();
+    //     ShareClassId scId = _getShareClassId();
+    //     AssetId assetId = _getAssetId();
 
-        accountIdAsInt %= 5; // 4 possible accountId types in Setup
-        AccountId accountId = AccountId.wrap(accountIdAsInt);
-        hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
-    }
+    //     accountIdAsInt %= 5; // 4 possible accountId types in Setup
+    //     AccountId accountId = AccountId.wrap(accountIdAsInt);
+    //     hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
+    // }
 
     function hub_setPoolMetadata(uint256 metadataAsUint) public updateGhosts {
         PoolId poolId = _getPool();
