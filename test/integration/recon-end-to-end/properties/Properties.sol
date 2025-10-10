@@ -273,9 +273,16 @@ abstract contract Properties is
                 spoke.vaultDetails(_getVault()).assetId
             );
 
+            // Check if this is a fresh user (request not yet processed by Hub)
+            bool isUnprocessedRequest = (pending == 0 && lastUpdate == 0);
+
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should
             // not change
-            if (Helpers.canMutate(lastUpdate, pending, depositEpochId)) {
+            // Only check the property if the Hub has processed at least one request
+            if (
+                !isUnprocessedRequest &&
+                Helpers.canMutate(lastUpdate, pending, depositEpochId)
+            ) {
                 // nowDepositEpoch = depositEpochId + 1
                 eq(
                     lastUpdate,
