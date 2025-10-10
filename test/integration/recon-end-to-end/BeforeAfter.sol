@@ -54,7 +54,7 @@ abstract contract BeforeAfter is Setup {
         mapping(address user => uint256 balance) assetTokenBalance;
         mapping(address vault => uint256 price) pricePerShare;
         uint256 escrowAssetBalance;
-        uint256 escrowTrancheTokenBalance;
+        uint256 escrowShareTokenBalance;
         uint256 poolEscrowAssetBalance;
         uint256 totalAssets;
         uint256 actualAssets;
@@ -338,8 +338,8 @@ abstract contract BeforeAfter is Setup {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
         if (_getShareToken() != address(0)) {
-            _structToUpdate.escrowTrancheTokenBalance = MockERC20(
-                _getShareToken()
+            _structToUpdate.escrowShareTokenBalance = MockERC20(
+                _getVault().share()
             ).balanceOf(address(globalEscrow));
             _structToUpdate.totalShareSupply = MockERC20(_getShareToken())
                 .totalSupply();

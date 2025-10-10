@@ -248,7 +248,7 @@ abstract contract Properties is
                 _after.investments[_getActor()].claimableCancelRedeemRequest;
             // claiming a cancel redeem request means that the globalEscrow tranche token balance decreases
             uint256 escrowTrancheTokenBalanceDelta = _before
-                .escrowTrancheTokenBalance - _after.escrowTrancheTokenBalance;
+                .escrowShareTokenBalance - _after.escrowShareTokenBalance;
             eq(
                 claimableCancelRedeemRequestDelta,
                 escrowTrancheTokenBalanceDelta,
@@ -324,8 +324,8 @@ abstract contract Properties is
                     _after.shareTokenBalance[_getActor()];
 
                 escrowBalanceDelta =
-                    _after.escrowTrancheTokenBalance -
-                    _before.escrowTrancheTokenBalance;
+                    _after.escrowShareTokenBalance -
+                    _before.escrowShareTokenBalance;
             }
 
             eq(shareBalanceDelta, escrowBalanceDelta, "7540-12");
@@ -366,8 +366,8 @@ abstract contract Properties is
                         _before.shareTokenBalance[_getActor()];
 
                     escrowBalanceDelta =
-                        _before.escrowTrancheTokenBalance -
-                        _after.escrowTrancheTokenBalance;
+                        _before.escrowShareTokenBalance -
+                        _after.escrowShareTokenBalance;
                 }
 
                 eq(shareBalanceDelta, escrowBalanceDelta, "7540-13");
