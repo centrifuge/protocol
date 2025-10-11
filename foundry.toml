@@ -17,6 +17,11 @@ fs_permissions = [
   { access = "read-write", path = "snapshots" },
 ]
 
+# The metadata hash is machine dependent. By default, this is set to none to allow for deterministic code.
+# {@see {@link https://docs.soliditylang.org/en/latest/metadata.html} }
+bytecode_hash = "none"
+cbor_metadata = false
+
 # Deployment specific settings
 gas_reports = ["*"]
 gas_reports_ignore = ["test/*", "script/*"]
