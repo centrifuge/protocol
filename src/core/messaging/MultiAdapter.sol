@@ -170,7 +170,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     ) internal {
         uint256 cost = adapter.estimate(centrifugeId, payload, gasLimit);
         bytes32 adapterData = adapter.send{value: cost}(centrifugeId, payload, gasLimit, refund);
-        emit SendPayload(centrifugeId, payloadId, payload, adapter, adapterData, refund, gasLimit, cost);
+        emit SendPayload(centrifugeId, payloadId, payload, adapter, adapterData, gasLimit, cost, refund);
     }
 
     /// @inheritdoc IAdapter
