@@ -240,6 +240,12 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
     error ExceedsMaxMint();
     error ShareTokenDoesNotExist();
     error SecondaryManagerDoesNotExist();
+    error UnknownTrustedCall();
+
+    enum SyncManagerTrustedCall {
+        Valuation,
+        MaxReserve
+    }
 
     /// @notice Updates contract parameters of type address.
     /// @param what The bytes32 representation of 'gateway' or 'spoke'.

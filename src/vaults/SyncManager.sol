@@ -58,25 +58,21 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
 
     /// @inheritdoc ITrustedContractUpdate
     function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
-        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
+        SyncManagerTrustedCall kind = SyncManagerTrustedCall(payload.toUint8(0));
 
-        if (kind == uint8(UpdateContractType.Valuation)) {
-            UpdateContractMessageLib.UpdateContractValuation memory m =
-                UpdateContractMessageLib.deserializeUpdateContractValuation(payload);
-
+        if (kind == SyncManagerTrustedCall.Valuation) {
+            (, bytes32 valuation_) = abi.decode(payload, (uint8, bytes32));
             require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
 
-            setValuation(poolId, scId, m.valuation.toAddress());
-        } else if (kind == uint8(UpdateContractType.SyncDepositMaxReserve)) {
-            UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve memory m =
-                UpdateContractMessageLib.deserializeUpdateContractSyncDepositMaxReserve(payload);
-
+            setValuation(poolId, scId, valuation_.toAddress());
+        } else if (kind == SyncManagerTrustedCall.MaxReserve) {
+            (, uint128 assetId, uint128 maxReserve_) = abi.decode(payload, (uint8, uint128, uint128));
             require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
-            (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(m.assetId));
 
-            setMaxReserve(poolId, scId, asset, tokenId, m.maxReserve);
+            (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(assetId));
+            setMaxReserve(poolId, scId, asset, tokenId, maxReserve_);
         } else {
-            revert UnknownUpdateContractType();
+            revert UnknownTrustedCall();
         }
     }
 
