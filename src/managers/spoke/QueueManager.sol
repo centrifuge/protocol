@@ -15,7 +15,7 @@ import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
 
-import {UpdateContractMessageLib, UpdateContractType} from "../../libraries/UpdateContractMessageLib.sol";
+
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified
 ///      (e.g. if the on/off ramp manager is used, or if sync deposits are enabled). This prevents spam.
@@ -43,14 +43,14 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
     function trustedCall(PoolId poolId, ShareClassId scId, bytes calldata payload) external {
         require(msg.sender == contractUpdater, NotContractUpdater());
 
-        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
-        if (kind == uint8(UpdateContractType.UpdateQueue)) {
-            UpdateContractMessageLib.UpdateContractUpdateQueue memory m =
-                UpdateContractMessageLib.deserializeUpdateContractUpdateQueue(payload);
+        uint8 kind = uint8(payload[0]);
+        if (kind == 0) {
+            // UpdateQueue
+            (, uint64 minDelay, uint64 extraGasLimit) = abi.decode(payload, (uint8, uint64, uint64));
             ShareClassQueueState storage sc = scQueueState[poolId][scId];
-            sc.minDelay = m.minDelay;
-            sc.extraGasLimit = m.extraGasLimit;
-            emit UpdateQueueConfig(poolId, scId, m.minDelay, m.extraGasLimit);
+            sc.minDelay = minDelay;
+            sc.extraGasLimit = extraGasLimit;
+            emit UpdateQueueConfig(poolId, scId, minDelay, extraGasLimit);
         } else {
             revert UnknownUpdateContractType();
         }

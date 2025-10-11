@@ -23,15 +23,12 @@ import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 import {ITrustedContractUpdate} from "../core/interfaces/IContractUpdate.sol";
 
-import {UpdateContractMessageLib, UpdateContractType} from "../libraries/UpdateContractMessageLib.sol";
-
 /// @title  Sync Manager
 /// @notice This is the main contract for synchronous ERC-4626 deposits.
 contract SyncManager is Auth, Recoverable, ISyncManager {
     using MathLib for *;
     using CastLib for *;
     using BytesLib for bytes;
-    using UpdateContractMessageLib for *;
 
     ISpoke public spoke;
     IBalanceSheet public balanceSheet;

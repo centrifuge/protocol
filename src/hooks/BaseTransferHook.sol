@@ -21,8 +21,6 @@ import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../core/spoke/interfaces/
 
 import {IRoot} from "../admin/interfaces/IRoot.sol";
 
-import {UpdateContractType, UpdateContractMessageLib} from "../libraries/UpdateContractMessageLib.sol";
-
 /// @title  BaseTransferHook
 /// @notice Abstract base contract for share token transfer restrictions that provides memberlist management,
 ///         account freezing capabilities, and cross-chain message handling, while encoding member validity
@@ -159,16 +157,16 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
 
     /// @inheritdoc ITrustedContractUpdate
     function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
-        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
+        uint8 kind = payload.toUint8(0);
 
-        if (kind == uint8(UpdateContractType.UpdateAddress)) {
-            UpdateContractMessageLib.UpdateContractUpdateAddress memory m =
-                UpdateContractMessageLib.deserializeUpdateContractUpdateAddress(payload);
+        if (kind == 0) {
+            // UpdateAddress
+            (, bytes32 what, bool isEnabled) = abi.decode(payload, (uint8, bytes32, bool));
 
             address token = address(spoke.shareToken(poolId, scId));
             require(token != address(0), ShareTokenDoesNotExist());
 
-            manager[token][m.what.toAddress()] = m.isEnabled;
+            manager[token][what.toAddress()] = isEnabled;
         } else {
             revert UnknownUpdateContractType();
         }
