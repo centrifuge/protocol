@@ -7,6 +7,7 @@ import "../../../core/spoke/integration/BaseTest.sol";
 
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+
 import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueManager.sol";
 
 uint8 constant UPDATE_QUEUE = uint8(IQueueManager.QueueManagerTrustedCall.UpdateQueue);

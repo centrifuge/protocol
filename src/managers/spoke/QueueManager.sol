@@ -41,9 +41,13 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
     function trustedCall(PoolId poolId, ShareClassId scId, bytes calldata payload) external {
         require(msg.sender == contractUpdater, NotContractUpdater());
 
-        IQueueManager.QueueManagerTrustedCall kind = IQueueManager.QueueManagerTrustedCall(uint8(payload[0]));
+        (uint8 kindValue, uint64 minDelay, uint64 extraGasLimit) = abi.decode(payload, (uint8, uint64, uint64));
+        if (kindValue > uint8(type(IQueueManager.QueueManagerTrustedCall).max)) {
+            revert UnknownTrustedCall();
+        }
+
+        IQueueManager.QueueManagerTrustedCall kind = IQueueManager.QueueManagerTrustedCall(kindValue);
         if (kind == IQueueManager.QueueManagerTrustedCall.UpdateQueue) {
-            (, uint64 minDelay, uint64 extraGasLimit) = abi.decode(payload, (uint8, uint64, uint64));
             ShareClassQueueState storage sc = scQueueState[poolId][scId];
             sc.minDelay = minDelay;
             sc.extraGasLimit = extraGasLimit;

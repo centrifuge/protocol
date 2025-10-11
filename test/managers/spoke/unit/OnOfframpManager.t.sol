@@ -12,7 +12,6 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IContractUpdate} from "../../../../src/core/interfaces/IContractUpdate.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 
 import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
@@ -223,7 +222,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
 
     function testUnknownTrustedCall() public {
         // Create payload with invalid enum value
-        bytes memory invalidPayload = abi.encode(uint8(255), bytes32("test"));
+        bytes memory invalidPayload = abi.encode(uint8(255), bytes32("test"), uint128(0), bytes32(0), false);
 
         vm.expectRevert(IOnOfframpManager.UnknownTrustedCall.selector);
         vm.prank(contractUpdater);
@@ -288,16 +287,7 @@ contract OnOfframpManagerDepositSuccessTests is OnOfframpManagerTest {
 
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.serialize(
-                UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("onramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: bytes32(""),
-                    isEnabled: false
-                })
-            )
+            POOL_A, SC_1, abi.encode(UPDATE_ADDRESS, bytes32("onramp"), DEFAULT_ASSET_ID, bytes32(""), false)
         );
 
         vm.expectRevert(IOnOfframpManager.NotAllowedOnrampAsset.selector);

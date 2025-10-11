@@ -59,6 +59,7 @@ import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {IAsyncRequestManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 import {RefundEscrowFactory} from "../../src/vaults/factories/RefundEscrowFactory.sol";
 
 import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} from "../../script/FullDeployer.s.sol";
@@ -1052,7 +1053,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
             SC_1,
             s.centrifugeId,
             address(s.asyncRequestManager).toBytes32(),
-            UpdateContractMessageLib.UpdateContractWithdraw({who: RECEIVER.toBytes32(), value: VALUE}).serialize(),
+            abi.encode(uint8(IAsyncRequestManager.AsyncRequestManagerTrustedCall.Withdraw), RECEIVER.toBytes32(), VALUE),
             EXTRA_GAS,
             REFUND
         );

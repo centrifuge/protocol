@@ -50,12 +50,16 @@ contract OnOfframpManager is IOnOfframpManager {
         require(scId == scId_, InvalidShareClassId());
         require(msg.sender == contractUpdater, NotContractUpdater());
 
-        IOnOfframpManager.OnOfframpManagerTrustedCall kind = IOnOfframpManager.OnOfframpManagerTrustedCall(uint8(payload[0]));
+        (uint8 kindValue, bytes32 kindBytes, uint128 assetId, bytes32 what, bool isEnabled) =
+            abi.decode(payload, (uint8, bytes32, uint128, bytes32, bool));
+
+        if (kindValue > uint8(type(IOnOfframpManager.OnOfframpManagerTrustedCall).max)) {
+            revert UnknownTrustedCall();
+        }
+
+        IOnOfframpManager.OnOfframpManagerTrustedCall kind = IOnOfframpManager.OnOfframpManagerTrustedCall(kindValue);
 
         if (kind == IOnOfframpManager.OnOfframpManagerTrustedCall.UpdateAddress) {
-            (, bytes32 kindBytes, uint128 assetId, bytes32 what, bool isEnabled) =
-                abi.decode(payload, (uint8, bytes32, uint128, bytes32, bool));
-
             if (kindBytes == "onramp") {
                 (address asset, uint256 tokenId) = balanceSheet.spoke().idToAsset(AssetId.wrap(assetId));
                 require(tokenId == 0, ERC6909NotSupported());

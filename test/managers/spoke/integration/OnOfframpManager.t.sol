@@ -14,7 +14,7 @@ import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/Updat
 import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
 import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
 
-import {UpdateContractMessageLib} from "../../../../src/libraries/UpdateContractMessageLib.sol";
+uint8 constant UPDATE_ADDRESS = uint8(IOnOfframpManager.OnOfframpManagerTrustedCall.UpdateAddress);
 
 abstract contract OnOfframpManagerBaseTest is BaseTest {
     using CastLib for *;
@@ -87,12 +87,7 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
         manager.trustedCall(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractUpdateAddress({
-                kind: bytes32("onramp"),
-                assetId: defaultAssetId,
-                what: bytes32(""),
-                isEnabled: true
-            }).serialize()
+            abi.encode(UPDATE_ADDRESS, bytes32("onramp"), defaultAssetId, bytes32(""), true)
         );
 
         // Enable relayer
@@ -100,12 +95,7 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
         manager.trustedCall(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractUpdateAddress({
-                kind: bytes32("relayer"),
-                assetId: 0,
-                what: relayer.toBytes32(),
-                isEnabled: true
-            }).serialize()
+            abi.encode(UPDATE_ADDRESS, bytes32("relayer"), uint128(0), relayer.toBytes32(), true)
         );
 
         // Enable offramp destination
@@ -113,12 +103,7 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
         manager.trustedCall(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractUpdateAddress({
-                kind: bytes32("offramp"),
-                assetId: defaultAssetId,
-                what: receiver.toBytes32(),
-                isEnabled: true
-            }).serialize()
+            abi.encode(UPDATE_ADDRESS, bytes32("offramp"), defaultAssetId, receiver.toBytes32(), true)
         );
 
         // Set manager permissions
