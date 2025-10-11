@@ -21,14 +21,13 @@ import {IDepositManager, IWithdrawManager} from "../../../../src/managers/spoke/
 
 import "forge-std/Test.sol";
 
-import {UpdateContractMessageLib} from "../../../../src/libraries/UpdateContractMessageLib.sol";
+uint8 constant UPDATE_ADDRESS = uint8(IOnOfframpManager.OnOfframpManagerTrustedCall.UpdateAddress);
 
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}
 
 contract OnOfframpManagerTest is Test {
     using CastLib for *;
-    using UpdateContractMessageLib for *;
 
     IBalanceSheet balanceSheet = IBalanceSheet(address(new IsContract()));
     ISpoke spoke = ISpoke(address(new IsContract()));
@@ -131,64 +130,28 @@ contract OnOfframpManagerTest is Test {
     function _enableOnramp() internal {
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.serialize(
-                UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("onramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: bytes32(""),
-                    isEnabled: true
-                })
-            )
+            POOL_A, SC_1, abi.encode(UPDATE_ADDRESS, bytes32("onramp"), DEFAULT_ASSET_ID, bytes32(""), true)
         );
     }
 
     function _enableRelayer(address relayer_) internal {
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.serialize(
-                UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("relayer"),
-                    assetId: 0,
-                    what: relayer_.toBytes32(),
-                    isEnabled: true
-                })
-            )
+            POOL_A, SC_1, abi.encode(UPDATE_ADDRESS, bytes32("relayer"), uint128(0), relayer_.toBytes32(), true)
         );
     }
 
     function _enableOfframp(address receiver_) internal {
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.serialize(
-                UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("offramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: receiver_.toBytes32(),
-                    isEnabled: true
-                })
-            )
+            POOL_A, SC_1, abi.encode(UPDATE_ADDRESS, bytes32("offramp"), DEFAULT_ASSET_ID, receiver_.toBytes32(), true)
         );
     }
 
     function _disableOfframp(address receiver_) internal {
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.serialize(
-                UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("offramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: receiver_.toBytes32(),
-                    isEnabled: false
-                })
-            )
+            POOL_A, SC_1, abi.encode(UPDATE_ADDRESS, bytes32("offramp"), DEFAULT_ASSET_ID, receiver_.toBytes32(), false)
         );
     }
 }
@@ -202,16 +165,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
         vm.expectRevert(IOnOfframpManager.NotContractUpdater.selector);
         vm.prank(notContractUpdater);
         manager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.serialize(
-                UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("onramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: bytes32(""),
-                    isEnabled: true
-                })
-            )
+            POOL_A, SC_1, abi.encode(UPDATE_ADDRESS, bytes32("onramp"), DEFAULT_ASSET_ID, bytes32(""), true)
         );
     }
 
@@ -219,16 +173,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
         vm.expectRevert(IOnOfframpManager.InvalidPoolId.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_B,
-            SC_1,
-            UpdateContractMessageLib.serialize(
-                UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("onramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: bytes32(""),
-                    isEnabled: true
-                })
-            )
+            POOL_B, SC_1, abi.encode(UPDATE_ADDRESS, bytes32("onramp"), DEFAULT_ASSET_ID, bytes32(""), true)
         );
     }
 
@@ -238,16 +183,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
         vm.expectRevert(IOnOfframpManager.InvalidShareClassId.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_A,
-            wrongScId,
-            UpdateContractMessageLib.serialize(
-                UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("onramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: bytes32(""),
-                    isEnabled: true
-                })
-            )
+            POOL_A, wrongScId, abi.encode(UPDATE_ADDRESS, bytes32("onramp"), DEFAULT_ASSET_ID, bytes32(""), true)
         );
     }
 
@@ -260,16 +196,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
         vm.expectRevert(IOnOfframpManager.ERC6909NotSupported.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.serialize(
-                UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("onramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: bytes32(""),
-                    isEnabled: true
-                })
-            )
+            POOL_A, SC_1, abi.encode(UPDATE_ADDRESS, bytes32("onramp"), DEFAULT_ASSET_ID, bytes32(""), true)
         );
     }
 
@@ -282,16 +209,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
         vm.expectRevert(IOnOfframpManager.ERC6909NotSupported.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.serialize(
-                UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("offramp"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: receiver.toBytes32(),
-                    isEnabled: true
-                })
-            )
+            POOL_A, SC_1, abi.encode(UPDATE_ADDRESS, bytes32("offramp"), DEFAULT_ASSET_ID, receiver.toBytes32(), true)
         );
     }
 
@@ -299,24 +217,15 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
         vm.expectRevert(IOnOfframpManager.UnknownUpdateContractKind.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.serialize(
-                UpdateContractMessageLib.UpdateContractUpdateAddress({
-                    kind: bytes32("unknown"),
-                    assetId: DEFAULT_ASSET_ID,
-                    what: bytes32(""),
-                    isEnabled: true
-                })
-            )
+            POOL_A, SC_1, abi.encode(UPDATE_ADDRESS, bytes32("unknown"), DEFAULT_ASSET_ID, bytes32(""), true)
         );
     }
 
-    function testUnknownUpdateContractType() public {
-        // Create payload with valid enum but unsupported type (Valuation instead of UpdateAddress)
-        bytes memory invalidPayload = abi.encodePacked(uint8(1), bytes32("test"));
+    function testUnknownTrustedCall() public {
+        // Create payload with invalid enum value
+        bytes memory invalidPayload = abi.encode(uint8(255), bytes32("test"));
 
-        vm.expectRevert(IContractUpdate.UnknownUpdateContractType.selector);
+        vm.expectRevert(IOnOfframpManager.UnknownTrustedCall.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(POOL_A, SC_1, invalidPayload);
     }

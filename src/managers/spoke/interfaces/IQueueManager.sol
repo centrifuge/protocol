@@ -9,6 +9,10 @@ import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 /// @notice Interface for managing queued asset and share synchronization across chains
 /// @dev    Handles delayed sync operations with configurable minimum delays and gas limits
 interface IQueueManager {
+    enum QueueManagerTrustedCall {
+        UpdateQueue
+    }
+
     event UpdateQueueConfig(
         PoolId indexed poolId, ShareClassId indexed scId, uint64 newMinDelay, uint128 newExtraGasLimit
     );
@@ -18,6 +22,7 @@ interface IQueueManager {
     error MinDelayNotElapsed();
     error NoUpdateForAsset();
     error InsufficientFunds();
+    error UnknownTrustedCall();
 
     struct ShareClassQueueState {
         uint64 minDelay;

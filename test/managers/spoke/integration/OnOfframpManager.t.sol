@@ -78,7 +78,6 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
 
 contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
     using CastLib for *;
-    using UpdateContractMessageLib for *;
 
     function testDepositAndWithdrawHappyPath() public {
         uint128 amount = 100;

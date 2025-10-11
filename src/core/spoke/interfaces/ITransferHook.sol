@@ -33,11 +33,20 @@ address constant ESCROW_HOOK_ID = address(uint160(0x1CF60));
 ///         Endorsed refers to core protocol contracts, which can be retrieved using root.endorsed(addr)
 interface ITransferHook is IERC165 {
     //----------------------------------------------------------------------------------------------
+    // Enums
+    //----------------------------------------------------------------------------------------------
+
+    enum BaseTransferHookTrustedCall {
+        UpdateAddress
+    }
+
+    //----------------------------------------------------------------------------------------------
     // Errors
     //----------------------------------------------------------------------------------------------
 
     error TransferBlocked();
     error InvalidUpdate();
+    error UnknownTrustedCall();
 
     //----------------------------------------------------------------------------------------------
     // Callbacks

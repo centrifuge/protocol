@@ -34,8 +34,6 @@ import {ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 import {ITrustedContractUpdate} from "../core/interfaces/IContractUpdate.sol";
 
-
-
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
@@ -209,15 +207,14 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
 
     /// @inheritdoc ITrustedContractUpdate
     function trustedCall(PoolId poolId, ShareClassId, bytes memory payload) external auth {
-        uint8 kind = payload.toUint8(0);
+        IAsyncRequestManager.AsyncRequestManagerTrustedCall kind = IAsyncRequestManager.AsyncRequestManagerTrustedCall(payload.toUint8(0));
 
-        if (kind == 0) {
-            // Withdraw
+        if (kind == IAsyncRequestManager.AsyncRequestManagerTrustedCall.Withdraw) {
             (, bytes32 who, uint256 value) = abi.decode(payload, (uint8, bytes32, uint256));
 
             withdrawSubsidy(poolId, who.toAddress(), value);
         } else {
-            revert UnknownUpdateContractType();
+            revert UnknownTrustedCall();
         }
     }
 

@@ -8,11 +8,7 @@ enum UpdateContractType {
     /// @dev Placeholder for null update restriction type
     Invalid,
     Valuation,
-    SyncDepositMaxReserve,
-    UpdateAddress,
-    Policy,
-    UpdateQueue,
-    Withdraw
+    SyncDepositMaxReserve
 }
 
 library UpdateContractMessageLib {
@@ -67,99 +63,5 @@ library UpdateContractMessageLib {
 
     function serialize(UpdateContractSyncDepositMaxReserve memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(UpdateContractType.SyncDepositMaxReserve, t.assetId, t.maxReserve);
-    }
-
-    //---------------------------------------
-    //   UpdateContract.UpdateAddress (submsg)
-    //---------------------------------------
-
-    struct UpdateContractUpdateAddress {
-        bytes32 kind;
-        uint128 assetId;
-        bytes32 what;
-        bool isEnabled;
-    }
-
-    function deserializeUpdateContractUpdateAddress(bytes memory data)
-        internal
-        pure
-        returns (UpdateContractUpdateAddress memory)
-    {
-        require(updateContractType(data) == UpdateContractType.UpdateAddress, UnknownMessageType());
-
-        return UpdateContractUpdateAddress({
-            kind: data.toBytes32(1),
-            assetId: data.toUint128(33),
-            what: data.toBytes32(49),
-            isEnabled: data.toBool(81)
-        });
-    }
-
-    function serialize(UpdateContractUpdateAddress memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.UpdateAddress, t.kind, t.assetId, t.what, t.isEnabled);
-    }
-
-    //---------------------------------------
-    //   UpdateContract.Policy (submsg)
-    //---------------------------------------
-
-    struct UpdateContractPolicy {
-        bytes32 who;
-        bytes32 what;
-    }
-
-    function deserializeUpdateContractPolicy(bytes memory data) internal pure returns (UpdateContractPolicy memory) {
-        require(updateContractType(data) == UpdateContractType.Policy, UnknownMessageType());
-
-        return UpdateContractPolicy({who: data.toBytes32(1), what: data.toBytes32(33)});
-    }
-
-    function serialize(UpdateContractPolicy memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.Policy, t.who, t.what);
-    }
-
-    //   UpdateContract.UpdateQueue (submsg)
-    //---------------------------------------
-
-    struct UpdateContractUpdateQueue {
-        uint64 minDelay;
-        uint128 extraGasLimit;
-    }
-
-    function deserializeUpdateContractUpdateQueue(bytes memory data)
-        internal
-        pure
-        returns (UpdateContractUpdateQueue memory)
-    {
-        require(updateContractType(data) == UpdateContractType.UpdateQueue, UnknownMessageType());
-
-        return UpdateContractUpdateQueue({minDelay: data.toUint64(1), extraGasLimit: data.toUint128(9)});
-    }
-
-    function serialize(UpdateContractUpdateQueue memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.UpdateQueue, t.minDelay, t.extraGasLimit);
-    }
-
-    //---------------------------------------
-    //   UpdateContract.Withdraw (submsg)
-    //---------------------------------------
-
-    struct UpdateContractWithdraw {
-        bytes32 who;
-        uint256 value;
-    }
-
-    function deserializeUpdateContractWithdraw(bytes memory data)
-        internal
-        pure
-        returns (UpdateContractWithdraw memory)
-    {
-        require(updateContractType(data) == UpdateContractType.Withdraw, UnknownMessageType());
-
-        return UpdateContractWithdraw({who: data.toBytes32(1), value: data.toUint256(33)});
-    }
-
-    function serialize(UpdateContractWithdraw memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.Withdraw, t.who, t.value);
     }
 }

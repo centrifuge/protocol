@@ -15,8 +15,6 @@ import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
 
-
-
 /// @title  OnOfframpManager
 /// @notice Balance sheet manager for depositing and withdrawing ERC20 assets.
 ///         - Onramping is permissionless: once an asset is allowed to be onramped and ERC20 assets have been
@@ -52,10 +50,9 @@ contract OnOfframpManager is IOnOfframpManager {
         require(scId == scId_, InvalidShareClassId());
         require(msg.sender == contractUpdater, NotContractUpdater());
 
-        uint8 kind = uint8(payload[0]);
+        IOnOfframpManager.OnOfframpManagerTrustedCall kind = IOnOfframpManager.OnOfframpManagerTrustedCall(uint8(payload[0]));
 
-        if (kind == 0) {
-            // UpdateAddress
+        if (kind == IOnOfframpManager.OnOfframpManagerTrustedCall.UpdateAddress) {
             (, bytes32 kindBytes, uint128 assetId, bytes32 what, bool isEnabled) =
                 abi.decode(payload, (uint8, bytes32, uint128, bytes32, bool));
 
@@ -85,7 +82,7 @@ contract OnOfframpManager is IOnOfframpManager {
                 revert UnknownUpdateContractKind();
             }
         } else {
-            revert UnknownUpdateContractType();
+            revert UnknownTrustedCall();
         }
     }
 

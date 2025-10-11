@@ -12,8 +12,6 @@ import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
 
-
-
 /// @title  Merkle Proof Manager
 /// @author Inspired by Boring Vaults from Se7en-Seas
 contract MerkleProofManager is IMerkleProofManager, ITrustedContractUpdate {
@@ -45,9 +43,8 @@ contract MerkleProofManager is IMerkleProofManager, ITrustedContractUpdate {
         require(poolId == poolId_, InvalidPoolId());
         require(msg.sender == contractUpdater, NotAuthorized());
 
-        uint8 kind = uint8(payload[0]);
-        if (kind == 0) {
-            // Policy
+        IMerkleProofManager.MerkleProofManagerTrustedCall kind = IMerkleProofManager.MerkleProofManagerTrustedCall(uint8(payload[0]));
+        if (kind == IMerkleProofManager.MerkleProofManagerTrustedCall.Policy) {
             (, bytes32 who, bytes32 what) = abi.decode(payload, (uint8, bytes32, bytes32));
             address strategist = who.toAddress();
 
@@ -56,7 +53,7 @@ contract MerkleProofManager is IMerkleProofManager, ITrustedContractUpdate {
 
             emit UpdatePolicy(strategist, oldRoot, what);
         } else {
-            revert UnknownUpdateContractType();
+            revert UnknownTrustedCall();
         }
     }
 

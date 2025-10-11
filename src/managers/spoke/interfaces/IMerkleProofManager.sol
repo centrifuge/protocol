@@ -22,6 +22,10 @@ interface IERC7751 {
 }
 
 interface IMerkleProofManager is IERC7751 {
+    enum MerkleProofManagerTrustedCall {
+        Policy
+    }
+
     event UpdatePolicy(address indexed strategist, bytes32 oldRoot, bytes32 newRoot);
     event ExecuteCall(address indexed target, bytes4 indexed selector, bytes targetData, uint256 value);
 
@@ -36,6 +40,7 @@ interface IMerkleProofManager is IERC7751 {
     error NotAStrategist();
     error InvalidPoolId();
     error NotAuthorized();
+    error UnknownTrustedCall();
 
     /// @notice Execute a series of calls.
     function execute(Call[] calldata calls) external;

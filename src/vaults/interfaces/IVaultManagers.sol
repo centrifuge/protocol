@@ -311,6 +311,10 @@ struct AsyncInvestmentState {
 //----------------------------------------------------------------------------------------------
 
 interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, ITrustedContractUpdate {
+    enum AsyncRequestManagerTrustedCall {
+        Withdraw
+    }
+
     event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
     event WithdrawSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
 
@@ -329,6 +333,7 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, ITr
     error VaultNotLinked();
     error RefundEscrowNotDeployed();
     error NotEnoughToWithdraw();
+    error UnknownTrustedCall();
 
     /// @notice Deposit funds to subsidy vault actions through the gateway
     function depositSubsidy(PoolId poolId) external payable;

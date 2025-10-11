@@ -16,7 +16,7 @@ import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueMan
 
 import "forge-std/Test.sol";
 
-import {UpdateContractMessageLib} from "../../../../src/libraries/UpdateContractMessageLib.sol";
+uint8 constant UPDATE_QUEUE = uint8(IQueueManager.QueueManagerTrustedCall.UpdateQueue);
 
 contract IsContract {}
 
@@ -37,7 +37,6 @@ contract MockGateway {
 
 contract QueueManagerTest is Test {
     using CastLib for *;
-    using UpdateContractMessageLib for *;
 
     PoolId constant POOL_A = PoolId.wrap(1);
     PoolId constant POOL_B = PoolId.wrap(2);
@@ -131,46 +130,30 @@ contract QueueManagerConstructorTest is QueueManagerTest {
 }
 
 contract QueueManagerUpdateContractFailureTests is QueueManagerTest {
-    using UpdateContractMessageLib for *;
-
     function testInvalidUpdater(address notContractUpdater) public {
         vm.assume(notContractUpdater != contractUpdater);
 
         vm.expectRevert(IQueueManager.NotContractUpdater.selector);
         vm.prank(notContractUpdater);
-        queueManager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: DEFAULT_MIN_DELAY, extraGasLimit: 0})
-                .serialize()
-        );
+        queueManager.trustedCall(POOL_A, SC_1, abi.encode(UPDATE_QUEUE, DEFAULT_MIN_DELAY, uint64(0)));
     }
 
-    function testUnknownUpdateContractType() public {
+    function testUnknownTrustedCall() public {
         bytes memory invalidPayload = abi.encode(uint8(255), bytes("invalid"));
 
-        vm.expectRevert(IContractUpdate.UnknownUpdateContractType.selector);
+        vm.expectRevert(IQueueManager.UnknownTrustedCall.selector);
         vm.prank(contractUpdater);
         queueManager.trustedCall(POOL_A, SC_1, invalidPayload);
     }
 }
 
 contract QueueManagerUpdateContractSuccessTests is QueueManagerTest {
-    using UpdateContractMessageLib for *;
-
     function testUpdateQueueConfig() public {
         vm.expectEmit();
         emit IQueueManager.UpdateQueueConfig(POOL_A, SC_1, DEFAULT_MIN_DELAY, DEFAULT_EXTRA_GAS);
 
         vm.prank(contractUpdater);
-        queueManager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.UpdateContractUpdateQueue({
-                minDelay: DEFAULT_MIN_DELAY,
-                extraGasLimit: DEFAULT_EXTRA_GAS
-            }).serialize()
-        );
+        queueManager.trustedCall(POOL_A, SC_1, abi.encode(UPDATE_QUEUE, DEFAULT_MIN_DELAY, DEFAULT_EXTRA_GAS));
 
         (uint64 minDelay, uint64 lastSync, uint128 extraGasLimit) = queueManager.scQueueState(POOL_A, SC_1);
         assertEq(minDelay, DEFAULT_MIN_DELAY);
@@ -180,18 +163,10 @@ contract QueueManagerUpdateContractSuccessTests is QueueManagerTest {
 
     function testUpdateMultipleShareClasses() public {
         vm.prank(contractUpdater);
-        queueManager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: 1000, extraGasLimit: 500}).serialize()
-        );
+        queueManager.trustedCall(POOL_A, SC_1, abi.encode(UPDATE_QUEUE, uint64(1000), uint64(500)));
 
         vm.prank(contractUpdater);
-        queueManager.trustedCall(
-            POOL_A,
-            SC_2,
-            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: 2000, extraGasLimit: 1000}).serialize()
-        );
+        queueManager.trustedCall(POOL_A, SC_2, abi.encode(UPDATE_QUEUE, uint64(2000), uint64(1000)));
 
         (uint64 minDelay1,, uint128 extraGasLimit1) = queueManager.scQueueState(POOL_A, SC_1);
         (uint64 minDelay2,, uint128 extraGasLimit2) = queueManager.scQueueState(POOL_A, SC_2);
@@ -204,8 +179,6 @@ contract QueueManagerUpdateContractSuccessTests is QueueManagerTest {
 }
 
 contract QueueManagerSyncFailureTests is QueueManagerTest {
-    using UpdateContractMessageLib for *;
-
     function testSyncWithNoUpdates() public {
         AssetId[] memory assetIds = new AssetId[](0);
 
@@ -215,12 +188,7 @@ contract QueueManagerSyncFailureTests is QueueManagerTest {
 
     function testMinDelayNotElapsed() public {
         vm.prank(contractUpdater);
-        queueManager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: DEFAULT_MIN_DELAY, extraGasLimit: 0})
-                .serialize()
-        );
+        queueManager.trustedCall(POOL_A, SC_1, abi.encode(UPDATE_QUEUE, DEFAULT_MIN_DELAY, uint64(0)));
 
         _mockQueuedShares(POOL_A, SC_1, 100, true, 1);
         _mockQueuedAssets(POOL_A, SC_1, ASSET_1, 100, 0);
@@ -258,8 +226,6 @@ contract QueueManagerSyncFailureTests is QueueManagerTest {
 }
 
 contract QueueManagerSyncSuccessTests is QueueManagerTest {
-    using UpdateContractMessageLib for *;
-
     function testSyncAllAssetsAndShares() public {
         _mockQueuedShares(POOL_A, SC_1, 300, true, 3);
         _mockQueuedAssets(POOL_A, SC_1, ASSET_1, 100, 0);
@@ -345,11 +311,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
     /// forge-config: default.isolate = true
     function testSyncWithZeroMinDelay() public {
         vm.prank(contractUpdater);
-        queueManager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: 0, extraGasLimit: 0}).serialize()
-        );
+        queueManager.trustedCall(POOL_A, SC_1, abi.encode(uint8(0), uint64(0), uint64(0)));
 
         _mockQueuedShares(POOL_A, SC_1, 100, true, 1);
         _mockQueuedAssets(POOL_A, SC_1, ASSET_1, 100, 0);
@@ -366,12 +328,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
     /// forge-config: default.isolate = true
     function testMinDelayElapsedAfterTime() public {
         vm.prank(contractUpdater);
-        queueManager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: DEFAULT_MIN_DELAY, extraGasLimit: 0})
-                .serialize()
-        );
+        queueManager.trustedCall(POOL_A, SC_1, abi.encode(uint8(0), DEFAULT_MIN_DELAY, uint64(0)));
 
         _mockQueuedShares(POOL_A, SC_1, 100, true, 1);
         _mockQueuedAssets(POOL_A, SC_1, ASSET_1, 100, 0);
@@ -390,11 +347,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         extraGasLimit = uint128(bound(extraGasLimit, 0, 50_000_000));
 
         vm.prank(contractUpdater);
-        queueManager.trustedCall(
-            POOL_A,
-            SC_1,
-            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: 0, extraGasLimit: extraGasLimit}).serialize()
-        );
+        queueManager.trustedCall(POOL_A, SC_1, abi.encode(uint8(0), uint64(0), extraGasLimit));
 
         _mockQueuedShares(POOL_A, SC_1, 100, true, 1);
         _mockQueuedAssets(POOL_A, SC_1, ASSET_1, 100, 0);
