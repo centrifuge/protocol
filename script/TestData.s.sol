@@ -35,16 +35,14 @@ import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
+import {ISyncManager} from "../src/vaults/interfaces/IVaultManagers.sol";
 
 import "forge-std/Script.sol";
-
-import {UpdateContractMessageLib} from "../src/libraries/UpdateContractMessageLib.sol";
 
 // Script to deploy Hub and Vaults with a Localhost Adapter.
 contract TestData is LaunchDeployer {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
-    using UpdateContractMessageLib for *;
 
     uint128 constant DEFAULT_EXTRA_GAS = uint128(2_000_000);
 
@@ -331,10 +329,7 @@ contract TestData is LaunchDeployer {
             scId,
             centrifugeId,
             address(syncManager).toBytes32(),
-            UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
-                assetId: assetId.raw(),
-                maxReserve: type(uint128).max
-            }).serialize(),
+            abi.encode(uint8(ISyncManager.SyncManagerTrustedCall.MaxReserve), assetId.raw(), type(uint128).max),
             0,
             msg.sender
         );

@@ -16,10 +16,9 @@ import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/Updat
 import {SyncManager} from "../../../../src/vaults/SyncManager.sol";
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 import {RequestCallbackMessageLib} from "../../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
+import {ISyncManager} from "../../../../src/vaults/interfaces/IVaultManagers.sol";
 
 import "forge-std/Test.sol";
-
-import {UpdateContractMessageLib} from "../../../../src/libraries/UpdateContractMessageLib.sol";
 
 interface AdapterLike {
     function execute(bytes memory _message) external;
@@ -29,7 +28,6 @@ contract MockCentrifugeChain is Test {
     using CastLib for *;
     using MessageLib for *;
     using UpdateRestrictionMessageLib for *;
-    using UpdateContractMessageLib for *;
     using RequestCallbackMessageLib for *;
 
     IAdapter[] public adapters;
@@ -86,10 +84,9 @@ contract MockCentrifugeChain is Test {
                 poolId: poolId,
                 scId: scId,
                 target: bytes32(bytes20(address(syncManager))),
-                payload: UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
-                    assetId: vaultDetails.assetId.raw(),
-                    maxReserve: maxReserve
-                }).serialize()
+                payload: abi.encode(
+                    uint8(ISyncManager.SyncManagerTrustedCall.MaxReserve), vaultDetails.assetId.raw(), maxReserve
+                )
             }).serialize()
         );
     }

@@ -59,7 +59,7 @@ import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
-import {IAsyncRequestManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncRequestManager, ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 import {RefundEscrowFactory} from "../../src/vaults/factories/RefundEscrowFactory.sol";
 
 import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} from "../../script/FullDeployer.s.sol";
@@ -67,7 +67,6 @@ import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} 
 import "forge-std/Test.sol";
 
 import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
-import {UpdateContractMessageLib} from "../../src/libraries/UpdateContractMessageLib.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///
@@ -386,7 +385,6 @@ contract EndToEndUtils is EndToEndDeployment {
 /// Base investment flows that can be shared between EndToEnd tests
 contract EndToEndFlows is EndToEndUtils {
     using CastLib for *;
-    using UpdateContractMessageLib for *;
     using UpdateRestrictionMessageLib for *;
     using MathLib for *;
 
@@ -398,10 +396,7 @@ contract EndToEndFlows is EndToEndUtils {
     }
 
     function _updateContractSyncDepositMaxReserveMsg(uint128 maxReserve) internal view returns (bytes memory) {
-        return UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
-            assetId: s.usdcId.raw(),
-            maxReserve: maxReserve
-        }).serialize();
+        return abi.encode(uint8(ISyncManager.SyncManagerTrustedCall.MaxReserve), s.usdcId.raw(), maxReserve);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -722,7 +717,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     using CastLib for *;
     using MathLib for *;
     using MessageLib for *;
-    using UpdateContractMessageLib for *;
 
     function setUp() public virtual override {
         super.setUp();

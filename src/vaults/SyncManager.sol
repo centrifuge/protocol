@@ -145,7 +145,8 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     function maxDeposit(IBaseVault vault_, address owner) public view returns (uint256 assets) {
         VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
         assets = _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
-        if (!_canTransfer(vault_, address(0), owner, assets)) return 0;
+        uint256 shares = convertToShares(vault_, assets);
+        if (!_canTransfer(vault_, address(0), owner, shares)) return 0;
     }
 
     /// @inheritdoc ISyncManager
