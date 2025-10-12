@@ -1,0 +1,25 @@
+@startuml hooks
+title Transfer Hooks
+hide empty members
+
+package core {
+    class ShareToken
+    interface ITransferHook
+}
+
+abstract BaseTransferHook
+class FreelyTransferable
+class FreezeOnly
+class FullRestrictions
+class RedemptionRestrictions
+
+BaseTransferHook -up-|> ITransferHook
+
+FreelyTransferable -up-|> BaseTransferHook
+FreezeOnly -up-|> BaseTransferHook
+FullRestrictions -up-|> BaseTransferHook
+RedemptionRestrictions -up-|> BaseTransferHook
+
+ShareToken --> ITransferHook
+
+@enduml

@@ -1,78 +1,39 @@
 # Spoke
 
-The Spoke module is a core component of the Centrifuge protocol's on-chain infrastructure, responsible for local management and orchestration of asset pools, share classes, vaults, and related operations. It acts as the local registry and integration hub for factory-based deployments and other pool contracts.
+The `Spoke` module manages the local state and operations for pools and share classes on each chain. It handles share token deployment, vault registration, asset tracking, cross-chain transfers, and coordinates with the `BalanceSheet` for pool-level balance management and escrow operations.
 
-![](https://docs.centrifuge.io/assets/images/spoke-50f8eb7f69d4fab91f1d2345cd0df811.png)
+![Spoke architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/core/spoke.puml)
 
-## Contracts
+### `Spoke`
 
-### Spoke
+The `Spoke` contract serves as the local registry and coordination hub for all pool operations on a given chain. It manages pool and share class registration, tracks asset mappings between local addresses and global `AssetId`s, and coordinates cross-chain share transfers. The contract integrates with `TokenFactory` to deploy `ShareToken` instances, `PoolEscrowFactory` to create pool-specific escrows, and the `Gateway`'s message sender to communicate state changes to other chains.
 
-The `Spoke` contract serves as:
+The `Spoke` maintains price feeds for assets within each pool and share class, enabling local price lookups and validation. It handles asset registration with decimal validation and metadata extraction from ERC20 or ERC6909 tokens. For cross-chain operations, it enforces transfer restrictions via the `ShareToken`'s hook system, burns shares locally, and dispatches transfer messages to destination chains. The contract also provides request manager assignment per pool and supports untrusted contract update messages for extensibility.
 
-* A **local registry** for pools, share classes, and associated vaults.
-* An **integration point** for factories like `TokenFactory`, `VaultFactory`, and `PoolEscrowFactory`.
-* A **router** for inter-contract coordination, including dispatching messages via the `MessageDispatcher`.
+### `ShareToken`
 
-Key integrations:
+`ShareToken` is an ERC20-compliant token with ERC1404 restriction enforcement and optional transfer hook integration. Each token represents shares in a specific pool and share class, with decimals configurable per deployment. The contract integrates with an optional `ITransferHook` for custom transfer logic, restriction checks, and per-user hook data storage using a compact bytes16 format.
 
-* `TokenFactory` – to deploy `ShareToken` instances.
-* `VaultFactory` – to deploy pool vaults.
-* `PoolEscrowFactory` – for creating pool-specific escrows.
-* `BalanceSheet` – to enable financial tracking and share/token management.
+The token supports authorized transfers where approved managers can move tokens on behalf of users without standard ERC20 approvals. It maintains vault mappings per asset address, enabling different vaults to interact with the same share token for multi-asset pool support. Hook data can be set by either authorized contracts or the hook itself, enabling stateful transfer logic like redemption restrictions, freeze mechanisms, or identity verification.
 
-### Escrow
+### `BalanceSheet`
 
-There are two primary types of escrow contracts:
+The `BalanceSheet` contract manages all balance sheet operations for pools including share issuance/revocation and asset deposits/withdrawals. It queues share and asset updates to reduce cross-chain messaging costs, allowing batched state synchronization with the `Hub`. Managers assigned per pool have authorization to execute balance sheet operations.
 
-* **Global Escrow** (`Escrow`)
-  Used to hold pending requests and ensure secure settlement across the system.
+The contract coordinates with `PoolEscrow` for asset custody, `Spoke` for share token and asset lookups, and the `Gateway`'s message sender for cross-chain communication. It supports forced share transfers for special scenarios and integrates with an endorsements contract for additional validation. Queued updates track both issuance and revocation amounts, with separate queues per share class and asset, enabling fine-grained control over when state is synchronized across chains.
 
-* **Pool Escrow** (`PoolEscrow`)
-  Tied to individual pools, it holds the balance sheet for assets and liabilities associated with that pool.
+The following diagram shows how deposits and withdrawals impact the state of the balance sheet and pool escrow:
 
-Factories such as `PoolEscrowFactory` are responsible for deterministic escrow deployments.
+![Balance sheet diagram](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/core/spoke/balance-sheet.puml)
 
-### BalanceSheet
+### `PoolEscrow`
 
-The `BalanceSheet` contract:
+`PoolEscrow` provides pool-specific asset custody separated by share class. Each escrow is tied to a single pool and holds assets across multiple share classes, tracking both total holdings and reserved amounts per asset. Reserved amounts enable pending operations like withdrawal requests to lock funds without fully removing them from the pool.
 
-* Tracks **asset and share class balances**.
-* Authorizes **manager contracts** to interact with share tokens and vaults.
-* Coordinates with `MerkleProofManager` and `OnOfframpManager` to verify and execute off-chain proofs and liquidity bridges.
+The contract exposes deposit, withdraw, reserve, and unreserve operations, all auth-protected and typically called by the `BalanceSheet`. Available balance calculations subtract reserved amounts from totals, ensuring reserved funds cannot be double-spent. The escrow extends the base `Escrow` contract with share class-level accounting and is deployed deterministically per pool by `PoolEscrowFactory`.
 
-Vault managers like `SyncManager` and `AsyncRequestManager` interact with this module to perform vault-specific logic.
+### `VaultRegistry`
 
-### ShareToken
+`VaultRegistry` manages vault deployment, linking, and unlinking for pool share classes and assets. It supports three vault update kinds: deploy-and-link (using a factory), link (existing vault), and unlink (remove association). The registry tracks vault details including the associated pool, share class, asset, and request manager, enabling reverse lookups from vault address to pool context.
 
-`ShareToken` is a custom ERC20 implementation with additional features:
-
-* **ERC1404 compatibility**: Allows restriction enforcement on transfers.
-* **ERC20 callbacks**: Integrates with `ITransferHook` for transfer-related hooks.
-* Optional **transfer restriction logic** provided by:
-
-  * `FreezeOnly`
-  * `RedemptionRestrictions`
-  * `FullRestrictions`
-
-These hook contracts implement the `ITransferHook` interface and can be dynamically attached to `ShareToken`.
-
-Each `ShareToken` is instantiated by the `TokenFactory` and linked to a specific pool and share class.
-
-## Factories
-
-* **TokenFactory**: Creates ERC20-compliant `ShareToken` contracts.
-* **VaultFactory**: Spawns vaults that conform to `IVault`.
-* **PoolEscrowFactory**: Deploys dedicated `PoolEscrow` instances per pool.
-
-## Vaults and Managers
-
-Vaults manage capital allocation strategies. The Spoke coordinates with multiple vault interfaces:
-
-* `SyncManager` (synchronous interactions)
-* `AsyncRequestManager` (handles delayed execution flows)
-
-Managers are special contracts allowed to interact with vaults and balance sheets:
-
-* `OnOfframpManager`: Restricts on-offramp transactions.
-* `MerkleProofManager`: Integrates with external DeFi protocols.
+Vault deployment validates that async vaults have an associated request manager configured on the `Spoke`, preventing misconfigured deployments. Linking registers the vault in both forward (pool/shareClass/asset/manager → vault) and reverse (vault → details) mappings, while unlinking removes these associations and emits events for state tracking. The registry is called by the `Gateway`'s message processor when vault updates arrive from the `Hub`, ensuring vault configuration stays synchronized across chains.
