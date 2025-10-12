@@ -929,10 +929,10 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
 
     function testChainlinkCCIPZeroAddressFails() public {
         AdaptersInput memory invalidInput = AdaptersInput({
-            wormhole: WormholeInput({shouldDeploy: true, relayer: address(0)}),
+            wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
             layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
-            chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)})
+            chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: address(0)})
         });
 
         vm.expectRevert("Chainlink ccipRouter address cannot be zero");
@@ -942,10 +942,10 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
     function testChainlinkCCIPNoCodeFails() public {
         address mockCCIPRouter = makeAddr("MockCCIPRouterNoCode");
         AdaptersInput memory invalidInput = AdaptersInput({
-            wormhole: WormholeInput({shouldDeploy: true, relayer: address(0)}),
+            wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
             layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
-            chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: mockCCIPRouter})
+            chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: mockCCIPRouter})
         });
 
         vm.expectRevert("Chainlink ccipRouter must be a deployed contract");
