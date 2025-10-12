@@ -37,9 +37,9 @@ import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultF
 
 import "forge-std/Script.sol";
 
-import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
+import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 
 struct WormholeInput {
