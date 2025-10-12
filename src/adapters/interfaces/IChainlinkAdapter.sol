@@ -83,18 +83,18 @@ interface IRouterClient {
         returns (bytes32);
 }
 
-struct CCIPSource {
+struct ChainlinkSource {
     uint16 centrifugeId;
     address addr;
 }
 
-struct CCIPDestination {
+struct ChainlinkDestination {
     uint64 chainSelector;
     address addr;
 }
 
-/// @title  ICCIPAdapter
-interface ICCIPAdapter is IAdapter, IAdapterWiring, IAny2EVMMessageReceiver {
+/// @title  IChainlinkAdapter
+interface IChainlinkAdapter is IAdapter, IAdapterWiring, IAny2EVMMessageReceiver {
     //----------------------------------------------------------------------------------------------
     // Events
     //----------------------------------------------------------------------------------------------
@@ -115,15 +115,15 @@ interface ICCIPAdapter is IAdapter, IAdapterWiring, IAny2EVMMessageReceiver {
     // View methods
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Returns the source configuration for a given CCIP chain id
-    /// @param chainSelector The CCIP chain selector
+    /// @notice Returns the source configuration for a given Chainlink chain id
+    /// @param chainSelector The Chainlink chain selector
     /// @return centrifugeId The remote chain id
-    /// @return addr Address of the remote CCIP adapter
+    /// @return addr Address of the remote Chainlink adapter
     function sources(uint64 chainSelector) external view returns (uint16 centrifugeId, address addr);
 
     /// @notice Returns the destination configuration for a given chain id
     /// @param centrifugeId The remote chain id
-    /// @return chainSelector The CCIP chain selector
-    /// @return addr The address of the remote CCIP adapter
+    /// @return chainSelector The Chainlink chain selector
+    /// @return addr The address of the remote Chainlink adapter
     function destinations(uint16 centrifugeId) external view returns (uint64 chainSelector, address addr);
 }

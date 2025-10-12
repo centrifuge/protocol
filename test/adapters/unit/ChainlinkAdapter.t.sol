@@ -12,17 +12,17 @@ import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHa
 
 import "forge-std/Test.sol";
 
-import {CCIPAdapter} from "../../../src/adapters/CCIPAdapter.sol";
+import {ChainlinkAdapter} from "../../../src/adapters/ChainlinkAdapter.sol";
 import {
-    ICCIPAdapter,
+    IChainlinkAdapter,
     IAdapter,
-    CCIPSource,
-    CCIPDestination,
+    ChainlinkSource,
+    ChainlinkDestination,
     IRouterClient,
     IClient,
     EVM_EXTRA_ARGS_V1_TAG,
     IAny2EVMMessageReceiver
-} from "../../../src/adapters/interfaces/ICCIPAdapter.sol";
+} from "../../../src/adapters/interfaces/IChainlinkAdapter.sol";
 
 contract MockCCIPRouter is Mock {
     function isChainSupported(uint64 chainSelector) external pure returns (bool) {
@@ -49,53 +49,53 @@ contract MockCCIPRouter is Mock {
     }
 }
 
-contract CCIPAdapterTestBase is Test {
+contract ChainlinkAdapterTestBase is Test {
     MockCCIPRouter ccipRouter;
-    CCIPAdapter adapter;
+    ChainlinkAdapter adapter;
 
     uint16 constant CENTRIFUGE_ID = 1;
-    uint64 constant CCIP_CHAIN_SELECTOR = 2;
-    address immutable REMOTE_CCIP_ADDR = makeAddr("remoteAddress");
+    uint64 constant CHAINLINK_CHAIN_SELECTOR = 2;
+    address immutable REMOTE_CHAINLINK_ADDR = makeAddr("remoteAddress");
 
     IMessageHandler constant GATEWAY = IMessageHandler(address(1));
 
     function setUp() public {
         ccipRouter = new MockCCIPRouter();
-        adapter = new CCIPAdapter(GATEWAY, address(ccipRouter), address(this));
+        adapter = new ChainlinkAdapter(GATEWAY, address(ccipRouter), address(this));
     }
 }
 
-contract CCIPAdapterTestWire is CCIPAdapterTestBase {
+contract ChainlinkAdapterTestWire is ChainlinkAdapterTestBase {
     using CastLib for *;
 
     function testWireErrNotAuthorized() public {
         vm.prank(makeAddr("NotAuthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.wire(CENTRIFUGE_ID, abi.encode(CCIP_CHAIN_SELECTOR, REMOTE_CCIP_ADDR));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(CHAINLINK_CHAIN_SELECTOR, REMOTE_CHAINLINK_ADDR));
     }
 
     function testWire() public {
         vm.expectEmit();
-        emit ICCIPAdapter.Wire(CENTRIFUGE_ID, CCIP_CHAIN_SELECTOR, REMOTE_CCIP_ADDR);
-        adapter.wire(CENTRIFUGE_ID, abi.encode(CCIP_CHAIN_SELECTOR, REMOTE_CCIP_ADDR));
+        emit IChainlinkAdapter.Wire(CENTRIFUGE_ID, CHAINLINK_CHAIN_SELECTOR, REMOTE_CHAINLINK_ADDR);
+        adapter.wire(CENTRIFUGE_ID, abi.encode(CHAINLINK_CHAIN_SELECTOR, REMOTE_CHAINLINK_ADDR));
 
-        (uint16 centrifugeId, address addr) = adapter.sources(CCIP_CHAIN_SELECTOR);
+        (uint16 centrifugeId, address addr) = adapter.sources(CHAINLINK_CHAIN_SELECTOR);
         assertEq(centrifugeId, CENTRIFUGE_ID);
-        assertEq(addr, REMOTE_CCIP_ADDR);
+        assertEq(addr, REMOTE_CHAINLINK_ADDR);
 
         (uint64 chainSelector, address addr2) = adapter.destinations(CENTRIFUGE_ID);
-        assertEq(chainSelector, CCIP_CHAIN_SELECTOR);
-        assertEq(addr2, REMOTE_CCIP_ADDR);
+        assertEq(chainSelector, CHAINLINK_CHAIN_SELECTOR);
+        assertEq(addr2, REMOTE_CHAINLINK_ADDR);
     }
 
     function testIsWired() public {
         assertFalse(adapter.isWired(CENTRIFUGE_ID));
-        adapter.wire(CENTRIFUGE_ID, abi.encode(CCIP_CHAIN_SELECTOR, REMOTE_CCIP_ADDR));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(CHAINLINK_CHAIN_SELECTOR, REMOTE_CHAINLINK_ADDR));
         assertTrue(adapter.isWired(CENTRIFUGE_ID));
     }
 }
 
-contract CCIPAdapterTest is CCIPAdapterTestBase {
+contract ChainlinkAdapterTest is ChainlinkAdapterTestBase {
     using CastLib for *;
 
     function testDeploy() public view {
@@ -105,8 +105,8 @@ contract CCIPAdapterTest is CCIPAdapterTestBase {
         assertEq(adapter.wards(address(this)), 1);
     }
 
-    function testEstimateCCIP(uint64 gasLimit) public {
-        adapter.wire(CENTRIFUGE_ID, abi.encode(CCIP_CHAIN_SELECTOR, REMOTE_CCIP_ADDR));
+    function testEstimateChainlink(uint64 gasLimit) public {
+        adapter.wire(CENTRIFUGE_ID, abi.encode(CHAINLINK_CHAIN_SELECTOR, REMOTE_CHAINLINK_ADDR));
 
         bytes memory payload = "irrelevant";
         assertEq(adapter.estimate(CENTRIFUGE_ID, payload, gasLimit), 200_000);
@@ -120,7 +120,7 @@ contract CCIPAdapterTest is CCIPAdapterTestBase {
         address invalidOrigin
     ) public {
         vm.assume(keccak256(abi.encodePacked(invalidAddress)) != keccak256(abi.encodePacked(validAddress)));
-        vm.assume(invalidChainSelector != CCIP_CHAIN_SELECTOR);
+        vm.assume(invalidChainSelector != CHAINLINK_CHAIN_SELECTOR);
         vm.assume(invalidOrigin != address(ccipRouter));
         assumeNotZeroAddress(validAddress);
         assumeNotZeroAddress(invalidAddress);
@@ -131,7 +131,7 @@ contract CCIPAdapterTest is CCIPAdapterTestBase {
 
         IClient.Any2EVMMessage memory message = IClient.Any2EVMMessage({
             messageId: bytes32(uint256(1)),
-            sourceChainSelector: CCIP_CHAIN_SELECTOR,
+            sourceChainSelector: CHAINLINK_CHAIN_SELECTOR,
             sender: abi.encode(validAddress),
             data: payload,
             destTokenAmounts: new IClient.EVMTokenAmount[](0)
@@ -139,28 +139,28 @@ contract CCIPAdapterTest is CCIPAdapterTestBase {
 
         // Correct input, but not yet setup
         vm.prank(address(ccipRouter));
-        vm.expectRevert(ICCIPAdapter.InvalidSourceChain.selector);
+        vm.expectRevert(IChainlinkAdapter.InvalidSourceChain.selector);
         adapter.ccipReceive(message);
 
-        adapter.wire(CENTRIFUGE_ID, abi.encode(CCIP_CHAIN_SELECTOR, validAddress));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(CHAINLINK_CHAIN_SELECTOR, validAddress));
 
         // Incorrect address
         message.sender = abi.encode(invalidAddress);
         vm.prank(address(ccipRouter));
-        vm.expectRevert(ICCIPAdapter.InvalidSourceAddress.selector);
+        vm.expectRevert(IChainlinkAdapter.InvalidSourceAddress.selector);
         adapter.ccipReceive(message);
 
         // Correct sender, but from invalid chain
         message.sender = abi.encode(validAddress);
         message.sourceChainSelector = invalidChainSelector;
         vm.prank(address(ccipRouter));
-        vm.expectRevert(ICCIPAdapter.InvalidSourceChain.selector);
+        vm.expectRevert(IChainlinkAdapter.InvalidSourceChain.selector);
         adapter.ccipReceive(message);
 
         // Correct message, but incorrect caller
-        message.sourceChainSelector = CCIP_CHAIN_SELECTOR;
+        message.sourceChainSelector = CHAINLINK_CHAIN_SELECTOR;
         vm.prank(invalidOrigin);
-        vm.expectRevert(ICCIPAdapter.InvalidRouter.selector);
+        vm.expectRevert(IChainlinkAdapter.InvalidRouter.selector);
         adapter.ccipReceive(message);
 
         // Correct
@@ -183,7 +183,7 @@ contract CCIPAdapterTest is CCIPAdapterTestBase {
         vm.expectRevert(IAdapter.UnknownChainId.selector);
         adapter.send{value: 0.1 ether}(CENTRIFUGE_ID, payload, gasLimit, refund);
 
-        adapter.wire(CENTRIFUGE_ID, abi.encode(CCIP_CHAIN_SELECTOR, makeAddr("DestinationAdapter")));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(CHAINLINK_CHAIN_SELECTOR, makeAddr("DestinationAdapter")));
 
         vm.deal(address(this), 0.1 ether);
         vm.prank(address(GATEWAY));
@@ -191,7 +191,7 @@ contract CCIPAdapterTest is CCIPAdapterTestBase {
 
         assertEq(messageId, bytes32(uint256(123)));
         assertEq(ccipRouter.values_uint256("value"), 0.1 ether);
-        assertEq(ccipRouter.values_uint64("destinationChainSelector"), CCIP_CHAIN_SELECTOR);
+        assertEq(ccipRouter.values_uint64("destinationChainSelector"), CHAINLINK_CHAIN_SELECTOR);
         assertEq(ccipRouter.values_bytes("receiver"), abi.encode(makeAddr("DestinationAdapter")));
         assertEq(ccipRouter.values_bytes("data"), payload);
         assertEq(ccipRouter.values_address("feeToken"), address(0)); // Native token
