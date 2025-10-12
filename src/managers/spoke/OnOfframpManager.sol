@@ -52,11 +52,6 @@ contract OnOfframpManager is IOnOfframpManager {
 
         (uint8 kindValue, bytes32 kindBytes, uint128 assetId, bytes32 what, bool isEnabled) =
             abi.decode(payload, (uint8, bytes32, uint128, bytes32, bool));
-
-        if (kindValue > uint8(type(IOnOfframpManager.OnOfframpManagerTrustedCall).max)) {
-            revert UnknownTrustedCall();
-        }
-
         IOnOfframpManager.OnOfframpManagerTrustedCall kind = IOnOfframpManager.OnOfframpManagerTrustedCall(kindValue);
 
         if (kind == IOnOfframpManager.OnOfframpManagerTrustedCall.UpdateAddress) {

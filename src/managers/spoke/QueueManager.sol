@@ -42,10 +42,6 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
         require(msg.sender == contractUpdater, NotContractUpdater());
 
         (uint8 kindValue, uint64 minDelay, uint64 extraGasLimit) = abi.decode(payload, (uint8, uint64, uint64));
-        if (kindValue > uint8(type(IQueueManager.QueueManagerTrustedCall).max)) {
-            revert UnknownTrustedCall();
-        }
-
         IQueueManager.QueueManagerTrustedCall kind = IQueueManager.QueueManagerTrustedCall(kindValue);
         if (kind == IQueueManager.QueueManagerTrustedCall.UpdateQueue) {
             ShareClassQueueState storage sc = scQueueState[poolId][scId];

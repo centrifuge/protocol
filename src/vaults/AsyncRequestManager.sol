@@ -208,11 +208,6 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
     /// @inheritdoc ITrustedContractUpdate
     function trustedCall(PoolId poolId, ShareClassId, bytes memory payload) external auth {
         (uint8 kindValue, bytes32 who, uint256 value) = abi.decode(payload, (uint8, bytes32, uint256));
-
-        if (kindValue > uint8(type(IAsyncRequestManager.AsyncRequestManagerTrustedCall).max)) {
-            revert UnknownTrustedCall();
-        }
-
         IAsyncRequestManager.AsyncRequestManagerTrustedCall kind =
             IAsyncRequestManager.AsyncRequestManagerTrustedCall(kindValue);
 

@@ -44,11 +44,6 @@ contract MerkleProofManager is IMerkleProofManager, ITrustedContractUpdate {
         require(msg.sender == contractUpdater, NotAuthorized());
 
         (uint8 kindValue, bytes32 who, bytes32 what) = abi.decode(payload, (uint8, bytes32, bytes32));
-
-        if (kindValue > uint8(type(IMerkleProofManager.MerkleProofManagerTrustedCall).max)) {
-            revert UnknownTrustedCall();
-        }
-
         IMerkleProofManager.MerkleProofManagerTrustedCall kind =
             IMerkleProofManager.MerkleProofManagerTrustedCall(kindValue);
         if (kind == IMerkleProofManager.MerkleProofManagerTrustedCall.Policy) {
