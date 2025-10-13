@@ -105,9 +105,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             remaining = remaining.slice(length, remaining.length - length);
             bytes32 messageHash = keccak256(message);
 
-            PoolId messagePoolId = processor.messagePoolId(message);
-            require(batchPoolId == messagePoolId, MalformedBatch());
-
+            require(batchPoolId == processor.messagePoolId(message), MalformedBatch());
             require(gasleft() > GAS_FAIL_MESSAGE_STORAGE, NotEnoughGasToProcess());
 
             try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
