@@ -1434,68 +1434,48 @@ abstract contract Properties is
 
     /// @dev Property: loss = totalYield - gain
     function property_loss_soundness() public {
-        PoolId[] memory _createdPools = _getPools();
-        for (uint256 i = 0; i < _createdPools.length; i++) {
-            PoolId poolId = _createdPools[i];
-            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
-            // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClasses.length; j++) {
-                ShareClassId scId = shareClasses[j];
-                AssetId assetId = _getAssetId();
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
 
-                // get the account ids for each account
-                AccountId assetAccountId = holdings.accountId(
-                    poolId,
-                    scId,
-                    assetId,
-                    uint8(AccountType.Asset)
-                );
-                AccountId equityAccountId = holdings.accountId(
-                    poolId,
-                    scId,
-                    assetId,
-                    uint8(AccountType.Equity)
-                );
-                AccountId gainAccountId = holdings.accountId(
-                    poolId,
-                    scId,
-                    assetId,
-                    uint8(AccountType.Gain)
-                );
-                AccountId lossAccountId = holdings.accountId(
-                    poolId,
-                    scId,
-                    assetId,
-                    uint8(AccountType.Loss)
-                );
+        // get the account ids for each account
+        AccountId assetAccountId = holdings.accountId(
+            poolId,
+            scId,
+            assetId,
+            uint8(AccountType.Asset)
+        );
+        AccountId equityAccountId = holdings.accountId(
+            poolId,
+            scId,
+            assetId,
+            uint8(AccountType.Equity)
+        );
+        AccountId gainAccountId = holdings.accountId(
+            poolId,
+            scId,
+            assetId,
+            uint8(AccountType.Gain)
+        );
+        AccountId lossAccountId = holdings.accountId(
+            poolId,
+            scId,
+            assetId,
+            uint8(AccountType.Loss)
+        );
+        (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
+        (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
+        (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
+        (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
 
-                (, uint128 assets) = accounting.accountValue(
-                    poolId,
-                    assetAccountId
-                );
-                (, uint128 equity) = accounting.accountValue(
-                    poolId,
-                    equityAccountId
-                );
-                (, uint128 gain) = accounting.accountValue(
-                    poolId,
-                    gainAccountId
-                );
-                (, uint128 loss) = accounting.accountValue(
-                    poolId,
-                    lossAccountId
-                );
-
-                uint128 totalYield = assets - equity; // Can be positive or negative
-                console2.log("loss:", loss);
-                console2.log("assets:", assets);
-                console2.log("equity:", equity);
-                console2.log("totalYield:", totalYield);
-                console2.log("gain:", gain);
-                console2.log("totalYield - gain:", totalYield - gain);
-                t(loss == totalYield - gain, "property_loss_soundness");
-            }
-        }
+        uint128 totalYield = assets - equity; // Can be positive or negative
+        console2.log("loss:", loss);
+        console2.log("assets:", assets);
+        console2.log("equity:", equity);
+        console2.log("totalYield:", totalYield);
+        console2.log("gain:", gain);
+        console2.log("totalYield - gain:", totalYield - gain);
+        t(loss == totalYield - gain, "property_loss_soundness");
     }
 
     /// @dev Property: A user cannot mutate their pending redeem amount pendingRedeem[...] if the
