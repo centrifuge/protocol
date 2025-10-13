@@ -55,7 +55,10 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
 
     /// @inheritdoc ITrustedContractUpdate
     function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
-        SyncManagerTrustedCall kind = SyncManagerTrustedCall(payload.toUint8(0));
+        uint8 kindValue = payload.toUint8(31);
+        if (kindValue > uint8(type(SyncManagerTrustedCall).max)) revert UnknownTrustedCall();
+
+        SyncManagerTrustedCall kind = SyncManagerTrustedCall(kindValue);
 
         if (kind == SyncManagerTrustedCall.Valuation) {
             (, bytes32 valuation_) = abi.decode(payload, (uint8, bytes32));

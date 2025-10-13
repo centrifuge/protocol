@@ -6,6 +6,7 @@ import {IOnOfframpManagerFactory} from "./interfaces/IOnOfframpManagerFactory.so
 import {IDepositManager, IWithdrawManager} from "./interfaces/IBalanceSheetManager.sol";
 
 import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 import {IERC165} from "../../misc/interfaces/IERC165.sol";
 import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 
@@ -23,6 +24,7 @@ import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol"
 ///           offramp accounts.
 contract OnOfframpManager is IOnOfframpManager {
     using CastLib for *;
+    using BytesLib for bytes;
 
     PoolId public immutable poolId;
     address public immutable contractUpdater;
@@ -45,16 +47,19 @@ contract OnOfframpManager is IOnOfframpManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId_, ShareClassId scId_, bytes calldata payload) external {
+    function trustedCall(PoolId poolId_, ShareClassId scId_, bytes memory payload) external {
         require(poolId == poolId_, InvalidPoolId());
         require(scId == scId_, InvalidShareClassId());
         require(msg.sender == contractUpdater, NotContractUpdater());
 
-        (uint8 kindValue, bytes32 kindBytes, uint128 assetId, bytes32 what, bool isEnabled) =
-            abi.decode(payload, (uint8, bytes32, uint128, bytes32, bool));
+        uint8 kindValue = payload.toUint8(31);
+        if (kindValue > uint8(type(IOnOfframpManager.OnOfframpManagerTrustedCall).max)) revert UnknownTrustedCall();
+
         IOnOfframpManager.OnOfframpManagerTrustedCall kind = IOnOfframpManager.OnOfframpManagerTrustedCall(kindValue);
 
         if (kind == IOnOfframpManager.OnOfframpManagerTrustedCall.UpdateAddress) {
+            (, bytes32 kindBytes, uint128 assetId, bytes32 what, bool isEnabled) =
+                abi.decode(payload, (uint8, bytes32, uint128, bytes32, bool));
             if (kindBytes == "onramp") {
                 (address asset, uint256 tokenId) = balanceSheet.spoke().idToAsset(AssetId.wrap(assetId));
                 require(tokenId == 0, ERC6909NotSupported());

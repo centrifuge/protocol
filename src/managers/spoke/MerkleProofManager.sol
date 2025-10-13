@@ -5,6 +5,7 @@ import {IMerkleProofManagerFactory} from "./interfaces/IMerkleProofManagerFactor
 import {IMerkleProofManager, Call, PolicyLeaf} from "./interfaces/IMerkleProofManager.sol";
 
 import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 import {MerkleProofLib} from "../../misc/libraries/MerkleProofLib.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
@@ -16,6 +17,7 @@ import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol"
 /// @author Inspired by Boring Vaults from Se7en-Seas
 contract MerkleProofManager is IMerkleProofManager, ITrustedContractUpdate {
     using CastLib for *;
+    using BytesLib for bytes;
 
     PoolId public immutable poolId;
     address public immutable contractUpdater;
@@ -38,15 +40,19 @@ contract MerkleProofManager is IMerkleProofManager, ITrustedContractUpdate {
         PoolId poolId_,
         ShareClassId,
         /* scId */
-        bytes calldata payload
+        bytes memory payload
     ) external {
         require(poolId == poolId_, InvalidPoolId());
         require(msg.sender == contractUpdater, NotAuthorized());
 
-        (uint8 kindValue, bytes32 who, bytes32 what) = abi.decode(payload, (uint8, bytes32, bytes32));
+        uint8 kindValue = payload.toUint8(31);
+        if (kindValue > uint8(type(IMerkleProofManager.MerkleProofManagerTrustedCall).max)) revert UnknownTrustedCall();
+
         IMerkleProofManager.MerkleProofManagerTrustedCall kind =
             IMerkleProofManager.MerkleProofManagerTrustedCall(kindValue);
+
         if (kind == IMerkleProofManager.MerkleProofManagerTrustedCall.Policy) {
+            (, bytes32 who, bytes32 what) = abi.decode(payload, (uint8, bytes32, bytes32));
             address strategist = who.toAddress();
 
             bytes32 oldRoot = policy[strategist];

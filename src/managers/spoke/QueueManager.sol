@@ -5,6 +5,7 @@ import {IQueueManager} from "./interfaces/IQueueManager.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 import {BitmapLib} from "../../misc/libraries/BitmapLib.sol";
 import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol";
 
@@ -19,6 +20,7 @@ import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol"
 ///      (e.g. if the on/off ramp manager is used, or if sync deposits are enabled). This prevents spam.
 contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
     using CastLib for *;
+    using BytesLib for bytes;
     using BitmapLib for *;
 
     IGateway public immutable gateway;
@@ -38,12 +40,16 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId, ShareClassId scId, bytes calldata payload) external {
+    function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external {
         require(msg.sender == contractUpdater, NotContractUpdater());
 
-        (uint8 kindValue, uint64 minDelay, uint64 extraGasLimit) = abi.decode(payload, (uint8, uint64, uint64));
+        uint8 kindValue = payload.toUint8(31);
+        if (kindValue > uint8(type(IQueueManager.QueueManagerTrustedCall).max)) revert UnknownTrustedCall();
+
         IQueueManager.QueueManagerTrustedCall kind = IQueueManager.QueueManagerTrustedCall(kindValue);
+
         if (kind == IQueueManager.QueueManagerTrustedCall.UpdateQueue) {
+            (, uint64 minDelay, uint64 extraGasLimit) = abi.decode(payload, (uint8, uint64, uint64));
             ShareClassQueueState storage sc = scQueueState[poolId][scId];
             sc.minDelay = minDelay;
             sc.extraGasLimit = extraGasLimit;
