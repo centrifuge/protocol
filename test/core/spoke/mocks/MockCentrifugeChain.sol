@@ -15,8 +15,8 @@ import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/Updat
 
 import {SyncManager} from "../../../../src/vaults/SyncManager.sol";
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
-import {RequestCallbackMessageLib} from "../../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 import {ISyncManager} from "../../../../src/vaults/interfaces/IVaultManagers.sol";
+import {RequestCallbackMessageLib} from "../../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
 import "forge-std/Test.sol";
 

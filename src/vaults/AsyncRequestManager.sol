@@ -209,7 +209,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
     function trustedCall(PoolId poolId, ShareClassId, bytes memory payload) external auth {
         uint8 kindValue = abi.decode(payload, (uint8));
         require(kindValue <= uint8(type(IAsyncRequestManager.AsyncRequestManagerTrustedCall).max), UnknownTrustedCall());
-        
+
         IAsyncRequestManager.AsyncRequestManagerTrustedCall kind =
             IAsyncRequestManager.AsyncRequestManagerTrustedCall(kindValue);
         if (kind == IAsyncRequestManager.AsyncRequestManagerTrustedCall.Withdraw) {

@@ -52,7 +52,7 @@ contract OnOfframpManager is IOnOfframpManager {
 
         uint8 kindValue = abi.decode(payload, (uint8));
         require(kindValue <= uint8(type(IOnOfframpManager.OnOfframpManagerTrustedCall).max), UnknownTrustedCall());
-        
+
         IOnOfframpManager.OnOfframpManagerTrustedCall kind = IOnOfframpManager.OnOfframpManagerTrustedCall(kindValue);
         if (kind == IOnOfframpManager.OnOfframpManagerTrustedCall.UpdateAddress) {
             (, bytes32 kindBytes, uint128 assetId, bytes32 what, bool isEnabled) =

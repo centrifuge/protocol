@@ -43,7 +43,7 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
 
         uint8 kindValue = abi.decode(payload, (uint8));
         require(kindValue <= uint8(type(IQueueManager.QueueManagerTrustedCall).max), UnknownTrustedCall());
-        
+
         IQueueManager.QueueManagerTrustedCall kind = IQueueManager.QueueManagerTrustedCall(kindValue);
         if (kind == IQueueManager.QueueManagerTrustedCall.UpdateQueue) {
             (, uint64 minDelay, uint64 extraGasLimit) = abi.decode(payload, (uint8, uint64, uint64));

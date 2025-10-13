@@ -57,7 +57,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
         uint8 kindValue = abi.decode(payload, (uint8));
         require(kindValue <= uint8(type(SyncManagerTrustedCall).max), UnknownTrustedCall());
-        
+
         SyncManagerTrustedCall kind = SyncManagerTrustedCall(kindValue);
         if (kind == SyncManagerTrustedCall.Valuation) {
             (, bytes32 valuation_) = abi.decode(payload, (uint8, bytes32));
@@ -145,8 +145,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     function maxDeposit(IBaseVault vault_, address owner) public view returns (uint256 assets) {
         VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
         assets = _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
-        uint256 shares = convertToShares(vault_, assets);
-        if (!_canTransfer(vault_, address(0), owner, shares)) return 0;
+        if (!_canTransfer(vault_, address(0), owner, assets)) return 0;
     }
 
     /// @inheritdoc ISyncManager
