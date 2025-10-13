@@ -135,12 +135,6 @@ abstract contract Setup is
 
     // shortcut to avoid stack too deep errors
     uint32 internal MAX_CLAIMS = 20;
-    uint32 internal ASSET_ACCOUNT = 1;
-    uint32 internal EQUITY_ACCOUNT = 2;
-    uint32 internal LOSS_ACCOUNT = 3;
-    uint32 internal GAIN_ACCOUNT = 4;
-    uint32 internal EXPENSE_ACCOUNT = 5;
-    uint32 internal LIABILITY_ACCOUNT = 6;
     uint64 internal POOL_ID_COUNTER = 1;
 
     // Pool tracking for property iteration

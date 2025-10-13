@@ -27,6 +27,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
 import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {AccountType} from "src/hub/interfaces/IHub.sol";
 
 // Component
 import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
@@ -160,30 +161,30 @@ abstract contract TargetFunctions is
                 ? IValuation(address(identityValuation))
                 : IValuation(address(transientValuation));
 
-            hub_createAccount(ASSET_ACCOUNT, isDebitNormal);
-            hub_createAccount(EQUITY_ACCOUNT, isDebitNormal);
-            hub_createAccount(LOSS_ACCOUNT, isDebitNormal);
-            hub_createAccount(GAIN_ACCOUNT, isDebitNormal);
+            hub_createAccount(uint32(AccountType.Asset), isDebitNormal);
+            hub_createAccount(uint32(AccountType.Equity), isDebitNormal);
+            hub_createAccount(uint32(AccountType.Loss), isDebitNormal);
+            hub_createAccount(uint32(AccountType.Gain), isDebitNormal);
 
             if (isLiability) {
                 // Create additional accounts needed for liability
-                hub_createAccount(EXPENSE_ACCOUNT, isDebitNormal);
-                hub_createAccount(LIABILITY_ACCOUNT, isDebitNormal);
+                hub_createAccount(uint32(AccountType.Expense), isDebitNormal);
+                hub_createAccount(uint32(AccountType.Liability), isDebitNormal);
 
                 // Initialize liability holding
                 hub_initializeLiability(
                     valuation,
-                    EXPENSE_ACCOUNT,
-                    LIABILITY_ACCOUNT
+                    uint32(AccountType.Expense),
+                    uint32(AccountType.Liability)
                 );
             } else {
                 // Initialize regular holding
                 hub_initializeHolding(
                     valuation,
-                    ASSET_ACCOUNT,
-                    EQUITY_ACCOUNT,
-                    LOSS_ACCOUNT,
-                    GAIN_ACCOUNT
+                    uint32(AccountType.Asset),
+                    uint32(AccountType.Equity),
+                    uint32(AccountType.Loss),
+                    uint32(AccountType.Gain)
                 );
             }
         }
