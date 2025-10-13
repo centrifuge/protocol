@@ -15,7 +15,7 @@ import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueMan
 
 import "forge-std/Test.sol";
 
-uint8 constant UPDATE_QUEUE = uint8(IQueueManager.QueueManagerTrustedCall.UpdateQueue);
+uint8 constant UPDATE_QUEUE = uint8(IQueueManager.TrustedCall.UpdateQueue);
 
 contract IsContract {}
 

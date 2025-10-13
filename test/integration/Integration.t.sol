@@ -102,7 +102,7 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
         pure
         returns (bytes memory)
     {
-        return abi.encode(uint8(ISyncManager.SyncManagerTrustedCall.MaxReserve), assetId.raw(), maxReserve);
+        return abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), assetId.raw(), maxReserve);
     }
 }
 

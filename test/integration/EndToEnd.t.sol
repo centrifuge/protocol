@@ -396,7 +396,7 @@ contract EndToEndFlows is EndToEndUtils {
     }
 
     function _updateContractSyncDepositMaxReserveMsg(uint128 maxReserve) internal view returns (bytes memory) {
-        return abi.encode(uint8(ISyncManager.SyncManagerTrustedCall.MaxReserve), s.usdcId.raw(), maxReserve);
+        return abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), s.usdcId.raw(), maxReserve);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -1047,7 +1047,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
             SC_1,
             s.centrifugeId,
             address(s.asyncRequestManager).toBytes32(),
-            abi.encode(uint8(IAsyncRequestManager.AsyncRequestManagerTrustedCall.Withdraw), RECEIVER.toBytes32(), VALUE),
+            abi.encode(uint8(IAsyncRequestManager.TrustedCall.Withdraw), RECEIVER.toBytes32(), VALUE),
             EXTRA_GAS,
             REFUND
         );

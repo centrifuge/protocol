@@ -20,7 +20,7 @@ import {IDepositManager, IWithdrawManager} from "../../../../src/managers/spoke/
 
 import "forge-std/Test.sol";
 
-uint8 constant UPDATE_ADDRESS = uint8(IOnOfframpManager.OnOfframpManagerTrustedCall.UpdateAddress);
+uint8 constant UPDATE_ADDRESS = uint8(IOnOfframpManager.TrustedCall.UpdateAddress);
 
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}

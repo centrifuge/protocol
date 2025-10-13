@@ -10,7 +10,7 @@ import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 
 import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueManager.sol";
 
-uint8 constant UPDATE_QUEUE = uint8(IQueueManager.QueueManagerTrustedCall.UpdateQueue);
+uint8 constant UPDATE_QUEUE = uint8(IQueueManager.TrustedCall.UpdateQueue);
 
 abstract contract QueueManagerBaseTest is BaseTest {
     uint128 constant DEFAULT_AMOUNT = 100_000_000;

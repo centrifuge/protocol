@@ -329,7 +329,7 @@ contract TestData is LaunchDeployer {
             scId,
             centrifugeId,
             address(syncManager).toBytes32(),
-            abi.encode(uint8(ISyncManager.SyncManagerTrustedCall.MaxReserve), assetId.raw(), type(uint128).max),
+            abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), assetId.raw(), type(uint128).max),
             0,
             msg.sender
         );

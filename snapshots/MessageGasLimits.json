@@ -1,5 +1,5 @@
 {
-  "BENCHMARKING_RUN_ID": 1760359044,
+  "BENCHMARKING_RUN_ID": 1760383551,
   "scheduleUpgrade": 94824,
   "cancelUpgrade": 75231,
   "recoverTokens": 152066,
@@ -14,8 +14,8 @@
   "updateShareHook": 97545,
   "initiateTransferShares": 287761,
   "executeTransferShares": 178642,
-  "updateRestriction": 115589,
-  "trustedContractUpdate": 143378,
+  "updateRestriction": 115624,
+  "trustedContractUpdate": 143547,
   "requestCallback": 264102,
   "updateVaultDeployAndLink": 2843564,
   "updateVaultLink": 186503,

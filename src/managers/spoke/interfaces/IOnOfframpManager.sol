@@ -11,7 +11,7 @@ import {ITrustedContractUpdate} from "../../../core/interfaces/IContractUpdate.s
 /// @notice Interface for managing onramp (deposits) and offramp (withdrawals) operations for a specific pool and share class
 /// @dev    Combines deposit, withdraw, and contract update functionality with relayer and asset whitelisting
 interface IOnOfframpManager is IDepositManager, IWithdrawManager, ITrustedContractUpdate {
-    enum OnOfframpManagerTrustedCall {
+    enum TrustedCall {
         UpdateAddress
     }
 

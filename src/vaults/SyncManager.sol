@@ -56,15 +56,15 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     /// @inheritdoc ITrustedContractUpdate
     function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
         uint8 kindValue = abi.decode(payload, (uint8));
-        require(kindValue <= uint8(type(SyncManagerTrustedCall).max), UnknownTrustedCall());
+        require(kindValue <= uint8(type(ISyncManager.TrustedCall).max), UnknownTrustedCall());
 
-        SyncManagerTrustedCall kind = SyncManagerTrustedCall(kindValue);
-        if (kind == SyncManagerTrustedCall.Valuation) {
+        ISyncManager.TrustedCall kind = ISyncManager.TrustedCall(kindValue);
+        if (kind == ISyncManager.TrustedCall.Valuation) {
             (, bytes32 valuation_) = abi.decode(payload, (uint8, bytes32));
             require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
 
             setValuation(poolId, scId, valuation_.toAddress());
-        } else if (kind == SyncManagerTrustedCall.MaxReserve) {
+        } else if (kind == ISyncManager.TrustedCall.MaxReserve) {
             (, uint128 assetId, uint128 maxReserve_) = abi.decode(payload, (uint8, uint128, uint128));
             require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
 

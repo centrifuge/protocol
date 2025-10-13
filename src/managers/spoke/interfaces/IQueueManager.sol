@@ -9,7 +9,7 @@ import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 /// @notice Interface for managing queued asset and share synchronization across chains
 /// @dev    Handles delayed sync operations with configurable minimum delays and gas limits
 interface IQueueManager {
-    enum QueueManagerTrustedCall {
+    enum TrustedCall {
         UpdateQueue
     }
 

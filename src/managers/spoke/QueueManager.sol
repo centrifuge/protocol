@@ -42,10 +42,10 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
         require(msg.sender == contractUpdater, NotContractUpdater());
 
         uint8 kindValue = abi.decode(payload, (uint8));
-        require(kindValue <= uint8(type(IQueueManager.QueueManagerTrustedCall).max), UnknownTrustedCall());
+        require(kindValue <= uint8(type(IQueueManager.TrustedCall).max), UnknownTrustedCall());
 
-        IQueueManager.QueueManagerTrustedCall kind = IQueueManager.QueueManagerTrustedCall(kindValue);
-        if (kind == IQueueManager.QueueManagerTrustedCall.UpdateQueue) {
+        IQueueManager.TrustedCall kind = IQueueManager.TrustedCall(kindValue);
+        if (kind == IQueueManager.TrustedCall.UpdateQueue) {
             (, uint64 minDelay, uint64 extraGasLimit) = abi.decode(payload, (uint8, uint64, uint64));
             ShareClassQueueState storage sc = scQueueState[poolId][scId];
             sc.minDelay = minDelay;

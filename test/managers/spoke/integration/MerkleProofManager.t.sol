@@ -19,7 +19,7 @@ import {IMerkleProofManager, IERC7751} from "../../../../src/managers/spoke/inte
 
 import {MerkleTreeLib} from "../libraries/MerkleTreeLib.sol";
 
-uint8 constant POLICY = uint8(IMerkleProofManager.MerkleProofManagerTrustedCall.Policy);
+uint8 constant POLICY = uint8(IMerkleProofManager.TrustedCall.Policy);
 
 abstract contract MerkleProofManagerBaseTest is BaseTest {
     using CastLib for *;

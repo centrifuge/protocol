@@ -242,7 +242,7 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
     error SecondaryManagerDoesNotExist();
     error UnknownTrustedCall();
 
-    enum SyncManagerTrustedCall {
+    enum TrustedCall {
         Valuation,
         MaxReserve
     }
@@ -311,7 +311,7 @@ struct AsyncInvestmentState {
 //----------------------------------------------------------------------------------------------
 
 interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, ITrustedContractUpdate {
-    enum AsyncRequestManagerTrustedCall {
+    enum TrustedCall {
         Withdraw
     }
 

@@ -85,7 +85,7 @@ contract MockCentrifugeChain is Test {
                 scId: scId,
                 target: bytes32(bytes20(address(syncManager))),
                 payload: abi.encode(
-                    uint8(ISyncManager.SyncManagerTrustedCall.MaxReserve), vaultDetails.assetId.raw(), maxReserve
+                    uint8(ISyncManager.TrustedCall.MaxReserve), vaultDetails.assetId.raw(), maxReserve
                 )
             }).serialize()
         );

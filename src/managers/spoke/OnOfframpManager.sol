@@ -51,10 +51,10 @@ contract OnOfframpManager is IOnOfframpManager {
         require(msg.sender == contractUpdater, NotContractUpdater());
 
         uint8 kindValue = abi.decode(payload, (uint8));
-        require(kindValue <= uint8(type(IOnOfframpManager.OnOfframpManagerTrustedCall).max), UnknownTrustedCall());
+        require(kindValue <= uint8(type(IOnOfframpManager.TrustedCall).max), UnknownTrustedCall());
 
-        IOnOfframpManager.OnOfframpManagerTrustedCall kind = IOnOfframpManager.OnOfframpManagerTrustedCall(kindValue);
-        if (kind == IOnOfframpManager.OnOfframpManagerTrustedCall.UpdateAddress) {
+        IOnOfframpManager.TrustedCall kind = IOnOfframpManager.TrustedCall(kindValue);
+        if (kind == IOnOfframpManager.TrustedCall.UpdateAddress) {
             (, bytes32 kindBytes, uint128 assetId, bytes32 what, bool isEnabled) =
                 abi.decode(payload, (uint8, bytes32, uint128, bytes32, bool));
             if (kindBytes == "onramp") {

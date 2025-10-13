@@ -22,7 +22,7 @@ interface IERC7751 {
 }
 
 interface IMerkleProofManager is IERC7751 {
-    enum MerkleProofManagerTrustedCall {
+    enum TrustedCall {
         Policy
     }
 

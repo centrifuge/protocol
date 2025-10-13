@@ -36,7 +36,7 @@ interface ITransferHook is IERC165 {
     // Enums
     //----------------------------------------------------------------------------------------------
 
-    enum BaseTransferHookTrustedCall {
+    enum TrustedCall {
         UpdateAddress
     }
 

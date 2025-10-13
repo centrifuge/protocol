@@ -14,7 +14,7 @@ import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/Updat
 import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
 import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
 
-uint8 constant UPDATE_ADDRESS = uint8(IOnOfframpManager.OnOfframpManagerTrustedCall.UpdateAddress);
+uint8 constant UPDATE_ADDRESS = uint8(IOnOfframpManager.TrustedCall.UpdateAddress);
 
 abstract contract OnOfframpManagerBaseTest is BaseTest {
     using CastLib for *;
