@@ -110,9 +110,6 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         PoolId _poolId = PoolId.wrap(poolIdAsUint);
         AssetId _assetId = AssetId.wrap(assetIdAsUint);
 
-        // Track authorization - createPool requires auth
-        _trackAuthorization(_getActor(), PoolId.wrap(0)); // Global operation
-
         hub.createPool(_poolId, admin, _assetId);
 
         _addPool(_poolId.raw());
@@ -289,9 +286,6 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint128 assetId,
         address requestManager
     ) public asAdmin {
-        // Track authorization - setRequestManager requires admin auth
-        _trackAuthorization(_getActor(), PoolId.wrap(poolId));
-
         hub.setRequestManager{value: GAS}(
             PoolId.wrap(poolId),
             ShareClassId.wrap(shareClassId),
@@ -306,9 +300,6 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         address manager,
         bool enable
     ) public asAdmin {
-        // Track authorization - updateBalanceSheetManager requires admin auth
-        _trackAuthorization(_getActor(), PoolId.wrap(poolId));
-
         hub.updateBalanceSheetManager{value: GAS}(
             chainId,
             PoolId.wrap(poolId),

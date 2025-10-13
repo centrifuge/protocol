@@ -88,9 +88,6 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
 
     // Step 2
     function spoke_addPool() public updateGhosts asAdmin {
-        // Track authorization - addPool requires admin auth
-        _trackAuthorization(_getActor(), PoolId.wrap(0)); // Global operation
-
         spoke.addPool(_getPool());
     }
 
@@ -103,9 +100,6 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
         bytes16 scId = bytes16(scIdAsUint);
-
-        // Track authorization - addShareClass requires admin auth
-        _trackAuthorization(_getActor(), _getPool());
 
         spoke.addShareClass(
             _getPool(),
@@ -131,9 +125,6 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     function spoke_deployVault(
         bool isAsync
     ) public updateGhosts asAdmin returns (address) {
-        // Track authorization - deployVault requires admin auth
-        _trackAuthorization(_getActor(), _getPool());
-
         address vault;
         if (isAsync) {
             vault = address(
@@ -182,9 +173,6 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vaultInstance.poolId();
         ShareClassId scId = vaultInstance.scId();
         AssetId assetId = _getAssetId();
-
-        // Track authorization - linkVault requires admin auth
-        _trackAuthorization(_getActor(), poolId);
 
         spoke.linkVault(poolId, scId, assetId, IBaseVault(vault));
     }

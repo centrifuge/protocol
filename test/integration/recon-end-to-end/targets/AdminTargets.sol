@@ -52,9 +52,6 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
 
-        // Track authorization - addShareClass requires authOrManager(poolId)
-        _trackAuthorization(_getActor(), poolId);
-
         hub.addShareClass(poolId, name, symbol, bytes32(salt));
     }
 
@@ -130,9 +127,6 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = _getPool();
         AccountId account = AccountId.wrap(accountAsInt);
 
-        // Track authorization - createAccount requires authOrManager(poolId)
-        _trackAuthorization(_getActor(), poolId);
-
         hub.createAccount(poolId, account, isDebitNormal);
 
         createdAccountIds.push(account);
@@ -148,9 +142,6 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
-
-        // Track authorization - initializeHolding requires authOrManager(poolId)
-        _trackAuthorization(_getActor(), poolId);
 
         hub.initializeHolding(
             poolId,
@@ -208,9 +199,6 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
-
-        // Track authorization - initializeLiability requires authOrManager(poolId)
-        _trackAuthorization(_getActor(), poolId);
 
         hub.initializeLiability(
             poolId,
