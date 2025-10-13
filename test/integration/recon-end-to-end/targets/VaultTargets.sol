@@ -306,7 +306,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     /// underflow revert)
     function vault_cancelRedeemRequest()
         public
-        updateGhostsWithType(OpType.NOTIFY)
+        updateGhostsWithType(OpType.CANCEL_REDEEM)
     {
         address controller = _getActor();
         IBaseVault vault = _getVault();

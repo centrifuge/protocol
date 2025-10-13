@@ -28,7 +28,8 @@ enum OpType {
     REMOVE,
     UPDATE,
     REQUEST_DEPOSIT,
-    REQUEST_REDEEM
+    REQUEST_REDEEM,
+    CANCEL_REDEEM
 }
 
 abstract contract BeforeAfter is Setup {

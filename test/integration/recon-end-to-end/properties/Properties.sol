@@ -1504,18 +1504,25 @@ abstract contract Properties is
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
-
         bytes32 actor = CastLib.toBytes32(_getActor());
-        // precondition: user already has non-zero pending redeem and it has changed
+
+        // precondition: only checking user actions, not admin actions
+        if (
+            currentOperation != OpType.REQUEST_REDEEM &&
+            currentOperation != OpType.CANCEL_REDEEM &&
+            currentOperation != OpType.REMOVE
+        ) return;
+
         if (
             _before.ghostRedeemRequest[scId][assetId][actor].pending > 0 &&
             _before.ghostRedeemRequest[scId][assetId][actor].pending !=
             _after.ghostRedeemRequest[scId][assetId][actor].pending
-        ) {
-            // check that the lastUpdate was > the latest redeem revoke pointer
+        ) // precondition: user already has non-zero pending redeem and it has changed
+        {
+            // check that the lastUpdate was > the latest redeem revoke pointer before pending was changed
             gt(
-                _after.ghostRedeemRequest[scId][assetId][actor].lastUpdate,
-                _after.ghostEpochId[scId][assetId].revoke,
+                _before.ghostRedeemRequest[scId][assetId][actor].lastUpdate,
+                _before.ghostEpochId[scId][assetId].revoke,
                 "lastUpdate is <= latest redeem revoke"
             );
         }
