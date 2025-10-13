@@ -5,7 +5,7 @@ import "forge-std/Script.sol";
 
 import {IMessageHandler} from "src/core/messaging/interfaces/IMessageHandler.sol";
 import {IAdapter} from "src/core/messaging/interfaces/IAdapter.sol";
-import {CCIPAdapter} from "src/adapters/CCIPAdapter.sol";
+import {ChainlinkAdapter} from "src/adapters/ChainlinkAdapter.sol";
 
 import {CreateXScript} from "../utils/CreateXScript.sol";
 
@@ -18,8 +18,8 @@ address constant CCIP_SEPOLIA_BASE_ROUTER = 0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6
 uint64 constant CCIP_SEPOLIA_ETHEREUM_ID = 16015286601757825753;
 address constant CCIP_SEPOLIA_ETHEREUM_ROUTER = 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59;
 
-bytes constant ENTRYPOINT_NAME = "MockEntrypoint-cfg"; //0xbd3873aEd2dB4680a6D84586c9F3F691B54462cb
-bytes constant CCIP_ADAPTER_NAME = "CCIPAdapter-cfg"; //0x6bB60C397FDD8a274E1cb8E098F10d4f9499b784
+bytes constant ENTRYPOINT_NAME = "MockEntrypoint-cfg-2"; // 0x6c9CF1aB69fF9deb6FD361F67738b7d35bAa69Ed
+bytes constant CCIP_ADAPTER_NAME = "ChainlinkAdapter-cfg-2"; // 0x56955946BB95544627c2F02fD3CfcAB48DbC997d
 
 contract MockEntrypoint is IMessageHandler {
     event MsgReceived(bytes);
@@ -42,11 +42,12 @@ contract CCIPEthereumTestScript is Script, CreateXScript {
         MockEntrypoint entrypoint =
             MockEntrypoint(create3(keccak256(ENTRYPOINT_NAME), abi.encodePacked(type(MockEntrypoint).creationCode)));
 
-        CCIPAdapter ccip = CCIPAdapter(
+        ChainlinkAdapter ccip = ChainlinkAdapter(
             create3(
                 keccak256(CCIP_ADAPTER_NAME),
                 abi.encodePacked(
-                    type(CCIPAdapter).creationCode, abi.encode(entrypoint, CCIP_SEPOLIA_ETHEREUM_ROUTER, msg.sender)
+                    type(ChainlinkAdapter).creationCode,
+                    abi.encode(entrypoint, CCIP_SEPOLIA_ETHEREUM_ROUTER, msg.sender)
                 )
             )
         );
@@ -57,7 +58,7 @@ contract CCIPEthereumTestScript is Script, CreateXScript {
         vm.stopBroadcast();
 
         console.log("entrypoint: ", address(entrypoint));
-        console.log("CCIPAdapter: ", address(ccip));
+        console.log("ChainlinkAdapter: ", address(ccip));
     }
 }
 
@@ -70,11 +71,11 @@ contract CCIPBaseTestScript is Script, CreateXScript {
         MockEntrypoint entrypoint =
             MockEntrypoint(create3(keccak256(ENTRYPOINT_NAME), abi.encodePacked(type(MockEntrypoint).creationCode)));
 
-        CCIPAdapter ccip = CCIPAdapter(
+        ChainlinkAdapter ccip = ChainlinkAdapter(
             create3(
                 keccak256(CCIP_ADAPTER_NAME),
                 abi.encodePacked(
-                    type(CCIPAdapter).creationCode, abi.encode(entrypoint, CCIP_SEPOLIA_BASE_ROUTER, msg.sender)
+                    type(ChainlinkAdapter).creationCode, abi.encode(entrypoint, CCIP_SEPOLIA_BASE_ROUTER, msg.sender)
                 )
             )
         );
@@ -84,6 +85,6 @@ contract CCIPBaseTestScript is Script, CreateXScript {
         vm.stopBroadcast();
 
         console.log("entrypoint: ", address(entrypoint));
-        console.log("CCIPAdapter: ", address(ccip));
+        console.log("ChainlinkAdapter: ", address(ccip));
     }
 }
