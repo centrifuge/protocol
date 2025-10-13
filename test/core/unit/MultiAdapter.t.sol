@@ -7,7 +7,7 @@ import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
-import {IMessageHandler, IPoolMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
+import {IPoolMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 

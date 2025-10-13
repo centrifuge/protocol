@@ -2,9 +2,9 @@
 pragma solidity 0.8.28;
 
 import {IAdapter} from "./interfaces/IAdapter.sol";
-import {IPoolMessageHandler, IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "./interfaces/IMultiAdapter.sol";
+import {IPoolMessageHandler, IMessageHandler} from "./interfaces/IMessageHandler.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";

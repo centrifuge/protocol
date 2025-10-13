@@ -3,10 +3,10 @@ pragma solidity 0.8.28;
 
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IMessageLimits} from "./interfaces/IMessageLimits.sol";
-import {IPoolMessageHandler, IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IProtocolPauser} from "./interfaces/IProtocolPauser.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {IGateway, GAS_FAIL_MESSAGE_STORAGE} from "./interfaces/IGateway.sol";
+import {IPoolMessageHandler, IMessageHandler} from "./interfaces/IMessageHandler.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
