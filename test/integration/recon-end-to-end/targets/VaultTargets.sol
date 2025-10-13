@@ -87,13 +87,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint128 prevDeposits,
         uint128 prevWithdrawals
     ) private {
-        // If the request was successful and the queue was previously empty,
-        // we can assume it became non-empty (even if not immediately visible)
-        if (prevDeposits == 0 && prevWithdrawals == 0 && assets > 0) {
-            bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
-            ghost_assetCounterPerAsset[assetKey] = 1; // Asset queue becomes non-empty
-        }
-
         // ghost tracking
         userRequestDeposited[scId][assetId][to] += assets;
         sumOfDepositRequests[vault.asset()] += assets;
@@ -566,7 +559,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                     abi.encode(
                         vault.poolId(),
                         vault.scId(),
-                        spoke.vaultDetails(vault).assetId
+                        vaultRegistry.vaultDetails(vault).assetId
                     )
                 );
             }
@@ -705,7 +698,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 ) = balanceSheet.queuedAssets(
                         vault.poolId(),
                         vault.scId(),
-                        spoke.vaultDetails(vault).assetId
+                        vaultRegistry.vaultDetails(vault).assetId
                     );
             }
 

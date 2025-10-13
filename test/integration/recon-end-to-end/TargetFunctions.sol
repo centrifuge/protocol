@@ -24,7 +24,7 @@ import {MAX_MESSAGE_COST} from "src/core/messaging/interfaces/IGasService.sol";
 import {RequestCallbackMessageLib} from "src/vaults/libraries/RequestCallbackMessageLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IHubRequestManager} from "src/core/hub/interfaces/IHubRequestManager.sol";
-import {AccountType} from "src/hub/interfaces/IHub.sol";
+import {IHub, AccountType} from "src/core/hub/interfaces/IHub.sol";
 
 // Component
 import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
@@ -165,8 +165,14 @@ abstract contract TargetFunctions is
 
             if (isLiability) {
                 // Create additional accounts needed for liability
-                hub_createAccount(uint32(AccountType.Expense), isDebitNormal);
-                hub_createAccount(uint32(AccountType.Liability), isDebitNormal);
+                hub_createAccount(
+                    uint32(AccountType.Expense),
+                    isDebitNormal
+                );
+                hub_createAccount(
+                    uint32(AccountType.Liability),
+                    isDebitNormal
+                );
 
                 // Initialize liability holding
                 hub_initializeLiability(

@@ -528,7 +528,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             .queuedShares(poolId, scId);
         ghost_previousNonce[shareKey] = currentNonce;
 
-        balanceSheet.submitQueuedAssets(poolId, scId, assetId, extraGasLimit);
+        balanceSheet.submitQueuedAssets(poolId, scId, assetId, extraGasLimit, address(this));
     }
 
     function balanceSheet_submitQueuedShares(
