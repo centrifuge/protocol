@@ -7,7 +7,7 @@ import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
+import {IMessageHandler, IPoolMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 
@@ -20,17 +20,17 @@ PoolId constant POOL_0 = PoolId.wrap(0);
 //     MOCKING
 // -----------------------------------------
 
-contract MockGateway is IMessageHandler {
+contract MockGateway is IPoolMessageHandler {
     using BytesLib for bytes;
 
-    mapping(uint16 => bytes[]) public handled;
+    mapping(uint16 => mapping(PoolId => bytes[])) public handled;
 
-    function handle(uint16 centrifugeId, bytes memory payload) external {
-        handled[centrifugeId].push(payload);
+    function handle(uint16 centrifugeId, PoolId poolId, bytes memory payload) external {
+        handled[centrifugeId][poolId].push(payload);
     }
 
-    function count(uint16 centrifugeId) external view returns (uint256) {
-        return handled[centrifugeId].length;
+    function count(uint16 centrifugeId, PoolId poolId) external view returns (uint256) {
+        return handled[centrifugeId][poolId].length;
     }
 }
 
@@ -52,7 +52,7 @@ contract MockMessageProperties is IMessageProperties {
 // -----------------------------------------
 
 contract MultiAdapterExt is MultiAdapter {
-    constructor(uint16 localCentrifugeId_, IMessageHandler gateway_, address deployer)
+    constructor(uint16 localCentrifugeId_, IPoolMessageHandler gateway_, address deployer)
         MultiAdapter(localCentrifugeId_, gateway_, deployer)
     {}
 
@@ -277,7 +277,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         vm.prank(address(adapter1));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
 
-        assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
+        assertEq(gateway.handled(REMOTE_CENT_ID, POOL_A, 0), MESSAGE_1);
     }
 
     function testMessageWithSeveralAdapters() public {
@@ -289,22 +289,22 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         vm.expectEmit();
         emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter1);
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 0);
         assertVotes(MESSAGE_1, 1, 0, 0);
 
         vm.prank(address(adapter2));
         vm.expectEmit();
         emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter2);
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 0);
         assertVotes(MESSAGE_1, 1, 1, 0);
 
         vm.prank(address(adapter3));
         vm.expectEmit();
         emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter3);
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 1);
+        assertEq(gateway.handled(REMOTE_CENT_ID, POOL_A, 0), MESSAGE_1);
         assertVotes(MESSAGE_1, 0, 0, 0);
     }
 
@@ -320,18 +320,18 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
 
         vm.prank(address(adapter1));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 1);
         assertVotes(MESSAGE_1, 1, 0, 0);
 
         vm.prank(address(adapter2));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 1);
         assertVotes(MESSAGE_1, 1, 1, 0);
 
         vm.prank(address(adapter3));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 2);
-        assertEq(gateway.handled(REMOTE_CENT_ID, 1), MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 2);
+        assertEq(gateway.handled(REMOTE_CENT_ID, POOL_A, 1), MESSAGE_1);
         assertVotes(MESSAGE_1, 0, 0, 0);
     }
 
@@ -347,18 +347,18 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
 
         vm.prank(address(adapter1));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_2);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 1);
         assertVotes(MESSAGE_2, 1, 0, 0);
 
         vm.prank(address(adapter2));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_2);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 1);
         assertVotes(MESSAGE_2, 1, 1, 0);
 
         vm.prank(address(adapter3));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_2);
-        assertEq(gateway.count(REMOTE_CENT_ID), 2);
-        assertEq(gateway.handled(REMOTE_CENT_ID, 1), MESSAGE_2);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 2);
+        assertEq(gateway.handled(REMOTE_CENT_ID, POOL_A, 1), MESSAGE_2);
         assertVotes(MESSAGE_2, 0, 0, 0);
     }
 
@@ -369,27 +369,27 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
         vm.prank(address(adapter1));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 0);
         assertVotes(MESSAGE_1, 2, 0, 0);
 
         vm.prank(address(adapter2));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 0);
         assertVotes(MESSAGE_1, 2, 1, 0);
 
         vm.prank(address(adapter3));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 1);
         assertVotes(MESSAGE_1, 1, 0, 0);
 
         vm.prank(address(adapter2));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 1);
         assertVotes(MESSAGE_1, 1, 1, 0);
 
         vm.prank(address(adapter3));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 2);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 2);
         assertVotes(MESSAGE_1, 0, 0, 0);
     }
 
@@ -405,7 +405,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
 
         vm.prank(address(adapter3));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 0);
         assertVotes(MESSAGE_1, 0, 0, 1);
     }
 
@@ -414,17 +414,17 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
 
         vm.prank(address(adapter1));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 0);
         assertVotes(MESSAGE_1, 1, 0, 0);
 
         vm.prank(address(adapter2));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 1);
         assertVotes(MESSAGE_1, 0, 0, -1);
 
         vm.prank(address(adapter3));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 1);
         assertVotes(MESSAGE_1, 0, 0, 0);
     }
 
@@ -433,27 +433,27 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
 
         vm.prank(address(adapter1));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 0);
         assertVotes(MESSAGE_1, 1, 0, 0);
 
         vm.prank(address(adapter2));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 1);
         assertVotes(MESSAGE_1, 0, 0, -1);
 
         vm.prank(address(adapter2));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 1);
         assertVotes(MESSAGE_1, 0, 1, -1);
 
         vm.prank(address(adapter3));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 1);
         assertVotes(MESSAGE_1, 0, 1, 0);
 
         vm.prank(address(adapter3));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 2);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 2);
         assertVotes(MESSAGE_1, -1, 0, 0);
     }
 
@@ -462,27 +462,27 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
 
         vm.prank(address(adapter1));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 1);
         assertVotes(MESSAGE_1, 0, -1, -1);
 
         vm.prank(address(adapter1));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 2);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 2);
         assertVotes(MESSAGE_1, 0, -2, -2);
 
         vm.prank(address(adapter2));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 2);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 2);
         assertVotes(MESSAGE_1, 0, -1, -2);
 
         vm.prank(address(adapter2));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 2);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 2);
         assertVotes(MESSAGE_1, 0, 0, -2);
 
         vm.prank(address(adapter2));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 3);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 3);
         assertVotes(MESSAGE_1, -1, 0, -3);
     }
 
@@ -491,22 +491,22 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
 
         vm.prank(address(adapter1));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 0);
         assertVotes(MESSAGE_1, 1, 0, 0);
 
         vm.prank(address(adapter2));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 1);
         assertVotes(MESSAGE_1, 0, 0, 0); // <- vote from third adapter does not decrease below 0
 
         vm.prank(address(adapter3));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 1);
         assertVotes(MESSAGE_1, 0, 0, 1);
 
         vm.prank(address(adapter1));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        assertEq(gateway.count(REMOTE_CENT_ID), 2);
+        assertEq(gateway.count(REMOTE_CENT_ID, POOL_A), 2);
         assertVotes(MESSAGE_1, 0, -1, 0);
     }
 }

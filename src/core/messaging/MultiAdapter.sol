@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IAdapter} from "./interfaces/IAdapter.sol";
-import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
+import {IPoolMessageHandler, IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "./interfaces/IMultiAdapter.sol";
 
@@ -28,7 +28,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     uint16 public immutable localCentrifugeId;
 
-    IMessageHandler public gateway;
+    IPoolMessageHandler public gateway;
     IMessageProperties public messageProperties;
 
     uint64 globalSessionId;
@@ -37,7 +37,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => Inbound)) public inbound;
     mapping(uint16 centrifugeId => mapping(PoolId => mapping(IAdapter adapter => Adapter))) internal _adapterDetails;
 
-    constructor(uint16 localCentrifugeId_, IMessageHandler gateway_, address deployer) Auth(deployer) {
+    constructor(uint16 localCentrifugeId_, IPoolMessageHandler gateway_, address deployer) Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
         gateway = gateway_;
     }
@@ -48,7 +48,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     /// @inheritdoc IMultiAdapter
     function file(bytes32 what, address instance) external auth {
-        if (what == "gateway") gateway = IMessageHandler(instance);
+        if (what == "gateway") gateway = IPoolMessageHandler(instance);
         else if (what == "messageProperties") messageProperties = IMessageProperties(instance);
         else revert FileUnrecognizedParam();
 
@@ -114,7 +114,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
         // Special case for gas efficiency
         if (adapter.quorum == 1) {
-            gateway.handle(centrifugeId, payload);
+            gateway.handle(centrifugeId, poolId, payload);
             return;
         }
 
@@ -133,7 +133,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
             // Reduce votes by quorum
             state.votes.decreaseFirstNValues(adapter.quorum, adapter.recoveryIndex);
 
-            gateway.handle(centrifugeId, payload);
+            gateway.handle(centrifugeId, poolId, payload);
         }
     }
 

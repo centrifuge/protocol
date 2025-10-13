@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IMessageLimits} from "./interfaces/IMessageLimits.sol";
-import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
+import {IPoolMessageHandler, IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IProtocolPauser} from "./interfaces/IProtocolPauser.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {IGateway, GAS_FAIL_MESSAGE_STORAGE} from "./interfaces/IGateway.sol";
@@ -94,9 +94,8 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Incoming
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IMessageHandler
-    function handle(uint16 centrifugeId, bytes memory batch) public pauseable auth {
-        PoolId batchPoolId = processor.messagePoolId(batch);
+    /// @inheritdoc IPoolMessageHandler
+    function handle(uint16 centrifugeId, PoolId poolId, bytes memory batch) public pauseable auth {
         bytes memory remaining = batch;
 
         while (remaining.length > 0) {
@@ -105,7 +104,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             remaining = remaining.slice(length, remaining.length - length);
             bytes32 messageHash = keccak256(message);
 
-            require(batchPoolId == processor.messagePoolId(message), MalformedBatch());
+            require(poolId == processor.messagePoolId(message), MalformedBatch());
             require(gasleft() > GAS_FAIL_MESSAGE_STORAGE, NotEnoughGasToProcess());
 
             try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {

@@ -23,6 +23,9 @@ interface IMessageProcessor is IMessageHandler, IMessageProperties {
     /// @notice Dispatched when a message is tried to send from a different chain than mainnet
     error OnlyFromMainnet();
 
+    /// @notice Dispatched when an invalid message is trying to handle
+    error InvalidMessage(uint8 code);
+
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------

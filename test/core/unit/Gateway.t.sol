@@ -238,13 +238,13 @@ contract GatewayTestHandle is GatewayTest {
     function testErrPaused() public {
         _mockPause(true);
         vm.expectRevert(IGateway.Paused.selector);
-        gateway.handle(REMOTE_CENT_ID, new bytes(0));
+        gateway.handle(REMOTE_CENT_ID, POOL_A, new bytes(0));
     }
 
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.handle(REMOTE_CENT_ID, new bytes(0));
+        gateway.handle(REMOTE_CENT_ID, POOL_A, new bytes(0));
     }
 
     function testErrNotEnoughGasToProcess() public {
@@ -254,7 +254,7 @@ contract GatewayTestHandle is GatewayTest {
         vm.expectRevert(IGateway.NotEnoughGasToProcess.selector);
 
         // NOTE: The own handle() also consume some gas, so passing gas + <small value> can also make it fails
-        gateway.handle{gas: notEnough}(REMOTE_CENT_ID, batch);
+        gateway.handle{gas: notEnough}(REMOTE_CENT_ID, POOL_0, batch);
     }
 
     function testErrMalformedBatch() public {
@@ -263,7 +263,7 @@ contract GatewayTestHandle is GatewayTest {
         bytes memory batch = abi.encodePacked(message1, message2);
 
         vm.expectRevert(IGateway.MalformedBatch.selector);
-        gateway.handle(REMOTE_CENT_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, POOL_A, batch);
     }
 
     function testMessage() public {
@@ -271,7 +271,7 @@ contract GatewayTestHandle is GatewayTest {
 
         vm.expectEmit();
         emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch, keccak256(batch));
-        gateway.handle(REMOTE_CENT_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, POOL_0, batch);
 
         assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
     }
@@ -281,7 +281,7 @@ contract GatewayTestHandle is GatewayTest {
 
         vm.expectEmit();
         emit IGateway.FailMessage(REMOTE_CENT_ID, batch, keccak256(batch), abi.encodeWithSignature("HandleError()"));
-        gateway.handle(REMOTE_CENT_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, POOL_A, batch);
 
         assertEq(processor.count(REMOTE_CENT_ID), 0);
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 1);
@@ -292,7 +292,7 @@ contract GatewayTestHandle is GatewayTest {
         bytes memory message2 = MessageKind.WithPoolA2.asBytes();
         bytes memory batch = abi.encodePacked(message1, message2);
 
-        gateway.handle(REMOTE_CENT_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, POOL_A, batch);
 
         assertEq(processor.count(REMOTE_CENT_ID), 2);
         assertEq(processor.processed(REMOTE_CENT_ID, 0), message1);
@@ -305,7 +305,7 @@ contract GatewayTestHandle is GatewayTest {
         bytes memory message3 = MessageKind.WithPoolA2.asBytes();
         bytes memory batch = abi.encodePacked(message1, message2, message3);
 
-        gateway.handle(REMOTE_CENT_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, POOL_A, batch);
 
         assertEq(processor.count(REMOTE_CENT_ID), 2);
         assertEq(processor.processed(REMOTE_CENT_ID, 0), message1);
@@ -317,8 +317,8 @@ contract GatewayTestHandle is GatewayTest {
     function testMultipleSameFailingMessages() public {
         bytes memory batch = MessageKind.WithPoolAFail.asBytes();
 
-        gateway.handle(REMOTE_CENT_ID, batch);
-        gateway.handle(REMOTE_CENT_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, POOL_A, batch);
+        gateway.handle(REMOTE_CENT_ID, POOL_A, batch);
 
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 2);
     }
@@ -327,7 +327,7 @@ contract GatewayTestHandle is GatewayTest {
         bytes memory message = MessageKind.WithPoolAFail.asBytes();
         bytes memory batch = abi.encodePacked(message, message);
 
-        gateway.handle(REMOTE_CENT_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, POOL_A, batch);
 
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(message)), 2);
     }
@@ -355,7 +355,7 @@ contract GatewayTestRetry is GatewayTest {
     function testRecoverFailingMessage() public {
         bytes memory batch = MessageKind.WithPoolAFail.asBytes();
 
-        gateway.handle(REMOTE_CENT_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, POOL_A, batch);
 
         processor.disableFailure();
 
@@ -370,8 +370,8 @@ contract GatewayTestRetry is GatewayTest {
     function testRecoverMultipleFailingMessage() public {
         bytes memory batch = MessageKind.WithPoolAFail.asBytes();
 
-        gateway.handle(REMOTE_CENT_ID, batch);
-        gateway.handle(REMOTE_CENT_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, POOL_A, batch);
+        gateway.handle(REMOTE_CENT_ID, POOL_A, batch);
 
         processor.disableFailure();
 
