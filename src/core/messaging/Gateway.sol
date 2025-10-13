@@ -96,6 +96,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes memory batch) public pauseable auth {
+        PoolId batchPoolId = processor.messagePoolId(batch);
         bytes memory remaining = batch;
 
         while (remaining.length > 0) {
@@ -103,6 +104,9 @@ contract Gateway is Auth, Recoverable, IGateway {
             bytes memory message = remaining.slice(0, length);
             remaining = remaining.slice(length, remaining.length - length);
             bytes32 messageHash = keccak256(message);
+
+            PoolId messagePoolId = processor.messagePoolId(message);
+            require(batchPoolId == messagePoolId, MalformedBatch());
 
             require(gasleft() > GAS_FAIL_MESSAGE_STORAGE, NotEnoughGasToProcess());
 
