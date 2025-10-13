@@ -17,16 +17,6 @@ enum MessageType {
     RecoverTokens,
     RegisterAsset,
     SetPoolAdapters,
-    _Placeholder6,
-    _Placeholder7,
-    _Placeholder8,
-    _Placeholder9,
-    _Placeholder10,
-    _Placeholder11,
-    _Placeholder12,
-    _Placeholder13,
-    _Placeholder14,
-    _Placeholder15,
     // -- Pool dependent messages
     NotifyPool,
     NotifyShareClass,
@@ -76,16 +66,6 @@ library MessageLib {
         (161 << uint8(MessageType.RecoverTokens) * 8) +
         (18  << uint8(MessageType.RegisterAsset) * 8) +
         (13  << uint8(MessageType.SetPoolAdapters) * 8) +
-        (0   << uint8(MessageType._Placeholder6) * 8) +
-        (0   << uint8(MessageType._Placeholder7) * 8) +
-        (0   << uint8(MessageType._Placeholder8) * 8) +
-        (0   << uint8(MessageType._Placeholder9) * 8) +
-        (0   << uint8(MessageType._Placeholder10) * 8) +
-        (0   << uint8(MessageType._Placeholder11) * 8) +
-        (0   << uint8(MessageType._Placeholder12) * 8) +
-        (0   << uint8(MessageType._Placeholder13) * 8) +
-        (0   << uint8(MessageType._Placeholder14) * 8) +
-        (0   << uint8(MessageType._Placeholder15) * 8) +
         (9   << uint8(MessageType.NotifyPool) * 8) +
         (250 << uint8(MessageType.NotifyShareClass) * 8) +
         (49  << uint8(MessageType.NotifyPricePoolPerShare) * 8) +
@@ -101,15 +81,12 @@ library MessageLib {
         (91  << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (59  << uint8(MessageType.UpdateShares) * 8) +
         (49  << uint8(MessageType.MaxAssetPriceAge) * 8) +
-        (33  << uint8(MessageType.MaxSharePriceAge) * 8);
-
-    // forgefmt: disable-next-item
-    uint256 constant MESSAGE_LENGTHS_2 =
-        (41  << (uint8(MessageType.Request) - 32) * 8) +
-        (41  << (uint8(MessageType.RequestCallback) - 32) * 8) +
-        (41  << (uint8(MessageType.SetRequestManager) - 32) * 8) +
-        (42  << (uint8(MessageType.UpdateGatewayManager) - 32) * 8) +
-        (57  << (uint8(MessageType.UntrustedContractUpdate) - 32) * 8);
+        (33  << uint8(MessageType.MaxSharePriceAge) * 8) +
+        (41  << uint8(MessageType.Request) * 8) +
+        (41  << uint8(MessageType.RequestCallback) * 8) +
+        (41  << uint8(MessageType.SetRequestManager) * 8) +
+        (42  << uint8(MessageType.UpdateGatewayManager) * 8) +
+        (57  << uint8(MessageType.UntrustedContractUpdate) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -123,9 +100,7 @@ library MessageLib {
         uint8 kind = message.toUint8(0);
         require(kind <= uint8(type(MessageType).max), UnknownMessageType());
 
-        length = (kind <= 31)
-            ? uint16(uint8(bytes32(MESSAGE_LENGTHS_1)[31 - kind]))
-            : uint16(uint8(bytes32(MESSAGE_LENGTHS_2)[63 - kind]));
+        length = uint16(uint8(bytes32(MESSAGE_LENGTHS_1)[31 - kind]));
 
         // Special treatment for messages with dynamic size:
         if (kind == uint8(MessageType.UpdateRestriction)) {
