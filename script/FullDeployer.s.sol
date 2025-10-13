@@ -133,6 +133,9 @@ contract FullActionBatcher is CoreActionBatcher {
 
         report.batchRequestManager.rely(address(report.root));
 
+        report.navManager.rely(address(report.root));
+        report.simplePriceManager.rely(address(report.root));
+
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(address(report.root));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.root));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.root));
