@@ -30,6 +30,7 @@ enum MessageType {
     TrustedContractUpdate,
     UpdateVault,
     UpdateBalanceSheetManager,
+    UpdateGatewayManager,
     UpdateHoldingAmount,
     UpdateShares,
     MaxAssetPriceAge,
@@ -37,7 +38,6 @@ enum MessageType {
     Request,
     RequestCallback,
     SetRequestManager,
-    UpdateGatewayManager,
     UntrustedContractUpdate
 }
 
@@ -75,7 +75,6 @@ library MessageLib {
         (91  << uint8(MessageType.InitiateTransferShares) * 8) +
         (73  << uint8(MessageType.ExecuteTransferShares) * 8) +
         (25  << uint8(MessageType.UpdateRestriction) * 8) +
-        (57  << uint8(MessageType.TrustedContractUpdate) * 8) +
         (74  << uint8(MessageType.UpdateVault) * 8) +
         (42  << uint8(MessageType.UpdateBalanceSheetManager) * 8) +
         (91  << uint8(MessageType.UpdateHoldingAmount) * 8) +
@@ -86,7 +85,8 @@ library MessageLib {
         (41  << uint8(MessageType.RequestCallback) * 8) +
         (41  << uint8(MessageType.SetRequestManager) * 8) +
         (42  << uint8(MessageType.UpdateGatewayManager) * 8) +
-        (57  << uint8(MessageType.UntrustedContractUpdate) * 8);
+        (57  << uint8(MessageType.TrustedContractUpdate) * 8) +
+        (89  << uint8(MessageType.UntrustedContractUpdate) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -108,7 +108,7 @@ library MessageLib {
         } else if (kind == uint8(MessageType.TrustedContractUpdate)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.UntrustedContractUpdate)) {
-            length += 2 + message.toUint16(length) + 32; //payloadLength + sender
+            length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.Request)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.RequestCallback)) {
@@ -554,7 +554,7 @@ library MessageLib {
         bytes16 scId;
         bytes32 target;
         bytes32 sender;
-        bytes payload;
+        bytes payload; // As sequence of bytes
     }
 
     function deserializeUntrustedContractUpdate(bytes memory data)
@@ -563,13 +563,13 @@ library MessageLib {
         returns (UntrustedContractUpdate memory)
     {
         require(messageType(data) == MessageType.UntrustedContractUpdate, UnknownMessageType());
-        uint16 payloadLength = data.toUint16(57);
+        uint16 payloadLength = data.toUint16(89);
         return UntrustedContractUpdate({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             target: data.toBytes32(25),
-            payload: data.slice(59, payloadLength),
-            sender: data.toBytes32(59 + payloadLength)
+            sender: data.toBytes32(57),
+            payload: data.slice(91, payloadLength)
         });
     }
 
@@ -579,9 +579,9 @@ library MessageLib {
             t.poolId,
             t.scId,
             t.target,
+            t.sender,
             t.payload.length.toUint16(),
-            t.payload,
-            t.sender
+            t.payload
         );
     }
 
