@@ -37,7 +37,7 @@ contract MerkleProofManagerTest is Test {
 
     function testReceiveEther() public {
         uint256 amount = 1 ether;
-        
+
         (bool success,) = address(manager).call{value: amount}("");
         assertTrue(success);
         assertEq(address(manager).balance, amount);
@@ -102,7 +102,7 @@ contract MerkleProofManagerTrustedCallSuccessTests is MerkleProofManagerTest {
 
         // Update policy
         bytes memory updatePayload = abi.encode(POLICY, strategist.toBytes32(), newRoot);
-        
+
         vm.expectEmit();
         emit IMerkleProofManager.UpdatePolicy(strategist, oldRoot, newRoot);
 
@@ -132,7 +132,7 @@ contract MerkleProofManagerTrustedCallSuccessTests is MerkleProofManagerTest {
 
     function testTrustedCallClearPolicy() public {
         bytes32 rootHash = keccak256("root");
-        
+
         // Set initial policy
         bytes memory setPayload = abi.encode(POLICY, strategist.toBytes32(), rootHash);
         vm.prank(contractUpdater);
@@ -141,7 +141,7 @@ contract MerkleProofManagerTrustedCallSuccessTests is MerkleProofManagerTest {
 
         // Clear policy by setting to zero
         bytes memory clearPayload = abi.encode(POLICY, strategist.toBytes32(), bytes32(0));
-        
+
         vm.expectEmit();
         emit IMerkleProofManager.UpdatePolicy(strategist, rootHash, bytes32(0));
 

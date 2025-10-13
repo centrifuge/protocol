@@ -121,7 +121,7 @@ contract SyncManagerTrustedCallTest is SyncManagerBaseTest {
     function testUnknownTrustedCall() public {
         PoolId testPool = PoolId.wrap(999);
         ShareClassId testSc = ShareClassId.wrap(bytes16("testsc"));
-        
+
         // Create payload with invalid enum value (max enum value + 1)
         bytes memory invalidPayload = abi.encode(uint8(255), bytes32(0));
 
@@ -137,7 +137,7 @@ contract SyncManagerTrustedCallTest is SyncManagerBaseTest {
 
         vm.expectEmit();
         emit ISyncManager.SetValuation(vault.poolId(), vault.scId(), newValuation);
-        
+
         syncManager.trustedCall(vault.poolId(), vault.scId(), payload);
 
         assertEq(address(syncManager.valuation(vault.poolId(), vault.scId())), newValuation);
@@ -159,12 +159,12 @@ contract SyncManagerTrustedCallTest is SyncManagerBaseTest {
         uint128 newMaxReserve = 1_000_000e6;
 
         (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(assetId));
-        
+
         bytes memory payload = abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), assetId, newMaxReserve);
 
         vm.expectEmit();
         emit ISyncManager.SetMaxReserve(vault.poolId(), vault.scId(), asset, tokenId, newMaxReserve);
-        
+
         syncManager.trustedCall(vault.poolId(), vault.scId(), payload);
 
         assertEq(syncManager.maxReserve(vault.poolId(), vault.scId(), asset, tokenId), newMaxReserve);
