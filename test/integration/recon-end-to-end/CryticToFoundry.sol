@@ -6,19 +6,19 @@ import {console2} from "forge-std/console2.sol";
 import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
+import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/core/types/AssetId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {AccountId, AccountType} from "src/hub/interfaces/IHub.sol";
-import {PoolEscrow} from "src/common/PoolEscrow.sol";
+import {AccountId, AccountType} from "src/core/hub/interfaces/IHub.sol";
+import {PoolEscrow} from "src/core/spoke/PoolEscrow.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
-import {IValuation} from "src/common/interfaces/IValuation.sol";
+import {IValuation} from "src/core/hub/interfaces/IValuation.sol";
 import {D18} from "src/misc/types/D18.sol";
-import {RequestMessageLib} from "src/common/libraries/RequestMessageLib.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {RequestMessageLib} from "src/vaults/libraries/RequestMessageLib.sol";
+import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
 
 import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 import {TargetFunctions} from "./TargetFunctions.sol";

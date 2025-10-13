@@ -13,55 +13,60 @@ import {console2} from "forge-std/console2.sol";
 import {Escrow} from "src/misc/Escrow.sol";
 import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {Root} from "src/common/Root.sol";
-import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
+import {Root} from "src/admin/Root.sol";
+import {BalanceSheet} from "src/core/spoke/BalanceSheet.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
-import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
-import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
+import {RefundEscrowFactory} from "src/vaults/factories/RefundEscrowFactory.sol";
+import {TokenFactory} from "src/core/spoke/factories/TokenFactory.sol";
+import {PoolEscrowFactory} from "src/core/spoke/factories/PoolEscrowFactory.sol";
 import {SyncManager} from "src/vaults/SyncManager.sol";
-import {ShareToken} from "src/spoke/ShareToken.sol";
-import {Spoke} from "src/spoke/Spoke.sol";
+import {ShareToken} from "src/core/spoke/ShareToken.sol";
+import {Spoke} from "src/core/spoke/Spoke.sol";
+import {VaultRegistry} from "src/core/spoke/VaultRegistry.sol";
 
 // Hub
-import {Accounting} from "src/hub/Accounting.sol";
-import {HubRegistry} from "src/hub/HubRegistry.sol";
-import {Gateway} from "src/common/Gateway.sol";
-import {Holdings} from "src/hub/Holdings.sol";
-import {Hub} from "src/hub/Hub.sol";
-import {ShareClassManager} from "src/hub/ShareClassManager.sol";
+import {Accounting} from "src/core/hub/Accounting.sol";
+import {HubRegistry} from "src/core/hub/HubRegistry.sol";
+import {Gateway} from "src/core/Gateway.sol";
+import {Holdings} from "src/core/hub/Holdings.sol";
+import {Hub} from "src/core/hub/Hub.sol";
+import {ShareClassManager} from "src/core/hub/ShareClassManager.sol";
+import {BatchRequestManagerHarness} from "test/integration/recon-end-to-end/mocks/BatchRequestManagerHarness.sol";
 import {IdentityValuation} from "src/valuations/IdentityValuation.sol";
-import {MessageProcessor} from "src/common/MessageProcessor.sol";
-import {MessageDispatcher} from "src/common/MessageDispatcher.sol";
-import {IMessageDispatcher} from "src/common/interfaces/IMessageDispatcher.sol";
-import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
-import {Root} from "src/common/Root.sol";
-import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {HubHelpers} from "src/hub/HubHelpers.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {MessageProcessor} from "src/core/messaging/MessageProcessor.sol";
+import {MessageDispatcher} from "src/core/messaging/MessageDispatcher.sol";
+import {IMessageDispatcher} from "src/core/messaging/interfaces/IMessageDispatcher.sol";
+import {TokenRecoverer} from "src/admin/TokenRecoverer.sol";
+import {MockAdapter} from "test/core/mocks/MockAdapter.sol";
+import {AccountId} from "src/core/types/AccountId.sol";
+import {AssetId} from "src/core/types/AssetId.sol";
+import {HubHandler} from "src/core/hub/HubHandler.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
 
 // Interfaces
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
-import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
-import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
-import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IHubRegistry} from "src/core/hub/interfaces/IHubRegistry.sol";
+import {IHub} from "src/core/hub/interfaces/IHub.sol";
+import {IAccounting} from "src/core/hub/interfaces/IAccounting.sol";
+import {IHoldings} from "src/core/hub/interfaces/IHoldings.sol";
+import {IHubMessageSender} from "src/core/interfaces/IGatewaySenders.sol";
+import {IShareClassManager} from "src/core/hub/interfaces/IShareClassManager.sol";
+import {IBatchRequestManager} from "src/vaults/interfaces/IBatchRequestManager.sol";
+import {IHubRequestManager} from "src/core/hub/interfaces/IHubRequestManager.sol";
+import {IGateway} from "src/core/interfaces/IGateway.sol";
+import {IMessageHandler} from "src/core/interfaces/IMessageHandler.sol";
 import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
-import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
-import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
+import {IVaultFactory} from "src/core/spoke/factories/interfaces/IVaultFactory.sol";
+import {IHubHandler} from "src/core/hub/interfaces/IHubHandler.sol";
+import {IMultiAdapter} from "src/core/interfaces/IMultiAdapter.sol";
 
 // Common
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
+import {IRoot} from "src/admin/interfaces/IRoot.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-import {MockValuation} from "test/common/mocks/MockValuation.sol";
+import {MockValuation} from "test/core/mocks/MockValuation.sol";
 
 // Test Utils
 import {SharedStorage} from "test/integration/recon-end-to-end/helpers/SharedStorage.sol";
@@ -90,10 +95,12 @@ abstract contract Setup is
     SyncDepositVaultFactory syncVaultFactory;
     TokenFactory tokenFactory;
     PoolEscrowFactory poolEscrowFactory;
+    RefundEscrowFactory refundEscrowFactory;
 
     AsyncRequestManager asyncRequestManager;
     SyncManager syncManager;
     Spoke spoke;
+    VaultRegistry vaultRegistry;
     FullRestrictions fullRestrictions;
     IRoot root;
     BalanceSheet balanceSheet;
@@ -120,8 +127,9 @@ abstract contract Setup is
     HubRegistry hubRegistry;
     Holdings holdings;
     Hub hub;
-    HubHelpers hubHelpers;
+    HubHandler hubHandler;
     ShareClassManager shareClassManager;
+    BatchRequestManagerHarness batchRequestManager;
     MockValuation transientValuation;
     IdentityValuation identityValuation;
 
@@ -197,13 +205,16 @@ abstract contract Setup is
         balanceSheet = new BalanceSheet(root, address(this));
         fullRestrictions = new FullRestrictions(
             address(root),
+            address(spoke),
             address(balanceSheet),
             address(globalEscrow),
             address(spoke),
             address(this)
         );
+        refundEscrowFactory = new RefundEscrowFactory(address(this));
         asyncRequestManager = new AsyncRequestManager(
             globalEscrow,
+            refundEscrowFactory,
             address(this)
         );
         syncManager = new SyncManager(address(this));
@@ -220,6 +231,7 @@ abstract contract Setup is
         );
         tokenFactory = new TokenFactory(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
+        vaultRegistry = new VaultRegistry(address(this));
         spoke = new Spoke(tokenFactory, address(this));
 
         tokenRecoverer = new TokenRecoverer(
@@ -232,17 +244,19 @@ abstract contract Setup is
 
         messageDispatcher = new MessageDispatcher(
             CENTRIFUGE_CHAIN_ID, // localCentrifugeId = 1 for same-chain testing
-            IRoot(address(root)),
+            IRoot(address(root)), // scheduleAuth
             IGateway(address(gateway)),
-            tokenRecoverer,
             address(this)
         );
 
         // set dependencies
         asyncRequestManager.file("spoke", address(spoke));
         asyncRequestManager.file("balanceSheet", address(balanceSheet));
+        asyncRequestManager.file("vaultRegistry", address(vaultRegistry));
         syncManager.file("spoke", address(spoke));
         syncManager.file("balanceSheet", address(balanceSheet));
+        syncManager.file("vaultRegistry", address(vaultRegistry));
+        vaultRegistry.file("spoke", address(spoke));
         spoke.file("gateway", address(gateway));
         spoke.file("sender", address(messageDispatcher));
         spoke.file("tokenFactory", address(tokenFactory));
@@ -286,19 +300,24 @@ abstract contract Setup is
             IHubRegistry(address(hubRegistry)),
             address(this)
         );
-        hubHelpers = new HubHelpers(
-            IHoldings(address(holdings)),
-            IAccounting(address(accounting)),
+        batchRequestManager = new BatchRequestManagerHarness(
             IHubRegistry(address(hubRegistry)),
-            IHubMessageSender(address(messageDispatcher)),
-            IShareClassManager(address(shareClassManager)),
             address(this)
         );
         hub = new Hub(
             IGateway(address(gateway)),
             IHoldings(address(holdings)),
-            IHubHelpers(address(hubHelpers)),
             IAccounting(address(accounting)),
+            IHubRegistry(address(hubRegistry)),
+            IMultiAdapter(address(mockAdapter)),
+            IShareClassManager(address(shareClassManager)),
+            address(this)
+        );
+
+        // Initialize HubHandler with correct parameters (hub, holdings, hubRegistry, shareClassManager, deployer)
+        hubHandler = new HubHandler(
+            IHub(address(hub)),
+            IHoldings(address(holdings)),
             IHubRegistry(address(hubRegistry)),
             IShareClassManager(address(shareClassManager)),
             address(this)
@@ -309,6 +328,10 @@ abstract contract Setup is
         holdings.rely(address(hub));
         accounting.rely(address(hub));
         shareClassManager.rely(address(hub));
+        batchRequestManager.rely(address(hub));
+        batchRequestManager.rely(address(hubHandler));
+        batchRequestManager.rely(address(messageDispatcher));
+        batchRequestManager.file("hub", address(hub));
         poolEscrowFactory.rely(address(hub));
 
         // Add missing Root permissions (matching HubDeployer)
@@ -317,15 +340,18 @@ abstract contract Setup is
         accounting.rely(address(root));
         shareClassManager.rely(address(root));
         hub.rely(address(root));
-        hubHelpers.rely(address(root));
+        hubHandler.rely(address(root));
 
-        accounting.rely(address(hubHelpers));
-        shareClassManager.rely(address(hubHelpers));
+        accounting.rely(address(hubHandler));
+        shareClassManager.rely(address(hubHandler));
+        hubRegistry.rely(address(hubHandler));
+        holdings.rely(address(hubHandler));
+        hub.rely(address(hubHandler));
         // Hub needs permission to call HubHelpers functions
-        hubHelpers.rely(address(hub));
+        hubHandler.rely(address(hub));
 
         // Add missing HubHelpers permissions (matching HubDeployer)
-        hubHelpers.rely(address(messageDispatcher));
+        hubHandler.rely(address(messageDispatcher));
 
         hub.rely(address(messageDispatcher));
 
@@ -343,18 +369,17 @@ abstract contract Setup is
 
         // Add missing MessageDispatcher permissions (matching HubDeployer)
         messageDispatcher.rely(address(root));
-        messageDispatcher.rely(address(hubHelpers));
+        messageDispatcher.rely(address(hubHandler));
 
         // set dependencies
         hub.file("sender", address(messageDispatcher));
-        hub.file("poolEscrowFactory", address(poolEscrowFactory));
 
-        messageDispatcher.file("hub", address(hub));
+        messageDispatcher.file("hubHandler", address(hubHandler));
         messageDispatcher.file("spoke", address(spoke));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
 
         // Add missing HubHelpers file configuration (matching HubDeployer)
-        hubHelpers.file("hub", address(hub));
+        hubHandler.file("hub", address(hub));
     }
 
     /// === Helper Functions === ///
@@ -385,13 +410,16 @@ abstract contract Setup is
 
         // Rely Spoke (from SpokeDeployer)
         asyncVaultFactory.rely(address(spoke));
+        asyncVaultFactory.rely(address(vaultRegistry));
         syncVaultFactory.rely(address(spoke));
+        syncVaultFactory.rely(address(vaultRegistry));
         tokenFactory.rely(address(spoke));
         asyncRequestManager.rely(address(spoke));
         syncManager.rely(address(spoke));
         fullRestrictions.rely(address(spoke));
         poolEscrowFactory.rely(address(spoke));
         gateway.rely(address(spoke));
+        vaultRegistry.rely(address(spoke));
 
         // Rely async requests manager
         globalEscrow.rely(address(asyncRequestManager));
@@ -399,6 +427,11 @@ abstract contract Setup is
         asyncRequestManager.rely(address(syncVaultFactory));
         asyncRequestManager.rely(address(messageDispatcher));
         asyncRequestManager.rely(address(syncManager));
+
+        // Rely VaultRegistry
+        vaultRegistry.rely(address(asyncVaultFactory));
+        vaultRegistry.rely(address(syncVaultFactory));
+        vaultRegistry.rely(address(messageDispatcher));
 
         // Rely sync manager
         syncManager.rely(address(spoke));
@@ -422,6 +455,7 @@ abstract contract Setup is
 
         // Rely Root (from all deployers)
         spoke.rely(address(root));
+        spoke.rely(address(vaultRegistry));
         asyncRequestManager.rely(address(root));
         syncManager.rely(address(root));
         balanceSheet.rely(address(root));
@@ -432,6 +466,7 @@ abstract contract Setup is
         fullRestrictions.rely(address(root));
         gateway.rely(address(root));
         poolEscrowFactory.rely(address(root));
+        vaultRegistry.rely(address(root));
 
         // Rely gateway
         spoke.rely(address(gateway));

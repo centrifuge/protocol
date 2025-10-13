@@ -5,9 +5,9 @@ import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
-import {MessageLib} from "../../../src/common/libraries/MessageLib.sol";
+import "../../core/spoke/integration/BaseTest.sol";
 
-import "../../spoke/integration/BaseTest.sol";
+import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
@@ -68,7 +68,7 @@ contract SyncManagerTest is SyncManagerBaseTest {
     // --- Simple Errors ---
     function testMintUnlinkedVault() public {
         (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(1), d18(1));
-        spoke.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
+        vaultRegistry.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
         vm.expectRevert(ISyncManager.ExceedsMaxMint.selector);
         syncManager.mint(vault, 1, address(0), address(0));
@@ -76,7 +76,7 @@ contract SyncManagerTest is SyncManagerBaseTest {
 
     function testDepositUnlinkedVault() public {
         (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(1), d18(1));
-        spoke.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
+        vaultRegistry.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
         vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
         syncManager.deposit(vault, 1, address(0), address(0));
@@ -106,7 +106,7 @@ contract SyncManagerUnauthorizedTest is SyncManagerBaseTest {
 
     function testUpdate() public {
         _expectUnauthorized();
-        syncManager.update(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
+        syncManager.trustedCall(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
     }
 
     function _expectUnauthorized() internal {

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IAdapter} from "../../common/interfaces/IAdapter.sol";
+import {IAdapter} from "../../core/interfaces/IAdapter.sol";
+
+import {IAdapterWiring} from "../../admin/interfaces/IAdapterWiring.sol";
 
 // From https://github.com/wormhole-foundation/wormhole-solidity-sdk/blob/main/src/interfaces/IWormholeRelayer.sol#L75
 interface IWormholeRelayer {
@@ -133,17 +135,26 @@ struct WormholeDestination {
     address addr;
 }
 
-interface IWormholeAdapter is IAdapter, IWormholeReceiver {
+/// @title  IWormholeAdapter
+/// @notice Cross-chain messaging adapter for Wormhole network
+/// @dev    Bridges messages between Centrifuge chains using Wormhole's automatic relayer
+interface IWormholeAdapter is IAdapter, IAdapterWiring, IWormholeReceiver {
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
     event Wire(uint16 indexed centrifugeId, uint16 indexed wormholeId, address adapter);
+
+    //----------------------------------------------------------------------------------------------
+    // Errors
+    //----------------------------------------------------------------------------------------------
 
     error NotWormholeRelayer();
     error InvalidSource();
 
-    /// @notice Wire the adapter to a remote one.
-    /// @param centrifugeId The remote chain's chain ID
-    /// @param wormholeId The remote chain's Wormhole ID
-    /// @param adapter The remote chain's Wormhole adapter address
-    function wire(uint16 centrifugeId, uint16 wormholeId, address adapter) external;
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Returns the source configuration for a given wormhole chain id
     /// @param wormholeId The remote wormhole id

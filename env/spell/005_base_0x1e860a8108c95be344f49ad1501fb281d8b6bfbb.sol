@@ -6,17 +6,17 @@ pragma solidity ^0.8.28;
 // Source Branch: spell/004-disable-v2-vaults
 // CREATE3 Deterministic Deployment
 
-import {AssetId} from "../../src/common/types/AssetId.sol";
+import {AssetId} from "../../src/core/types/AssetId.sol";
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
-import {IRequestManager} from "../../src/common/interfaces/IRequestManager.sol";
-import {IRoot} from "../../src/common/interfaces/IRoot.sol";
-import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
-import {ISpokeGatewayHandler, IBalanceSheetGatewayHandler} from "../../src/common/interfaces/IGatewayHandlers.sol";
-import {ISpoke} from "../../src/spoke/interfaces/ISpoke.sol";
+import {IRequestManager} from "../../src/core/interfaces/IRequestManager.sol";
+import {IRoot} from "../../src/core/interfaces/IRoot.sol";
+import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
+import {ISpokeGatewayHandler, IBalanceSheetGatewayHandler} from "../../src/core/interfaces/IGatewayHandlers.sol";
+import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
 import {IntegrationConstants} from "../integration/utils/IntegrationConstants.sol";
-import {PoolId} from "../../src/common/types/PoolId.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {VaultUpdateKind} from "../../src/common/libraries/MessageLib.sol";
+import {PoolId} from "../../src/core/types/PoolId.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 /// @notice Base network-specific spell that disables V2 permissions for both JTRSY_USDC and JAAA_USDC
 /// @dev Also deploys V3 JAAA vault on Base spoke

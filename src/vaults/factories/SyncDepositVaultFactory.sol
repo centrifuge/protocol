@@ -4,12 +4,11 @@ pragma solidity 0.8.28;
 import {Auth} from "../../misc/Auth.sol";
 import {IAuth} from "../../misc/interfaces/IAuth.sol";
 
-import {PoolId} from "../../common/types/PoolId.sol";
-import {ShareClassId} from "../../common/types/ShareClassId.sol";
-
-import {IVault} from "../../spoke/interfaces/IVault.sol";
-import {IShareToken} from "../../spoke/interfaces/IShareToken.sol";
-import {IVaultFactory} from "../../spoke/factories/interfaces/IVaultFactory.sol";
+import {PoolId} from "../../core/types/PoolId.sol";
+import {IVault} from "../../core/spoke/interfaces/IVault.sol";
+import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IShareToken} from "../../core/spoke/interfaces/IShareToken.sol";
+import {IVaultFactory} from "../../core/spoke/factories/interfaces/IVaultFactory.sol";
 
 import {SyncDepositVault} from "../SyncDepositVault.sol";
 import {IAsyncRedeemManager} from "../interfaces/IVaultManagers.sol";

@@ -11,11 +11,10 @@ import "../misc/interfaces/IERC7575.sol";
 import {IERC20} from "../misc/interfaces/IERC20.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
-
-import {VaultKind} from "../spoke/interfaces/IVault.sol";
-import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
+import {PoolId} from "../core/types/PoolId.sol";
+import {ShareClassId} from "../core/types/ShareClassId.sol";
+import {VaultKind} from "../core/spoke/interfaces/IVault.sol";
+import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 
 /// @title  AsyncVault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools

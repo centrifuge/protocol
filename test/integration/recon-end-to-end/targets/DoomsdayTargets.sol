@@ -11,12 +11,13 @@ import {console2} from "forge-std/console2.sol";
 // Dependencies
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
+import {AccountId} from "src/core/types/AccountId.sol";
 import {BaseVault} from "src/vaults/BaseVaults.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
+import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
+import {AssetId} from "src/core/types/AssetId.sol";
+
 import {D18} from "src/misc/types/D18.sol";
 
 // Test Utils
@@ -29,10 +30,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     /// @dev Property: user should always be able to deposit less than maxMint
     function doomsday_deposit(uint256 assets) public statelessTest {
         uint256 ppfsBefore = BaseVault(address(_getVault())).pricePerShare();
-        (uint128 maxMint, , , , , , , , , ) = asyncRequestManager.investments(
-            _getVault(),
-            _getActor()
-        );
+        (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
         uint256 maxMintAsAssets = _getVault().convertToAssets(maxMint);
 
         uint256 sharesReceived;
@@ -40,14 +38,8 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         try _getVault().deposit(assets, _getActor()) returns (uint256 shares) {
             sharesReceived = shares;
         } catch {
-            bool isFrozen = fullRestrictions.isFrozen(
-                address(_getVault()),
-                _getActor()
-            );
-            (bool isMember, ) = fullRestrictions.isMember(
-                _getShareToken(),
-                _getActor()
-            );
+            bool isFrozen = fullRestrictions.isFrozen(address(_getVault()), _getActor());
+            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
             if (assets < maxMintAsAssets && !isFrozen && isMember) {
                 t(false, "cant deposit less than maxMint");
             }
@@ -59,16 +51,8 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         uint256 expectedSharesReceived = ((assets * 1e18) / ppfsBefore);
 
         // should always round in protocol's favor, requiring more assets to be spent than shares received
-        gte(
-            sharesAsAssets,
-            expectedAssetsSpent,
-            "sharesAsAssets < expectedAssetsSpent"
-        );
-        lte(
-            sharesReceived,
-            expectedSharesReceived,
-            "sharesReceived > expectedSharesReceived"
-        );
+        gte(sharesAsAssets, expectedAssetsSpent, "sharesAsAssets < expectedAssetsSpent");
+        lte(sharesReceived, expectedSharesReceived, "sharesReceived > expectedSharesReceived");
     }
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare -
@@ -76,45 +60,26 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     /// @dev Property: user should always be able to mint less than maxMint
     function doomsday_mint(uint256 shares) public statelessTest {
         uint256 ppfsBefore = BaseVault(address(_getVault())).pricePerShare();
-        (uint128 maxMint, , , , , , , , , ) = asyncRequestManager.investments(
-            _getVault(),
-            _getActor()
-        );
+        (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
 
         vm.prank(_getActor());
         uint256 assetsSpent;
         try _getVault().mint(shares, _getActor()) returns (uint256 assets) {
             assetsSpent = assets;
         } catch {
-            bool isFrozen = fullRestrictions.isFrozen(
-                address(_getVault()),
-                _getActor()
-            );
-            (bool isMember, ) = fullRestrictions.isMember(
-                _getShareToken(),
-                _getActor()
-            );
+            bool isFrozen = fullRestrictions.isFrozen(address(_getVault()), _getActor());
+            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
             if (shares < maxMint && !isFrozen && isMember) {
                 t(false, "cant mint less than maxMint");
             }
         }
         uint256 assetsAsShares = _getVault().convertToShares(assetsSpent);
 
-        uint256 expectedAssetsSpent = (assetsAsShares * ppfsBefore) +
-            (10 ** MockERC20(_getAsset()).decimals());
-        uint256 expectedSharesReceived = (assetsSpent / ppfsBefore) -
-            (10 ** IShareToken(_getShareToken()).decimals());
+        uint256 expectedAssetsSpent = (assetsAsShares * ppfsBefore) + (10 ** MockERC20(_getAsset()).decimals());
+        uint256 expectedSharesReceived = (assetsSpent / ppfsBefore) - (10 ** IShareToken(_getShareToken()).decimals());
 
-        gte(
-            assetsSpent,
-            expectedAssetsSpent,
-            "assetsSpent < expectedAssetsSpent"
-        );
-        lte(
-            assetsAsShares,
-            expectedSharesReceived,
-            "assetsAsShares > expectedSharesReceived"
-        );
+        gte(assetsSpent, expectedAssetsSpent, "assetsSpent < expectedAssetsSpent");
+        lte(assetsAsShares, expectedSharesReceived, "assetsAsShares > expectedSharesReceived");
     }
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare -
@@ -122,42 +87,28 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     /// @dev Property: user should always be able to redeem less than maxWithdraw
     function doomsday_redeem(uint256 shares) public statelessTest {
         uint256 ppfsBefore = BaseVault(address(_getVault())).pricePerShare();
-        (, uint128 maxWithdraw, , , , , , , , ) = asyncRequestManager
-            .investments(_getVault(), _getActor());
+        (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
         uint256 maxWithdrawAsShares = _getVault().convertToShares(maxWithdraw);
 
         vm.prank(_getActor());
         uint256 assetsReceived;
-        try _getVault().redeem(shares, _getActor(), _getActor()) returns (
-            uint256 assets
-        ) {
+        try _getVault().redeem(shares, _getActor(), _getActor()) returns (uint256 assets) {
             assetsReceived = assets;
         } catch {
-            bool isFrozen = fullRestrictions.isFrozen(
-                address(_getVault()),
-                _getActor()
-            );
-            (bool isMember, ) = fullRestrictions.isMember(
-                _getShareToken(),
-                _getActor()
-            );
+            bool isFrozen = fullRestrictions.isFrozen(address(_getVault()), _getActor());
+            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
             if (shares < maxWithdrawAsShares && !isFrozen && isMember) {
                 t(false, "cant redeem less than maxWithdraw");
             }
         }
         uint256 assetsAsShares = _getVault().convertToShares(assetsReceived);
 
-        uint256 expectedAssets = (shares * ppfsBefore) +
-            (10 ** IShareToken(_getShareToken()).decimals());
-        uint256 expectedAssetsAsShares = (_getVault().convertToAssets(shares) /
-            ppfsBefore) - (10 ** IShareToken(_getShareToken()).decimals());
+        uint256 expectedAssets = (shares * ppfsBefore) + (10 ** IShareToken(_getShareToken()).decimals());
+        uint256 expectedAssetsAsShares =
+            (_getVault().convertToAssets(shares) / ppfsBefore) - (10 ** IShareToken(_getShareToken()).decimals());
 
         lte(assetsReceived, expectedAssets, "assetsReceived > expectedAssets");
-        gte(
-            assetsAsShares,
-            expectedAssetsAsShares,
-            "assetsAsShares < expectedAssetsAsShares"
-        );
+        gte(assetsAsShares, expectedAssetsAsShares, "assetsAsShares < expectedAssetsAsShares");
     }
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare -
@@ -166,51 +117,31 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     function doomsday_withdraw(uint256 assets) public statelessTest {
         uint256 ppfsBefore = BaseVault(address(_getVault())).pricePerShare();
         uint256 assetsAsSharesBefore = _getVault().convertToShares(assets);
-        (, uint128 maxWithdraw, , , , , , , , ) = asyncRequestManager
-            .investments(_getVault(), _getActor());
+        (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
 
         vm.prank(_getActor());
         uint256 sharesReceived;
-        try _getVault().withdraw(assets, _getActor(), _getActor()) returns (
-            uint256 shares
-        ) {
+        try _getVault().withdraw(assets, _getActor(), _getActor()) returns (uint256 shares) {
             sharesReceived = shares;
         } catch {
-            bool isFrozen = fullRestrictions.isFrozen(
-                address(_getVault()),
-                _getActor()
-            );
-            (bool isMember, ) = fullRestrictions.isMember(
-                _getShareToken(),
-                _getActor()
-            );
+            bool isFrozen = fullRestrictions.isFrozen(address(_getVault()), _getActor());
+            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
             if (assets < maxWithdraw && !isFrozen && isMember) {
                 t(false, "cant withdraw less than maxWithdraw");
             }
         }
         uint256 sharesAsAssets = _getVault().convertToAssets(sharesReceived);
 
-        uint256 expectedAssets = (assetsAsSharesBefore * ppfsBefore) +
-            (10 ** IShareToken(_getShareToken()).decimals());
-        uint256 expectedAssetsAsShares = (assets / ppfsBefore) -
-            (10 ** IShareToken(_getShareToken()).decimals());
+        uint256 expectedAssets = (assetsAsSharesBefore * ppfsBefore) + (10 ** IShareToken(_getShareToken()).decimals());
+        uint256 expectedAssetsAsShares = (assets / ppfsBefore) - (10 ** IShareToken(_getShareToken()).decimals());
 
         gte(sharesAsAssets, expectedAssets, "sharesAsAssets < expectedAssets");
-        lte(
-            sharesReceived,
-            expectedAssetsAsShares,
-            "sharesReceived > expectedAssetsAsShares"
-        );
+        lte(sharesReceived, expectedAssetsAsShares, "sharesReceived > expectedAssetsAsShares");
     }
 
     /// @dev Property: pricePerShare never changes after a user operation
-    function doomsday_pricePerShare_never_changes_after_user_operation()
-        public
-    {
-        if (
-            currentOperation != OpType.ADMIN &&
-            currentOperation != OpType.UPDATE
-        ) {
+    function doomsday_pricePerShare_never_changes_after_user_operation() public {
+        if (currentOperation != OpType.ADMIN && currentOperation != OpType.UPDATE) {
             eq(
                 _before.pricePerShare[address(_getVault())],
                 _after.pricePerShare[address(_getVault())],
@@ -220,14 +151,10 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     }
 
     /// @dev Property: implied pricePerShare (totalAssets / totalSupply) never changes after a user operation
-    function doomsday_impliedPricePerShare_never_changes_after_user_operation()
-        public
-    {
+    function doomsday_impliedPricePerShare_never_changes_after_user_operation() public {
         if (currentOperation != OpType.ADMIN) {
-            uint256 impliedPricePerShareBefore = _before.totalAssets /
-                _before.totalShareSupply;
-            uint256 impliedPricePerShareAfter = _after.totalAssets /
-                _after.totalShareSupply;
+            uint256 impliedPricePerShareBefore = _before.totalAssets / _before.totalShareSupply;
+            uint256 impliedPricePerShareAfter = _after.totalAssets / _after.totalShareSupply;
             eq(
                 impliedPricePerShareBefore,
                 impliedPricePerShareAfter,
@@ -237,16 +164,12 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     }
 
     /// @dev Property: accounting.accountValue should never revert
-    function doomsday_accountValue(
-        uint64 poolIdAsUint,
-        uint32 accountAsInt
-    ) public {
+    function doomsday_accountValue(uint64 poolIdAsUint, uint32 accountAsInt) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         AccountId account = AccountId.wrap(accountAsInt);
 
-        try accounting.accountValue(poolId, account) {} catch (
-            bytes memory reason
-        ) {
+        try accounting.accountValue(poolId, account) {}
+        catch (bytes memory reason) {
             bool expectedRevert = checkError(reason, "AccountDoesNotExist()");
             t(expectedRevert, "accountValue should never revert");
         }
@@ -260,8 +183,8 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         // Set zero price directly
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
-        hub.updateSharePrice(poolId, scId, D18.wrap(0));
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        hub.updateSharePrice(poolId, scId, D18.wrap(0), uint64(block.timestamp));
 
         // === CONVERSION FUNCTION TESTS === //
         try vault.convertToShares(1e18) returns (uint256 shares) {
@@ -285,10 +208,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         // === VAULT OPERATION TESTS === //
         try vault.maxDeposit(_getActor()) returns (uint256 max) {
             console2.log("DEBUG: maxDeposit returned:", max);
-            console2.log(
-                "DEBUG: pool per share:",
-                D18.unwrap(spoke.pricePoolPerShare(poolId, scId, false))
-            );
+            console2.log("DEBUG: pool per share:", D18.unwrap(spoke.pricePoolPerShare(poolId, scId, false)));
             eq(max, 0, "maxDeposit handled zero price");
         } catch {
             t(false, "maxDeposit should not revert at zero price");
@@ -313,46 +233,27 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         }
 
         // === SHARE CLASS MANAGER OPERATIONS === //
-        uint32 nowIssueEpoch = shareClassManager.nowIssueEpoch(scId, assetId);
-        try
-            shareClassManager.issueShares(
-                poolId,
-                scId,
-                assetId,
-                nowIssueEpoch,
-                D18.wrap(0)
-            )
-        returns (uint128 issued, uint128, uint128) {
-            eq(issued, 0, "issued shares should return 0 at zero price");
+        uint32 nowIssueEpoch = batchRequestManager.nowIssueEpoch(poolId, scId, assetId);
+        try batchRequestManager.issueShares{value: 0.1 ether}(
+            poolId, scId, assetId, nowIssueEpoch, D18.wrap(0), SHARE_HOOK_GAS, address(this)
+        ) {
+            (uint128 approvedPool,,,,,) = batchRequestManager.epochInvestAmounts(poolId, scId, assetId, nowIssueEpoch);
+            eq(approvedPool, 0, "approved pool amount should return 0 at zero price");
         } catch (bytes memory reason) {
             bool expectedRevert = checkError(reason, "EpochNotFound()");
-            t(
-                expectedRevert,
-                "issueShares shout not revert at zero price apart from EpochNotFound"
-            );
+            t(expectedRevert, "issueShares shout not revert at zero price apart from EpochNotFound");
         }
 
-        uint32 nowRevokeEpoch = shareClassManager.nowRevokeEpoch(scId, assetId);
-        try
-            shareClassManager.revokeShares(
-                poolId,
-                scId,
-                assetId,
-                nowRevokeEpoch,
-                D18.wrap(0)
-            )
-        returns (uint128, uint128 assetAmount, uint128) {
-            eq(
-                assetAmount,
-                0,
-                "revoked asset amount should return 0 at zero price"
-            );
+        uint32 nowRevokeEpoch = batchRequestManager.nowRevokeEpoch(poolId, scId, assetId);
+        try batchRequestManager.revokeShares(
+            poolId, scId, assetId, nowRevokeEpoch, D18.wrap(0), SHARE_HOOK_GAS, address(this)
+        ) {
+            (,,,, uint128 payoutAssetAmount,) =
+                batchRequestManager.epochRedeemAmounts(poolId, scId, assetId, nowRevokeEpoch);
+            eq(payoutAssetAmount, 0, "revoked asset amount should return 0 at zero price");
         } catch (bytes memory reason) {
             bool expectedRevert = checkError(reason, "EpochNotFound()");
-            t(
-                expectedRevert,
-                "issueShares shout not revert at zero price apart from EpochNotFound"
-            );
+            t(expectedRevert, "revokeShares shout not revert at zero price apart from EpochNotFound");
         }
     }
 }

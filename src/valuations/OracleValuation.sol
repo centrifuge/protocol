@@ -5,15 +5,15 @@ import {IOracleValuation} from "./interfaces/IOracleValuation.sol";
 
 import {D18} from "../misc/types/D18.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {AssetId} from "../common/types/AssetId.sol";
-import {PricingLib} from "../common/libraries/PricingLib.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
-import {IValuation} from "../common/interfaces/IValuation.sol";
+import {PoolId} from "../core/types/PoolId.sol";
+import {AssetId} from "../core/types/AssetId.sol";
+import {IHub} from "../core/hub/interfaces/IHub.sol";
+import {PricingLib} from "../core/libraries/PricingLib.sol";
+import {ShareClassId} from "../core/types/ShareClassId.sol";
+import {IValuation} from "../core/hub/interfaces/IValuation.sol";
+import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
 
-import {IHub} from "../hub/interfaces/IHub.sol";
-import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
-
+/// @title  OracleValuation
 /// @notice Provides an implementation for valuation of assets by trusted price feeders.
 ///         Prices should be denominated in the pool currency.
 ///         Quorum is always 1, i.e. there is no aggregation of prices across multiple feeders.
@@ -62,16 +62,21 @@ contract OracleValuation is IOracleValuation {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IValuation
+    function getPrice(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (D18) {
+        Price memory price = pricePoolPerAsset[poolId][scId][assetId];
+        require(price.isValid, PriceNotSet());
+
+        return price.value;
+    }
+
+    /// @inheritdoc IValuation
     function getQuote(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 baseAmount)
         external
         view
         returns (uint128 quoteAmount)
     {
-        Price memory price = pricePoolPerAsset[poolId][scId][assetId];
-        require(price.isValid, PriceNotSet());
-
         return PricingLib.convertWithPrice(
-            baseAmount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), price.value
+            baseAmount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), getPrice(poolId, scId, assetId)
         );
     }
 }

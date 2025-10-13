@@ -10,23 +10,20 @@ import {console2} from "forge-std/console2.sol";
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {ShareToken} from "src/spoke/ShareToken.sol";
+import {ShareToken} from "src/core/spoke/ShareToken.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
-import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
+import {PoolId, newPoolId} from "src/core/types/PoolId.sol";
+import {AssetId} from "src/core/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IValuation} from "src/common/interfaces/IValuation.sol";
-import {PoolEscrow} from "src/common/PoolEscrow.sol";
-import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
-import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
+import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
+import {IValuation} from "src/core/hub/interfaces/IValuation.sol";
+import {PoolEscrow} from "src/core/spoke/PoolEscrow.sol";
+import {MAX_MESSAGE_COST} from "src/core/messaging/interfaces/IGasService.sol";
+import {RequestCallbackMessageLib} from "src/vaults/libraries/RequestCallbackMessageLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
-import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {IHubRequestManager} from "src/core/hub/interfaces/IHubRequestManager.sol";
 import {AccountType} from "src/hub/interfaces/IHub.sol";
 
 // Component
@@ -329,7 +326,8 @@ abstract contract TargetFunctions is
             toEntropy
         );
 
-        uint32 depositEpoch = shareClassManager.nowDepositEpoch(
+        uint32 depositEpoch = batchRequestManager.nowDepositEpoch(
+            _getPool(),
             _getShareClassId(),
             _getAssetId()
         );
@@ -376,7 +374,8 @@ abstract contract TargetFunctions is
             toEntropy
         );
 
-        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(
+        uint32 nowDepositEpoch = batchRequestManager.nowDepositEpoch(
+            _getPool(),
             _getShareClassId(),
             _getAssetId()
         );
@@ -420,7 +419,8 @@ abstract contract TargetFunctions is
             toEntropy
         );
 
-        uint32 redeemEpoch = shareClassManager.nowDepositEpoch(
+        uint32 redeemEpoch = batchRequestManager.nowDepositEpoch(
+            _getPool(),
             _getShareClassId(),
             _getAssetId()
         );
@@ -451,7 +451,8 @@ abstract contract TargetFunctions is
 
         vault_requestRedeem(requestShares, toEntropy);
 
-        uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(
+        uint32 redeemEpoch = batchRequestManager.nowRedeemEpoch(
+            _getPool(),
             _getShareClassId(),
             _getAssetId()
         );
@@ -544,13 +545,15 @@ abstract contract TargetFunctions is
         vault_cancelRedeemRequest();
 
         // After cancellation, check if there's still pending redeem to approve/revoke
-        uint128 pendingRedeem = shareClassManager.pendingRedeem(
+        uint128 pendingRedeem = batchRequestManager.pendingRedeem(
+            _getPool(),
             _getShareClassId(),
             _getAssetId()
         );
 
         // Throw iff pending redeem == 0 to signal pruning
-        uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(
+        uint32 redeemEpoch = batchRequestManager.nowRedeemEpoch(
+            _getPool(),
             _getShareClassId(),
             _getAssetId()
         );
@@ -606,7 +609,8 @@ abstract contract TargetFunctions is
         uint32 nowDepositEpochId,
         uint128 navPerShare
     ) public {
-        uint128 pendingDeposit = shareClassManager.pendingDeposit(
+        uint128 pendingDeposit = batchRequestManager.pendingDeposit(
+            _getPool(),
             _getShareClassId(),
             _getAssetId()
         );
@@ -625,7 +629,8 @@ abstract contract TargetFunctions is
         uint32 epochId,
         uint128 navPerShare
     ) public {
-        uint128 pendingRedeem = shareClassManager.pendingRedeem(
+        uint128 pendingRedeem = batchRequestManager.pendingRedeem(
+            _getPool(),
             _getShareClassId(),
             _getAssetId()
         );
@@ -673,7 +678,12 @@ abstract contract TargetFunctions is
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
-        hub.updateSharePrice(poolId, scId, D18.wrap(0));
+        hub.updateSharePrice{value: 0.1 ether}(
+            poolId,
+            scId,
+            D18.wrap(0),
+            uint64(block.timestamp)
+        );
     }
 
     /// @dev Set non-zero price with proper clamping for realistic testing
@@ -687,7 +697,12 @@ abstract contract TargetFunctions is
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
-        hub.updateSharePrice(poolId, scId, D18.wrap(uint128(price)));
+        hub.updateSharePrice{value: 0.1 ether}(
+            poolId,
+            scId,
+            D18.wrap(uint128(price)),
+            uint64(block.timestamp)
+        );
     }
 
     /// @dev Set price to realistic range for testing normal operations
@@ -703,7 +718,12 @@ abstract contract TargetFunctions is
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
-        hub.updateSharePrice(poolId, scId, D18.wrap(uint128(price)));
+        hub.updateSharePrice{value: 0.1 ether}(
+            poolId,
+            scId,
+            D18.wrap(uint128(price)),
+            uint64(block.timestamp)
+        );
     }
 
     /// === Toggling State Variables === ///

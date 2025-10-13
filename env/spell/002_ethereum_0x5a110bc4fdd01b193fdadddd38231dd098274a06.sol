@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 
 import {RelinkV2Common} from "./RelinkV2Common.sol";
 
-import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
 
 interface VaultLike {
     function poolId() external view returns (uint64);
@@ -128,9 +128,9 @@ contract RelinkV2Eth is RelinkV2Common {
 // Include the common base contract
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
-import {IRoot} from "../../src/common/interfaces/IRoot.sol";
+import {IRoot} from "../../src/core/interfaces/IRoot.sol";
 
-import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
 
 interface ShareTokenLike {
     function updateVault(address asset, address vault_) external;

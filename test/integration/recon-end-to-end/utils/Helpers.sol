@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
+import {AccountId} from "src/core/types/AccountId.sol";
+import {AssetId} from "src/core/types/AssetId.sol";
 
-import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+import {IHoldings} from "src/core/hub/interfaces/IHoldings.sol";
+import {IShareClassManager} from "src/core/hub/interfaces/IShareClassManager.sol";
 import {IERC7540Deposit} from "src/misc/interfaces/IERC7540.sol";
 import {IERC7887Deposit} from "src/misc/interfaces/IERC7540.sol";
 import {IERC165} from "src/misc/interfaces/IERC7575.sol";

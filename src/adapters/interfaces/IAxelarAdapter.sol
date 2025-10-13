@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IAdapter} from "../../common/interfaces/IAdapter.sol";
+import {IAdapter} from "../../core/interfaces/IAdapter.sol";
+
+import {IAdapterWiring} from "../../admin/interfaces/IAdapterWiring.sol";
 
 // From https://github.com/axelarnetwork/axelar-cgp-solidity/blob/main/contracts/interfaces/IAxelarGateway.sol
 interface IAxelarGateway {
@@ -78,14 +80,19 @@ struct AxelarDestination {
     string addr;
 }
 
-interface IAxelarAdapter is IAdapter, IAxelarExecutable {
+/// @title  IAxelarAdapter
+/// @notice Cross-chain messaging adapter for Axelar network
+/// @dev    Bridges messages between Centrifuge chains using Axelar's General Message Passing (GMP)
+interface IAxelarAdapter is IAdapter, IAdapterWiring, IAxelarExecutable {
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
     event Wire(uint16 indexed centrifugeId, string indexed axelarId, string adapter);
 
-    /// @notice Wire the adapter to a remote one.
-    /// @param centrifugeId The remote chain's chain ID
-    /// @param axelarId The remote chain's Axelar ID
-    /// @param adapter The remote chain's Axelar adapter address
-    function wire(uint16 centrifugeId, string calldata axelarId, string calldata adapter) external;
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Returns the source configuration for a given axelar chain id
     /// @param axelarId The Axelar ID of the remote chain

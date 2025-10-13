@@ -1,23 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {EndToEndUseCases} from "./EndToEnd.t.sol";
+import {EndToEndFlows} from "./EndToEnd.t.sol";
 import {LocalAdapter} from "./adapters/LocalAdapter.sol";
 import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
+import {d18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../../src/common/types/PoolId.sol";
-import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
-import {IGateway} from "../../src/common/interfaces/IGateway.sol";
-import {MessageLib} from "../../src/common/libraries/MessageLib.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {IMultiAdapter} from "../../src/common/interfaces/IMultiAdapter.sol";
+import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
+import {IGateway} from "../../src/core/interfaces/IGateway.sol";
+import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
+import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
+import {MessageLib} from "../../src/core/messaging/libraries/MessageLib.sol";
 
-import {IHub} from "../../src/hub/interfaces/IHub.sol";
-
-import {ISpoke} from "../../src/spoke/interfaces/ISpoke.sol";
-import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
+import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
 import {FullDeployer} from "../../script/FullDeployer.s.sol";
 
@@ -35,7 +32,7 @@ enum CrossChainDirection {
 ///         Hub is on Chain A, with spokes on Chains B and C
 ///         C is considered the source chain, B the destination chain
 ///         Depending on the cross chain direction, the hub is either on A or B or C
-contract ThreeChainEndToEndDeployment is EndToEndUseCases {
+contract ThreeChainEndToEndDeployment is EndToEndFlows {
     using CastLib for *;
     using MessageLib for *;
 
@@ -58,7 +55,7 @@ contract ThreeChainEndToEndDeployment is EndToEndUseCases {
 
         // Connect Chain A to Chain C (spoke 2)
         adapterAToC = new LocalAdapter(CENTRIFUGE_ID_A, deployA.multiAdapter(), address(deployA));
-        _wire(deployA, CENTRIFUGE_ID_C, adapterAToC);
+        _setAdapter(deployA, CENTRIFUGE_ID_C, adapterAToC);
 
         adapterCToA.setEndpoint(adapterAToC);
         adapterAToC.setEndpoint(adapterCToA);
@@ -101,22 +98,28 @@ contract ThreeChainEndToEndDeployment is EndToEndUseCases {
 
         _testConfigurePool(direction);
 
+        vm.startPrank(FM);
+        h.hub.updateSharePrice(POOL_A, SC_1, d18(1, 1), uint64(block.timestamp));
+        h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, sB.centrifugeId, REFUND);
+
         // B: Mint shares
-        vm.startPrank(address(sB.root));
+        vm.startPrank(BSM);
         IShareToken shareTokenB = IShareToken(sB.spoke.shareToken(POOL_A, SC_1));
-        shareTokenB.mint(INVESTOR_A, amount);
+        sB.balanceSheet.issue(POOL_A, SC_1, INVESTOR_A, amount);
+        sB.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, 0, REFUND);
         vm.stopPrank();
         assertEq(shareTokenB.balanceOf(INVESTOR_A), amount, "Investor should have minted shares on chain B");
 
         // B: Initiate transfer of shares
         vm.expectEmit();
         emit ISpoke.InitiateTransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A, INVESTOR_A.toBytes32(), amount);
-        emit IHub.ForwardTransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount);
+        vm.expectEmit();
+        emit IHub.ForwardTransferShares(sB.centrifugeId, sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount);
 
         // If hub is not source, then message will be pending as unpaid on hub until repaid
         if (direction == CrossChainDirection.WithIntermediaryHub) {
             vm.expectEmit(true, false, false, false);
-            emit IGateway.UnderpaidBatch(sC.centrifugeId, bytes(""));
+            emit IGateway.UnderpaidBatch(sC.centrifugeId, bytes(""), bytes32(0));
         } else {
             vm.expectEmit();
             emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, amount);
@@ -124,9 +127,12 @@ contract ThreeChainEndToEndDeployment is EndToEndUseCases {
 
         vm.prank(INVESTOR_A);
         sB.spoke.crosschainTransferShares{value: GAS}(
-            sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount, SHARE_HOOK_GAS
+            sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount, HOOK_GAS, HOOK_GAS, INVESTOR_A
         );
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should be burned on chain B");
+        assertEq(
+            h.snapshotHook.transfers(POOL_A, SC_1, sB.centrifugeId, sC.centrifugeId), amount, "Snapshot hook not called"
+        );
 
         // C: Transfer expected to be pending on A due to message being unpaid
         IShareToken shareTokenC = IShareToken(sC.spoke.shareToken(POOL_A, SC_1));
@@ -134,23 +140,16 @@ contract ThreeChainEndToEndDeployment is EndToEndUseCases {
         // If hub is not source, then message will be pending as unpaid on hub until repaid
         if (direction == CrossChainDirection.WithIntermediaryHub) {
             assertEq(shareTokenC.balanceOf(INVESTOR_A), 0, "Share transfer not executed due to unpaid message");
-            bytes memory message = MessageLib.ExecuteTransferShares({
-                poolId: PoolId.unwrap(POOL_A),
-                scId: ShareClassId.unwrap(SC_1),
-                receiver: INVESTOR_A.toBytes32(),
-                amount: amount
-            }).serialize();
 
-            // A: Repay for unpaid ExecuteTransferShares message on A to trigger sending it to C if A != C
-            vm.expectEmit(true, false, false, false);
-            emit IMultiAdapter.HandlePayload(h.centrifugeId, bytes32(""), bytes(""), adapterCToA);
+            vm.prank(ANY);
             vm.expectEmit();
             emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, amount);
-            h.gateway.repay{value: GAS}(sC.centrifugeId, message);
+            h.gateway.repay{value: GAS}(sC.centrifugeId, _getLastUnpaidMessage(), REFUND);
         }
 
         // C: Verify shares were minted
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should still be burned on chain B");
+        assertEq(shareTokenC.balanceOf(INVESTOR_A), amount, "Shares minted on chain C");
     }
 }
 

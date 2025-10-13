@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+pragma solidity >=0.5.0;
+
+import {IShareToken} from "../../interfaces/IShareToken.sol";
+
+/// @title  ITokenFactory
+/// @notice Factory for deploying deterministic share class tokens using CREATE2
+/// @dev    Enables same-address deployments across different EVM chains using salt
+interface ITokenFactory {
+    event File(bytes32 what, address[] addr);
+
+    error FileUnrecognizedParam();
+
+    /// @notice Updates a contract parameter.
+    /// @param what Name of the parameter to update.
+    function file(bytes32 what, address[] memory data) external;
+
+    /// @notice Used to deploy new share class tokens.
+    /// @dev    In order to have the same address on different EVMs `salt` should be used
+    ///         during creation process.
+    /// @param name Name of the new token.
+    /// @param symbol Symbol of the new token.
+    /// @param decimals Decimals of the new token.
+    /// @param salt Salt used for deterministic deployments.
+    function newToken(string memory name, string memory symbol, uint8 decimals, bytes32 salt)
+        external
+        returns (IShareToken);
+
+    /// @notice Returns the predicted address (using CREATE2)
+    function getAddress(uint8 decimals, bytes32 salt) external view returns (address);
+}

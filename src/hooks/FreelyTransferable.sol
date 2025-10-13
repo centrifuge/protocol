@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {BaseTransferHook} from "./BaseTransferHook.sol";
 
-import {ITransferHook, HookData} from "../common/interfaces/ITransferHook.sol";
+import {ITransferHook, HookData} from "../core/spoke/interfaces/ITransferHook.sol";
 
 /// @title  Freely Transferable
 /// @notice Hook implementation that:
@@ -13,19 +13,21 @@ import {ITransferHook, HookData} from "../common/interfaces/ITransferHook.sol";
 contract FreelyTransferable is BaseTransferHook {
     constructor(
         address root_,
+        address spoke_,
         address redeemSource_,
         address depositTarget_,
         address crosschainSource_,
         address deployer
-    ) BaseTransferHook(root_, redeemSource_, depositTarget_, crosschainSource_, deployer) {}
+    ) BaseTransferHook(root_, spoke_, redeemSource_, depositTarget_, crosschainSource_, deployer) {}
 
     /// @inheritdoc ITransferHook
-    function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)
-        public
-        view
-        override
-        returns (bool)
-    {
+    function checkERC20Transfer(
+        address from,
+        address to,
+        uint256,
+        /* value */
+        HookData calldata hookData
+    ) public view override returns (bool) {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
         if (isDepositRequestOrIssuance(from, to)) return isTargetMember(to, hookData);
         if (isDepositClaim(from, to)) return isTargetMember(to, hookData);

@@ -2,28 +2,30 @@
 pragma solidity ^0.8.0;
 
 import {Asserts} from "@chimera/Asserts.sol";
+import {vm} from "@chimera/Hevm.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 import {console2} from "forge-std/console2.sol";
 
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
+import {AssetId} from "src/core/types/AssetId.sol";
+import {AccountId} from "src/core/types/AccountId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {PoolEscrow} from "src/common/PoolEscrow.sol";
-import {IPoolEscrow, Holding} from "src/common/interfaces/IPoolEscrow.sol";
-import {AccountType} from "src/hub/interfaces/IHub.sol";
+import {PoolEscrow} from "src/core/spoke/PoolEscrow.sol";
+import {IPoolEscrow, Holding} from "src/core/spoke/interfaces/IPoolEscrow.sol";
+import {AccountType} from "src/core/hub/interfaces/IHub.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {BaseVault} from "src/vaults/BaseVaults.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
-import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IVault, VaultKind} from "src/spoke/interfaces/IVault.sol";
-import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
+import {PricingLib} from "src/core/libraries/PricingLib.sol";
+import {VaultDetails} from "src/core/spoke/interfaces/ISpoke.sol";
+import {IVault, VaultKind} from "src/core/spoke/interfaces/IVault.sol";
 
+import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 import {OpType} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {AsyncVaultCentrifugeProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
@@ -43,8 +45,12 @@ abstract contract Properties is
     using MathLib for uint128;
     using MathLib for uint256;
 
+    // Constants for new API parameters
+    uint128 internal constant SHARE_HOOK_GAS = 0;
+
     event DebugWithString(string, uint256);
     event DebugNumber(uint256);
+
 
     // ===============================
     // SENTINEL
@@ -104,7 +110,7 @@ abstract contract Properties is
     function property_sum_of_pending_redeem_request() public tokenIsSet {
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
         address asset = vault.asset();
 
         address[] memory actors = _getActors();
@@ -262,15 +268,17 @@ abstract contract Properties is
     // NOTE: might need an additional precondition to know that call was successful
     function property_last_update_on_request_deposit() public {
         if (currentOperation == OpType.REQUEST_DEPOSIT) {
-            (uint128 pending, uint32 lastUpdate) = shareClassManager
+            (uint128 pending, uint32 lastUpdate) = batchRequestManager
                 .depositRequest(
+                    _getVault().poolId(),
                     _getVault().scId(),
-                    spoke.vaultDetails(_getVault()).assetId,
+                    vaultRegistry.vaultDetails(_getVault()).assetId,
                     _getActor().toBytes32()
                 );
-            (uint32 depositEpochId, , , ) = shareClassManager.epochId(
+            (uint32 depositEpochId, , , ) = batchRequestManager.epochId(
+                _getVault().poolId(),
                 _getVault().scId(),
-                spoke.vaultDetails(_getVault()).assetId
+                vaultRegistry.vaultDetails(_getVault()).assetId
             );
 
             // Check if this is a fresh user (request not yet processed by Hub)
@@ -296,15 +304,17 @@ abstract contract Properties is
     /// @dev Property: After successfully calling requestRedeem for an investor, their redeemRequest[..].lastUpdate equals nowRedeemEpoch
     function property_last_update_on_request_redeem() public {
         if (currentOperation == OpType.REQUEST_REDEEM) {
-            (uint128 pending, uint32 lastUpdate) = shareClassManager
+            (uint128 pending, uint32 lastUpdate) = batchRequestManager
                 .redeemRequest(
+                    _getVault().poolId(),
                     _getVault().scId(),
-                    spoke.vaultDetails(_getVault()).assetId,
+                    vaultRegistry.vaultDetails(_getVault()).assetId,
                     _getActor().toBytes32()
                 );
-            (, uint32 redeemEpochId, , ) = shareClassManager.epochId(
+            (, uint32 redeemEpochId, , ) = batchRequestManager.epochId(
+                _getVault().poolId(),
                 _getVault().scId(),
-                spoke.vaultDetails(_getVault()).assetId
+                vaultRegistry.vaultDetails(_getVault()).assetId
             );
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should
@@ -679,7 +689,7 @@ abstract contract Properties is
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -695,7 +705,7 @@ abstract contract Properties is
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -711,7 +721,7 @@ abstract contract Properties is
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -727,7 +737,7 @@ abstract contract Properties is
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -743,7 +753,7 @@ abstract contract Properties is
     function property_cancelled_and_processed_redemptions_soundness() public {
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
         address[] memory actors = _getActors();
 
         for (uint256 i; i < actors.length; i++) {
@@ -761,7 +771,7 @@ abstract contract Properties is
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
         uint256 totalDeposits;
         for (uint256 i; i < actors.length; i++) {
@@ -801,16 +811,19 @@ abstract contract Properties is
         // Pending + Queued = Deposited?
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
+        PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
-            (uint128 pending, ) = shareClassManager.depositRequest(
+            (uint128 pending, ) = batchRequestManager.depositRequest(
+                poolId,
                 scId,
                 assetId,
                 actors[i].toBytes32()
             );
-            (, uint128 queued) = shareClassManager.queuedDepositRequest(
+            (, uint128 queued) = batchRequestManager.queuedDepositRequest(
+                poolId,
                 scId,
                 assetId,
                 actors[i].toBytes32()
@@ -832,16 +845,19 @@ abstract contract Properties is
         // Pending + Queued = Deposited?
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
+        PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
-            (uint128 pending, ) = shareClassManager.redeemRequest(
+            (uint128 pending, ) = batchRequestManager.redeemRequest(
+                poolId,
                 scId,
                 assetId,
                 actors[i].toBytes32()
             );
-            (, uint128 queued) = shareClassManager.queuedRedeemRequest(
+            (, uint128 queued) = batchRequestManager.queuedRedeemRequest(
+                poolId,
                 scId,
                 assetId,
                 actors[i].toBytes32()
@@ -899,7 +915,7 @@ abstract contract Properties is
     //         }
 
     //         // calculate the expected share delta using the asset delta and the price per share
-    //         VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
+    //         VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
     //         console2.log("shareDelta", shareDelta);
     //         console2.log("assetDelta", assetDelta);
     //         console2.log("pricePoolPerAsset", _before.pricePoolPerAsset[poolId][scId][assetId].raw());
@@ -929,12 +945,13 @@ abstract contract Properties is
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
+        PoolId poolId = vault.poolId();
 
-        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(
+        uint32 nowDepositEpoch = batchRequestManager.nowDepositEpoch(poolId, 
             scId,
             assetId
         );
-        uint128 pendingDeposit = shareClassManager.pendingDeposit(
+        uint128 pendingDeposit = batchRequestManager.pendingDeposit(poolId, 
             scId,
             assetId
         );
@@ -945,7 +962,7 @@ abstract contract Properties is
             ,
             ,
 
-        ) = shareClassManager.epochInvestAmounts(
+        ) = batchRequestManager.epochInvestAmounts(poolId, 
                 scId,
                 assetId,
                 nowDepositEpoch
@@ -973,26 +990,28 @@ abstract contract Properties is
         address[] memory _actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
+        PoolId poolId = vault.poolId();
         AssetId assetId = _getAssetId();
 
-        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(
+        uint32 nowDepositEpoch = batchRequestManager.nowDepositEpoch(poolId, 
             scId,
             assetId
         );
-        uint128 pendingDeposit = shareClassManager.pendingDeposit(
+        uint128 pendingDeposit = batchRequestManager.pendingDeposit(poolId, 
             scId,
             assetId
         );
 
         // get the pending and approved deposit amounts for the current epoch
-        (, uint128 approvedAssetAmount, , , , ) = shareClassManager
-            .epochInvestAmounts(scId, assetId, nowDepositEpoch);
+        (, uint128 approvedAssetAmount, , , , ) = batchRequestManager
+            .epochInvestAmounts(poolId, scId, assetId, nowDepositEpoch);
 
         uint128 totalPendingUserDeposit;
         for (uint256 k = 0; k < _actors.length; k++) {
             address actor = _actors[k];
 
-            (uint128 pendingUserDeposit, ) = shareClassManager.depositRequest(
+            (uint128 pendingUserDeposit, ) = batchRequestManager.depositRequest(
+                poolId,
                 scId,
                 assetId,
                 CastLib.toBytes32(actor)
@@ -1023,22 +1042,23 @@ abstract contract Properties is
     {
         address[] memory _actors = _getActors();
         IBaseVault vault = _getVault();
-        // PoolId poolId = vault.poolId(); // Unused
+        PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
 
-        uint32 redeemEpochId = shareClassManager.nowRedeemEpoch(scId, assetId);
-        uint128 pendingRedeem = shareClassManager.pendingRedeem(scId, assetId);
+        uint32 redeemEpochId = batchRequestManager.nowRedeemEpoch(poolId, scId, assetId);
+        uint128 pendingRedeem = batchRequestManager.pendingRedeem(poolId, scId, assetId);
 
         // get the pending and approved redeem amounts for the current epoch
-        (, uint128 approvedShareAmount, , , , ) = shareClassManager
-            .epochRedeemAmounts(scId, assetId, redeemEpochId);
+        (, uint128 approvedShareAmount, , , , ) = batchRequestManager
+            .epochRedeemAmounts(poolId, scId, assetId, redeemEpochId);
 
         uint128 totalPendingUserRedeem;
         for (uint256 k = 0; k < _actors.length; k++) {
             address actor = _actors[k];
 
-            (uint128 pendingUserRedeem, ) = shareClassManager.redeemRequest(
+            (uint128 pendingUserRedeem, ) = batchRequestManager.redeemRequest(
+                poolId,
                 scId,
                 assetId,
                 CastLib.toBytes32(actor)
@@ -1127,10 +1147,10 @@ abstract contract Properties is
     //     PoolId[] memory _createdPools = _getPools();
     //     for (uint256 i = 0; i < _createdPools.length; i++) {
     //         PoolId poolId = _createdPools[i];
-    //         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+    //         uint32 shareClassCount = batchRequestManager.shareClassCount(poolId);
     //         // skip the first share class because it's never assigned
     //         for (uint32 j = 1; j < shareClassCount; j++) {
-    //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+    //             ShareClassId scId = batchRequestManager.previewShareClassId(poolId, j);
     //             AssetId assetId = _getAssetId();
     //             AssetId assetId = AssetId.wrap(_getAssetId());
     //             // loop over all account types defined in IHub::AccountType
@@ -1521,7 +1541,7 @@ abstract contract Properties is
         if (_before.pricePerShare[address(_getVault())] == 0) return;
 
         address asset = vault.asset();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
         (uint128 holdingAssetAmount, , , ) = holdings.holding(
             vault.poolId(),
@@ -1547,7 +1567,7 @@ abstract contract Properties is
         return;
 
         // Unreachable code commented out to fix compiler warnings
-        // (uint128 totalIssuance,) = shareClassManager.metrics(scId);
+        // (uint128 totalIssuance,) = batchRequestManager.metrics(scId);
         // uint256 minted = issuedHubShares[poolId][scId][assetId] + issuedBalanceSheetShares[poolId][scId]
         //     + sumOfSyncDepositsShare[vault.share()];
         // uint256 burned = revokedHubShares[poolId][scId][assetId] + revokedBalanceSheetShares[poolId][scId];
@@ -1655,10 +1675,10 @@ abstract contract Properties is
 
     //     for (uint256 i = 0; i < createdPools.length; i++) {
     //         PoolId poolId = createdPools[i];
-    //         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+    //         uint32 shareClassCount = batchRequestManager.shareClassCount(poolId);
     //         // skip the first share class because it's never assigned
     //         for (uint32 j = 1; j < shareClassCount; j++) {
-    //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+    //             ShareClassId scId = batchRequestManager.previewShareClassId(poolId, j);
     //             AssetId assetId = _getAssetId();
     //             AssetId assetId = AssetId.wrap(_getAssetId());
 
@@ -1699,12 +1719,12 @@ abstract contract Properties is
         AssetId assetId = _getAssetId();
 
         // get the current deposit epoch
-        uint32 epochId = shareClassManager.nowDepositEpoch(scId, assetId);
+        uint32 epochId = batchRequestManager.nowDepositEpoch(poolId, scId, assetId);
         uint128 totalDepositAssets;
         uint128 totalDepositShares;
         for (uint32 i = 0; i < epochId; i++) {
-            (uint128 pendingAssetAmount, , , , , ) = shareClassManager
-                .epochInvestAmounts(scId, assetId, i);
+            (uint128 pendingAssetAmount, , , , , ) = batchRequestManager
+                .epochInvestAmounts(poolId, scId, assetId, i);
             totalDepositAssets += pendingAssetAmount;
             // TODO: confirm if this share calculation is correct
             totalDepositShares += uint128(
@@ -1715,20 +1735,19 @@ abstract contract Properties is
         // sum eligible user claim payoutShareAmount for the epoch
         uint128 totalPayoutAssetAmount;
         uint128 totalPayoutShareAmount;
+
+        // Use harness to get amounts directly instead of parsing events
         for (uint256 k = 0; k < _actors.length; k++) {
             address actor = _actors[k];
-            (
-                uint128 payoutShareAmount,
-                uint128 payoutAssetAmount,
-
-            ) = hubHelpers.notifyDeposit(
-                    poolId,
-                    scId,
-                    assetId,
-                    CastLib.toBytes32(actor),
-                    MAX_CLAIMS
-                );
-            totalPayoutAssetAmount += payoutAssetAmount;
+            (uint128 payoutShareAmount, uint128 paymentAssetAmount, ) = batchRequestManager.notifyDepositWithReturn(
+                poolId,
+                scId,
+                assetId,
+                CastLib.toBytes32(actor),
+                MAX_CLAIMS,
+                actor // refund address
+            );
+            totalPayoutAssetAmount += paymentAssetAmount;
             totalPayoutShareAmount += payoutShareAmount;
         }
 
@@ -1772,18 +1791,18 @@ abstract contract Properties is
         AssetId assetId = _getAssetId();
 
         // get the current redeem epoch
-        uint32 epochId = shareClassManager.nowRedeemEpoch(scId, assetId);
+        uint32 epochId = batchRequestManager.nowRedeemEpoch(poolId, scId, assetId);
         uint128 totalPayoutAssetAmountEpochs;
         uint128 totalApprovedShareAmountEpochs;
         for (uint32 i = 0; i < epochId; i++) {
             (
-                ,
                 uint128 approvedShareAmount,
+                ,
+                ,
+                ,
                 uint128 payoutAssetAmount,
-                ,
-                ,
 
-            ) = shareClassManager.epochRedeemAmounts(scId, assetId, i);
+            ) = batchRequestManager.epochRedeemAmounts(poolId, scId, assetId, i);
             totalPayoutAssetAmountEpochs += payoutAssetAmount;
             totalApprovedShareAmountEpochs += approvedShareAmount;
         }
@@ -1791,19 +1810,18 @@ abstract contract Properties is
         // sum eligible user claim payoutAssetAmount for the epoch
         uint128 totalPayoutAssetAmount;
         uint128 totalPaymentShareAmount;
+
+        // Use harness to get amounts directly instead of parsing events
         for (uint256 k = 0; k < _actors.length; k++) {
             address actor = _actors[k];
-            (
-                uint128 payoutAssetAmount,
-                uint128 paymentShareAmount,
-
-            ) = hubHelpers.notifyRedeem(
-                    poolId,
-                    scId,
-                    assetId,
-                    CastLib.toBytes32(actor),
-                    MAX_CLAIMS
-                );
+            (uint128 payoutAssetAmount, uint128 paymentShareAmount, ) = batchRequestManager.notifyRedeemWithReturn(
+                poolId,
+                scId,
+                assetId,
+                CastLib.toBytes32(actor),
+                MAX_CLAIMS,
+                actor // refund address
+            );
             totalPayoutAssetAmount += payoutAssetAmount;
             totalPaymentShareAmount += paymentShareAmount;
         }
@@ -1834,7 +1852,6 @@ abstract contract Properties is
     // ZERO PRICE PROPERTIES
     // ===============================
 
-    /// @dev Property: When price is zero, no shares should be issued
     // NOTE: removed because balanceSheet_issue causes false positives for this but can't be removed because it has other properties defined on it
     // function property_zeroPrice_noShareIssuance() public {
     //     if (_before.pricePerShare == 0) {

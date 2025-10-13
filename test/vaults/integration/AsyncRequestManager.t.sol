@@ -7,23 +7,25 @@ import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 import {IEscrow} from "../../../src/misc/interfaces/IEscrow.sol";
 
-import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
+import "../../core/spoke/integration/BaseTest.sol";
 
-import "../../spoke/integration/BaseTest.sol";
-
-import {VaultDetails} from "../../../src/spoke/interfaces/ISpoke.sol";
+import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
+import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 import {IBaseRequestManager} from "../../../src/vaults/interfaces/IBaseRequestManager.sol";
 import {AsyncRequestManager, IAsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
+import {IRefundEscrowFactory} from "../../../src/vaults/factories/interfaces/IRefundEscrowFactory.sol";
 
 interface VaultLike {
     function priceComputedAt() external view returns (uint64);
 }
 
 contract AsyncRequestManagerHarness is AsyncRequestManager {
-    constructor(IEscrow globalEscrow, address deployer) AsyncRequestManager(globalEscrow, deployer) {}
+    constructor(IEscrow globalEscrow, IRefundEscrowFactory refundEscrowFactory, address deployer)
+        AsyncRequestManager(globalEscrow, refundEscrowFactory, deployer)
+    {}
 
     function calculatePriceAssetPerShare(IBaseVault vault, uint128 assets, uint128 shares)
         external
@@ -34,12 +36,14 @@ contract AsyncRequestManagerHarness is AsyncRequestManager {
             return d18(0);
         }
 
+        // forgefmt: disable-next-item
         if (address(vault) == address(0)) {
-            return
-                PricingLib.calculatePriceAssetPerShare(address(0), shares, address(0), 0, assets, MathLib.Rounding.Down);
+            return PricingLib.calculatePriceAssetPerShare(
+                address(0), shares, address(0), 0, assets, MathLib.Rounding.Down
+            );
         }
 
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
         address shareToken = vault.share();
         return PricingLib.calculatePriceAssetPerShare(
             shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets, MathLib.Rounding.Down
@@ -73,7 +77,7 @@ contract AsyncRequestManagerTest is BaseTest {
         (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         IAsyncVault vault = IAsyncVault(vault_);
 
-        spoke.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
+        vaultRegistry.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
         vm.prank(address(vault));
         vm.expectRevert(IAsyncRequestManager.VaultNotLinked.selector);
@@ -82,7 +86,8 @@ contract AsyncRequestManagerTest is BaseTest {
 
     // --- Price calculations ---
     function testPrice() public {
-        AsyncRequestManagerHarness harness = new AsyncRequestManagerHarness(globalEscrow, address(this));
+        AsyncRequestManagerHarness harness =
+            new AsyncRequestManagerHarness(globalEscrow, refundEscrowFactory, address(this));
         assert(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 1, 0).isZero());
         assert(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 0, 1).isZero());
     }

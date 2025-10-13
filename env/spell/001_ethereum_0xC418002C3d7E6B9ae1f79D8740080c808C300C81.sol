@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
 
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
 
 import {LinkShareTokenCommon} from "./LinkShareTokenCommon.sol";
 
@@ -36,9 +36,9 @@ contract LinkShareTokenEth is LinkShareTokenCommon {
 // Include the common base contract
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {IRoot} from "src/common/interfaces/IRoot.sol";
+import {IRoot} from "src/core/interfaces/IRoot.sol";
 
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
+import {ISpoke} from "src/core/spoke/interfaces/ISpoke.sol";
 
 struct LinkShareTokenParams {
     PoolId poolId;

@@ -9,21 +9,24 @@ import {Panic} from "@recon/Panic.sol";
 import {console2} from "forge-std/console2.sol";
 
 // Dependencies
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
-import {IValuation} from "src/common/interfaces/IValuation.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId, newAssetId} from "src/core/types/AssetId.sol";
+import {JournalEntry} from "src/core/hub/interfaces/IAccounting.sol";
+import {IValuation} from "src/core/hub/interfaces/IValuation.sol";
+import {AccountId} from "src/core/types/AccountId.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {MAX_MESSAGE_COST} from "src/core/messaging/interfaces/IGasService.sol";
+import {PricingLib} from "src/core/libraries/PricingLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {EpochInvestAmounts, EpochRedeemAmounts} from "src/vaults/interfaces/IBatchRequestManager.sol";
 
 // Test Utils
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
-import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 
 /// @dev Admin functions called by the admin actor
@@ -31,6 +34,60 @@ import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 abstract contract AdminTargets is BaseTargetFunctions, Properties {
     using CastLib for *;
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
+
+    /// @dev Helper to calculate issued shares to avoid stack depth issues
+    function _calculateIssuedShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint32 nowIssueEpochId,
+        uint128 navPerShare
+    ) private view returns (uint128) {
+        // First, just get the approved asset amount and price
+        (
+            ,  // approvedPoolAmount
+            uint128 approvedAssetAmount,
+            ,  // pendingAssetAmount
+            D18 pricePoolPerAsset,
+            ,  // pricePoolPerShare
+               // issuedAt
+        ) = batchRequestManager.epochInvestAmounts(poolId, scId, assetId, nowIssueEpochId);
+
+        if (navPerShare == 0 || !pricePoolPerAsset.isNotZero()) {
+            return 0;
+        }
+
+        // Calculate in separate step to avoid stack depth
+        return PricingLib.assetToShareAmount(
+            approvedAssetAmount,
+            hubRegistry.decimals(assetId),
+            hubRegistry.decimals(poolId),
+            pricePoolPerAsset,
+            D18.wrap(navPerShare),
+            MathLib.Rounding.Down
+        );
+    }
+
+    /// @dev Helper to calculate revoked shares to avoid stack depth issues
+    function _calculateRevokedShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId payoutAssetId,
+        uint32 nowRevokeEpochId
+    ) private view returns (uint128) {
+        (
+            uint128 approvedShareAmount,
+            uint128 pendingShareAmount,
+            D18 pricePoolPerAsset,
+            D18 pricePoolPerShareEpoch,
+            uint128 payoutAssetAmountEpoch,
+            uint64 revokedAt
+        ) = batchRequestManager.epochRedeemAmounts(poolId, scId, payoutAssetId, nowRevokeEpochId);
+
+        // Return the approved share amount which represents the revoked shares
+        return approvedShareAmount;
+    }
+
 
     /// === SyncManager === ///
     function syncManager_setValuation(address valuation) public updateGhosts {
@@ -62,20 +119,24 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId paymentAssetId = _getAssetId();
-        uint128 pendingDepositBefore = shareClassManager.pendingDeposit(
+        uint128 pendingDepositBefore = batchRequestManager.pendingDeposit(
+            poolId,
             scId,
             paymentAssetId
         );
 
-        hub.approveDeposits(
+        batchRequestManager.approveDeposits{value: MAX_MESSAGE_COST}(
             poolId,
             scId,
             paymentAssetId,
             nowDepositEpochId,
-            maxApproval
+            maxApproval,
+            D18.wrap(1e18), // pricePoolPerAsset - 1:1 price
+            address(this) // refund
         );
 
-        uint128 pendingDepositAfter = shareClassManager.pendingDeposit(
+        uint128 pendingDepositAfter = batchRequestManager.pendingDeposit(
+            poolId,
             scId,
             paymentAssetId
         );
@@ -92,20 +153,23 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId payoutAssetId = _getAssetId();
-        uint128 pendingRedeemBefore = shareClassManager.pendingRedeem(
+        uint128 pendingRedeemBefore = batchRequestManager.pendingRedeem(
+            poolId,
             scId,
             payoutAssetId
         );
 
-        hub.approveRedeems(
+        batchRequestManager.approveRedeems{value: MAX_MESSAGE_COST}(
             poolId,
             scId,
             payoutAssetId,
             nowRedeemEpochId,
-            maxApproval
+            maxApproval,
+            D18.wrap(1e18) // pricePoolPerAsset - 1:1 price
         );
 
-        uint128 pendingRedeemAfter = shareClassManager.pendingRedeem(
+        uint128 pendingRedeemAfter = batchRequestManager.pendingRedeem(
+            poolId,
             scId,
             payoutAssetId
         );
@@ -184,10 +248,10 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
 
         hub_initializeHolding(
             valuation,
-            assetAccount.raw(),
-            equityAccount.raw(),
-            lossAccount.raw(),
-            gainAccount.raw()
+            uint32(assetAccount.raw()),
+            uint32(equityAccount.raw()),
+            uint32(lossAccount.raw()),
+            uint32(gainAccount.raw())
         );
     }
 
@@ -229,8 +293,8 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
 
         hub_initializeLiability(
             valuation,
-            expenseAccount.raw(),
-            liabilityAccount.raw()
+            uint32(expenseAccount.raw()),
+            uint32(liabilityAccount.raw())
         );
     }
 
@@ -241,33 +305,35 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         uint32 nowIssueEpochId,
         uint128 navPerShare
     ) public updateGhostsWithType(OpType.ADD) {
-        // TODO(wischli): Investigate with Balance Sheet property impl
-        // uint128 totalIssuanceBefore;
-        // uint128 totalIssuanceAfter;
-
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
         uint256 escrowSharesBefore = IShareToken(_getShareToken()).balanceOf(
             address(globalEscrow)
         );
-        // (totalIssuanceBefore,) = shareClassManager.metrics(scId);
-        // (uint128 balanceSheetSharesBefore,,,) = balanceSheet.queuedShares(poolId, scId);
 
-        (uint128 issuedShareAmount, , ) = hub.issueShares(
+        batchRequestManager.issueShares{value: MAX_MESSAGE_COST}(
             poolId,
             scId,
             assetId,
             nowIssueEpochId,
             D18.wrap(navPerShare),
-            0
+            SHARE_HOOK_GAS,
+            _getActor()
+        );
+
+        // Calculate issued amount in separate function to avoid stack depth
+        uint128 issuedShareAmount = _calculateIssuedShares(
+            poolId,
+            scId,
+            assetId,
+            nowIssueEpochId,
+            navPerShare
         );
 
         uint256 escrowSharesAfter = IShareToken(_getShareToken()).balanceOf(
             address(globalEscrow)
         );
-        // (totalIssuanceAfter,) = shareClassManager.metrics(scId);
-        // (uint128 balanceSheetSharesAfter,,,) = balanceSheet.queuedShares(poolId, scId);
 
         uint256 escrowShareDelta = escrowSharesAfter - escrowSharesBefore;
         executedInvestments[_getShareToken()] += escrowShareDelta;
@@ -308,7 +374,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
 
     function hub_notifyPool(uint16 centrifugeId) public updateGhosts {
         PoolId poolId = _getPool();
-        hub.notifyPool(poolId, centrifugeId);
+        hub.notifyPool{value: MAX_MESSAGE_COST}(poolId, centrifugeId, _getActor());
     }
 
     function hub_notifyPool_clamped() public {
@@ -321,7 +387,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     ) public updateGhosts {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
-        hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(hookAsUint));
+        hub.notifyShareClass{value: MAX_MESSAGE_COST}(poolId, scId, centrifugeId, bytes32(hookAsUint), _getActor());
     }
 
     function hub_notifyShareClass_clamped(uint256 hookAsUint) public {
@@ -333,7 +399,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     ) public updateGhostsWithType(OpType.UPDATE) {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
-        hub.notifySharePrice(poolId, scId, centrifugeId);
+        hub.notifySharePrice{value: MAX_MESSAGE_COST}(poolId, scId, centrifugeId, _getActor());
     }
 
     function hub_notifySharePrice_clamped() public {
@@ -344,7 +410,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
-        hub.notifyAssetPrice(poolId, scId, assetId);
+        hub.notifyAssetPrice{value: MAX_MESSAGE_COST}(poolId, scId, assetId, _getActor());
     }
 
     /// @dev Property: After FM performs approveRedeems and revokeShares with non-zero navPerShare, the total issuance
@@ -361,26 +427,29 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         uint256 sharesBefore = IShareToken(_getShareToken()).balanceOf(
             address(globalEscrow)
         );
-        // (uint128 totalIssuanceBefore,) = shareClassManager.metrics(scId); // Unused
-        // (uint128 balanceSheetSharesBefore,,,) = balanceSheet.queuedShares(poolId, scId); // Unused
 
-        (uint128 revokedShareAmount, , ) = hub.revokeShares(
+        batchRequestManager.revokeShares{value: MAX_MESSAGE_COST}(
             poolId,
             scId,
             payoutAssetId,
             nowRevokeEpochId,
             D18.wrap(navPerShare),
-            0
+            SHARE_HOOK_GAS,
+            _getActor()
+        );
+
+        // Get and process epoch data in separate function to avoid stack depth
+        uint128 revokedShareAmount = _calculateRevokedShares(
+            poolId,
+            scId,
+            payoutAssetId,
+            nowRevokeEpochId
         );
 
         uint256 sharesAfter = IShareToken(_getShareToken()).balanceOf(
             address(globalEscrow)
         );
         uint256 burnedShares = sharesBefore - sharesAfter;
-        // (uint128 totalIssuanceAfter,) = shareClassManager.metrics(scId); // Unused
-        // (uint128 balanceSheetSharesAfter,,,) = balanceSheet.queuedShares(poolId, scId); // Unused
-        // (uint128 totalIssuanceAfter,) = shareClassManager.metrics(scId); // Unused
-        // (uint128 balanceSheetSharesAfter,,,) = balanceSheet.queuedShares(poolId, scId); // Unused
 
         // NOTE: shares are burned on revoke
         executedRedemptions[vault.share()] += burnedShares;
@@ -494,7 +563,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         bytes memory payload = abi.encodePacked(payloadAsUint);
-        hub.updateRestriction(poolId, scId, chainId, payload, 0);
+        hub.updateRestriction{value: MAX_MESSAGE_COST}(poolId, scId, chainId, payload, 0, _getActor());
     }
 
     function hub_updateRestriction_clamped(uint256 payloadAsUint) public {
@@ -510,7 +579,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
-        hub.updateSharePrice(poolId, scId, D18.wrap(navPoolPerShare));
+        hub.updateSharePrice{value: MAX_MESSAGE_COST}(poolId, scId, D18.wrap(navPoolPerShare), uint64(block.timestamp));
     }
 
     function hub_forceCancelDepositRequest() public updateGhosts {
@@ -520,7 +589,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         bytes32 investor = _getActor().toBytes32();
         AssetId depositAssetId = _getAssetId();
 
-        hub.forceCancelDepositRequest(poolId, scId, investor, depositAssetId);
+        batchRequestManager.forceCancelDepositRequest{value: MAX_MESSAGE_COST}(poolId, scId, investor, depositAssetId, _getActor());
     }
 
     function hub_forceCancelRedeemRequest() public updateGhosts {
@@ -530,7 +599,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         bytes32 investor = _getActor().toBytes32();
         AssetId payoutAssetId = _getAssetId();
 
-        hub.forceCancelRedeemRequest(poolId, scId, investor, payoutAssetId);
+        batchRequestManager.forceCancelRedeemRequest{value: MAX_MESSAGE_COST}(poolId, scId, investor, payoutAssetId, _getActor());
     }
 
     function hub_setMaxAssetPriceAge(uint32 maxAge) public updateGhosts {
@@ -539,7 +608,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
 
-        hub.setMaxAssetPriceAge(poolId, scId, assetId, maxAge);
+        hub.setMaxAssetPriceAge{value: MAX_MESSAGE_COST}(poolId, scId, assetId, uint64(maxAge), _getActor());
     }
 
     function hub_setMaxSharePriceAge(
@@ -550,7 +619,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
-        hub.setMaxSharePriceAge(centrifugeId, poolId, scId, maxAge);
+        hub.setMaxSharePriceAge{value: MAX_MESSAGE_COST}(poolId, scId, centrifugeId, uint64(maxAge), _getActor());
     }
 
     function hub_updateHoldingValue() public updateGhosts {
