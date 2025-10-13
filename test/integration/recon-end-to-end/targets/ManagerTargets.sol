@@ -19,22 +19,22 @@ import {Properties} from "../properties/Properties.sol";
 // Keeping them out makes your project more custom
 abstract contract ManagerTargets is BaseTargetFunctions, Properties {
     /// @dev Start acting as another actor
-    function switch_actor(uint256 entropy) public {
+    function switch_actor(uint256 entropy) public updateGhosts {
         _switchActor(entropy);
     }
 
     /// @dev Starts using a new asset
-    function switch_asset(uint256 entropy) public {
+    function switch_asset(uint256 entropy) public updateGhosts {
         _switchAsset(entropy);
     }
 
     /// @dev Starts using a new pool
-    function switch_pool(uint256 entropy) public {
+    function switch_pool(uint256 entropy) public updateGhosts {
         _switchPool(entropy);
     }
 
     /// @dev Starts using a new share class
-    function switch_share_class(uint256 entropy) public {
+    function switch_share_class(uint256 entropy) public updateGhosts {
         _switchShareClassId(entropy);
     }
 
@@ -66,16 +66,24 @@ abstract contract ManagerTargets is BaseTargetFunctions, Properties {
 
     /// @dev Approve to arbitrary address, uses Actor by default
     /// NOTE: You're almost always better off setting approvals in `Setup`
-    function asset_approve(address to, uint128 amt) public updateGhosts asActor {
+    function asset_approve(
+        address to,
+        uint128 amt
+    ) public updateGhosts asActor {
         MockERC20(_getAsset()).approve(to, amt);
     }
 
     /// @dev Mint to arbitrary address, uses owner by default, even though MockERC20 doesn't check
     function asset_mint(address to, uint128 amt) public updateGhosts asAdmin {
         // PoolId poolId = _getVault().poolId();
-        address poolEscrow = address(poolEscrowFactory.escrow(_getVault().poolId()));
+        address poolEscrow = address(
+            poolEscrowFactory.escrow(_getVault().poolId())
+        );
 
-        require(to != address(globalEscrow) && to != poolEscrow, "Cannot mint to globalEscrow or poolEscrow");
+        require(
+            to != address(globalEscrow) && to != poolEscrow,
+            "Cannot mint to globalEscrow or poolEscrow"
+        );
         console2.log("asset_mint to", to);
         console2.log("asset_mint asset", _getAsset());
         MockERC20(_getAsset()).mint(to, amt);
