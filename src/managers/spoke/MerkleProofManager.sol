@@ -43,19 +43,13 @@ contract MerkleProofManager is IMerkleProofManager, ITrustedContractUpdate {
         require(poolId == poolId_, InvalidPoolId());
         require(msg.sender == contractUpdater, NotAuthorized());
 
-        uint8 kindValue = abi.decode(payload, (uint8));
-        require(kindValue <= uint8(type(IMerkleProofManager.TrustedCall).max), UnknownTrustedCall());
+        (bytes32 who, bytes32 what) = abi.decode(payload, (bytes32, bytes32));
+        address strategist = who.toAddress();
 
-        IMerkleProofManager.TrustedCall kind = IMerkleProofManager.TrustedCall(kindValue);
-        if (kind == IMerkleProofManager.TrustedCall.Policy) {
-            (, bytes32 who, bytes32 what) = abi.decode(payload, (uint8, bytes32, bytes32));
-            address strategist = who.toAddress();
+        bytes32 oldRoot = policy[strategist];
+        policy[strategist] = what;
 
-            bytes32 oldRoot = policy[strategist];
-            policy[strategist] = what;
-
-            emit UpdatePolicy(strategist, oldRoot, what);
-        }
+        emit UpdatePolicy(strategist, oldRoot, what);
     }
 
     //----------------------------------------------------------------------------------------------

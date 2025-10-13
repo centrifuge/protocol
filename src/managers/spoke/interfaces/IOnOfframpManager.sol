@@ -11,10 +11,6 @@ import {ITrustedContractUpdate} from "../../../core/interfaces/IContractUpdate.s
 /// @notice Interface for managing onramp (deposits) and offramp (withdrawals) operations for a specific pool and share class
 /// @dev    Combines deposit, withdraw, and contract update functionality with relayer and asset whitelisting
 interface IOnOfframpManager is IDepositManager, IWithdrawManager, ITrustedContractUpdate {
-    enum TrustedCall {
-        UpdateAddress
-    }
-
     event UpdateOnramp(address indexed asset, bool isEnabled);
     event UpdateRelayer(address indexed relayer, bool isEnabled);
     event UpdateOfframp(address indexed asset, address receiver, bool isEnabled);
@@ -28,7 +24,6 @@ interface IOnOfframpManager is IDepositManager, IWithdrawManager, ITrustedContra
     error NotRelayer();
     error ERC6909NotSupported();
     error UnknownUpdateContractKind();
-    error UnknownTrustedCall();
 
     /// @notice Get the pool ID this manager is configured for
     /// @return The pool identifier

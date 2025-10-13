@@ -14,8 +14,6 @@ import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/Updat
 import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
 import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
 
-uint8 constant UPDATE_ADDRESS = uint8(IOnOfframpManager.TrustedCall.UpdateAddress);
-
 abstract contract OnOfframpManagerBaseTest is BaseTest {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
@@ -85,25 +83,19 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
         // Enable onramp
         vm.prank(address(contractUpdater));
         manager.trustedCall(
-            POOL_A,
-            defaultTypedShareClassId,
-            abi.encode(UPDATE_ADDRESS, bytes32("onramp"), defaultAssetId, bytes32(""), true)
+            POOL_A, defaultTypedShareClassId, abi.encode(bytes32("onramp"), defaultAssetId, bytes32(""), true)
         );
 
         // Enable relayer
         vm.prank(address(contractUpdater));
         manager.trustedCall(
-            POOL_A,
-            defaultTypedShareClassId,
-            abi.encode(UPDATE_ADDRESS, bytes32("relayer"), uint128(0), relayer.toBytes32(), true)
+            POOL_A, defaultTypedShareClassId, abi.encode(bytes32("relayer"), uint128(0), relayer.toBytes32(), true)
         );
 
         // Enable offramp destination
         vm.prank(address(contractUpdater));
         manager.trustedCall(
-            POOL_A,
-            defaultTypedShareClassId,
-            abi.encode(UPDATE_ADDRESS, bytes32("offramp"), defaultAssetId, receiver.toBytes32(), true)
+            POOL_A, defaultTypedShareClassId, abi.encode(bytes32("offramp"), defaultAssetId, receiver.toBytes32(), true)
         );
 
         // Set manager permissions

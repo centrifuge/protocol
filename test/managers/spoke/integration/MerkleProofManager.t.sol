@@ -19,8 +19,6 @@ import {IMerkleProofManager, IERC7751} from "../../../../src/managers/spoke/inte
 
 import {MerkleTreeLib} from "../libraries/MerkleTreeLib.sol";
 
-uint8 constant POLICY = uint8(IMerkleProofManager.TrustedCall.Policy);
-
 abstract contract MerkleProofManagerBaseTest is BaseTest {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
@@ -81,7 +79,7 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
         bytes32 rootHash = tree[tree.length - 1][0];
 
         vm.prank(address(spoke));
-        manager.trustedCall(POOL_A, defaultTypedShareClassId, abi.encode(POLICY, address(this).toBytes32(), rootHash));
+        manager.trustedCall(POOL_A, defaultTypedShareClassId, abi.encode(address(this).toBytes32(), rootHash));
     }
 
     function _selector(string memory signature) internal pure returns (bytes4) {

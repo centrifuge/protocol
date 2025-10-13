@@ -11,8 +11,6 @@ import {IMerkleProofManager} from "../../../../src/managers/spoke/interfaces/IMe
 
 import "forge-std/Test.sol";
 
-uint8 constant POLICY = uint8(IMerkleProofManager.TrustedCall.Policy);
-
 contract MerkleProofManagerTest is Test {
     using CastLib for *;
 
@@ -47,17 +45,9 @@ contract MerkleProofManagerTest is Test {
 contract MerkleProofManagerTrustedCallFailureTests is MerkleProofManagerTest {
     using CastLib for *;
 
-    function testUnknownTrustedCall() public {
-        bytes memory invalidPayload = abi.encode(uint8(255), bytes32(0), bytes32(0));
-
-        vm.expectRevert(IMerkleProofManager.UnknownTrustedCall.selector);
-        vm.prank(contractUpdater);
-        manager.trustedCall(POOL_A, SC_1, invalidPayload);
-    }
-
     function testInvalidPoolId() public {
         bytes32 rootHash = keccak256("root");
-        bytes memory payload = abi.encode(POLICY, strategist.toBytes32(), rootHash);
+        bytes memory payload = abi.encode(strategist.toBytes32(), rootHash);
 
         vm.expectRevert(IMerkleProofManager.InvalidPoolId.selector);
         vm.prank(contractUpdater);
@@ -66,7 +56,7 @@ contract MerkleProofManagerTrustedCallFailureTests is MerkleProofManagerTest {
 
     function testNotAuthorized() public {
         bytes32 rootHash = keccak256("root");
-        bytes memory payload = abi.encode(POLICY, strategist.toBytes32(), rootHash);
+        bytes memory payload = abi.encode(strategist.toBytes32(), rootHash);
 
         vm.expectRevert(IMerkleProofManager.NotAuthorized.selector);
         vm.prank(unauthorized);
@@ -79,7 +69,7 @@ contract MerkleProofManagerTrustedCallSuccessTests is MerkleProofManagerTest {
 
     function testTrustedCallPolicySuccess() public {
         bytes32 rootHash = keccak256("root");
-        bytes memory payload = abi.encode(POLICY, strategist.toBytes32(), rootHash);
+        bytes memory payload = abi.encode(strategist.toBytes32(), rootHash);
 
         vm.expectEmit();
         emit IMerkleProofManager.UpdatePolicy(strategist, bytes32(0), rootHash);
@@ -95,13 +85,13 @@ contract MerkleProofManagerTrustedCallSuccessTests is MerkleProofManagerTest {
         bytes32 newRoot = keccak256("newRoot");
 
         // Set initial policy
-        bytes memory initialPayload = abi.encode(POLICY, strategist.toBytes32(), oldRoot);
+        bytes memory initialPayload = abi.encode(strategist.toBytes32(), oldRoot);
         vm.prank(contractUpdater);
         manager.trustedCall(POOL_A, SC_1, initialPayload);
         assertEq(manager.policy(strategist), oldRoot);
 
         // Update policy
-        bytes memory updatePayload = abi.encode(POLICY, strategist.toBytes32(), newRoot);
+        bytes memory updatePayload = abi.encode(strategist.toBytes32(), newRoot);
 
         vm.expectEmit();
         emit IMerkleProofManager.UpdatePolicy(strategist, oldRoot, newRoot);
@@ -117,8 +107,8 @@ contract MerkleProofManagerTrustedCallSuccessTests is MerkleProofManagerTest {
         bytes32 root1 = keccak256("root1");
         bytes32 root2 = keccak256("root2");
 
-        bytes memory payload1 = abi.encode(POLICY, strategist1.toBytes32(), root1);
-        bytes memory payload2 = abi.encode(POLICY, strategist2.toBytes32(), root2);
+        bytes memory payload1 = abi.encode(strategist1.toBytes32(), root1);
+        bytes memory payload2 = abi.encode(strategist2.toBytes32(), root2);
 
         vm.prank(contractUpdater);
         manager.trustedCall(POOL_A, SC_1, payload1);
@@ -134,13 +124,13 @@ contract MerkleProofManagerTrustedCallSuccessTests is MerkleProofManagerTest {
         bytes32 rootHash = keccak256("root");
 
         // Set initial policy
-        bytes memory setPayload = abi.encode(POLICY, strategist.toBytes32(), rootHash);
+        bytes memory setPayload = abi.encode(strategist.toBytes32(), rootHash);
         vm.prank(contractUpdater);
         manager.trustedCall(POOL_A, SC_1, setPayload);
         assertEq(manager.policy(strategist), rootHash);
 
         // Clear policy by setting to zero
-        bytes memory clearPayload = abi.encode(POLICY, strategist.toBytes32(), bytes32(0));
+        bytes memory clearPayload = abi.encode(strategist.toBytes32(), bytes32(0));
 
         vm.expectEmit();
         emit IMerkleProofManager.UpdatePolicy(strategist, rootHash, bytes32(0));

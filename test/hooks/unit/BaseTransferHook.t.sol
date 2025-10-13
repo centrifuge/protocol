@@ -9,9 +9,11 @@ import {BitmapLib} from "../../../src/misc/libraries/BitmapLib.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../../../src/core/spoke/interfaces/ITransferHook.sol";
+import {IBaseTransferHook} from "../../../src/hooks/interfaces/IBaseTransferHook.sol";
 
 import {IFreezable} from "../../../src/hooks/interfaces/IFreezable.sol";
 import {BaseTransferHook} from "../../../src/hooks/BaseTransferHook.sol";
+import {IBaseTransferHook} from "../../../src/hooks/interfaces/IBaseTransferHook.sol";
 import {IMemberlist} from "../../../src/hooks/interfaces/IMemberlist.sol";
 import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
@@ -548,12 +550,12 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
         // Create payload with invalid enum value
         bytes memory invalidPayload = abi.encode(uint8(255), bytes32(0), false);
 
-        vm.expectRevert(ITransferHook.UnknownTrustedCall.selector);
+        vm.expectRevert(IBaseTransferHook.UnknownTrustedCall.selector);
         vm.prank(deployer);
         hook.trustedCall(POOL_A, SC_1, invalidPayload);
     }
 
-    function testTrustedCallUpdateAddressSuccess() public {
+    function testTrustedCallUpdateManagerSuccess() public {
         // Mock the share token to exist
         vm.mockCall(
             address(mockSpoke),
@@ -563,7 +565,7 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
 
         address managerAddress = makeAddr("manager");
         bytes memory payload =
-            abi.encode(uint8(ITransferHook.TrustedCall.UpdateAddress), bytes32(bytes20(managerAddress)), true);
+            abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true);
 
         vm.prank(deployer);
         hook.trustedCall(POOL_A, SC_1, payload);
@@ -571,7 +573,7 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
         assertTrue(hook.manager(address(mockShareToken), managerAddress));
     }
 
-    function testTrustedCallUpdateAddressDisable() public {
+    function testTrustedCallUpdateManagerDisable() public {
         // Mock the share token to exist
         vm.mockCall(
             address(mockSpoke),
@@ -583,14 +585,14 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
 
         // First enable
         bytes memory enablePayload =
-            abi.encode(uint8(ITransferHook.TrustedCall.UpdateAddress), bytes32(bytes20(managerAddress)), true);
+            abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true);
         vm.prank(deployer);
         hook.trustedCall(POOL_A, SC_1, enablePayload);
         assertTrue(hook.manager(address(mockShareToken), managerAddress));
 
         // Then disable
         bytes memory disablePayload =
-            abi.encode(uint8(ITransferHook.TrustedCall.UpdateAddress), bytes32(bytes20(managerAddress)), false);
+            abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), false);
         vm.prank(deployer);
         hook.trustedCall(POOL_A, SC_1, disablePayload);
         assertFalse(hook.manager(address(mockShareToken), managerAddress));
@@ -606,7 +608,7 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
 
         address managerAddress = makeAddr("manager");
         bytes memory payload =
-            abi.encode(uint8(ITransferHook.TrustedCall.UpdateAddress), bytes32(bytes20(managerAddress)), true);
+            abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true);
 
         vm.expectRevert(BaseTransferHook.ShareTokenDoesNotExist.selector);
         vm.prank(deployer);
@@ -622,7 +624,7 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
 
         address managerAddress = makeAddr("manager");
         bytes memory payload =
-            abi.encode(uint8(ITransferHook.TrustedCall.UpdateAddress), bytes32(bytes20(managerAddress)), true);
+            abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(user1); // Not authorized

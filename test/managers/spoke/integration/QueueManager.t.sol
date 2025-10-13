@@ -10,8 +10,6 @@ import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 
 import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueManager.sol";
 
-uint8 constant UPDATE_QUEUE = uint8(IQueueManager.TrustedCall.UpdateQueue);
-
 abstract contract QueueManagerBaseTest is BaseTest {
     uint128 constant DEFAULT_AMOUNT = 100_000_000;
 
@@ -59,7 +57,7 @@ contract QueueManagerSuccessTest is QueueManagerBaseTest {
     function testSuccess() public {
         uint128 extraGasLimit = 500;
         vm.prank(address(contractUpdater));
-        queueManager.trustedCall(POOL_A, defaultTypedShareClassId, abi.encode(UPDATE_QUEUE, uint64(0), extraGasLimit));
+        queueManager.trustedCall(POOL_A, defaultTypedShareClassId, abi.encode(uint64(0), extraGasLimit));
 
         depositSync(vault1, user, DEFAULT_AMOUNT);
         depositSync(vault2, user, DEFAULT_AMOUNT / 2);

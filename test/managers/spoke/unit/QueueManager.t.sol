@@ -15,8 +15,6 @@ import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueMan
 
 import "forge-std/Test.sol";
 
-uint8 constant UPDATE_QUEUE = uint8(IQueueManager.TrustedCall.UpdateQueue);
-
 contract IsContract {}
 
 contract MockGateway {
@@ -134,15 +132,7 @@ contract QueueManagerUpdateContractFailureTests is QueueManagerTest {
 
         vm.expectRevert(IQueueManager.NotContractUpdater.selector);
         vm.prank(notContractUpdater);
-        queueManager.trustedCall(POOL_A, SC_1, abi.encode(UPDATE_QUEUE, DEFAULT_MIN_DELAY, uint64(0)));
-    }
-
-    function testUnknownTrustedCall() public {
-        bytes memory invalidPayload = abi.encode(uint8(255), uint64(0), uint64(0));
-
-        vm.expectRevert(IQueueManager.UnknownTrustedCall.selector);
-        vm.prank(contractUpdater);
-        queueManager.trustedCall(POOL_A, SC_1, invalidPayload);
+        queueManager.trustedCall(POOL_A, SC_1, abi.encode(DEFAULT_MIN_DELAY, uint64(0)));
     }
 }
 
@@ -152,7 +142,7 @@ contract QueueManagerUpdateContractSuccessTests is QueueManagerTest {
         emit IQueueManager.UpdateQueueConfig(POOL_A, SC_1, DEFAULT_MIN_DELAY, DEFAULT_EXTRA_GAS);
 
         vm.prank(contractUpdater);
-        queueManager.trustedCall(POOL_A, SC_1, abi.encode(UPDATE_QUEUE, DEFAULT_MIN_DELAY, DEFAULT_EXTRA_GAS));
+        queueManager.trustedCall(POOL_A, SC_1, abi.encode(DEFAULT_MIN_DELAY, DEFAULT_EXTRA_GAS));
 
         (uint64 minDelay, uint64 lastSync, uint128 extraGasLimit) = queueManager.scQueueState(POOL_A, SC_1);
         assertEq(minDelay, DEFAULT_MIN_DELAY);
@@ -162,10 +152,10 @@ contract QueueManagerUpdateContractSuccessTests is QueueManagerTest {
 
     function testUpdateMultipleShareClasses() public {
         vm.prank(contractUpdater);
-        queueManager.trustedCall(POOL_A, SC_1, abi.encode(UPDATE_QUEUE, uint64(1000), uint64(500)));
+        queueManager.trustedCall(POOL_A, SC_1, abi.encode(uint64(1000), uint64(500)));
 
         vm.prank(contractUpdater);
-        queueManager.trustedCall(POOL_A, SC_2, abi.encode(UPDATE_QUEUE, uint64(2000), uint64(1000)));
+        queueManager.trustedCall(POOL_A, SC_2, abi.encode(uint64(2000), uint64(1000)));
 
         (uint64 minDelay1,, uint128 extraGasLimit1) = queueManager.scQueueState(POOL_A, SC_1);
         (uint64 minDelay2,, uint128 extraGasLimit2) = queueManager.scQueueState(POOL_A, SC_2);
@@ -187,7 +177,7 @@ contract QueueManagerSyncFailureTests is QueueManagerTest {
 
     function testMinDelayNotElapsed() public {
         vm.prank(contractUpdater);
-        queueManager.trustedCall(POOL_A, SC_1, abi.encode(UPDATE_QUEUE, DEFAULT_MIN_DELAY, uint64(0)));
+        queueManager.trustedCall(POOL_A, SC_1, abi.encode(DEFAULT_MIN_DELAY, uint64(0)));
 
         _mockQueuedShares(POOL_A, SC_1, 100, true, 1);
         _mockQueuedAssets(POOL_A, SC_1, ASSET_1, 100, 0);

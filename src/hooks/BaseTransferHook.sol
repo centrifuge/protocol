@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IFreezable} from "./interfaces/IFreezable.sol";
 import {IMemberlist} from "./interfaces/IMemberlist.sol";
+import {IBaseTransferHook} from "./interfaces/IBaseTransferHook.sol";
 import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "./libraries/UpdateRestrictionMessageLib.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -27,7 +28,7 @@ import {IRoot} from "../admin/interfaces/IRoot.sol";
 ///         and freeze status in the hookData structure for efficient on-chain verification.
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
 ///         the last bit is used to denote whether the account is frozen.
-abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHook, ITrustedContractUpdate {
+abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedContractUpdate, IBaseTransferHook {
     using BitmapLib for *;
     using UpdateRestrictionMessageLib for *;
     using BytesLib for bytes;
@@ -156,12 +157,12 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
+    function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external virtual auth {
         uint8 kindValue = abi.decode(payload, (uint8));
-        require(kindValue <= uint8(type(ITransferHook.TrustedCall).max), UnknownTrustedCall());
+        require(kindValue <= uint8(type(IBaseTransferHook.TrustedCall).max), UnknownTrustedCall());
 
-        ITransferHook.TrustedCall kind = ITransferHook.TrustedCall(kindValue);
-        if (kind == ITransferHook.TrustedCall.UpdateAddress) {
+        IBaseTransferHook.TrustedCall kind = IBaseTransferHook.TrustedCall(kindValue);
+        if (kind == IBaseTransferHook.TrustedCall.UpdateHookManager) {
             (, bytes32 what, bool isEnabled) = abi.decode(payload, (uint8, bytes32, bool));
             address token = address(spoke.shareToken(poolId, scId));
             require(token != address(0), ShareTokenDoesNotExist());
