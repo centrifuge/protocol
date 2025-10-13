@@ -535,11 +535,38 @@ contract MultiAdapterTestSend is MultiAdapterTest {
         _mockAdapter(adapter3, MESSAGE_1, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
 
         vm.expectEmit();
-        emit IMultiAdapter.SendPayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter1, ADAPTER_DATA_1, address(REFUND));
+        emit IMultiAdapter.SendPayload(
+            REMOTE_CENT_ID,
+            payloadId,
+            MESSAGE_1,
+            adapter1,
+            ADAPTER_DATA_1,
+            GAS_LIMIT,
+            GAS_LIMIT + ADAPTER_ESTIMATE_1,
+            address(REFUND)
+        );
         vm.expectEmit();
-        emit IMultiAdapter.SendPayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter2, ADAPTER_DATA_2, address(REFUND));
+        emit IMultiAdapter.SendPayload(
+            REMOTE_CENT_ID,
+            payloadId,
+            MESSAGE_1,
+            adapter2,
+            ADAPTER_DATA_2,
+            GAS_LIMIT,
+            GAS_LIMIT + ADAPTER_ESTIMATE_2,
+            address(REFUND)
+        );
         vm.expectEmit();
-        emit IMultiAdapter.SendPayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter3, ADAPTER_DATA_3, address(REFUND));
+        emit IMultiAdapter.SendPayload(
+            REMOTE_CENT_ID,
+            payloadId,
+            MESSAGE_1,
+            adapter3,
+            ADAPTER_DATA_3,
+            GAS_LIMIT,
+            GAS_LIMIT + ADAPTER_ESTIMATE_3,
+            address(REFUND)
+        );
         multiAdapter.send{value: cost}(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
     }
 

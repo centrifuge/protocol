@@ -173,7 +173,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _isManager(poolId);
 
         emit SetMaxAssetPriceAge(poolId, scId, assetId, maxPriceAge);
-        sender.sendMaxAssetPriceAge{value: _payment()}(poolId, scId, assetId, maxPriceAge, refund);
+        sender.sendSetMaxAssetPriceAge{value: _payment()}(poolId, scId, assetId, maxPriceAge, refund);
     }
 
     /// @inheritdoc IHub
@@ -187,7 +187,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _isManager(poolId);
 
         emit SetMaxSharePriceAge(centrifugeId, poolId, scId, maxPriceAge);
-        sender.sendMaxSharePriceAge{value: _payment()}(centrifugeId, poolId, scId, maxPriceAge, refund);
+        sender.sendSetMaxSharePriceAge{value: _payment()}(centrifugeId, poolId, scId, maxPriceAge, refund);
     }
 
     /// @inheritdoc IHub

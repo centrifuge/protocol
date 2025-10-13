@@ -66,8 +66,8 @@ contract MessageBenchmarker is IMessageHandler, Test {
         if (kind == MessageType.UpdateBalanceSheetManager) return "updateBalanceSheetManager";
         if (kind == MessageType.UpdateHoldingAmount) return "updateHoldingAmount";
         if (kind == MessageType.UpdateShares) return "updateShares";
-        if (kind == MessageType.MaxAssetPriceAge) return "maxAssetPriceAge";
-        if (kind == MessageType.MaxSharePriceAge) return "maxSharePriceAge";
+        if (kind == MessageType.SetMaxAssetPriceAge) return "maxAssetPriceAge";
+        if (kind == MessageType.SetMaxSharePriceAge) return "maxSharePriceAge";
         if (kind == MessageType.UpdateGatewayManager) return "updateGatewayManager";
         if (kind == MessageType.UntrustedContractUpdate) return "untrustedContractUpdate";
         revert("Cannot benchmark message"); // Unreachable

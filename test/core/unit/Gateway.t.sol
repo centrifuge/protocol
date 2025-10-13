@@ -84,6 +84,7 @@ contract MockProcessor is IMessageProperties {
         if (message.toUint8(0) == uint8(MessageKind.WithPool0)) return POOL_0;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA1)) return POOL_A;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA2)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.WithPoolAFail)) return POOL_A;
         revert("Unreachable: message never asked for pool");
     }
 }
@@ -254,6 +255,15 @@ contract GatewayTestHandle is GatewayTest {
 
         // NOTE: The own handle() also consume some gas, so passing gas + <small value> can also make it fails
         gateway.handle{gas: notEnough}(REMOTE_CENT_ID, batch);
+    }
+
+    function testErrMalformedBatch() public {
+        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
+        bytes memory message2 = MessageKind.WithPool0.asBytes();
+        bytes memory batch = abi.encodePacked(message1, message2);
+
+        vm.expectRevert(IGateway.MalformedBatch.selector);
+        gateway.handle(REMOTE_CENT_ID, batch);
     }
 
     function testMessage() public {
