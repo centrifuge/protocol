@@ -8,8 +8,6 @@ import "../../../core/spoke/integration/BaseTest.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 
-import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueManager.sol";
-
 abstract contract QueueManagerBaseTest is BaseTest {
     uint128 constant DEFAULT_AMOUNT = 100_000_000;
 

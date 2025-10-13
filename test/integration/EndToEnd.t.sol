@@ -56,11 +56,11 @@ import {SyncManager} from "../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {RefundEscrowFactory} from "../../src/vaults/factories/RefundEscrowFactory.sol";
-import {IAsyncRequestManager, ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 
 import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} from "../../script/FullDeployer.s.sol";
 
