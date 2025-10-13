@@ -50,9 +50,12 @@ contract OnOfframpManager is IOnOfframpManager {
         require(scId == scId_, InvalidShareClassId());
         require(msg.sender == contractUpdater, NotContractUpdater());
 
-        (bytes32 kindBytes, uint128 assetId, bytes32 what, bool isEnabled) =
-            abi.decode(payload, (bytes32, uint128, bytes32, bool));
-        if (kindBytes == "onramp") {
+        uint8 kindValue = abi.decode(payload, (uint8));
+        require(kindValue <= uint8(type(TrustedCall).max), UnknownTrustedCall());
+
+        TrustedCall kind = TrustedCall(kindValue);
+        if (kind == TrustedCall.Onramp) {
+            (, uint128 assetId, bool isEnabled) = abi.decode(payload, (uint8, uint128, bool));
             (address asset, uint256 tokenId) = balanceSheet.spoke().idToAsset(AssetId.wrap(assetId));
             require(tokenId == 0, ERC6909NotSupported());
 
@@ -62,20 +65,21 @@ contract OnOfframpManager is IOnOfframpManager {
             else SafeTransferLib.safeApprove(asset, address(balanceSheet), 0);
 
             emit UpdateOnramp(asset, isEnabled);
-        } else if (kindBytes == "relayer") {
-            address relayer_ = what.toAddress();
+        } else if (kind == TrustedCall.Relayer) {
+            (, bytes32 relayerAddress, bool isEnabled) = abi.decode(payload, (uint8, bytes32, bool));
+            address relayer_ = relayerAddress.toAddress();
 
             relayer[relayer_] = isEnabled;
             emit UpdateRelayer(relayer_, isEnabled);
-        } else if (kindBytes == "offramp") {
+        } else if (kind == TrustedCall.Offramp) {
+            (, uint128 assetId, bytes32 receiverAddress, bool isEnabled) =
+                abi.decode(payload, (uint8, uint128, bytes32, bool));
             (address asset, uint256 tokenId) = balanceSheet.spoke().idToAsset(AssetId.wrap(assetId));
             require(tokenId == 0, ERC6909NotSupported());
-            address receiver = what.toAddress();
+            address receiver = receiverAddress.toAddress();
 
             offramp[asset][receiver] = isEnabled;
             emit UpdateOfframp(asset, receiver, isEnabled);
-        } else {
-            revert UnknownUpdateContractKind();
         }
     }
 

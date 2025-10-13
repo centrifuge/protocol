@@ -83,19 +83,25 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
         // Enable onramp
         vm.prank(address(contractUpdater));
         manager.trustedCall(
-            POOL_A, defaultTypedShareClassId, abi.encode(bytes32("onramp"), defaultAssetId, bytes32(""), true)
+            POOL_A,
+            defaultTypedShareClassId,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Onramp), defaultAssetId, true)
         );
 
         // Enable relayer
         vm.prank(address(contractUpdater));
         manager.trustedCall(
-            POOL_A, defaultTypedShareClassId, abi.encode(bytes32("relayer"), uint128(0), relayer.toBytes32(), true)
+            POOL_A,
+            defaultTypedShareClassId,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Relayer), relayer.toBytes32(), true)
         );
 
         // Enable offramp destination
         vm.prank(address(contractUpdater));
         manager.trustedCall(
-            POOL_A, defaultTypedShareClassId, abi.encode(bytes32("offramp"), defaultAssetId, receiver.toBytes32(), true)
+            POOL_A,
+            defaultTypedShareClassId,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Offramp), defaultAssetId, receiver.toBytes32(), true)
         );
 
         // Set manager permissions
