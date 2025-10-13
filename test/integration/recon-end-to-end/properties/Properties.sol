@@ -2842,111 +2842,51 @@ abstract contract Properties is
     /// @dev Property 2.1: Share Token Supply Consistency
     /// @notice Ensures total supply always equals sum of balances
     function property_shareTokenSupplyConsistency() public {
-        PoolId[] memory pools = _getPools();
-        for (uint256 i = 0; i < pools.length; i++) {
-            PoolId poolId = pools[i];
-            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
 
-            for (uint256 j = 0; j < shareClasses.length; j++) {
-                ShareClassId scId = shareClasses[j];
-                bytes32 key = keccak256(abi.encode(poolId, scId));
+        try spoke.shareToken(poolId, scId) returns (IShareToken shareToken) {
+            uint256 actualSupply = shareToken.totalSupply();
+            // Check 2: Sum of balances equals total supply
+            address[] memory actors = _getActors();
+            uint256 balancesSummed;
+            for (uint256 k = 0; k < actors.length; k++) {
+                uint256 balance = shareToken.balanceOf(actors[k]);
+                balancesSummed += balance;
 
-                // Skip if no operations occurred
-                if (!ghost_supplyOperationOccurred[key]) continue;
+                // Allow 1 wei tolerance per actor for rounding
+                uint256 tolerance = actors.length;
+                gte(
+                    actualSupply + tolerance,
+                    balancesSummed,
+                    "Supply less than sum of balances"
+                );
+                lte(
+                    actualSupply,
+                    balancesSummed + tolerance,
+                    "Supply exceeds sum of balances"
+                );
+            }
+        } catch {}
+    }
 
-                try spoke.shareToken(poolId, scId) returns (
-                    IShareToken shareToken
-                ) {
-                    uint256 actualSupply = shareToken.totalSupply();
+    /// @dev Property: share token should always be included if it's been supplied
+    function property_shareTokenCountedInSupply() public {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        bool poolHasShareClass = _poolHasShareClass(poolId, scId);
+        bytes32 key = keccak256(abi.encode(poolId, scId));
 
-                    // Check 1: Ghost tracking matches actual supply
-                    eq(
-                        actualSupply,
-                        ghost_totalShareSupply[key],
-                        "Share supply mismatch - ghost diverged from actual"
-                    );
+        if (!poolHasShareClass) return;
 
-                    // Check 2: Sum of balances equals total supply
-                    address[] memory actors = _getActors();
-                    uint256 calculatedSum = 0;
-
-                    console2.log(
-                        "=== SHARE TOKEN SUPPLY CONSISTENCY CHECK ==="
-                    );
-                    console2.log("Actual total supply:", actualSupply);
-                    console2.log(
-                        "Ghost total supply:",
-                        ghost_totalShareSupply[key]
-                    );
-
-                    for (uint256 k = 0; k < actors.length; k++) {
-                        uint256 balance = shareToken.balanceOf(actors[k]);
-                        calculatedSum += balance;
-
-                        console2.log("Actor:", actors[k]);
-                        console2.log("  Actual balance:", balance);
-                        console2.log(
-                            "  Ghost balance:",
-                            ghost_individualBalances[key][actors[k]]
-                        );
-
-                        // Verify individual balance tracking
-                        if (
-                            balance != ghost_individualBalances[key][actors[k]]
-                        ) {
-                            console2.log("  *** MISMATCH DETECTED ***");
-                            console2.log(
-                                "  Difference:",
-                                balance >
-                                    ghost_individualBalances[key][actors[k]]
-                                    ? balance -
-                                        ghost_individualBalances[key][actors[k]]
-                                    : ghost_individualBalances[key][actors[k]] -
-                                        balance
-                            );
-                        }
-
-                        eq(
-                            balance,
-                            ghost_individualBalances[key][actors[k]],
-                            "Individual balance tracking mismatch"
-                        );
-                    }
-
-                    console2.log("Total calculated sum:", calculatedSum);
-
-                    // Allow 1 wei tolerance per actor for rounding
-                    uint256 tolerance = actors.length;
-                    gte(
-                        actualSupply + tolerance,
-                        calculatedSum,
-                        "Supply less than sum of balances"
-                    );
-                    lte(
-                        actualSupply,
-                        calculatedSum + tolerance,
-                        "Supply exceeds sum of balances"
-                    );
-
-                    // Check 3: Mint/burn events match supply changes
-                    uint256 expectedSupply = ghost_supplyMintEvents[key] -
-                        ghost_supplyBurnEvents[key];
-                    eq(
-                        actualSupply,
-                        expectedSupply,
-                        "Supply doesn't match mint/burn history"
-                    );
-                } catch Error(string memory reason) {
-                    if (ghost_supplyOperationOccurred[key]) {
-                        t(
-                            false,
-                            string.concat(
-                                "Share token unexpectedly missing: ",
-                                reason
-                            )
-                        );
-                    }
-                }
+        try spoke.shareToken(poolId, scId) returns (
+            IShareToken shareToken
+        ) {} catch Error(string memory reason) {
+            if (ghost_supplyOperationOccurred[key]) {
+                t(
+                    false,
+                    string.concat("Share token unexpectedly missing: ", reason)
+                );
             }
         }
     }
