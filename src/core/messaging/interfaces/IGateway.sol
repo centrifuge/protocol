@@ -61,6 +61,9 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when a handle is called without enough gas to process the message.
     error NotEnoughGasToProcess();
 
+    /// @notice Dispatched when the content of a batch doesn't belong to the same pool
+    error MalformedBatch();
+
     /// @notice Dispatched when a message is sent but the gateway is blocked for sending messages
     error OutgoingBlocked();
 
