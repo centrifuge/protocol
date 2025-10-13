@@ -344,18 +344,20 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge, address refund)
-        external
-        payable
-        auth
-    {
+    function sendSetMaxAssetPriceAge(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint64 maxPriceAge,
+        address refund
+    ) external payable auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
             spoke.setMaxAssetPriceAge(poolId, scId, assetId, maxPriceAge);
             _refund(refund);
         } else {
             _send(
                 assetId.centrifugeId(),
-                MessageLib.MaxAssetPriceAge({
+                MessageLib.SetMaxAssetPriceAge({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     assetId: assetId.raw(),
@@ -368,7 +370,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendMaxSharePriceAge(
+    function sendSetMaxSharePriceAge(
         uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
@@ -381,7 +383,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         } else {
             _send(
                 centrifugeId,
-                MessageLib.MaxSharePriceAge({poolId: poolId.raw(), scId: scId.raw(), maxPriceAge: maxPriceAge})
+                MessageLib.SetMaxSharePriceAge({poolId: poolId.raw(), scId: scId.raw(), maxPriceAge: maxPriceAge})
                     .serialize(),
                 0,
                 refund

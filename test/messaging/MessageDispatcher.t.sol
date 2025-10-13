@@ -78,10 +78,10 @@ contract TestAuthChecks is TestCommon {
         dispatcher.sendUpdateBalanceSheetManager(REMOTE_CHAIN, POOL_A, bytes32(0), true, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendMaxAssetPriceAge(POOL_A, SC_A, ASSET_A, 0, REFUND);
+        dispatcher.sendSetMaxAssetPriceAge(POOL_A, SC_A, ASSET_A, 0, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendMaxSharePriceAge(REMOTE_CHAIN, POOL_A, SC_A, 0, REFUND);
+        dispatcher.sendSetMaxSharePriceAge(REMOTE_CHAIN, POOL_A, SC_A, 0, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendScheduleUpgrade(REMOTE_CHAIN, bytes32(0), REFUND);
