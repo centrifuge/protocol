@@ -700,7 +700,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         returns (uint32)
     {
         return _maxClaims(
-            depositRequest[poolId][scId_][depositAssetId][investor], epochId[poolId][scId_][depositAssetId].deposit
+            depositRequest[poolId][scId_][depositAssetId][investor], epochId[poolId][scId_][depositAssetId].issue
         );
     }
 

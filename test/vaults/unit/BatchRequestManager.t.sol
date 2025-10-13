@@ -405,15 +405,83 @@ contract BatchRequestManagerSimpleTest is BatchRequestManagerBaseTest {
     function testMaxDepositClaims() public {
         assertEq(batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC), 0);
 
-        batchRequestManager.requestDeposit(poolId, scId, 1, investor, USDC);
-        assertEq(batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC), 0);
+        batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
+        assertEq(batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC), 0, "Should be 0 after request");
+
+        // After approve but before issue, maxDepositClaims should return 0 (uses issue epoch, not deposit)
+        batchRequestManager.approveDeposits{value: COST}(
+            poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
+        );
+        assertEq(
+            batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC),
+            0,
+            "Should be 0 after approve (before issue)"
+        );
+
+        // After issuing shares, maxDepositClaims should return 1
+        batchRequestManager.issueShares{value: COST}(
+            poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND
+        );
+        assertEq(batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC), 1, "Should be 1 after issue");
     }
 
     function testMaxRedeemClaims() public {
         assertEq(batchRequestManager.maxRedeemClaims(poolId, scId, investor, USDC), 0);
 
-        batchRequestManager.requestRedeem(poolId, scId, 1, investor, USDC);
-        assertEq(batchRequestManager.maxRedeemClaims(poolId, scId, investor, USDC), 0);
+        batchRequestManager.requestRedeem(poolId, scId, MIN_REQUEST_AMOUNT_SHARES, investor, USDC);
+        assertEq(batchRequestManager.maxRedeemClaims(poolId, scId, investor, USDC), 0, "Should be 0 after request");
+
+        // After approve but before revoke, maxRedeemClaims should return 0 (uses revoke epoch, not redeem)
+        batchRequestManager.approveRedeems{value: COST}(
+            poolId, scId, USDC, _nowRedeem(USDC), MIN_REQUEST_AMOUNT_SHARES, _pricePoolPerAsset(USDC)
+        );
+        assertEq(
+            batchRequestManager.maxRedeemClaims(poolId, scId, investor, USDC),
+            0,
+            "Should be 0 after approve (before revoke)"
+        );
+
+        // After revoking shares, maxRedeemClaims should return 1
+        batchRequestManager.revokeShares{value: COST}(
+            poolId, scId, USDC, _nowRevoke(USDC), d18(1), SHARE_HOOK_GAS, REFUND
+        );
+        assertEq(batchRequestManager.maxRedeemClaims(poolId, scId, investor, USDC), 1, "Should be 1 after revoke");
+    }
+
+    function testMaxDepositClaimsMultiEpoch(uint8 epochs) public {
+        epochs = uint8(bound(epochs, 2, 50));
+        batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC * epochs, investor, USDC);
+
+        for (uint256 i = 0; i < epochs; i++) {
+            batchRequestManager.approveDeposits{value: COST}(
+                poolId, scId, USDC, _nowDeposit(USDC), MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
+            );
+            batchRequestManager.issueShares{value: COST}(
+                poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS, REFUND
+            );
+        }
+
+        assertEq(
+            batchRequestManager.maxDepositClaims(poolId, scId, investor, USDC), epochs, "Should have claimable epochs"
+        );
+    }
+
+    function testMaxRedeemClaimsMultiEpoch(uint8 epochs) public {
+        epochs = uint8(bound(epochs, 2, 50));
+        batchRequestManager.requestRedeem(poolId, scId, MIN_REQUEST_AMOUNT_SHARES * epochs, investor, USDC);
+
+        for (uint256 i = 0; i < epochs; i++) {
+            batchRequestManager.approveRedeems{value: COST}(
+                poolId, scId, USDC, _nowRedeem(USDC), MIN_REQUEST_AMOUNT_SHARES, _pricePoolPerAsset(USDC)
+            );
+            batchRequestManager.revokeShares{value: COST}(
+                poolId, scId, USDC, _nowRevoke(USDC), d18(1), SHARE_HOOK_GAS, REFUND
+            );
+        }
+
+        assertEq(
+            batchRequestManager.maxRedeemClaims(poolId, scId, investor, USDC), epochs, "Should have claimable epochs"
+        );
     }
 
     function testEpochViewsInitialValues() public view {
