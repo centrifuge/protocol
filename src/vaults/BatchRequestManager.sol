@@ -245,7 +245,7 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
         uint32 nowRedeemEpochId,
         uint128 approvedShareAmount,
         D18 pricePoolPerAsset
-    ) external payable authOrManager(poolId) {
+    ) external authOrManager(poolId) {
         require(
             nowRedeemEpochId == nowRedeemEpoch(poolId, scId_, payoutAssetId),
             EpochNotInSequence(nowRedeemEpochId, nowRedeemEpoch(poolId, scId_, payoutAssetId))
