@@ -27,7 +27,6 @@ enum MessageType {
     InitiateTransferShares,
     ExecuteTransferShares,
     UpdateRestriction,
-    TrustedContractUpdate,
     UpdateVault,
     UpdateBalanceSheetManager,
     UpdateGatewayManager,
@@ -38,6 +37,7 @@ enum MessageType {
     Request,
     RequestCallback,
     SetRequestManager,
+    TrustedContractUpdate,
     UntrustedContractUpdate
 }
 
@@ -77,6 +77,7 @@ library MessageLib {
         (25  << uint8(MessageType.UpdateRestriction) * 8) +
         (74  << uint8(MessageType.UpdateVault) * 8) +
         (42  << uint8(MessageType.UpdateBalanceSheetManager) * 8) +
+        (42  << uint8(MessageType.UpdateGatewayManager) * 8) +
         (91  << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (59  << uint8(MessageType.UpdateShares) * 8) +
         (49  << uint8(MessageType.SetMaxAssetPriceAge) * 8) +
@@ -84,7 +85,6 @@ library MessageLib {
         (41  << uint8(MessageType.Request) * 8) +
         (41  << uint8(MessageType.RequestCallback) * 8) +
         (41  << uint8(MessageType.SetRequestManager) * 8) +
-        (42  << uint8(MessageType.UpdateGatewayManager) * 8) +
         (57  << uint8(MessageType.TrustedContractUpdate) * 8) +
         (89  << uint8(MessageType.UntrustedContractUpdate) * 8);
 
