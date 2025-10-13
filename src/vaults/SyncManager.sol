@@ -13,15 +13,17 @@ import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {AssetId} from "../common/types/AssetId.sol";
-import {PricingLib} from "../common/libraries/PricingLib.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {PoolId} from "../core/types/PoolId.sol";
+import {AssetId} from "../core/types/AssetId.sol";
+import {PricingLib} from "../core/libraries/PricingLib.sol";
+import {ShareClassId} from "../core/types/ShareClassId.sol";
+import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
+import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
+import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
+import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
+import {ITrustedContractUpdate} from "../core/interfaces/IContractUpdate.sol";
 
-import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
-import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
-import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "../libraries/UpdateContractMessageLib.sol";
 
 /// @title  Sync Manager
 /// @notice This is the main contract for synchronous ERC-4626 deposits.
@@ -33,10 +35,11 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
 
     ISpoke public spoke;
     IBalanceSheet public balanceSheet;
+    IVaultRegistry public vaultRegistry;
 
-    mapping(PoolId => mapping(ShareClassId scId => ISyncDepositValuation)) public valuation;
-    mapping(PoolId => mapping(ShareClassId scId => mapping(address asset => mapping(uint256 tokenId => uint128))))
-        public maxReserve;
+    mapping(PoolId => mapping(ShareClassId => ISyncDepositValuation)) public valuation;
+    mapping(PoolId => mapping(ShareClassId => mapping(address asset => mapping(uint256 tokenId => uint128)))) public
+        maxReserve;
 
     constructor(address deployer) Auth(deployer) {}
 
@@ -47,13 +50,14 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     /// @inheritdoc ISyncManager
     function file(bytes32 what, address data) external auth {
         if (what == "spoke") spoke = ISpoke(data);
+        else if (what == "vaultRegistry") vaultRegistry = IVaultRegistry(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 
-    /// @inheritdoc IUpdateContract
-    function update(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
+    /// @inheritdoc ITrustedContractUpdate
+    function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
         uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
 
         if (kind == uint8(UpdateContractType.Valuation)) {
@@ -126,40 +130,34 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISyncDepositManager
-    function previewMint(IBaseVault vault_, address, /* sender */ uint256 shares)
-        public
-        view
-        returns (uint256 assets)
-    {
+    function previewMint(IBaseVault vault_, address, uint256 shares) public view returns (uint256 assets) {
         return _shareToAssetAmount(vault_, shares, MathLib.Rounding.Up);
     }
 
     /// @inheritdoc ISyncDepositManager
-    function previewDeposit(IBaseVault vault_, address, /* sender */ uint256 assets)
-        public
-        view
-        returns (uint256 shares)
-    {
+    function previewDeposit(IBaseVault vault_, address, uint256 assets) public view returns (uint256 shares) {
         return convertToShares(vault_, assets);
     }
 
     /// @inheritdoc IDepositManager
-    function maxMint(IBaseVault vault_, address /* owner */ ) public view returns (uint256) {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+    function maxMint(IBaseVault vault_, address owner) public view returns (uint256 shares) {
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
         uint128 maxAssets =
             _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
-        return convertToShares(vault_, maxAssets);
+        shares = convertToShares(vault_, maxAssets);
+        if (!_canTransfer(vault_, address(0), owner, shares)) return 0;
     }
 
     /// @inheritdoc IDepositManager
-    function maxDeposit(IBaseVault vault_, address /* owner */ ) public view returns (uint256) {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
-        return _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
+    function maxDeposit(IBaseVault vault_, address owner) public view returns (uint256 assets) {
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
+        assets = _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
+        if (!_canTransfer(vault_, address(0), owner, assets)) return 0;
     }
 
     /// @inheritdoc ISyncManager
     function convertToShares(IBaseVault vault_, uint256 assets) public view returns (uint256 shares) {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
 
         D18 poolPerShare = pricePoolPerShare(vault_.poolId(), vault_.scId());
         D18 poolPerAsset = spoke.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
@@ -202,7 +200,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     function _issueShares(IBaseVault vault_, uint128 shares, address receiver, uint128 assets) internal {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
 
         // Note deposit into the pool escrow, to make assets available for managers of the balance sheet.
         // ERC-20 transfer is handled by the vault to the pool escrow afterwards.
@@ -219,7 +217,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         view
         returns (uint128 maxDeposit_)
     {
-        if (!spoke.isLinked(vault_)) return 0;
+        if (!vaultRegistry.isLinked(vault_)) return 0;
 
         uint128 availableBalance = balanceSheet.availableBalanceOf(poolId, scId, asset, tokenId);
         uint128 maxReserve_ = maxReserve[poolId][scId][asset][tokenId];
@@ -236,7 +234,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         view
         returns (uint256 assets)
     {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
 
         D18 poolPerShare = pricePoolPerShare(vault_.poolId(), vault_.scId());
         D18 poolPerAsset = spoke.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
@@ -252,5 +250,12 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
                 poolPerAsset,
                 rounding
             );
+    }
+
+    /// @dev    Checks transfer restrictions for the vault shares. Sender (from) and receiver (to) have to both pass
+    ///         the restrictions for a successful share transfer.
+    function _canTransfer(IBaseVault vault_, address from, address to, uint256 value) internal view returns (bool) {
+        IShareToken share = IShareToken(vault_.share());
+        return share.checkTransferRestriction(from, to, value);
     }
 }

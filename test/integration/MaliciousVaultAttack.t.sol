@@ -6,11 +6,10 @@ import {EndToEndFlows} from "./EndToEnd.t.sol";
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../../src/common/types/PoolId.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {VaultUpdateKind} from "../../src/common/libraries/MessageLib.sol";
-
-import {VaultKind} from "../../src/spoke/interfaces/IVault.sol";
+import {PoolId} from "../../src/core/types/PoolId.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {VaultKind} from "../../src/core/spoke/interfaces/IVault.sol";
+import {VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
 import {AsyncRequestManager, IAsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
@@ -83,7 +82,13 @@ contract MaliciousVaultAttackTest is EndToEndFlows {
         /// A malicious vault can be added but will not acquire any privilege
         vm.startPrank(FM);
         h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, bytes32(bytes20(address(maliciousFactory))), VaultUpdateKind.DeployAndLink, 0
+            POOL_A,
+            SC_1,
+            s.usdcId,
+            bytes32(bytes20(address(maliciousFactory))),
+            VaultUpdateKind.DeployAndLink,
+            0,
+            REFUND
         );
 
         MaliciousVault maliciousVault = maliciousFactory.vault();

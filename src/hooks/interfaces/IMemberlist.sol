@@ -1,15 +1,24 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 interface IMemberlist {
-    // --- Events ---
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
     event UpdateMember(address indexed token, address indexed user, uint64 validUntil);
 
-    // --- Errors ---
+    //----------------------------------------------------------------------------------------------
+    // Errors
+    //----------------------------------------------------------------------------------------------
+
     error InvalidValidUntil();
     error EndorsedUserCannotBeUpdated();
 
-    // --- Managing members ---
+    //----------------------------------------------------------------------------------------------
+    // Managing members
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Add a member. Non-members cannot receive tokens, but can send tokens to valid members
     /// @param  validUntil Timestamp until which the user will be a valid member
     function updateMember(address token, address user, uint64 validUntil) external;

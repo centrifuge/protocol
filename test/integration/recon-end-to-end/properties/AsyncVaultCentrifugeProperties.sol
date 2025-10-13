@@ -5,22 +5,22 @@ import {Asserts} from "@chimera/Asserts.sol";
 import {vm} from "@chimera/Hevm.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
+import {AssetId} from "src/core/types/AssetId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
+import {PricingLib} from "src/core/libraries/PricingLib.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {D18} from "src/misc/types/D18.sol";
-import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
+import {VaultDetails} from "src/core/spoke/interfaces/ISpoke.sol";
 import {Setup} from "test/integration/recon-end-to-end/Setup.sol";
 import {AsyncVaultProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultProperties.sol";
 import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
-import {IPoolEscrow, Holding} from "src/common/interfaces/IPoolEscrow.sol";
-import {PoolEscrow} from "src/common/PoolEscrow.sol";
+import {IPoolEscrow, Holding} from "src/core/spoke/interfaces/IPoolEscrow.sol";
+import {PoolEscrow} from "src/core/spoke/PoolEscrow.sol";
 
-import {VaultKind} from "src/spoke/interfaces/IVault.sol";
+import {VaultKind} from "src/core/spoke/interfaces/IVault.sol";
 
 import {console2} from "forge-std/console2.sol";
 /// @dev ERC-7540 Properties used by Centrifuge
@@ -143,9 +143,8 @@ abstract contract AsyncVaultCentrifugeProperties is
         uint64 poolEntropy,
         uint32 scEntropy,
         uint256 depositAmount
-    ) public {
+    ) public statelessTest {
         uint256 maxDepositBefore = _getVault().maxDeposit(_getActor());
-        require(maxDepositBefore > 0, "must be able to deposit");
 
         depositAmount = between(depositAmount, 1, maxDepositBefore);
 
@@ -156,8 +155,9 @@ abstract contract AsyncVaultCentrifugeProperties is
             scEntropy
         );
         AssetId assetId = _getAssetId();
-        // (uint32 latestDepositApproval,,,) = shareClassManager.epochPointers(scId, assetId);
-        (uint256 pendingDepositBefore, ) = shareClassManager.depositRequest(
+        // (uint32 latestDepositApproval,,,) = batchRequestManager.epochPointers(scId, assetId);
+        (uint256 pendingDepositBefore, ) = batchRequestManager.depositRequest(
+            poolId,
             scId,
             assetId,
             _getActor().toBytes32()
@@ -214,7 +214,8 @@ abstract contract AsyncVaultCentrifugeProperties is
             );
 
             if (depositAmount == maxDepositBefore) {
-                (uint256 pendingDeposit, ) = shareClassManager.depositRequest(
+                (uint256 pendingDeposit, ) = batchRequestManager.depositRequest(
+                    poolId,
                     scId,
                     assetId,
                     _getActor().toBytes32()
@@ -294,7 +295,7 @@ abstract contract AsyncVaultCentrifugeProperties is
             _validateMaxValueChange(
                 maxMintBefore,
                 maxMintAfter,
-                mintAmount,
+                assets,
                 "Mint",
                 escrowState
             );
@@ -408,7 +409,8 @@ abstract contract AsyncVaultCentrifugeProperties is
                     ,
 
                 ) = asyncRequestManager.investments(_getVault(), _getActor());
-                (uint256 pendingWithdraw, ) = shareClassManager.redeemRequest(
+                (uint256 pendingWithdraw, ) = batchRequestManager.redeemRequest(
+                    poolId,
                     scId,
                     assetId,
                     _getActor().toBytes32()
@@ -458,7 +460,7 @@ abstract contract AsyncVaultCentrifugeProperties is
         uint64 poolEntropy,
         uint32 scEntropy,
         uint256 redeemAmount
-    ) public {
+    ) public statelessTest {
         uint256 maxRedeemBefore = _getVault().maxRedeem(_getActor());
         require(maxRedeemBefore > 0, "must be able to redeem");
 
@@ -471,11 +473,13 @@ abstract contract AsyncVaultCentrifugeProperties is
             scEntropy
         );
         AssetId assetId = _getAssetId();
-        (, uint32 latestRedeemApproval, , ) = shareClassManager.epochId(
+        (, uint32 latestRedeemApproval, , ) = batchRequestManager.epochId(
+            poolId,
             scId,
             assetId
         );
-        (uint256 pendingRedeemBefore, ) = shareClassManager.redeemRequest(
+        (uint256 pendingRedeemBefore, ) = batchRequestManager.redeemRequest(
+            poolId,
             scId,
             assetId,
             _getActor().toBytes32()
@@ -529,7 +533,8 @@ abstract contract AsyncVaultCentrifugeProperties is
                     ,
 
                 ) = asyncRequestManager.investments(_getVault(), _getActor());
-                (uint256 pendingRedeem, ) = shareClassManager.redeemRequest(
+                (uint256 pendingRedeem, ) = batchRequestManager.redeemRequest(
+                    poolId,
                     scId,
                     assetId,
                     _getActor().toBytes32()
@@ -788,29 +793,14 @@ abstract contract AsyncVaultCentrifugeProperties is
             // Instead, it follows: maxDeposit = maxReserve - availableBalance
             // The "critical" state only means total ≤ reserved, not that maxDeposit = 0
 
-            // Validate that both values follow the same logic pattern
-            if (maxValueBefore == type(uint128).max) {
-                // When maxReserve = uint128.max, expect consistent large values
-                t(
-                    maxValueAfter >= maxValueBefore - operationAmount - 1 &&
-                        maxValueAfter <= maxValueBefore - operationAmount + 1,
-                    string.concat(
-                        "Sync Critical->Critical: max",
-                        operationName,
-                        " should decrease by ~operation amount (+/-1 wei)"
-                    )
-                );
-            } else {
-                // Standard case: regular maxReserve value
-                t(
-                    maxValueAfter == maxValueBefore - operationAmount,
-                    string.concat(
-                        "Sync Critical->Critical: max",
-                        operationName,
-                        " should decrease by exact operation amount"
-                    )
-                );
-            }
+            t(
+                maxValueAfter == maxValueBefore,
+                string.concat(
+                    "Sync Critical->Critical: max",
+                    operationName,
+                    " should not decrease due to availableBalance being zero"
+                )
+            );
         } else if (!state.isNormalStateBefore && state.isNormalStateAfter) {
             // Scenario 3: Critical -> Normal (total ≤ reserved before, total > reserved after)
             // SyncVault: Both before and after follow maxReserve - availableBalance calculation
@@ -935,7 +925,7 @@ abstract contract AsyncVaultCentrifugeProperties is
         ) = asyncRequestManager.investments(_getVault(), _getActor());
 
         if (!depositPrice.isZero()) {
-            VaultDetails memory vaultDetails = spoke.vaultDetails(_getVault());
+            VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(_getVault());
             uint128 sharesUp = PricingLib.assetToShareAmount(
                 _getVault().share(),
                 vaultDetails.asset,
@@ -972,7 +962,7 @@ abstract contract AsyncVaultCentrifugeProperties is
         );
 
         if (!depositPrice.isZero()) {
-            VaultDetails memory vaultDetails = spoke.vaultDetails(_getVault());
+            VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(_getVault());
             uint256 assetsRequired = PricingLib.shareToAssetAmount(
                 _getVault().share(),
                 mintAmount.toUint128(),
@@ -1013,7 +1003,7 @@ abstract contract AsyncVaultCentrifugeProperties is
 
         if (!redeemPrice.isZero()) {
             // Calculate shares required for the withdraw using exact AsyncRequestManager logic
-            VaultDetails memory vaultDetails = spoke.vaultDetails(_getVault());
+            VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(_getVault());
             uint128 sharesRequired = PricingLib.assetToShareAmount(
                 _getVault().share(),
                 vaultDetails.asset,

@@ -4,10 +4,10 @@ pragma solidity 0.8.28;
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {Mock} from "../../common/mocks/Mock.sol";
+import {Mock} from "../../core/mocks/Mock.sol";
 
-import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
+import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
 
@@ -66,19 +66,33 @@ contract LayerZeroAdapterTestBase is Test {
         endpoint = new MockLayerZeroEndpoint();
         adapter = new LayerZeroAdapter(GATEWAY, address(endpoint), DELEGATE, address(this));
     }
+
+    function testNextNonce() public view {
+        vm.assertEq(adapter.nextNonce(uint32(0), bytes32("")), 0);
+    }
 }
 
 contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
+    using CastLib for *;
+
     function testWireErrNotAuthorized() public {
         vm.prank(makeAddr("NotAuthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.wire(CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
+        adapter.wire(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
     }
 
     function testWire() public {
+        vm.assertEq(
+            adapter.allowInitializePath(Origin(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR.toBytes32LeftPadded(), 0)), false
+        );
+
         vm.expectEmit();
         emit ILayerZeroAdapter.Wire(CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
-        adapter.wire(CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
+        adapter.wire(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
+
+        vm.assertEq(
+            adapter.allowInitializePath(Origin(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR.toBytes32LeftPadded(), 0)), true
+        );
 
         (uint32 layerZeroid, address remoteDestAddress) = adapter.destinations(CENTRIFUGE_ID);
         assertEq(layerZeroid, LAYERZERO_ID);
@@ -87,6 +101,12 @@ contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
         (uint16 centrifugeId, address remoteSourceAddress) = adapter.sources(LAYERZERO_ID);
         assertEq(centrifugeId, CENTRIFUGE_ID);
         assertEq(remoteSourceAddress, REMOTE_LAYERZERO_ADDR);
+    }
+
+    function testIsWired() public {
+        assertFalse(adapter.isWired(CENTRIFUGE_ID));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
+        assertTrue(adapter.isWired(CENTRIFUGE_ID));
     }
 }
 
@@ -150,7 +170,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
             Origin(LAYERZERO_ID, validAddress.toBytes32LeftPadded(), 0), bytes32("1"), payload, EXECUTOR, bytes("")
         );
 
-        adapter.wire(CENTRIFUGE_ID, LAYERZERO_ID, validAddress);
+        adapter.wire(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID, validAddress));
 
         // Incorrect address
         vm.prank(address(endpoint));
@@ -183,6 +203,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         public
     {
         vm.assume(invalidOrigin != address(GATEWAY));
+        vm.assume(gasLimit < adapter.RECEIVE_COST());
 
         vm.deal(address(this), 0.1 ether);
         vm.expectRevert(IAdapter.NotEntrypoint.selector);
@@ -193,7 +214,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         vm.expectRevert(IAdapter.UnknownChainId.selector);
         adapter.send{value: 0.1 ether}(CENTRIFUGE_ID, payload, gasLimit, refund);
 
-        adapter.wire(CENTRIFUGE_ID, LAYERZERO_ID, makeAddr("DestinationAdapter"));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID, makeAddr("DestinationAdapter")));
 
         vm.deal(address(this), 0.1 ether);
         vm.prank(address(GATEWAY));
@@ -207,7 +228,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
             uint8(1), // WORKER_ID
             uint16(17), // uint128 gasLimit byte length + 1
             uint8(1), // OPTION_TYPE_LZ
-            uint128(gasLimit)
+            uint128(gasLimit + adapter.RECEIVE_COST())
         );
         assertEq(endpoint.values_bytes("params.options"), expectedOptions);
         assertEq(endpoint.values_bool("params.payInLzToken"), false);

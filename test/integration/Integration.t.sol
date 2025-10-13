@@ -5,26 +5,25 @@ import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
 import {ERC20} from "../../src/misc/ERC20.sol";
 
-import {MockValuation} from "../common/mocks/MockValuation.sol";
+import {MockValuation} from "../core/mocks/MockValuation.sol";
 
-import {PoolId} from "../../src/common/types/PoolId.sol";
-import {AssetId} from "../../src/common/types/AssetId.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {MAX_MESSAGE_COST as GAS} from "../../src/common/interfaces/IGasService.sol";
+import {PoolId} from "../../src/core/types/PoolId.sol";
+import {AssetId} from "../../src/core/types/AssetId.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {MAX_MESSAGE_COST as GAS} from "../../src/core/messaging/interfaces/IGasService.sol";
 
-import {UpdateContractMessageLib} from "../../src/spoke/libraries/UpdateContractMessageLib.sol";
-
-import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
+import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
+
+import {UpdateContractMessageLib} from "../../src/libraries/UpdateContractMessageLib.sol";
 
 /// @notice The base contract for integrators that want to tests their contracts.
 /// It assumes a full deployment in one chain.
 /// @dev NOTE. Use always LOCAL_CENTRIFUGE_ID when centrifugeId param is required
 contract CentrifugeIntegrationTest is FullDeployer, Test {
     uint16 constant LOCAL_CENTRIFUGE_ID = IntegrationConstants.LOCAL_CENTRIFUGE_ID;
-    address immutable ADMIN = address(adminSafe);
-    address immutable FUNDED = address(this);
+    address FUNDED = makeAddr("FUNDED");
     uint256 constant DEFAULT_SUBSIDY = IntegrationConstants.INTEGRATION_DEFAULT_SUBSIDY;
 
     // Helper contracts
@@ -32,24 +31,25 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
 
     function setUp() public virtual {
         // Deployment
-        CommonInput memory input = CommonInput({
-            centrifugeId: LOCAL_CENTRIFUGE_ID,
-            adminSafe: adminSafe,
-            maxBatchGasLimit: uint128(GAS) * 100,
-            version: bytes32(0)
-        });
-
         FullActionBatcher batcher = new FullActionBatcher();
         super.labelAddresses("");
-        super.deployFull(input, noAdaptersInput(), batcher);
-        super.removeHubDeployerAccess(batcher);
+        super.deployFull(
+            FullInput({
+                core: CoreInput({centrifugeId: LOCAL_CENTRIFUGE_ID, version: bytes32(0), root: address(0)}),
+                adminSafe: adminSafe,
+                opsSafe: adminSafe,
+                adapters: noAdaptersInput()
+            }),
+            batcher
+        );
+        super.removeFullDeployerAccess(batcher);
 
         // Extra deployment
         valuation = new MockValuation(hubRegistry);
         vm.label(address(valuation), "mockValuation");
 
-        // Subsidizing guardian actions
-        gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
+        // Accounts
+        vm.deal(FUNDED, 100 ether);
     }
 }
 
@@ -72,33 +72,31 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
         SC_1 = shareClassManager.previewNextShareClassId(POOL_A);
 
         // Extra deployment
-        vm.startPrank(ADMIN);
         usdc = new ERC20(6);
+        usdc.rely(address(adminSafe));
+        vm.startPrank(address(adminSafe));
         usdc.file("name", "USD Coin");
         usdc.file("symbol", "USDC");
-        vm.label(address(usdc), "usdc");
         vm.stopPrank();
+        vm.label(address(usdc), "usdc");
     }
 
     function _registerUSDC() internal {
         vm.prank(FUNDED);
-        usdcId = spoke.registerAsset{value: GAS}(LOCAL_CENTRIFUGE_ID, address(usdc), 0);
+        usdcId = spoke.registerAsset{value: GAS}(LOCAL_CENTRIFUGE_ID, address(usdc), 0, FUNDED);
     }
 
     function _mintUSDC(address receiver, uint256 amount) internal {
-        vm.prank(ADMIN);
+        vm.prank(address(adminSafe));
         usdc.mint(receiver, amount);
     }
 
     function _createPool() internal {
-        vm.prank(ADMIN);
-        guardian.createPool(POOL_A, FM, USD_ID);
+        vm.prank(address(adminSafe));
+        opsGuardian.createPool(POOL_A, FM, USD_ID);
 
         vm.prank(FM);
         hub.addShareClass(POOL_A, "ShareClass1", "sc1", bytes32("salt"));
-
-        vm.prank(FUNDED);
-        gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
     }
 
     function _updateContractSyncDepositMaxReserveMsg(AssetId assetId, uint128 maxReserve)

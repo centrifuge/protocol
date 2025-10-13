@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 import {ERC20} from "src/misc/ERC20.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/core/types/AssetId.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
 
 abstract contract SharedStorage {
     /**
@@ -205,7 +205,6 @@ abstract contract SharedStorage {
     mapping(bytes32 => uint256) public ghost_assetQueueDeposits; // Cumulative deposits in asset queue
     mapping(bytes32 => uint256) public ghost_assetQueueWithdrawals; // Cumulative withdrawals in asset queue
     mapping(bytes32 => uint256) public ghost_shareQueueNonce; // Track nonce progression for share queue
-    mapping(bytes32 => uint256) public ghost_assetCounterPerAsset; // For non-empty asset queues
     mapping(bytes32 => uint256) public ghost_previousNonce; // To verify monotonicity
 
     // Before/after state tracking for share queues
@@ -279,5 +278,4 @@ abstract contract SharedStorage {
     mapping(bytes32 => uint256) public ghost_escrowReservedBalance;
     mapping(bytes32 => uint256) public ghost_escrowAvailableBalance;
     mapping(bytes32 => bool) public ghost_escrowSufficiencyTracked;
-    mapping(bytes32 => uint256) public ghost_failedWithdrawalAttempts;
 }

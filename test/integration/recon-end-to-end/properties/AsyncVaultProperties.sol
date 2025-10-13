@@ -8,7 +8,7 @@ import "forge-std/console2.sol";
 import {Setup} from "../Setup.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
 
 /// @dev ERC-7540 Properties
 /// TODO: Make pointers with Reverts

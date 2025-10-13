@@ -43,6 +43,9 @@ contract MockGateway {
     // Mock implementation of send
     function send(uint16 centrifugeId, bytes memory message) public {}
 
+    // Mock implementation of setUnpaidMode
+    function setUnpaidMode(bool enabled) public {}
+
     // Mock implementation of setRefundAddress
     function setRefundAddress(uint64 poolId, address refund) public {}
 

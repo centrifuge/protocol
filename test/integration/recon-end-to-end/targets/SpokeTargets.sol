@@ -10,11 +10,12 @@ import {console2} from "forge-std/console2.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageLib} from "src/core/messaging/libraries/MessageLib.sol";
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
+import {AssetId} from "src/core/types/AssetId.sol";
+import {D18} from "src/misc/types/D18.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 import {Properties} from "../properties/Properties.sol";
@@ -67,12 +68,13 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     function spoke_registerAsset(
         address assetAddress,
         uint256 erc6909TokenId
-    ) public asAdmin returns (uint128 assetId) {
+    ) public updateGhosts asAdmin returns (uint128 assetId) {
         assetId = spoke
         .registerAsset{value: 0.1 ether}(
             DEFAULT_DESTINATION_CHAIN,
             assetAddress,
-            erc6909TokenId
+            erc6909TokenId,
+            address(this) // refund address
         ).raw();
 
         // Only if successful
@@ -87,7 +89,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 2
-    function spoke_addPool() public asAdmin {
+    function spoke_addPool() public updateGhosts asAdmin {
         spoke.addPool(_getPool());
     }
 
@@ -96,7 +98,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         uint128 scIdAsUint,
         uint8 decimals,
         address hook
-    ) public asAdmin returns (address, bytes16) {
+    ) public updateGhosts asAdmin returns (address, bytes16) {
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
         bytes16 scId = bytes16(scIdAsUint);
@@ -122,11 +124,13 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 4 - deploy the pool
-    function spoke_deployVault(bool isAsync) public asAdmin returns (address) {
+    function spoke_deployVault(
+        bool isAsync
+    ) public updateGhosts asAdmin returns (address) {
         address vault;
         if (isAsync) {
             vault = address(
-                spoke.deployVault(
+                vaultRegistry.deployVault(
                     _getPool(),
                     _getShareClassId(),
                     _getAssetId(),
@@ -135,7 +139,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
             );
         } else {
             vault = address(
-                spoke.deployVault(
+                vaultRegistry.deployVault(
                     _getPool(),
                     _getShareClassId(),
                     _getAssetId(),
@@ -154,22 +158,23 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 5 - set the request manager
-    function spoke_setRequestManager(address vault) public asAdmin {
+    function spoke_setRequestManager(
+        address vault
+    ) public updateGhosts asAdmin {
         IBaseVault vaultInstance = IBaseVault(vault);
         PoolId poolId = vaultInstance.poolId();
-        ShareClassId scId = vaultInstance.scId();
-        AssetId assetId = _getAssetId();
 
-        spoke.setRequestManager(poolId, scId, assetId, asyncRequestManager);
+        spoke.setRequestManager(poolId, asyncRequestManager);
     }
 
     // Step 6- link the vault
-    function spoke_linkVault(address vault) public asAdmin {
+    function spoke_linkVault(address vault) public updateGhosts asAdmin {
         IBaseVault vaultInstance = IBaseVault(vault);
         PoolId poolId = vaultInstance.poolId();
         ShareClassId scId = vaultInstance.scId();
         AssetId assetId = _getAssetId();
-        spoke.linkVault(poolId, scId, assetId, IBaseVault(vault));
+
+        vaultRegistry.linkVault(poolId, scId, assetId, IBaseVault(vault));
     }
 
     function spoke_linkVault_clamped() public {
@@ -177,8 +182,8 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // Extra 7 - remove the vault
-    function spoke_unlinkVault() public asAdmin {
-        spoke.unlinkVault(
+    function spoke_unlinkVault() public updateGhosts asAdmin {
+        vaultRegistry.unlinkVault(
             _getPool(),
             _getShareClassId(),
             _getAssetId(),
@@ -189,7 +194,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     /**
      * NOTE: All of these are implicitly clamped using values set in shortcut_deployNewTokenPoolAndShare
      */
-    function spoke_updateMember(uint64 validUntil) public asAdmin {
+    function spoke_updateMember(uint64 validUntil) public updateGhosts asAdmin {
         spoke.updateRestriction(
             _getPool(),
             _getShareClassId(),
@@ -203,16 +208,32 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // NOTE: in e2e tests, these get called as callbacks in notifyAssetPrice and notifySharePrice
-    // function spoke_updatePricePoolPerShare(uint64 price, uint64 computedAt) public updateGhostsWithType(OpType.ADMIN)
-    // asAdmin {
-    //     spoke.updatePricePoolPerShare(poolId, scId, price, computedAt);
-    //     spoke.updatePricePoolPerAsset(poolId, scId, assetId, price, computedAt);
-    // }
+    function spoke_updatePricePoolPerShare(
+        uint128 price,
+        uint64 computedAt
+    ) public updateGhostsWithType(OpType.ADMIN) asAdmin {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
+        spoke.updatePricePoolPerShare(
+            poolId,
+            scId,
+            D18.wrap(price),
+            computedAt
+        );
+        spoke.updatePricePoolPerAsset(
+            poolId,
+            scId,
+            assetId,
+            D18.wrap(price),
+            computedAt
+        );
+    }
 
     function spoke_updateShareMetadata(
         string memory tokenName,
         string memory tokenSymbol
-    ) public asAdmin {
+    ) public updateGhosts asAdmin {
         spoke.updateShareMetadata(
             _getPool(),
             _getShareClassId(),
@@ -221,7 +242,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         );
     }
 
-    function spoke_freeze() public asAdmin {
+    function spoke_freeze() public updateGhosts asAdmin {
         spoke.updateRestriction(
             _getPool(),
             _getShareClassId(),
@@ -233,7 +254,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         );
     }
 
-    function spoke_unfreeze() public asAdmin {
+    function spoke_unfreeze() public updateGhosts asAdmin {
         spoke.updateRestriction(
             _getPool(),
             _getShareClassId(),

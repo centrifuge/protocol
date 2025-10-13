@@ -6,15 +6,15 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-import {RequestMessageLib} from "../../../src/common/libraries/RequestMessageLib.sol";
+import "../../core/spoke/integration/BaseTest.sol";
 
-import "../../spoke/integration/BaseTest.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
+import {RequestMessageLib} from "../../../src/vaults/libraries/RequestMessageLib.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 
 contract DepositTest is BaseTest {
@@ -64,7 +64,7 @@ contract DepositTest is BaseTest {
 
         assertEq(vault.isPermissioned(self), false);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max); // add user as
-            // member
+        // member
         assertEq(vault.isPermissioned(self), true);
 
         // will fail - user not member: can not receive share class
@@ -345,7 +345,7 @@ contract DepositTest is BaseTest {
         erc20.mint(self, amount);
 
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max); // add user as
-            // member
+        // member
         erc20.approve(vault_, amount); // add allowance
         vault.requestDeposit(amount, self, self);
 
@@ -399,7 +399,7 @@ contract DepositTest is BaseTest {
 
         erc20.mint(self, amount);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max); // add user as
-            // member
+        // member
         erc20.approve(vault_, amount); // add allowance
         vault.requestDeposit(amount, self, self);
 
@@ -417,7 +417,7 @@ contract DepositTest is BaseTest {
         assertEq(shareToken.balanceOf(address(globalEscrow)), sharePayout);
 
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), receiver, type(uint64).max); // add
-            // receiver
+        // receiver
 
         address router = makeAddr("router");
 
@@ -770,7 +770,7 @@ contract DepositTest is BaseTest {
 
         erc20.mint(investor, amount);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max); // add user
-            // as
+        // as
 
         vm.startPrank(investor);
         erc20.approve(vault_, amount);

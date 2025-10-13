@@ -7,44 +7,40 @@ import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
 import {ERC20} from "../../src/misc/ERC20.sol";
 import {D18} from "../../src/misc/types/D18.sol";
-import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
-import {IERC20} from "../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
-import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
-import {IERC7575Share, IERC165} from "../../src/misc/interfaces/IERC7575.sol";
 
-import {Root} from "../../src/common/Root.sol";
-import {Gateway} from "../../src/common/Gateway.sol";
-import {Guardian} from "../../src/common/Guardian.sol";
-import {PoolId} from "../../src/common/types/PoolId.sol";
-import {GasService} from "../../src/common/GasService.sol";
-import {AccountId} from "../../src/common/types/AccountId.sol";
-import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
-import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";
-import {PricingLib} from "../../src/common/libraries/PricingLib.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "../../src/common/types/AssetId.sol";
-import {VaultUpdateKind} from "../../src/common/libraries/MessageLib.sol";
+import {Hub} from "../../src/core/hub/Hub.sol";
+import {Gateway} from "../../src/core/Gateway.sol";
+import {Spoke} from "../../src/core/spoke/Spoke.sol";
+import {PoolId} from "../../src/core/types/PoolId.sol";
+import {Holdings} from "../../src/core/hub/Holdings.sol";
+import {AccountId} from "../../src/core/types/AccountId.sol";
+import {Accounting} from "../../src/core/hub/Accounting.sol";
+import {HubHandler} from "../../src/core/hub/HubHandler.sol";
+import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
+import {IAdapter} from "../../src/core/interfaces/IAdapter.sol";
+import {IGateway} from "../../src/core/interfaces/IGateway.sol";
+import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
+import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
+import {GasService} from "../../src/core/messaging/GasService.sol";
+import {PricingLib} from "../../src/core/libraries/PricingLib.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
+import {VaultRegistry} from "../../src/core/spoke/VaultRegistry.sol";
+import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
+import {IMessageHandler} from "../../src/core/interfaces/IMessageHandler.sol";
+import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/MultiAdapter.sol";
+import {ILocalCentrifugeId} from "../../src/core/interfaces/IGatewaySenders.sol";
+import {MAX_MESSAGE_COST} from "../../src/core/messaging/interfaces/IGasService.sol";
+import {IUntrustedContractUpdate} from "../../src/core/interfaces/IContractUpdate.sol";
+import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
+import {MessageLib, MessageType, VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
-import {Hub} from "../../src/hub/Hub.sol";
-import {Holdings} from "../../src/hub/Holdings.sol";
-import {Accounting} from "../../src/hub/Accounting.sol";
-import {HubRegistry} from "../../src/hub/HubRegistry.sol";
-import {ShareClassManager} from "../../src/hub/ShareClassManager.sol";
-
-import {Spoke} from "../../src/spoke/Spoke.sol";
-import {IVault} from "../../src/spoke/interfaces/IVault.sol";
-import {BalanceSheet} from "../../src/spoke/BalanceSheet.sol";
-import {UpdateContractMessageLib} from "../../src/spoke/libraries/UpdateContractMessageLib.sol";
-import {IVaultManager, REQUEST_MANAGER_V3_0} from "../../src/spoke/interfaces/legacy/IVaultManager.sol";
-
-import {SyncManager} from "../../src/vaults/SyncManager.sol";
-import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
-import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
-import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
-import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {Root} from "../../src/admin/Root.sol";
+import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
+import {OpsGuardian} from "../../src/admin/OpsGuardian.sol";
+import {ProtocolGuardian} from "../../src/admin/ProtocolGuardian.sol";
 
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
 
@@ -56,9 +52,21 @@ import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestr
 import {OracleValuation} from "../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
 
-import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
+import {SyncManager} from "../../src/vaults/SyncManager.sol";
+import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
+import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
+import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
+import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {RefundEscrowFactory} from "../../src/vaults/factories/RefundEscrowFactory.sol";
+
+import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
+
+import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
+import {UpdateContractMessageLib} from "../../src/libraries/UpdateContractMessageLib.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///
@@ -85,8 +93,10 @@ contract EndToEndDeployment is Test {
         uint16 centrifugeId;
         // Common
         Root root;
-        Guardian guardian;
+        ProtocolGuardian protocolGuardian;
+        OpsGuardian opsGuardian;
         Gateway gateway;
+        MultiAdapter multiAdapter;
         GasService gasService;
         // Hub
         HubRegistry hubRegistry;
@@ -94,6 +104,8 @@ contract EndToEndDeployment is Test {
         Holdings holdings;
         ShareClassManager shareClassManager;
         Hub hub;
+        HubHandler hubHandler;
+        BatchRequestManager batchRequestManager;
         // Others
         IdentityValuation identityValuation;
         OracleValuation oracleValuation;
@@ -104,16 +116,20 @@ contract EndToEndDeployment is Test {
         uint16 centrifugeId;
         // Common
         Root root;
-        Guardian guardian;
+        ProtocolGuardian protocolGuardian;
+        OpsGuardian opsGuardian;
         Gateway gateway;
+        MultiAdapter multiAdapter;
         // Vaults
         BalanceSheet balanceSheet;
         Spoke spoke;
+        VaultRegistry vaultRegistry;
         VaultRouter router;
         bytes32 asyncVaultFactory;
         bytes32 syncDepositVaultFactory;
         AsyncRequestManager asyncRequestManager;
         SyncManager syncManager;
+        RefundEscrowFactory refundEscrowFactory;
         // Hooks
         FreezeOnly freezeOnlyHook;
         FullRestrictions fullRestrictionsHook;
@@ -128,9 +144,9 @@ contract EndToEndDeployment is Test {
 
     uint16 constant CENTRIFUGE_ID_A = IntegrationConstants.CENTRIFUGE_ID_A;
     uint16 constant CENTRIFUGE_ID_B = IntegrationConstants.CENTRIFUGE_ID_B;
-    uint128 constant GAS = IntegrationConstants.GAS;
+    uint128 constant GAS = MAX_MESSAGE_COST;
     uint256 constant DEFAULT_SUBSIDY = IntegrationConstants.DEFAULT_SUBSIDY;
-    uint128 constant SHARE_HOOK_GAS = IntegrationConstants.SHARE_HOOK_GAS;
+    uint128 constant HOOK_GAS = IntegrationConstants.HOOK_GAS;
 
     address immutable ERC20_DEPLOYER = address(this);
     address immutable FM = makeAddr("FM");
@@ -138,6 +154,8 @@ contract EndToEndDeployment is Test {
     address immutable FEEDER = makeAddr("FEEDER");
     address immutable INVESTOR_A = makeAddr("INVESTOR_A");
     address immutable ANY = makeAddr("ANY");
+    address immutable GATEWAY_MANAGER = makeAddr("GATEWAY_MANAGER");
+    address immutable REFUND = makeAddr("REFUND");
 
     uint128 constant USDC_AMOUNT_1 = IntegrationConstants.DEFAULT_USDC_AMOUNT;
 
@@ -145,6 +163,8 @@ contract EndToEndDeployment is Test {
     AccountId constant EQUITY_ACCOUNT = IntegrationConstants.EQUITY_ACCOUNT;
     AccountId constant LOSS_ACCOUNT = IntegrationConstants.LOSS_ACCOUNT;
     AccountId constant GAIN_ACCOUNT = IntegrationConstants.GAIN_ACCOUNT;
+
+    PoolId constant GLOBAL_POOL = PoolId.wrap(0);
 
     AssetId USD_ID;
     PoolId POOL_A;
@@ -155,6 +175,9 @@ contract EndToEndDeployment is Test {
 
     LocalAdapter adapterAToB;
     LocalAdapter adapterBToA;
+
+    LocalAdapter poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
+    LocalAdapter poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
 
     CHub h;
     CSpoke s;
@@ -170,15 +193,17 @@ contract EndToEndDeployment is Test {
     D18 currentAssetPrice = IntegrationConstants.identityPrice();
     D18 currentSharePrice = IntegrationConstants.identityPrice();
 
+    bool constant IN_DIFFERENT_CHAINS = false;
+
     //----------------------------------------------------------------------------------------------
     // Test Setup & Infrastructure
     //----------------------------------------------------------------------------------------------
 
     function setUp() public virtual {
+        // Wire global adapters
         adapterAToB = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, SAFE_ADMIN_A);
         adapterBToA = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, SAFE_ADMIN_B);
 
-        // We connect both deploys through the adapters
         adapterAToB.setEndpoint(adapterBToA);
         adapterBToA.setEndpoint(adapterAToB);
 
@@ -187,18 +212,24 @@ contract EndToEndDeployment is Test {
         vm.deal(BSM, 1 ether);
         vm.deal(INVESTOR_A, 1 ether);
         vm.deal(ANY, 1 ether);
+        vm.deal(address(SAFE_ADMIN_A), 1 ether);
+        vm.deal(address(SAFE_ADMIN_B), 1 ether);
 
         h = CHub({
             centrifugeId: CENTRIFUGE_ID_A,
             root: deployA.root(),
-            guardian: deployA.guardian(),
+            protocolGuardian: deployA.protocolGuardian(),
+            opsGuardian: deployA.opsGuardian(),
             gateway: deployA.gateway(),
+            multiAdapter: deployA.multiAdapter(),
             gasService: deployA.gasService(),
             hubRegistry: deployA.hubRegistry(),
             accounting: deployA.accounting(),
             holdings: deployA.holdings(),
             shareClassManager: deployA.shareClassManager(),
             hub: deployA.hub(),
+            hubHandler: deployA.hubHandler(),
+            batchRequestManager: deployA.batchRequestManager(),
             identityValuation: deployA.identityValuation(),
             oracleValuation: deployA.oracleValuation(),
             snapshotHook: new MockSnapshotHook()
@@ -211,19 +242,20 @@ contract EndToEndDeployment is Test {
 
         vm.label(address(adapterAToB), "AdapterAToB");
         vm.label(address(adapterBToA), "AdapterBToA");
+
+        vm.recordLogs();
     }
 
-    function _wire(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
-        vm.startPrank(address(deploy));
-        IAuth(address(adapter)).rely(address(deploy.root()));
-        IAuth(address(adapter)).rely(address(deploy.guardian()));
-        IAuth(address(adapter)).deny(address(deploy));
-        vm.stopPrank();
-
-        vm.startPrank(address(deploy.guardian().safe()));
+    function _setAdapter(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
-        deploy.guardian().setAdapters(remoteCentrifugeId, adapters);
+        vm.startPrank(address(deploy.protocolGuardian()));
+        deploy.multiAdapter().setAdapters(
+            remoteCentrifugeId, GLOBAL_POOL, adapters, uint8(adapters.length), uint8(adapters.length)
+        );
+
+        vm.startPrank(address(deploy.protocolGuardian()));
+        deploy.gateway().updateManager(GLOBAL_POOL, GATEWAY_MANAGER, true);
         vm.stopPrank();
     }
 
@@ -231,21 +263,26 @@ contract EndToEndDeployment is Test {
         internal
         returns (LocalAdapter adapter)
     {
-        CommonInput memory commonInput = CommonInput({
-            centrifugeId: localCentrifugeId,
-            adminSafe: adminSafe,
-            maxBatchGasLimit: uint128(GAS) * 100,
-            version: bytes32(abi.encodePacked(localCentrifugeId))
-        });
-
         FullActionBatcher batcher = new FullActionBatcher();
         batcher.setDeployer(address(deploy));
 
         deploy.labelAddresses(string(abi.encodePacked(localCentrifugeId, "-")));
-        deploy.deployFull(commonInput, deploy.noAdaptersInput(), batcher);
+        deploy.deployFull(
+            FullInput({
+                core: CoreInput({
+                    centrifugeId: localCentrifugeId,
+                    version: bytes32(abi.encodePacked(localCentrifugeId)),
+                    root: address(0)
+                }),
+                adminSafe: adminSafe,
+                opsSafe: adminSafe,
+                adapters: noAdaptersInput()
+            }),
+            batcher
+        );
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
-        _wire(deploy, remoteCentrifugeId, adapter);
+        _setAdapter(deploy, remoteCentrifugeId, adapter);
 
         deploy.removeFullDeployerAccess(batcher);
     }
@@ -255,10 +292,13 @@ contract EndToEndDeployment is Test {
 
         s_.centrifugeId = centrifugeId;
         s_.root = deploy.root();
-        s_.guardian = deploy.guardian();
+        s_.protocolGuardian = deploy.protocolGuardian();
+        s_.opsGuardian = deploy.opsGuardian();
         s_.gateway = deploy.gateway();
+        s_.multiAdapter = deploy.multiAdapter();
         s_.balanceSheet = deploy.balanceSheet();
         s_.spoke = deploy.spoke();
+        s_.vaultRegistry = deploy.vaultRegistry();
         s_.router = deploy.vaultRouter();
         s_.freezeOnlyHook = deploy.freezeOnlyHook();
         s_.fullRestrictionsHook = deploy.fullRestrictionsHook();
@@ -267,12 +307,15 @@ contract EndToEndDeployment is Test {
         s_.syncDepositVaultFactory = address(deploy.syncDepositVaultFactory()).toBytes32();
         s_.asyncRequestManager = deploy.asyncRequestManager();
         s_.syncManager = deploy.syncManager();
+        s_.refundEscrowFactory = deploy.refundEscrowFactory();
         s_.usdc = new ERC20(6);
         s_.usdcId = newAssetId(centrifugeId, 1);
 
         // Initialize default values
         s_.usdc.file("name", "USD Coin");
         s_.usdc.file("symbol", "USDC");
+
+        s_.asyncRequestManager.depositSubsidy{value: 0.5 ether}(POOL_A);
     }
 
     function _setSpoke(bool sameChain) internal {
@@ -283,6 +326,8 @@ contract EndToEndDeployment is Test {
         }
     }
 }
+
+contract IsContract {}
 
 /// Common and generic utilities ready to be used in different tests
 contract EndToEndUtils is EndToEndDeployment {
@@ -321,31 +366,48 @@ contract EndToEndUtils is EndToEndDeployment {
         assertEq(accountIsPositive, isPositive);
     }
 
-    function isShareToken(address token) internal view returns (bool) {
-        try IERC165(token).supportsInterface(type(IERC7575Share).interfaceId) returns (bool supported) {
-            return supported;
-        } catch {
-            return false;
-        }
-    }
-
     function _getAsyncVault(CSpoke memory spoke, PoolId poolId, ShareClassId shareClassId, AssetId assetId)
         internal
         view
         returns (address vaultAddr)
     {
-        if (spoke.asyncRequestManager == REQUEST_MANAGER_V3_0) {
-            // Fallback to legacy V3.0 lookup if not found in new system
-            return
-                address(IVaultManager(address(spoke.asyncRequestManager)).vaultByAssetId(poolId, shareClassId, assetId));
-        } else {
-            // Try new system first
-            return address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
+        return address(spoke.vaultRegistry.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
+    }
+
+    function _getOrCreateAsyncVault(
+        CHub memory hub,
+        CSpoke memory spoke,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address poolManager
+    ) internal returns (address vaultAddr) {
+        vaultAddr = address(spoke.vaultRegistry.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
+        if (vaultAddr == address(0)) {
+            vm.startPrank(poolManager);
+            hub.hub.updateVault{value: GAS}(
+                poolId, shareClassId, assetId, spoke.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
+            );
+            vm.stopPrank();
+            vaultAddr = address(spoke.vaultRegistry.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
         }
+        assertNotEq(vaultAddr, address(0));
+    }
+
+    function _getLastUnpaidMessage() internal returns (bytes memory message) {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        for (uint256 i = logs.length - 1; i >= 0; i--) {
+            if (logs[i].topics[0] == bytes32(IGateway.UnderpaidBatch.selector)) {
+                return abi.decode(logs[i].data, (bytes));
+            }
+        }
+
+        vm.recordLogs();
     }
 }
 
-/// Base investment flows that can be shared between EndToEnd and Fork tests
+/// Base investment flows that can be shared between EndToEnd tests
 contract EndToEndFlows is EndToEndUtils {
     using CastLib for *;
     using UpdateContractMessageLib for *;
@@ -379,35 +441,27 @@ contract EndToEndFlows is EndToEndUtils {
         s_.usdc.mint(INVESTOR_A, USDC_AMOUNT_1);
 
         vm.startPrank(ANY);
-        s_.spoke.registerAsset{value: GAS}(h.centrifugeId, address(s_.usdc), 0);
+        s_.spoke.registerAsset{value: GAS}(h.centrifugeId, address(s_.usdc), 0, ANY);
     }
 
     function _createPoolAccounts(CHub memory hub, PoolId poolId, address poolManager) internal {
         vm.startPrank(poolManager);
         hub.hub.createAccount(poolId, ASSET_ACCOUNT, true);
         hub.hub.createAccount(poolId, EQUITY_ACCOUNT, false);
-        hub.hub.createAccount(poolId, LOSS_ACCOUNT, false);
         hub.hub.createAccount(poolId, GAIN_ACCOUNT, false);
-        vm.stopPrank();
-    }
-
-    function _subsidizePool(CHub memory hub, PoolId poolId) internal {
-        vm.startPrank(ANY);
-        vm.deal(ANY, 1 ether);
-        hub.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(poolId);
+        hub.hub.createAccount(poolId, LOSS_ACCOUNT, true);
         vm.stopPrank();
     }
 
     function _createPool() internal {
-        vm.startPrank(address(h.guardian.safe()));
-        h.guardian.createPool(POOL_A, FM, USD_ID);
+        vm.startPrank(address(h.protocolGuardian.safe()));
+        h.opsGuardian.createPool(POOL_A, FM, USD_ID);
 
         vm.startPrank(FM);
         h.hub.setPoolMetadata(POOL_A, bytes("Testing pool"));
         h.hub.addShareClass(POOL_A, "Tokenized MMF", "MMF", bytes32("salt"));
 
         _createPoolAccounts(h, POOL_A, FM);
-        _subsidizePool(h, POOL_A);
     }
 
     function _configurePoolCrossChain(
@@ -422,8 +476,8 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(poolManager);
         vm.deal(poolManager, 1 ether);
 
-        hub.hub.notifyPool{value: GAS}(poolId, spoke.centrifugeId);
-        hub.hub.notifyShareClass{value: GAS}(poolId, shareClassId, spoke.centrifugeId, hookAddress.toBytes32());
+        hub.hub.notifyPool{value: GAS}(poolId, spoke.centrifugeId, REFUND);
+        hub.hub.notifyShareClass{value: GAS}(poolId, shareClassId, spoke.centrifugeId, hookAddress.toBytes32(), REFUND);
 
         hub.hub.initializeHolding(
             poolId,
@@ -436,15 +490,19 @@ contract EndToEndFlows is EndToEndUtils {
             LOSS_ACCOUNT
         );
         hub.hub.setRequestManager{value: GAS}(
-            poolId, shareClassId, assetId, address(spoke.asyncRequestManager).toBytes32()
+            poolId,
+            spoke.centrifugeId,
+            IHubRequestManager(hub.batchRequestManager),
+            address(spoke.asyncRequestManager).toBytes32(),
+            REFUND
         );
         hub.hub.updateBalanceSheetManager{value: GAS}(
-            spoke.centrifugeId, poolId, address(spoke.asyncRequestManager).toBytes32(), true
+            poolId, spoke.centrifugeId, address(spoke.asyncRequestManager).toBytes32(), true, REFUND
         );
         hub.hub.updateBalanceSheetManager{value: GAS}(
-            spoke.centrifugeId, poolId, address(spoke.syncManager).toBytes32(), true
+            poolId, spoke.centrifugeId, address(spoke.syncManager).toBytes32(), true, REFUND
         );
-        hub.hub.updateBalanceSheetManager{value: GAS}(spoke.centrifugeId, poolId, BSM.toBytes32(), true);
+        hub.hub.updateBalanceSheetManager{value: GAS}(poolId, spoke.centrifugeId, BSM.toBytes32(), true, REFUND);
 
         vm.stopPrank();
     }
@@ -462,18 +520,38 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
         h.oracleValuation.updateFeeder(POOL_A, FEEDER, true);
         h.hub.updateHubManager(POOL_A, address(h.oracleValuation), true);
+        h.hub.updateGatewayManager{value: GAS}(
+            POOL_A, h.centrifugeId, address(h.batchRequestManager).toBytes32(), true, REFUND
+        );
         vm.stopPrank();
-
-        // We also subsidize the hub
-        if (s.centrifugeId != h.centrifugeId) {
-            vm.startPrank(ANY);
-            s_.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
-        }
     }
 
     function _configurePool(bool sameChain) internal {
         _setSpoke(sameChain);
         _configurePool(s);
+    }
+
+    function _configureBasePoolWithCustomAdapters() internal {
+        _setSpoke(IN_DIFFERENT_CHAINS);
+        _createPool();
+
+        // Wire pool adapters
+        poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
+        poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
+
+        poolAdapterAToB.setEndpoint(poolAdapterBToA);
+        poolAdapterBToA.setEndpoint(poolAdapterAToB);
+
+        IAdapter[] memory localAdapters = new IAdapter[](1);
+        localAdapters[0] = poolAdapterAToB;
+
+        bytes32[] memory remoteAdapters = new bytes32[](1);
+        remoteAdapters[0] = address(poolAdapterBToA).toBytes32();
+
+        vm.startPrank(FM);
+        h.hub.setAdapters{value: GAS}(POOL_A, s.centrifugeId, localAdapters, remoteAdapters, 1, 1, REFUND);
+        h.hub.updateGatewayManager{value: GAS}(POOL_A, h.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
+        h.hub.updateGatewayManager{value: GAS}(POOL_A, s.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -495,9 +573,9 @@ contract EndToEndFlows is EndToEndUtils {
         vm.stopPrank();
 
         vm.startPrank(poolManager);
-        hub.hub.updateSharePrice(poolId, shareClassId, sharePrice);
-        hub.hub.notifySharePrice{value: GAS}(poolId, shareClassId, spoke.centrifugeId);
-        hub.hub.notifyAssetPrice{value: GAS}(poolId, shareClassId, assetId);
+        hub.hub.updateSharePrice(poolId, shareClassId, sharePrice, uint64(block.timestamp));
+        hub.hub.notifySharePrice{value: GAS}(poolId, shareClassId, spoke.centrifugeId, REFUND);
+        hub.hub.notifyAssetPrice{value: GAS}(poolId, shareClassId, assetId, REFUND);
 
         currentAssetPrice = assetPrice;
         currentSharePrice = sharePrice;
@@ -520,30 +598,22 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager,
         address investor,
         uint128 amount,
-        bool nonZeroPrices,
-        bool skipPreciseAssertion,
-        address existingVault
+        bool nonZeroPrices
     ) internal {
         // Configure prices
         _configurePricesForFlow(hub, spoke, poolId, shareClassId, assetId, poolManager, nonZeroPrices);
 
-        // Deploy or get existing vault (with fallback for fork tests)
-        IAsyncVault vault =
-            _ensureAsyncVaultExists(hub, spoke, poolId, shareClassId, assetId, poolManager, existingVault);
+        // Deploy or get existing vault
+        IAsyncVault vault = IAsyncVault(_getOrCreateAsyncVault(hub, spoke, poolId, shareClassId, assetId, poolManager));
 
         // Execute deposit request
         _executeAsyncDepositRequest(vault, investor, amount);
-
-        // Ensure deposit/issue epochs are aligned before proceeding (handles live chain state)
-        _ensureDepositEpochsAligned(hub, poolId, shareClassId, assetId, poolManager);
 
         // Process deposit approval and share issuance
         _processAsyncDepositApproval(hub, poolId, shareClassId, assetId, poolManager, amount);
 
         // Claim shares
-        _processAsyncDepositClaim(
-            hub, spoke, poolId, shareClassId, assetId, investor, vault, amount, skipPreciseAssertion
-        );
+        _processAsyncDepositClaim(hub, spoke, poolId, shareClassId, assetId, investor, vault, amount);
     }
 
     function _configurePricesForFlow(
@@ -555,61 +625,16 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager,
         bool nonZeroPrices
     ) internal {
-        if (nonZeroPrices) {
-            _baseConfigurePrices(
-                hub,
-                spoke,
-                poolId,
-                shareClassId,
-                assetId,
-                poolManager,
-                IntegrationConstants.assetPrice(),
-                IntegrationConstants.sharePrice()
-            );
-        } else {
-            _baseConfigurePrices(
-                hub,
-                spoke,
-                poolId,
-                shareClassId,
-                assetId,
-                poolManager,
-                IntegrationConstants.zeroPrice(),
-                IntegrationConstants.zeroPrice()
-            );
-        }
-    }
-
-    function _ensureAsyncVaultExists(
-        CHub memory hub,
-        CSpoke memory spoke,
-        PoolId poolId,
-        ShareClassId shareClassId,
-        AssetId assetId,
-        address poolManager,
-        address fallbackVault
-    ) internal returns (IAsyncVault vault) {
-        vm.startPrank(poolManager);
-
-        // Check if vault already exists (for fork tests)
-        vault = IAsyncVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
-        if (address(vault) == address(0)) {
-            // If we have a fallback vault (for fork tests), use it
-            if (fallbackVault != address(0)) {
-                vault = IAsyncVault(fallbackVault);
-                vm.stopPrank();
-                return vault;
-            }
-
-            // Otherwise try to create new vault
-            hub.hub.updateVault{value: GAS}(
-                poolId, shareClassId, assetId, spoke.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
-            );
-            vault = IAsyncVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
-        }
-
-        vm.stopPrank();
-        assertNotEq(address(vault), address(0));
+        _baseConfigurePrices(
+            hub,
+            spoke,
+            poolId,
+            shareClassId,
+            assetId,
+            poolManager,
+            nonZeroPrices ? IntegrationConstants.assetPrice() : IntegrationConstants.zeroPrice(),
+            nonZeroPrices ? IntegrationConstants.sharePrice() : IntegrationConstants.zeroPrice()
+        );
     }
 
     function _executeAsyncDepositRequest(IAsyncVault vault, address investor, uint128 amount) internal {
@@ -627,13 +652,18 @@ contract EndToEndFlows is EndToEndUtils {
         uint128 amount
     ) internal {
         vm.startPrank(poolManager);
-        uint32 depositEpochId = hub.shareClassManager.nowDepositEpoch(shareClassId, assetId);
-        hub.hub.approveDeposits{value: GAS}(poolId, shareClassId, assetId, depositEpochId, amount);
+        uint32 depositEpochId = hub.batchRequestManager.nowDepositEpoch(poolId, shareClassId, assetId);
+        D18 pricePoolPerAsset = hub.hub.pricePoolPerAsset(poolId, shareClassId, assetId);
+        hub.batchRequestManager.approveDeposits{value: GAS}(
+            poolId, shareClassId, assetId, depositEpochId, amount, pricePoolPerAsset, REFUND
+        );
 
         vm.startPrank(poolManager);
-        uint32 issueEpochId = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
-        (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.issueShares{value: GAS}(poolId, shareClassId, assetId, issueEpochId, sharePrice, SHARE_HOOK_GAS);
+        uint32 issueEpochId = hub.batchRequestManager.nowIssueEpoch(poolId, shareClassId, assetId);
+        (D18 sharePrice,) = hub.shareClassManager.pricePoolPerShare(poolId, shareClassId);
+        hub.batchRequestManager.issueShares{value: GAS}(
+            poolId, shareClassId, assetId, issueEpochId, sharePrice, HOOK_GAS, REFUND
+        );
     }
 
     function _processAsyncDepositClaim(
@@ -644,48 +674,31 @@ contract EndToEndFlows is EndToEndUtils {
         AssetId assetId,
         address investor,
         IAsyncVault vault,
-        uint128 amount,
-        bool skipPreciseAssertion
+        uint128 amount
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.hub.notifyDeposit{value: GAS}(
+        hub.batchRequestManager.notifyDeposit{value: GAS}(
             poolId,
             shareClassId,
             assetId,
             investor.toBytes32(),
-            hub.shareClassManager.maxDepositClaims(shareClassId, investor.toBytes32(), assetId)
+            hub.batchRequestManager.maxDepositClaims(poolId, shareClassId, investor.toBytes32(), assetId),
+            REFUND
         );
-
-        // Store initial share balance for fork tests
-        uint256 initialShares;
-        if (skipPreciseAssertion) {
-            initialShares = spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor);
-        }
 
         vm.startPrank(investor);
         vault.mint(vault.maxMint(investor), investor);
 
         // CHECKS
-        if (skipPreciseAssertion) {
-            // For fork tests: just verify shares increased
-            assertTrue(
-                spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor) > initialShares,
-                "Investor should have received shares"
-            );
-        } else {
-            // For regular tests: check exact amount
-            assertEq(
-                spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor),
-                assetToShare(amount),
-                "expected shares"
-            );
-        }
+        assertEq(
+            spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor), assetToShare(amount), "expected shares"
+        );
     }
 
     function _testAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
         _configurePool(sameChain);
-        _asyncDepositFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, USDC_AMOUNT_1, nonZeroPrices, false, address(0));
+        _asyncDepositFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, USDC_AMOUNT_1, nonZeroPrices);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -701,36 +714,11 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager,
         address investor,
         uint128 amount,
-        bool nonZeroPrices,
-        bool skipPreciseAssertion
+        bool nonZeroPrices
     ) internal {
-        // Configure prices
-        if (nonZeroPrices) {
-            _baseConfigurePrices(
-                hub,
-                spoke,
-                poolId,
-                shareClassId,
-                assetId,
-                poolManager,
-                IntegrationConstants.assetPrice(),
-                IntegrationConstants.sharePrice()
-            );
-        } else {
-            _baseConfigurePrices(
-                hub,
-                spoke,
-                poolId,
-                shareClassId,
-                assetId,
-                poolManager,
-                IntegrationConstants.zeroPrice(),
-                IntegrationConstants.zeroPrice()
-            );
-        }
-
+        _configurePricesForFlow(hub, spoke, poolId, shareClassId, assetId, poolManager, nonZeroPrices);
         _configureSyncDepositVault(hub, spoke, poolId, shareClassId, assetId, poolManager);
-        _processSyncDeposit(hub, spoke, poolId, shareClassId, assetId, investor, amount, skipPreciseAssertion);
+        _processSyncDeposit(hub, spoke, poolId, shareClassId, assetId, investor, amount);
     }
 
     function _configureSyncDepositVault(
@@ -742,11 +730,17 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager
     ) internal {
         vm.startPrank(poolManager);
-        // Check if vault already exists (for fork tests)
+        // Check if vault already exists (for live tests)
         address existingVault = _getAsyncVault(spoke, poolId, shareClassId, assetId);
         if (existingVault == address(0)) {
             hub.hub.updateVault{value: GAS}(
-                poolId, shareClassId, assetId, spoke.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
+                poolId,
+                shareClassId,
+                assetId,
+                spoke.syncDepositVaultFactory,
+                VaultUpdateKind.DeployAndLink,
+                EXTRA_GAS,
+                REFUND
             );
         }
         hub.hub.updateContract{value: GAS}(
@@ -755,7 +749,8 @@ contract EndToEndFlows is EndToEndUtils {
             spoke.centrifugeId,
             address(spoke.syncManager).toBytes32(),
             _updateContractSyncDepositMaxReserveMsg(assetId, type(uint128).max),
-            EXTRA_GAS
+            EXTRA_GAS,
+            REFUND
         );
     }
 
@@ -766,40 +761,22 @@ contract EndToEndFlows is EndToEndUtils {
         ShareClassId shareClassId,
         AssetId assetId,
         address investor,
-        uint128 amount,
-        bool skipPreciseAssertion
+        uint128 amount
     ) internal {
         IBaseVault vault = IBaseVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
-
-        // Store initial share balance for fork tests
-        uint256 initialShares;
-        if (skipPreciseAssertion) {
-            initialShares = spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor);
-        }
 
         vm.startPrank(investor);
         spoke.usdc.approve(address(vault), amount);
         vault.deposit(amount, investor);
 
-        if (skipPreciseAssertion) {
-            // For fork tests: just verify shares increased
-            assertTrue(
-                spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor) > initialShares,
-                "Investor should have received shares"
-            );
-        } else {
-            // For regular tests: check exact amount
-            assertEq(
-                spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor),
-                assetToShare(amount),
-                "expected shares"
-            );
-        }
+        assertEq(
+            spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor), assetToShare(amount), "expected shares"
+        );
     }
 
     function _testSyncDeposit(bool sameChain, bool nonZeroPrices) public {
         _configurePool(sameChain);
-        _syncDepositFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, USDC_AMOUNT_1, nonZeroPrices, false);
+        _syncDepositFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, USDC_AMOUNT_1, nonZeroPrices);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -814,82 +791,23 @@ contract EndToEndFlows is EndToEndUtils {
         AssetId assetId,
         address poolManager,
         address investor,
-        bool nonZeroPrices,
-        bool skipPreciseAssertion,
-        address existingVault
+        bool nonZeroPrices
     ) internal {
         // Configure prices using unified helper
         _configurePricesForFlow(hub, spoke, poolId, shareClassId, assetId, poolManager, nonZeroPrices);
 
         _configureAsyncRedeemRestriction(hub, spoke, poolId, shareClassId, investor, poolManager);
 
-        // Resolve vault - use existing if provided, otherwise get from manager
-        IAsyncRedeemVault vault = existingVault != address(0)
-            ? IAsyncRedeemVault(existingVault)
-            : IAsyncRedeemVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
+        // Get vault from manager
+        IAsyncRedeemVault vault = IAsyncRedeemVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
 
         vm.startPrank(investor);
         uint128 shares = uint128(spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor));
 
         vault.requestRedeem(shares, investor, investor);
 
-        // Ensure epochs are aligned before proceeding (handles live chain state)
-        _ensureRedeemEpochsAligned(hub, poolId, shareClassId, assetId, poolManager);
-
         _processAsyncRedeemApproval(hub, poolId, shareClassId, assetId, shares, poolManager);
-        _processAsyncRedeemClaim(
-            hub, spoke, poolId, shareClassId, assetId, investor, vault, shares, skipPreciseAssertion
-        );
-    }
-
-    function _ensureRedeemEpochsAligned(
-        CHub memory hub,
-        PoolId poolId,
-        ShareClassId shareClassId,
-        AssetId assetId,
-        address poolManager
-    ) internal {
-        uint32 nowRedeemEpoch = hub.shareClassManager.nowRedeemEpoch(shareClassId, assetId);
-        uint32 nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
-
-        // Handle live chain state: if redemptions have been approved but not revoked,
-        // we need to revoke outstanding epochs before we can approve new ones
-        if (nowRedeemEpoch != nowRevokeEpoch) {
-            vm.startPrank(poolManager);
-            while (nowRevokeEpoch < nowRedeemEpoch) {
-                (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-                hub.hub.revokeShares{value: GAS}(
-                    poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, SHARE_HOOK_GAS
-                );
-                nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
-            }
-            vm.stopPrank();
-        }
-    }
-
-    function _ensureDepositEpochsAligned(
-        CHub memory hub,
-        PoolId poolId,
-        ShareClassId shareClassId,
-        AssetId assetId,
-        address poolManager
-    ) internal {
-        uint32 nowDepositEpoch = hub.shareClassManager.nowDepositEpoch(shareClassId, assetId);
-        uint32 nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
-
-        // Handle live chain state: if deposits have been approved but not yet issued,
-        // we need to issue outstanding epochs before we can approve new ones
-        if (nowDepositEpoch != nowIssueEpoch) {
-            vm.startPrank(poolManager);
-            while (nowIssueEpoch < nowDepositEpoch) {
-                (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-                hub.hub.issueShares{value: GAS}(
-                    poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, SHARE_HOOK_GAS
-                );
-                nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
-            }
-            vm.stopPrank();
-        }
+        _processAsyncRedeemClaim(hub, spoke, poolId, shareClassId, assetId, investor, vault, shares);
     }
 
     function _configureAsyncRedeemRestriction(
@@ -902,7 +820,7 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(poolManager);
         hub.hub.updateRestriction{value: GAS}(
-            poolId, shareClassId, spoke.centrifugeId, _updateRestrictionMemberMsg(investor), EXTRA_GAS
+            poolId, shareClassId, spoke.centrifugeId, _updateRestrictionMemberMsg(investor), EXTRA_GAS, REFUND
         );
     }
 
@@ -915,12 +833,15 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager
     ) internal {
         vm.startPrank(poolManager);
-        uint32 redeemEpochId = hub.shareClassManager.nowRedeemEpoch(shareClassId, assetId);
-        hub.hub.approveRedeems(poolId, shareClassId, assetId, redeemEpochId, shares);
+        uint32 redeemEpochId = hub.batchRequestManager.nowRedeemEpoch(poolId, shareClassId, assetId);
+        D18 pricePoolPerAsset = hub.hub.pricePoolPerAsset(poolId, shareClassId, assetId);
+        hub.batchRequestManager.approveRedeems(poolId, shareClassId, assetId, redeemEpochId, shares, pricePoolPerAsset);
 
-        uint32 revokeEpochId = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
-        (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.revokeShares{value: GAS}(poolId, shareClassId, assetId, revokeEpochId, sharePrice, SHARE_HOOK_GAS);
+        uint32 revokeEpochId = hub.batchRequestManager.nowRevokeEpoch(poolId, shareClassId, assetId);
+        (D18 sharePrice,) = hub.shareClassManager.pricePoolPerShare(poolId, shareClassId);
+        hub.batchRequestManager.revokeShares{value: GAS}(
+            poolId, shareClassId, assetId, revokeEpochId, sharePrice, HOOK_GAS, REFUND
+        );
     }
 
     function _processAsyncRedeemClaim(
@@ -931,43 +852,28 @@ contract EndToEndFlows is EndToEndUtils {
         AssetId assetId,
         address investor,
         IAsyncRedeemVault vault,
-        uint128 shares,
-        bool skipPreciseAssertion
+        uint128 shares
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.hub.notifyRedeem{value: GAS}(
+        hub.batchRequestManager.notifyRedeem{value: GAS}(
             poolId,
             shareClassId,
             assetId,
             investor.toBytes32(),
-            hub.shareClassManager.maxRedeemClaims(shareClassId, investor.toBytes32(), assetId)
+            hub.batchRequestManager.maxRedeemClaims(poolId, shareClassId, investor.toBytes32(), assetId),
+            REFUND
         );
-
-        // Store initial asset balance for fork tests
-        uint256 initialAssets;
-        if (skipPreciseAssertion) {
-            initialAssets = IERC20(vault.asset()).balanceOf(investor);
-        }
 
         vm.startPrank(investor);
         vault.withdraw(vault.maxWithdraw(investor), investor, investor);
 
-        if (skipPreciseAssertion) {
-            // For fork tests: just verify assets increased
-            assertTrue(
-                IERC20(vault.asset()).balanceOf(investor) > initialAssets,
-                "Investor should have received assets from redemption"
-            );
-        } else {
-            // For regular tests: check exact amount
-            assertEq(spoke.usdc.balanceOf(investor), shareToAsset(shares), "expected assets");
-        }
+        assertEq(spoke.usdc.balanceOf(investor), shareToAsset(shares), "expected assets");
     }
 
     function _testAsyncRedeem(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) internal {
         (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, true) : _testSyncDeposit(sameChain, true);
-        _asyncRedeemFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, nonZeroPrices, false, address(0));
+        _asyncRedeemFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, nonZeroPrices);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -984,16 +890,19 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         h.hub.updateRestriction{value: GAS}(
-            POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A), EXTRA_GAS
+            POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A), EXTRA_GAS, REFUND
         );
 
         IAsyncRedeemVault vault =
-            IAsyncRedeemVault(address(s.spoke.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
+            IAsyncRedeemVault(address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
 
         vm.startPrank(INVESTOR_A);
         uint128 shares = uint128(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A));
         vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A);
         vault.cancelRedeemRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A);
+
+        if (!sameChain) h.gateway.repay{value: GAS}(s.centrifugeId, _getLastUnpaidMessage(), REFUND);
+
         vault.claimCancelRedeemRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A, INVESTOR_A);
 
         // CHECKS
@@ -1004,8 +913,8 @@ contract EndToEndFlows is EndToEndUtils {
         (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, nonZeroPrices) : _testSyncDeposit(sameChain, nonZeroPrices);
 
         vm.startPrank(BSM);
-        s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
-        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
+        s.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
 
         // CHECKS
         (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
@@ -1022,8 +931,8 @@ contract EndToEndFlows is EndToEndUtils {
         _testAsyncRedeem(sameChain, afterAsyncDeposit, true);
 
         vm.startPrank(BSM);
-        s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
-        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
+        s.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
 
         (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
         assertEq(amount, 0, "expected amount");
@@ -1040,6 +949,8 @@ contract EndToEndFlows is EndToEndUtils {
 contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     using CastLib for *;
     using MathLib for *;
+    using MessageLib for *;
+    using UpdateContractMessageLib for *;
 
     function setUp() public virtual override {
         super.setUp();
@@ -1052,13 +963,10 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         _setSpoke(sameChain);
 
-        vm.startPrank(ANY);
-        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
-
         vm.startPrank(address(SAFE_ADMIN_A));
-        h.guardian.scheduleUpgrade(s.centrifugeId, NEW_WARD);
-        h.guardian.cancelUpgrade(s.centrifugeId, NEW_WARD);
-        h.guardian.scheduleUpgrade(s.centrifugeId, NEW_WARD);
+        h.protocolGuardian.scheduleUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
+        h.protocolGuardian.cancelUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
+        h.protocolGuardian.scheduleUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
 
         vm.warp(block.timestamp + deployA.DELAY() + 1000);
 
@@ -1073,15 +981,15 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         _setSpoke(sameChain);
 
-        vm.startPrank(ANY);
-        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
-
-        s.gateway.subsidizePool{value: VALUE}(PoolId.wrap(0));
+        vm.startPrank(ERC20_DEPLOYER);
+        s.usdc.mint(address(s.gateway), VALUE);
 
         vm.startPrank(address(SAFE_ADMIN_A));
-        h.guardian.recoverTokens(s.centrifugeId, address(s.gateway), ETH_ADDRESS, 0, RECEIVER, VALUE);
+        h.protocolGuardian.recoverTokens{value: GAS}(
+            s.centrifugeId, address(s.gateway), address(s.usdc), 0, RECEIVER, VALUE, REFUND
+        );
 
-        assertEq(RECEIVER.balance, VALUE);
+        assertEq(s.usdc.balanceOf(RECEIVER), VALUE);
     }
 
     /// forge-config: default.isolate = true
@@ -1103,52 +1011,15 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         vm.startPrank(FM);
 
-        h.hub.updateShareClassMetadata{value: GAS}(POOL_A, SC_1, "Tokenized MMF 2", "MMF2");
-        h.hub.notifyShareMetadata{value: GAS}(POOL_A, SC_1, s.centrifugeId);
-        h.hub.updateShareHook{value: GAS}(POOL_A, SC_1, s.centrifugeId, address(s.fullRestrictionsHook).toBytes32());
+        h.hub.updateShareClassMetadata(POOL_A, SC_1, "Tokenized MMF 2", "MMF2");
+        h.hub.notifyShareMetadata{value: GAS}(POOL_A, SC_1, s.centrifugeId, REFUND);
+        h.hub.updateShareHook{value: GAS}(
+            POOL_A, SC_1, s.centrifugeId, address(s.fullRestrictionsHook).toBytes32(), REFUND
+        );
 
         assertEq(s.spoke.shareToken(POOL_A, SC_1).name(), "Tokenized MMF 2");
         assertEq(s.spoke.shareToken(POOL_A, SC_1).symbol(), "MMF2");
         assertEq(s.spoke.shareToken(POOL_A, SC_1).hook(), address(s.fullRestrictionsHook));
-    }
-
-    /// forge-config: default.isolate = true
-    function testFullRefundSubsidizedCycle() public {
-        _setSpoke(false);
-        _createPool();
-
-        vm.startPrank(FM);
-        h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
-        h.hub.notifyShareClass{value: GAS}(POOL_A, SC_1, s.centrifugeId, address(0).toBytes32());
-        h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
-        h.hub.updateSharePrice(POOL_A, SC_1, IntegrationConstants.zeroPrice());
-        h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, s.centrifugeId);
-        h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
-
-        // Each message will return half of the gas wasted
-        adapterBToA.setRefundedValue(h.gasService.updateShares() / 2);
-
-        // We just subsidize for two message
-        vm.startPrank(ANY);
-        s.gateway.subsidizePool{value: h.gasService.updateShares() * 2}(POOL_A);
-        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, 0);
-        assertEq(address(s.gateway).balance, h.gasService.updateShares() * 2);
-
-        vm.startPrank(BSM);
-        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
-        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares() / 2);
-        assertEq(address(s.gateway).balance, h.gasService.updateShares());
-
-        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
-        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares());
-        assertEq(address(s.gateway).balance, 0);
-
-        // This message is fully paid with refunded amount
-        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
-        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares() / 2);
-        assertEq(address(s.gateway).balance, 0);
-
-        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 3, "3 UpdateShares messages received");
     }
 
     /// forge-config: default.isolate = true
@@ -1157,8 +1028,8 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         vm.startPrank(FM);
 
-        h.hub.setMaxAssetPriceAge{value: GAS}(POOL_A, SC_1, s.usdcId, uint64(block.timestamp));
-        h.hub.setMaxSharePriceAge{value: GAS}(s.centrifugeId, POOL_A, SC_1, uint64(block.timestamp));
+        h.hub.setMaxAssetPriceAge{value: GAS}(POOL_A, SC_1, s.usdcId, uint64(block.timestamp), REFUND);
+        h.hub.setMaxSharePriceAge{value: GAS}(POOL_A, SC_1, s.centrifugeId, uint64(block.timestamp), REFUND);
 
         (,, uint64 validUntil) = s.spoke.markersPricePoolPerAsset(POOL_A, SC_1, s.usdcId);
         assertEq(validUntil, uint64(block.timestamp));
@@ -1179,7 +1050,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
         s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
         s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5);
-        s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
+        s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
 
         // CHECKS
         assertEq(s.usdc.balanceOf(BSM), USDC_AMOUNT_1 * 4 / 5);
@@ -1201,18 +1072,22 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         vm.startPrank(FM);
         h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
+            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
         );
 
-        address vault = address(s.spoke.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager));
+        address vault = address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager));
 
-        h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Unlink, EXTRA_GAS);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Unlink, EXTRA_GAS, REFUND
+        );
 
-        assertEq(s.spoke.isLinked(IVault(vault)), false);
+        assertEq(s.vaultRegistry.isLinked(IVault(vault)), false);
 
-        h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Link, EXTRA_GAS);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Link, EXTRA_GAS, REFUND
+        );
 
-        assertEq(s.spoke.isLinked(IVault(vault)), true);
+        assertEq(s.vaultRegistry.isLinked(IVault(vault)), true);
     }
 
     /// forge-config: default.isolate = true
@@ -1234,15 +1109,18 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         vm.startPrank(FM);
         h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
+            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
         );
 
-        IAsyncVault vault = IAsyncVault(address(s.spoke.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
+        IAsyncVault vault = IAsyncVault(address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
 
         vm.startPrank(INVESTOR_A);
         s.usdc.approve(address(vault), USDC_AMOUNT_1);
         vault.requestDeposit(USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
         vault.cancelDepositRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A);
+
+        if (!sameChain) h.gateway.repay{value: GAS}(s.centrifugeId, _getLastUnpaidMessage(), REFUND);
+
         vault.claimCancelDepositRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A, INVESTOR_A);
 
         // CHECKS
@@ -1287,5 +1165,154 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     /// forge-config: default.isolate = true
     function testUpdateAccountingAfterRedeem_AfterSyncDeposit(bool sameChain) public {
         _testUpdateAccountingAfterRedeem(sameChain, false);
+    }
+
+    /// forge-config: default.isolate = true
+    function testAdaptersPerPool() public {
+        _configureBasePoolWithCustomAdapters();
+
+        vm.startPrank(FM);
+        h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId, REFUND);
+        h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
+
+        // Hub -> Spoke message went through the pool adapter
+        assertEq(uint8(poolAdapterAToB.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
+        assertEq(s.spoke.pool(POOL_A), block.timestamp); // Message received and processed
+
+        h.hub.updateBalanceSheetManager{value: GAS}(POOL_A, s.centrifugeId, BSM.toBytes32(), true, REFUND);
+
+        vm.startPrank(BSM);
+        s.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
+
+        // Spoke -> Hub message went through the pool adapter
+        assertEq(uint8(poolAdapterBToA.lastReceivedPayload().messageType()), uint8(MessageType.UpdateShares));
+
+        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 1); // Message received and processed
+    }
+
+    /// forge-config: default.isolate = true
+    function testMaxAdaptersConfigurationBenchmark() public {
+        // This tests is just to compute the SetPoolAdapters max weight used in GasService
+
+        _setSpoke(IN_DIFFERENT_CHAINS);
+        _createPool();
+
+        IAdapter[] memory localAdapters = new IAdapter[](1);
+        localAdapters[0] = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
+
+        bytes32[] memory remoteAdapters = new bytes32[](MAX_ADAPTER_COUNT);
+        for (uint256 i; i < MAX_ADAPTER_COUNT; i++) {
+            IAdapter adapter = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
+            remoteAdapters[i] = address(adapter).toBytes32();
+        }
+
+        vm.startPrank(FM);
+        h.hub.setAdapters{value: GAS}(POOL_A, s.centrifugeId, localAdapters, remoteAdapters, 1, 1, REFUND);
+    }
+
+    /// forge-config: default.isolate = true
+    function testErrSetAdaptersLocally() public {
+        _setSpoke(IN_DIFFERENT_CHAINS);
+        _createPool();
+
+        IAdapter[] memory localAdapters = new IAdapter[](1);
+        localAdapters[0] = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
+
+        bytes32[] memory remoteAdapters = new bytes32[](MAX_ADAPTER_COUNT);
+        for (uint256 i; i < MAX_ADAPTER_COUNT; i++) {
+            IAdapter adapter = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
+            remoteAdapters[i] = address(adapter).toBytes32();
+        }
+
+        vm.expectRevert(ILocalCentrifugeId.CannotBeSentLocally.selector);
+        vm.startPrank(FM);
+        h.hub.setAdapters{value: GAS}(POOL_A, h.centrifugeId, localAdapters, remoteAdapters, 1, 1, REFUND);
+    }
+
+    /// forge-config: default.isolate = true
+    function testAdaptersWithRecovery() public {
+        _setSpoke(IN_DIFFERENT_CHAINS);
+        _createPool();
+
+        // Wire pool adapters
+        poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
+        poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
+
+        poolAdapterAToB.setEndpoint(poolAdapterBToA);
+        poolAdapterBToA.setEndpoint(poolAdapterAToB);
+
+        IAdapter[] memory localAdapters = new IAdapter[](2);
+        localAdapters[0] = poolAdapterAToB;
+        localAdapters[1] = new RecoveryAdapter(h.multiAdapter, FM);
+
+        bytes32[] memory remoteAdapters = new bytes32[](2);
+        remoteAdapters[0] = address(poolAdapterBToA).toBytes32();
+        remoteAdapters[1] = address(new RecoveryAdapter(s.multiAdapter, FM)).toBytes32();
+
+        vm.startPrank(FM);
+
+        uint8 threshold = 2;
+        uint8 recoveryIndex = 1;
+        h.hub.setAdapters{value: GAS}(
+            POOL_A, s.centrifugeId, localAdapters, remoteAdapters, threshold, recoveryIndex, REFUND
+        );
+
+        // Only local adapter will send the message, recovery adapter will skip it.
+        h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId, REFUND);
+
+        assertEq(s.spoke.pool(POOL_A), 0); // 1 of 2 received, not processed yet
+
+        bytes memory message = MessageLib.NotifyPool({poolId: POOL_A.raw()}).serialize();
+
+        // In the remote recovery adapter, we recover the message
+        IMessageHandler(remoteAdapters[1].toAddress()).handle(h.centrifugeId, message);
+
+        assertEq(s.spoke.pool(POOL_A), block.timestamp); // 2 of 2 received and processed
+    }
+
+    /// forge-config: default.isolate = true
+    function testWithdrawSubsidyFromVaults(bool sameChain) public {
+        _configurePool(sameChain);
+
+        address RECEIVER = makeAddr("Receiver");
+        uint256 VALUE = 123;
+
+        vm.startPrank(FM);
+        h.hub.updateContract{value: GAS}(
+            POOL_A,
+            SC_1,
+            s.centrifugeId,
+            address(s.asyncRequestManager).toBytes32(),
+            UpdateContractMessageLib.UpdateContractWithdraw({who: RECEIVER.toBytes32(), value: VALUE}).serialize(),
+            EXTRA_GAS,
+            REFUND
+        );
+
+        assertEq(RECEIVER.balance, VALUE);
+    }
+
+    /// forge-config: default.isolate = true
+    function testUntrustedContractUpdate(bool sameChain) public {
+        _setSpoke(sameChain);
+
+        address hubContract = address(new IsContract());
+        address spokeSender = makeAddr("SpokeSender");
+
+        vm.mockCall(
+            hubContract,
+            abi.encodeWithSelector(
+                IUntrustedContractUpdate.untrustedCall.selector,
+                POOL_A,
+                SC_1,
+                "data",
+                s.centrifugeId,
+                spokeSender.toBytes32()
+            ),
+            abi.encode()
+        );
+
+        vm.startPrank(spokeSender);
+        vm.deal(spokeSender, GAS);
+        s.spoke.updateContract{value: GAS}(POOL_A, SC_1, hubContract.toBytes32(), "data", EXTRA_GAS, REFUND);
     }
 }

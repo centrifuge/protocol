@@ -4,10 +4,10 @@ pragma solidity 0.8.28;
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {Mock} from "../../common/mocks/Mock.sol";
+import {Mock} from "../../core/mocks/Mock.sol";
 
-import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
+import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
 
@@ -72,11 +72,11 @@ contract WormholeAdapterTestWire is WormholeAdapterTestBase {
     function testWireErrNotAuthorized() public {
         vm.prank(makeAddr("NotAuthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.wire(CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR));
     }
 
     function testWire() public {
-        adapter.wire(CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR));
 
         (uint16 wormholeId, address remoteDestAddress) = adapter.destinations(CENTRIFUGE_CHAIN_ID);
         assertEq(wormholeId, WORMHOLE_CHAIN_ID);
@@ -85,6 +85,12 @@ contract WormholeAdapterTestWire is WormholeAdapterTestBase {
         (uint16 centrifugeId, address remoteSourceAddress) = adapter.sources(WORMHOLE_CHAIN_ID);
         assertEq(centrifugeId, CENTRIFUGE_CHAIN_ID);
         assertEq(remoteSourceAddress, REMOTE_WORMHOLE_ADDR);
+    }
+
+    function testIsWired() public {
+        assertFalse(adapter.isWired(CENTRIFUGE_CHAIN_ID));
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR));
+        assertTrue(adapter.isWired(CENTRIFUGE_CHAIN_ID));
     }
 }
 
@@ -101,7 +107,9 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
 
     function testEstimate(uint64 gasLimit) public view {
         bytes memory payload = "irrelevant";
-        assertEq(adapter.estimate(CENTRIFUGE_CHAIN_ID, payload, gasLimit), uint128(gasLimit) * 2);
+        assertEq(
+            adapter.estimate(CENTRIFUGE_CHAIN_ID, payload, gasLimit), uint128(gasLimit + adapter.RECEIVE_COST()) * 2
+        );
     }
 
     function testIncomingCalls(
@@ -132,7 +140,7 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
             payload, vaas, validAddress.toBytes32LeftPadded(), WORMHOLE_CHAIN_ID, bytes32(0)
         );
 
-        adapter.wire(CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, validAddress);
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(WORMHOLE_CHAIN_ID, validAddress));
 
         // Incorrect address
         vm.prank(address(relayer));
@@ -162,6 +170,7 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
     function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund)
         public
     {
+        vm.assume(gasLimit < adapter.RECEIVE_COST());
         vm.assume(invalidOrigin != address(GATEWAY));
 
         vm.deal(address(this), 0.1 ether);
@@ -173,7 +182,7 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
         vm.expectRevert(IAdapter.UnknownChainId.selector);
         adapter.send{value: 0.1 ether}(CENTRIFUGE_CHAIN_ID, payload, gasLimit, refund);
 
-        adapter.wire(CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter"));
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter")));
 
         vm.deal(address(this), 0.1 ether);
         vm.prank(address(GATEWAY));
@@ -184,7 +193,7 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
         assertEq(relayer.values_address("targetAddress"), makeAddr("DestinationAdapter"));
         assertEq(relayer.values_bytes("payload"), payload);
         assertEq(relayer.values_uint256("receiverValue"), 0);
-        assertEq(relayer.values_uint256("gasLimit"), gasLimit);
+        assertEq(relayer.values_uint256("gasLimit"), gasLimit + adapter.RECEIVE_COST());
         assertEq(relayer.values_uint16("refundChain"), WORMHOLE_CHAIN_ID);
         assertEq(relayer.values_address("refundAddress"), refund);
     }

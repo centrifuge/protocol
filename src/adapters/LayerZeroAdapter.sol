@@ -18,7 +18,9 @@ import {Auth} from "../misc/Auth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 
-import {IMessageHandler} from "../common/interfaces/IMessageHandler.sol";
+import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
+
+import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 
 /// @title  LayerZero Adapter
 /// @notice Routing contract that integrates with LayerZero V2.
@@ -29,6 +31,9 @@ import {IMessageHandler} from "../common/interfaces/IMessageHandler.sol";
 contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     using CastLib for *;
     using MathLib for *;
+
+    /// @dev Cost of executing `lzReceive()` except entrypoint.handle()
+    uint256 public constant RECEIVE_COST = 4000;
 
     IMessageHandler public immutable entrypoint;
     ILayerZeroEndpointV2 public immutable endpoint;
@@ -45,14 +50,20 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Administration
+    // Network wiring
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc ILayerZeroAdapter
-    function wire(uint16 centrifugeId, uint32 layerZeroEid, address adapter) external auth {
+    /// @inheritdoc IAdapterWiring
+    function wire(uint16 centrifugeId, bytes memory data) external auth {
+        (uint32 layerZeroEid, address adapter) = abi.decode(data, (uint32, address));
         sources[layerZeroEid] = LayerZeroSource(centrifugeId, adapter);
         destinations[centrifugeId] = LayerZeroDestination(layerZeroEid, adapter);
         emit Wire(centrifugeId, layerZeroEid, adapter);
+    }
+
+    /// @inheritdoc IAdapterWiring
+    function isWired(uint16 centrifugeId) external view returns (bool) {
+        return destinations[centrifugeId].layerZeroEid != 0;
     }
 
     /// @dev Update the LayerZero delegate.
@@ -103,14 +114,14 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         require(destination.layerZeroEid != 0, UnknownChainId());
 
         MessagingReceipt memory receipt =
-            endpoint.send{value: msg.value}(_params(destination, payload, gasLimit), refund);
+            endpoint.send{value: msg.value}(_params(destination, payload, gasLimit + RECEIVE_COST), refund);
         adapterData = receipt.guid;
     }
 
     /// @inheritdoc IAdapter
     function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256) {
         LayerZeroDestination memory destination = destinations[centrifugeId];
-        MessagingFee memory fee = endpoint.quote(_params(destination, payload, gasLimit), address(this));
+        MessagingFee memory fee = endpoint.quote(_params(destination, payload, gasLimit + RECEIVE_COST), address(this));
         return fee.nativeFee;
     }
 

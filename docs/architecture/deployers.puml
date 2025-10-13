@@ -12,9 +12,10 @@ class SpokeDeployer
 class AdaptersDeployer
 
 class ValuationsDeployer
+class HubManagersDeployer
 class ExtendedHubDeployer
 
-class ManagersDeployer
+class SpokeManagersDeployer
 class VaultsDeployer
 class HooksDeployer
 class ExtendedSpokeDeployer
@@ -32,14 +33,17 @@ HubDeployer -up-|> CommonDeployer
 SpokeDeployer -up-|> CommonDeployer
 AdaptersDeployer -up-|> CommonDeployer
 
+HubManagersDeployer -up-|> HubDeployer
 ValuationsDeployer -up-|> HubDeployer
+
+ExtendedHubDeployer -up-|> HubManagersDeployer
 ExtendedHubDeployer -up-|> ValuationsDeployer
 
-ManagersDeployer -up-|> SpokeDeployer
+SpokeManagersDeployer -up-|> SpokeDeployer
 VaultsDeployer -up-|> SpokeDeployer
 HooksDeployer -up-|> SpokeDeployer
 
-ExtendedSpokeDeployer -up-|> ManagersDeployer
+ExtendedSpokeDeployer -up-|> SpokeManagersDeployer
 ExtendedSpokeDeployer -up-|> VaultsDeployer
 ExtendedSpokeDeployer -up-|> HooksDeployer
 

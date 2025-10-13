@@ -173,10 +173,10 @@ import {Auth} from "../misc/Auth.sol";
 **Script Imports:**
 ```solidity
 // Before
-import {CommonInput} from "script/CommonDeployer.s.sol";
+import {CoreInput} from "script/CoreDeployer.s.sol";
 
-// After (from script/ManagersDeployer.s.sol)
-import {CommonInput} from "./CommonDeployer.s.sol";
+// After (from script/FullDeployer.s.sol)
+import {CoreInput} from "./CoreDeployer.s.sol";
 ```
 
 **Test-to-Source Imports:**
@@ -253,8 +253,8 @@ import {Auth} from "../misc/Auth.sol";
 import {D18} from "../misc/types/D18.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {IGateway} from "../common/interfaces/IGateway.sol";
+import {PoolId} from "../core/types/PoolId.sol";
+import {IGateway} from "../core/interfaces/IGateway.sol";
 
 import "forge-std/Test.sol";
 ```
@@ -267,16 +267,16 @@ pragma solidity ^0.8.28;
 import {LocalInterface} from "./interfaces/ILocal.sol";
 
 // Common category - '../' subgroup (direct relative)
-import {SharedUtil} from "../common/SharedUtil.sol";
+import {SharedUtil} from "../core/SharedUtil.sol";
 
 // Common category - 'src' subgroup (via src/)  
-import {CommonType} from "../../src/common/types/CommonType.sol";
+import {CommonType} from "../../src/core/types/CommonType.sol";
 
 // Common category - 'test' subgroup (via test/)
-import {MockCommon} from "../test/common/mocks/MockCommon.sol";
+import {MockCommon} from "../test/core/mocks/MockCommon.sol";
 
 // Hub category - 'src' subgroup
-import {IHub} from "../../src/hub/interfaces/IHub.sol";
+import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
 ```
 
 ## 📝 How It Works
@@ -306,7 +306,7 @@ import {
     VeryLongInterfaceName,
     AnotherLongInterfaceName,
     YetAnotherLongName
-} from "src/common/interfaces/IComplexInterface.sol";
+} from "src/core/interfaces/IComplexInterface.sol";
 ```
 
 ## 🔧 Technical Details

@@ -11,11 +11,11 @@ import {console2} from "forge-std/console2.sol";
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/core/types/PoolId.sol";
+import {ShareClassId} from "src/core/types/ShareClassId.sol";
+import {AssetId} from "src/core/types/AssetId.sol";
 
 // Test Utils
 import {Properties} from "../properties/Properties.sol";
@@ -37,9 +37,6 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         try IShareToken(_getShareToken()).transfer(to, value) {
             // NOTE: We're not checking for specifics!
-            // Checks that should be made when there's no revert - success path validations would go here
-        } catch {
-            // Checks that should be made if there's a revert
             // TT-1 Always revert if one of them is frozen
             if (
                 fullRestrictions.isFrozen(_getShareToken(), to) == true ||
@@ -54,7 +51,7 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
             if (!isMember && value > 0 && !endorsed) {
                 t(false, "TT-3 Must Revert");
             }
-        }
+        } catch {}
     }
 
     // NOTE: We need this for transferFrom to work
@@ -79,9 +76,6 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         try IShareToken(_getShareToken()).transferFrom(_getActor(), to, value) {
             // NOTE: We're not checking for specifics!
-            // Checks that should be made when there's no revert - success path validations would go here
-        } catch {
-            // Checks that should be made if there's a revert
             // TT-1 Always revert if one of them is frozen
             if (
                 fullRestrictions.isFrozen(_getShareToken(), to) == true ||
@@ -96,7 +90,7 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
             if (!isMember && value > 0 && !endorsed) {
                 t(false, "TT-3 Must Revert");
             }
-        }
+        } catch {}
     }
 
     // NOTE: Removed because breaks solvency properties by allowing unrealistic minting

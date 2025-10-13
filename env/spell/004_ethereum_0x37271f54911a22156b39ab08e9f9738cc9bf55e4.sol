@@ -8,9 +8,9 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
-import {IRoot} from "../../src/common/interfaces/IRoot.sol";
+import {IRoot} from "../../src/core/interfaces/IRoot.sol";
 
-import {ISpoke} from "../../src/spoke/interfaces/ISpoke.sol";
+import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
 
 import {IAsyncRequestManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 
@@ -87,14 +87,14 @@ contract Create2VaultFactorySpellCommon {
     }
 }
 
-import {PoolId} from "../../src/common/types/PoolId.sol";
-import {AssetId} from "../../src/common/types/AssetId.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {VaultUpdateKind} from "../../src/common/libraries/MessageLib.sol";
-import {ISpokeGatewayHandler} from "../../src/common/interfaces/IGatewayHandlers.sol";
+import {PoolId} from "../../src/core/types/PoolId.sol";
+import {AssetId} from "../../src/core/types/AssetId.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
+import {ISpokeGatewayHandler} from "../../src/core/interfaces/IGatewayHandlers.sol";
 
-import {IVault} from "../../src/spoke/interfaces/IVault.sol";
-import {VaultDetails} from "../../src/spoke/interfaces/ISpoke.sol";
+import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
+import {VaultDetails} from "../../src/core/spoke/interfaces/ISpoke.sol";
 
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
 
