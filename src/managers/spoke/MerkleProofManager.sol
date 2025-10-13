@@ -46,8 +46,7 @@ contract MerkleProofManager is IMerkleProofManager, ITrustedContractUpdate {
         uint8 kindValue = abi.decode(payload, (uint8));
         require(kindValue <= uint8(type(IMerkleProofManager.TrustedCall).max), UnknownTrustedCall());
 
-        IMerkleProofManager.TrustedCall kind =
-            IMerkleProofManager.TrustedCall(kindValue);
+        IMerkleProofManager.TrustedCall kind = IMerkleProofManager.TrustedCall(kindValue);
         if (kind == IMerkleProofManager.TrustedCall.Policy) {
             (, bytes32 who, bytes32 what) = abi.decode(payload, (uint8, bytes32, bytes32));
             address strategist = who.toAddress();
