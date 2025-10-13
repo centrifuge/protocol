@@ -336,7 +336,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         extraGasLimit = uint128(bound(extraGasLimit, 0, 50_000_000));
 
         vm.prank(contractUpdater);
-        queueManager.trustedCall(POOL_A, SC_1, abi.encode(uint8(0), uint64(0), extraGasLimit));
+        queueManager.trustedCall(POOL_A, SC_1, abi.encode(uint64(0), uint64(extraGasLimit)));
 
         _mockQueuedShares(POOL_A, SC_1, 100, true, 1);
         _mockQueuedAssets(POOL_A, SC_1, ASSET_1, 100, 0);
