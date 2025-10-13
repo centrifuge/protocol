@@ -104,7 +104,7 @@ contract SyncManagerUnauthorizedTest is SyncManagerBaseTest {
         syncManager.setValuation(PoolId.wrap(0), ShareClassId.wrap(0), address(0));
     }
 
-    function testUpdate() public {
+    function testTrustedCallUnauthorized() public {
         _expectUnauthorized();
         syncManager.trustedCall(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
     }
@@ -112,6 +112,74 @@ contract SyncManagerUnauthorizedTest is SyncManagerBaseTest {
     function _expectUnauthorized() internal {
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
+    }
+}
+
+contract SyncManagerTrustedCallTest is SyncManagerBaseTest {
+    using MessageLib for *;
+
+    function testUnknownTrustedCall() public {
+        PoolId testPool = PoolId.wrap(999);
+        ShareClassId testSc = ShareClassId.wrap(bytes16("testsc"));
+        
+        // Create payload with invalid enum value (max enum value + 1)
+        bytes memory invalidPayload = abi.encode(uint8(255), bytes32(0));
+
+        vm.expectRevert(ISyncManager.UnknownTrustedCall.selector);
+        syncManager.trustedCall(testPool, testSc, invalidPayload);
+    }
+
+    function testTrustedCallValuation() public {
+        (SyncDepositVault vault,) = _deploySyncDepositVault(d18(1), d18(1));
+        address newValuation = makeAddr("newValuation");
+
+        bytes memory payload = abi.encode(uint8(ISyncManager.TrustedCall.Valuation), bytes32(bytes20(newValuation)));
+
+        vm.expectEmit();
+        emit ISyncManager.SetValuation(vault.poolId(), vault.scId(), newValuation);
+        
+        syncManager.trustedCall(vault.poolId(), vault.scId(), payload);
+
+        assertEq(address(syncManager.valuation(vault.poolId(), vault.scId())), newValuation);
+    }
+
+    function testTrustedCallValuationShareTokenDoesNotExist() public {
+        PoolId nonExistentPool = PoolId.wrap(999);
+        ShareClassId nonExistentSc = ShareClassId.wrap(bytes16("nonexistent"));
+        address newValuation = makeAddr("newValuation");
+
+        bytes memory payload = abi.encode(uint8(ISyncManager.TrustedCall.Valuation), bytes32(bytes20(newValuation)));
+
+        vm.expectRevert(ISyncManager.ShareTokenDoesNotExist.selector);
+        syncManager.trustedCall(nonExistentPool, nonExistentSc, payload);
+    }
+
+    function testTrustedCallMaxReserve() public {
+        (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(1), d18(1));
+        uint128 newMaxReserve = 1_000_000e6;
+
+        (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(assetId));
+        
+        bytes memory payload = abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), assetId, newMaxReserve);
+
+        vm.expectEmit();
+        emit ISyncManager.SetMaxReserve(vault.poolId(), vault.scId(), asset, tokenId, newMaxReserve);
+        
+        syncManager.trustedCall(vault.poolId(), vault.scId(), payload);
+
+        assertEq(syncManager.maxReserve(vault.poolId(), vault.scId(), asset, tokenId), newMaxReserve);
+    }
+
+    function testTrustedCallMaxReserveShareTokenDoesNotExist() public {
+        PoolId nonExistentPool = PoolId.wrap(999);
+        ShareClassId nonExistentSc = ShareClassId.wrap(bytes16("nonexistent"));
+        uint128 assetId = 1;
+        uint128 newMaxReserve = 1_000_000e6;
+
+        bytes memory payload = abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), assetId, newMaxReserve);
+
+        vm.expectRevert(ISyncManager.ShareTokenDoesNotExist.selector);
+        syncManager.trustedCall(nonExistentPool, nonExistentSc, payload);
     }
 }
 
