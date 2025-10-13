@@ -205,7 +205,6 @@ abstract contract SharedStorage {
     mapping(bytes32 => uint256) public ghost_assetQueueDeposits; // Cumulative deposits in asset queue
     mapping(bytes32 => uint256) public ghost_assetQueueWithdrawals; // Cumulative withdrawals in asset queue
     mapping(bytes32 => uint256) public ghost_shareQueueNonce; // Track nonce progression for share queue
-    mapping(bytes32 => uint256) public ghost_assetCounterPerAsset; // For non-empty asset queues
     mapping(bytes32 => uint256) public ghost_previousNonce; // To verify monotonicity
 
     // Before/after state tracking for share queues
