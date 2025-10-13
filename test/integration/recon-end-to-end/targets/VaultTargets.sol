@@ -67,12 +67,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 _getActor()
             )
         {
-            // If the request was successful and the queue was previously empty,
-            // we can assume it became non-empty (even if not immediately visible)
-            if (prevDeposits == 0 && prevWithdrawals == 0 && assets > 0) {
-                ghost_assetCounterPerAsset[assetKey] = 1; // Asset queue becomes non-empty
-            }
-
             // ghost tracking
             userRequestDeposited[_getVault().scId()][
                 spoke.vaultDetails(_getVault()).assetId
@@ -520,21 +514,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                         spoke.vaultDetails(vault).assetId
                     )
                 );
-
-                // Check if asset queue became non-empty after deposit
-                (
-                    uint128 currentDeposits,
-                    uint128 currentWithdrawals
-                ) = balanceSheet.queuedAssets(
-                        vault.poolId(),
-                        vault.scId(),
-                        spoke.vaultDetails(vault).assetId
-                    );
-
-                // For sync deposits, the asset queue becomes non-empty during processing
-                if (currentDeposits > 0 || currentWithdrawals > 0) {
-                    ghost_assetCounterPerAsset[assetKey] = 1; // Asset queue becomes non-empty
-                }
             }
 
             executedInvestments[vault.share()] += shares;
@@ -669,11 +648,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                         vault.scId(),
                         spoke.vaultDetails(vault).assetId
                     );
-
-                // For sync deposits, the asset queue becomes non-empty during processing
-                if (currentDeposits > 0 || currentWithdrawals > 0) {
-                    ghost_assetCounterPerAsset[assetKey] = 1; // Asset queue becomes non-empty
-                }
             }
 
             userRequestDeposited[vault.scId()][

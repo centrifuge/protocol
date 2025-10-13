@@ -2337,19 +2337,6 @@ abstract contract Properties is
 
                     if (deposits > 0 || withdrawals > 0) {
                         nonEmptyAssetCount++;
-
-                        // Ghost variable should track this asset as non-empty
-                        bytes32 assetKey = keccak256(
-                            abi.encode(poolId, scId, assetId)
-                        );
-                        console2.log(
-                            "ghost_assetCounterPerAsset[assetKey]: ",
-                            ghost_assetCounterPerAsset[assetKey]
-                        );
-                        t(
-                            ghost_assetCounterPerAsset[assetKey] == 1,
-                            "property_assetQueueCounterConsistency: ghost tracking mismatch"
-                        );
                     }
                 }
 

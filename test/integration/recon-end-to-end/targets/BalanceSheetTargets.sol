@@ -56,9 +56,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track asset counter for Queue State Consistency properties
         (uint128 prevDeposits, uint128 prevWithdrawals) = balanceSheet
             .queuedAssets(poolId, scId, assetId);
-        if (prevDeposits == 0 && prevWithdrawals == 0) {
-            ghost_assetCounterPerAsset[assetKey] = 1; // Asset queue becomes non-empty
-        }
 
         // Track escrow balance sufficiency
         ghost_escrowSufficiencyTracked[assetKey] = true;
@@ -383,13 +380,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Update queue ghost variables
         bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
 
-        // Track asset counter for Queue State Consistency properties
-        (uint128 prevDeposits, uint128 prevWithdrawals) = balanceSheet
-            .queuedAssets(poolId, scId, assetId);
-        if (prevDeposits == 0 && prevWithdrawals == 0) {
-            ghost_assetCounterPerAsset[assetKey] = 1; // Asset queue becomes non-empty
-        }
-
         // Track escrow balance sufficiency
         ghost_escrowSufficiencyTracked[assetKey] = true;
         uint128 prevAvailable = balanceSheet.availableBalanceOf(
@@ -539,9 +529,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ghost_previousNonce[shareKey] = currentNonce;
 
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, extraGasLimit);
-
-        // Mark asset queue as empty after submission
-        ghost_assetCounterPerAsset[assetKey] = 0;
     }
 
     function balanceSheet_submitQueuedShares(
