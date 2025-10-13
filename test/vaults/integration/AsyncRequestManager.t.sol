@@ -18,77 +18,147 @@ import {IBaseRequestManager} from "../../../src/vaults/interfaces/IBaseRequestMa
 import {AsyncRequestManager, IAsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 import {IRefundEscrowFactory} from "../../../src/vaults/factories/interfaces/IRefundEscrowFactory.sol";
 
-interface VaultLike {
-    function priceComputedAt() external view returns (uint64);
-}
-
-contract AsyncRequestManagerHarness is AsyncRequestManager {
-    constructor(IEscrow globalEscrow, IRefundEscrowFactory refundEscrowFactory, address deployer)
-        AsyncRequestManager(globalEscrow, refundEscrowFactory, deployer)
-    {}
-
-    function calculatePriceAssetPerShare(IBaseVault vault, uint128 assets, uint128 shares)
-        external
-        view
-        returns (D18 price)
-    {
-        if (shares == 0) {
-            return d18(0);
-        }
-
-        // forgefmt: disable-next-item
-        if (address(vault) == address(0)) {
-            return PricingLib.calculatePriceAssetPerShare(
-                address(0), shares, address(0), 0, assets, MathLib.Rounding.Down
-            );
-        }
-
-        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
-        address shareToken = vault.share();
-        return PricingLib.calculatePriceAssetPerShare(
-            shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets, MathLib.Rounding.Down
-        );
-    }
-}
-
 contract AsyncRequestManagerTest is BaseTest {
-    // --- Administration ---
-    function testFile() public {
-        // fail: unrecognized param
-        vm.expectRevert(IBaseRequestManager.FileUnrecognizedParam.selector);
-        asyncRequestManager.file("random", self);
+    function testSuccess(uint128 depositAmount) public {
+        depositAmount = uint128(bound(depositAmount, 2, MAX_UINT128 / 2));
 
-        assertEq(address(asyncRequestManager.spoke()), address(spoke));
-        // success
-        asyncRequestManager.file("spoke", randomUser);
-        assertEq(address(asyncRequestManager.spoke()), randomUser);
-        asyncRequestManager.file("balanceSheet", randomUser);
-        assertEq(address(asyncRequestManager.balanceSheet()), randomUser);
+        (, address vaultAddress,) = deploySimpleVault(VaultKind.Async);
+        IAsyncVault vault = IAsyncVault(vaultAddress);
 
-        // remove self from wards
-        asyncRequestManager.deny(self);
-        // auth fail
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        asyncRequestManager.file("spoke", randomUser);
+        uint128 assetId = spoke.assetToId(address(erc20), erc20TokenId).raw();
+
+        deposit(vaultAddress, investor, depositAmount, false);
+
+        uint128 sharesIssued = uint128(depositAmount);
+        assertEq(vault.maxMint(investor), sharesIssued);
+        assertEq(asyncRequestManager.pendingDepositRequest(IBaseVault(vaultAddress), investor), 0);
+
+        vm.prank(investor);
+        uint256 sharesMinted = vault.mint(sharesIssued, investor);
+
+        assertEq(sharesMinted, sharesIssued);
+        assertEq(IShareToken(vault.share()).balanceOf(investor), sharesIssued);
+        assertEq(vault.maxMint(investor), 0);
+
+        uint256 redeemAmount = sharesIssued / 2;
+
+        vm.prank(investor);
+        vault.requestRedeem(redeemAmount, investor, investor);
+
+        assertEq(asyncRequestManager.pendingRedeemRequest(IBaseVault(vaultAddress), investor), redeemAmount);
+        assertEq(vault.maxWithdraw(investor), 0);
+
+        uint128 assetsReturned = uint128(redeemAmount);
+        centrifugeChain.isFulfilledRedeemRequest(
+            vault.poolId().raw(),
+            vault.scId().raw(),
+            bytes32(bytes20(investor)),
+            assetId,
+            assetsReturned,
+            uint128(redeemAmount),
+            0
+        );
+
+        assertEq(vault.maxWithdraw(investor), assetsReturned);
+        assertEq(asyncRequestManager.pendingRedeemRequest(IBaseVault(vaultAddress), investor), 0);
+
+        uint256 investorBalanceBefore = erc20.balanceOf(investor);
+
+        vm.prank(investor);
+        uint256 assetsWithdrawn = vault.withdraw(assetsReturned, investor, investor);
+
+        assertEq(assetsWithdrawn, assetsReturned);
+        assertEq(erc20.balanceOf(investor) - investorBalanceBefore, assetsReturned);
+        assertEq(vault.maxWithdraw(investor), 0);
+
+        uint256 expectedRemainingShares = sharesIssued - redeemAmount;
+        assertEq(IShareToken(vault.share()).balanceOf(investor), expectedRemainingShares);
     }
 
-    // --- Simple Errors ---
-    function testRequestDepositUnlinkedVault() public {
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
-        IAsyncVault vault = IAsyncVault(vault_);
+    function testCancellations(uint128 depositAmount) public {
+        depositAmount = uint128(bound(depositAmount, 100, MAX_UINT128 / 2));
 
-        vaultRegistry.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
+        (, address vaultAddress,) = deploySimpleVault(VaultKind.Async);
+        IAsyncVault vault = IAsyncVault(vaultAddress);
 
-        vm.prank(address(vault));
-        vm.expectRevert(IAsyncRequestManager.VaultNotLinked.selector);
-        asyncRequestManager.requestDeposit(vault, 1, address(0), address(0), address(0));
-    }
+        uint128 assetId = spoke.assetToId(address(erc20), erc20TokenId).raw();
 
-    // --- Price calculations ---
-    function testPrice() public {
-        AsyncRequestManagerHarness harness =
-            new AsyncRequestManagerHarness(globalEscrow, refundEscrowFactory, address(this));
-        assert(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 1, 0).isZero());
-        assert(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 0, 1).isZero());
+        erc20.mint(investor, depositAmount);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
+
+        vm.startPrank(investor);
+        erc20.approve(vaultAddress, depositAmount);
+        vault.requestDeposit(depositAmount, investor, investor);
+        vault.cancelDepositRequest(0, investor);
+        vm.stopPrank();
+
+        assertEq(asyncRequestManager.pendingCancelDepositRequest(IBaseVault(vaultAddress), investor), true);
+
+        uint128 fulfilledAssets = uint128((uint256(depositAmount) / 10) * 7); // 70% fulfilled
+        uint128 cancelledAssets = depositAmount - fulfilledAssets;
+        uint128 sharesIssued = fulfilledAssets;
+
+        centrifugeChain.isFulfilledDepositRequest(
+            vault.poolId().raw(),
+            vault.scId().raw(),
+            bytes32(bytes20(investor)),
+            assetId,
+            fulfilledAssets,
+            sharesIssued,
+            cancelledAssets
+        );
+
+        assertEq(vault.maxMint(investor), sharesIssued);
+        assertEq(asyncRequestManager.claimableCancelDepositRequest(IBaseVault(vaultAddress), investor), cancelledAssets);
+        assertEq(asyncRequestManager.pendingCancelDepositRequest(IBaseVault(vaultAddress), investor), false);
+
+        vm.prank(investor);
+        vault.mint(sharesIssued, investor);
+
+        uint256 investorBalanceBefore = erc20.balanceOf(investor);
+        vm.prank(investor);
+        uint256 cancelledClaimed = vault.claimCancelDepositRequest(0, investor, investor);
+
+        assertEq(cancelledClaimed, cancelledAssets);
+        assertEq(erc20.balanceOf(investor) - investorBalanceBefore, cancelledAssets);
+
+        vm.prank(investor);
+        vault.requestRedeem(sharesIssued, investor, investor);
+
+        vm.prank(investor);
+        vault.cancelRedeemRequest(0, investor);
+
+        assertEq(asyncRequestManager.pendingCancelRedeemRequest(IBaseVault(vaultAddress), investor), true);
+
+        uint128 fulfilledShares = uint128((uint256(sharesIssued) / 10) * 6); // 60% fulfilled
+        uint128 cancelledShares = sharesIssued - fulfilledShares;
+        uint128 assetsReturned = fulfilledShares;
+
+        centrifugeChain.isFulfilledRedeemRequest(
+            vault.poolId().raw(),
+            vault.scId().raw(),
+            bytes32(bytes20(investor)),
+            assetId,
+            assetsReturned,
+            fulfilledShares,
+            cancelledShares
+        );
+
+        assertEq(vault.maxWithdraw(investor), assetsReturned);
+        assertEq(asyncRequestManager.claimableCancelRedeemRequest(IBaseVault(vaultAddress), investor), cancelledShares);
+        assertEq(asyncRequestManager.pendingCancelRedeemRequest(IBaseVault(vaultAddress), investor), false);
+
+        investorBalanceBefore = erc20.balanceOf(investor);
+        vm.prank(investor);
+        vault.withdraw(assetsReturned, investor, investor);
+
+        assertEq(erc20.balanceOf(investor) - investorBalanceBefore, assetsReturned);
+
+        uint256 shareBalanceBefore = IShareToken(vault.share()).balanceOf(investor);
+        vm.prank(investor);
+        uint256 cancelledSharesClaimed = vault.claimCancelRedeemRequest(0, investor, investor);
+
+        assertEq(cancelledSharesClaimed, cancelledShares);
+        assertEq(IShareToken(vault.share()).balanceOf(investor) - shareBalanceBefore, cancelledShares);
     }
 }
