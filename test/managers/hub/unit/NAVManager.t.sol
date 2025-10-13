@@ -403,20 +403,34 @@ contract NAVManagerNetAssetValueTest is NAVManagerTest {
         assertEq(nav, 0);
     }
 
-    function testNetAssetValueInvalid(
+    function testNetAssetValueWithUnexpectedSigns(
         bool equityIsPositive,
         bool gainIsPositive,
         bool lossIsPositive,
-        bool liabilityIsPositive
+        bool liabilityIsPositive,
+        uint128 equityAmount,
+        uint128 gainAmount,
+        uint128 lossAmount,
+        uint128 liabilityAmount
     ) public {
-        vm.assume(!equityIsPositive || !gainIsPositive || !lossIsPositive || !liabilityIsPositive);
-        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 100, equityIsPositive);
-        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, gainIsPositive);
-        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, lossIsPositive);
-        _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 50, liabilityIsPositive);
+        equityAmount = uint128(bound(equityAmount, 1, type(uint128).max / 4));
+        gainAmount = uint128(bound(gainAmount, 1, type(uint128).max / 4));
+        lossAmount = uint128(bound(lossAmount, 0, type(uint128).max / 4));
+        liabilityAmount = uint128(bound(liabilityAmount, 0, type(uint128).max / 4));
 
-        vm.expectRevert(INAVManager.InvalidNAV.selector);
-        navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
+        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), equityAmount, equityIsPositive);
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), gainAmount, gainIsPositive);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), lossAmount, lossIsPositive);
+        _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), liabilityAmount, liabilityIsPositive);
+
+        uint128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
+
+        // If all accounts have expected signs and equity+gain > loss+liability, NAV should be positive
+        if (equityIsPositive && gainIsPositive && lossIsPositive && liabilityIsPositive) {
+            if (equityAmount + gainAmount > lossAmount + liabilityAmount) {
+                assertGt(nav, 0);
+            }
+        }
     }
 }
 
