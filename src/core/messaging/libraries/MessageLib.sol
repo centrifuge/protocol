@@ -33,8 +33,8 @@ enum MessageType {
     UpdateGatewayManager,
     UpdateHoldingAmount,
     UpdateShares,
-    MaxAssetPriceAge,
-    MaxSharePriceAge,
+    SetMaxAssetPriceAge,
+    SetMaxSharePriceAge,
     Request,
     RequestCallback,
     SetRequestManager,
@@ -79,8 +79,8 @@ library MessageLib {
         (42  << uint8(MessageType.UpdateBalanceSheetManager) * 8) +
         (91  << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (59  << uint8(MessageType.UpdateShares) * 8) +
-        (49  << uint8(MessageType.MaxAssetPriceAge) * 8) +
-        (33  << uint8(MessageType.MaxSharePriceAge) * 8) +
+        (49  << uint8(MessageType.SetMaxAssetPriceAge) * 8) +
+        (33  << uint8(MessageType.SetMaxSharePriceAge) * 8) +
         (41  << uint8(MessageType.Request) * 8) +
         (41  << uint8(MessageType.RequestCallback) * 8) +
         (41  << uint8(MessageType.SetRequestManager) * 8) +
@@ -790,19 +790,19 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   MaxAssetPriceAge
+    //   SetMaxAssetPriceAge
     //---------------------------------------
 
-    struct MaxAssetPriceAge {
+    struct SetMaxAssetPriceAge {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
         uint64 maxPriceAge;
     }
 
-    function deserializeMaxAssetPriceAge(bytes memory data) internal pure returns (MaxAssetPriceAge memory) {
-        require(messageType(data) == MessageType.MaxAssetPriceAge, UnknownMessageType());
-        return MaxAssetPriceAge({
+    function deserializeSetMaxAssetPriceAge(bytes memory data) internal pure returns (SetMaxAssetPriceAge memory) {
+        require(messageType(data) == MessageType.SetMaxAssetPriceAge, UnknownMessageType());
+        return SetMaxAssetPriceAge({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
@@ -810,27 +810,27 @@ library MessageLib {
         });
     }
 
-    function serialize(MaxAssetPriceAge memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.MaxAssetPriceAge, t.poolId, t.scId, t.assetId, t.maxPriceAge);
+    function serialize(SetMaxAssetPriceAge memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.SetMaxAssetPriceAge, t.poolId, t.scId, t.assetId, t.maxPriceAge);
     }
 
     //---------------------------------------
-    //   MaxSharePriceAge
+    //   SetMaxSharePriceAge
     //---------------------------------------
 
-    struct MaxSharePriceAge {
+    struct SetMaxSharePriceAge {
         uint64 poolId;
         bytes16 scId;
         uint64 maxPriceAge;
     }
 
-    function deserializeMaxSharePriceAge(bytes memory data) internal pure returns (MaxSharePriceAge memory) {
-        require(messageType(data) == MessageType.MaxSharePriceAge, UnknownMessageType());
-        return MaxSharePriceAge({poolId: data.toUint64(1), scId: data.toBytes16(9), maxPriceAge: data.toUint64(25)});
+    function deserializeSetMaxSharePriceAge(bytes memory data) internal pure returns (SetMaxSharePriceAge memory) {
+        require(messageType(data) == MessageType.SetMaxSharePriceAge, UnknownMessageType());
+        return SetMaxSharePriceAge({poolId: data.toUint64(1), scId: data.toBytes16(9), maxPriceAge: data.toUint64(25)});
     }
 
-    function serialize(MaxSharePriceAge memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.MaxSharePriceAge, t.poolId, t.scId, t.maxPriceAge);
+    function serialize(SetMaxSharePriceAge memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.SetMaxSharePriceAge, t.poolId, t.scId, t.maxPriceAge);
     }
 
     //---------------------------------------

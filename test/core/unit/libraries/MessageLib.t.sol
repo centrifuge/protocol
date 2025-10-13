@@ -115,13 +115,13 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeMaxAssetPriceAge() public {
-        MessageLib.deserializeMaxAssetPriceAge(_prepareFor());
+    function testDeserializeSetMaxAssetPriceAge() public {
+        MessageLib.deserializeSetMaxAssetPriceAge(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeMaxSharePriceAge() public {
-        MessageLib.deserializeMaxSharePriceAge(_prepareFor());
+    function testDeserializeSetMaxSharePriceAge() public {
+        MessageLib.deserializeSetMaxSharePriceAge(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -590,10 +590,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), 0);
     }
 
-    function testMaxAssetPriceAge(uint64 poolId, bytes16 scId, uint128 assetId, uint64 maxPriceAge) public pure {
-        MessageLib.MaxAssetPriceAge memory a =
-            MessageLib.MaxAssetPriceAge({poolId: poolId, scId: scId, assetId: assetId, maxPriceAge: maxPriceAge});
-        MessageLib.MaxAssetPriceAge memory b = MessageLib.deserializeMaxAssetPriceAge(a.serialize());
+    function testSetMaxAssetPriceAge(uint64 poolId, bytes16 scId, uint128 assetId, uint64 maxPriceAge) public pure {
+        MessageLib.SetMaxAssetPriceAge memory a =
+            MessageLib.SetMaxAssetPriceAge({poolId: poolId, scId: scId, assetId: assetId, maxPriceAge: maxPriceAge});
+        MessageLib.SetMaxAssetPriceAge memory b = MessageLib.deserializeSetMaxAssetPriceAge(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
@@ -605,10 +605,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
-    function testMaxSharePriceAge(uint64 poolId, bytes16 scId, uint64 maxPriceAge) public pure {
-        MessageLib.MaxSharePriceAge memory a =
-            MessageLib.MaxSharePriceAge({poolId: poolId, scId: scId, maxPriceAge: maxPriceAge});
-        MessageLib.MaxSharePriceAge memory b = MessageLib.deserializeMaxSharePriceAge(a.serialize());
+    function testSetMaxSharePriceAge(uint64 poolId, bytes16 scId, uint64 maxPriceAge) public pure {
+        MessageLib.SetMaxSharePriceAge memory a =
+            MessageLib.SetMaxSharePriceAge({poolId: poolId, scId: scId, maxPriceAge: maxPriceAge});
+        MessageLib.SetMaxSharePriceAge memory b = MessageLib.deserializeSetMaxSharePriceAge(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
