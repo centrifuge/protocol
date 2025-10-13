@@ -275,7 +275,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         uint32 nowRedeemEpochId,
         uint128 approvedShareAmount,
         D18 pricePoolPerAsset
-    ) external payable;
+    ) external;
 
     /// @notice Issue shares to investors based on approved deposits
     /// @dev This function mints shares for the approved deposit epoch using the provided share price
