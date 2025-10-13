@@ -432,7 +432,7 @@ contract BatchRequestManagerSimpleTest is BatchRequestManagerBaseTest {
         assertEq(batchRequestManager.maxRedeemClaims(poolId, scId, investor, USDC), 0, "Should be 0 after request");
 
         // After approve but before revoke, maxRedeemClaims should return 0 (uses revoke epoch, not redeem)
-        batchRequestManager.approveRedeems{value: COST}(
+        batchRequestManager.approveRedeems(
             poolId, scId, USDC, _nowRedeem(USDC), MIN_REQUEST_AMOUNT_SHARES, _pricePoolPerAsset(USDC)
         );
         assertEq(
@@ -471,7 +471,7 @@ contract BatchRequestManagerSimpleTest is BatchRequestManagerBaseTest {
         batchRequestManager.requestRedeem(poolId, scId, MIN_REQUEST_AMOUNT_SHARES * epochs, investor, USDC);
 
         for (uint256 i = 0; i < epochs; i++) {
-            batchRequestManager.approveRedeems{value: COST}(
+            batchRequestManager.approveRedeems(
                 poolId, scId, USDC, _nowRedeem(USDC), MIN_REQUEST_AMOUNT_SHARES, _pricePoolPerAsset(USDC)
             );
             batchRequestManager.revokeShares{value: COST}(

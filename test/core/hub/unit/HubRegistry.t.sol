@@ -143,6 +143,7 @@ contract HubRegistryTest is Test {
     function testUpdateCurrency(AssetId currency) public nonZero(address(uint160(currency.raw()))) {
         address fundAdmin = makeAddr("fundAdmin");
 
+        registry.registerAsset(USD, 6);
         PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
         registry.registerPool(poolId, fundAdmin, USD);
 
@@ -158,10 +159,28 @@ contract HubRegistryTest is Test {
         registry.updateCurrency(poolId, AssetId.wrap(0));
 
         vm.assume(AssetId.unwrap(registry.currency(poolId)) != AssetId.unwrap(currency));
+
+        registry.registerAsset(currency, 18);
+
         vm.expectEmit();
         emit IHubRegistry.UpdateCurrency(poolId, currency);
         registry.updateCurrency(poolId, currency);
         assertEq(AssetId.unwrap(registry.currency(poolId)), AssetId.unwrap(currency));
+    }
+
+    function testUpdateCurrencyRevertsOnUnregisteredCurrency() public {
+        address fundAdmin = makeAddr("fundAdmin");
+
+        registry.registerAsset(USD, 6);
+        PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
+        registry.registerPool(poolId, fundAdmin, USD);
+
+        AssetId unregisteredCurrency = AssetId.wrap(978);
+        assertFalse(registry.isRegistered(unregisteredCurrency));
+
+        vm.expectRevert(IHubRegistry.AssetNotFound.selector);
+        registry.updateCurrency(poolId, unregisteredCurrency);
+        assertEq(AssetId.unwrap(registry.currency(poolId)), AssetId.unwrap(USD));
     }
 
     function testExists() public {
