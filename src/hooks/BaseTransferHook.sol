@@ -157,19 +157,16 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
 
     /// @inheritdoc ITrustedContractUpdate
     function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
-        uint8 kindValue = payload.toUint8(31);
-        if (kindValue > uint8(type(ITransferHook.BaseTransferHookTrustedCall).max)) revert UnknownTrustedCall();
-
+        uint8 kindValue = abi.decode(payload, (uint8));
+        require(kindValue <= uint8(type(ITransferHook.BaseTransferHookTrustedCall).max), UnknownTrustedCall());
+        
         ITransferHook.BaseTransferHookTrustedCall kind = ITransferHook.BaseTransferHookTrustedCall(kindValue);
-
         if (kind == ITransferHook.BaseTransferHookTrustedCall.UpdateAddress) {
             (, bytes32 what, bool isEnabled) = abi.decode(payload, (uint8, bytes32, bool));
             address token = address(spoke.shareToken(poolId, scId));
             require(token != address(0), ShareTokenDoesNotExist());
 
             manager[token][what.toAddress()] = isEnabled;
-        } else {
-            revert UnknownTrustedCall();
         }
     }
 
