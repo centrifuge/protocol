@@ -15,11 +15,11 @@ import {IShareClassManager} from "../../core/hub/interfaces/IShareClassManager.s
 
 /// @notice Base share price calculation manager for single share class pools.
 contract SimplePriceManager is ISimplePriceManager {
-    IGateway public immutable gateway;
     IHub public immutable hub;
+    IGateway public immutable gateway;
+    address public immutable navUpdater;
     IHubRegistry public immutable hubRegistry;
     IShareClassManager public immutable shareClassManager;
-    address public immutable navUpdater;
 
     mapping(PoolId => Metrics) public metrics;
     mapping(PoolId => uint16[]) internal _notifiedNetworks;
