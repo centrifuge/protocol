@@ -306,7 +306,7 @@ contract TestPricePoolPerAsset is TestCommon {
 contract TestUpdateHoldingValuation is TestCommon {
     function testUpdateHoldingValuationSuccess() public {
         IValuation newValuation = IValuation(makeAddr("NewValuation"));
-        
+
         vm.mockCall(
             address(holdings),
             abi.encodeWithSelector(IHoldings.updateValuation.selector, POOL_A, SC_A, ASSET_A, newValuation),
@@ -320,7 +320,7 @@ contract TestUpdateHoldingValuation is TestCommon {
     function testUpdateHoldingValuationNotManager() public {
         IValuation newValuation = IValuation(makeAddr("NewValuation"));
         address notManager = makeAddr("notManager");
-        
+
         vm.mockCall(
             address(hubRegistry),
             abi.encodeWithSelector(hubRegistry.manager.selector, POOL_A, notManager),
@@ -337,13 +337,13 @@ contract TestSetHoldingAccountId is TestCommon {
     function testSetHoldingAccountIdSuccess() public {
         uint8 kind = 1;
         AccountId accountId = AccountId.wrap(42);
-        
+
         vm.mockCall(
             address(accounting),
             abi.encodeWithSelector(IAccounting.exists.selector, POOL_A, accountId),
             abi.encode(true)
         );
-        
+
         vm.mockCall(
             address(holdings),
             abi.encodeWithSelector(IHoldings.setAccountId.selector, POOL_A, SC_A, ASSET_A, kind, accountId),
@@ -358,7 +358,7 @@ contract TestSetHoldingAccountId is TestCommon {
         uint8 kind = 1;
         AccountId accountId = AccountId.wrap(42);
         address notManager = makeAddr("notManager");
-        
+
         vm.mockCall(
             address(hubRegistry),
             abi.encodeWithSelector(hubRegistry.manager.selector, POOL_A, notManager),
@@ -373,7 +373,7 @@ contract TestSetHoldingAccountId is TestCommon {
     function testSetHoldingAccountIdAccountDoesNotExist() public {
         uint8 kind = 1;
         AccountId accountId = AccountId.wrap(42);
-        
+
         vm.mockCall(
             address(accounting),
             abi.encodeWithSelector(IAccounting.exists.selector, POOL_A, accountId),
@@ -390,7 +390,7 @@ contract TestSetAccountMetadata is TestCommon {
     function testSetAccountMetadataSuccess() public {
         AccountId accountId = AccountId.wrap(42);
         bytes memory metadata = "test metadata";
-        
+
         vm.mockCall(
             address(accounting),
             abi.encodeWithSelector(IAccounting.setAccountMetadata.selector, POOL_A, accountId, metadata),
@@ -405,7 +405,7 @@ contract TestSetAccountMetadata is TestCommon {
         AccountId accountId = AccountId.wrap(42);
         bytes memory metadata = "test metadata";
         address notManager = makeAddr("notManager");
-        
+
         vm.mockCall(
             address(hubRegistry),
             abi.encodeWithSelector(hubRegistry.manager.selector, POOL_A, notManager),
@@ -420,7 +420,7 @@ contract TestSetAccountMetadata is TestCommon {
     function testSetAccountMetadataEmptyBytes() public {
         AccountId accountId = AccountId.wrap(42);
         bytes memory metadata = "";
-        
+
         vm.mockCall(
             address(accounting),
             abi.encodeWithSelector(IAccounting.setAccountMetadata.selector, POOL_A, accountId, metadata),
@@ -435,50 +435,50 @@ contract TestSetAccountMetadata is TestCommon {
 contract TestHubFile is TestCommon {
     function testFileGateway() public {
         IGateway newGateway = IGateway(makeAddr("NewGateway"));
-        
+
         vm.expectEmit(true, true, true, true);
         emit IHub.File("gateway", address(newGateway));
-        
+
         hub.file("gateway", address(newGateway));
         assertEq(address(hub.gateway()), address(newGateway));
     }
 
     function testFileFeeHook() public {
         IFeeHook newFeeHook = IFeeHook(makeAddr("NewFeeHook"));
-        
+
         vm.expectEmit(true, true, true, true);
         emit IHub.File("feeHook", address(newFeeHook));
-        
+
         hub.file("feeHook", address(newFeeHook));
         assertEq(address(hub.feeHook()), address(newFeeHook));
     }
 
     function testFileHoldings() public {
         IHoldings newHoldings = IHoldings(makeAddr("NewHoldings"));
-        
+
         vm.expectEmit(true, true, true, true);
         emit IHub.File("holdings", address(newHoldings));
-        
+
         hub.file("holdings", address(newHoldings));
         assertEq(address(hub.holdings()), address(newHoldings));
     }
 
     function testFileSender() public {
         IHubMessageSender newSender = IHubMessageSender(makeAddr("NewSender"));
-        
+
         vm.expectEmit(true, true, true, true);
         emit IHub.File("sender", address(newSender));
-        
+
         hub.file("sender", address(newSender));
         assertEq(address(hub.sender()), address(newSender));
     }
 
     function testFileShareClassManager() public {
         IShareClassManager newScm = IShareClassManager(makeAddr("NewScm"));
-        
+
         vm.expectEmit(true, true, true, true);
         emit IHub.File("shareClassManager", address(newScm));
-        
+
         hub.file("shareClassManager", address(newScm));
         assertEq(address(hub.shareClassManager()), address(newScm));
     }

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {VaultDecoder} from "../../../../../src/managers/spoke/decoders/VaultDecoder.sol";
-import {BaseDecoder} from "../../../../../src/managers/spoke/decoders/BaseDecoder.sol";
 import {PoolId} from "../../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../../src/core/types/ShareClassId.sol";
+
+import {BaseDecoder} from "../../../../../src/managers/spoke/decoders/BaseDecoder.sol";
+import {VaultDecoder} from "../../../../../src/managers/spoke/decoders/VaultDecoder.sol";
 
 import "forge-std/Test.sol";
 

@@ -500,13 +500,13 @@ contract VaultRegistryTestVaultDetails is VaultRegistryTest {
 contract VaultRegistryTestFile is VaultRegistryTest {
     function testFileSpoke() public {
         ISpoke newSpoke = ISpoke(makeAddr("NewSpoke"));
-        
+
         vm.expectEmit(true, true, true, true);
         emit ISpoke.File("spoke", address(newSpoke));
-        
+
         vm.prank(AUTH);
         vaultRegistry.file("spoke", address(newSpoke));
-        
+
         assertEq(address(vaultRegistry.spoke()), address(newSpoke));
     }
 
