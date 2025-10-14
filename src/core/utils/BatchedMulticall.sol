@@ -25,12 +25,17 @@ abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
         require(!gateway.isBatching(), IGateway.AlreadyBatching());
 
         _isBatching = true;
-        gateway.startBatching();
-
-        super.multicall(data);
-
-        gateway.endBatching{value: msg.value}(msg.sender);
+        _multicallSource = address(gateway);
+        gateway.withBatch{value: msg.value}(
+            abi.encodeWithSelector(BatchedMulticall.executeMulticall.selector, data), msg.sender
+        );
+        _multicallSource = address(0);
         _isBatching = false;
+    }
+
+    function executeMulticall(bytes[] calldata data) external payable {
+        gateway.lockCallback();
+        super.multicall(data);
     }
 
     /// @dev gives the current msg.value depending on the batching state

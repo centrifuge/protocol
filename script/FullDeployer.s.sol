@@ -508,7 +508,7 @@ contract FullDeployer is CoreDeployer {
         batchRequestManager = BatchRequestManager(
             create3(
                 generateSalt("batchRequestManager"),
-                abi.encodePacked(type(BatchRequestManager).creationCode, abi.encode(hubRegistry, batcher))
+                abi.encodePacked(type(BatchRequestManager).creationCode, abi.encode(hubRegistry, gateway, batcher))
             )
         );
 

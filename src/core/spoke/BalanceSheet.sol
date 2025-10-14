@@ -52,9 +52,9 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         endorsements = endorsements_;
     }
 
-    /// @dev Check if the msg.sender is ward or a manager
+    /// @dev Check if the msgSender() is ward or a manager
     modifier authOrManager(PoolId poolId) {
-        require(wards[msg.sender] == 1 || manager[poolId][msg.sender], IAuth.NotAuthorized());
+        require(wards[msgSender()] == 1 || manager[poolId][msgSender()], IAuth.NotAuthorized());
         _;
     }
 
@@ -87,9 +87,9 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
 
         address escrow_ = address(escrow(poolId));
         if (tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(asset, msg.sender, escrow_, amount);
+            SafeTransferLib.safeTransferFrom(asset, msgSender(), escrow_, amount);
         } else {
-            IERC6909(asset).transferFrom(msg.sender, escrow_, tokenId, amount);
+            IERC6909(asset).transferFrom(msgSender(), escrow_, tokenId, amount);
         }
         emit Deposit(poolId, scId, asset, tokenId, amount);
     }
@@ -174,7 +174,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
 
     /// @inheritdoc IBalanceSheet
     function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external payable authOrManager(poolId) {
-        emit Revoke(poolId, scId, msg.sender, _pricePoolPerShare(poolId, scId), shares);
+        emit Revoke(poolId, scId, msgSender(), _pricePoolPerShare(poolId, scId), shares);
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         if (!shareQueue.isPositive) {
@@ -187,7 +187,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         }
 
         IShareToken token = spoke.shareToken(poolId, scId);
-        token.authTransferFrom(msg.sender, msg.sender, address(this), shares);
+        token.authTransferFrom(msgSender(), msgSender(), address(this), shares);
         token.burn(address(this), shares);
     }
 

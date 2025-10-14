@@ -20,19 +20,20 @@ import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {IERC165} from "../misc/interfaces/IERC165.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
-import {ReentrancyProtection} from "../misc/ReentrancyProtection.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
+import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
+import {BatchedMulticall} from "../core/utils/BatchedMulticall.sol";
 import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
 import {IHubRequestManagerCallback} from "../core/hub/interfaces/IHubRequestManagerCallback.sol";
 import {IHubRequestManager, IHubRequestManagerNotifications} from "../core/hub/interfaces/IHubRequestManager.sol";
 
 /// @title  Batch Request Manager
 /// @notice Manager for handling deposit/redeem requests, epochs, and fulfillment logic for share classes
-contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager {
+contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
     using MathLib for *;
     using CastLib for *;
     using BytesLib for bytes;
@@ -69,7 +70,10 @@ contract BatchRequestManager is Auth, ReentrancyProtection, IBatchRequestManager
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(bytes32 investor => bool)))) public
         allowForceRedeemCancel;
 
-    constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
+    constructor(IHubRegistry hubRegistry_, IGateway gateway_, address deployer)
+        Auth(deployer)
+        BatchedMulticall(gateway_)
+    {
         hubRegistry = hubRegistry_;
     }
 

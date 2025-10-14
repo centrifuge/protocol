@@ -7,7 +7,6 @@ import {IAsyncVault} from "./interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "./interfaces/IVaultRouter.sol";
 
 import {Auth} from "../misc/Auth.sol";
-import {Multicall} from "../misc/Multicall.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {IEscrow} from "../misc/interfaces/IEscrow.sol";
@@ -18,6 +17,7 @@ import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 import {PoolId} from "../core/types/PoolId.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
+import {BatchedMulticall} from "../core/utils/BatchedMulticall.sol";
 import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 
@@ -29,7 +29,7 @@ import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 ///         the multicall functionality which batches message calls into a single one.
 /// @dev    It is critical to ensure that at the end of any transaction, no funds remain in the
 ///         VaultRouter. Any funds that do remain are at risk of being taken by other users.
-contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
+contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
     using CastLib for address;
 
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
@@ -37,7 +37,6 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
     ISpoke public immutable spoke;
     IEscrow public immutable escrow;
-    IGateway public immutable gateway;
     IVaultRegistry public immutable vaultRegistry;
 
     /// @inheritdoc IVaultRouter
@@ -45,24 +44,11 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
     constructor(address escrow_, IGateway gateway_, ISpoke spoke_, IVaultRegistry vaultRegistry_, address deployer)
         Auth(deployer)
+        BatchedMulticall(gateway_)
     {
         escrow = IEscrow(escrow_);
-        gateway = gateway_;
         spoke = spoke_;
         vaultRegistry = vaultRegistry_;
-    }
-
-    function multicall(bytes[] calldata data) public payable override protected {
-        _multicallSource = address(gateway);
-        gateway.withBatch{value: msg.value}(
-            abi.encodeWithSelector(VaultRouter.executeMulticall.selector, data), msg.sender
-        );
-        _multicallSource = address(0);
-    }
-
-    function executeMulticall(bytes[] calldata data) external payable {
-        gateway.lockCallback();
-        super.multicall(data);
     }
 
     //----------------------------------------------------------------------------------------------

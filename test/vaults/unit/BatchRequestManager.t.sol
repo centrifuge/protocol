@@ -17,6 +17,7 @@ import {
     IHubRequestManager,
     IHubRequestManagerNotifications
 } from "../../../src/core/hub/interfaces/IHubRequestManager.sol";
+import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 
 import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
 import {
@@ -76,7 +77,7 @@ contract HubRegistryMock {
 }
 
 contract BatchRequestManagerHarness is BatchRequestManager {
-    constructor(IHubRegistry hubRegistry_, address deployer) BatchRequestManager(hubRegistry_, deployer) {}
+    constructor(IHubRegistry hubRegistry_, IGateway gateway_, address deployer) BatchRequestManager(hubRegistry_, gateway_, deployer) {}
 
     function claimDeposit(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
         public
@@ -114,6 +115,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
 
     receive() external payable {}
 
+    IGateway public gateway = IGateway(makeAddr("Gateway"));
     BatchRequestManagerHarness public batchRequestManager;
     HubRegistryMock public hubRegistryMock;
 
@@ -131,7 +133,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
 
     function setUp() public virtual {
         hubRegistryMock = new HubRegistryMock();
-        batchRequestManager = new BatchRequestManagerHarness(IHubRegistry(address(hubRegistryMock)), address(this));
+        batchRequestManager = new BatchRequestManagerHarness(IHubRegistry(address(hubRegistryMock)), gateway, address(this));
 
         vm.mockCall(
             address(hub),

@@ -498,7 +498,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     ) external payable {
         IHubRequestManager manager = hubRegistry.hubRequestManager(poolId, assetId.centrifugeId());
         require(address(manager) != address(0), InvalidRequestManager());
-        require(msg.sender == address(manager), NotAuthorized());
+        require(msgSender() == address(manager), NotAuthorized());
 
         sender.sendRequestCallback{value: _payment()}(poolId, scId, assetId, payload, extraGasLimit, refund);
     }
@@ -629,6 +629,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @dev Ensure the sender is a pool admin
     function _isManager(PoolId poolId) internal view {
-        require(hubRegistry.manager(poolId, msg.sender), IHub.NotManager());
+        require(hubRegistry.manager(poolId, msgSender()), IHub.NotManager());
     }
 }
