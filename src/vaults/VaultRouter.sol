@@ -52,7 +52,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         vaultRegistry = vaultRegistry_;
     }
 
-    function multicall(bytes[] calldata data) public payable override {
+    function multicall(bytes[] calldata data) public payable override protected {
         gateway.withBatch{value: msg.value}(
             abi.encodeWithSelector(VaultRouter.executeMulticall.selector, data), msg.sender
         );
