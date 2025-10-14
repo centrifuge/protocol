@@ -16,11 +16,11 @@ contract BatchedMulticallImpl is BatchedMulticall, Test {
     }
 
     function nonZeroPayment() external payable {
-        assertNotEq(_payment(), 0);
+        assertNotEq(msgValue(), 0);
     }
 
     function add(uint256 i) external payable {
-        assertEq(_payment(), 0);
+        assertEq(msgValue(), 0);
         total += i;
     }
 }

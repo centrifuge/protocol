@@ -220,7 +220,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         shareQueue.queuedAssetCounter -= assetCounter;
 
         emit SubmitQueuedAssets(poolId, scId, assetId, data, pricePoolPerAsset);
-        sender.sendUpdateHoldingAmount{value: _payment()}(
+        sender.sendUpdateHoldingAmount{value: msgValue()}(
             poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit, refund
         );
     }
@@ -245,7 +245,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         shareQueue.nonce++;
 
         emit SubmitQueuedShares(poolId, scId, data);
-        sender.sendUpdateShares{value: _payment()}(poolId, scId, data, extraGasLimit, refund);
+        sender.sendUpdateShares{value: msgValue()}(poolId, scId, data, extraGasLimit, refund);
     }
 
     /// @inheritdoc IBalanceSheet

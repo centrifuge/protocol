@@ -40,8 +40,7 @@ abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
         return _sender != address(0) ? _sender : msg.sender;
     }
 
-    /// @dev gives the current msg.value depending on the batching state
-    function _payment() internal view returns (uint256 value) {
+    function msgValue() internal view returns (uint256 value) {
         return _sender != address(0) ? 0 : msg.value;
     }
 }
