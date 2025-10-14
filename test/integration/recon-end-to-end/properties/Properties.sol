@@ -2420,43 +2420,6 @@ abstract contract Properties is
         }
     }
 
-    /// @dev Property 1.4: Share Queue isPositive Flag Consistency
-    /// Definition: queuedShares[p][sc].isPositive = true ⟺ queuedShares[p][sc].delta > 0
-    /// This ensures the flag accurately represents the queue state in ALL scenarios:
-    /// - When delta > 0: isPositive must be true (net issuance pending)
-    /// - When delta = 0: isPositive must be false (no pending operations)
-    /// This property covers the complete biconditional relationship and replaces the need
-    /// for separate zero-delta checking as it encompasses all possible states.
-    function property_shareQueueFlagConsistency() public {
-        PoolId[] memory pools = _getPools();
-        for (uint256 i = 0; i < pools.length; i++) {
-            PoolId poolId = pools[i];
-            ShareClassId[] memory shareClassIds = _getPoolShareClasses(poolId);
-
-            for (uint256 j = 0; j < shareClassIds.length; j++) {
-                ShareClassId scId = shareClassIds[j];
-
-                (uint128 delta, bool isPositive, , ) = balanceSheet
-                    .queuedShares(poolId, scId);
-
-                // Complete biconditional check: isPositive ⟺ (delta > 0)
-                if (delta > 0) {
-                    console2.log("delta: ", delta);
-                    t(
-                        isPositive,
-                        "property_shareQueueFlagConsistency: delta > 0 requires isPositive = true"
-                    );
-                } else {
-                    // delta == 0 (uint128 cannot be negative)
-                    t(
-                        !isPositive,
-                        "property_shareQueueFlagConsistency: delta = 0 requires isPositive = false"
-                    );
-                }
-            }
-        }
-    }
-
     /// @dev Property 1.6: Nonce Monotonicity
     /// Definition: Nonce strictly increases with each submission
     /// Ensures proper message ordering

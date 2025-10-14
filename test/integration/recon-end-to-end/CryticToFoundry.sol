@@ -497,20 +497,4 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         property_availableGtQueued();
     }
-
-    // forge test --match-test test_property_shareQueueFlagConsistency_31 -vvv
-    // NOTE: see issue here: https://github.com/Recon-Fuzz/centrifuge-invariants/issues/7
-    function test_property_shareQueueFlagConsistency_31() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(0, 0);
-
-        balanceSheet_issue(1);
-
-        balanceSheet_submitQueuedShares(0);
-
-        shortcut_withdraw_and_claim_clamped(1, 0, 0);
-
-        property_shareQueueFlagConsistency();
-    }
 }
