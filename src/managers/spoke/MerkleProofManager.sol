@@ -10,7 +10,7 @@ import {MerkleProofLib} from "../../misc/libraries/MerkleProofLib.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
+import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  Merkle Proof Manager
 /// @author Inspired by Boring Vaults from Se7en-Seas

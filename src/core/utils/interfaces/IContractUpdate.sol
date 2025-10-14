@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {PoolId} from "../types/PoolId.sol";
-import {ShareClassId} from "../types/ShareClassId.sol";
+import {PoolId} from "../../types/PoolId.sol";
+import {ShareClassId} from "../../types/ShareClassId.sol";
 
 interface ITrustedContractUpdate {
     /// @notice Triggers an update on the target contract.

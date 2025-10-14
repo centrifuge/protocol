@@ -21,7 +21,7 @@ import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
-import {ITrustedContractUpdate} from "../core/interfaces/IContractUpdate.sol";
+import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  Sync Manager
 /// @notice This is the main contract for synchronous ERC-4626 deposits.

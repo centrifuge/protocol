@@ -9,7 +9,7 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
+import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 //----------------------------------------------------------------------------------------------
 // Deposit Manager Interfaces

@@ -32,7 +32,7 @@ import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
-import {ITrustedContractUpdate} from "../core/interfaces/IContractUpdate.sol";
+import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for

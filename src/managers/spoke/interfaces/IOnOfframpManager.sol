@@ -5,7 +5,7 @@ import {IDepositManager, IWithdrawManager} from "./IBalanceSheetManager.sol";
 
 import {PoolId} from "../../../core/types/PoolId.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
-import {ITrustedContractUpdate} from "../../../core/interfaces/IContractUpdate.sol";
+import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  IOnOfframpManager
 /// @notice Interface for managing onramp (deposits) and offramp (withdrawals) operations for a specific pool and share class

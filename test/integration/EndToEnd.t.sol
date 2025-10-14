@@ -30,11 +30,11 @@ import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {MAX_MESSAGE_COST} from "../../src/core/messaging/interfaces/IGasService.sol";
-import {IUntrustedContractUpdate} from "../../src/core/interfaces/IContractUpdate.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 import {IMessageHandler} from "../../src/core/messaging/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/messaging/MultiAdapter.sol";
 import {ILocalCentrifugeId} from "../../src/core/messaging/interfaces/IGatewaySenders.sol";
+import {IUntrustedContractUpdate} from "../../src/core/utils/interfaces/IContractUpdate.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {Root} from "../../src/admin/Root.sol";

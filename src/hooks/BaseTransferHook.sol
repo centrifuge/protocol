@@ -17,7 +17,7 @@ import {PoolId} from "../core/types/PoolId.sol";
 import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
-import {ITrustedContractUpdate} from "../core/interfaces/IContractUpdate.sol";
+import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
 
 import {IRoot} from "../admin/interfaces/IRoot.sol";
