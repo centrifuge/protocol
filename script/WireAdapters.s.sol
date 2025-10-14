@@ -13,6 +13,7 @@ import "forge-std/Script.sol";
 ///
 ///      Intended for testnet use only.
 contract WireAdapters is Script {
+    uint8 constant GAS_MULTIPLIER = 10; // 10%
     IAdapter[] adapters; // Storage array for adapter instances
 
     function fetchConfig(string memory network) internal view returns (string memory) {
@@ -82,6 +83,7 @@ contract WireAdapters is Script {
             // Wire WormholeAdapter
             if (localWormholeAddr != address(0)) {
                 bytes memory wormholeData = abi.encode(
+                    GAS_MULTIPLIER,
                     uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
                     vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter")
                 );
@@ -93,6 +95,7 @@ contract WireAdapters is Script {
             // Wire LayerZeroAdapter
             if (localLayerZeroAddr != address(0)) {
                 bytes memory layerZeroData = abi.encode(
+                    GAS_MULTIPLIER,
                     uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
                     vm.parseJsonAddress(remoteConfig, "$.contracts.layerZeroAdapter")
                 );
@@ -104,6 +107,7 @@ contract WireAdapters is Script {
             // Wire AxelarAdapter
             if (localAxelarAddr != address(0)) {
                 bytes memory axelarData = abi.encode(
+                    GAS_MULTIPLIER,
                     vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
                     vm.toString(vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter"))
                 );
