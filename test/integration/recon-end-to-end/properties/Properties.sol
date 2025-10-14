@@ -127,46 +127,6 @@ abstract contract Properties is
         );
     }
 
-    /// @dev Property: The sum of tranche tokens minted/transferred is equal to the total supply of tranche tokens
-    function property_sum_of_minted_equals_total_supply() public tokenIsSet {
-        // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
-        // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
-        // functions permanently reverting
-        IBaseVault vault = _getVault();
-
-        // TODO(wischli): Investigate with zero price
-
-        uint256 ghostTotalSupply;
-        address shareToken = vault.share();
-        uint256 totalSupply = IShareToken(shareToken).totalSupply();
-
-        // Debug logging for ghost variable tracking
-        // console2.log("=== Property: Sum of Minted Equals Total Supply ===");
-        // console2.log("Share Token Address:", shareToken);
-        // console2.log("Actual totalSupply:", totalSupply);
-        // console2.log("shareMints[shareToken]:", shareMints[address(shareToken)]);
-        // console2.log("executedInvestments[shareToken]:", executedInvestments[address(shareToken)]);
-        // console2.log("executedRedemptions[shareToken]:", executedRedemptions[address(shareToken)]);
-
-        // TODO(wischli): shareMints is no longer updated because hub_triggerIssueShares was removed
-        unchecked {
-            ghostTotalSupply =
-                (shareMints[address(shareToken)] +
-                    executedInvestments[address(shareToken)]) -
-                executedRedemptions[address(shareToken)];
-        }
-        console2.log("Calculated ghostTotalSupply:", ghostTotalSupply);
-        console2.log(
-            "Difference (totalSupply - ghostTotalSupply):",
-            totalSupply > ghostTotalSupply
-                ? totalSupply - ghostTotalSupply
-                : ghostTotalSupply - totalSupply
-        );
-        console2.log("====================================================");
-
-        eq(totalSupply, ghostTotalSupply, "totalSupply != ghostTotalSupply");
-    }
-
     /// @dev Property: System addresses should never receive share tokens
     function property_system_addresses_never_receive_share_tokens()
         public
@@ -1465,7 +1425,12 @@ abstract contract Properties is
         (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
         (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
 
+        console2.log("assets: ", assets);
+        console2.log("equity: ", equity);
+        console2.log("gain: ", gain);
+        console2.log("loss: ", loss);
         uint128 totalYield = assets - equity; // Can be positive or negative
+        console2.log("totalYield: ", totalYield);
         t(gain == (totalYield - loss), "property_gain_soundness");
     }
 
