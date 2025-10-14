@@ -51,7 +51,6 @@ abstract contract Properties is
     event DebugWithString(string, uint256);
     event DebugNumber(uint256);
 
-
     // ===============================
     // SENTINEL
     // ===============================
@@ -947,11 +946,13 @@ abstract contract Properties is
         AssetId assetId = _getAssetId();
         PoolId poolId = vault.poolId();
 
-        uint32 nowDepositEpoch = batchRequestManager.nowDepositEpoch(poolId, 
+        uint32 nowDepositEpoch = batchRequestManager.nowDepositEpoch(
+            poolId,
             scId,
             assetId
         );
-        uint128 pendingDeposit = batchRequestManager.pendingDeposit(poolId, 
+        uint128 pendingDeposit = batchRequestManager.pendingDeposit(
+            poolId,
             scId,
             assetId
         );
@@ -962,7 +963,8 @@ abstract contract Properties is
             ,
             ,
 
-        ) = batchRequestManager.epochInvestAmounts(poolId, 
+        ) = batchRequestManager.epochInvestAmounts(
+                poolId,
                 scId,
                 assetId,
                 nowDepositEpoch
@@ -993,11 +995,13 @@ abstract contract Properties is
         PoolId poolId = vault.poolId();
         AssetId assetId = _getAssetId();
 
-        uint32 nowDepositEpoch = batchRequestManager.nowDepositEpoch(poolId, 
+        uint32 nowDepositEpoch = batchRequestManager.nowDepositEpoch(
+            poolId,
             scId,
             assetId
         );
-        uint128 pendingDeposit = batchRequestManager.pendingDeposit(poolId, 
+        uint128 pendingDeposit = batchRequestManager.pendingDeposit(
+            poolId,
             scId,
             assetId
         );
@@ -1046,8 +1050,16 @@ abstract contract Properties is
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
 
-        uint32 redeemEpochId = batchRequestManager.nowRedeemEpoch(poolId, scId, assetId);
-        uint128 pendingRedeem = batchRequestManager.pendingRedeem(poolId, scId, assetId);
+        uint32 redeemEpochId = batchRequestManager.nowRedeemEpoch(
+            poolId,
+            scId,
+            assetId
+        );
+        uint128 pendingRedeem = batchRequestManager.pendingRedeem(
+            poolId,
+            scId,
+            assetId
+        );
 
         // get the pending and approved redeem amounts for the current epoch
         (, uint128 approvedShareAmount, , , , ) = batchRequestManager
@@ -1719,7 +1731,11 @@ abstract contract Properties is
         AssetId assetId = _getAssetId();
 
         // get the current deposit epoch
-        uint32 epochId = batchRequestManager.nowDepositEpoch(poolId, scId, assetId);
+        uint32 epochId = batchRequestManager.nowDepositEpoch(
+            poolId,
+            scId,
+            assetId
+        );
         uint128 totalDepositAssets;
         uint128 totalDepositShares;
         for (uint32 i = 0; i < epochId; i++) {
@@ -1739,14 +1755,18 @@ abstract contract Properties is
         // Use harness to get amounts directly instead of parsing events
         for (uint256 k = 0; k < _actors.length; k++) {
             address actor = _actors[k];
-            (uint128 payoutShareAmount, uint128 paymentAssetAmount, ) = batchRequestManager.notifyDepositWithReturn(
-                poolId,
-                scId,
-                assetId,
-                CastLib.toBytes32(actor),
-                MAX_CLAIMS,
-                actor // refund address
-            );
+            (
+                uint128 payoutShareAmount,
+                uint128 paymentAssetAmount,
+
+            ) = batchRequestManager.notifyDepositWithReturn(
+                    poolId,
+                    scId,
+                    assetId,
+                    CastLib.toBytes32(actor),
+                    MAX_CLAIMS,
+                    actor // refund address
+                );
             totalPayoutAssetAmount += paymentAssetAmount;
             totalPayoutShareAmount += payoutShareAmount;
         }
@@ -1791,7 +1811,11 @@ abstract contract Properties is
         AssetId assetId = _getAssetId();
 
         // get the current redeem epoch
-        uint32 epochId = batchRequestManager.nowRedeemEpoch(poolId, scId, assetId);
+        uint32 epochId = batchRequestManager.nowRedeemEpoch(
+            poolId,
+            scId,
+            assetId
+        );
         uint128 totalPayoutAssetAmountEpochs;
         uint128 totalApprovedShareAmountEpochs;
         for (uint32 i = 0; i < epochId; i++) {
@@ -1802,7 +1826,12 @@ abstract contract Properties is
                 ,
                 uint128 payoutAssetAmount,
 
-            ) = batchRequestManager.epochRedeemAmounts(poolId, scId, assetId, i);
+            ) = batchRequestManager.epochRedeemAmounts(
+                    poolId,
+                    scId,
+                    assetId,
+                    i
+                );
             totalPayoutAssetAmountEpochs += payoutAssetAmount;
             totalApprovedShareAmountEpochs += approvedShareAmount;
         }
@@ -1814,14 +1843,18 @@ abstract contract Properties is
         // Use harness to get amounts directly instead of parsing events
         for (uint256 k = 0; k < _actors.length; k++) {
             address actor = _actors[k];
-            (uint128 payoutAssetAmount, uint128 paymentShareAmount, ) = batchRequestManager.notifyRedeemWithReturn(
-                poolId,
-                scId,
-                assetId,
-                CastLib.toBytes32(actor),
-                MAX_CLAIMS,
-                actor // refund address
-            );
+            (
+                uint128 payoutAssetAmount,
+                uint128 paymentShareAmount,
+
+            ) = batchRequestManager.notifyRedeemWithReturn(
+                    poolId,
+                    scId,
+                    assetId,
+                    CastLib.toBytes32(actor),
+                    MAX_CLAIMS,
+                    actor // refund address
+                );
             totalPayoutAssetAmount += payoutAssetAmount;
             totalPaymentShareAmount += paymentShareAmount;
         }
@@ -2664,97 +2697,178 @@ abstract contract Properties is
 
     /// @dev Property 2.7: Authorization Boundary Enforcement
     /// @notice Ensures only authorized parties perform privileged operations
-    function property_authorizationBoundaryEnforcement() public {
-        PoolId[] memory pools = _getPools();
-        for (uint256 i = 0; i < pools.length; i++) {
-            PoolId poolId = pools[i];
-            bytes32 poolKey = keccak256(abi.encode(poolId));
+    // function property_authorizationBoundaryEnforcement() public {
+    //     PoolId[] memory pools = _getPools();
+    //     for (uint256 i = 0; i < pools.length; i++) {
+    //         PoolId poolId = pools[i];
+    //         bytes32 poolKey = keccak256(abi.encode(poolId));
 
-            // No unauthorized operations should succeed
-            eq(
-                ghost_unauthorizedAttempts[poolKey],
-                0,
-                "Unauthorized operations succeeded"
-            );
+    //         // No unauthorized operations should succeed
+    //         eq(
+    //             ghost_unauthorizedAttempts[poolKey],
+    //             0,
+    //             "Unauthorized operations succeeded"
+    //         );
 
-            // Check for authorization bypass
+    //         // Check for authorization bypass
+    //         t(
+    //             !ghost_authorizationBypass[poolKey],
+    //             "Authorization checks were bypassed"
+    //         );
+
+    //         ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
+    //         for (uint256 j = 0; j < shareClasses.length; j++) {
+    //             ShareClassId scId = shareClasses[j];
+    //             bytes32 key = keccak256(abi.encode(poolId, scId));
+
+    //             // Verify all privileged operations had proper authorization
+    //             if (ghost_privilegedOperationCount[key] > 0) {
+    //                 address lastCaller = ghost_lastAuthorizedCaller[key];
+    //                 AuthLevel recordedLevel = ghost_authorizationLevel[
+    //                     lastCaller
+    //                 ];
+
+    //                 // Must be ward or manager
+    //                 t(
+    //                     recordedLevel != AuthLevel.NONE,
+    //                     "Non-authorized address performed privileged operation"
+    //                 );
+
+    //                 // Verify authorization is still valid
+    //                 if (recordedLevel == AuthLevel.WARD) {
+    //                     eq(
+    //                         balanceSheet.wards(lastCaller),
+    //                         1,
+    //                         "Ward authorization was revoked but operations continued"
+    //                     );
+    //                 } else if (recordedLevel == AuthLevel.MANAGER) {
+    //                     t(
+    //                         balanceSheet.manager(poolId, lastCaller),
+    //                         "Manager authorization was revoked but operations continued"
+    //                     );
+    //                 }
+    //             }
+    //         }
+
+    //         // Check authorization consistency across all actors
+    //         address[] memory actors = _getActors();
+    //         for (uint256 k = 0; k < actors.length; k++) {
+    //             AuthLevel recordedAuth = ghost_authorizationLevel[actors[k]];
+    //             AuthLevel actualAuth = AuthLevel.NONE;
+
+    //             // Determine actual authorization level
+    //             if (balanceSheet.wards(actors[k]) == 1) {
+    //                 actualAuth = AuthLevel.WARD;
+    //             } else if (balanceSheet.manager(poolId, actors[k])) {
+    //                 actualAuth = AuthLevel.MANAGER;
+    //             }
+
+    //             // Recorded auth should match actual (or be higher if recently changed)
+    //             gte(
+    //                 uint256(recordedAuth),
+    //                 uint256(actualAuth),
+    //                 "Authorization level tracking fell behind actual"
+    //             );
+
+    //             // If auth changed, verify it was legitimate
+    //             if (
+    //                 ghost_authorizationChanges[actors[k]] > 0 &&
+    //                 actualAuth == AuthLevel.NONE
+    //             ) {
+    //                 // Auth was revoked - ensure no operations after revocation
+    //                 if (shareClasses.length > 0) {
+    //                     address lastOp = ghost_lastAuthorizedCaller[
+    //                         keccak256(abi.encode(poolId, shareClasses[0]))
+    //                     ];
+    //                     t(
+    //                         lastOp != actors[k] ||
+    //                             ghost_authorizationChanges[actors[k]] == 1,
+    //                         "Operations continued after authorization revoked"
+    //                     );
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+
+    function property_authorizationBypass() public {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        bytes32 poolKey = keccak256(abi.encode(poolId));
+
+        // No unauthorized operations should succeed
+        eq(
+            ghost_unauthorizedAttempts[poolKey],
+            0,
+            "Unauthorized operations succeeded"
+        );
+
+        // Check for authorization bypass
+        t(
+            !ghost_authorizationBypass[poolKey],
+            "Authorization checks were bypassed"
+        );
+    }
+
+    function property_authorizationLevel() public {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        bytes32 poolKey = keccak256(abi.encode(poolId));
+        bytes32 key = keccak256(abi.encode(poolId, scId));
+
+        // Verify all privileged operations had proper authorization
+        if (ghost_privilegedOperationCount[key] > 0) {
+            address lastCaller = ghost_lastAuthorizedCaller[key];
+            AuthLevel recordedLevel = ghost_authorizationLevel[lastCaller];
+            // Must be ward or manager
             t(
-                !ghost_authorizationBypass[poolKey],
-                "Authorization checks were bypassed"
+                recordedLevel != AuthLevel.NONE,
+                "Non-authorized address performed privileged operation"
             );
-
-            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
-            for (uint256 j = 0; j < shareClasses.length; j++) {
-                ShareClassId scId = shareClasses[j];
-                bytes32 key = keccak256(abi.encode(poolId, scId));
-
-                // Verify all privileged operations had proper authorization
-                if (ghost_privilegedOperationCount[key] > 0) {
-                    address lastCaller = ghost_lastAuthorizedCaller[key];
-                    AuthLevel recordedLevel = ghost_authorizationLevel[
-                        lastCaller
-                    ];
-
-                    // Must be ward or manager
-                    t(
-                        recordedLevel != AuthLevel.NONE,
-                        "Non-authorized address performed privileged operation"
-                    );
-
-                    // Verify authorization is still valid
-                    if (recordedLevel == AuthLevel.WARD) {
-                        eq(
-                            balanceSheet.wards(lastCaller),
-                            1,
-                            "Ward authorization was revoked but operations continued"
-                        );
-                    } else if (recordedLevel == AuthLevel.MANAGER) {
-                        t(
-                            balanceSheet.manager(poolId, lastCaller),
-                            "Manager authorization was revoked but operations continued"
-                        );
-                    }
-                }
-            }
-
-            // Check authorization consistency across all actors
-            address[] memory actors = _getActors();
-            for (uint256 k = 0; k < actors.length; k++) {
-                AuthLevel recordedAuth = ghost_authorizationLevel[actors[k]];
-                AuthLevel actualAuth = AuthLevel.NONE;
-
-                // Determine actual authorization level
-                if (balanceSheet.wards(actors[k]) == 1) {
-                    actualAuth = AuthLevel.WARD;
-                } else if (balanceSheet.manager(poolId, actors[k])) {
-                    actualAuth = AuthLevel.MANAGER;
-                }
-
-                // Recorded auth should match actual (or be higher if recently changed)
-                gte(
-                    uint256(recordedAuth),
-                    uint256(actualAuth),
-                    "Authorization level tracking fell behind actual"
+            // Verify authorization is still valid
+            if (recordedLevel == AuthLevel.WARD) {
+                eq(
+                    balanceSheet.wards(lastCaller),
+                    1,
+                    "Ward authorization was revoked but operations continued"
                 );
-
-                // If auth changed, verify it was legitimate
-                if (
-                    ghost_authorizationChanges[actors[k]] > 0 &&
-                    actualAuth == AuthLevel.NONE
-                ) {
-                    // Auth was revoked - ensure no operations after revocation
-                    if (shareClasses.length > 0) {
-                        address lastOp = ghost_lastAuthorizedCaller[
-                            keccak256(abi.encode(poolId, shareClasses[0]))
-                        ];
-                        t(
-                            lastOp != actors[k] ||
-                                ghost_authorizationChanges[actors[k]] == 1,
-                            "Operations continued after authorization revoked"
-                        );
-                    }
-                }
+            } else if (recordedLevel == AuthLevel.MANAGER) {
+                t(
+                    balanceSheet.manager(poolId, lastCaller),
+                    "Manager authorization was revoked but operations continued"
+                );
             }
+        }
+    }
+
+    function property_authorizationChange() public {
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        bytes32 poolKey = keccak256(abi.encode(poolId));
+        bytes32 key = keccak256(abi.encode(poolId, scId));
+        AuthLevel actualAuth = AuthLevel.NONE;
+
+        // Determine actual authorization level
+        if (balanceSheet.wards(_getActor()) == 1) {
+            actualAuth = AuthLevel.WARD;
+        } else if (balanceSheet.manager(poolId, _getActor())) {
+            actualAuth = AuthLevel.MANAGER;
+        }
+
+        // If auth changed, verify it was legitimate
+        if (
+            ghost_authorizationChanges[_getActor()] > 0 &&
+            actualAuth == AuthLevel.NONE
+        ) {
+            // Auth was revoked - ensure no operations after revocation
+            address lastOp = ghost_lastAuthorizedCaller[
+                keccak256(abi.encode(poolId, scId))
+            ];
+            t(
+                lastOp != _getActor() ||
+                    ghost_authorizationChanges[_getActor()] == 1,
+                "Operations continued after authorization revoked"
+            );
         }
     }
 
