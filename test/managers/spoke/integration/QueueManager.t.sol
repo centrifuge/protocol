@@ -8,8 +8,6 @@ import "../../../core/spoke/integration/BaseTest.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 
-import {UpdateContractMessageLib} from "../../../../src/libraries/UpdateContractMessageLib.sol";
-
 abstract contract QueueManagerBaseTest is BaseTest {
     uint128 constant DEFAULT_AMOUNT = 100_000_000;
 
@@ -52,17 +50,12 @@ abstract contract QueueManagerBaseTest is BaseTest {
 
 contract QueueManagerSuccessTest is QueueManagerBaseTest {
     using CastLib for *;
-    using UpdateContractMessageLib for *;
 
     /// forge-config: default.isolate = true
     function testSuccess() public {
         uint128 extraGasLimit = 500;
         vm.prank(address(contractUpdater));
-        queueManager.trustedCall(
-            POOL_A,
-            defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: 0, extraGasLimit: extraGasLimit}).serialize()
-        );
+        queueManager.trustedCall(POOL_A, defaultTypedShareClassId, abi.encode(uint64(0), extraGasLimit));
 
         depositSync(vault1, user, DEFAULT_AMOUNT);
         depositSync(vault2, user, DEFAULT_AMOUNT / 2);

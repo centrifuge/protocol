@@ -13,9 +13,7 @@ import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
-
-import {UpdateContractMessageLib, UpdateContractType} from "../../libraries/UpdateContractMessageLib.sol";
+import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified
 ///      (e.g. if the on/off ramp manager is used, or if sync deposits are enabled). This prevents spam.
@@ -40,20 +38,14 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId, ShareClassId scId, bytes calldata payload) external {
+    function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external {
         require(msg.sender == contractUpdater, NotContractUpdater());
 
-        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
-        if (kind == uint8(UpdateContractType.UpdateQueue)) {
-            UpdateContractMessageLib.UpdateContractUpdateQueue memory m =
-                UpdateContractMessageLib.deserializeUpdateContractUpdateQueue(payload);
-            ShareClassQueueState storage sc = scQueueState[poolId][scId];
-            sc.minDelay = m.minDelay;
-            sc.extraGasLimit = m.extraGasLimit;
-            emit UpdateQueueConfig(poolId, scId, m.minDelay, m.extraGasLimit);
-        } else {
-            revert UnknownUpdateContractType();
-        }
+        (uint64 minDelay, uint64 extraGasLimit) = abi.decode(payload, (uint64, uint64));
+        ShareClassQueueState storage sc = scQueueState[poolId][scId];
+        sc.minDelay = minDelay;
+        sc.extraGasLimit = extraGasLimit;
+        emit UpdateQueueConfig(poolId, scId, minDelay, extraGasLimit);
     }
 
     //----------------------------------------------------------------------------------------------

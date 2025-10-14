@@ -18,11 +18,9 @@ import {MerkleProofManager, PolicyLeaf, Call} from "../../../../src/managers/spo
 import {IMerkleProofManager, IERC7751} from "../../../../src/managers/spoke/interfaces/IMerkleProofManager.sol";
 
 import {MerkleTreeLib} from "../libraries/MerkleTreeLib.sol";
-import {UpdateContractMessageLib} from "../../../../src/libraries/UpdateContractMessageLib.sol";
 
 abstract contract MerkleProofManagerBaseTest is BaseTest {
     using CastLib for *;
-    using UpdateContractMessageLib for *;
     using UpdateRestrictionMessageLib for *;
 
     uint128 defaultAmount;
@@ -81,11 +79,7 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
         bytes32 rootHash = tree[tree.length - 1][0];
 
         vm.prank(address(spoke));
-        manager.trustedCall(
-            POOL_A,
-            defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: rootHash}).serialize()
-        );
+        manager.trustedCall(POOL_A, defaultTypedShareClassId, abi.encode(address(this).toBytes32(), rootHash));
     }
 
     function _selector(string memory signature) internal pure returns (bytes4) {
@@ -380,7 +374,6 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
 
 contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
     using CastLib for *;
-    using UpdateContractMessageLib for *;
 
     function testReceiveEther() public {
         (bool success,) = address(manager).call{value: 1 ether}("");
