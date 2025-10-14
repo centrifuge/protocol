@@ -220,13 +220,13 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 m.isSnapshot,
                 m.nonce
             );
-        } else if (kind == MessageType.MaxAssetPriceAge) {
-            MessageLib.MaxAssetPriceAge memory m = message.deserializeMaxAssetPriceAge();
+        } else if (kind == MessageType.SetMaxAssetPriceAge) {
+            MessageLib.SetMaxAssetPriceAge memory m = message.deserializeSetMaxAssetPriceAge();
             spoke.setMaxAssetPriceAge(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.maxPriceAge
             );
-        } else if (kind == MessageType.MaxSharePriceAge) {
-            MessageLib.MaxSharePriceAge memory m = message.deserializeMaxSharePriceAge();
+        } else if (kind == MessageType.SetMaxSharePriceAge) {
+            MessageLib.SetMaxSharePriceAge memory m = message.deserializeSetMaxSharePriceAge();
             spoke.setMaxSharePriceAge(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.maxPriceAge);
         } else if (kind == MessageType.UpdateGatewayManager) {
             MessageLib.UpdateGatewayManager memory m = message.deserializeUpdateGatewayManager();

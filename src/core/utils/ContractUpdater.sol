@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {PoolId} from "./types/PoolId.sol";
-import {ShareClassId} from "./types/ShareClassId.sol";
-import {IContractUpdateGatewayHandler} from "./messaging/interfaces/IGatewayHandlers.sol";
 import {ITrustedContractUpdate, IUntrustedContractUpdate} from "./interfaces/IContractUpdate.sol";
 
-import {Auth} from "../misc/Auth.sol";
+import {Auth} from "../../misc/Auth.sol";
+
+import {IContractUpdateGatewayHandler} from "../messaging/interfaces/IGatewayHandlers.sol";
+
+import {PoolId} from "../types/PoolId.sol";
+import {ShareClassId} from "../types/ShareClassId.sol";
 
 contract ContractUpdater is Auth, IContractUpdateGatewayHandler {
     event TrustedContractUpdate(PoolId indexed poolId, ShareClassId indexed scId, address target, bytes payload);
