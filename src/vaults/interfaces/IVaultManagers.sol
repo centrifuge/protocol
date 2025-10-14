@@ -9,7 +9,7 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
+import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 //----------------------------------------------------------------------------------------------
 // Deposit Manager Interfaces
@@ -240,6 +240,12 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
     error ExceedsMaxMint();
     error ShareTokenDoesNotExist();
     error SecondaryManagerDoesNotExist();
+    error UnknownTrustedCall();
+
+    enum TrustedCall {
+        Valuation,
+        MaxReserve
+    }
 
     /// @notice Updates contract parameters of type address.
     /// @param what The bytes32 representation of 'gateway' or 'spoke'.
