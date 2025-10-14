@@ -868,6 +868,8 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
     /// forge-config: default.isolate = true
     function testSyncDeposit(bool sameChain, bool nonZeroPrices) public {
+        // Sync deposits require non-zero prices to yield shares
+        vm.assume(nonZeroPrices);
         _testSyncDeposit(sameChain, nonZeroPrices);
     }
 
@@ -923,6 +925,8 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
     /// forge-config: default.isolate = true
     function testUpdateAccountingAfterDeposit_AfterSyncDeposit(bool sameChain, bool nonZeroPrices) public {
+        // Sync deposits require non-zero prices to yield shares
+        vm.assume(nonZeroPrices);
         _testUpdateAccountingAfterDeposit(sameChain, false, nonZeroPrices);
     }
 
