@@ -73,13 +73,9 @@ contract LaunchDeployer is FullDeployer {
 
         // Cache version hash to avoid redundant hash recalculation
         if (input.core.version == "3.1") _verifyAdmin(input.adminSafe);
-
-        // Pre-flight: if LayerZero should deploy, ensure PROTOCOL_ADMIN is set
-        if (input.adapters.layerZero.shouldDeploy) {
-            address protocolAdminEnv = vm.envAddress("PROTOCOL_ADMIN");
-            require(protocolAdminEnv != address(0), "PROTOCOL_ADMIN not set for LayerZero deployment");
-            console.log("LayerZero delegate (PROTOCOL_ADMIN):", vm.toString(protocolAdminEnv));
-        }
+        
+        address protocolAdminEnv = vm.envAddress("PROTOCOL_ADMIN");
+        require(protocolAdminEnv != address(0), "PROTOCOL_ADMIN not set");
 
         deployFull(input, batcher);
 
