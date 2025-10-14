@@ -142,11 +142,8 @@ contract ProtocolGuardian is IProtocolGuardian {
     }
 
     /// @inheritdoc IBaseGuardian
-    function wire(address adapter, uint16 centrifugeId, uint8 gasBufferPercentage, bytes memory data)
-        external
-        onlySafe
-    {
-        IAdapterWiring(adapter).wire(centrifugeId, gasBufferPercentage, data);
+    function wire(address adapter, uint16 centrifugeId, bytes memory data) external onlySafe {
+        IAdapterWiring(adapter).wire(centrifugeId, data);
     }
 
     //----------------------------------------------------------------------------------------------

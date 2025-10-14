@@ -30,7 +30,6 @@ contract OpsGuardianTest is Test {
     PoolId constant GLOBAL_POOL = PoolId.wrap(0);
     PoolId constant POOL_1 = PoolId.wrap(1);
     AssetId constant CURRENCY = AssetId.wrap(1);
-    uint8 constant GAS_MULTIPLIER = 10; // 10%
 
     OpsGuardian opsGuardian;
 
@@ -190,18 +189,14 @@ contract OpsGuardianTestWire is OpsGuardianTest {
             address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.isWired.selector, CENTRIFUGE_ID), abi.encode(false)
         );
         vm.mockCall(
-            address(ADAPTER),
-            abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, GAS_MULTIPLIER, data),
-            abi.encode()
+            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data), abi.encode()
         );
 
         vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.isWired.selector, CENTRIFUGE_ID));
-        vm.expectCall(
-            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, GAS_MULTIPLIER, data)
-        );
+        vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data));
 
         vm.prank(address(SAFE));
-        opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, GAS_MULTIPLIER, data);
+        opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
     }
 
     function testWireRevertWhenAlreadyWired() public {
@@ -213,7 +208,7 @@ contract OpsGuardianTestWire is OpsGuardianTest {
 
         vm.prank(address(SAFE));
         vm.expectRevert(IOpsGuardian.AdapterAlreadyWired.selector);
-        opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, GAS_MULTIPLIER, data);
+        opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
     }
 
     function testWireRevertWhenNotSafe() public {
@@ -221,6 +216,6 @@ contract OpsGuardianTestWire is OpsGuardianTest {
 
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
-        opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, GAS_MULTIPLIER, data);
+        opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
     }
 }

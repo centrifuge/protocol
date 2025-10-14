@@ -47,10 +47,13 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapterWiring
-    function wire(uint16 centrifugeId, uint8 gasBufferPercentage, bytes memory data) external auth {
-        (string memory axelarId, string memory adapter) = abi.decode(data, (string, string));
+    /// @dev   First encoded param is a payment overhead to ensure the message is computed despite price fluctuations.
+    ///        Measured as % over the given gasLimit. i.e: `10` means added a 10% over gasLimit
+    function wire(uint16 centrifugeId, bytes memory data) external auth {
+        (uint8 gasBufferPercentage, string memory axelarId, string memory adapter) =
+            abi.decode(data, (uint8, string, string));
         sources[axelarId] = AxelarSource(centrifugeId, keccak256(bytes(adapter)));
-        destinations[centrifugeId] = AxelarDestination(axelarId, gasBufferPercentage, adapter);
+        destinations[centrifugeId] = AxelarDestination(gasBufferPercentage, axelarId, adapter);
         emit Wire(centrifugeId, axelarId, adapter);
     }
 

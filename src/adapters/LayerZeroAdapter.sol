@@ -54,10 +54,12 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapterWiring
-    function wire(uint16 centrifugeId, uint8 gasBufferPercentage, bytes memory data) external auth {
-        (uint32 layerZeroEid, address adapter) = abi.decode(data, (uint32, address));
+    /// @dev   First encoded param is a payment overhead to ensure the message is computed despite price fluctuations.
+    ///        Measured as % over the given gasLimit. i.e: `10` means added a 10% over gasLimit
+    function wire(uint16 centrifugeId, bytes memory data) external auth {
+        (uint8 gasBufferPercentage, uint32 layerZeroEid, address adapter) = abi.decode(data, (uint8, uint32, address));
         sources[layerZeroEid] = LayerZeroSource(centrifugeId, adapter);
-        destinations[centrifugeId] = LayerZeroDestination(layerZeroEid, gasBufferPercentage, adapter);
+        destinations[centrifugeId] = LayerZeroDestination(gasBufferPercentage, layerZeroEid, adapter);
         emit Wire(centrifugeId, layerZeroEid, adapter);
     }
 

@@ -79,7 +79,7 @@ contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
     function testWireErrNotAuthorized() public {
         vm.prank(makeAddr("NotAuthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.wire(CENTRIFUGE_ID, GAS_MULTIPLIER, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(GAS_MULTIPLIER, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
     }
 
     function testWire() public {
@@ -89,13 +89,13 @@ contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
 
         vm.expectEmit();
         emit ILayerZeroAdapter.Wire(CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
-        adapter.wire(CENTRIFUGE_ID, GAS_MULTIPLIER, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(GAS_MULTIPLIER, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
 
         vm.assertEq(
             adapter.allowInitializePath(Origin(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR.toBytes32LeftPadded(), 0)), true
         );
 
-        (uint32 layerZeroid, uint8 gasBufferPercentage, address remoteDestAddress) = adapter.destinations(CENTRIFUGE_ID);
+        (uint8 gasBufferPercentage, uint32 layerZeroid, address remoteDestAddress) = adapter.destinations(CENTRIFUGE_ID);
         assertEq(layerZeroid, LAYERZERO_ID);
         assertEq(remoteDestAddress, REMOTE_LAYERZERO_ADDR);
         assertEq(gasBufferPercentage, GAS_MULTIPLIER);
@@ -107,7 +107,7 @@ contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
 
     function testIsWired() public {
         assertFalse(adapter.isWired(CENTRIFUGE_ID));
-        adapter.wire(CENTRIFUGE_ID, GAS_MULTIPLIER, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(GAS_MULTIPLIER, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
         assertTrue(adapter.isWired(CENTRIFUGE_ID));
     }
 }
@@ -144,7 +144,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
     }
 
     function testEstimate(uint64 gasLimit) public {
-        adapter.wire(CENTRIFUGE_ID, GAS_MULTIPLIER, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(GAS_MULTIPLIER, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
 
         bytes memory payload = "irrelevant";
         assertEq(adapter.estimate(CENTRIFUGE_ID, payload, gasLimit), 200_000);
@@ -174,7 +174,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
             Origin(LAYERZERO_ID, validAddress.toBytes32LeftPadded(), 0), bytes32("1"), payload, EXECUTOR, bytes("")
         );
 
-        adapter.wire(CENTRIFUGE_ID, GAS_MULTIPLIER, abi.encode(LAYERZERO_ID, validAddress));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(GAS_MULTIPLIER, LAYERZERO_ID, validAddress));
 
         // Incorrect address
         vm.prank(address(endpoint));
@@ -218,7 +218,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         vm.expectRevert(IAdapter.UnknownChainId.selector);
         adapter.send{value: 0.1 ether}(CENTRIFUGE_ID, payload, gasLimit, refund);
 
-        adapter.wire(CENTRIFUGE_ID, GAS_MULTIPLIER, abi.encode(LAYERZERO_ID, makeAddr("DestinationAdapter")));
+        adapter.wire(CENTRIFUGE_ID, abi.encode(GAS_MULTIPLIER, LAYERZERO_ID, makeAddr("DestinationAdapter")));
 
         vm.deal(address(this), 0.1 ether);
         vm.prank(address(GATEWAY));
