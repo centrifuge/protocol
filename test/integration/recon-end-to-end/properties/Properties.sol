@@ -316,13 +316,18 @@ abstract contract Properties is
                 vaultRegistry.vaultDetails(_getVault()).assetId
             );
 
+            uint256 nowRedeemEpoch = batchRequestManager.nowRedeemEpoch(
+                _getVault().poolId(),
+                _getVault().scId(),
+                vaultRegistry.vaultDetails(_getVault()).assetId
+            );
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should
             // not change
             if (Helpers.canMutate(lastUpdate, pending, redeemEpochId)) {
                 // nowRedeemEpoch = redeemEpochId + 1
                 eq(
                     lastUpdate,
-                    redeemEpochId + 1,
+                    nowRedeemEpoch,
                     "lastUpdate != nowRedeemEpoch after redeemRequest"
                 );
             }
