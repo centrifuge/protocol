@@ -11,13 +11,13 @@ import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IHubRequestManagerCallback} from "../../../src/core/hub/interfaces/IHubRequestManagerCallback.sol";
 import {
     IHubRequestManager,
     IHubRequestManagerNotifications
 } from "../../../src/core/hub/interfaces/IHubRequestManager.sol";
-import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 
 import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
 import {
