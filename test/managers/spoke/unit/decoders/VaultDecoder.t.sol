@@ -28,7 +28,7 @@ contract VaultDecoderERC4626Test is VaultDecoderTest {
         assertEq(addressesFound, expected);
     }
 
-    function testDepositFuzz(uint256 assets, address receiver) public {
+    function testDepositFuzz(uint256 assets, address receiver) public view {
         bytes memory addressesFound = decoder.deposit(assets, receiver);
 
         bytes memory expected = abi.encodePacked(receiver);
@@ -45,7 +45,7 @@ contract VaultDecoderERC4626Test is VaultDecoderTest {
         assertEq(addressesFound, expected);
     }
 
-    function testMintFuzz(uint256 shares, address receiver) public {
+    function testMintFuzz(uint256 shares, address receiver) public view {
         bytes memory addressesFound = decoder.mint(shares, receiver);
 
         bytes memory expected = abi.encodePacked(receiver);
@@ -63,7 +63,7 @@ contract VaultDecoderERC4626Test is VaultDecoderTest {
         assertEq(addressesFound, expected);
     }
 
-    function testWithdrawFuzz(uint256 assets, address receiver, address owner) public {
+    function testWithdrawFuzz(uint256 assets, address receiver, address owner) public view {
         bytes memory addressesFound = decoder.withdraw(assets, receiver, owner);
 
         bytes memory expected = abi.encodePacked(receiver, owner);
@@ -81,7 +81,7 @@ contract VaultDecoderERC4626Test is VaultDecoderTest {
         assertEq(addressesFound, expected);
     }
 
-    function testRedeemFuzz(uint256 shares, address receiver, address owner) public {
+    function testRedeemFuzz(uint256 shares, address receiver, address owner) public view {
         bytes memory addressesFound = decoder.redeem(shares, receiver, owner);
 
         bytes memory expected = abi.encodePacked(receiver, owner);
@@ -101,7 +101,7 @@ contract VaultDecoderERC7540Test is VaultDecoderTest {
         assertEq(addressesFound, expected);
     }
 
-    function testRequestDepositFuzz(uint256 assets, address controller, address owner) public {
+    function testRequestDepositFuzz(uint256 assets, address controller, address owner) public view {
         bytes memory addressesFound = decoder.requestDeposit(assets, controller, owner);
 
         bytes memory expected = abi.encodePacked(controller, owner);
@@ -119,7 +119,7 @@ contract VaultDecoderERC7540Test is VaultDecoderTest {
         assertEq(addressesFound, expected);
     }
 
-    function testRequestRedeemFuzz(uint256 shares, address controller, address owner) public {
+    function testRequestRedeemFuzz(uint256 shares, address controller, address owner) public view {
         bytes memory addressesFound = decoder.requestRedeem(shares, controller, owner);
 
         bytes memory expected = abi.encodePacked(controller, owner);
@@ -138,7 +138,7 @@ contract VaultDecoderERC7887Test is VaultDecoderTest {
         assertEq(addressesFound, expected);
     }
 
-    function testCancelDepositRequestFuzz(uint256 requestId, address controller) public {
+    function testCancelDepositRequestFuzz(uint256 requestId, address controller) public view {
         bytes memory addressesFound = decoder.cancelDepositRequest(requestId, controller);
 
         bytes memory expected = abi.encodePacked(controller);
@@ -155,7 +155,7 @@ contract VaultDecoderERC7887Test is VaultDecoderTest {
         assertEq(addressesFound, expected);
     }
 
-    function testCancelRedeemRequestFuzz(uint256 requestId, address controller) public {
+    function testCancelRedeemRequestFuzz(uint256 requestId, address controller) public view {
         bytes memory addressesFound = decoder.cancelRedeemRequest(requestId, controller);
 
         bytes memory expected = abi.encodePacked(controller);
@@ -173,7 +173,7 @@ contract VaultDecoderERC7887Test is VaultDecoderTest {
         assertEq(addressesFound, expected);
     }
 
-    function testClaimCancelDepositRequestFuzz(uint256 requestId, address receiver, address controller) public {
+    function testClaimCancelDepositRequestFuzz(uint256 requestId, address receiver, address controller) public view {
         bytes memory addressesFound = decoder.claimCancelDepositRequest(requestId, receiver, controller);
 
         bytes memory expected = abi.encodePacked(receiver, controller);
@@ -191,7 +191,7 @@ contract VaultDecoderERC7887Test is VaultDecoderTest {
         assertEq(addressesFound, expected);
     }
 
-    function testClaimCancelRedeemRequestFuzz(uint256 requestId, address receiver, address controller) public {
+    function testClaimCancelRedeemRequestFuzz(uint256 requestId, address receiver, address controller) public view {
         bytes memory addressesFound = decoder.claimCancelRedeemRequest(requestId, receiver, controller);
 
         bytes memory expected = abi.encodePacked(receiver, controller);
@@ -241,6 +241,7 @@ contract VaultDecoderInheritedFunctionsTest is VaultDecoderTest {
         bytes memory data = abi.encodeWithSignature("nonExistentFunction()");
 
         vm.expectRevert(abi.encodeWithSelector(BaseDecoder.FunctionNotImplemented.selector, data));
-        address(decoder).call(data);
+        (bool success,) = address(decoder).call(data);
+        success; // Suppress warning
     }
 }

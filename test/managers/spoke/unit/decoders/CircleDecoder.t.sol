@@ -32,6 +32,7 @@ contract CircleDecoderDepositForBurnTest is CircleDecoderTest {
 
     function testDepositForBurnFuzz(uint256 amount, uint32 destinationDomain, bytes32 mintRecipient, address burnToken)
         public
+        view
     {
         bytes memory addressesFound = decoder.depositForBurn(amount, destinationDomain, mintRecipient, burnToken);
 
@@ -120,6 +121,7 @@ contract CircleDecoderInheritedFunctionsTest is CircleDecoderTest {
         bytes memory data = abi.encodeWithSignature("nonExistentFunction()");
 
         vm.expectRevert(abi.encodeWithSelector(BaseDecoder.FunctionNotImplemented.selector, data));
-        address(decoder).call(data);
+        (bool success,) = address(decoder).call(data);
+        success; // Suppress warning
     }
 }
