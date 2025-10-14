@@ -51,6 +51,7 @@ interface INAVManager is ISnapshotHook {
         uint128 sharesTransferred
     );
 
+    error NotAuthorized();
     error MismatchedEpochs();
     error AlreadyInitialized();
     error NotInitialized();

@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {INAVHook} from "./interfaces/INAVManager.sol";
 import {ISimplePriceManager} from "./interfaces/ISimplePriceManager.sol";
 
-import {Auth} from "../../misc/Auth.sol";
 import {D18, d18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
@@ -15,9 +14,10 @@ import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "../../core/hub/interfaces/IShareClassManager.sol";
 
 /// @notice Base share price calculation manager for single share class pools.
-contract SimplePriceManager is ISimplePriceManager, Auth {
-    IGateway public immutable gateway;
+contract SimplePriceManager is ISimplePriceManager {
     IHub public immutable hub;
+    IGateway public immutable gateway;
+    address public immutable navUpdater;
     IHubRegistry public immutable hubRegistry;
     IShareClassManager public immutable shareClassManager;
 
@@ -25,11 +25,12 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     mapping(PoolId => uint16[]) internal _notifiedNetworks;
     mapping(PoolId => mapping(uint16 centrifugeId => NetworkMetrics)) public networkMetrics;
 
-    constructor(IHub hub_, address deployer) Auth(deployer) {
+    constructor(IHub hub_, address navUpdater_) {
         hub = hub_;
         gateway = hub_.gateway();
         hubRegistry = hub_.hubRegistry();
         shareClassManager = hub_.shareClassManager();
+        navUpdater = navUpdater_;
     }
 
     modifier onlyHubManager(PoolId poolId) {
@@ -70,11 +71,8 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc INAVHook
-    function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue)
-        public
-        virtual
-        auth
-    {
+    function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) public virtual {
+        require(msg.sender == navUpdater, NotAuthorized());
         require(scId.index() == 1, InvalidShareClass());
 
         gateway.withBatch(
@@ -118,7 +116,8 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         uint16 fromCentrifugeId,
         uint16 toCentrifugeId,
         uint128 sharesTransferred
-    ) external auth {
+    ) external {
+        require(msg.sender == navUpdater, NotAuthorized());
         require(scId.index() == 1, InvalidShareClass());
         NetworkMetrics storage fromMetrics = networkMetrics[poolId][fromCentrifugeId];
         NetworkMetrics storage toMetrics = networkMetrics[poolId][toCentrifugeId];
