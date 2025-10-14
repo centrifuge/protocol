@@ -40,6 +40,8 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     IGateway public immutable gateway;
     IVaultRegistry public immutable vaultRegistry;
 
+    address internal transient _sender;
+
     /// @inheritdoc IVaultRouter
     mapping(address controller => mapping(IBaseVault vault => uint256 amount)) public lockedRequests;
 
@@ -52,15 +54,15 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         vaultRegistry = vaultRegistry_;
     }
 
-    function multicall(bytes[] calldata data) public payable override protected {
-        _multicallSource = address(gateway);
+    function multicall(bytes[] calldata data) public payable override {
+        _sender = msg.sender;
         gateway.withBatch{value: msg.value}(
             abi.encodeWithSelector(VaultRouter.executeMulticall.selector, data), msg.sender
         );
-        _multicallSource = address(0);
+        _sender = address(0);
     }
 
-    function executeMulticall(bytes[] calldata data) external payable {
+    function executeMulticall(bytes[] calldata data) external payable protected {
         gateway.lockCallback();
         super.multicall(data);
     }
@@ -285,5 +287,9 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     ///         on behalf of the controller.
     function _canClaim(IBaseVault vault, address receiver, address controller) internal view {
         require(controller == msgSender() || (controller == receiver && isEnabled(vault, controller)), InvalidSender());
+    }
+
+    function msgSender() internal view virtual returns (address) {
+        return _sender != address(0) ? _sender : msg.sender;
     }
 }
