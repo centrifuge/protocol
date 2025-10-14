@@ -71,9 +71,7 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
         gateway.lockCallback();
 
         ShareClassQueueState storage sc = scQueueState[poolId][scId];
-        require(
-            sc.lastSync == 0 || sc.minDelay == 0 || block.timestamp >= sc.lastSync + sc.minDelay, MinDelayNotElapsed()
-        );
+        require(sc.lastSync == 0 || block.timestamp >= sc.lastSync + sc.minDelay, MinDelayNotElapsed());
 
         for (uint256 i = 0; i < assetIds.length; i++) {
             bytes32 key = keccak256(abi.encode(assetIds[i].raw()));
