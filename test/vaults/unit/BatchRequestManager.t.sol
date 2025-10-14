@@ -77,7 +77,9 @@ contract HubRegistryMock {
 }
 
 contract BatchRequestManagerHarness is BatchRequestManager {
-    constructor(IHubRegistry hubRegistry_, IGateway gateway_, address deployer) BatchRequestManager(hubRegistry_, gateway_, deployer) {}
+    constructor(IHubRegistry hubRegistry_, IGateway gateway_, address deployer)
+        BatchRequestManager(hubRegistry_, gateway_, deployer)
+    {}
 
     function claimDeposit(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
         public
@@ -133,7 +135,8 @@ abstract contract BatchRequestManagerBaseTest is Test {
 
     function setUp() public virtual {
         hubRegistryMock = new HubRegistryMock();
-        batchRequestManager = new BatchRequestManagerHarness(IHubRegistry(address(hubRegistryMock)), gateway, address(this));
+        batchRequestManager =
+            new BatchRequestManagerHarness(IHubRegistry(address(hubRegistryMock)), gateway, address(this));
 
         vm.mockCall(
             address(hub),

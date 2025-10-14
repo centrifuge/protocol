@@ -12,7 +12,7 @@ contract BatchedMulticallImpl is BatchedMulticall, Test {
     constructor(IGateway gateway) BatchedMulticall(gateway) {}
 
     function isBatching() external view returns (bool) {
-        return _isBatching;
+        return _sender != address(0);
     }
 
     function nonZeroPayment() external payable {

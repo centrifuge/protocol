@@ -13,7 +13,7 @@ import {IGateway} from "../messaging/interfaces/IGateway.sol";
 ///         while coordinating payment handling across batched operations.
 abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
     IGateway public gateway;
-    bool internal transient _isBatching;
+    address internal transient _sender;
 
     constructor(IGateway gateway_) {
         gateway = gateway_;
@@ -21,25 +21,27 @@ abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
 
     /// @inheritdoc IMulticall
     /// @notice With extra support for batching
-    function multicall(bytes[] calldata data) public payable override protected {
+    function multicall(bytes[] calldata data) public payable override {
         require(!gateway.isBatching(), IGateway.AlreadyBatching());
 
-        _isBatching = true;
-        _multicallSource = address(gateway);
+        _sender = msg.sender;
         gateway.withBatch{value: msg.value}(
             abi.encodeWithSelector(BatchedMulticall.executeMulticall.selector, data), msg.sender
         );
-        _multicallSource = address(0);
-        _isBatching = false;
+        _sender = address(0);
     }
 
-    function executeMulticall(bytes[] calldata data) external payable {
+    function executeMulticall(bytes[] calldata data) external payable protected {
         gateway.lockCallback();
         super.multicall(data);
     }
 
+    function msgSender() internal view virtual returns (address) {
+        return _sender != address(0) ? _sender : msg.sender;
+    }
+
     /// @dev gives the current msg.value depending on the batching state
     function _payment() internal view returns (uint256 value) {
-        return _isBatching ? 0 : msg.value;
+        return _sender != address(0) ? 0 : msg.value;
     }
 }

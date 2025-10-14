@@ -99,7 +99,7 @@ contract MulticallTest is Test {
         bytes[] memory calls = new bytes[](1);
         calls[0] = abi.encodeWithSelector(multicall.addWithReentrancy.selector, 2);
 
-        vm.expectPartialRevert(ReentrancyProtection.UnauthorizedSender.selector);
+        vm.expectRevert(ReentrancyProtection.UnauthorizedSender.selector);
         multicall.multicall(calls);
     }
 }
