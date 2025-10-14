@@ -123,6 +123,10 @@ contract GatewayExt is Gateway {
             emit FailMessage(centrifugeId, message, messageHash, err);
         }
     }
+
+    function batcher() public view returns (address) {
+        return _batcher;
+    }
 }
 
 // -----------------------------------------
@@ -860,26 +864,27 @@ contract GatewayTestBlockOutgoing is GatewayTest {
 
 contract IntegrationMock is Test {
     bool public wasCalled;
-    IGateway public gateway;
+    GatewayExt public gateway;
 
-    constructor(IGateway gateway_) {
+    constructor(GatewayExt gateway_) {
         gateway = gateway_;
     }
 
     function _nested() external payable {
-        assertEq(gateway.lockCallback(), address(this));
+        gateway.lockCallback();
         gateway.withBatch(abi.encodeWithSelector(this._success.selector, false, 2), address(0));
     }
 
     function _emptyError() external payable {
-        assertEq(gateway.lockCallback(), address(this));
+        gateway.lockCallback();
         revert();
     }
 
     function _notLocked() external payable {}
 
     function _success(bool, uint256) external payable {
-        assertEq(gateway.lockCallback(), address(this));
+        assertEq(gateway.batcher(), address(this));
+        gateway.lockCallback();
         wasCalled = true;
     }
 
@@ -970,6 +975,6 @@ contract GatewayTestWithBatch is GatewayTest {
 contract GatewayTestLockCallback is GatewayTest {
     function testErrCallbackIsLocked() public {
         vm.expectRevert(IGateway.CallbackIsLocked.selector);
-        assertEq(gateway.lockCallback(), address(0));
+        gateway.lockCallback();
     }
 }
