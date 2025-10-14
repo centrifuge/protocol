@@ -54,10 +54,12 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapterWiring
+    /// @dev   First encoded param is a payment overhead to ensure the message is computed despite price fluctuations.
+    ///        Measured as % over the given gasLimit. i.e: `10` means added a 10% over gasLimit
     function wire(uint16 centrifugeId, bytes memory data) external auth {
-        (uint32 layerZeroEid, address adapter) = abi.decode(data, (uint32, address));
+        (uint8 gasBufferPercentage, uint32 layerZeroEid, address adapter) = abi.decode(data, (uint8, uint32, address));
         sources[layerZeroEid] = LayerZeroSource(centrifugeId, adapter);
-        destinations[centrifugeId] = LayerZeroDestination(layerZeroEid, adapter);
+        destinations[centrifugeId] = LayerZeroDestination(gasBufferPercentage, layerZeroEid, adapter);
         emit Wire(centrifugeId, layerZeroEid, adapter);
     }
 
@@ -113,8 +115,10 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         LayerZeroDestination memory destination = destinations[centrifugeId];
         require(destination.layerZeroEid != 0, UnknownChainId());
 
-        MessagingReceipt memory receipt =
-            endpoint.send{value: msg.value}(_params(destination, payload, gasLimit + RECEIVE_COST), refund);
+        MessagingReceipt memory receipt = endpoint.send{value: msg.value}(
+            _params(destination, payload, (gasLimit + RECEIVE_COST) * (100 + destination.gasBufferPercentage) / 100),
+            refund
+        );
         adapterData = receipt.guid;
     }
 
@@ -123,7 +127,10 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         LayerZeroDestination memory destination = destinations[centrifugeId];
         require(destination.layerZeroEid != 0, UnknownChainId());
 
-        MessagingFee memory fee = endpoint.quote(_params(destination, payload, gasLimit + RECEIVE_COST), address(this));
+        MessagingFee memory fee = endpoint.quote(
+            _params(destination, payload, (gasLimit + RECEIVE_COST) * (100 + destination.gasBufferPercentage) / 100),
+            address(this)
+        );
         return fee.nativeFee;
     }
 
