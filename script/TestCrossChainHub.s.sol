@@ -109,75 +109,14 @@ contract TestCrossChainHub is BaseTestData {
     function _setupCrossChainPools() internal {
         console.log("\n=== Creating Cross-Chain Pools ===\n");
 
-        // Create pools for each connected network
+        // Create pools for each connected network in a separate stack frame
         for (uint256 i = 0; i < connectedNetworks.length; i++) {
-            string memory spokeNetworkName = connectedNetworks[i];
-            string memory spokeConfigFile = string.concat("env/", spokeNetworkName, ".json");
-            string memory spokeConfig = vm.readFile(spokeConfigFile);
-            uint16 spokeCentrifugeId = uint16(vm.parseJsonUint(spokeConfig, "$.network.centrifugeId"));
-
-            string memory setupMsg = string.concat(
-                "\n--- Setting up pools for ",
-                spokeNetworkName,
-                " (centrifugeId: ",
-                vm.toString(spokeCentrifugeId),
-                ") ---"
-            );
-            console.log(setupMsg);
-
-            // Compute the canonical assetId for this network
-            AssetId assetId = newAssetId(spokeCentrifugeId, 1);
-
-            // If asset is not registered yet, deploy a fresh USDC and register it for the spoke
-            bool assetAlreadyRegistered = hubRegistry.isRegistered(assetId);
-            address usdcAddr = address(0);
-            if (!assetAlreadyRegistered) {
-                ERC20 usdc = new ERC20(6);
-                usdc.file("name", "USD Coin");
-                usdc.file("symbol", "USDC");
-                usdc.mint(msg.sender, 100_000_000e6);
-                usdcAddr = address(usdc);
-                console.log("Deployed test USDC:", usdcAddr);
-
-                // Register asset for this spoke chain
-                spoke.registerAsset(spokeCentrifugeId, usdcAddr, 0, msg.sender);
-                console.log("Registered asset ID:", assetId.raw());
-            } else {
-                console.log("Asset already registered for spoke centrifugeId:", spokeCentrifugeId);
-            }
-
-            // Determine deterministic pool indices (uint48 per HubRegistry API)
-            uint48 asyncPoolIndex = uint48(uint64(spokeCentrifugeId) * 1000 + poolIndexOffset * 2 + 1);
-            uint48 syncPoolIndex  = uint48(uint64(spokeCentrifugeId) * 1000 + poolIndexOffset * 2 + 2);
-
-            // Compute PoolIds and check existence
-            PoolId asyncPoolId = hubRegistry.poolId(spokeCentrifugeId, asyncPoolIndex);
-            PoolId syncPoolId  = hubRegistry.poolId(spokeCentrifugeId, syncPoolIndex);
-
-            bool asyncExists = hubRegistry.exists(asyncPoolId);
-            bool syncExists  = hubRegistry.exists(syncPoolId);
-
-            // Create async vault pool if not present
-            if (!asyncExists) {
-                // Ensure we have a USDC address if needed by deploy helpers
-                ERC20 usdcForAsync = usdcAddr != address(0) ? ERC20(usdcAddr) : ERC20(address(0));
-                _createAsyncVaultPool(spokeCentrifugeId, spokeNetworkName, usdcForAsync, assetId);
-            } else {
-                console.log("Async pool already exists, skipping:", vm.toString(abi.encode(asyncPoolId)));
-            }
-
-            // Create sync deposit vault pool if not present
-            if (!syncExists) {
-                ERC20 usdcForSync = usdcAddr != address(0) ? ERC20(usdcAddr) : ERC20(address(0));
-                _createSyncDepositVaultPool(spokeCentrifugeId, spokeNetworkName, usdcForSync, assetId);
-            } else {
-                console.log("Sync pool already exists, skipping:", vm.toString(abi.encode(syncPoolId)));
-            }
+            _processNetwork(connectedNetworks[i]);
         }
 
         console.log("\n=== Cross-Chain Pool Setup Complete ===");
         console.log("\nNext steps:");
-        console.log("1. Wait for cross-chain messages to relay (2-5 minutes)");
+        console.log("1. Wait for cross-chain messages to relay (10-20 minutes)");
         console.log("2. Monitor message relayers:");
         console.log("   - Axelar: https://testnet.axelarscan.io");
         console.log("   - Wormhole: https://wormholescan.io");
@@ -188,6 +127,65 @@ contract TestCrossChainHub is BaseTestData {
         console.log("   export POOL_INDEX_OFFSET=%s", poolIndexOffset);
         console.log("   export TEST_RUN_ID=%s", testRunId);
         console.log("   forge script script/TestCrossChainSpoke.s.sol:TestCrossChainSpoke --rpc-url $RPC_URL -vvvv");
+    }
+
+    function _processNetwork(string memory spokeNetworkName) internal {
+        string memory spokeConfigFile = string.concat("env/", spokeNetworkName, ".json");
+        string memory spokeConfig = vm.readFile(spokeConfigFile);
+        uint16 spokeCentrifugeId = uint16(vm.parseJsonUint(spokeConfig, "$.network.centrifugeId"));
+
+        console.log("\n--- Setting up pools for:", spokeNetworkName);
+        console.log("centrifugeId:", spokeCentrifugeId);
+
+        // Compute the canonical assetId for this network
+        AssetId assetId = newAssetId(spokeCentrifugeId, 1);
+
+        // If asset is not registered yet, deploy a fresh USDC and register it for the spoke
+        address usdcAddr = address(0);
+        if (!hubRegistry.isRegistered(assetId)) {
+            ERC20 usdc = new ERC20(6);
+            usdc.file("name", "USD Coin");
+            usdc.file("symbol", "USDC");
+            usdc.mint(msg.sender, 100_000_000e6);
+            usdcAddr = address(usdc);
+            console.log("Deployed test USDC:", usdcAddr);
+
+            // Register asset for this spoke chain
+            if (xcGasPerCall == 0) {
+                xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
+            }
+            spoke.registerAsset{value: xcGasPerCall}(spokeCentrifugeId, usdcAddr, 0, msg.sender);
+            console.log("Registered asset ID:", assetId.raw());
+        } else {
+            console.log("Asset already registered for spoke centrifugeId:", spokeCentrifugeId);
+        }
+
+        // Determine deterministic pool indices (uint48 per HubRegistry API)
+        uint48 asyncPoolIndex = uint48(uint64(spokeCentrifugeId) * 1000 + poolIndexOffset * 2 + 1);
+        uint48 syncPoolIndex  = uint48(uint64(spokeCentrifugeId) * 1000 + poolIndexOffset * 2 + 2);
+
+        // Compute PoolIds and check existence
+        PoolId asyncPoolId = hubRegistry.poolId(spokeCentrifugeId, asyncPoolIndex);
+        PoolId syncPoolId  = hubRegistry.poolId(spokeCentrifugeId, syncPoolIndex);
+
+        bool asyncExists = hubRegistry.exists(asyncPoolId);
+        bool syncExists  = hubRegistry.exists(syncPoolId);
+
+        // Create async vault pool if not present
+        if (!asyncExists) {
+            ERC20 usdcForAsync = usdcAddr != address(0) ? ERC20(usdcAddr) : ERC20(address(0));
+            _createAsyncVaultPool(spokeCentrifugeId, spokeNetworkName, usdcForAsync, assetId);
+        } else {
+            console.log("Async pool already exists, skipping:", vm.toString(abi.encode(asyncPoolId)));
+        }
+
+        // Create sync deposit vault pool if not present
+        if (!syncExists) {
+            ERC20 usdcForSync = usdcAddr != address(0) ? ERC20(usdcAddr) : ERC20(address(0));
+            _createSyncDepositVaultPool(spokeCentrifugeId, spokeNetworkName, usdcForSync, assetId);
+        } else {
+            console.log("Sync pool already exists, skipping:", vm.toString(abi.encode(syncPoolId)));
+        }
     }
 
     function _createAsyncVaultPool(
@@ -208,6 +206,7 @@ contract TestCrossChainHub is BaseTestData {
 
         (PoolId poolId, ShareClassId scId) = deployAsyncVault(
             AsyncVaultParams({
+                hubCentrifugeId: hubCentrifugeId,
                 targetCentrifugeId: spokeCentrifugeId,
                 poolIndex: asyncPoolIndex,
                 token: token,
@@ -246,6 +245,7 @@ contract TestCrossChainHub is BaseTestData {
 
         (PoolId poolId, ShareClassId scId) = deploySyncDepositVault(
             SyncVaultParams({
+                hubCentrifugeId: hubCentrifugeId,
                 targetCentrifugeId: spokeCentrifugeId,
                 poolIndex: syncPoolIndex,
                 token: token,

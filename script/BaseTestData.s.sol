@@ -44,7 +44,7 @@ import {UpdateContractMessageLib} from "../src/libraries/UpdateContractMessageLi
  * @title BaseTestData
  * @notice Base contract with reusable pool and vault setup functions
  * @dev This contract contains common logic for setting up test pools and vaults,
- *      extracted from TestData.s.sol. The logic is identical to the original,
+ *      extracted from the previous version of TestData.s.sol. The logic is identical to the original,
  *      just parameterized for reuse.
  */
 abstract contract BaseTestData is LaunchDeployer {
@@ -53,6 +53,8 @@ abstract contract BaseTestData is LaunchDeployer {
     using UpdateContractMessageLib for *;
 
     uint128 constant DEFAULT_EXTRA_GAS = uint128(2_000_000);
+    uint256 internal constant DEFAULT_XC_GAS_PER_CALL = 0.1 ether; // default per-message native payment
+    uint256 internal xcGasPerCall; // optional per-message native payment for cross-chain sends
 
     /**
      * @notice Load contract addresses from config JSON
@@ -79,7 +81,8 @@ abstract contract BaseTestData is LaunchDeployer {
     }
 
     struct AsyncVaultParams {
-        uint16 targetCentrifugeId; // centrifugeId where the vault will be deployed
+        uint16 hubCentrifugeId; // centrifugeId of the hub (where pool lives)
+        uint16 targetCentrifugeId; // centrifugeId where the vault will be deployed (spoke)
         uint48 poolIndex; // pool index for this centrifugeId
         ERC20 token; // token for the vault
         AssetId assetId; // asset ID
@@ -91,7 +94,8 @@ abstract contract BaseTestData is LaunchDeployer {
     }
 
     struct SyncVaultParams {
-        uint16 targetCentrifugeId; // centrifugeId where the vault will be deployed
+        uint16 hubCentrifugeId; // centrifugeId of the hub (where pool lives)
+        uint16 targetCentrifugeId; // centrifugeId where the vault will be deployed (spoke)
         uint48 poolIndex; // pool index for this centrifugeId
         ERC20 token; // token for the vault
         AssetId assetId; // asset ID
@@ -109,7 +113,10 @@ abstract contract BaseTestData is LaunchDeployer {
      * @return scId The share class ID
      */
     function deployAsyncVault(AsyncVaultParams memory params) internal returns (PoolId poolId, ShareClassId scId) {
-        poolId = hubRegistry.poolId(params.targetCentrifugeId, params.poolIndex);
+        if (xcGasPerCall == 0) {
+            xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
+        }
+        poolId = hubRegistry.poolId(params.hubCentrifugeId, params.poolIndex);
         asyncRequestManager.depositSubsidy{value: 0.5 ether}(poolId);
 
         // Create pool on hub
@@ -124,13 +131,13 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.addShareClass(poolId, params.shareClassName, params.shareClassSymbol, params.shareClassMeta);
         
         // Notify target chain (sends cross-chain message if targetCentrifugeId is remote)
-        hub.notifyPool(poolId, params.targetCentrifugeId, msg.sender);
-        hub.notifyShareClass(
+        hub.notifyPool{value: xcGasPerCall}(poolId, params.targetCentrifugeId, msg.sender);
+        hub.notifyShareClass{value: xcGasPerCall}(
             poolId, scId, params.targetCentrifugeId, address(redemptionRestrictionsHook).toBytes32(), msg.sender
         );
 
         // Set request manager for target chain
-        hub.setRequestManager(
+        hub.setRequestManager{value: xcGasPerCall}(
             poolId,
             params.targetCentrifugeId,
             IHubRequestManager(batchRequestManager),
@@ -139,11 +146,11 @@ abstract contract BaseTestData is LaunchDeployer {
         );
         
         // Update balance sheet manager for target chain
-        hub.updateBalanceSheetManager(
+        hub.updateBalanceSheetManager{value: xcGasPerCall}(
             poolId, params.targetCentrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender
         );
         // Add admin as balance sheet manager
-        hub.updateBalanceSheetManager(
+        hub.updateBalanceSheetManager{value: xcGasPerCall}(
             poolId, params.targetCentrifugeId, address(params.admin).toBytes32(), true, msg.sender
         );
 
@@ -153,20 +160,22 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
         hub.createAccount(poolId, AccountId.wrap(0x04), true);
         
-        // Initialize holding
-        hub.initializeHolding(
-            poolId,
-            scId,
-            params.assetId,
-            identityValuation,
-            AccountId.wrap(0x01),
-            AccountId.wrap(0x02),
-            AccountId.wrap(0x03),
-            AccountId.wrap(0x04)
-        );
+        // Initialize holding only if asset is already registered on hub (cross-chain registration is async)
+        if (hubRegistry.isRegistered(params.assetId)) {
+            hub.initializeHolding(
+                poolId,
+                scId,
+                params.assetId,
+                identityValuation,
+                AccountId.wrap(0x01),
+                AccountId.wrap(0x02),
+                AccountId.wrap(0x03),
+                AccountId.wrap(0x04)
+            );
+        }
 
         // Deploy vault on target chain (sends cross-chain message if remote)
-        hub.updateVault(
+        hub.updateVault{value: xcGasPerCall}(
             poolId,
             scId,
             params.assetId,
@@ -178,8 +187,8 @@ abstract contract BaseTestData is LaunchDeployer {
 
         // Update and notify prices
         hub.updateSharePrice(poolId, scId, pricePoolPerShare, uint64(block.timestamp));
-        hub.notifySharePrice(poolId, scId, params.targetCentrifugeId, msg.sender);
-        hub.notifyAssetPrice(poolId, scId, params.assetId, msg.sender);
+        hub.notifySharePrice{value: xcGasPerCall}(poolId, scId, params.targetCentrifugeId, msg.sender);
+        hub.notifyAssetPrice{value: xcGasPerCall}(poolId, scId, params.assetId, msg.sender);
     }
 
     /**
@@ -192,7 +201,10 @@ abstract contract BaseTestData is LaunchDeployer {
         internal
         returns (PoolId poolId, ShareClassId scId)
     {
-        poolId = hubRegistry.poolId(params.targetCentrifugeId, params.poolIndex);
+        if (xcGasPerCall == 0) {
+            xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
+        }
+        poolId = hubRegistry.poolId(params.hubCentrifugeId, params.poolIndex);
         asyncRequestManager.depositSubsidy(poolId);
 
         // Create pool on hub
@@ -207,13 +219,13 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.addShareClass(poolId, params.shareClassName, params.shareClassSymbol, params.shareClassMeta);
         
         // Notify target chain
-        hub.notifyPool(poolId, params.targetCentrifugeId, msg.sender);
-        hub.notifyShareClass(
+        hub.notifyPool{value: xcGasPerCall}(poolId, params.targetCentrifugeId, msg.sender);
+        hub.notifyShareClass{value: xcGasPerCall}(
             poolId, scId, params.targetCentrifugeId, address(redemptionRestrictionsHook).toBytes32(), msg.sender
         );
 
         // Set request manager
-        hub.setRequestManager(
+        hub.setRequestManager{value: xcGasPerCall}(
             poolId,
             params.targetCentrifugeId,
             IHubRequestManager(batchRequestManager),
@@ -222,10 +234,10 @@ abstract contract BaseTestData is LaunchDeployer {
         );
         
         // Configure balance sheet managers
-        hub.updateBalanceSheetManager(
+        hub.updateBalanceSheetManager{value: xcGasPerCall}(
             poolId, params.targetCentrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender
         );
-        hub.updateBalanceSheetManager(
+        hub.updateBalanceSheetManager{value: xcGasPerCall}(
             poolId, params.targetCentrifugeId, address(syncManager).toBytes32(), true, msg.sender
         );
 
@@ -235,20 +247,22 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
         hub.createAccount(poolId, AccountId.wrap(0x04), true);
         
-        // Initialize holding
-        hub.initializeHolding(
-            poolId,
-            scId,
-            params.assetId,
-            identityValuation,
-            AccountId.wrap(0x01),
-            AccountId.wrap(0x02),
-            AccountId.wrap(0x03),
-            AccountId.wrap(0x04)
-        );
+        // Initialize holding only if asset is already registered on hub (cross-chain registration is async)
+        if (hubRegistry.isRegistered(params.assetId)) {
+            hub.initializeHolding(
+                poolId,
+                scId,
+                params.assetId,
+                identityValuation,
+                AccountId.wrap(0x01),
+                AccountId.wrap(0x02),
+                AccountId.wrap(0x03),
+                AccountId.wrap(0x04)
+            );
+        }
 
         // Deploy vault on target chain
-        hub.updateVault(
+        hub.updateVault{value: xcGasPerCall}(
             poolId,
             scId,
             params.assetId,
@@ -260,11 +274,11 @@ abstract contract BaseTestData is LaunchDeployer {
 
         // Update and notify prices
         hub.updateSharePrice(poolId, scId, pricePoolPerShare, uint64(block.timestamp));
-        hub.notifySharePrice(poolId, scId, params.targetCentrifugeId, msg.sender);
-        hub.notifyAssetPrice(poolId, scId, params.assetId, msg.sender);
+        hub.notifySharePrice{value: xcGasPerCall}(poolId, scId, params.targetCentrifugeId, msg.sender);
+        hub.notifyAssetPrice{value: xcGasPerCall}(poolId, scId, params.assetId, msg.sender);
 
         // Configure sync manager
-        hub.updateContract(
+        hub.updateContract{value: xcGasPerCall}(
             poolId,
             scId,
             params.targetCentrifugeId,
@@ -285,6 +299,9 @@ abstract contract BaseTestData is LaunchDeployer {
     function testAsyncVaultFlow(PoolId poolId, ShareClassId scId, AssetId assetId, ERC20 token, uint16 targetCentrifugeId)
         internal
     {
+        if (xcGasPerCall == 0) {
+            xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
+        }
         // Get vault
         IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
@@ -313,11 +330,11 @@ abstract contract BaseTestData is LaunchDeployer {
 
         // Update price, deposit principal + yield
         hub.updateSharePrice(poolId, scId, d18(11, 10), uint64(block.timestamp));
-        hub.notifySharePrice(poolId, scId, targetCentrifugeId, msg.sender);
-        hub.notifyAssetPrice(poolId, scId, assetId, msg.sender);
+        hub.notifySharePrice{value: xcGasPerCall}(poolId, scId, targetCentrifugeId, msg.sender);
+        hub.notifyAssetPrice{value: xcGasPerCall}(poolId, scId, assetId, msg.sender);
 
         // Make sender a member to submit redeem request
-        hub.updateRestriction(
+        hub.updateRestriction{value: xcGasPerCall}(
             poolId,
             scId,
             targetCentrifugeId,
