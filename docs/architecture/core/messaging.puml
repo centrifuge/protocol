@@ -1,0 +1,31 @@
+@startuml messaging
+title Messaging
+hide empty members
+
+skinparam linetype ortho
+
+package messaging {
+    interface IMessageDispatcher
+    interface IMessageProcessor
+}
+
+class Gateway
+class MultiAdapter
+class Spoke
+class HubHandler
+
+interface IAdapter
+
+Spoke <-> IMessageDispatcher
+HubHandler <-> IMessageDispatcher
+IMessageProcessor --> HubHandler
+IMessageProcessor --> Spoke
+
+IMessageDispatcher --> Gateway
+
+Gateway --> IMessageProcessor
+Gateway <-down-> MultiAdapter
+MultiAdapter <-down-> "n" IAdapter
+
+
+@enduml

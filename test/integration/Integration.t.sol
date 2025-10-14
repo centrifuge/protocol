@@ -12,11 +12,11 @@ import {AssetId} from "../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {MAX_MESSAGE_COST as GAS} from "../../src/core/messaging/interfaces/IGasService.sol";
 
+import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
+
 import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
-
-import {UpdateContractMessageLib} from "../../src/libraries/UpdateContractMessageLib.sol";
 
 /// @notice The base contract for integrators that want to tests their contracts.
 /// It assumes a full deployment in one chain.
@@ -55,8 +55,6 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
 
 /// @notice Similar to CentrifugeIntegrationTest but with some customized general utilities
 contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
-    using UpdateContractMessageLib for *;
-
     address immutable FM = makeAddr("fundManager");
     PoolId POOL_A;
     ShareClassId SC_1;
@@ -104,10 +102,7 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
         pure
         returns (bytes memory)
     {
-        return UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
-            assetId: assetId.raw(),
-            maxReserve: maxReserve
-        }).serialize();
+        return abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), assetId.raw(), maxReserve);
     }
 }
 

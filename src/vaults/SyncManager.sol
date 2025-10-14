@@ -21,9 +21,7 @@ import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
-import {ITrustedContractUpdate} from "../core/interfaces/IContractUpdate.sol";
-
-import {UpdateContractMessageLib, UpdateContractType} from "../libraries/UpdateContractMessageLib.sol";
+import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  Sync Manager
 /// @notice This is the main contract for synchronous ERC-4626 deposits.
@@ -31,7 +29,6 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     using MathLib for *;
     using CastLib for *;
     using BytesLib for bytes;
-    using UpdateContractMessageLib for *;
 
     ISpoke public spoke;
     IBalanceSheet public balanceSheet;
@@ -58,25 +55,21 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
 
     /// @inheritdoc ITrustedContractUpdate
     function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
-        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
+        uint8 kindValue = abi.decode(payload, (uint8));
+        require(kindValue <= uint8(type(TrustedCall).max), UnknownTrustedCall());
 
-        if (kind == uint8(UpdateContractType.Valuation)) {
-            UpdateContractMessageLib.UpdateContractValuation memory m =
-                UpdateContractMessageLib.deserializeUpdateContractValuation(payload);
-
+        TrustedCall kind = TrustedCall(kindValue);
+        if (kind == TrustedCall.Valuation) {
+            (, bytes32 valuation_) = abi.decode(payload, (uint8, bytes32));
             require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
 
-            setValuation(poolId, scId, m.valuation.toAddress());
-        } else if (kind == uint8(UpdateContractType.SyncDepositMaxReserve)) {
-            UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve memory m =
-                UpdateContractMessageLib.deserializeUpdateContractSyncDepositMaxReserve(payload);
-
+            setValuation(poolId, scId, valuation_.toAddress());
+        } else if (kind == TrustedCall.MaxReserve) {
+            (, uint128 assetId, uint128 maxReserve_) = abi.decode(payload, (uint8, uint128, uint128));
             require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
-            (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(m.assetId));
 
-            setMaxReserve(poolId, scId, asset, tokenId, m.maxReserve);
-        } else {
-            revert UnknownUpdateContractType();
+            (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(assetId));
+            setMaxReserve(poolId, scId, asset, tokenId, maxReserve_);
         }
     }
 
