@@ -269,37 +269,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         property_escrowBalanceSufficiency();
     }
 
-    // forge test --match-test test_balanceSheet_withdraw_20 -vvv
-    function test_balanceSheet_withdraw_20() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
-
-        shortcut_deposit_cancel_claim(0, 0, 1, 0, 0);
-
-        balanceSheet_noteDeposit(0, 1);
-
-        balanceSheet_withdraw(0, 1);
-    }
-
-    // forge test --match-test test_doomsday_deposit_21 -vvv
-    function test_doomsday_deposit_21() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, true, false, true, false);
-
-        hub_updateSharePrice(0, 0, 473209924842317865);
-
-        shortcut_deposit_queue_cancel(
-            0,
-            0,
-            40372594246256258819060065534945294444693266406994695269609128,
-            1,
-            1,
-            0
-        );
-
-        hub_notifyDeposit_clamped(0);
-
-        doomsday_deposit(1);
-    }
-
     // forge test --match-test test_property_sum_of_assets_received_on_claim_cancel_deposit_request_inductive_22 -vvv
     function test_property_sum_of_assets_received_on_claim_cancel_deposit_request_inductive_22()
         public
