@@ -8,18 +8,17 @@ import {IVaultRouter} from "./interfaces/IVaultRouter.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
-import {ReentrancyProtection} from "../misc/ReentrancyProtection.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {IEscrow} from "../misc/interfaces/IEscrow.sol";
+import {IMulticall} from "../misc/interfaces/IMulticall.sol";
 import {IERC7540Deposit} from "../misc/interfaces/IERC7540.sol";
 import {IERC20, IERC20Permit} from "../misc/interfaces/IERC20.sol";
+import {ReentrancyProtection} from "../misc/ReentrancyProtection.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
-import {IMulticall} from "../misc/interfaces/IMulticall.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
-import {BatchedMulticall} from "../core/utils/BatchedMulticall.sol";
 import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 
@@ -64,24 +63,11 @@ contract VaultRouter is Auth, ReentrancyProtection, Recoverable, IVaultRouter, I
 
     function executeMulticall(bytes[] calldata data) external payable {
         sender = gateway.lockCallback();
-
-        uint256 totalBytes = data.length;
-        for (uint256 i; i < totalBytes; ++i) {
-            (bool success, bytes memory returnData) = address(this).delegatecall(data[i]);
-            if (!success) {
-                uint256 length = returnData.length;
-                require(length != 0, CallFailedWithEmptyRevert());
-
-                assembly ("memory-safe") {
-                    revert(add(32, returnData), length)
-                }
-            }
-        }
-
+        super.multicall(data)
         sender = address(0);
     }
 
-    function msgSender() internal view returns (address) {
+    function msgSender() internal view override returns (address) {
         return sender != address(0) ? sender : msg.sender;
     }
 
