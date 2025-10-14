@@ -63,14 +63,10 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
         gateway.lockCallback();
 
         ShareClassQueueState storage sc = scQueueState[poolId][scId];
-        require(
-            sc.lastSync == 0 || sc.minDelay == 0 || block.timestamp >= sc.lastSync + sc.minDelay, MinDelayNotElapsed()
-        );
+        require(sc.lastSync == 0 || block.timestamp >= sc.lastSync + sc.minDelay, MinDelayNotElapsed());
 
-        (uint128 delta,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
-        uint256 validCount = 0;
         for (uint256 i = 0; i < assetIds.length; i++) {
-            bytes32 key = keccak256(abi.encode(scId.raw(), assetIds[i].raw()));
+            bytes32 key = keccak256(abi.encode(poolId.raw(), scId.raw(), assetIds[i].raw()));
             if (TransientStorageLib.tloadBool(key)) continue; // Skip duplicate
             TransientStorageLib.tstore(key, true);
 
@@ -78,12 +74,11 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
             (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(poolId, scId, assetIds[i]);
             if (deposits > 0 || withdrawals > 0) {
                 balanceSheet.submitQueuedAssets(poolId, scId, assetIds[i], sc.extraGasLimit, address(0));
-                validCount++;
             }
         }
 
-        bool submitShares = delta > 0 && validCount == queuedAssetCounter;
-        require(validCount > 0 || submitShares, NoUpdates());
+        (uint128 delta,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
+        bool submitShares = delta > 0 && queuedAssetCounter == 0;
 
         if (submitShares) {
             balanceSheet.submitQueuedShares(poolId, scId, sc.extraGasLimit, address(0));
