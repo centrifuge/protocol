@@ -74,7 +74,7 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
         require(sc.lastSync == 0 || block.timestamp >= sc.lastSync + sc.minDelay, MinDelayNotElapsed());
 
         for (uint256 i = 0; i < assetIds.length; i++) {
-            bytes32 key = keccak256(abi.encode(assetIds[i].raw()));
+            bytes32 key = keccak256(abi.encode(poolId.raw(), scId.raw(), assetIds[i].raw()));
             if (TransientStorageLib.tloadBool(key)) continue; // Skip duplicate
             TransientStorageLib.tstore(key, true);
 
