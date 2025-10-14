@@ -83,9 +83,7 @@ contract NAVManagerTest is Test {
     }
 
     function _deployManager() internal {
-        navManager = new NAVManager(IHub(hub), address(this));
-        navManager.rely(hub);
-        navManager.rely(holdings);
+        navManager = new NAVManager(IHub(hub));
 
         vm.prank(hubManager);
         navManager.updateManager(POOL_A, manager, true);
@@ -359,7 +357,7 @@ contract NAVManagerOnSyncTest is NAVManagerTest {
     }
 
     function testOnSyncNotAuthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.onSync(POOL_A, SC_1, CENTRIFUGE_ID_1);
     }
@@ -596,7 +594,7 @@ contract NAVManagerOnTransferTest is NAVManagerTest {
     }
 
     function testOnTransferUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 1);
     }
@@ -606,7 +604,7 @@ contract NAVManagerOnTransferTest is NAVManagerTest {
         navManager.setNAVHook(POOL_A, INAVHook(address(0)));
 
         vm.expectRevert(INAVManager.InvalidNAVHook.selector);
-        vm.prank(hub);
+        vm.prank(holdings);
         navManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 1);
     }
 
@@ -619,7 +617,7 @@ contract NAVManagerOnTransferTest is NAVManagerTest {
         vm.expectEmit(true, true, true, true);
         emit INAVManager.Transfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 1);
 
-        vm.prank(hub);
+        vm.prank(holdings);
         navManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 1);
     }
 }

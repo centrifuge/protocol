@@ -107,11 +107,7 @@ contract SimplePriceManagerTest is Test {
     }
 
     function _deployManager() internal {
-        priceManager = new SimplePriceManager(IHub(hub), auth);
-        vm.prank(auth);
-        priceManager.rely(caller);
-        vm.prank(auth);
-        priceManager.rely(gateway);
+        priceManager = new SimplePriceManager(IHub(hub), caller);
 
         vm.deal(address(priceManager), 1 ether);
     }
@@ -302,7 +298,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
     }
 
     function testOnUpdateUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISimplePriceManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
     }
@@ -363,7 +359,7 @@ contract SimplePriceManagerOnTransferTest is SimplePriceManagerTest {
     }
 
     function testOnTransferUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISimplePriceManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 50);
     }
