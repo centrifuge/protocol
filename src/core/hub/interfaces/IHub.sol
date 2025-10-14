@@ -101,8 +101,6 @@ interface IHub is IBatchedMulticall {
     /// @notice Dispatched when an invalid combination of account IDs is passed.
     error InvalidAccountCombination();
 
-    error InvalidRequestManager();
-
     error RequestManagerCallFailed();
 
     //----------------------------------------------------------------------------------------------

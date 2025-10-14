@@ -328,7 +328,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         bool unpaid
     ) external payable {
         IRequestManager manager = requestManager[poolId];
-        require(address(manager) != address(0), InvalidRequestManager());
         require(msg.sender == address(manager), NotAuthorized());
 
         gateway.setUnpaidMode(unpaid);
