@@ -71,10 +71,7 @@ contract SimplePriceManager is ISimplePriceManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc INAVHook
-    function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue)
-        public
-        virtual
-    {
+    function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) public virtual {
         require(msg.sender == navUpdater, NotAuthorized());
         require(scId.index() == 1, InvalidShareClass());
 

@@ -518,10 +518,7 @@ contract FullDeployer is CoreDeployer {
         );
 
         navManager = NAVManager(
-            create3(
-                generateSalt("navManager"),
-                abi.encodePacked(type(NAVManager).creationCode, abi.encode(hub))
-            )
+            create3(generateSalt("navManager"), abi.encodePacked(type(NAVManager).creationCode, abi.encode(hub)))
         );
 
         simplePriceManager = SimplePriceManager(
