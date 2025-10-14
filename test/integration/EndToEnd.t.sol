@@ -595,6 +595,14 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(INVESTOR_A);
         s.usdc.approve(address(vault), USDC_AMOUNT_1);
+
+        if (!nonZeroPrices) {
+            // When prices are zero, maxDeposit returns 0, so deposit will revert
+            vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
+            vault.deposit(USDC_AMOUNT_1, INVESTOR_A);
+            return;
+        }
+
         vault.deposit(USDC_AMOUNT_1, INVESTOR_A);
 
         assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), assetToShare(USDC_AMOUNT_1), "expected shares");
@@ -678,6 +686,11 @@ contract EndToEndFlows is EndToEndUtils {
 
     function _testUpdateAccountingAfterDeposit(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) public {
         (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, nonZeroPrices) : _testSyncDeposit(sameChain, nonZeroPrices);
+
+        // If prices are zero and using sync deposit, the deposit failed
+        if (!nonZeroPrices && !afterAsyncDeposit) {
+            return;
+        }
 
         vm.startPrank(BSM);
         s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
