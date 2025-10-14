@@ -212,15 +212,20 @@ contract NAVManager is INAVManager, Auth {
         uint128 totalNegative = 0;
 
         // Compute NAV = equity + gain - loss - liability
+
+        // Equity: normally positive, if negative flip to negative side
         if (equityIsPositive) totalPositive += equity;
         else totalNegative += equity;
 
+        // Gain: normally positive, if negative flip to negative side
         if (gainIsPositive) totalPositive += gain;
         else totalNegative += gain;
 
+        // Loss: normally negative, if positive flip to positive side
         if (lossIsPositive) totalNegative += loss;
         else totalPositive += loss;
 
+        // Liability: normally negative, if positive flip to positive side
         if (liabilityIsPositive) totalNegative += liability;
         else totalPositive += liability;
 
