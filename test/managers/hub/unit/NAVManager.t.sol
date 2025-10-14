@@ -393,17 +393,44 @@ contract NAVManagerNetAssetValueTest is NAVManagerTest {
         assertEq(nav, 0);
     }
 
-    function testNetAssetValueNegative() public {
-        // Mock values that result in negative NAV
-        // equity=100, gain=50, loss=200, liability=100
-        // NAV = 100 + 50 - 200 - 100 = -150
-        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 100, true);
-        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 50, true);
-        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 200, true);
-        _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 100, true);
+    function testNetAssetValueZeroWhenNegative() public {
+        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 500, true);
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, true);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, true);
+        _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 600, true);
 
-        vm.expectRevert();
-        navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
+        uint128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
+        assertEq(nav, 0);
+    }
+
+    function testNetAssetValueWithUnexpectedSigns(
+        bool equityIsPositive,
+        bool gainIsPositive,
+        bool lossIsPositive,
+        bool liabilityIsPositive,
+        uint128 equityAmount,
+        uint128 gainAmount,
+        uint128 lossAmount,
+        uint128 liabilityAmount
+    ) public {
+        equityAmount = uint128(bound(equityAmount, 1, type(uint128).max / 4));
+        gainAmount = uint128(bound(gainAmount, 1, type(uint128).max / 4));
+        lossAmount = uint128(bound(lossAmount, 0, type(uint128).max / 4));
+        liabilityAmount = uint128(bound(liabilityAmount, 0, type(uint128).max / 4));
+
+        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), equityAmount, equityIsPositive);
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), gainAmount, gainIsPositive);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), lossAmount, lossIsPositive);
+        _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), liabilityAmount, liabilityIsPositive);
+
+        uint128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
+
+        // If all accounts have expected signs and equity+gain > loss+liability, NAV should be positive
+        if (equityIsPositive && gainIsPositive && lossIsPositive && liabilityIsPositive) {
+            if (equityAmount + gainAmount > lossAmount + liabilityAmount) {
+                assertGt(nav, 0);
+            }
+        }
     }
 }
 

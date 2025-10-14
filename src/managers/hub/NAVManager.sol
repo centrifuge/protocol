@@ -208,9 +208,30 @@ contract NAVManager is INAVManager, Auth {
         (bool lossIsPositive, uint128 loss) = accounting.accountValue(poolId, lossAccount(centrifugeId));
         (bool liabilityIsPositive, uint128 liability) = accounting.accountValue(poolId, liabilityAccount(centrifugeId));
 
-        require(equityIsPositive && gainIsPositive && lossIsPositive && liabilityIsPositive, InvalidNAV());
+        uint128 totalPositive = 0;
+        uint128 totalNegative = 0;
 
-        return equity + gain - loss - liability;
+        // Compute NAV = equity + gain - loss - liability
+
+        // Equity: normally positive, if negative flip to negative side
+        if (equityIsPositive) totalPositive += equity;
+        else totalNegative += equity;
+
+        // Gain: normally positive, if negative flip to negative side
+        if (gainIsPositive) totalPositive += gain;
+        else totalNegative += gain;
+
+        // Loss: normally negative, if positive flip to positive side
+        if (lossIsPositive) totalNegative += loss;
+        else totalPositive += loss;
+
+        // Liability: normally negative, if positive flip to positive side
+        if (liabilityIsPositive) totalNegative += liability;
+        else totalPositive += liability;
+
+        if (totalNegative >= totalPositive) return 0;
+
+        return totalPositive - totalNegative;
     }
 
     //----------------------------------------------------------------------------------------------
