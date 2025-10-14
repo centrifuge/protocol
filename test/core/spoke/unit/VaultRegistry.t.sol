@@ -496,3 +496,29 @@ contract VaultRegistryTestVaultDetails is VaultRegistryTest {
         vaultRegistry.vaultDetails(vault);
     }
 }
+
+contract VaultRegistryTestFile is VaultRegistryTest {
+    function testFileSpoke() public {
+        ISpoke newSpoke = ISpoke(makeAddr("NewSpoke"));
+        
+        vm.expectEmit(true, true, true, true);
+        emit ISpoke.File("spoke", address(newSpoke));
+        
+        vm.prank(AUTH);
+        vaultRegistry.file("spoke", address(newSpoke));
+        
+        assertEq(address(vaultRegistry.spoke()), address(newSpoke));
+    }
+
+    function testFileUnrecognizedParam() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.FileUnrecognizedParam.selector);
+        vaultRegistry.file("unknown", address(0));
+    }
+
+    function testFileNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vaultRegistry.file("spoke", address(0));
+    }
+}
