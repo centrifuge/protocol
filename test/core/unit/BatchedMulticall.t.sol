@@ -61,18 +61,6 @@ contract BatchedMulticallTestMulticall is BatchedMulticallTest {
         multicall.nonZeroPayment{value: 1}();
     }
 
-    function testErrAlreadyBatching() external {
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.isBatching.selector), abi.encode(true));
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatching.selector), abi.encode());
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatching.selector), abi.encode());
-
-        bytes[] memory calls = new bytes[](1);
-        calls[0] = abi.encodeWithSelector(multicall.add.selector, 1);
-
-        vm.expectRevert(IGateway.AlreadyBatching.selector);
-        multicall.multicall(calls);
-    }
-
     function testMulticallTest() external {
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.isBatching.selector), abi.encode(false));
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatching.selector), abi.encode());

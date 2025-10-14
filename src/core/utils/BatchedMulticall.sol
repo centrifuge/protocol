@@ -22,8 +22,6 @@ abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
     /// @inheritdoc IMulticall
     /// @notice With extra support for batching
     function multicall(bytes[] calldata data) public payable override {
-        require(!gateway.isBatching(), IGateway.AlreadyBatching());
-
         _sender = msg.sender;
         gateway.withBatch{value: msg.value}(
             abi.encodeWithSelector(BatchedMulticall.executeMulticall.selector, data), msg.sender
