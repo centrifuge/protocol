@@ -60,9 +60,12 @@ contract OpsGuardian is IOpsGuardian {
     }
 
     /// @inheritdoc IBaseGuardian
-    function wire(address adapter, uint16 centrifugeId, bytes memory data) external onlySafe {
+    function wire(address adapter, uint16 centrifugeId, uint8 gasBufferPercentage, bytes memory data)
+        external
+        onlySafe
+    {
         require(!IAdapterWiring(adapter).isWired(centrifugeId), AdapterAlreadyWired());
-        IAdapterWiring(adapter).wire(centrifugeId, data);
+        IAdapterWiring(adapter).wire(centrifugeId, gasBufferPercentage, data);
     }
 
     //----------------------------------------------------------------------------------------------

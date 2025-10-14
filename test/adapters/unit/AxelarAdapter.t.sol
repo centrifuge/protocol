@@ -55,6 +55,7 @@ contract AxelarAdapterTestBase is Test {
     uint16 constant CENTRIFUGE_CHAIN_ID = 1;
     string constant AXELAR_CHAIN_ID = "mainnet";
     string constant REMOTE_AXELAR_ADDR = "remoteAddress";
+    uint8 constant GAS_MULTIPLIER = 10; // 10%
 
     MockAxelarGateway axelarGateway;
     MockAxelarGasService axelarGasService;
@@ -74,16 +75,18 @@ contract AxelarAdapterTestWire is AxelarAdapterTestBase {
         bytes memory data = abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR);
         vm.prank(makeAddr("NotAuthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.wire(CENTRIFUGE_CHAIN_ID, data);
+        adapter.wire(CENTRIFUGE_CHAIN_ID, GAS_MULTIPLIER, data);
     }
 
     function testWire() public {
         bytes memory data = abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR);
-        adapter.wire(CENTRIFUGE_CHAIN_ID, data);
+        adapter.wire(CENTRIFUGE_CHAIN_ID, GAS_MULTIPLIER, data);
 
-        (string memory axelarId, string memory remoteAddress) = adapter.destinations(CENTRIFUGE_CHAIN_ID);
+        (string memory axelarId, uint8 gasBufferPercentage, string memory remoteAddress) =
+            adapter.destinations(CENTRIFUGE_CHAIN_ID);
         assertEq(axelarId, AXELAR_CHAIN_ID);
         assertEq(remoteAddress, REMOTE_AXELAR_ADDR);
+        assertEq(gasBufferPercentage, GAS_MULTIPLIER);
 
         (uint16 centrifugeId, bytes32 remoteAddressHash) = adapter.sources(AXELAR_CHAIN_ID);
         assertEq(centrifugeId, CENTRIFUGE_CHAIN_ID);
@@ -94,7 +97,7 @@ contract AxelarAdapterTestWire is AxelarAdapterTestBase {
         assertFalse(adapter.isWired(CENTRIFUGE_CHAIN_ID));
 
         bytes memory data = abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR);
-        adapter.wire(CENTRIFUGE_CHAIN_ID, data);
+        adapter.wire(CENTRIFUGE_CHAIN_ID, GAS_MULTIPLIER, data);
 
         assertTrue(adapter.isWired(CENTRIFUGE_CHAIN_ID));
     }
@@ -115,7 +118,7 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
     function testEstimate(uint256 gasLimit) public {
         gasLimit = uint128(bound(gasLimit, 1, adapter.RECEIVE_COST() - 1));
 
-        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR));
+        adapter.wire(CENTRIFUGE_CHAIN_ID, GAS_MULTIPLIER, abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR));
 
         bytes memory payload = "irrelevant";
 
@@ -153,7 +156,7 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
         vm.prank(address(relayer));
         adapter.execute(commandId, AXELAR_CHAIN_ID, validAddress.toAxelarString(), payload);
 
-        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(AXELAR_CHAIN_ID, validAddress.toAxelarString()));
+        adapter.wire(CENTRIFUGE_CHAIN_ID, GAS_MULTIPLIER, abi.encode(AXELAR_CHAIN_ID, validAddress.toAxelarString()));
 
         // Incorrect address
         vm.prank(address(relayer));
@@ -196,7 +199,11 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
         vm.expectRevert(IAdapter.UnknownChainId.selector);
         adapter.send{value: 0.1 ether}(CENTRIFUGE_CHAIN_ID, payload, gasLimit, refund);
 
-        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(AXELAR_CHAIN_ID, makeAddr("DestinationAdapter").toAxelarString()));
+        adapter.wire(
+            CENTRIFUGE_CHAIN_ID,
+            GAS_MULTIPLIER,
+            abi.encode(AXELAR_CHAIN_ID, makeAddr("DestinationAdapter").toAxelarString())
+        );
 
         vm.deal(address(this), 0.1 ether);
         vm.prank(address(GATEWAY));

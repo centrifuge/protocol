@@ -47,10 +47,10 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapterWiring
-    function wire(uint16 centrifugeId, bytes memory data) external auth {
+    function wire(uint16 centrifugeId, uint8 gasBufferPercentage, bytes memory data) external auth {
         (string memory axelarId, string memory adapter) = abi.decode(data, (string, string));
         sources[axelarId] = AxelarSource(centrifugeId, keccak256(bytes(adapter)));
-        destinations[centrifugeId] = AxelarDestination(axelarId, adapter);
+        destinations[centrifugeId] = AxelarDestination(axelarId, gasBufferPercentage, adapter);
         emit Wire(centrifugeId, axelarId, adapter);
     }
 
@@ -114,7 +114,11 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         require(bytes(destination.axelarId).length != 0, UnknownChainId());
 
         return axelarGasService.estimateGasFee(
-            destination.axelarId, destination.addr, payload, gasLimit + RECEIVE_COST, bytes("")
+            destination.axelarId,
+            destination.addr,
+            payload,
+            (gasLimit + RECEIVE_COST) * destination.gasBufferPercentage,
+            bytes("")
         );
     }
 }

@@ -8,8 +8,10 @@ pragma solidity >=0.5.0;
 interface IAdapterWiring {
     /// @notice Wire the adapter to a remote chain
     /// @param centrifugeId The chain ID to wire to
+    /// @param gasBufferPercentage Payment overhead to ensure the message is computed despite price fluctuations.
+    ///        Measured as % over the given gasLimit. i.e: `10` means added a 10% over gasLimit
     /// @param data ABI-encoded adapter-specific configuration data
-    function wire(uint16 centrifugeId, bytes memory data) external;
+    function wire(uint16 centrifugeId, uint8 gasBufferPercentage, bytes memory data) external;
 
     /// @notice Check if the adapter is wired to a specific chain
     /// @param centrifugeId The chain ID to check

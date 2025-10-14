@@ -42,6 +42,7 @@ contract ProtocolGuardianTest is Test {
     uint256 constant AMOUNT = 100;
     uint256 constant COST = 123;
     PoolId constant GLOBAL_POOL = PoolId.wrap(0);
+    uint8 constant GAS_MULTIPLIER = 10; // 10%
 
     ProtocolGuardian protocolGuardian;
 
@@ -372,10 +373,12 @@ contract ProtocolGuardianTestWire is ProtocolGuardianTest {
             address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data), abi.encode()
         );
 
-        vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data));
+        vm.expectCall(
+            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, GAS_MULTIPLIER, data)
+        );
 
         vm.prank(address(SAFE));
-        protocolGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
+        protocolGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, GAS_MULTIPLIER, data);
     }
 
     function testWireRevertWhenNotSafe() public {
@@ -383,6 +386,6 @@ contract ProtocolGuardianTestWire is ProtocolGuardianTest {
 
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
-        protocolGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
+        protocolGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, GAS_MULTIPLIER, data);
     }
 }

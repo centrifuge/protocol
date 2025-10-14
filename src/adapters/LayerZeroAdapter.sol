@@ -54,10 +54,10 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapterWiring
-    function wire(uint16 centrifugeId, bytes memory data) external auth {
+    function wire(uint16 centrifugeId, uint8 gasBufferPercentage, bytes memory data) external auth {
         (uint32 layerZeroEid, address adapter) = abi.decode(data, (uint32, address));
         sources[layerZeroEid] = LayerZeroSource(centrifugeId, adapter);
-        destinations[centrifugeId] = LayerZeroDestination(layerZeroEid, adapter);
+        destinations[centrifugeId] = LayerZeroDestination(layerZeroEid, gasBufferPercentage, adapter);
         emit Wire(centrifugeId, layerZeroEid, adapter);
     }
 
@@ -113,8 +113,9 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         LayerZeroDestination memory destination = destinations[centrifugeId];
         require(destination.layerZeroEid != 0, UnknownChainId());
 
-        MessagingReceipt memory receipt =
-            endpoint.send{value: msg.value}(_params(destination, payload, gasLimit + RECEIVE_COST), refund);
+        MessagingReceipt memory receipt = endpoint.send{value: msg.value}(
+            _params(destination, payload, (gasLimit + RECEIVE_COST) * destination.gasBufferPercentage), refund
+        );
         adapterData = receipt.guid;
     }
 
@@ -123,7 +124,9 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         LayerZeroDestination memory destination = destinations[centrifugeId];
         require(destination.layerZeroEid != 0, UnknownChainId());
 
-        MessagingFee memory fee = endpoint.quote(_params(destination, payload, gasLimit + RECEIVE_COST), address(this));
+        MessagingFee memory fee = endpoint.quote(
+            _params(destination, payload, (gasLimit + RECEIVE_COST) * destination.gasBufferPercentage), address(this)
+        );
         return fee.nativeFee;
     }
 

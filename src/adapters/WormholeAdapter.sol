@@ -46,10 +46,10 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapterWiring
-    function wire(uint16 centrifugeId, bytes memory data) external auth {
+    function wire(uint16 centrifugeId, uint8 gasBufferPercentage, bytes memory data) external auth {
         (uint16 wormholeId, address adapter) = abi.decode(data, (uint16, address));
         sources[wormholeId] = WormholeSource(centrifugeId, adapter);
-        destinations[centrifugeId] = WormholeDestination(wormholeId, adapter);
+        destinations[centrifugeId] = WormholeDestination(wormholeId, gasBufferPercentage, adapter);
         emit Wire(centrifugeId, wormholeId, adapter);
     }
 
@@ -92,7 +92,13 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         require(destination.wormholeId != 0, UnknownChainId());
 
         uint64 sequence = relayer.sendPayloadToEvm{value: msg.value}(
-            destination.wormholeId, destination.addr, payload, 0, gasLimit + RECEIVE_COST, localWormholeId, refund
+            destination.wormholeId,
+            destination.addr,
+            payload,
+            0,
+            (gasLimit + RECEIVE_COST) * destination.gasBufferPercentage,
+            localWormholeId,
+            refund
         );
 
         adapterData = bytes32(bytes8(sequence));
@@ -107,6 +113,8 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         WormholeDestination memory destination = destinations[centrifugeId];
         require(destination.wormholeId != 0, UnknownChainId());
 
-        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(destination.wormholeId, 0, gasLimit + RECEIVE_COST);
+        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(
+            destination.wormholeId, 0, (gasLimit + RECEIVE_COST) * destination.gasBufferPercentage
+        );
     }
 }

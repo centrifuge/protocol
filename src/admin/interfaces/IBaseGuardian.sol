@@ -27,6 +27,8 @@ interface IBaseGuardian {
     ///      - ProtocolGuardian: No restrictions, can re-wire at any time
     /// @param adapter Address of the adapter to wire
     /// @param centrifugeId The chain ID to wire to
+    /// @param gasBufferPercentage Payment overhead to ensure the message is computed despite price fluctuations.
+    ///        Measured as % over the given gasLimit. i.e: `10` means added a 10% over gasLimit
     /// @param data ABI-encoded adapter-specific configuration data
-    function wire(address adapter, uint16 centrifugeId, bytes memory data) external;
+    function wire(address adapter, uint16 centrifugeId, uint8 gasBufferPercentage, bytes memory data) external;
 }

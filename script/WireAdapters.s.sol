@@ -13,6 +13,7 @@ import "forge-std/Script.sol";
 ///
 ///      Intended for testnet use only.
 contract WireAdapters is Script {
+    uint8 constant GAS_MULTIPLIER = 10; // 10%
     IAdapter[] adapters; // Storage array for adapter instances
 
     function fetchConfig(string memory network) internal view returns (string memory) {
@@ -85,7 +86,7 @@ contract WireAdapters is Script {
                     uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
                     vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter")
                 );
-                opsGuardian.wire(localWormholeAddr, remoteCentrifugeId, wormholeData);
+                opsGuardian.wire(localWormholeAddr, remoteCentrifugeId, GAS_MULTIPLIER, wormholeData);
 
                 console.log("Wired WormholeAdapter from", localNetwork, "to", remoteNetwork);
             }
@@ -96,7 +97,7 @@ contract WireAdapters is Script {
                     uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
                     vm.parseJsonAddress(remoteConfig, "$.contracts.layerZeroAdapter")
                 );
-                opsGuardian.wire(localLayerZeroAddr, remoteCentrifugeId, layerZeroData);
+                opsGuardian.wire(localLayerZeroAddr, remoteCentrifugeId, GAS_MULTIPLIER, layerZeroData);
 
                 console.log("Wired LayerZeroAdapter from", localNetwork, "to", remoteNetwork);
             }
@@ -107,7 +108,7 @@ contract WireAdapters is Script {
                     vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
                     vm.toString(vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter"))
                 );
-                opsGuardian.wire(localAxelarAddr, remoteCentrifugeId, axelarData);
+                opsGuardian.wire(localAxelarAddr, remoteCentrifugeId, GAS_MULTIPLIER, axelarData);
 
                 console.log("Wired AxelarAdapter from", localNetwork, "to", remoteNetwork);
             }
