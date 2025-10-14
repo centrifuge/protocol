@@ -11,7 +11,6 @@ import {Multicall} from "../misc/Multicall.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {IEscrow} from "../misc/interfaces/IEscrow.sol";
-import {IMulticall} from "../misc/interfaces/IMulticall.sol";
 import {IERC7540Deposit} from "../misc/interfaces/IERC7540.sol";
 import {IERC20, IERC20Permit} from "../misc/interfaces/IERC20.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
