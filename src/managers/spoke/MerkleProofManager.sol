@@ -10,9 +10,7 @@ import {MerkleProofLib} from "../../misc/libraries/MerkleProofLib.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
-
-import {UpdateContractMessageLib, UpdateContractType} from "../../libraries/UpdateContractMessageLib.sol";
+import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  Merkle Proof Manager
 /// @author Inspired by Boring Vaults from Se7en-Seas
@@ -40,24 +38,18 @@ contract MerkleProofManager is IMerkleProofManager, ITrustedContractUpdate {
         PoolId poolId_,
         ShareClassId,
         /* scId */
-        bytes calldata payload
+        bytes memory payload
     ) external {
         require(poolId == poolId_, InvalidPoolId());
         require(msg.sender == contractUpdater, NotAuthorized());
 
-        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
-        if (kind == uint8(UpdateContractType.Policy)) {
-            UpdateContractMessageLib.UpdateContractPolicy memory m =
-                UpdateContractMessageLib.deserializeUpdateContractPolicy(payload);
-            address strategist = m.who.toAddress();
+        (bytes32 who, bytes32 what) = abi.decode(payload, (bytes32, bytes32));
+        address strategist = who.toAddress();
 
-            bytes32 oldRoot = policy[strategist];
-            policy[strategist] = m.what;
+        bytes32 oldRoot = policy[strategist];
+        policy[strategist] = what;
 
-            emit UpdatePolicy(strategist, oldRoot, m.what);
-        } else {
-            revert UnknownUpdateContractType();
-        }
+        emit UpdatePolicy(strategist, oldRoot, what);
     }
 
     //----------------------------------------------------------------------------------------------
