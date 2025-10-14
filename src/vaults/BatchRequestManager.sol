@@ -249,7 +249,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         uint32 nowRedeemEpochId,
         uint128 approvedShareAmount,
         D18 pricePoolPerAsset
-    ) external authOrManager(poolId) {
+    ) external payable authOrManager(poolId) {
         require(
             nowRedeemEpochId == nowRedeemEpoch(poolId, scId_, payoutAssetId),
             EpochNotInSequence(nowRedeemEpochId, nowRedeemEpoch(poolId, scId_, payoutAssetId))
