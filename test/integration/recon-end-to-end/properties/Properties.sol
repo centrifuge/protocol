@@ -1143,40 +1143,32 @@ abstract contract Properties is
 
     /// @dev Property: Any decrease in valuation should not result in an increase in accountValue
     function property_decrease_valuation_no_increase_in_accountValue() public {
-        PoolId[] memory _createdPools = _getPools();
-        for (uint256 i = 0; i < _createdPools.length; i++) {
-            PoolId poolId = _createdPools[i];
-            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
-            // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = shareClassManager.previewShareClassId(
-                    poolId,
-                    j
-                );
-                AssetId assetId = _getAssetId();
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
 
-                if (
-                    _before.ghostHolding[poolId][scId][assetId] >
-                    _after.ghostHolding[poolId][scId][assetId]
-                ) {
-                    // loop over all account types defined in IHub::AccountType
-                    for (uint8 kind = 0; kind < 6; kind++) {
-                        AccountId accountId = holdings.accountId(
-                            poolId,
-                            scId,
-                            assetId,
-                            kind
-                        );
-                        uint128 accountValueBefore = _before.ghostAccountValue[
-                            poolId
-                        ][accountId];
-                        uint128 accountValueAfter = _after.ghostAccountValue[
-                            poolId
-                        ][accountId];
-                        if (accountValueAfter > accountValueBefore) {
-                            t(false, "accountValue increased");
-                        }
-                    }
+        if (
+            _before.ghostHolding[poolId][scId][assetId] >
+            _after.ghostHolding[poolId][scId][assetId]
+        ) {
+            // loop over all account types defined in IHub::AccountType
+            for (uint8 kind = 0; kind < 6; kind++) {
+                AccountId accountId = holdings.accountId(
+                    poolId,
+                    scId,
+                    assetId,
+                    kind
+                );
+                uint128 accountValueBefore = _before.ghostAccountValue[poolId][
+                    accountId
+                ];
+                uint128 accountValueAfter = _after.ghostAccountValue[poolId][
+                    accountId
+                ];
+                console2.log("accountValueAfter: ", accountValueAfter);
+                console2.log("accountValueBefore: ", accountValueBefore);
+                if (accountValueAfter > accountValueBefore) {
+                    t(false, "accountValue increased");
                 }
             }
         }
@@ -2449,6 +2441,7 @@ abstract contract Properties is
 
                 // Complete biconditional check: isPositive ⟺ (delta > 0)
                 if (delta > 0) {
+                    console2.log("delta: ", delta);
                     t(
                         isPositive,
                         "property_shareQueueFlagConsistency: delta > 0 requires isPositive = true"

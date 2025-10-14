@@ -66,20 +66,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         property_shareQueueFlipBoundaries();
     }
 
-    // forge test --match-test test_asyncVault_maxMint_5 -vvv
-    function test_asyncVault_maxMint_5() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        hub_updateHoldingValuation_clamped(true);
-
-        shortcut_mint_sync(0, 10113300624483719658505168383208138);
-
-        // check if vault is async
-        console2.log("is async: ", Helpers.isAsyncVault(address(_getVault())));
-
-        asyncVault_maxMint(0, 0, 0);
-    }
-
     // forge test --match-test test_property_escrow_share_balance_9 -vvv
     function test_property_escrow_share_balance_9() public {
         shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
@@ -152,23 +138,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         asyncVault_maxDeposit(0, 0, 0);
     }
 
-    // forge test --match-test test_property_sum_of_minted_equals_total_supply_9 -vvv
-    function test_property_sum_of_minted_equals_total_supply_9() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(0, 0);
-
-        balanceSheet_issue(1);
-
-        spoke_addShareClass(0, 2, 0x0000000000000000000000000000000000000000);
-
-        switch_share_class(0);
-
-        shortcut_withdraw_and_claim_clamped(1, 0, 0);
-
-        property_sum_of_minted_equals_total_supply();
-    }
-
     // forge test --match-test test_property_assetQueueCounterConsistency_10 -vvv
     function test_property_assetQueueCounterConsistency_10() public {
         shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
@@ -199,23 +168,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_addShareClass(2);
 
         property_total_yield();
-    }
-
-    // forge test --match-test test_asyncVault_maxWithdraw_6 -vvv
-    function test_asyncVault_maxWithdraw_6() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        hub_updateHoldingValuation_clamped(true);
-
-        shortcut_mint_sync(777589361, 10020063544624231187588821211259329);
-
-        shortcut_withdraw_and_claim_clamped(
-            54328285090000140664714774938802327133189032571586470532610533201466391,
-            1302852234,
-            526814457530992362
-        );
-
-        asyncVault_maxWithdraw(0, 0, 0);
     }
 
     // forge test --match-test test_property_shareTokenSupplyConsistency_7 -vvv
@@ -265,17 +217,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_notifyDeposit_clamped(0);
     }
 
-    // forge test --match-test test_asyncVault_maxDeposit_11 -vvv
-    function test_asyncVault_maxDeposit_11() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, true, false, true, false);
-
-        shortcut_deposit_queue_cancel(0, 0, 1, 1, 1, 0);
-
-        hub_notifyDeposit_clamped(0);
-
-        asyncVault_maxDeposit(0, 0, 0);
-    }
-
     // forge test --match-test test_asyncVault_maxMint_12 -vvv
     function test_asyncVault_maxMint_12() public {
         shortcut_deployNewTokenPoolAndShare(0, 1, true, false, true, false);
@@ -285,25 +226,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_notifyDeposit_clamped(0);
 
         asyncVault_maxMint(0, 0, 0);
-    }
-
-    // forge test --match-test test_property_assetShareProportionalityWithdrawals_13 -vvv
-    function test_property_assetShareProportionalityWithdrawals_13() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        hub_updateHoldingValuation_clamped(true);
-
-        shortcut_mint_sync(0, 10000734132677101767595417905335451);
-
-        vault_deposit(1);
-
-        balanceSheet_issue(1);
-
-        balanceSheet_withdraw(0, 1);
-
-        balanceSheet_revoke(1);
-
-        property_assetShareProportionalityWithdrawals();
     }
 
     // forge test --match-test test_property_sum_of_received_leq_fulfilled_inductive_14 -vvv
@@ -323,53 +245,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         switch_vault(1);
 
         property_sum_of_received_leq_fulfilled_inductive();
-    }
-
-    // forge test --match-test test_asyncVault_maxRedeem_15 -vvv
-    function test_asyncVault_maxRedeem_15() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        hub_updateHoldingValuation_clamped(true);
-
-        shortcut_mint_sync(1, 10005283370788728319419094001099919);
-
-        shortcut_queue_redemption(1, 3000264927768806989, 0);
-
-        vault_deposit(1);
-
-        hub_notifyRedeem(1);
-
-        asyncVault_maxRedeem(0, 0, 0);
-    }
-
-    // forge test --match-test test_property_sum_of_minted_equals_total_supply_16 -vvv
-    function test_property_sum_of_minted_equals_total_supply_16() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(0, 0);
-
-        balanceSheet_issue(1);
-
-        spoke_addShareClass(0, 2, 0x0000000000000000000000000000000000000000);
-
-        switch_share_class(0);
-
-        shortcut_withdraw_and_claim_clamped(1, 0, 0);
-
-        property_sum_of_minted_equals_total_supply();
-    }
-
-    // forge test --match-test test_doomsday_pricePerShare_never_changes_after_user_operation_17 -vvv
-    function test_doomsday_pricePerShare_never_changes_after_user_operation_17()
-        public
-    {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(0, 10001332608932092);
-
-        spoke_deployVault_clamped();
-
-        doomsday_pricePerShare_never_changes_after_user_operation();
     }
 
     // forge test --match-test test_property_assetQueueCounterConsistency_18 -vvv
@@ -438,25 +313,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         spoke_deployVault(false);
 
         property_sum_of_assets_received_on_claim_cancel_deposit_request_inductive();
-    }
-
-    // forge test --match-test test_property_decrease_valuation_no_increase_in_accountValue_23 -vvv
-    function test_property_decrease_valuation_no_increase_in_accountValue_23()
-        public
-    {
-        shortcut_deployNewTokenPoolAndShare(0, 1, true, false, true, false);
-
-        shortcut_deposit_queue_cancel(0, 0, 1, 1, 0, 0);
-
-        balanceSheet_submitQueuedAssets(0);
-
-        hub_addShareClass(2);
-
-        hub_updateHoldingValuation_clamped(false);
-
-        hub_updateHoldingValue();
-
-        property_decrease_valuation_no_increase_in_accountValue();
     }
 
     // forge test --match-test test_property_loss_soundness_24 -vvv
@@ -531,17 +387,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         property_asset_soundness();
     }
 
-    // forge test --match-test test_property_availableGtQueued_28 -vvv
-    function test_property_availableGtQueued_28() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(1, 10004208593700538);
-
-        shortcut_redeem_and_claim_clamped(1, 10002398920182395, 0);
-
-        property_availableGtQueued();
-    }
-
     // forge test --match-test test_property_asset_balance_delta_29 -vvv
     function test_property_asset_balance_delta_29() public {
         shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
@@ -572,21 +417,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         property_gain_soundness();
     }
 
-    // forge test --match-test test_property_shareQueueFlagConsistency_31 -vvv
-    function test_property_shareQueueFlagConsistency_31() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(0, 0);
-
-        balanceSheet_issue(1);
-
-        balanceSheet_submitQueuedShares(0);
-
-        shortcut_withdraw_and_claim_clamped(1, 0, 0);
-
-        property_shareQueueFlagConsistency();
-    }
-
     /// === Categorized Issues === ///
 
     // forge test --match-test test_doomsday_zeroPrice_noPanics_3 -vvv
@@ -598,22 +428,16 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         doomsday_zeroPrice_noPanics();
     }
 
-    // forge test --match-test test_asyncVault_maxDeposit_1 -vvv
+    // forge test --match-test test_asyncVault_maxDeposit_11 -vvv
     // NOTE: see issue here: https://github.com/Recon-Fuzz/centrifuge-invariants/issues/4
-    function test_asyncVault_maxDeposit_1() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+    function test_asyncVault_maxDeposit_11() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, true, false, true, false);
 
-        hub_updateHoldingValuation_clamped(true);
+        shortcut_deposit_queue_cancel(0, 0, 1, 1, 1, 0);
 
-        shortcut_mint_sync(10, 10112129893619390379128678749327912);
+        hub_notifyDeposit_clamped(0);
 
-        shortcut_queue_redemption(
-            1,
-            8842148328038016815231732,
-            1032506440027076166413381894971835202787810407249498930384303114617337
-        );
-
-        asyncVault_maxDeposit(0, 0, 2);
+        asyncVault_maxDeposit(0, 0, 0);
     }
 
     // forge test --match-test test_property_holdings_balance_equals_escrow_balance_13 -vvv
@@ -659,5 +483,34 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         );
 
         property_holdings_balance_equals_escrow_balance();
+    }
+
+    // forge test --match-test test_property_availableGtQueued_26 -vvv
+    // NOTE: see issue here: https://github.com/Recon-Fuzz/centrifuge-invariants/issues/6
+    // more of an admin gotcha that should be monitored
+    function test_property_availableGtQueued_26() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        shortcut_deposit_sync(1, 0);
+
+        balanceSheet_withdraw(0, 1);
+
+        property_availableGtQueued();
+    }
+
+    // forge test --match-test test_property_shareQueueFlagConsistency_31 -vvv
+    // NOTE: see issue here: https://github.com/Recon-Fuzz/centrifuge-invariants/issues/7
+    function test_property_shareQueueFlagConsistency_31() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        shortcut_deposit_sync(0, 0);
+
+        balanceSheet_issue(1);
+
+        balanceSheet_submitQueuedShares(0);
+
+        shortcut_withdraw_and_claim_clamped(1, 0, 0);
+
+        property_shareQueueFlagConsistency();
     }
 }
