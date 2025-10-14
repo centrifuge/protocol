@@ -10,7 +10,7 @@ abstract contract ReentrancyProtection {
     /// @notice Dispatched when there is a re-entrancy issue
     error UnauthorizedSender(address expected, address found);
 
-    address private transient _initiator;
+    address internal _initiator;
 
     /// @dev The method is protected for reentrancy issues.
     modifier protected() {
@@ -27,6 +27,6 @@ abstract contract ReentrancyProtection {
     }
 
     function msgSender() internal view virtual returns (address) {
-        return msg.sender;
+        return _initiator != address(0) ? _initiator : msg.sender;
     }
 }
