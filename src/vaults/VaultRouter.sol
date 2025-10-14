@@ -63,7 +63,20 @@ contract VaultRouter is Auth, ReentrancyProtection, Recoverable, IVaultRouter, I
 
     function executeMulticall(bytes[] calldata data) external payable {
         sender = gateway.lockCallback();
-        super.multicall(data)
+
+        uint256 totalBytes = data.length;
+        for (uint256 i; i < totalBytes; ++i) {
+            (bool success, bytes memory returnData) = address(this).delegatecall(data[i]);
+            if (!success) {
+                uint256 length = returnData.length;
+                require(length != 0, CallFailedWithEmptyRevert());
+
+                assembly ("memory-safe") {
+                    revert(add(32, returnData), length)
+                }
+            }
+        }
+
         sender = address(0);
     }
 
