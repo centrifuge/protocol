@@ -2945,24 +2945,31 @@ abstract contract Properties is
 
         try spoke.shareToken(poolId, scId) returns (IShareToken shareToken) {
             uint256 actualSupply = shareToken.totalSupply();
+            // escrow holds tokens that have been redeemed
+            uint256 balancesSummed = shareToken.balanceOf(
+                address(asyncRequestManager.globalEscrow())
+            );
             // Check 2: Sum of balances equals total supply
             address[] memory actors = _getActors();
-            uint256 balancesSummed;
             for (uint256 k = 0; k < actors.length; k++) {
                 uint256 balance = shareToken.balanceOf(actors[k]);
                 balancesSummed += balance;
 
                 // Allow 1 wei tolerance per actor for rounding
                 uint256 tolerance = actors.length;
-                gte(
-                    actualSupply + tolerance,
-                    balancesSummed,
-                    "Supply less than sum of balances"
-                );
+                // actualSupply = balancesSummed +/- tolerance
+
+                uint256 difference;
+                if (actualSupply >= balancesSummed) {
+                    difference = actualSupply - balancesSummed;
+                } else {
+                    difference = balancesSummed - actualSupply;
+                }
+
                 lte(
-                    actualSupply,
-                    balancesSummed + tolerance,
-                    "Supply exceeds sum of balances"
+                    difference,
+                    tolerance,
+                    "supply difference exceeds tolerance"
                 );
             }
         } catch {}
