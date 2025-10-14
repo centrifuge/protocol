@@ -53,7 +53,7 @@ contract GasService is IGasService {
         recoverTokens = _gasValue(152066);
         registerAsset = _gasValue(104937);
         setPoolAdapters = _gasValue(482633); // using MAX_ADAPTER_COUNT
-        request = _gasValue(226285);
+        request = _gasValue(226305);
         notifyPool = _gasValue(1141092); // create escrow case
         notifyShareClass = _gasValue(1843573);
         notifyPricePoolPerShare = _gasValue(108208);
@@ -64,12 +64,12 @@ contract GasService is IGasService {
         executeTransferShares = _gasValue(178642);
         updateRestriction = _gasValue(115624);
         trustedContractUpdate = _gasValue(142141);
-        requestCallback = _gasValue(264102); // approve deposit case
+        requestCallback = _gasValue(265378); // approve deposit case
         updateVaultDeployAndLink = _gasValue(2843564);
         updateVaultLink = _gasValue(186503);
         updateVaultUnlink = _gasValue(135221);
         setRequestManager = _gasValue(106582);
-        updateBalanceSheetManager = _gasValue(105313);
+        updateBalanceSheetManager = _gasValue(105335);
         updateHoldingAmount = _gasValue(305467);
         updateShares = _gasValue(202669);
         maxAssetPriceAge = _gasValue(111376);
