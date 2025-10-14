@@ -7,13 +7,13 @@ import {IAsyncVault} from "./interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "./interfaces/IVaultRouter.sol";
 
 import {Auth} from "../misc/Auth.sol";
+import {Multicall} from "../misc/Multicall.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {IEscrow} from "../misc/interfaces/IEscrow.sol";
 import {IMulticall} from "../misc/interfaces/IMulticall.sol";
 import {IERC7540Deposit} from "../misc/interfaces/IERC7540.sol";
 import {IERC20, IERC20Permit} from "../misc/interfaces/IERC20.sol";
-import {ReentrancyProtection} from "../misc/ReentrancyProtection.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
@@ -30,7 +30,7 @@ import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 ///         the multicall functionality which batches message calls into a single one.
 /// @dev    It is critical to ensure that at the end of any transaction, no funds remain in the
 ///         VaultRouter. Any funds that do remain are at risk of being taken by other users.
-contract VaultRouter is Auth, ReentrancyProtection, Recoverable, IVaultRouter, IMulticall {
+contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     using CastLib for address;
 
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
@@ -55,7 +55,7 @@ contract VaultRouter is Auth, ReentrancyProtection, Recoverable, IVaultRouter, I
         vaultRegistry = vaultRegistry_;
     }
 
-    function multicall(bytes[] calldata data) public payable virtual protected {
+    function multicall(bytes[] calldata data) public payable override protected {
         gateway.withBatch{value: msg.value}(
             abi.encodeWithSelector(VaultRouter.executeMulticall.selector, data), msg.sender
         );
@@ -63,20 +63,7 @@ contract VaultRouter is Auth, ReentrancyProtection, Recoverable, IVaultRouter, I
 
     function executeMulticall(bytes[] calldata data) external payable {
         sender = gateway.lockCallback();
-
-        uint256 totalBytes = data.length;
-        for (uint256 i; i < totalBytes; ++i) {
-            (bool success, bytes memory returnData) = address(this).delegatecall(data[i]);
-            if (!success) {
-                uint256 length = returnData.length;
-                require(length != 0, CallFailedWithEmptyRevert());
-
-                assembly ("memory-safe") {
-                    revert(add(32, returnData), length)
-                }
-            }
-        }
-
+        super.multicall(data);
         sender = address(0);
     }
 
