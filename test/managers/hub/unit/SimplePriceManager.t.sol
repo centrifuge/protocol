@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {d18} from "../../../../src/misc/types/D18.sol";
 import {Multicall} from "../../../../src/misc/Multicall.sol";
-import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
@@ -156,7 +155,7 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
     }
 
     function testAddNetworkUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISimplePriceManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
     }
@@ -200,7 +199,7 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         vm.prank(hubManager);
         priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISimplePriceManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         priceManager.removeNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
     }

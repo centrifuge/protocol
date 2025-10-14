@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {d18} from "../../../../src/misc/types/D18.sol";
-import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
 import {Mock} from "../../../core/mocks/Mock.sol";
 import {MockValuation} from "../../../core/mocks/MockValuation.sol";
@@ -119,7 +118,7 @@ contract NAVManagerConfigureTest is NAVManagerTest {
     }
 
     function testSetNAVHookUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.setNAVHook(POOL_A, navHook);
     }
@@ -162,7 +161,7 @@ contract NAVManagerConfigureTest is NAVManagerTest {
     function testUpdateManagerUnauthorized() public {
         address managerAddr = makeAddr("newManager");
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.updateManager(POOL_A, managerAddr, true);
     }
@@ -208,7 +207,7 @@ contract NAVManagerConfigureTest is NAVManagerTest {
     }
 
     function testInitializeNetworkUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.initializeNetwork(POOL_A, CENTRIFUGE_ID_1);
     }
@@ -274,7 +273,7 @@ contract NAVManagerHoldingInitializationTest is NAVManagerTest {
     }
 
     function testInitializeHoldingUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.initializeHolding(POOL_A, SC_1, asset1, mockValuation);
     }
@@ -322,7 +321,7 @@ contract NAVManagerLiabilityInitializationTest is NAVManagerTest {
     }
 
     function testInitializeLiabilityUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.initializeLiability(POOL_A, SC_1, asset1, mockValuation);
     }
@@ -452,7 +451,7 @@ contract NAVManagerUpdateHoldingTest is NAVManagerTest {
     }
 
     function testUpdateHoldingValuationUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.updateHoldingValuation(POOL_A, SC_1, asset1, mockValuation);
     }
@@ -532,7 +531,7 @@ contract NAVManagerCloseGainLossTest is NAVManagerTest {
     }
 
     function testCloseGainLossUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.closeGainLoss(POOL_A, CENTRIFUGE_ID_1);
     }
