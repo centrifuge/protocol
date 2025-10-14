@@ -126,7 +126,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     // Step 4 - deploy the pool
     function spoke_deployVault(
         bool isAsync
-    ) public updateGhosts asAdmin returns (address) {
+    ) public updateGhostsWithType(OpType.ADMIN) asAdmin returns (address) {
         address vault;
         if (isAsync) {
             vault = address(

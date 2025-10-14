@@ -210,8 +210,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     {
         if (
             currentOperation != OpType.ADMIN &&
-            currentOperation != OpType.UPDATE &&
-            currentOperation != OpType.GENERIC
+            currentOperation != OpType.UPDATE
         ) {
             eq(
                 _before.pricePerShare[address(_getVault())],
