@@ -8,7 +8,9 @@ pragma solidity ^0.8.28;
 /// @notice Abstract contract that implements reentrancy protection using transient storage.
 abstract contract ReentrancyProtection {
     /// @notice Dispatched when there is a re-entrancy issue
-    error UnauthorizedSender();
+    error UnauthorizedSender(address expected, address actual);
+
+    address internal immutable _multicallSource;
 
     address private transient _initiator;
 
@@ -21,7 +23,10 @@ abstract contract ReentrancyProtection {
             _initiator = address(0);
         } else {
             // Multicall re-entrancy lock
-            require(msgSender() == _initiator, UnauthorizedSender());
+            require(
+                _multicallSource != address(0) ? msg.sender == _multicallSource : msg.sender == _initiator,
+                UnauthorizedSender(_multicallSource != address(0) ? _multicallSource : _initiator, msg.sender)
+            );
             _;
         }
     }

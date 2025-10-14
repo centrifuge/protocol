@@ -48,6 +48,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     {
         escrow = IEscrow(escrow_);
         gateway = gateway_;
+        _multicallSource = address(gateway);
         spoke = spoke_;
         vaultRegistry = vaultRegistry_;
     }
