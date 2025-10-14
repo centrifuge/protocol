@@ -201,7 +201,6 @@ contract FullActionBatcher is CoreActionBatcher {
 
         // Rely vaultRouter
         report.routerEscrow.rely(address(report.vaultRouter));
-        report.core.gateway.rely(address(report.vaultRouter));
 
         // Rely navManager
         report.simplePriceManager.rely(address(report.navManager));

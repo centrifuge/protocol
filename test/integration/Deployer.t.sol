@@ -100,7 +100,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         vm.assume(nonWard != address(spoke));
         vm.assume(nonWard != address(balanceSheet));
         vm.assume(nonWard != address(hub));
-        vm.assume(nonWard != address(vaultRouter));
 
         assertEq(gateway.wards(address(root)), 1);
         assertEq(gateway.wards(address(protocolGuardian)), 1);
@@ -110,7 +109,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(gateway.wards(address(spoke)), 1);
         assertEq(gateway.wards(address(balanceSheet)), 1);
         assertEq(gateway.wards(address(hub)), 1);
-        assertEq(gateway.wards(address(vaultRouter)), 1);
         assertEq(gateway.wards(nonWard), 0);
 
         // dependencies set correctly
