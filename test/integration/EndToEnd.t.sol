@@ -30,11 +30,11 @@ import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {MAX_MESSAGE_COST} from "../../src/core/messaging/interfaces/IGasService.sol";
-import {IUntrustedContractUpdate} from "../../src/core/interfaces/IContractUpdate.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 import {IMessageHandler} from "../../src/core/messaging/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/messaging/MultiAdapter.sol";
 import {ILocalCentrifugeId} from "../../src/core/messaging/interfaces/IGatewaySenders.sol";
+import {IUntrustedContractUpdate} from "../../src/core/utils/interfaces/IContractUpdate.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {Root} from "../../src/admin/Root.sol";
@@ -56,6 +56,7 @@ import {SyncManager} from "../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
@@ -66,7 +67,6 @@ import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} 
 import "forge-std/Test.sol";
 
 import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
-import {UpdateContractMessageLib} from "../../src/libraries/UpdateContractMessageLib.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///
@@ -385,7 +385,6 @@ contract EndToEndUtils is EndToEndDeployment {
 /// Base investment flows that can be shared between EndToEnd tests
 contract EndToEndFlows is EndToEndUtils {
     using CastLib for *;
-    using UpdateContractMessageLib for *;
     using UpdateRestrictionMessageLib for *;
     using MathLib for *;
 
@@ -397,10 +396,7 @@ contract EndToEndFlows is EndToEndUtils {
     }
 
     function _updateContractSyncDepositMaxReserveMsg(uint128 maxReserve) internal view returns (bytes memory) {
-        return UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
-            assetId: s.usdcId.raw(),
-            maxReserve: maxReserve
-        }).serialize();
+        return abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), s.usdcId.raw(), maxReserve);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -721,7 +717,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     using CastLib for *;
     using MathLib for *;
     using MessageLib for *;
-    using UpdateContractMessageLib for *;
 
     function setUp() public virtual override {
         super.setUp();
@@ -1052,7 +1047,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
             SC_1,
             s.centrifugeId,
             address(s.asyncRequestManager).toBytes32(),
-            UpdateContractMessageLib.UpdateContractWithdraw({who: RECEIVER.toBytes32(), value: VALUE}).serialize(),
+            abi.encode(RECEIVER.toBytes32(), VALUE),
             EXTRA_GAS,
             REFUND
         );
