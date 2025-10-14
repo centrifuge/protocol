@@ -116,7 +116,8 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         require(destination.layerZeroEid != 0, UnknownChainId());
 
         MessagingReceipt memory receipt = endpoint.send{value: msg.value}(
-            _params(destination, payload, (gasLimit + RECEIVE_COST) * destination.gasBufferPercentage), refund
+            _params(destination, payload, (gasLimit + RECEIVE_COST) * (100 + destination.gasBufferPercentage) / 100),
+            refund
         );
         adapterData = receipt.guid;
     }
@@ -127,7 +128,8 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         require(destination.layerZeroEid != 0, UnknownChainId());
 
         MessagingFee memory fee = endpoint.quote(
-            _params(destination, payload, (gasLimit + RECEIVE_COST) * destination.gasBufferPercentage), address(this)
+            _params(destination, payload, (gasLimit + RECEIVE_COST) * (100 + destination.gasBufferPercentage) / 100),
+            address(this)
         );
         return fee.nativeFee;
     }

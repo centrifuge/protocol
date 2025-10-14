@@ -232,7 +232,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
             uint8(1), // WORKER_ID
             uint16(17), // uint128 gasLimit byte length + 1
             uint8(1), // OPTION_TYPE_LZ
-            uint128((gasLimit + adapter.RECEIVE_COST()) * GAS_MULTIPLIER)
+            uint128((gasLimit + adapter.RECEIVE_COST()) * (100 + GAS_MULTIPLIER) / 100)
         );
         assertEq(endpoint.values_bytes("params.options"), expectedOptions);
         assertEq(endpoint.values_bool("params.payInLzToken"), false);

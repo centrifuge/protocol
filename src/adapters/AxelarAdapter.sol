@@ -120,7 +120,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
             destination.axelarId,
             destination.addr,
             payload,
-            (gasLimit + RECEIVE_COST) * destination.gasBufferPercentage,
+            (gasLimit + RECEIVE_COST) * (100 + destination.gasBufferPercentage) / 100,
             bytes("")
         );
     }
