@@ -12,23 +12,43 @@ contract BatchedMulticallImpl is BatchedMulticall, Test {
     constructor(IGateway gateway) BatchedMulticall(gateway) {}
 
     function isBatching() external view returns (bool) {
-        return _isBatching;
+        return _sender != address(0);
     }
 
     function nonZeroPayment() external payable {
-        assertNotEq(_payment(), 0);
+        assertNotEq(msgValue(), 0);
     }
 
     function add(uint256 i) external payable {
-        assertEq(_payment(), 0);
+        assertEq(msgValue(), 0);
         total += i;
     }
 }
 
-contract IsContract {}
+contract MockGateway {
+    address internal transient _batcher;
+
+    function withBatch(bytes memory data, address) external payable {
+        _batcher = msg.sender;
+        (bool success, bytes memory returnData) = msg.sender.call(data);
+        if (!success) {
+            uint256 length = returnData.length;
+            require(length != 0, "call-failed-empty-revert");
+
+            assembly ("memory-safe") {
+                revert(add(32, returnData), length)
+            }
+        }
+    }
+
+    function lockCallback() external returns (address caller) {
+        caller = _batcher;
+        _batcher = address(0);
+    }
+}
 
 contract BatchedMulticallTest is Test {
-    IGateway immutable gateway = IGateway(address(new IsContract()));
+    IGateway immutable gateway = IGateway(address(new MockGateway()));
     BatchedMulticallImpl multicall = new BatchedMulticallImpl(gateway);
 
     function setUp() external {}
@@ -41,19 +61,7 @@ contract BatchedMulticallTestMulticall is BatchedMulticallTest {
         multicall.nonZeroPayment{value: 1}();
     }
 
-    function testErrAlreadyBatching() external {
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.isBatching.selector), abi.encode(true));
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatching.selector), abi.encode());
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatching.selector), abi.encode());
-
-        bytes[] memory calls = new bytes[](1);
-        calls[0] = abi.encodeWithSelector(multicall.add.selector, 1);
-
-        vm.expectRevert(IGateway.AlreadyBatching.selector);
-        multicall.multicall(calls);
-    }
-
-    function testMulticall() external {
+    function testMulticallTest() external {
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.isBatching.selector), abi.encode(false));
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatching.selector), abi.encode());
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatching.selector), abi.encode());
