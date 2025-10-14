@@ -511,6 +511,16 @@ contract NAVManagerCloseGainLossTest is NAVManagerTest {
         vm.prank(unauthorized);
         navManager.closeGainLoss(POOL_A, CENTRIFUGE_ID_1);
     }
+
+    function testCloseGainLossInvalidStateOfAccounts(bool gainIsPositive, bool lossIsPositive) public {
+        vm.assume(!gainIsPositive || !lossIsPositive); // At least one account is negative
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, gainIsPositive);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, lossIsPositive);
+
+        vm.expectRevert(INAVManager.InvalidStateOfAccounts.selector);
+        vm.prank(manager);
+        navManager.closeGainLoss(POOL_A, CENTRIFUGE_ID_1);
+    }
 }
 
 contract NAVManagerHelperFunctionsTest is NAVManagerTest {

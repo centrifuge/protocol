@@ -55,6 +55,7 @@ interface INAVManager is ISnapshotHook {
     error AlreadyInitialized();
     error NotInitialized();
     error ExceedsMaxAccounts();
+    error InvalidStateOfAccounts();
     error InvalidNAVHook();
     error InvalidNAV();
 
