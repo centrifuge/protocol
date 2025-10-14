@@ -10,9 +10,8 @@ abstract contract ReentrancyProtection {
     /// @notice Dispatched when there is a re-entrancy issue
     error UnauthorizedSender(address expected, address actual);
 
-    address internal immutable _multicallSource;
-
     address private transient _initiator;
+    address internal transient _multicallSource;
 
     /// @dev The method is protected for reentrancy issues.
     modifier protected() {
