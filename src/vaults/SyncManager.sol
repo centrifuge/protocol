@@ -258,11 +258,6 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     }
 
     /// @dev    Calculates safe maximum assets and corresponding shares, handling overflow and zero prices correctly.
-    /// @param  vault_ The vault to calculate for
-    /// @param  maxAssets The maximum assets from reserves
-    /// @param  vaultDetails The cached vault details
-    /// @return clampedAssets The safe clamped asset amount
-    /// @return shares The corresponding shares (0 if prices are zero/invalid)
     function _maxAssetsAndShares(IBaseVault vault_, uint256 maxAssets, VaultDetails memory vaultDetails)
         internal
         view
@@ -277,9 +272,6 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
 
     /// @dev    Calculates the maximum amount of assets that can be converted to shares without uint128 overflow.
     ///         Uses PricingLib to determine safe input bounds based on inverse conversion formula.
-    /// @param  vault_ The vault to calculate for
-    /// @param  vaultDetails The cached vault details
-    /// @return Maximum assets that can be safely passed to convertToShares without reverting
     function _maxConvertibleAssets(IBaseVault vault_, VaultDetails memory vaultDetails)
         internal
         view
