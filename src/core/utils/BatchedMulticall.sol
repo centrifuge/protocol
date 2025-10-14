@@ -20,7 +20,7 @@ abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
     }
 
     /// @inheritdoc IMulticall
-    /// @notice With extra support for batching
+    /// @notice     With extra support for batching
     function multicall(bytes[] calldata data) public payable override {
         _sender = msg.sender;
         gateway.withBatch{value: msg.value}(
@@ -34,10 +34,14 @@ abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
         super.multicall(data);
     }
 
+    /// @dev Integrators MUST use msgSender() instead of msg.sender, since this is replaced
+    ///      by the gateway address inside the multicall.
     function msgSender() internal view virtual returns (address) {
         return _sender != address(0) ? _sender : msg.sender;
     }
 
+    /// @dev Only the call to multicall should pass the msg.value, which is then passed
+    ///      in `gateway.withBatch`. All inner calls should not pass any msg.value.
     function msgValue() internal view returns (uint256 value) {
         return _sender != address(0) ? 0 : msg.value;
     }
