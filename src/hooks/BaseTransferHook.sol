@@ -108,7 +108,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
     ) public view virtual returns (bool);
 
     function isDepositRequestOrIssuance(address from, address to) public view returns (bool) {
-        return from == address(0) && to != depositTarget;
+        return from == address(0) && to != depositTarget && to != crosschainSource;
     }
 
     function isDepositFulfillment(address from, address to) public view returns (bool) {
