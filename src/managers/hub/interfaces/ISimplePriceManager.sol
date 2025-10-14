@@ -24,6 +24,7 @@ interface ISimplePriceManager is INAVHook {
     );
     event UpdateNetworks(PoolId indexed poolId, uint16[] networks);
 
+    error NotAuthorized();
     error InvalidShareClassCount();
     error InvalidShareClass();
     error MismatchedEpochs();

@@ -3,8 +3,6 @@ pragma solidity 0.8.28;
 
 import {INAVManager, INAVHook} from "./interfaces/INAVManager.sol";
 
-import {Auth} from "../../misc/Auth.sol";
-
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
@@ -17,7 +15,7 @@ import {IAccounting, JournalEntry} from "../../core/hub/interfaces/IAccounting.s
 import {AccountId, withCentrifugeId, withAssetId} from "../../core/types/AccountId.sol";
 
 /// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
-contract NAVManager is INAVManager, Auth {
+contract NAVManager is INAVManager {
     IHub public immutable hub;
     IHoldings public immutable holdings;
     IAccounting public immutable accounting;
@@ -27,7 +25,7 @@ contract NAVManager is INAVManager, Auth {
     mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId => mapping(uint16 centrifugeId => bool)) public initialized;
 
-    constructor(IHub hub_, address deployer) Auth(deployer) {
+    constructor(IHub hub_) {
         hub = hub_;
         hubRegistry = hub_.hubRegistry();
         holdings = hub.holdings();
@@ -124,7 +122,8 @@ contract NAVManager is INAVManager, Auth {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISnapshotHook
-    function onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external auth {
+    function onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external {
+        require(msg.sender == address(holdings), NotAuthorized());
         require(address(navHook[poolId]) != address(0), InvalidNAVHook());
 
         uint128 netAssetValue_ = netAssetValue(poolId, centrifugeId);
@@ -140,7 +139,8 @@ contract NAVManager is INAVManager, Auth {
         uint16 fromCentrifugeId,
         uint16 toCentrifugeId,
         uint128 sharesTransferred
-    ) external auth {
+    ) external {
+        require(msg.sender == address(holdings), NotAuthorized());
         require(address(navHook[poolId]) != address(0), InvalidNAVHook());
 
         navHook[poolId].onTransfer(poolId, scId, fromCentrifugeId, toCentrifugeId, sharesTransferred);
