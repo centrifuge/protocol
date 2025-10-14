@@ -11,7 +11,7 @@ import {IGateway} from "../messaging/interfaces/IGateway.sol";
 /// @notice Abstract contract that extends Multicall with gateway batching support, enabling efficient
 ///         aggregation of multiple cross-chain messages into a single batch to reduce transaction costs
 ///         while coordinating payment handling across batched operations.
-///         Integrators MUST use msgSender() instead of msg.sender.
+/// @dev    Integrators MUST repalce msg.sender with msgSender().
 abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
     IGateway public gateway;
     address internal transient _sender;
