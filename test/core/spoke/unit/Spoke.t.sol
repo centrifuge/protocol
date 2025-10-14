@@ -441,7 +441,7 @@ contract SpokeTestRegisterAsset is SpokeTest {
 contract SpokeTestRequest is SpokeTest {
     function testErrInvalidRequestManager() public {
         vm.prank(AUTH);
-        vm.expectRevert(ISpoke.InvalidRequestManager.selector);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND, false);
     }
 
