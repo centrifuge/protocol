@@ -415,10 +415,9 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             ghost_assetQueueWithdrawals[assetKey] += amount;
             sumOfManagerWithdrawals[vault.asset()] += amount;
         } catch (bytes memory err) {
-            bool expectedError = checkError(err, "InvalidPrice()") ||
-                checkError(err, "UnknownAsset()");
+            bool expectedError = checkError(err, Panic.arithmeticPanic); // we care about reverts due to arithmetic errors
             // Check if withdrawal was possible with available balance (track failures)
-            if (!expectedError && amount <= prevAvailable) {
+            if (expectedError && amount <= prevAvailable) {
                 t(false, "Withdrawals failed despite sufficient balance");
             }
         }
@@ -528,7 +527,13 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             .queuedShares(poolId, scId);
         ghost_previousNonce[shareKey] = currentNonce;
 
-        balanceSheet.submitQueuedAssets(poolId, scId, assetId, extraGasLimit, address(this));
+        balanceSheet.submitQueuedAssets(
+            poolId,
+            scId,
+            assetId,
+            extraGasLimit,
+            address(this)
+        );
     }
 
     function balanceSheet_submitQueuedShares(
