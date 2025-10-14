@@ -12,7 +12,6 @@ import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
-import {IERC20Metadata} from "../misc/interfaces/IERC20.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
@@ -284,7 +283,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     }
 
     /// @dev    Calculates the maximum amount of assets that can be converted to shares without uint128 overflow.
-    ///         Uses the inverse of PricingLib.convertWithPrices formula to determine safe input bounds.
+    ///         Uses PricingLib to determine safe input bounds based on inverse conversion formula.
     /// @param  vault_ The vault to calculate for
     /// @param  vaultDetails The cached vault details
     /// @return Maximum assets that can be safely passed to convertToShares without reverting
@@ -296,20 +295,13 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         D18 poolPerShare = pricePoolPerShare(vault_.poolId(), vault_.scId());
         D18 poolPerAsset = spoke.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
 
-        // If prices are zero, convertToShares will return 0 anyway
-        if (poolPerShare.isZero() || poolPerAsset.isZero()) return type(uint128).max;
+        if (poolPerShare.isZero() || poolPerAsset.isZero()) return 0;
 
-        uint8 assetDecimals = IERC20Metadata(vaultDetails.asset).decimals();
-        uint8 shareDecimals = IERC20Metadata(vault_.share()).decimals();
-
-        uint256 maxAssets = MathLib.mulDiv(
-            type(uint128).max,
-            uint256(10 ** assetDecimals) * poolPerShare.raw(),
-            uint256(10 ** shareDecimals) * poolPerAsset.raw(),
-            MathLib.Rounding.Down // NOTE: Conservative rounding to ensure we stay below overflow threshold
+        uint256 maxAssets = PricingLib.maxConvertibleAssetAmount(
+            vault_.share(), vaultDetails.asset, vaultDetails.tokenId, type(uint128).max, poolPerShare, poolPerAsset
         );
 
-        // If result exceeds max, it means any uint128 asset amount is safely convertible to share amount
+        // Clamp to uint128 if calculation exceeds max
         return maxAssets > type(uint128).max ? type(uint128).max : uint128(maxAssets);
     }
 }
