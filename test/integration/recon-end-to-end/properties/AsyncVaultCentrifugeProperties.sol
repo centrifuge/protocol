@@ -19,6 +19,7 @@ import {AsyncVaultProperties} from "test/integration/recon-end-to-end/properties
 import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 import {IPoolEscrow, Holding} from "src/core/spoke/interfaces/IPoolEscrow.sol";
 import {PoolEscrow} from "src/core/spoke/PoolEscrow.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 import {VaultKind} from "src/core/spoke/interfaces/IVault.sol";
 
@@ -132,18 +133,20 @@ abstract contract AsyncVaultCentrifugeProperties is
     /// === Custom Properties === ///
 
     /// @dev Property: user can always maxDeposit if they have > 0 assets and are approved
-    /// @dev Property: user can always deposit an amount between 1 and maxDeposit  if they have > 0 assets and are
-    /// approved
+    /// @dev Property: user can always deposit an amount between 1 and maxDeposit if they have > 0 assets and are approved
     /// @dev Property: maxDeposit should decrease by the amount deposited
     /// @dev Property: depositing maxDeposit blocks the user from depositing more
     /// @dev Property: depositing maxDeposit does not increase the pendingDeposit
     /// @dev Property: depositing maxDeposit doesn't mint more than maxMint shares
+    /// @dev Property: For async vaults, validates globalEscrow share transfers
+    /// @dev Property: For sync vaults, validates PoolEscrow state changes
     // TODO(wischli): Add back statelessTest modifier after optimizer run
     function asyncVault_maxDeposit(
         uint64 poolEntropy,
         uint32 scEntropy,
         uint256 depositAmount
     ) public statelessTest {
+
         uint256 maxDepositBefore = _getVault().maxDeposit(_getActor());
 
         depositAmount = between(depositAmount, 1, maxDepositBefore);
@@ -155,7 +158,6 @@ abstract contract AsyncVaultCentrifugeProperties is
             scEntropy
         );
         AssetId assetId = _getAssetId();
-        // (uint32 latestDepositApproval,,,) = batchRequestManager.epochPointers(scId, assetId);
         (uint256 pendingDepositBefore, ) = batchRequestManager.depositRequest(
             poolId,
             scId,
@@ -163,26 +165,24 @@ abstract contract AsyncVaultCentrifugeProperties is
             _getActor().toBytes32()
         );
 
-        // === PoolEscrow State Analysis Before Deposit ===
+        bool isAsyncVault = Helpers.isAsyncVault(address(_getVault()));
+
         PoolEscrowState memory escrowState = _analyzePoolEscrowState(
             poolId,
             scId
         );
 
-        bool isAsyncVault = _getVault().vaultKind() == VaultKind.Async;
+
         uint256 maxMintBefore;
+        AsyncClaimState memory claimState;
         if (isAsyncVault) {
-            (maxMintBefore, , , , , , , , , ) = asyncRequestManager.investments(
-                _getVault(),
-                _getActor()
-            );
+            claimState = _captureAsyncClaimStateBefore(_getVault(), _getActor());
+            maxMintBefore = claimState.maxMintBefore;
         }
-        // TODO(wischli): Find solution for Uint128_Overflow
+        // TODO(wischli): Re-enable after merging main with maxMint refactor to overcome Uint128_Overflow
         // else {
         //     maxMintBefore = syncManager.maxMint(_getVault(), _getActor());
         // }
-
-        console2.log("asyncVault_maxDeposit: isAsyncVault == ", isAsyncVault);
 
         vm.prank(_getActor());
         try _getVault().deposit(depositAmount, _getActor()) returns (
@@ -191,27 +191,37 @@ abstract contract AsyncVaultCentrifugeProperties is
             console2.log(" === After Depositing: Max Deposit === ");
             uint256 maxDepositAfter = _getVault().maxDeposit(_getActor());
 
-            // === Enhanced PoolEscrow-aware maxDeposit Property ===
-            // Update escrow state after the deposit operation
-            _updatePoolEscrowStateAfter(escrowState);
+            if (isAsyncVault) {
+                // For async vaults, validate globalEscrow share transfers instead of poolEscrow
+                claimState.sharesReturned = shares;
+                _updateAsyncClaimStateAfter(claimState, _getVault(), _getActor());
+                _validateAsyncVaultClaim(claimState, depositAmount, "asyncVault_maxDeposit");
 
-            // Validate maxDeposit change with PoolEscrow-aware logic
-            _validateMaxValueChange(
-                maxDepositBefore,
-                maxDepositAfter,
-                depositAmount,
-                "Deposit",
-                escrowState
-            );
+                _validateAsyncMaxValueChange(
+                    maxDepositBefore,
+                    maxDepositAfter,
+                    depositAmount,
+                    "Deposit"
+                );
+            } else {
+                // For sync vaults, validate PoolEscrow changes due to immediate deposit
+                _updatePoolEscrowStateAfter(escrowState);
+                _validateSyncMaxValueChange(
+                    maxDepositBefore,
+                    maxDepositAfter,
+                    depositAmount,
+                    "Deposit",
+                    escrowState
+                );
 
-            // Log analysis for debugging
-            _logPoolEscrowAnalysis(
-                "Deposit",
-                maxDepositBefore,
-                maxDepositAfter,
-                depositAmount,
-                escrowState
-            );
+                _logPoolEscrowAnalysis(
+                    "Deposit",
+                    maxDepositBefore,
+                    maxDepositAfter,
+                    depositAmount,
+                    escrowState
+                );
+            }
 
             if (depositAmount == maxDepositBefore) {
                 (uint256 pendingDeposit, ) = batchRequestManager.depositRequest(
@@ -286,28 +296,50 @@ abstract contract AsyncVaultCentrifugeProperties is
         try _getVault().mint(mintAmount, _getActor()) returns (uint256 assets) {
             console2.log(" === After asyncVault_maxMint mint === ");
             uint256 maxMintAfter = _getVault().maxMint(_getActor());
+            uint256 maxDepositAfter = _getVault().maxDeposit(_getActor());
 
-            // === Enhanced PoolEscrow-aware maxMint Property ===
-            // Update escrow state after the mint operation
-            _updatePoolEscrowStateAfter(escrowState);
+            bool isAsyncVault = Helpers.isAsyncVault(address(_getVault()));
 
-            // Validate maxMint change with PoolEscrow-aware logic
-            _validateMaxValueChange(
-                maxMintBefore,
-                maxMintAfter,
-                assets,
-                "Mint",
-                escrowState
-            );
+            if (isAsyncVault) {
+                // For async vaults, validate globalEscrow share transfers instead of poolEscrow
+                AsyncClaimState memory claimState = _captureAsyncClaimStateBefore(_getVault(), _getActor());
+                claimState.sharesReturned = mintAmount;
+                _updateAsyncClaimStateAfter(claimState, _getVault(), _getActor());
+                _validateAsyncVaultClaim(claimState, assets, "asyncVault_maxMint");
 
-            // Log analysis for debugging
-            _logPoolEscrowAnalysis(
-                "Mint",
-                maxMintBefore,
-                maxMintAfter,
-                mintAmount,
-                escrowState
-            );
+                _validateAsyncMaxValueChange(
+                    maxMintBefore,
+                    maxMintAfter,
+                    mintAmount,
+                    "Mint"
+                );
+
+                _validateAsyncMaxValueChange(
+                    maxDepositBefore,
+                    maxDepositAfter,
+                    assets,
+                    "Deposit"
+                );
+            } else {
+                // For sync vaults, validate PoolEscrow changes due to immediate mint
+                _updatePoolEscrowStateAfter(escrowState);
+                _validateSyncMaxValueChange(
+                    maxMintBefore,
+                    maxMintAfter,
+                    assets,
+                    "Mint",
+                    escrowState
+                );
+                // TODO: Investigate checking with maxDeposit as done for asyncVault
+
+                _logPoolEscrowAnalysis(
+                    "Mint",
+                    maxMintBefore,
+                    maxMintAfter,
+                    mintAmount,
+                    escrowState
+                );
+            }
 
             uint256 shares = _getVault().convertToShares(assets);
 
@@ -322,7 +354,7 @@ abstract contract AsyncVaultCentrifugeProperties is
                 lte(shares, maxDepositBefore, "shares minted surpass maxMint");
 
                 uint256 maxMintManagerAfter;
-                if (_getVault().vaultKind() == VaultKind.Async) {
+                if (Helpers.isAsyncVault(address(_getVault()))) {
                     (
                         maxMintManagerAfter,
                         ,
@@ -352,7 +384,7 @@ abstract contract AsyncVaultCentrifugeProperties is
             }
         } catch {
             // Determine vault type for proper validation
-            bool isAsyncVault = _getVault().vaultKind() == VaultKind.Async;
+            bool isAsyncVault = Helpers.isAsyncVault(address(_getVault()));
 
             if (isAsyncVault) {
                 _validateAsyncMintFailure(mintAmount);
@@ -434,7 +466,7 @@ abstract contract AsyncVaultCentrifugeProperties is
             }
         } catch {
             // Determine vault type for proper validation
-            bool isAsyncVault = _getVault().vaultKind() == VaultKind.Async;
+            bool isAsyncVault = Helpers.isAsyncVault(address(_getVault()));
 
             if (isAsyncVault) {
                 bool unknownFailure = _validateAsyncWithdrawFailure(
@@ -576,17 +608,29 @@ abstract contract AsyncVaultCentrifugeProperties is
         address asset;
         ShareClassId scId;
         uint256 tokenId;
-        // Raw PoolEscrow holding values
         uint128 totalBefore;
         uint128 totalAfter;
         uint128 reservedBefore;
         uint128 reservedAfter;
-        // Derived available balance values
         uint128 availableBalanceBefore;
         uint128 availableBalanceAfter;
-        // State classification
-        bool isNormalStateBefore; // total > reserved before
-        bool isNormalStateAfter; // total > reserved after
+        // total > reserved before
+        bool isNormalStateBefore;
+        // total > reserved after
+        bool isNormalStateAfter;
+    }
+
+    /// @notice Tracks share balances for async vault claim operations
+    /// @dev During claim operations (vault.deposit/mint), shares transfer from globalEscrow to receiver
+    /// @dev PoolEscrow does NOT change during claims
+    struct AsyncClaimState {
+        uint256 globalEscrowSharesBefore;
+        uint256 globalEscrowSharesAfter;
+        uint256 receiverSharesBefore;
+        uint256 receiverSharesAfter;
+        uint256 sharesReturned;
+        uint128 maxMintBefore;
+        uint128 maxMintAfter;
     }
 
     /// @dev Analyzes PoolEscrow state before operations
@@ -641,147 +685,73 @@ abstract contract AsyncVaultCentrifugeProperties is
         state.isNormalStateAfter = state.totalAfter > state.reservedAfter;
     }
 
-    /// @dev Validates max operation value changes with exact PoolEscrow-aware logic
-    /// @param maxValueBefore The maximum operation value before the operation
-    /// @param maxValueAfter The maximum operation value after the operation
-    /// @param operationAmount The amount used in the operation (deposit/mint amount)
-    /// @param operationName The name of the operation for logging ("Deposit" or "Mint")
-    /// @param state The PoolEscrow state analysis
-    function _validateMaxValueChange(
+
+    /// @dev Validates AsyncVault max value changes
+    /// @param operationAmount The operation amount (shares for maxMint, assets for maxDeposit)
+    /// @param operationName The name of the operation ("Deposit" or "Mint")
+    function _validateAsyncMaxValueChange(
         uint256 maxValueBefore,
         uint256 maxValueAfter,
         uint256 operationAmount,
+        string memory operationName
+    ) internal {
+        // Note: Due to rounding in share<->asset conversion, we allow small tolerance
+        uint256 expectedMaxValueAfter = maxValueBefore > operationAmount
+            ? maxValueBefore - operationAmount
+            : 0;
+
+        lte(
+            maxValueAfter,
+            expectedMaxValueAfter + 1,
+            string.concat(
+                "Async ",
+                operationName,
+                ": maxValue should decrease by approximately operationAmount"
+            )
+        );
+        gte(
+            maxValueAfter,
+            expectedMaxValueAfter > 0 ? expectedMaxValueAfter - 1 : 0,
+            string.concat(
+                "Async ",
+                operationName,
+                ": maxValue should not decrease by more than operationAmount"
+            )
+        );
+    }
+
+    /// @dev Validates SyncVault max value changes with PoolEscrow state validation
+    /// @param operationName The name of the operation ("Deposit" or "Mint")
+    function _validateSyncMaxValueChange(
+        uint256 maxValueBefore,
+        uint256 maxValueAfter,
+        uint256 assetAmount,
         string memory operationName,
         PoolEscrowState memory state
     ) internal {
-        // === Enforce Core Invariants ===
-        // Invariant 1: Only total should change during deposits, not reserved
         t(
             state.reservedAfter == state.reservedBefore,
             string.concat(operationName, ": reserved amount should not change")
         );
 
-        // Invariant 2: Total should increase by exactly the operation amount
         t(
-            state.totalBefore + uint128(operationAmount) == state.totalAfter,
+            state.totalBefore + uint128(assetAmount) == state.totalAfter,
             string.concat(
                 operationName,
-                ": total should increase by operation amount"
+                ": total should increase by asset amount"
             )
         );
 
-        // === Vault Type Detection ===
-        bool isAsyncVault = _getVault().vaultKind() == VaultKind.Async;
-
-        if (isAsyncVault) {
-            _validateAsyncVaultMaxValueChange(
-                maxValueBefore,
-                maxValueAfter,
-                operationAmount,
-                operationName,
-                state
-            );
-        } else {
-            _validateSyncVaultMaxValueChange(
-                maxValueBefore,
-                maxValueAfter,
-                operationAmount,
-                operationName,
-                state
-            );
-        }
-    }
-
-    /// @dev Validates AsyncVault max value changes (user-specific allocation-based)
-    function _validateAsyncVaultMaxValueChange(
-        uint256 maxValueBefore,
-        uint256 maxValueAfter,
-        uint256 operationAmount,
-        string memory operationName,
-        PoolEscrowState memory state
-    ) internal {
-        // === AsyncVault Scenario-Based Validation ===
-        if (state.isNormalStateBefore && state.isNormalStateAfter) {
-            // Scenario 1: Normal -> Normal (total > reserved before and after)
-            t(
-                maxValueAfter == maxValueBefore - operationAmount,
-                string.concat(
-                    "Async Normal->Normal: max",
-                    operationName,
-                    " should decrease by exact operation amount"
-                )
-            );
-        } else if (!state.isNormalStateBefore && !state.isNormalStateAfter) {
-            // Scenario 2: Critical -> Critical (total ≤ reserved before and after)
-            t(
-                maxValueBefore == 0,
-                string.concat(
-                    "Async Critical->Critical: max",
-                    operationName,
-                    "Before should be 0"
-                )
-            );
-            t(
-                maxValueAfter == 0,
-                string.concat(
-                    "Async Critical->Critical: max",
-                    operationName,
-                    "After should be 0"
-                )
-            );
-        } else if (!state.isNormalStateBefore && state.isNormalStateAfter) {
-            // Scenario 3: Critical -> Normal (total ≤ reserved before, total > reserved after)
-            t(
-                maxValueBefore == 0,
-                string.concat(
-                    "Async Critical->Normal: max",
-                    operationName,
-                    "Before should be 0"
-                )
-            );
-
-            // For AsyncVault, maxValueAfter is based on user's maxMint allocation, not PoolEscrow calculation
-            t(
-                // maxValueAfter > 0,
-                maxValueAfter ==
-                    state.totalBefore + operationAmount - state.reservedBefore,
-                string.concat(
-                    "Async Critical->Normal: max",
-                    operationName,
-                    "After should be > 0"
-                )
-            );
-        } else {
-            // Scenario 4: Normal -> Critical (total > reserved before, total ≤ reserved after)
-            // This should be theoretically impossible since we're only adding funds via deposits
-            t(
-                false,
-                string.concat(
-                    "Async Invalid transition: Normal->Critical impossible for ",
-                    operationName
-                )
-            );
-        }
-    }
-
-    /// @dev Validates SyncVault max value changes (maxReserve-based, can be uint128.max)
-    function _validateSyncVaultMaxValueChange(
-        uint256 maxValueBefore,
-        uint256 maxValueAfter,
-        uint256 operationAmount,
-        string memory operationName,
-        PoolEscrowState memory state
-    ) internal {
         // === SyncVault Scenario-Based Validation ===
         if (state.isNormalStateBefore && state.isNormalStateAfter) {
             // Scenario 1: Normal -> Normal (total > reserved before and after)
             // SyncVault: maxDeposit = maxReserve - availableBalance
             t(
-                maxValueAfter == maxValueBefore - operationAmount,
+                maxValueAfter == maxValueBefore - assetAmount,
                 string.concat(
                     "Sync Normal->Normal: max",
                     operationName,
-                    " should decrease by exact operation amount"
+                    " should decrease by exact asset amount"
                 )
             );
         } else if (!state.isNormalStateBefore && !state.isNormalStateAfter) {
@@ -806,30 +776,30 @@ abstract contract AsyncVaultCentrifugeProperties is
             // SyncVault: Both before and after follow maxReserve - availableBalance calculation
             // The availableBalance calculation changes during PoolEscrow state transitions
 
-            // SyncVault Critical->Normal: The decrease is approximately operationAmount, but can deviate due to
+            // SyncVault Critical->Normal: The decrease is approximately assetAmount, but can deviate due to
             // PoolEscrow state transition effects on availableBalance calculation
             uint256 actualDecrease = maxValueBefore - maxValueAfter;
 
-            // The decrease is bounded by: (operationAmount - reserved) ≤ actualDecrease ≤ operationAmount
-            // This is because actualDecrease = totalBefore + operationAmount - reserved, where 0 ≤ totalBefore ≤
+            // The decrease is bounded by: (assetAmount - reserved) ≤ actualDecrease ≤ assetAmount
+            // This is because actualDecrease = totalBefore + assetAmount - reserved, where 0 ≤ totalBefore ≤
             // reserved
             t(
-                actualDecrease >= operationAmount - state.reservedAfter &&
-                    actualDecrease <= operationAmount,
+                actualDecrease >= assetAmount - state.reservedAfter &&
+                    actualDecrease <= assetAmount,
                 string.concat(
                     "Sync Critical->Normal: max",
                     operationName,
-                    " decrease should be within [operationAmount - reserved, operationAmount]"
+                    " decrease should be within [assetAmount - reserved, assetAmount]"
                 )
             );
 
             // The before value should follow maxReserve logic (could be large)
             t(
-                maxValueBefore >= operationAmount,
+                maxValueBefore >= assetAmount,
                 string.concat(
                     "Sync Critical->Normal: max",
                     operationName,
-                    "Before should be >= operation amount"
+                    "Before should be >= asset amount"
                 )
             );
         } else {
@@ -874,6 +844,100 @@ abstract contract AsyncVaultCentrifugeProperties is
         console2.log(
             string.concat(operationName, "Amount: %d"),
             operationAmount
+        );
+    }
+
+    /// @dev Captures async claim state before vault.deposit() operation
+    /// @notice Tracks globalEscrow and receiver share balances
+    function _captureAsyncClaimStateBefore(
+        IBaseVault vault,
+        address receiver
+    ) internal view returns (AsyncClaimState memory state) {
+        address shareToken = vault.share();
+        address globalEscrowAddr = address(asyncRequestManager.globalEscrow());
+
+        state.globalEscrowSharesBefore = IERC20(shareToken).balanceOf(globalEscrowAddr);
+        state.receiverSharesBefore = IERC20(shareToken).balanceOf(receiver);
+
+        (state.maxMintBefore, , , , , , , , , ) = asyncRequestManager.investments(vault, _getActor());
+        return state;
+    }
+
+    /// @dev Updates async claim state after vault.deposit() operation
+    /// @notice Updates the state struct with post-operation values
+    function _updateAsyncClaimStateAfter(
+        AsyncClaimState memory state,
+        IBaseVault vault,
+        address receiver
+    ) internal view {
+        address shareToken = vault.share();
+        address globalEscrowAddr = address(asyncRequestManager.globalEscrow());
+
+        state.globalEscrowSharesAfter = IERC20(shareToken).balanceOf(globalEscrowAddr);
+        state.receiverSharesAfter = IERC20(shareToken).balanceOf(receiver);
+
+        (state.maxMintAfter, , , , , , , , , ) = asyncRequestManager.investments(vault, _getActor());
+    }
+
+    /// @dev Validates async vault claim operations
+    /// @notice During claims, globalEscrow shares transfer to receiver, PoolEscrow does NOT change
+    function _validateAsyncVaultClaim(
+        AsyncClaimState memory state,
+        uint256 depositAmount,
+        string memory operationName
+    ) internal {
+        if (depositAmount == 0) {
+            eq(
+                state.sharesReturned,
+                0,
+                string.concat(operationName, ": zero deposit should return zero shares")
+            );
+            eq(
+                state.globalEscrowSharesBefore,
+                state.globalEscrowSharesAfter,
+                string.concat(operationName, ": zero deposit should not change globalEscrow")
+            );
+            eq(
+                state.receiverSharesBefore,
+                state.receiverSharesAfter,
+                string.concat(operationName, ": zero deposit should not change receiver balance")
+            );
+            eq(
+                state.maxMintBefore,
+                state.maxMintAfter,
+                string.concat(operationName, ": zero deposit should not change maxMint")
+            );
+            return;
+        }
+
+        uint256 globalEscrowDecrease = state.globalEscrowSharesBefore - state.globalEscrowSharesAfter;
+        uint256 receiverIncrease = state.receiverSharesAfter - state.receiverSharesBefore;
+        eq(
+            globalEscrowDecrease,
+            state.sharesReturned,
+            string.concat(operationName, ": globalEscrow must decrease by exact shares returned")
+        );
+        eq(
+            receiverIncrease,
+            state.sharesReturned,
+            string.concat(operationName, ": receiver must receive exact shares returned")
+        );
+        eq(
+            globalEscrowDecrease,
+            receiverIncrease,
+            string.concat(operationName, ": shares leaving globalEscrow must equal shares received")
+        );
+
+        uint128 maxMintDecrease = state.maxMintBefore - state.maxMintAfter;
+        gte(
+            maxMintDecrease,
+            state.sharesReturned,
+            string.concat(operationName, ": maxMint must decrease by at least shares returned")
+        );
+        lte(
+            maxMintDecrease,
+            state.sharesReturned + 1,
+            string.concat(operationName, ": maxMint must decrease by at at most shares returned +1 due to rounding")
         );
     }
 

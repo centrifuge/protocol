@@ -1179,8 +1179,10 @@ abstract contract Properties is
             assetId,
             uint8(AccountType.Asset)
         );
-        (, uint128 assetsValue) = accounting.accountValue(poolId, accountId);
+        (, uint128 accountValue) = accounting.accountValue(poolId, accountId);
         uint128 holdingsValue = holdings.value(poolId, scId, assetId);
+
+        gte(accountValue, holdingsValue, "Holdings value contained in Accounting");
 
         // This property holds all of the system accounting together
         // NOTE: If priceAssetPerPool == 0, this equality might break, investigate then
