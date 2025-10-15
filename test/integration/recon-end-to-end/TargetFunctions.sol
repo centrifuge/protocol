@@ -147,7 +147,7 @@ abstract contract TargetFunctions is
 
             hub_addShareClass(salt);
 
-            spoke_addShareClass(uint128(_scId), 18, address(fullRestrictions));
+            spoke_addShareClass(uint128(_scId), 18);
             ShareToken(_getShareToken()).rely(address(spoke));
             ShareToken(_getShareToken()).rely(address(balanceSheet));
         }
@@ -165,14 +165,8 @@ abstract contract TargetFunctions is
 
             if (isLiability) {
                 // Create additional accounts needed for liability
-                hub_createAccount(
-                    uint32(AccountType.Expense),
-                    isDebitNormal
-                );
-                hub_createAccount(
-                    uint32(AccountType.Liability),
-                    isDebitNormal
-                );
+                hub_createAccount(uint32(AccountType.Expense), isDebitNormal);
+                hub_createAccount(uint32(AccountType.Liability), isDebitNormal);
 
                 // Initialize liability holding
                 hub_initializeLiability(
