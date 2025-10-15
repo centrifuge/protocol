@@ -400,13 +400,6 @@ contract GatewayTestRetry is GatewayTest {
 }
 
 contract GatewayTestStartBatching is GatewayTest {
-    function testErrAlreadyBatching() public {
-        gateway.startBatching();
-
-        vm.expectRevert(IGateway.AlreadyBatching.selector);
-        gateway.startBatching();
-    }
-
     function testStartBatching() public {
         gateway.startBatching();
 

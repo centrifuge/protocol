@@ -227,7 +227,6 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     function _startBatching() internal {
-        require(!isBatching, AlreadyBatching());
         isBatching = true;
     }
 

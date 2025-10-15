@@ -76,9 +76,6 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when a message was batched but there was a payment for it
     error NotPayable();
 
-    /// @notice Dispatched when withBatch is called but the system is already batching
-    error AlreadyBatching();
-
     /// @notice Dispatched when the callback fails with no error
     error CallFailedWithEmptyRevert();
 
