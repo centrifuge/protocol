@@ -76,7 +76,7 @@ struct AxelarSource {
 }
 
 struct AxelarDestination {
-    uint8 gasBufferPercentage;
+    uint16 gasBufferPercentage;
     string axelarId;
     string addr;
 }
@@ -103,11 +103,11 @@ interface IAxelarAdapter is IAdapter, IAdapterWiring, IAxelarExecutable {
 
     /// @notice Returns the destination configuration for a given chain id
     /// @param centrifugeId The remote chain id
-    /// @return gasBufferPercentage multiplier applied to the gas estimation
+    /// @return gasBufferPercentage multiplier applied to the message cost
     /// @return axelarId The Axelar ID of the remote chain
     /// @return addr The address of the remote axelar adapter
     function destinations(uint16 centrifugeId)
         external
         view
-        returns (uint8 gasBufferPercentage, string memory axelarId, string memory addr);
+        returns (uint16 gasBufferPercentage, string memory axelarId, string memory addr);
 }

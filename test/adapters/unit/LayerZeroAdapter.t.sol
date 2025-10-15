@@ -59,7 +59,7 @@ contract LayerZeroAdapterTestBase is Test {
     uint32 constant LAYERZERO_ID = 2;
     address immutable DELEGATE = makeAddr("delegate");
     address immutable REMOTE_LAYERZERO_ADDR = makeAddr("remoteAddress");
-    uint8 constant GAS_MULTIPLIER = 10; // 10%
+    uint16 constant GAS_MULTIPLIER = 10; // 10%
 
     IMessageHandler constant GATEWAY = IMessageHandler(address(1));
 
@@ -95,7 +95,8 @@ contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
             adapter.allowInitializePath(Origin(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR.toBytes32LeftPadded(), 0)), true
         );
 
-        (uint8 gasBufferPercentage, uint32 layerZeroid, address remoteDestAddress) = adapter.destinations(CENTRIFUGE_ID);
+        (uint16 gasBufferPercentage, uint32 layerZeroid, address remoteDestAddress) =
+            adapter.destinations(CENTRIFUGE_ID);
         assertEq(layerZeroid, LAYERZERO_ID);
         assertEq(remoteDestAddress, REMOTE_LAYERZERO_ADDR);
         assertEq(gasBufferPercentage, GAS_MULTIPLIER);
@@ -147,7 +148,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         adapter.wire(CENTRIFUGE_ID, abi.encode(GAS_MULTIPLIER, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
 
         bytes memory payload = "irrelevant";
-        assertEq(adapter.estimate(CENTRIFUGE_ID, payload, gasLimit), 200_000);
+        assertEq(adapter.estimate(CENTRIFUGE_ID, payload, gasLimit), 200_000 * (100 + uint128(GAS_MULTIPLIER)) / 100);
     }
 
     function testIncomingCalls(
@@ -230,7 +231,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
             uint8(1), // WORKER_ID
             uint16(17), // uint128 gasLimit byte length + 1
             uint8(1), // OPTION_TYPE_LZ
-            uint128((gasLimit + adapter.RECEIVE_COST()) * (100 + GAS_MULTIPLIER) / 100)
+            uint128(gasLimit + adapter.RECEIVE_COST())
         );
         assertEq(endpoint.values_bytes("params.options"), expectedOptions);
         assertEq(endpoint.values_bool("params.payInLzToken"), false);

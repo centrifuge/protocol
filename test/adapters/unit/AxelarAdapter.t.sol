@@ -61,7 +61,7 @@ contract AxelarAdapterTestBase is Test {
     uint16 constant CENTRIFUGE_CHAIN_ID = 1;
     string constant AXELAR_CHAIN_ID = "mainnet";
     string constant REMOTE_AXELAR_ADDR = "remoteAddress";
-    uint8 constant GAS_MULTIPLIER = 10; // 10%
+    uint16 constant GAS_MULTIPLIER = 10; // 10%
 
     MockAxelarGateway axelarGateway;
     MockAxelarGasService axelarGasService;
@@ -88,7 +88,7 @@ contract AxelarAdapterTestWire is AxelarAdapterTestBase {
         bytes memory data = abi.encode(GAS_MULTIPLIER, AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR);
         adapter.wire(CENTRIFUGE_CHAIN_ID, data);
 
-        (uint8 gasBufferPercentage, string memory axelarId, string memory remoteAddress) =
+        (uint16 gasBufferPercentage, string memory axelarId, string memory remoteAddress) =
             adapter.destinations(CENTRIFUGE_CHAIN_ID);
         assertEq(axelarId, AXELAR_CHAIN_ID);
         assertEq(remoteAddress, REMOTE_AXELAR_ADDR);
@@ -131,7 +131,7 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
         axelarGasService.setReturn("estimateGasFee", gasLimit - 1);
 
         uint256 estimation = adapter.estimate(CENTRIFUGE_CHAIN_ID, payload, gasLimit);
-        assertEq(estimation, gasLimit - 1);
+        assertEq(estimation, (gasLimit - 1) * (100 + GAS_MULTIPLIER) / 100);
     }
 
     function testIncomingCalls(
