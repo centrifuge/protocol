@@ -64,9 +64,6 @@ contract TestCommon is Test {
 
         vm.mockCall(address(accounting), abi.encodeWithSelector(accounting.unlock.selector, POOL_A), abi.encode(true));
 
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatching.selector), abi.encode());
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatching.selector), abi.encode());
-
         hub.file("feeHook", address(feeHook));
         hub.file("sender", address(sender));
     }

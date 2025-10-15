@@ -58,9 +58,6 @@ contract BatchedMulticallTestMulticall is BatchedMulticallTest {
     }
 
     function testMulticallTest() external {
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatching.selector), abi.encode());
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatching.selector), abi.encode());
-
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(multicall.add.selector, 2);
         calls[1] = abi.encodeWithSelector(multicall.add.selector, 3);
