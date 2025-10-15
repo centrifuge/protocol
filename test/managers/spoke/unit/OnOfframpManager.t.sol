@@ -85,8 +85,9 @@ contract OnOfframpManagerTest is Test {
     }
 
     function _mockBalanceSheetDeposit(uint128 amount, bool shouldRevert, bytes memory revertData) internal {
-        bytes memory callData =
-            abi.encodeWithSelector(IBalanceSheet.deposit.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, amount);
+        bytes memory callData = abi.encodeWithSelector(
+            IBalanceSheet.deposit.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, amount
+        );
 
         if (shouldRevert) {
             vm.mockCallRevert(address(balanceSheet), callData, revertData);

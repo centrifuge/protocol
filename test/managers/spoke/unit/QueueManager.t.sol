@@ -94,9 +94,13 @@ contract QueueManagerTest is Test {
         );
     }
 
-    function _mockQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 deposits, uint128 withdrawals)
-        internal
-    {
+    function _mockQueuedAssets(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 deposits,
+        uint128 withdrawals
+    ) internal {
         vm.mockCall(
             address(balanceSheet),
             abi.encodeWithSelector(IBalanceSheet.queuedAssets.selector, poolId, scId, assetId),

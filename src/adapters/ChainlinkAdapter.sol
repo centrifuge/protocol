@@ -87,9 +87,9 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
         ChainlinkDestination memory destination = destinations[centrifugeId];
         require(destination.chainSelector != 0, UnknownChainId());
 
-        adapterData = ccipRouter.ccipSend{value: msg.value}(
-            destination.chainSelector, _createMessage(destination, payload, gasLimit)
-        );
+        adapterData = ccipRouter.ccipSend{
+            value: msg.value
+        }(destination.chainSelector, _createMessage(destination, payload, gasLimit));
     }
 
     /// @inheritdoc IAdapter

@@ -168,9 +168,7 @@ contract ChainlinkAdapterTest is ChainlinkAdapterTestBase {
         adapter.ccipReceive(message);
     }
 
-    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund)
-        public
-    {
+    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund) public {
         vm.assume(gasLimit < adapter.RECEIVE_COST());
         vm.assume(invalidOrigin != address(GATEWAY));
 

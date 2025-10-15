@@ -109,14 +109,14 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 centrifugeId,
                 MessageLib.NotifyShareClass({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    name: name,
-                    symbol: symbol.toBytes32(),
-                    decimals: decimals,
-                    salt: salt,
-                    hook: hook
-                }).serialize(),
+                        poolId: poolId.raw(),
+                        scId: scId.raw(),
+                        name: name,
+                        symbol: symbol.toBytes32(),
+                        decimals: decimals,
+                        salt: salt,
+                        hook: hook
+                    }).serialize(),
                 0,
                 refund
             );
@@ -139,11 +139,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 centrifugeId,
                 MessageLib.NotifyShareMetadata({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    name: name,
-                    symbol: symbol.toBytes32()
-                }).serialize(),
+                        poolId: poolId.raw(), scId: scId.raw(), name: name, symbol: symbol.toBytes32()
+                    }).serialize(),
                 0,
                 refund
             );
@@ -185,11 +182,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 chainId,
                 MessageLib.NotifyPricePoolPerShare({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    price: pricePoolPerShare.raw(),
-                    timestamp: computedAt
-                }).serialize(),
+                        poolId: poolId.raw(), scId: scId.raw(), price: pricePoolPerShare.raw(), timestamp: computedAt
+                    }).serialize(),
                 0,
                 refund
             );
@@ -212,12 +206,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 assetId.centrifugeId(),
                 MessageLib.NotifyPricePoolPerAsset({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId.raw(),
-                    price: pricePoolPerAsset.raw(),
-                    timestamp: timestamp
-                }).serialize(),
+                        poolId: poolId.raw(),
+                        scId: scId.raw(),
+                        assetId: assetId.raw(),
+                        price: pricePoolPerAsset.raw(),
+                        timestamp: timestamp
+                    }).serialize(),
                 0,
                 refund
             );
@@ -263,11 +257,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 centrifugeId,
                 MessageLib.TrustedContractUpdate({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    target: target,
-                    payload: payload
-                }).serialize(),
+                        poolId: poolId.raw(), scId: scId.raw(), target: target, payload: payload
+                    }).serialize(),
                 extraGasLimit,
                 refund
             );
@@ -291,12 +282,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 assetId.centrifugeId(),
                 MessageLib.UpdateVault({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId.raw(),
-                    vaultOrFactory: vaultOrFactory,
-                    kind: uint8(kind)
-                }).serialize(),
+                        poolId: poolId.raw(),
+                        scId: scId.raw(),
+                        assetId: assetId.raw(),
+                        vaultOrFactory: vaultOrFactory,
+                        kind: uint8(kind)
+                    }).serialize(),
                 extraGasLimit,
                 refund
             );
@@ -336,7 +327,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         } else {
             _send(
                 centrifugeId,
-                MessageLib.UpdateBalanceSheetManager({poolId: poolId.raw(), who: who, canManage: canManage}).serialize(),
+                MessageLib.UpdateBalanceSheetManager({poolId: poolId.raw(), who: who, canManage: canManage})
+                    .serialize(),
                 0,
                 refund
             );
@@ -358,11 +350,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 assetId.centrifugeId(),
                 MessageLib.SetMaxAssetPriceAge({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId.raw(),
-                    maxPriceAge: maxPriceAge
-                }).serialize(),
+                        poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw(), maxPriceAge: maxPriceAge
+                    }).serialize(),
                 0,
                 refund
             );
@@ -449,20 +438,20 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address refund
     ) external payable auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hubHandler.initiateTransferShares{value: msg.value}(
-                localCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit, refund
-            );
+            hubHandler.initiateTransferShares{
+                value: msg.value
+            }(localCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit, refund);
         } else {
             _send(
                 poolId.centrifugeId(),
                 MessageLib.InitiateTransferShares({
-                    centrifugeId: targetCentrifugeId,
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    receiver: receiver,
-                    amount: amount,
-                    extraGasLimit: remoteExtraGasLimit
-                }).serialize(),
+                        centrifugeId: targetCentrifugeId,
+                        poolId: poolId.raw(),
+                        scId: scId.raw(),
+                        receiver: receiver,
+                        amount: amount,
+                        extraGasLimit: remoteExtraGasLimit
+                    }).serialize(),
                 extraGasLimit,
                 refund
             );
@@ -487,11 +476,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 targetCentrifugeId,
                 MessageLib.ExecuteTransferShares({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    receiver: receiver,
-                    amount: amount
-                }).serialize(),
+                        poolId: poolId.raw(), scId: scId.raw(), receiver: receiver, amount: amount
+                    }).serialize(),
                 extraGasLimit,
                 refund
             );
@@ -525,16 +511,16 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 poolId.centrifugeId(),
                 MessageLib.UpdateHoldingAmount({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId.raw(),
-                    amount: data.netAmount,
-                    pricePoolPerAsset: pricePoolPerAsset.raw(),
-                    timestamp: uint64(block.timestamp),
-                    isIncrease: data.isIncrease,
-                    isSnapshot: data.isSnapshot,
-                    nonce: data.nonce
-                }).serialize(),
+                        poolId: poolId.raw(),
+                        scId: scId.raw(),
+                        assetId: assetId.raw(),
+                        amount: data.netAmount,
+                        pricePoolPerAsset: pricePoolPerAsset.raw(),
+                        timestamp: uint64(block.timestamp),
+                        isIncrease: data.isIncrease,
+                        isSnapshot: data.isSnapshot,
+                        nonce: data.nonce
+                    }).serialize(),
                 extraGasLimit,
                 refund
             );
@@ -558,14 +544,14 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 poolId.centrifugeId(),
                 MessageLib.UpdateShares({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    shares: data.netAmount,
-                    timestamp: uint64(block.timestamp),
-                    isIssuance: data.isIncrease,
-                    isSnapshot: data.isSnapshot,
-                    nonce: data.nonce
-                }).serialize(),
+                        poolId: poolId.raw(),
+                        scId: scId.raw(),
+                        shares: data.netAmount,
+                        timestamp: uint64(block.timestamp),
+                        isIssuance: data.isIncrease,
+                        isSnapshot: data.isSnapshot,
+                        nonce: data.nonce
+                    }).serialize(),
                 extraGasLimit,
                 refund
             );
@@ -630,12 +616,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 hubCentrifugeId,
                 MessageLib.UntrustedContractUpdate({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    target: target,
-                    payload: payload,
-                    sender: sender
-                }).serialize(),
+                        poolId: poolId.raw(), scId: scId.raw(), target: target, payload: payload, sender: sender
+                    }).serialize(),
                 extraGasLimit,
                 refund
             );
@@ -658,11 +640,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 assetId.centrifugeId(),
                 MessageLib.RequestCallback({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId.raw(),
-                    payload: payload
-                }).serialize(),
+                        poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw(), payload: payload
+                    }).serialize(),
                 extraGasLimit,
                 refund
             );
@@ -684,11 +663,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 centrifugeId,
                 MessageLib.SetPoolAdapters({
-                    poolId: poolId.raw(),
-                    threshold: threshold,
-                    recoveryIndex: recoveryIndex,
-                    adapterList: adapters
-                }).serialize(),
+                        poolId: poolId.raw(), threshold: threshold, recoveryIndex: recoveryIndex, adapterList: adapters
+                    }).serialize(),
                 0,
                 refund
             );
