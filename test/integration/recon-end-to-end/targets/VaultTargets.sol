@@ -297,16 +297,20 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             controller
         ] += (pendingCancelAfter - pendingCancelBefore);
 
+        uint256 nowDepositEpoch = batchRequestManager.nowDepositEpoch(
+            poolId,
+            scId,
+            assetId
+        );
         // precondition: if user queues a cancellation but it doesn't get immediately executed,
         // the epochId should not change
         if (
             Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)
         ) {
-            // nowDepositEpoch = depositEpochId + 1
             eq(
                 lastUpdateAfter,
-                depositEpochId + 1,
-                "lastUpdate != nowDepositEpoch3"
+                nowDepositEpoch,
+                "lastUpdate != nowDepositEpoch"
             );
             eq(pendingAfter, 0, "pending is not zero");
         }
@@ -389,6 +393,11 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             uint256 delta = pendingCancelAfter - pendingCancelBefore;
             userCancelledRedeems[scId][assetId][controller] += delta;
 
+            uint256 nowRedeemEpoch = batchRequestManager.nowRedeemEpoch(
+                poolId,
+                scId,
+                assetId
+            );
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should
             // not change
             if (
@@ -398,10 +407,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                     redeemEpochId
                 )
             ) {
-                // nowRedeemEpoch = redeemEpochId + 1
                 eq(
                     lastUpdateAfter,
-                    redeemEpochId + 1,
+                    nowRedeemEpoch,
                     "lastUpdate != nowRedeemEpoch"
                 );
             }
