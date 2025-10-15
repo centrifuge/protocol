@@ -27,7 +27,13 @@ contract MockAxelarGateway is Mock {
 }
 
 contract MockAxelarGasService is Mock {
-    function estimateGasFee(string calldata, string calldata, bytes calldata, uint256, bytes calldata /* params */)
+    function estimateGasFee(
+        string calldata,
+        string calldata,
+        bytes calldata,
+        uint256,
+        bytes calldata /* params */
+    )
         external
         view
         returns (uint256 gasEstimate)

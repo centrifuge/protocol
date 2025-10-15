@@ -364,7 +364,13 @@ abstract contract BatchRequestManagerBaseTest is Test {
     }
 
     /// @dev Helper function for redeem and approval - direct calls
-    function _redeemAndApprove(uint128 redeemShares, uint128 approvedShares, uint128 /* navPerShare */) internal {
+    function _redeemAndApprove(
+        uint128 redeemShares,
+        uint128 approvedShares,
+        uint128 /* navPerShare */
+    )
+        internal
+    {
         batchRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
         batchRequestManager.approveRedeems(
             poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC)
@@ -1957,7 +1963,15 @@ contract BatchRequestManagerMultiEpochTest is BatchRequestManagerBaseTest {
         uint128 newAmount = amount * 2;
         vm.expectEmit();
         emit IBatchRequestManager.UpdateDepositRequest(
-            poolId, scId, USDC, 3, otherInvestor, amount, 0, newAmount, false // Queued, not pending
+            poolId,
+            scId,
+            USDC,
+            3,
+            otherInvestor,
+            amount,
+            0,
+            newAmount,
+            false // Queued, not pending
         );
         batchRequestManager.requestDeposit(poolId, scId, newAmount, otherInvestor, USDC);
 
@@ -2275,7 +2289,15 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
         // Revoke shares with zero NAV
         vm.expectEmit();
         emit IBatchRequestManager.RevokeShares(
-            poolId, scId, USDC, 1, d18(0), d18(0), MIN_REQUEST_AMOUNT_SHARES, 0, 0 // Zero payout
+            poolId,
+            scId,
+            USDC,
+            1,
+            d18(0),
+            d18(0),
+            MIN_REQUEST_AMOUNT_SHARES,
+            0,
+            0 // Zero payout
         );
         batchRequestManager.revokeShares{
             value: COST
@@ -2306,7 +2328,13 @@ contract BatchRequestManagerZeroAmountTest is BatchRequestManagerBaseTest {
         // Issue shares with non-zero NAV but zero price
         vm.expectEmit();
         emit IBatchRequestManager.IssueShares(
-            poolId, scId, USDC, 1, d18(1), d18(0), 0 // d18(0) from zero price calculation
+            poolId,
+            scId,
+            USDC,
+            1,
+            d18(1),
+            d18(0),
+            0 // d18(0) from zero price calculation
         );
         batchRequestManager.issueShares{
             value: COST
