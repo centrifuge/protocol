@@ -322,6 +322,87 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
             REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0, 0, REFUND
         );
     }
+
+    function testCrossChainTransferShortVersion() public {
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        _mockCrossTransferShare(ANY, true);
+        vm.mockCall(
+            address(sender),
+            COST,
+            abi.encodeWithSelector(
+                sender.sendInitiateTransferShares.selector,
+                REMOTE_CENTRIFUGE_ID,
+                POOL_A,
+                SC_1,
+                RECEIVER.toBytes32(),
+                AMOUNT,
+                0,
+                100,
+                ANY
+            ),
+            abi.encode()
+        );
+
+        vm.prank(ANY);
+        vm.expectEmit();
+        emit ISpoke.InitiateTransferShares(REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, ANY, RECEIVER.toBytes32(), AMOUNT);
+        spoke.crosschainTransferShares{value: COST}(
+            REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 100
+        );
+    }
+
+    function testCrossChainTransferShortVersionDefaultsToMsgSender() public {
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        _mockCrossTransferShare(ANY, true);
+        vm.mockCall(
+            address(sender),
+            COST,
+            abi.encodeWithSelector(
+                sender.sendInitiateTransferShares.selector,
+                REMOTE_CENTRIFUGE_ID,
+                POOL_A,
+                SC_1,
+                RECEIVER.toBytes32(),
+                AMOUNT,
+                0,
+                0,
+                ANY
+            ),
+            abi.encode()
+        );
+
+        vm.prank(ANY);
+        spoke.crosschainTransferShares{value: COST}(REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0);
+    }
+
+    function testCrossChainTransferShortVersionSetsExtraGasLimitToZero() public {
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        _mockCrossTransferShare(ANY, true);
+        vm.mockCall(
+            address(sender),
+            COST,
+            abi.encodeWithSelector(
+                sender.sendInitiateTransferShares.selector,
+                REMOTE_CENTRIFUGE_ID,
+                POOL_A,
+                SC_1,
+                RECEIVER.toBytes32(),
+                AMOUNT,
+                0,
+                200,
+                ANY
+            ),
+            abi.encode()
+        );
+
+        vm.prank(ANY);
+        spoke.crosschainTransferShares{value: COST}(
+            REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 200
+        );
+    }
 }
 
 contract SpokeTestRegisterAsset is SpokeTest {

@@ -326,6 +326,73 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
     }
 }
 
+contract SimplePriceManagerPricePoolPerShareTest is SimplePriceManagerTest {
+    function testPricePoolPerShareWithZeroIssuance() public view {
+        // When issuance is 0, should return 1.0
+        assertEq(priceManager.pricePoolPerShare(POOL_A).raw(), d18(1, 1).raw());
+    }
+
+    function testPricePoolPerShareWithNonZeroIssuance() public {
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
+
+        // NAV = 1000, issuance = 100, price = 1000/100 = 10
+        assertEq(priceManager.pricePoolPerShare(POOL_A).raw(), d18(10, 1).raw());
+    }
+
+    function testPricePoolPerShareMultipleNetworks() public {
+        vm.prank(hubManager);
+        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000); // NAV=1000, issuance=100
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_2, 1700); // NAV=1700, issuance=200
+
+        // Total NAV = 2700, total issuance = 300, price = 2700/300 = 9
+        assertEq(priceManager.pricePoolPerShare(POOL_A).raw(), d18(9, 1).raw());
+    }
+
+    function testPricePoolPerShareAfterUpdate() public {
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
+
+        assertEq(priceManager.pricePoolPerShare(POOL_A).raw(), d18(10, 1).raw());
+
+        // Update with new values
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(150)
+        );
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1200);
+
+        // NAV = 1200, issuance = 150, price = 1200/150 = 8
+        assertEq(priceManager.pricePoolPerShare(POOL_A).raw(), d18(8, 1).raw());
+    }
+
+    function testPricePoolPerShareFuzz(uint128 nav, uint128 issuance) public {
+        vm.assume(issuance > 0);
+        vm.assume(nav > 0);
+        vm.assume(uint256(nav) * 1e18 / issuance < type(uint128).max);
+
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(issuance)
+        );
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, nav);
+
+        uint256 expectedPrice = (uint256(nav) * 1e18) / issuance;
+        assertEq(priceManager.pricePoolPerShare(POOL_A).raw(), expectedPrice);
+    }
+}
+
 contract SimplePriceManagerOnTransferTest is SimplePriceManagerTest {
     function setUp() public override {
         super.setUp();
