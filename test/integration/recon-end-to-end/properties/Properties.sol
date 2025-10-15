@@ -2506,7 +2506,14 @@ abstract contract Properties is
                         asset,
                         0
                     );
-                    uint128 reserved = uint128(ghost_netReserved[key]);
+                    PoolEscrow poolEscrow = PoolEscrow(
+                        address(balanceSheet.escrow(poolId))
+                    );
+                    (, uint128 reserved) = poolEscrow.holding(
+                        scId,
+                        asset,
+                        assetId.raw()
+                    );
                     uint128 total = available + reserved;
 
                     // Core Invariant 1: Available = Total - Reserved (automatically satisfied by construction)

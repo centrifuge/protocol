@@ -50,11 +50,11 @@ abstract contract BeforeAfter is Setup {
         mapping(PoolId poolId => mapping(AccountId accountId => uint128 accountValue)) ghostAccountValue;
         mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) ghostEpochId;
         mapping(address vault => mapping(address investor => PriceVars)) investorsGlobals; // global ghost variable only updated as needed
-        mapping(address investor => AsyncInvestmentState) investments;
+        mapping(address vault => mapping(address investor => AsyncInvestmentState)) investments;
         mapping(address user => uint256 balance) shareTokenBalance;
         mapping(address user => uint256 balance) assetTokenBalance; // uses vault's underyling asset as source of truth instead of _getAsset()
         mapping(address vault => uint256 price) pricePerShare;
-        uint256 escrowAssetBalance;
+        mapping(address vault => uint256 balance) escrowAssetBalance;
         uint256 escrowShareTokenBalance;
         uint256 poolEscrowAssetBalance;
         uint256 totalAssets;
@@ -319,7 +319,9 @@ abstract contract BeforeAfter is Setup {
                     actors[i]
                 );
 
-            _structToUpdate.investments[actors[i]] = AsyncInvestmentState(
+            _structToUpdate.investments[address(_getVault())][
+                actors[i]
+            ] = AsyncInvestmentState(
                 maxMint,
                 maxWithdraw,
                 depositPrice,
@@ -346,8 +348,9 @@ abstract contract BeforeAfter is Setup {
         }
 
         if (address(_getVault()) != address(0)) {
-            _structToUpdate.escrowAssetBalance = MockERC20(_getVault().asset())
-                .balanceOf(address(globalEscrow));
+            _structToUpdate.escrowAssetBalance[
+                address(_getVault())
+            ] = MockERC20(_getVault().asset()).balanceOf(address(globalEscrow));
             _structToUpdate.poolEscrowAssetBalance = MockERC20(
                 _getVault().asset()
             ).balanceOf(
