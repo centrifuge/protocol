@@ -13,6 +13,8 @@ import {PoolId} from "src/core/types/PoolId.sol";
 import {ShareClassId} from "src/core/types/ShareClassId.sol";
 import {AssetId} from "src/core/types/AssetId.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IPoolEscrow} from "src/core/spoke/interfaces/IPoolEscrow.sol";
+import {PoolEscrow} from "src/core/spoke/PoolEscrow.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
 import {BalanceSheet} from "src/core/spoke/BalanceSheet.sol";
@@ -165,6 +167,9 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         }
     }
 
+    /// @dev Property: PoolEscrow.total increases by exactly the amount deposited
+    /// @dev Property: PoolEscrow.reserved does not change during noteDeposit
+    /// @notice Direct BalanceSheet operation that updates PoolEscrow
     function balanceSheet_noteDeposit(
         uint256 tokenId,
         uint128 amount
@@ -173,13 +178,28 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        address asset = vault.asset();
 
         // Track authorization - noteDeposit() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
 
-        balanceSheet.noteDeposit(poolId, scId, vault.asset(), tokenId, amount);
+        IPoolEscrow poolEscrow = poolEscrowFactory.escrow(poolId);
+        (uint128 totalBefore, uint128 reservedBefore) =
+            PoolEscrow(address(poolEscrow)).holding(scId, asset, tokenId);
 
-        // Update queue ghost variables
+        balanceSheet.noteDeposit(poolId, scId, asset, tokenId, amount);
+
+        (uint128 totalAfter, uint128 reservedAfter) =
+            PoolEscrow(address(poolEscrow)).holding(scId, asset, tokenId);
+        t(
+            totalAfter == totalBefore + amount,
+            "balanceSheet_noteDeposit: PoolEscrow.total should increase by amount"
+        );
+        t(
+            reservedAfter == reservedBefore,
+            "balanceSheet_noteDeposit: PoolEscrow.reserved should not change"
+        );
+
         bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
         ghost_assetQueueDeposits[assetKey] += amount;
     }

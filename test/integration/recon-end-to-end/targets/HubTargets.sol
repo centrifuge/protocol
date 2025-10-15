@@ -14,6 +14,8 @@ import {IHubHandler} from "src/core/hub/interfaces/IHubHandler.sol";
 import {IShareClassManager} from "src/core/hub/interfaces/IShareClassManager.sol";
 import {IHubRequestManager} from "src/core/hub/interfaces/IHubRequestManager.sol";
 import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
+import {IPoolEscrow} from "src/core/spoke/interfaces/IPoolEscrow.sol";
+import {PoolEscrow} from "src/core/spoke/PoolEscrow.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {AssetId, newAssetId} from "src/core/types/AssetId.sol";
 import {PoolId, newPoolId} from "src/core/types/PoolId.sol";
@@ -157,10 +159,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier
     /// @dev Property: After successfully calling claimDeposit for an investor (via notifyDeposit), their
     /// depositRequest[..].lastUpdate equals the nowDepositEpoch for the deposit
+    /// @dev Property: PoolEscrow.total increases by exactly totalPaymentAssetAmount
+    /// @dev Property: PoolEscrow.reserved does not change during deposit processing
     ///
     /// @notice Deposit Flow Tracking:
     /// - Tracks AsyncRequestManager pending deltas (pendingBeforeARM - pendingAfterARM)
     /// - Tracks maxMint changes for symmetry with redeem flow
+    /// - Validates PoolEscrow state changes
     /// - Uses hubHandler.notifyDeposit() return values for reliable state tracking
     /// - Updates ghost variables: sumOfFulfilledDeposits, sumOfClaimedDeposits, userDepositProcessed
     function hub_notifyDeposit(
@@ -209,7 +214,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     }
 
     function _executeNotifyDepositAndValidate(NotifyDepositParams memory params) private {
-        // Execute notifyDepositWithReturn and get return values directly from harness
+        IBaseVault vault = _getVault();
+
+        IPoolEscrow poolEscrow = poolEscrowFactory.escrow(params.poolId);
+        address asset = address(vault.asset());
+        (uint128 escrowTotalBefore, uint128 escrowReservedBefore) =
+            PoolEscrow(address(poolEscrow)).holding(params.scId, asset, 0);
+
         vm.prank(params.actor);
         (
             uint128 totalPayoutShareAmount,
@@ -222,6 +233,17 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             params.investor,
             params.maxClaims,
             params.actor
+        );
+
+        (uint128 escrowTotalAfter, uint128 escrowReservedAfter) =
+            PoolEscrow(payable(address(poolEscrow))).holding(params.scId, asset, 0);
+        t(
+            escrowTotalAfter == escrowTotalBefore,
+            "hub_notifyDeposit: PoolEscrow.total must not change (updates happen in approval phase)"
+        );
+        t(
+            escrowReservedAfter == escrowReservedBefore,
+            "hub_notifyDeposit: PoolEscrow.reserved must not change"
         );
 
         _updateDepositGhostVariables(
