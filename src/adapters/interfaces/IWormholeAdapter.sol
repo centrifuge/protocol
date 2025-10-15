@@ -131,6 +131,7 @@ struct WormholeSource {
 }
 
 struct WormholeDestination {
+    uint16 gasBufferPercentage;
     uint16 wormholeId;
     address addr;
 }
@@ -164,7 +165,11 @@ interface IWormholeAdapter is IAdapter, IAdapterWiring, IWormholeReceiver {
 
     /// @notice Returns the destination configuration for a given chain id
     /// @param centrifugeId The remote chain id
+    /// @return gasBufferPercentage multiplier applied to the message cost
     /// @return wormholeId The remote wormhole id
     /// @return addr The address of the remote wormhole adapter
-    function destinations(uint16 centrifugeId) external view returns (uint16 wormholeId, address addr);
+    function destinations(uint16 centrifugeId)
+        external
+        view
+        returns (uint16 gasBufferPercentage, uint16 wormholeId, address addr);
 }

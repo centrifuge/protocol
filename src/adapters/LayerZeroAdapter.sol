@@ -57,7 +57,7 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     /// @dev   First encoded param is a payment overhead to ensure the message is computed despite price fluctuations.
     ///        Measured as % over the message cost. i.e: `10` means added a 10%
     function wire(uint16 centrifugeId, bytes memory data) external auth {
-        (uint16 gasBufferPercentage, uint32 layerZeroEid, address adapter) = abi.decode(data, (uint8, uint32, address));
+        (uint16 gasBufferPercentage, uint32 layerZeroEid, address adapter) = abi.decode(data, (uint16, uint32, address));
         sources[layerZeroEid] = LayerZeroSource(centrifugeId, adapter);
         destinations[centrifugeId] = LayerZeroDestination(gasBufferPercentage, layerZeroEid, adapter);
         emit Wire(centrifugeId, layerZeroEid, adapter);

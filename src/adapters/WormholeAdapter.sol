@@ -46,10 +46,12 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapterWiring
+    /// @dev   First encoded param is a payment overhead to ensure the message is computed despite price fluctuations.
+    ///        Measured as % over the message cost. i.e: `10` means added a 10%
     function wire(uint16 centrifugeId, bytes memory data) external auth {
-        (uint16 wormholeId, address adapter) = abi.decode(data, (uint16, address));
+        (uint16 gasBufferPercentage, uint16 wormholeId, address adapter) = abi.decode(data, (uint16, uint16, address));
         sources[wormholeId] = WormholeSource(centrifugeId, adapter);
-        destinations[centrifugeId] = WormholeDestination(wormholeId, adapter);
+        destinations[centrifugeId] = WormholeDestination(gasBufferPercentage, wormholeId, adapter);
         emit Wire(centrifugeId, wormholeId, adapter);
     }
 
@@ -107,6 +109,8 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         WormholeDestination memory destination = destinations[centrifugeId];
         require(destination.wormholeId != 0, UnknownChainId());
 
-        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(destination.wormholeId, 0, gasLimit + RECEIVE_COST);
+        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(
+            destination.wormholeId, 0, (gasLimit + RECEIVE_COST) * (100 + destination.gasBufferPercentage) / 100
+        );
     }
 }

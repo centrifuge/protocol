@@ -51,7 +51,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     ///        Measured as % over the message cost. i.e: `10` means added a 10%
     function wire(uint16 centrifugeId, bytes memory data) external auth {
         (uint16 gasBufferPercentage, string memory axelarId, string memory adapter) =
-            abi.decode(data, (uint8, string, string));
+            abi.decode(data, (uint16, string, string));
         sources[axelarId] = AxelarSource(centrifugeId, keccak256(bytes(adapter)));
         destinations[centrifugeId] = AxelarDestination(gasBufferPercentage, axelarId, adapter);
         emit Wire(centrifugeId, axelarId, adapter);
