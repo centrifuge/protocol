@@ -11,10 +11,6 @@ contract BatchedMulticallImpl is BatchedMulticall, Test {
 
     constructor(IGateway gateway) BatchedMulticall(gateway) {}
 
-    function isBatching() external view returns (bool) {
-        return _sender != address(0);
-    }
-
     function nonZeroPayment() external payable {
         assertNotEq(msgValue(), 0);
     }
@@ -62,7 +58,6 @@ contract BatchedMulticallTestMulticall is BatchedMulticallTest {
     }
 
     function testMulticallTest() external {
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.isBatching.selector), abi.encode(false));
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatching.selector), abi.encode());
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatching.selector), abi.encode());
 
@@ -72,7 +67,6 @@ contract BatchedMulticallTestMulticall is BatchedMulticallTest {
 
         multicall.multicall{value: 1}(calls);
 
-        assertEq(multicall.isBatching(), false);
         assertEq(multicall.total(), 5);
     }
 }
