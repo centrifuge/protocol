@@ -204,9 +204,8 @@ contract TestData is LaunchDeployer {
             state.scId,
             centrifugeId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: bytes32(bytes20(msg.sender)),
-                validUntil: type(uint64).max
-            }).serialize(),
+                    user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max
+                }).serialize(),
             0,
             msg.sender
         );
