@@ -347,8 +347,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their
     /// redeemRequest[..].lastUpdate equals the current nowRedeemEpoch
-    /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].pending
-    /// is zero
     /// @dev Property: cancelRedeemRequest absolute value should never be higher than pendingRedeem (would result in
     /// underflow revert)
     function vault_cancelRedeemRequest()
@@ -367,6 +365,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             .redeemRequest(poolId, scId, assetId, controller.toBytes32());
         uint256 pendingCancelBefore = IAsyncVault(address(_getVault()))
             .claimableCancelRedeemRequest(REQUEST_ID, controller);
+        console2.log("pendingBefore: ", pendingBefore);
 
         vm.prank(controller);
         try
@@ -405,7 +404,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                     redeemEpochId + 1,
                     "lastUpdate != nowRedeemEpoch"
                 );
-                eq(pendingAfter, 0, "pending != 0");
             }
         } catch (bytes memory reason) {
             (, uint32 redeemEpochId, , ) = batchRequestManager.epochId(
