@@ -227,51 +227,14 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function startBatching() public auth {
-        _startBatching();
-    }
+    function withBatch(bytes memory data, uint256 value, address refund) public payable {
+        require(value <= msg.value, NotEnoughValueForCallback());
 
-    function _startBatching() internal {
-        require(!isBatching, AlreadyBatching());
-        isBatching = true;
-    }
-
-    /// @inheritdoc IGateway
-    function endBatching(address refund) public payable auth {
-        _endBatching(refund);
-    }
-
-    function _endBatching(address refund) internal {
-        require(isBatching, NoBatched());
-        bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
-
-        TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
-
-        uint256 cost;
-        for (uint256 i; i < locators.length; i++) {
-            (uint16 centrifugeId, PoolId poolId) = _parseLocator(locators[i]);
-            bytes32 outboundBatchSlot = _outboundBatchSlot(centrifugeId, poolId);
-            uint128 gasLimit = _gasLimitSlot(centrifugeId, poolId).tloadUint128();
-            bytes memory batch = TransientBytesLib.get(outboundBatchSlot);
-
-            cost += _send(centrifugeId, batch, gasLimit, refund, msg.value - cost);
-
-            TransientBytesLib.clear(outboundBatchSlot);
-            _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
-        }
-
-        isBatching = false;
-
-        _refund(refund, msg.value - cost);
-    }
-
-    /// @inheritdoc IGateway
-    function withBatch(bytes memory data, address refund) external payable {
         bool wasBatching = isBatching;
-        if (!wasBatching) _startBatching();
+        isBatching = true;
 
         _batcher = msg.sender;
-        (bool success, bytes memory returnData) = msg.sender.call(data);
+        (bool success, bytes memory returnData) = msg.sender.call{value: value}(data);
         if (!success) {
             uint256 length = returnData.length;
             require(length != 0, CallFailedWithEmptyRevert());
@@ -284,7 +247,36 @@ contract Gateway is Auth, Recoverable, IGateway {
         // Force the user to call lockCallback()
         require(address(_batcher) == address(0), CallbackWasNotLocked());
 
-        if (!wasBatching) _endBatching(refund);
+        if (!wasBatching) _endBatching(msg.value - value, refund);
+    }
+
+    function _endBatching(uint256 fuel, address refund) internal {
+        require(isBatching, NoBatched());
+        bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
+
+        TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
+
+        uint256 cost;
+        for (uint256 i; i < locators.length; i++) {
+            (uint16 centrifugeId, PoolId poolId) = _parseLocator(locators[i]);
+            bytes32 outboundBatchSlot = _outboundBatchSlot(centrifugeId, poolId);
+            uint128 gasLimit = _gasLimitSlot(centrifugeId, poolId).tloadUint128();
+            bytes memory batch = TransientBytesLib.get(outboundBatchSlot);
+
+            cost += _send(centrifugeId, batch, gasLimit, refund, fuel - cost);
+
+            TransientBytesLib.clear(outboundBatchSlot);
+            _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
+        }
+
+        isBatching = false;
+
+        _refund(refund, fuel - cost);
+    }
+
+    /// @inheritdoc IGateway
+    function withBatch(bytes memory data, address refund) external payable {
+        withBatch(data, 0, refund);
     }
 
     /// @inheritdoc IGateway

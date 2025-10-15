@@ -109,7 +109,6 @@ contract BalanceSheetTest is Test {
             abi.encodeWithSelector(IPoolEscrowProvider.escrow.selector, POOL_A),
             abi.encode(escrow)
         );
-        vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.isBatching.selector), abi.encode(false));
 
         vm.startPrank(AUTH);
         balanceSheet.file("spoke", address(spoke));

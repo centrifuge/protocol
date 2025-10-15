@@ -76,9 +76,6 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when a message was batched but there was a payment for it
     error NotPayable();
 
-    /// @notice Dispatched when withBatch is called but the system is already batching
-    error AlreadyBatching();
-
     /// @notice Dispatched when the callback fails with no error
     error CallFailedWithEmptyRevert();
 
@@ -90,6 +87,9 @@ interface IGateway is IMessageHandler, IRecoverable {
 
     /// @notice Dispatched when the callback was not from the sender
     error CallbackWasNotFromSender();
+
+    /// @notice Dispatched when there is not enough msg.value to send to the callback
+    error NotEnoughValueForCallback();
 
     //----------------------------------------------------------------------------------------------
     // Administration
@@ -142,13 +142,6 @@ interface IGateway is IMessageHandler, IRecoverable {
     // Batching
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Initialize batching message
-    function startBatching() external;
-
-    /// @notice Finalize batching messages and send the resulting batch message
-    /// @param refund Address to refund excess payment
-    function endBatching(address refund) external payable;
-
     /// @notice Calls a method that should be in the same contract as the caller, as a callback.
     ///         The method called will be wrapped inside startBatching and endBatching,
     ///         so any method call inside that requires messaging will be batched.
@@ -173,7 +166,11 @@ interface IGateway is IMessageHandler, IRecoverable {
     ///
     ///         NOTE: inside callback, `msgSender` should be used instead of msg.sender
     /// @param  callbackData encoding data for the callback method
-    /// @param refund Address to refund excess payment
+    /// @param  callbackValue msg.value to send to the callback
+    /// @param  refund Address to refund excess payment
+    function withBatch(bytes memory callbackData, uint256 callbackValue, address refund) external payable;
+
+    /// @notice Same as withBatch(..), but without sending any msg.value to the callback
     function withBatch(bytes memory callbackData, address refund) external payable;
 
     /// @notice Ensures the callback is called by withBatch in the same contract.
