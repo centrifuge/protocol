@@ -231,13 +231,14 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         balanceSheet.recoverTokens(token, tokenId, _getActor(), amount);
     }
 
-    function balanceSheet_rely() public updateGhosts asActor {
-        // Track authorization - rely() requires auth (ward only)
-        _trackAuthorization(_getActor(), PoolId.wrap(0)); // Global operation, use PoolId 0
-        _checkAndRecordAuthChange(_getActor()); // Track auth changes from rely()
+    // NOTE: removed because introduces false positives
+    // function balanceSheet_rely() public updateGhosts asActor {
+    //     // Track authorization - rely() requires auth (ward only)
+    //     _trackAuthorization(_getActor(), PoolId.wrap(0)); // Global operation, use PoolId 0
+    //     _checkAndRecordAuthChange(_getActor()); // Track auth changes from rely()
 
-        balanceSheet.rely(_getActor());
-    }
+    //     balanceSheet.rely(_getActor());
+    // }
 
     function balanceSheet_resetPricePoolPerAsset() public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
