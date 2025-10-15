@@ -60,6 +60,7 @@ interface ITransferHook is IERC165 {
     //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
+
     /// @notice Check if given transfer can be performed
     function checkERC20Transfer(address from, address to, uint256 value, HookData calldata hookData)
         external

@@ -647,25 +647,15 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         assertEq(address(oracleValuation.hub()), address(hub));
     }
 
-    function testNavManager(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(holdings));
-        vm.assume(nonWard != address(hubHandler));
-
-        assertEq(navManager.wards(address(holdings)), 1);
-        assertEq(navManager.wards(address(hubHandler)), 1);
-        assertEq(navManager.wards(nonWard), 0);
-
+    function testNavManager() public view {
         // dependencies set correctly
         assertEq(address(navManager.hub()), address(hub));
+        assertEq(address(navManager.holdings()), address(holdings));
     }
 
-    function testSimplePriceManager(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(navManager));
-
-        assertEq(simplePriceManager.wards(address(navManager)), 1);
-        assertEq(simplePriceManager.wards(nonWard), 0);
+    function testSimplePriceManager() public view {
+        // dependencies set correctly
+        assertEq(address(simplePriceManager.navUpdater()), address(navManager));
 
         // dependencies set correctly
         assertEq(address(simplePriceManager.hub()), address(hub));
@@ -673,9 +663,11 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
 
     function testBatchRequestManager(address nonWard) public view {
         // permissions set correctly
+        vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(hub));
         vm.assume(nonWard != address(hubHandler));
 
+        assertEq(batchRequestManager.wards(address(root)), 1);
         assertEq(batchRequestManager.wards(address(hub)), 1);
         assertEq(batchRequestManager.wards(address(hubHandler)), 1);
         assertEq(batchRequestManager.wards(nonWard), 0);

@@ -227,6 +227,8 @@ contract WireAdapters is Script {
         protocolGuardian.wire(localAxelarAddr, remoteCentrifugeId, data);
         console.log("Wired AxelarAdapter from", vm.envString("NETWORK"), "to", remoteNetwork);
     }
+    uint8 constant GAS_MULTIPLIER = 10; // 10%
+    IAdapter[] adapters; // Storage array for adapter instances
 
     function fetchConfig(string memory network) internal view returns (string memory) {
         string memory configFile = string.concat("env/", network, ".json");
@@ -291,6 +293,14 @@ contract WireAdapters is Script {
                         console.log("Skipping Wormhole for", remoteNetwork);
                     }
                 }
+                bytes memory wormholeData = abi.encode(
+                    GAS_MULTIPLIER,
+                    uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
+                    vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter")
+                );
+                opsGuardian.wire(localWormholeAddr, remoteCentrifugeId, wormholeData);
+
+                console.log("Wired WormholeAdapter from", localNetwork, "to", remoteNetwork);
             }
 
             // Check LayerZero: only add if BOTH chains have it deployed and configured
@@ -314,6 +324,14 @@ contract WireAdapters is Script {
                         console.log("Skipping LayerZero for", remoteNetwork);
                     }
                 }
+                bytes memory layerZeroData = abi.encode(
+                    GAS_MULTIPLIER,
+                    uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
+                    vm.parseJsonAddress(remoteConfig, "$.contracts.layerZeroAdapter")
+                );
+                opsGuardian.wire(localLayerZeroAddr, remoteCentrifugeId, layerZeroData);
+
+                console.log("Wired LayerZeroAdapter from", localNetwork, "to", remoteNetwork);
             }
 
             // Check Axelar: only add if BOTH chains have it deployed and configured
@@ -338,6 +356,12 @@ contract WireAdapters is Script {
                     }
                 }
             }
+                bytes memory axelarData = abi.encode(
+                    GAS_MULTIPLIER,
+                    vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
+                    vm.toString(vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter"))
+                );
+                opsGuardian.wire(localAxelarAddr, remoteCentrifugeId, axelarData);
 
             // STEP 2B: Register adapters for THIS remote network in MultiAdapter
             // This tells MultiAdapter which adapters to use when sending to this remote network

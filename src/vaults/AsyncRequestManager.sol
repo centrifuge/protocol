@@ -32,9 +32,7 @@ import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
-import {ITrustedContractUpdate} from "../core/interfaces/IContractUpdate.sol";
-
-import {UpdateContractMessageLib, UpdateContractType} from "../libraries/UpdateContractMessageLib.sol";
+import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for
@@ -209,16 +207,8 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
 
     /// @inheritdoc ITrustedContractUpdate
     function trustedCall(PoolId poolId, ShareClassId, bytes memory payload) external auth {
-        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
-
-        if (kind == uint8(UpdateContractType.Withdraw)) {
-            UpdateContractMessageLib.UpdateContractWithdraw memory m =
-                UpdateContractMessageLib.deserializeUpdateContractWithdraw(payload);
-
-            withdrawSubsidy(poolId, m.who.toAddress(), m.value);
-        } else {
-            revert UnknownUpdateContractType();
-        }
+        (bytes32 who, uint256 value) = abi.decode(payload, (bytes32, uint256));
+        withdrawSubsidy(poolId, who.toAddress(), value);
     }
 
     function callback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external auth {

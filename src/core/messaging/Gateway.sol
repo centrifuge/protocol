@@ -96,11 +96,18 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes memory batch) public pauseable auth {
+        PoolId batchPoolId = processor.messagePoolId(batch);
         bytes memory remaining = batch;
 
         while (remaining.length > 0) {
             uint256 length = processor.messageLength(remaining);
             bytes memory message = remaining.slice(0, length);
+
+            if (remaining.length != batch.length) {
+                // Only check if batching
+                require(batchPoolId == processor.messagePoolId(message), MalformedBatch());
+            }
+
             remaining = remaining.slice(length, remaining.length - length);
             bytes32 messageHash = keccak256(message);
 
@@ -281,10 +288,9 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function lockCallback() external returns (address caller) {
+    function lockCallback() external {
         require(_batcher != address(0), CallbackIsLocked());
         require(msg.sender == _batcher, CallbackWasNotFromSender());
-        caller = _batcher;
         _batcher = address(0);
     }
 

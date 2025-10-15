@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {d18} from "../../../../src/misc/types/D18.sol";
 import {Multicall} from "../../../../src/misc/Multicall.sol";
-import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
@@ -107,11 +106,7 @@ contract SimplePriceManagerTest is Test {
     }
 
     function _deployManager() internal {
-        priceManager = new SimplePriceManager(IHub(hub), auth);
-        vm.prank(auth);
-        priceManager.rely(caller);
-        vm.prank(auth);
-        priceManager.rely(gateway);
+        priceManager = new SimplePriceManager(IHub(hub), caller);
 
         vm.deal(address(priceManager), 1 ether);
     }
@@ -160,7 +155,7 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
     }
 
     function testAddNetworkUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISimplePriceManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
     }
@@ -204,7 +199,7 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         vm.prank(hubManager);
         priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISimplePriceManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         priceManager.removeNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
     }
@@ -302,7 +297,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
     }
 
     function testOnUpdateUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISimplePriceManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
     }
@@ -363,7 +358,7 @@ contract SimplePriceManagerOnTransferTest is SimplePriceManagerTest {
     }
 
     function testOnTransferUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISimplePriceManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 50);
     }
