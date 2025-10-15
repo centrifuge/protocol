@@ -125,7 +125,7 @@ contract GatewayExt is Gateway {
     }
 
     function startBatching() public {
-        _startBatching();
+        isBatching = true;
     }
 
     function endBatching(address refund) public payable {
@@ -396,21 +396,6 @@ contract GatewayTestRetry is GatewayTest {
         assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
         assertEq(processor.processed(REMOTE_CENT_ID, 1), batch);
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);
-    }
-}
-
-contract GatewayTestStartBatching is GatewayTest {
-    function testStartBatching() public {
-        gateway.startBatching();
-
-        assertEq(gateway.isBatching(), true);
-    }
-
-    /// forge-config: default.isolate = true
-    function testStartBatchingIsTransactional() public {
-        gateway.startBatching();
-
-        assertEq(gateway.isBatching(), false);
     }
 }
 

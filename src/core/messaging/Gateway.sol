@@ -226,8 +226,28 @@ contract Gateway is Auth, Recoverable, IGateway {
         emit RepayBatch(centrifugeId, batch);
     }
 
-    function _startBatching() internal {
+    /// @inheritdoc IGateway
+    function withBatch(bytes memory data, uint256 value, address refund) public payable {
+        require(value <= msg.value, NotEnoughGas());
+
+        bool wasBatching = isBatching;
         isBatching = true;
+
+        _batcher = msg.sender;
+        (bool success, bytes memory returnData) = msg.sender.call{value: value}(data);
+        if (!success) {
+            uint256 length = returnData.length;
+            require(length != 0, CallFailedWithEmptyRevert());
+
+            assembly ("memory-safe") {
+                revert(add(32, returnData), length)
+            }
+        }
+
+        // Force the user to call lockCallback()
+        require(address(_batcher) == address(0), CallbackWasNotLocked());
+
+        if (!wasBatching) _endBatching(msg.value - value, refund);
     }
 
     function _endBatching(uint256 fuel, address refund) internal {
@@ -252,30 +272,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         isBatching = false;
 
         _refund(refund, fuel - cost);
-    }
-
-    /// @inheritdoc IGateway
-    function withBatch(bytes memory data, uint256 value, address refund) public payable {
-        require(value <= msg.value, NotEnoughGas());
-
-        bool wasBatching = isBatching;
-        if (!wasBatching) _startBatching();
-
-        _batcher = msg.sender;
-        (bool success, bytes memory returnData) = msg.sender.call{value: value}(data);
-        if (!success) {
-            uint256 length = returnData.length;
-            require(length != 0, CallFailedWithEmptyRevert());
-
-            assembly ("memory-safe") {
-                revert(add(32, returnData), length)
-            }
-        }
-
-        // Force the user to call lockCallback()
-        require(address(_batcher) == address(0), CallbackWasNotLocked());
-
-        if (!wasBatching) _endBatching(msg.value - value, refund);
     }
 
     /// @inheritdoc IGateway
