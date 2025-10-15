@@ -888,8 +888,8 @@ contract IntegrationMock is Test {
         gateway.withBatch(abi.encodeWithSelector(this._notLocked.selector), refund);
     }
 
-    function callPaid(address refund) external payable {
-        gateway.withBatch{value: msg.value}(abi.encodeWithSelector(this._paid.selector), PAYMENT, refund);
+    function callPaid(address refund, uint256 value) external payable {
+        gateway.withBatch{value: msg.value}(abi.encodeWithSelector(this._paid.selector), value, refund);
     }
 }
 
@@ -939,6 +939,13 @@ contract GatewayTestWithBatch is GatewayTest {
         attacker.callAttack(REFUND);
     }
 
+    function testErrNotEnoughValueForCallback() public {
+        vm.prank(ANY);
+        vm.deal(ANY, 1234);
+        vm.expectRevert(IGateway.NotEnoughValueForCallback.selector);
+        integration.callPaid{value: 1234}(REFUND, 2000);
+    }
+
     function testWithCallback() public {
         vm.prank(ANY);
         vm.deal(ANY, 1234);
@@ -958,7 +965,7 @@ contract GatewayTestWithBatch is GatewayTest {
     function testWithCallbackPaid() public {
         vm.prank(ANY);
         vm.deal(ANY, 1234);
-        integration.callPaid{value: 1234}(REFUND);
+        integration.callPaid{value: 1234}(REFUND, integration.PAYMENT());
 
         assertEq(REFUND.balance, 1000);
         assertEq(address(integration).balance, integration.PAYMENT());

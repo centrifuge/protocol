@@ -228,7 +228,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IGateway
     function withBatch(bytes memory data, uint256 value, address refund) public payable {
-        require(value <= msg.value, NotEnoughGas());
+        require(value <= msg.value, NotEnoughValueForCallback());
 
         bool wasBatching = isBatching;
         isBatching = true;
