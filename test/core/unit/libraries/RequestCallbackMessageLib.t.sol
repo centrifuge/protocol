@@ -21,8 +21,9 @@ contract TestRequestCallbackMessageLibIdentities is Test {
     }
 
     function testApprovedDeposits(uint128 assetAmount, uint128 pricePoolPerAsset) public pure {
-        RequestCallbackMessageLib.ApprovedDeposits memory a =
-            RequestCallbackMessageLib.ApprovedDeposits({assetAmount: assetAmount, pricePoolPerAsset: pricePoolPerAsset});
+        RequestCallbackMessageLib.ApprovedDeposits memory a = RequestCallbackMessageLib.ApprovedDeposits({
+            assetAmount: assetAmount, pricePoolPerAsset: pricePoolPerAsset
+        });
         RequestCallbackMessageLib.ApprovedDeposits memory b = a.serialize().deserializeApprovedDeposits();
 
         assertEq(a.assetAmount, b.assetAmount);
@@ -55,9 +56,7 @@ contract TestRequestCallbackMessageLibIdentities is Test {
 
     function testRevokedShares(uint128 assetAmount, uint128 shareAmount, uint128 pricePoolPerShare) public pure {
         RequestCallbackMessageLib.RevokedShares memory a = RequestCallbackMessageLib.RevokedShares({
-            assetAmount: assetAmount,
-            shareAmount: shareAmount,
-            pricePoolPerShare: pricePoolPerShare
+            assetAmount: assetAmount, shareAmount: shareAmount, pricePoolPerShare: pricePoolPerShare
         });
         RequestCallbackMessageLib.RevokedShares memory b = a.serialize().deserializeRevokedShares();
 
@@ -80,12 +79,13 @@ contract TestRequestCallbackMessageLibIdentities is Test {
         uint128 fulfilledShareAmount,
         uint128 cancelledAssetAmount
     ) public pure {
-        RequestCallbackMessageLib.FulfilledDepositRequest memory a = RequestCallbackMessageLib.FulfilledDepositRequest({
-            investor: investor,
-            fulfilledAssetAmount: fulfilledAssetAmount,
-            fulfilledShareAmount: fulfilledShareAmount,
-            cancelledAssetAmount: cancelledAssetAmount
-        });
+        RequestCallbackMessageLib.FulfilledDepositRequest memory a =
+            RequestCallbackMessageLib.FulfilledDepositRequest({
+                investor: investor,
+                fulfilledAssetAmount: fulfilledAssetAmount,
+                fulfilledShareAmount: fulfilledShareAmount,
+                cancelledAssetAmount: cancelledAssetAmount
+            });
         RequestCallbackMessageLib.FulfilledDepositRequest memory b = a.serialize().deserializeFulfilledDepositRequest();
 
         assertEq(a.investor, b.investor);
@@ -109,12 +109,13 @@ contract TestRequestCallbackMessageLibIdentities is Test {
         uint128 fulfilledShareAmount,
         uint128 cancelledShareAmount
     ) public pure {
-        RequestCallbackMessageLib.FulfilledRedeemRequest memory a = RequestCallbackMessageLib.FulfilledRedeemRequest({
-            investor: investor,
-            fulfilledAssetAmount: fulfilledAssetAmount,
-            fulfilledShareAmount: fulfilledShareAmount,
-            cancelledShareAmount: cancelledShareAmount
-        });
+        RequestCallbackMessageLib.FulfilledRedeemRequest memory a =
+            RequestCallbackMessageLib.FulfilledRedeemRequest({
+                investor: investor,
+                fulfilledAssetAmount: fulfilledAssetAmount,
+                fulfilledShareAmount: fulfilledShareAmount,
+                cancelledShareAmount: cancelledShareAmount
+            });
         RequestCallbackMessageLib.FulfilledRedeemRequest memory b = a.serialize().deserializeFulfilledRedeemRequest();
 
         assertEq(a.investor, b.investor);

@@ -6,7 +6,6 @@ library MathLib {
         Down, // Toward negative infinity
         Up, // Toward infinity
         Zero // Toward zero
-
     }
 
     error MulDiv_Overflow();

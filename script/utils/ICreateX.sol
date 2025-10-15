@@ -77,10 +77,12 @@ interface ICreateX {
         payable
         returns (address newContract);
 
-    function deployCreate2AndInit(bytes memory initCode, bytes memory data, Values memory values, address refundAddress)
-        external
-        payable
-        returns (address newContract);
+    function deployCreate2AndInit(
+        bytes memory initCode,
+        bytes memory data,
+        Values memory values,
+        address refundAddress
+    ) external payable returns (address newContract);
 
     function deployCreate2AndInit(bytes memory initCode, bytes memory data, Values memory values)
         external
@@ -99,10 +101,7 @@ interface ICreateX {
         pure
         returns (address computedAddress);
 
-    function computeCreate2Address(bytes32 salt, bytes32 initCodeHash)
-        external
-        view
-        returns (address computedAddress);
+    function computeCreate2Address(bytes32 salt, bytes32 initCodeHash) external view returns (address computedAddress);
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           CREATE3                          */
@@ -125,10 +124,12 @@ interface ICreateX {
         payable
         returns (address newContract);
 
-    function deployCreate3AndInit(bytes memory initCode, bytes memory data, Values memory values, address refundAddress)
-        external
-        payable
-        returns (address newContract);
+    function deployCreate3AndInit(
+        bytes memory initCode,
+        bytes memory data,
+        Values memory values,
+        address refundAddress
+    ) external payable returns (address newContract);
 
     function deployCreate3AndInit(bytes memory initCode, bytes memory data, Values memory values)
         external
