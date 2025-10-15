@@ -99,9 +99,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         emit InitiateTransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
 
-        sender.sendInitiateTransferShares{value: msg.value}(
-            centrifugeId, poolId, scId, receiver, amount, extraGasLimit, remoteExtraGasLimit, refund
-        );
+        sender.sendInitiateTransferShares{
+            value: msg.value
+        }(centrifugeId, poolId, scId, receiver, amount, extraGasLimit, remoteExtraGasLimit, refund);
     }
 
     /// @inheritdoc ISpoke
@@ -166,9 +166,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     ) external payable {
         emit UntrustedContractUpdate(poolId.centrifugeId(), poolId, scId, target, payload, msg.sender);
 
-        sender.sendUntrustedContractUpdate{value: msg.value}(
-            poolId, scId, target, payload, msg.sender.toBytes32(), extraGasLimit, refund
-        );
+        sender.sendUntrustedContractUpdate{
+            value: msg.value
+        }(poolId, scId, target, payload, msg.sender.toBytes32(), extraGasLimit, refund);
     }
 
     //----------------------------------------------------------------------------------------------

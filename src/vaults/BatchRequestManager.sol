@@ -118,8 +118,8 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
                     poolId,
                     scId,
                     assetId,
-                    RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount).serialize(
-                    ),
+                    RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount)
+                        .serialize(),
                     0,
                     address(0) // Refund is not used because we're in unpaid mode with no payment
                 );
@@ -134,7 +134,8 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
                     poolId,
                     scId,
                     assetId,
-                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount).serialize(),
+                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount)
+                        .serialize(),
                     0,
                     address(0) // Refund is not used because we're in unpaid mode with no payment
                 );
@@ -145,10 +146,13 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
     }
 
     /// @inheritdoc IBatchRequestManager
-    function requestDeposit(PoolId poolId, ShareClassId scId_, uint128 amount, bytes32 investor, AssetId depositAssetId)
-        public
-        auth
-    {
+    function requestDeposit(
+        PoolId poolId,
+        ShareClassId scId_,
+        uint128 amount,
+        bytes32 investor,
+        AssetId depositAssetId
+    ) public auth {
         // NOTE: Vaults ensure amount > 0
         _updatePending(poolId, scId_, amount, true, investor, depositAssetId, RequestType.Deposit);
     }
@@ -337,8 +341,8 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
             _revokeShares(poolId, scId_, payoutAssetId, nowRevokeEpochId, pricePoolPerShare);
 
         bytes memory callback = RequestCallbackMessageLib.RevokedShares(
-            payoutAssetAmount, revokedShareAmount, pricePoolPerShare.raw()
-        ).serialize();
+                payoutAssetAmount, revokedShareAmount, pricePoolPerShare.raw()
+            ).serialize();
         hub.requestCallback{value: msg.value}(poolId, scId_, payoutAssetId, callback, extraGasLimit, refund);
     }
 
@@ -473,13 +477,15 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         }
 
         if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
-            hub.requestCallback{value: msg.value}(
+            hub.requestCallback{
+                value: msg.value
+            }(
                 poolId,
                 scId,
                 assetId,
                 RequestCallbackMessageLib.FulfilledDepositRequest(
-                    investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
-                ).serialize(),
+                        investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
+                    ).serialize(),
                 0,
                 refund
             );
@@ -584,13 +590,15 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
             }
         }
         if (totalPaymentShareAmount > 0 || cancelledShareAmount > 0) {
-            hub.requestCallback{value: msg.value}(
+            hub.requestCallback{
+                value: msg.value
+            }(
                 poolId,
                 scId,
                 assetId,
                 RequestCallbackMessageLib.FulfilledRedeemRequest(
-                    investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
-                ).serialize(),
+                        investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
+                    ).serialize(),
                 0,
                 refund
             );
@@ -670,7 +678,8 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
     function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
         return interfaceId == type(IBatchRequestManager).interfaceId
             || interfaceId == type(IHubRequestManager).interfaceId
-            || interfaceId == type(IHubRequestManagerNotifications).interfaceId || interfaceId == type(IERC165).interfaceId;
+            || interfaceId == type(IHubRequestManagerNotifications).interfaceId
+            || interfaceId == type(IERC165).interfaceId;
     }
 
     //----------------------------------------------------------------------------------------------
