@@ -115,7 +115,9 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         LayerZeroDestination memory destination = destinations[centrifugeId];
         require(destination.layerZeroEid != 0, UnknownChainId());
 
-        MessagingReceipt memory receipt = endpoint.send{value: msg.value}(
+        MessagingReceipt memory receipt = endpoint.send{
+            value: msg.value
+        }(
             _params(destination, payload, (gasLimit + RECEIVE_COST) * (100 + destination.gasBufferPercentage) / 100),
             refund
         );

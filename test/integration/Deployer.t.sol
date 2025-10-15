@@ -79,7 +79,9 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
                 adapters: AdaptersInput({
                     wormhole: WormholeInput({shouldDeploy: true, relayer: WORMHOLE_RELAYER}),
                     axelar: AxelarInput({shouldDeploy: true, gateway: AXELAR_GATEWAY, gasService: AXELAR_GAS_SERVICE}),
-                    layerZero: LayerZeroInput({shouldDeploy: true, endpoint: LAYERZERO_ENDPOINT, delegate: LAYERZERO_DELEGATE})
+                    layerZero: LayerZeroInput({
+                        shouldDeploy: true, endpoint: LAYERZERO_ENDPOINT, delegate: LAYERZERO_DELEGATE
+                    })
                 })
             }),
             batcher

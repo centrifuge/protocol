@@ -84,9 +84,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         uint128 newTotalIssuance =
             isIssuance ? totalIssuance[poolId][scId_] + amount : totalIssuance[poolId][scId_] - amount;
         totalIssuance[poolId][scId_] = newTotalIssuance;
-
-        uint128 newIssuancePerNetwork =
-            isIssuance ? issuance[poolId][scId_][centrifugeId] + amount : issuance[poolId][scId_][centrifugeId] - amount;
+        uint128 newIssuancePerNetwork = isIssuance ? issuance[poolId][scId_][centrifugeId] + amount : issuance[poolId][scId_][centrifugeId] - amount; // forgefmt: disable-line
         issuance[poolId][scId_][centrifugeId] = newIssuancePerNetwork;
 
         if (isIssuance) emit RemoteIssueShares(centrifugeId, poolId, scId_, amount);

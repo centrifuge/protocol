@@ -170,9 +170,9 @@ contract NAVManagerIntegrationTest is BaseTest {
         _testInitializeAndUpdate();
 
         vm.prank(address(root));
-        hubHandler.initiateTransferShares{value: 0.1 ether}(
-            CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32("receiver"), 130e18, 0, manager
-        );
+        hubHandler.initiateTransferShares{
+            value: 0.1 ether
+        }(CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32("receiver"), 130e18, 0, manager);
 
         uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
         uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
