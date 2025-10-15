@@ -160,16 +160,23 @@ abstract contract Properties is
         // we only care about the case where the claimableCancelDepositRequest is decreasing because it indicates that a
         // cancel deposit request was fulfilled
         if (
-            _before.investments[_getActor()].claimableCancelDepositRequest >
-            _after.investments[_getActor()].claimableCancelDepositRequest
+            _before
+            .investments[address(_getVault())][_getActor()]
+                .claimableCancelDepositRequest >
+            _after
+            .investments[address(_getVault())][_getActor()]
+                .claimableCancelDepositRequest
         ) {
             uint256 claimableCancelDepositRequestDelta = _before
-                .investments[_getActor()]
+            .investments[address(_getVault())][_getActor()]
                 .claimableCancelDepositRequest -
-                _after.investments[_getActor()].claimableCancelDepositRequest;
+                _after
+                .investments[address(_getVault())][_getActor()]
+                    .claimableCancelDepositRequest;
             // claiming a cancel deposit request means that the globalEscrow token balance decreases
-            uint256 escrowAssetBalanceDelta = _before.escrowAssetBalance -
-                _after.escrowAssetBalance;
+            uint256 escrowAssetBalanceDelta = _before.escrowAssetBalance[
+                address(_getVault())
+            ] - _after.escrowAssetBalance[address(_getVault())];
             eq(
                 claimableCancelDepositRequestDelta,
                 escrowAssetBalanceDelta,
@@ -204,13 +211,19 @@ abstract contract Properties is
         // we only care about the case where the claimableCancelRedeemRequest is decreasing because it indicates that a
         // cancel redeem request was fulfilled
         if (
-            _before.investments[_getActor()].claimableCancelRedeemRequest >
-            _after.investments[_getActor()].claimableCancelRedeemRequest
+            _before
+            .investments[address(_getVault())][_getActor()]
+                .claimableCancelRedeemRequest >
+            _after
+            .investments[address(_getVault())][_getActor()]
+                .claimableCancelRedeemRequest
         ) {
             uint256 claimableCancelRedeemRequestDelta = _before
-                .investments[_getActor()]
+            .investments[address(_getVault())][_getActor()]
                 .claimableCancelRedeemRequest -
-                _after.investments[_getActor()].claimableCancelRedeemRequest;
+                _after
+                .investments[address(_getVault())][_getActor()]
+                    .claimableCancelRedeemRequest;
             // claiming a cancel redeem request means that the globalEscrow tranche token balance decreases
             uint256 escrowTrancheTokenBalanceDelta = _before
                 .escrowShareTokenBalance - _after.escrowShareTokenBalance;
@@ -325,8 +338,8 @@ abstract contract Properties is
                     _after.assetTokenBalance[_getActor()];
 
                 escrowBalanceDelta =
-                    _after.escrowAssetBalance -
-                    _before.escrowAssetBalance;
+                    _after.escrowAssetBalance[address(_getVault())] -
+                    _before.escrowAssetBalance[address(_getVault())];
             }
 
             eq(assetBalanceDelta, escrowBalanceDelta, "7540-11");
@@ -2549,45 +2562,53 @@ abstract contract Properties is
 
     /// @dev Property 2.4: Escrow Balance Sufficiency
     /// @notice Ensures available balance always covers withdrawals
-    function property_escrowBalanceSufficiency() public {
-        PoolId[] memory pools = _getPools();
-        PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
-        AssetId assetId = _getAssetId();
-        bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
+    // NOTE: Removed because untestable; in BalanceSheet::withdraw, asset queue is increased at the same time that assets are sent to user which decreases holding_.total as well
+    // function property_escrowBalanceSufficiency() public {
+    //     PoolId[] memory pools = _getPools();
+    //     PoolId poolId = _getPool();
+    //     ShareClassId scId = _getShareClassId();
+    //     AssetId assetId = _getAssetId();
+    //     bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
 
-        // Skip if not tracked
-        if (!ghost_escrowSufficiencyTracked[key]) return;
+    //     // Skip if not tracked
+    //     if (!ghost_escrowSufficiencyTracked[key]) return;
 
-        // Use vault to get asset address
-        address asset = _getVault().asset();
+    //     // Use vault to get asset address
+    //     address asset = _getVault().asset();
 
-        // Get current available balance
-        uint128 available = balanceSheet.availableBalanceOf(
-            poolId,
-            scId,
-            asset,
-            0
-        );
+    //     // Get current available balance
+    //     uint128 available = balanceSheet.availableBalanceOf(
+    //         poolId,
+    //         scId,
+    //         asset,
+    //         0
+    //     );
 
-        // Get queued withdrawals
-        (, uint128 queuedWithdrawals) = balanceSheet.queuedAssets(
-            poolId,
-            scId,
-            assetId
-        );
+    //     // Get queued withdrawals
+    //     (, uint128 queuedWithdrawals) = balanceSheet.queuedAssets(
+    //         poolId,
+    //         scId,
+    //         assetId
+    //     );
 
-        // Core Invariant: Available = Total - Reserved
-        uint128 reserved = uint128(ghost_netReserved[key]);
-        uint128 calculatedTotal = available + reserved;
+    //     // Core Invariant: Available = Total - Reserved
+    //     PoolEscrow poolEscrow = PoolEscrow(
+    //         address(balanceSheet.escrow(poolId))
+    //     );
+    //     (, uint128 reserved) = poolEscrow.holding(
+    //         scId,
+    //         asset,
+    //         _getAssetId().raw()
+    //     );
+    //     uint128 calculatedTotal = available + reserved;
 
-        // Total must cover all obligations
-        gte(
-            calculatedTotal,
-            reserved + queuedWithdrawals,
-            "Total balance insufficient for obligations"
-        );
-    }
+    //     // Total must cover all obligations
+    //     gte(
+    //         calculatedTotal,
+    //         reserved + queuedWithdrawals,
+    //         "Total balance insufficient for obligations"
+    //     );
+    // }
 
     /// @dev Property: BalanceSheet must always have sufficient balance for queued assets
     function property_availableGtQueued() public {
