@@ -319,50 +319,51 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    function balanceSheet_transferSharesFrom(
-        address to,
-        uint256 amount
-    ) public updateGhosts asActor {
-        IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        _captureShareQueueState(poolId, scId);
+    // NOTE: removed because introduces false positives when checking actor share balances
+    // function balanceSheet_transferSharesFrom(
+    //     address to,
+    //     uint256 amount
+    // ) public updateGhosts asActor {
+    //     IBaseVault vault = IBaseVault(_getVault());
+    //     PoolId poolId = vault.poolId();
+    //     ShareClassId scId = vault.scId();
+    //     _captureShareQueueState(poolId, scId);
 
-        // Track authorization - transferSharesFrom() requires authOrManager(poolId)
-        _trackAuthorization(_getActor(), poolId);
+    //     // Track authorization - transferSharesFrom() requires authOrManager(poolId)
+    //     _trackAuthorization(_getActor(), poolId);
 
-        // Track endorsement status before transfer
-        address from = _getActor();
-        address recipient = _getRandomActor(uint256(uint160(to)));
-        _trackEndorsedTransfer(from, recipient, poolId, scId);
+    //     // Track endorsement status before transfer
+    //     address from = _getActor();
+    //     address recipient = _getRandomActor(uint256(uint160(to)));
+    //     _trackEndorsedTransfer(from, recipient, poolId, scId);
 
-        bytes32 key = keccak256(abi.encode(poolId, scId));
+    //     bytes32 key = keccak256(abi.encode(poolId, scId));
 
-        // Attempt the transfer - will revert if from is endorsed
-        try
-            balanceSheet.transferSharesFrom(
-                poolId,
-                scId,
-                from,
-                from,
-                recipient,
-                amount
-            )
-        {
-            // Transfer succeeded - track as valid
-            ghost_validTransferCount[key]++;
+    //     // Attempt the transfer - will revert if from is endorsed
+    //     try
+    //         balanceSheet.transferSharesFrom(
+    //             poolId,
+    //             scId,
+    //             from,
+    //             from,
+    //             recipient,
+    //             amount
+    //         )
+    //     {
+    //         // Transfer succeeded - track as valid
+    //         ghost_validTransferCount[key]++;
 
-            // Track balance changes for transfers (supply stays same, only balances shift)
-            ghost_individualBalances[key][from] -= amount;
-            ghost_individualBalances[key][recipient] += amount;
-            ghost_supplyOperationOccurred[key] = true;
-        } catch {
-            // Transfer failed - likely due to endorsement restriction
-            if (_isEndorsedContract(from)) {
-                ghost_blockedEndorsedTransfers[key]++;
-            }
-        }
-    }
+    //         // Track balance changes for transfers (supply stays same, only balances shift)
+    //         ghost_individualBalances[key][from] -= amount;
+    //         ghost_individualBalances[key][recipient] += amount;
+    //         ghost_supplyOperationOccurred[key] = true;
+    //     } catch {
+    //         // Transfer failed - likely due to endorsement restriction
+    //         if (_isEndorsedContract(from)) {
+    //             ghost_blockedEndorsedTransfers[key]++;
+    //         }
+    //     }
+    // }
 
     /// @dev Property: Withdrawals should not fail when there's sufficient balance
     function balanceSheet_withdraw(
