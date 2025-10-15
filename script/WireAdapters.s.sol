@@ -13,7 +13,7 @@ import "forge-std/Script.sol";
 ///
 ///      Intended for testnet use only.
 contract WireAdapters is Script {
-    uint8 constant GAS_MULTIPLIER = 10; // 10%
+    uint16 constant GAS_MULTIPLIER = 10; // 10%
     IAdapter[] adapters; // Storage array for adapter instances
 
     function fetchConfig(string memory network) internal view returns (string memory) {
