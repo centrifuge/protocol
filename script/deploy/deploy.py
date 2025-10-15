@@ -21,6 +21,7 @@ from lib.load_config import EnvironmentLoader
 from lib.runner import DeploymentRunner
 from lib.verifier import ContractVerifier
 from lib.anvil import AnvilManager
+from lib.release import ReleaseManager
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -34,18 +35,19 @@ IMPORTANT:
   - Run with VERSION=XYZ preceding the python3 command to avoid create3 collisions.
 
 Examples:
-  VERSION=XYZ python3 deploy.py sepolia deploy:protocol
+  VERSION=vXYZ python3 deploy.py sepolia deploy:protocol
   python3 deploy.py base-sepolia deploy:full --catapulta --priority-gas-price 2
   python3 deploy.py sepolia deploy:test --resume
   python3 deploy.py sepolia verify:protocol
   python3 deploy.py arbitrum-sepolia verify:protocol
+  VERSION=vXYZ python3 deploy.py release:sepolia  # Deploy all Sepolia testnets
         """
     )
 
     parser.add_argument("network", nargs="?", help="Network name (must match env/<network>.json)")
     parser.add_argument("step", nargs="?", help="Deployment step", choices=[
         "deploy:protocol", "deploy:full", "wire:adapters",
-        "deploy:test", "verify:protocol", "dump:config"
+        "deploy:test", "verify:protocol", "dump:config", "release:sepolia"
     ])
     parser.add_argument("--catapulta", action="store_true", help="Use Catapulta for deployment")
     parser.add_argument("--ledger", action="store_true", help="Force use of Ledger hardware wallet")
@@ -71,6 +73,11 @@ def validate_arguments(args, root_dir: pathlib.Path):
         print_info(f"VERSION env: {os.environ.get('VERSION', 'Not set')}")
 
     # Check for required arguments
+    if not args.step:
+        print_error("Deployment step is required.")
+        print_info("Run python3 deploy.py --help for available steps")
+        raise SystemExit(1)
+    
     if not args.network:
         print_error("Network name is required")
         print_info("Available networks:")
@@ -80,11 +87,7 @@ def validate_arguments(args, root_dir: pathlib.Path):
                 if config_file.name != "latest":
                     print_info(f"  - {config_file.stem}")
         raise SystemExit(1)
-
-    if not args.step:
-        print_error("Deployment step is required.")
-        print_info("Run python3 deploy.py --help for available steps")
-        raise SystemExit(1)
+    
     network_config = root_dir / "env" / f"{args.network}.json"
     if not network_config.exists():
         print_error(f"Network config file not found: {network_config}")
@@ -128,8 +131,14 @@ def main():
     root_dir = script_dir.parent.parent
 
     # Validate arguments
-    if args.network != "anvil":
+    if args.network != "anvil" and args.step != "release:sepolia":
         validate_arguments(args, root_dir)
+    elif args.step == "release:sepolia":
+        # Special validation for release:sepolia
+        if not os.environ.get("VERSION"):
+            print_error("VERSION environment variable is required for release:sepolia")
+            print_info("Example: VERSION=v3.1.4 python3 script/deploy/deploy.py release:sepolia")
+            sys.exit(1)
 
     try:
         # Handle Anvil deployment specially - it's completely self-contained
@@ -138,20 +147,27 @@ def main():
             success = anvil_manager.deploy_full_protocol()
             sys.exit(0 if success else 1)
 
-        # Create environment loader
-        env_loader = EnvironmentLoader(
-            network_name=args.network,
-            root_dir=root_dir,
-            args=args
-        )
+        # Handle release:sepolia specially - it orchestrates multiple networks
+        if args.step != "release:sepolia":
+            # Create environment loader for single network deployments
+            env_loader = EnvironmentLoader(
+                network_name=args.network,
+                root_dir=root_dir,
+                args=args
+            )
 
-        print_step(f"Network: {args.network}")
-        print_info(f"Chain ID: {env_loader.chain_id}")
-        print_info(f"Deployment mode: {'Catapulta' if args.catapulta else 'Forge'}")
+            print_step(f"Network: {args.network}")
+            print_info(f"Chain ID: {env_loader.chain_id}")
+            print_info(f"Deployment mode: {'Catapulta' if args.catapulta else 'Forge'}")
 
-        # Set up deployment runner and verifier
-        runner = DeploymentRunner(env_loader, args)
-        verifier = ContractVerifier(env_loader, args)
+            # Validate network configuration for deployment and wiring steps
+            if args.step in ["deploy:protocol", "deploy:full", "wire:adapters", "deploy:test"]:
+                env_loader.validate_network()
+
+            # Set up deployment runner and verifier (only for deployment steps)
+            if args.step != "dump:config":
+                runner = DeploymentRunner(env_loader, args)
+                verifier = ContractVerifier(env_loader, args)
 
         # Execute the requested step
         verify_success = True
@@ -230,6 +246,12 @@ def main():
         elif args.step == "dump:config":
             print_section(f"Dumping config for {args.network}")
             env_loader.dump_config()
+
+        elif args.step == "release:sepolia":
+            # Orchestrated deployment across all Sepolia testnets
+            release_manager = ReleaseManager(root_dir, args)
+            success = release_manager.deploy_sepolia_testnets()
+            sys.exit(0 if success else 1)
 
         # Handle errors
         if not verify_success:
