@@ -4,10 +4,13 @@ pragma solidity 0.8.28;
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
+import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 
-import {MerkleProofManager} from "../../../../src/managers/spoke/MerkleProofManager.sol";
 import {IMerkleProofManager} from "../../../../src/managers/spoke/interfaces/IMerkleProofManager.sol";
+import {IMerkleProofManagerFactory} from "../../../../src/managers/spoke/interfaces/IMerkleProofManagerFactory.sol";
+import {MerkleProofManager, MerkleProofManagerFactory} from "../../../../src/managers/spoke/MerkleProofManager.sol";
 
 import "forge-std/Test.sol";
 
@@ -138,5 +141,75 @@ contract MerkleProofManagerTrustedCallSuccessTests is MerkleProofManagerTest {
         vm.prank(contractUpdater);
         manager.trustedCall(POOL_A, SC_1, clearPayload);
         assertEq(manager.policy(strategist), bytes32(0));
+    }
+}
+
+contract MerkleProofManagerFactoryTest is Test {
+    PoolId constant POOL_A = PoolId.wrap(1);
+    PoolId constant POOL_B = PoolId.wrap(2);
+
+    address contractUpdater = makeAddr("contractUpdater");
+    IBalanceSheet balanceSheet;
+    ISpoke spoke;
+    MerkleProofManagerFactory factory;
+
+    function setUp() public virtual {
+        balanceSheet = IBalanceSheet(makeAddr("balanceSheet"));
+        spoke = ISpoke(makeAddr("spoke"));
+
+        vm.mockCall(address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.spoke.selector), abi.encode(spoke));
+
+        factory = new MerkleProofManagerFactory(contractUpdater, balanceSheet);
+    }
+
+    function testConstructor() public view {
+        assertEq(factory.contractUpdater(), contractUpdater);
+        assertEq(address(factory.balanceSheet()), address(balanceSheet));
+    }
+}
+
+contract MerkleProofManagerFactoryNewManagerTest is MerkleProofManagerFactoryTest {
+    function testNewManagerSuccess() public {
+        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
+
+        IMerkleProofManager manager = factory.newManager(POOL_A);
+        MerkleProofManager concreteManager = MerkleProofManager(payable(address(manager)));
+
+        assertEq(concreteManager.poolId().raw(), POOL_A.raw());
+        assertEq(concreteManager.contractUpdater(), contractUpdater);
+    }
+
+    function testNewManagerInvalidPoolId() public {
+        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_B), abi.encode(false));
+
+        vm.expectRevert(IMerkleProofManagerFactory.InvalidPoolId.selector);
+        factory.newManager(POOL_B);
+    }
+
+    function testNewManagerDeterministic() public {
+        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
+
+        IMerkleProofManager manager1 = factory.newManager(POOL_A);
+
+        // Second call should revert because CREATE2 with same salt fails
+        vm.expectRevert();
+        factory.newManager(POOL_A);
+
+        // Verify the first manager was deployed correctly
+        MerkleProofManager concreteManager = MerkleProofManager(payable(address(manager1)));
+        assertEq(concreteManager.poolId().raw(), POOL_A.raw());
+    }
+
+    function testNewManagerEventEmission() public {
+        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
+
+        vm.recordLogs();
+        IMerkleProofManager manager = factory.newManager(POOL_A);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 1);
+        assertEq(logs[0].topics[0], keccak256("DeployMerkleProofManager(uint64,address)"));
+        assertEq(uint256(logs[0].topics[1]), POOL_A.raw());
+        assertEq(address(uint160(uint256(logs[0].topics[2]))), address(manager));
     }
 }
