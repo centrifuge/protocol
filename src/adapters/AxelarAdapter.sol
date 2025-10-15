@@ -47,13 +47,10 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapterWiring
-    /// @dev   First encoded param is a payment overhead to ensure the message is computed despite price fluctuations.
-    ///        Measured as % over the given gasLimit. i.e: `10` means added a 10% over gasLimit
     function wire(uint16 centrifugeId, bytes memory data) external auth {
-        (uint8 gasBufferPercentage, string memory axelarId, string memory adapter) =
-            abi.decode(data, (uint8, string, string));
+        (string memory axelarId, string memory adapter) = abi.decode(data, (string, string));
         sources[axelarId] = AxelarSource(centrifugeId, keccak256(bytes(adapter)));
-        destinations[centrifugeId] = AxelarDestination(gasBufferPercentage, axelarId, adapter);
+        destinations[centrifugeId] = AxelarDestination(axelarId, adapter);
         emit Wire(centrifugeId, axelarId, adapter);
     }
 
@@ -121,11 +118,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         require(bytes(destination.axelarId).length != 0, UnknownChainId());
 
         return axelarGasService.estimateGasFee(
-            destination.axelarId,
-            destination.addr,
-            payload,
-            (gasLimit + RECEIVE_COST) * (100 + destination.gasBufferPercentage) / 100,
-            bytes("")
+            destination.axelarId, destination.addr, payload, gasLimit + RECEIVE_COST, bytes("")
         );
     }
 }
