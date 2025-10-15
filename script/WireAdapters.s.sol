@@ -19,14 +19,15 @@ import "forge-std/Script.sol";
 ///
 ///      Intended for testnet use only.
 contract WireAdapters is Script {
-    address private localWormholeAddr;  // Source Wormhole adapter address (if deployed)
-    address private localLayerZeroAddr; // Source LayerZero adapter address (if deployed)
-    address private localAxelarAddr;    // Source Axelar adapter address (if deployed)
+    address private sourceWormholeAddr;  // Source Wormhole adapter address (if deployed)
+    address private sourceLayerZeroAddr; // Source LayerZero adapter address (if deployed)
+    address private sourceAxelarAddr;    // Source Axelar adapter address (if deployed)
+    uint8 constant GAS_MULTIPLIER = 10; // 10%
 
-    /// @notice Detects and stores local adapter addresses from local network config
+    /// @notice Detects and stores source adapter addresses from source network config
     /// @dev Checks if adapter is marked for deployment and the address exists
     /// @return addr The adapter address if found, address(0) if not found
-    function _maybeAddLocalAdapter(
+    function _maybeAddAdapter(
         string memory config,
         string memory adapterLabel,
         string memory network
@@ -76,8 +77,6 @@ contract WireAdapters is Script {
         }
     }
 
-    uint8 constant GAS_MULTIPLIER = 10; // 10%
-
     function fetchConfig(string memory network) internal view returns (string memory) {
         string memory configFile = string.concat("env/", network, ".json");
         string memory config = vm.readFile(configFile);
@@ -93,18 +92,18 @@ contract WireAdapters is Script {
     /// @notice Main function that configures adapters for all destination networks
     /// @dev Process: 1) Detect source adapters, 2) For each destination network: register compatible adapters, 3) Wire them
     function run() public {
-        string memory localNetwork = vm.envString("NETWORK");
-        string memory localConfig = fetchConfig(localNetwork);
+        string memory sourceNetwork = vm.envString("NETWORK");
+        string memory sourceConfig = fetchConfig(sourceNetwork);
 
         // Detect and store all source adapter addresses
         // This populates the global adapters array and sets source adapter addresses
-        localWormholeAddr = _maybeAddLocalAdapter(localConfig, "WormholeAdapter", localNetwork);
-        localLayerZeroAddr = _maybeAddLocalAdapter(localConfig, "LayerZeroAdapter", localNetwork);
-        localAxelarAddr = _maybeAddLocalAdapter(localConfig, "AxelarAdapter", localNetwork);
+        sourceWormholeAddr = _maybeAddAdapter(sourceConfig, "WormholeAdapter", sourceNetwork);
+        sourceLayerZeroAddr = _maybeAddAdapter(sourceConfig, "LayerZeroAdapter", sourceNetwork);
+        sourceAxelarAddr = _maybeAddAdapter(sourceConfig, "AxelarAdapter", sourceNetwork);
 
         // Get list of destination networks to connect to
-        string[] memory connectsTo = vm.parseJsonStringArray(localConfig, "$.network.connectsTo");
-        IProtocolGuardian protocolGuardian = IProtocolGuardian(vm.parseJsonAddress(localConfig, "$.contracts.protocolGuardian"));
+        string[] memory connectsTo = vm.parseJsonStringArray(sourceConfig, "$.network.connectsTo");
+        IProtocolGuardian protocolGuardian = IProtocolGuardian(vm.parseJsonAddress(sourceConfig, "$.contracts.protocolGuardian"));
 
         vm.startBroadcast();
 
@@ -120,49 +119,49 @@ contract WireAdapters is Script {
             uint8 count = 0;
 
             // Wormhole (source → destination)
-            if (localWormholeAddr != address(0)) {
-                address remoteWormholeAddr = _maybeAddLocalAdapter(remoteConfig, "WormholeAdapter", remoteNetwork);
+            if (sourceWormholeAddr != address(0)) {
+                address remoteWormholeAddr = _maybeAddAdapter(remoteConfig, "WormholeAdapter", remoteNetwork);
                 if (remoteWormholeAddr != address(0)) {
-                    remoteAdapters[count] = IAdapter(localWormholeAddr);
+                    remoteAdapters[count] = IAdapter(sourceWormholeAddr);
                     count++;
                     bytes memory wormholeData = abi.encode(
                         uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
                         remoteWormholeAddr
                     );
-                    protocolGuardian.wire(localWormholeAddr, remoteCentrifugeId, wormholeData);
-                    console.log("Wired WormholeAdapter from source", localNetwork, "to destination", remoteNetwork);
+                    protocolGuardian.wire(sourceWormholeAddr, remoteCentrifugeId, wormholeData);
+                    console.log("Wired WormholeAdapter from source", sourceNetwork, "to destination", remoteNetwork);
                 }
             }
 
             // LayerZero (source → destination)
-            if (localLayerZeroAddr != address(0)) {
-                address remoteLayerZeroAddr = _maybeAddLocalAdapter(remoteConfig, "LayerZeroAdapter", remoteNetwork);
+            if (sourceLayerZeroAddr != address(0)) {
+                address remoteLayerZeroAddr = _maybeAddAdapter(remoteConfig, "LayerZeroAdapter", remoteNetwork);
                 if (remoteLayerZeroAddr != address(0)) {
-                    remoteAdapters[count] = IAdapter(localLayerZeroAddr);
+                    remoteAdapters[count] = IAdapter(sourceLayerZeroAddr);
                     count++;
                     bytes memory layerZeroData = abi.encode(
                         GAS_MULTIPLIER,
                         uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
                         remoteLayerZeroAddr
                     );
-                    protocolGuardian.wire(localLayerZeroAddr, remoteCentrifugeId, layerZeroData);
-                    console.log("Wired LayerZeroAdapter from source", localNetwork, "to destination", remoteNetwork);
+                    protocolGuardian.wire(sourceLayerZeroAddr, remoteCentrifugeId, layerZeroData);
+                    console.log("Wired LayerZeroAdapter from source", sourceNetwork, "to destination", remoteNetwork);
                 }
             }
 
             // Axelar (source → destination)
-            if (localAxelarAddr != address(0)) {
-                address remoteAxelarAddr = _maybeAddLocalAdapter(remoteConfig, "AxelarAdapter", remoteNetwork);
+            if (sourceAxelarAddr != address(0)) {
+                address remoteAxelarAddr = _maybeAddAdapter(remoteConfig, "AxelarAdapter", remoteNetwork);
                 if (remoteAxelarAddr != address(0)) {
-                    remoteAdapters[count] = IAdapter(localAxelarAddr);
+                    remoteAdapters[count] = IAdapter(sourceAxelarAddr);
                     count++;
                     bytes memory axelarData = abi.encode(
                         GAS_MULTIPLIER,
                         vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
                         vm.toString(remoteAxelarAddr)
                     );
-                    protocolGuardian.wire(localAxelarAddr, remoteCentrifugeId, axelarData);
-                    console.log("Wired AxelarAdapter from source", localNetwork, "to destination", remoteNetwork);
+                    protocolGuardian.wire(sourceAxelarAddr, remoteCentrifugeId, axelarData);
+                    console.log("Wired AxelarAdapter from source", sourceNetwork, "to destination", remoteNetwork);
                 }
             }
             // Final step: Register adapters configured in the source network
