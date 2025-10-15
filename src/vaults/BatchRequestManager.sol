@@ -90,7 +90,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
     }
 
     modifier authOrManager(PoolId poolId) {
-        require(wards[msg.sender] == 1 || hubRegistry.manager(poolId, msg.sender), IAuth.NotAuthorized());
+        require(wards[msg.sender] == 1 || hubRegistry.manager(poolId, msgSender()), IAuth.NotAuthorized());
         _;
     }
 
@@ -238,7 +238,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
 
         bytes memory callback =
             RequestCallbackMessageLib.ApprovedDeposits(approvedAssetAmount, pricePoolPerAsset.raw()).serialize();
-        hub.requestCallback{value: msg.value}(poolId, scId_, depositAssetId, callback, 0, refund);
+        hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, 0, refund);
     }
 
     /// @inheritdoc IBatchRequestManager
@@ -320,7 +320,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
 
         bytes memory callback =
             RequestCallbackMessageLib.IssuedShares(issuedShareAmount, pricePoolPerShare.raw()).serialize();
-        hub.requestCallback{value: msg.value}(poolId, scId_, depositAssetId, callback, extraGasLimit, refund);
+        hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, extraGasLimit, refund);
     }
 
     /// @inheritdoc IBatchRequestManager
@@ -339,7 +339,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         bytes memory callback = RequestCallbackMessageLib.RevokedShares(
             payoutAssetAmount, revokedShareAmount, pricePoolPerShare.raw()
         ).serialize();
-        hub.requestCallback{value: msg.value}(poolId, scId_, payoutAssetId, callback, extraGasLimit, refund);
+        hub.requestCallback{value: msgValue()}(poolId, scId_, payoutAssetId, callback, extraGasLimit, refund);
     }
 
     function _revokeShares(
@@ -410,7 +410,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         if (cancelledAssetAmount > 0) {
             bytes memory callback =
                 RequestCallbackMessageLib.FulfilledDepositRequest(investor, 0, 0, cancelledAssetAmount).serialize();
-            hub.requestCallback{value: msg.value}(poolId, scId_, depositAssetId, callback, 0, refund);
+            hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, 0, refund);
         }
     }
 
@@ -432,7 +432,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         if (cancelledShareAmount > 0) {
             bytes memory callback =
                 RequestCallbackMessageLib.FulfilledRedeemRequest(investor, 0, 0, cancelledShareAmount).serialize();
-            hub.requestCallback{value: msg.value}(poolId, scId_, payoutAssetId, callback, 0, refund);
+            hub.requestCallback{value: msgValue()}(poolId, scId_, payoutAssetId, callback, 0, refund);
         }
     }
 
@@ -473,7 +473,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         }
 
         if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
-            hub.requestCallback{value: msg.value}(
+            hub.requestCallback{value: msgValue()}(
                 poolId,
                 scId,
                 assetId,
@@ -584,7 +584,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
             }
         }
         if (totalPaymentShareAmount > 0 || cancelledShareAmount > 0) {
-            hub.requestCallback{value: msg.value}(
+            hub.requestCallback{value: msgValue()}(
                 poolId,
                 scId,
                 assetId,
