@@ -14,7 +14,7 @@ import {IGateway} from "../messaging/interfaces/IGateway.sol";
 /// @dev    Integrators MUST replace msg.sender with msgSender().
 abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
     IGateway public gateway;
-    address internal transient _sender;
+    address private transient _sender;
 
     constructor(IGateway gateway_) {
         gateway = gateway_;
