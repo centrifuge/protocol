@@ -369,7 +369,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             .redeemRequest(poolId, scId, assetId, controller.toBytes32());
         uint256 pendingCancelBefore = IAsyncVault(address(_getVault()))
             .claimableCancelRedeemRequest(REQUEST_ID, controller);
-        console2.log("pendingBefore: ", pendingBefore);
 
         vm.prank(controller);
         try
@@ -380,7 +379,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         {
             (uint128 pendingAfter, uint32 lastUpdateAfter) = batchRequestManager
                 .redeemRequest(poolId, scId, assetId, controller.toBytes32());
-            (, uint32 redeemEpochId, , ) = batchRequestManager.epochId(
+            (, , uint32 redeemEpochId, ) = batchRequestManager.epochId(
                 poolId,
                 scId,
                 assetId
