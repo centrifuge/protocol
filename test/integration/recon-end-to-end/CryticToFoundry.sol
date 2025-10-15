@@ -46,292 +46,131 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     /// === Potential Issues === ///
 
-    // forge test --match-test test_property_assetQueueCounterConsistency_11 -vvv
-    function test_property_assetQueueCounterConsistency_11() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
+    // forge test --match-test test_shortcut_cancel_redeem_clamped_0 -vvv
+    function test_shortcut_cancel_redeem_clamped_0() public {
+        shortcut_deployNewTokenPoolAndShare(
+            18,
+            39724410943193566942437836864763001383115667491159284883892,
+            false,
+            false,
+            false,
+            false
+        );
 
-        shortcut_deposit_queue_cancel(0, 0, 1, 1, 0, 0);
+        shortcut_mint_sync(1, 47666320813);
 
-        property_assetQueueCounterConsistency();
+        shortcut_queue_redemption(1, 19235, 41897944682560144173);
+
+        vault_deposit(1);
+
+        shortcut_cancel_redeem_clamped(
+            3,
+            313835488417167055657,
+            690240216577084952061679020521008104816194891247327445186846728
+        );
     }
 
-    // forge test --match-test test_property_shareQueueFlipBoundaries_26 -vvv
-    function test_property_shareQueueFlipBoundaries_26() public {
+    // forge test --match-test test_asyncVault_maxWithdraw_3 -vvv
+    // TODO: come back to this, might be a real issue
+    function test_asyncVault_maxWithdraw_3() public {
+        shortcut_deployNewTokenPoolAndShare(
+            0,
+            87456253102861400570196190842532000463762046048207829152,
+            false,
+            false,
+            true,
+            false
+        );
+
+        shortcut_deposit_sync(0, 0);
+
+        balanceSheet_issue(2240061100030147735);
+
+        shortcut_withdraw_and_claim_clamped(
+            5185724309485154025505734544096073931221398836135925125465140960934,
+            1,
+            1902143307120540125351124365924111327437318010975259938589113922
+        );
+
+        asyncVault_maxWithdraw(0, 0, 57164611568627088);
+    }
+
+    // forge test --match-test test_property_asset_soundness_4 -vvv
+    function test_property_asset_soundness_4() public {
         shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
 
-        shortcut_request_deposit(0, 0, 0, 0);
+        shortcut_deposit_sync(1, 0);
 
-        balanceSheet_issue(1);
+        balanceSheet_submitQueuedAssets(0);
 
-        property_shareQueueFlipBoundaries();
+        transientValuation_setPrice_clamped(1000204270152897072);
+
+        add_new_asset(2);
+
+        hub_updateHoldingValue();
+
+        spoke_registerAsset_clamped();
+
+        hub_initializeHolding_clamped(false, 1, 0, 0, 0);
+
+        property_asset_soundness();
     }
 
-    // forge test --match-test test_property_escrow_share_balance_9 -vvv
-    function test_property_escrow_share_balance_9() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
-
-        // creates a deposit request which is handled on hub side then cancelled by user
-        shortcut_deposit_queue_cancel(0, 0, 1, 1, 0, 0);
-
-        // admin calls notifyDeposit to process the deposit on the Spoke side
-        hub_notifyDeposit_clamped(0);
-
-        property_escrow_share_balance();
-    }
-
-    // forge test --match-test test_property_shareQueueFlipLogic_11 -vvv
-    function test_property_shareQueueFlipLogic_11() public {
+    // forge test --match-test test_shortcut_cancel_redeem_immediately_issue_and_revoke_clamped_5 -vvv
+    function test_shortcut_cancel_redeem_immediately_issue_and_revoke_clamped_5()
+        public
+    {
         shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
 
         shortcut_deposit_sync(0, 0);
 
         balanceSheet_issue(1);
 
-        balanceSheet_submitQueuedShares(0);
-
-        spoke_deployVault_clamped();
-
-        property_shareQueueFlipLogic();
+        shortcut_cancel_redeem_immediately_issue_and_revoke_clamped(
+            1,
+            0,
+            238367282084818977668128819095299490
+        );
     }
 
-    // forge test --match-test test_property_user_cannot_mutate_pending_redeem_15 -vvv
-    function test_property_user_cannot_mutate_pending_redeem_15() public {
+    // forge test --match-test test_asyncVault_maxMint_6 -vvv
+    function test_asyncVault_maxMint_6() public {
         shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
-
-        shortcut_deposit_cancel_claim(0, 0, 1, 0, 0);
-
-        balanceSheet_issue(2);
-
-        shortcut_cancel_redeem_immediately_issue_and_revoke_clamped(1, 0, 0);
-
-        hub_notifyRedeem_clamped(0);
-
-        property_user_cannot_mutate_pending_redeem();
-    }
-
-    // forge test --match-test test_property_escrow_share_balance_4 -vvv
-    function test_property_escrow_share_balance_4() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
-
-        shortcut_deposit_queue_cancel(0, 0, 1, 1, 0, 0);
-
-        hub_notifyDeposit_clamped(0);
-
-        property_escrow_share_balance();
-    }
-
-    // forge test --match-test test_asyncVault_maxDeposit_5 -vvv
-    function test_asyncVault_maxDeposit_5() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, true, false, true, false);
 
         shortcut_deposit_queue_cancel(
             0,
             0,
-            70043326780006531036508,
+            5415168327856114888035,
             1,
             1,
-            9067487205123489
+            11994885
         );
-
-        hub_notifyDeposit_clamped(0);
-
-        asyncVault_maxDeposit(0, 0, 0);
-    }
-
-    // forge test --match-test test_property_assetQueueCounterConsistency_10 -vvv
-    function test_property_assetQueueCounterConsistency_10() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(0, 0);
-
-        balanceSheet_noteDeposit(0, 1);
-
-        property_assetQueueCounterConsistency();
-    }
-
-    // forge test --match-test test_property_total_yield_0 -vvv
-    function test_property_total_yield_0() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(1, 1000368288321945536);
-
-        balanceSheet_submitQueuedAssets(0);
-
-        transientValuation_setPrice_clamped(0);
-
-        hub_updateHoldingValue();
-
-        transientValuation_setPrice_clamped(2000033918479566113);
-
-        hub_updateHoldingValue();
-
-        hub_addShareClass(2);
-
-        property_total_yield();
-    }
-
-    // forge test --match-test test_property_shareTokenSupplyConsistency_7 -vvv
-    function test_property_shareTokenSupplyConsistency_7() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(0, 0);
-
-        balanceSheet_issue(2);
-
-        shortcut_cancel_redeem_immediately_issue_and_revoke_clamped(1, 0, 0);
-
-        property_shareTokenSupplyConsistency();
-    }
-
-    // forge test --match-test test_property_deposit_share_balance_delta_8 -vvv
-    function test_property_deposit_share_balance_delta_8() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, true, false, true, false);
-
-        shortcut_deposit_queue_cancel(0, 0, 1, 1, 1, 0);
-
-        hub_notifyDeposit_clamped(0);
-
-        shortcut_mint_sync(1, 0);
-
-        switch_actor(1);
-
-        property_deposit_share_balance_delta();
-    }
-
-    // forge test --match-test test_hub_notifyDeposit_clamped_10 -vvv
-    function test_hub_notifyDeposit_clamped_10() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
-
-        shortcut_deposit_queue_cancel(0, 0, 1, 1, 0, 0);
-
-        hub_notifyDeposit_clamped(0);
-
-        switch_actor(1);
-
-        shortcut_deposit_queue_cancel(0, 0, 1, 1, 0, 0);
-
-        switch_actor(0);
-
-        vault_requestDeposit(1, 0);
-
-        hub_notifyDeposit_clamped(0);
-    }
-
-    // forge test --match-test test_asyncVault_maxMint_12 -vvv
-    function test_asyncVault_maxMint_12() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, true, false, true, false);
-
-        shortcut_deposit_queue_cancel(0, 0, 1, 1, 1, 0);
 
         hub_notifyDeposit_clamped(0);
 
         asyncVault_maxMint(0, 0, 0);
     }
 
-    // forge test --match-test test_property_sum_of_received_leq_fulfilled_inductive_14 -vvv
-    function test_property_sum_of_received_leq_fulfilled_inductive_14() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(1, 10010101439671995);
-
-        spoke_deployVault(true);
-
-        switch_vault(0);
-
-        shortcut_withdraw_and_claim_clamped(1, 0, 0);
-
-        vault_cancelRedeemRequest();
-
-        switch_vault(1);
-
-        property_sum_of_received_leq_fulfilled_inductive();
-    }
-
-    // forge test --match-test test_property_assetQueueCounterConsistency_18 -vvv
-    function test_property_assetQueueCounterConsistency_18() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(0, 0);
-
-        balanceSheet_noteDeposit(0, 1);
-
-        property_assetQueueCounterConsistency();
-    }
-
-    // forge test --match-test test_property_escrowBalanceSufficiency_19 -vvv
-    function test_property_escrowBalanceSufficiency_19() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(1, 0);
-
-        balanceSheet_withdraw(0, 1);
-
-        property_escrowBalanceSufficiency();
-    }
-
-    // forge test --match-test test_balanceSheet_withdraw_20 -vvv
-    function test_balanceSheet_withdraw_20() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
-
-        shortcut_deposit_cancel_claim(0, 0, 1, 0, 0);
-
-        balanceSheet_noteDeposit(0, 1);
-
-        balanceSheet_withdraw(0, 1);
-    }
-
-    // forge test --match-test test_doomsday_deposit_21 -vvv
-    function test_doomsday_deposit_21() public {
+    // forge test --match-test test_property_holdings_balance_equals_escrow_balance_7 -vvv
+    function test_property_holdings_balance_equals_escrow_balance_7() public {
         shortcut_deployNewTokenPoolAndShare(0, 1, true, false, true, false);
 
-        hub_updateSharePrice(0, 0, 473209924842317865);
+        hub_updateSharePrice(0, 0, 446018867354994785);
 
         shortcut_deposit_queue_cancel(
             0,
             0,
-            40372594246256258819060065534945294444693266406994695269609128,
+            709743197693749225359838705486063362570425022362276604362172355194,
             1,
-            1,
+            0,
             0
         );
 
-        hub_notifyDeposit_clamped(0);
-
-        doomsday_deposit(1);
+        property_holdings_balance_equals_escrow_balance();
     }
 
-    // forge test --match-test test_property_sum_of_assets_received_on_claim_cancel_deposit_request_inductive_22 -vvv
-    function test_property_sum_of_assets_received_on_claim_cancel_deposit_request_inductive_22()
-        public
-    {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
-
-        shortcut_deposit_queue_cancel(0, 0, 2, 1, 0, 0);
-
-        hub_notifyDeposit_clamped(0);
-
-        spoke_deployVault(false);
-
-        property_sum_of_assets_received_on_claim_cancel_deposit_request_inductive();
-    }
-
-    // forge test --match-test test_property_loss_soundness_24 -vvv
-    function test_property_loss_soundness_24() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(1, 1000368288321945536);
-
-        balanceSheet_submitQueuedAssets(0);
-
-        spoke_addShareClass(1, 2, 0x0000000000000000000000000000000000000000);
-
-        hub_initializeHolding_clamped(false, 0, 2, 1, 1);
-
-        property_loss_soundness();
-    }
-
-    // forge test --match-test test_property_accounting_and_holdings_soundness_25 -vvv
-    function test_property_accounting_and_holdings_soundness_25() public {
+    // forge test --match-test test_property_accounting_and_holdings_soundness_8 -vvv
+    function test_property_accounting_and_holdings_soundness_8() public {
         shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
 
         shortcut_deposit_sync(1, 0);
@@ -353,53 +192,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         property_accounting_and_holdings_soundness();
     }
 
-    // forge test --match-test test_property_last_update_on_request_redeem_26 -vvv
-    function test_property_last_update_on_request_redeem_26() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(1, 10020231884082945);
-
-        vault_requestRedeem_clamped(1, 0);
-
-        switch_actor(1);
-
-        property_last_update_on_request_redeem();
-    }
-
-    // forge test --match-test test_property_asset_soundness_27 -vvv
-    function test_property_asset_soundness_27() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(1, 0);
-
-        balanceSheet_submitQueuedAssets(0);
-
-        transientValuation_setPrice_clamped(1000204270152897072);
-
-        add_new_asset(2);
-
-        hub_updateHoldingValue();
-
-        spoke_registerAsset_clamped();
-
-        hub_initializeHolding_clamped(false, 1, 0, 0, 0);
-
-        property_asset_soundness();
-    }
-
-    // forge test --match-test test_property_asset_balance_delta_29 -vvv
-    function test_property_asset_balance_delta_29() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
-
-        shortcut_request_deposit(0, 0, 1, 0);
-
-        switch_actor(1);
-
-        property_asset_balance_delta();
-    }
-
-    // forge test --match-test test_property_gain_soundness_30 -vvv
-    function test_property_gain_soundness_30() public {
+    // forge test --match-test test_property_gain_soundness_9 -vvv
+    function test_property_gain_soundness_9() public {
         shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
 
         shortcut_deposit_sync(1, 1000053703097082978);
@@ -415,6 +209,150 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_updateHoldingValue();
 
         property_gain_soundness();
+    }
+
+    // forge test --match-test test_property_escrow_share_balance_11 -vvv
+    function test_property_escrow_share_balance_11() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
+
+        shortcut_deposit_queue_cancel(0, 0, 1, 1, 0, 0);
+
+        hub_notifyDeposit(1);
+
+        property_escrow_share_balance();
+    }
+
+    // forge test --match-test test_hub_notifyDeposit_clamped_12 -vvv
+    function test_hub_notifyDeposit_clamped_12() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
+
+        shortcut_deposit_queue_cancel(0, 0, 1, 1, 0, 0);
+
+        hub_notifyDeposit_clamped(0);
+
+        switch_actor(1);
+
+        shortcut_deposit_queue_cancel(0, 0, 1, 1, 0, 0);
+
+        switch_actor(0);
+
+        vault_requestDeposit(1, 0);
+
+        hub_notifyDeposit_clamped(0);
+    }
+
+    // forge test --match-test test_asyncVault_maxDeposit_13 -vvv
+    function test_asyncVault_maxDeposit_13() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
+
+        shortcut_deposit_queue_cancel(0, 0, 1, 1, 1, 0);
+
+        hub_notifyDeposit_clamped(0);
+
+        asyncVault_maxDeposit(0, 0, 0);
+    }
+
+    // forge test --match-test test_property_shareQueueFlipLogic_14 -vvv
+    function test_property_shareQueueFlipLogic_14() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        shortcut_deposit_sync(0, 0);
+
+        balanceSheet_issue(1);
+
+        balanceSheet_submitQueuedShares(0);
+
+        spoke_deployVault_clamped();
+
+        property_shareQueueFlipLogic();
+    }
+
+    // forge test --match-test test_asyncVault_maxRedeem_18 -vvv
+    function test_asyncVault_maxRedeem_18() public {
+        shortcut_deployNewTokenPoolAndShare(
+            39,
+            578281926194066551989227579382852452747667104594196475927699918,
+            false,
+            false,
+            false,
+            false
+        );
+
+        shortcut_mint_sync(1, 119873638413);
+
+        shortcut_queue_redemption(
+            1,
+            2032542148256948324,
+            2438794333037897499498
+        );
+
+        vault_deposit(1);
+
+        hub_notifyRedeem(1);
+
+        asyncVault_maxRedeem(0, 0, 0);
+    }
+
+    // forge test --match-test test_property_sum_of_assets_received_on_claim_cancel_deposit_request_inductive_19 -vvv
+    function test_property_sum_of_assets_received_on_claim_cancel_deposit_request_inductive_19()
+        public
+    {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
+
+        shortcut_deposit_queue_cancel(0, 0, 2, 1, 0, 0);
+
+        hub_notifyDeposit_clamped(0);
+
+        spoke_deployVault(false);
+
+        property_sum_of_assets_received_on_claim_cancel_deposit_request_inductive();
+    }
+
+    // forge test --match-test test_property_total_yield_20 -vvv
+    function test_property_total_yield_20() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        shortcut_deposit_sync(1, 1000368288321945536);
+
+        balanceSheet_submitQueuedAssets(0);
+
+        transientValuation_setPrice_clamped(0);
+
+        hub_updateHoldingValue();
+
+        transientValuation_setPrice_clamped(2000033918479566113);
+
+        hub_updateHoldingValue();
+
+        hub_addShareClass(2);
+
+        property_total_yield();
+    }
+
+    // forge test --match-test test_property_loss_soundness_22 -vvv
+    function test_property_loss_soundness_22() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        shortcut_deposit_sync(1, 1000368288321945536);
+
+        balanceSheet_submitQueuedAssets(0);
+
+        spoke_addShareClass(1, 2);
+
+        hub_initializeHolding_clamped(false, 0, 2, 1, 1);
+
+        property_loss_soundness();
+    }
+
+    // forge test --match-test test_vault_cancelRedeemRequest_23 -vvv
+    function test_vault_cancelRedeemRequest_23() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        shortcut_deposit_sync(1, 2);
+
+        shortcut_withdraw_and_claim_clamped(1, 0, 0);
+
+        vault_cancelRedeemRequest();
     }
 
     /// === Categorized Issues === ///

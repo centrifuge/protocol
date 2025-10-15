@@ -48,9 +48,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         bool hasClaimedAll;
         uint128 pendingBeforeSCM;
         uint256 maxMintBefore;
-        uint128 pendingBeforeARM;
     }
-
 
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
@@ -82,12 +80,6 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             (pendingBeforeSCM, , maxMintBefore) = _captureDepositStateBefore(
                 investor
             );
-        }
-
-        // Handle validation or continuation
-        if (maxClaimsBound > 0) {
-            // Continue claiming remaining epochs
-            hub_notifyDeposit(1);
         }
     }
 
@@ -192,25 +184,25 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint128 pendingBeforeSCM;
         uint256 maxMintBefore;
         if (hasClaimedAll) {
-            (pendingBeforeSCM, , maxMintBefore) = _captureDepositStateBefore(investor);
+            (pendingBeforeSCM, , maxMintBefore) = _captureDepositStateBefore(
+                investor
+            );
         }
 
-        // Capture state for ghost variables
-        (, , , , uint128 pendingBeforeARM, , , , , ) = asyncRequestManager.investments(vault, actor);
-
         // Execute call and validation in separate function (fresh stack frame)
-        _executeNotifyDepositAndValidate(NotifyDepositParams({
-            actor: actor,
-            poolId: poolId,
-            scId: scId,
-            assetId: assetId,
-            investor: investor,
-            maxClaims: maxClaims,
-            hasClaimedAll: hasClaimedAll,
-            pendingBeforeSCM: pendingBeforeSCM,
-            maxMintBefore: maxMintBefore,
-            pendingBeforeARM: pendingBeforeARM
-        }));
+        _executeNotifyDepositAndValidate(
+            NotifyDepositParams({
+                actor: actor,
+                poolId: poolId,
+                scId: scId,
+                assetId: assetId,
+                investor: investor,
+                maxClaims: maxClaims,
+                hasClaimedAll: hasClaimedAll,
+                pendingBeforeSCM: pendingBeforeSCM,
+                maxMintBefore: maxMintBefore
+            })
+        );
     }
 
     function _executeNotifyDepositAndValidate(NotifyDepositParams memory params) private {
@@ -226,14 +218,15 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             uint128 totalPayoutShareAmount,
             uint128 totalPaymentAssetAmount,
             uint128 totalCancelledAssetAmount
-        ) = BatchRequestManagerHarness(address(batchRequestManager)).notifyDepositWithReturn(
-            params.poolId,
-            params.scId,
-            params.assetId,
-            params.investor,
-            params.maxClaims,
-            params.actor
-        );
+        ) = BatchRequestManagerHarness(address(batchRequestManager))
+                .notifyDepositWithReturn(
+                    params.poolId,
+                    params.scId,
+                    params.assetId,
+                    params.investor,
+                    params.maxClaims,
+                    params.actor
+                );
 
         (uint128 escrowTotalAfter, uint128 escrowReservedAfter) =
             PoolEscrow(payable(address(poolEscrow))).holding(params.scId, asset, 0);
@@ -247,7 +240,6 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         );
 
         _updateDepositGhostVariables(
-            params.pendingBeforeARM,
             totalPayoutShareAmount,
             totalPaymentAssetAmount,
             totalCancelledAssetAmount
@@ -282,22 +274,27 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         // Setup vault context and investor
         IBaseVault vault = _getVault();
         address actor = _getActor();
-        uint256 investorClaimableBefore = asyncRequestManager.maxWithdraw(vault, actor);
+        uint256 investorClaimableBefore = asyncRequestManager.maxWithdraw(
+            vault,
+            actor
+        );
 
         // Execute notifyRedeemWithReturn and get return values
         vm.prank(actor);
         (
-            ,  // totalPayoutAssetAmount - not used for ghost variables
+            ,
+            // totalPayoutAssetAmount - not used for ghost variables
             uint128 totalPaymentShareAmount,
             uint128 totalCancelledShareAmount
-        ) = BatchRequestManagerHarness(address(batchRequestManager)).notifyRedeemWithReturn(
-            vault.poolId(),
-            vault.scId(),
-            vaultRegistry.vaultDetails(vault).assetId,
-            CastLib.toBytes32(actor),
-            maxClaims,
-            actor
-        );
+        ) = BatchRequestManagerHarness(address(batchRequestManager))
+                .notifyRedeemWithReturn(
+                    vault.poolId(),
+                    vault.scId(),
+                    vaultRegistry.vaultDetails(vault).assetId,
+                    CastLib.toBytes32(actor),
+                    maxClaims,
+                    actor
+                );
 
         _updateRedeemGhostVariables(
             investorClaimableBefore,
@@ -424,15 +421,19 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         bytes32 investor,
         uint32 maxClaims
     ) private view returns (uint128 cancelledAssetAmount) {
-        (bool isCancelling, uint128 queuedAmount) =
-            batchRequestManager.queuedDepositRequest(poolId, scId, assetId, investor);
+        (bool isCancelling, uint128 queuedAmount) = batchRequestManager
+            .queuedDepositRequest(poolId, scId, assetId, investor);
 
         if (!isCancelling) return 0;
 
-        (uint128 pending, uint32 lastUpdate) =
-            batchRequestManager.depositRequest(poolId, scId, assetId, investor);
+        (uint128 pending, uint32 lastUpdate) = batchRequestManager
+            .depositRequest(poolId, scId, assetId, investor);
 
-        uint32 nowEpoch = batchRequestManager.nowDepositEpoch(poolId, scId, assetId);
+        uint32 nowEpoch = batchRequestManager.nowDepositEpoch(
+            poolId,
+            scId,
+            assetId
+        );
 
         // Check if claiming to last epoch
         if (lastUpdate + maxClaims >= nowEpoch) {
@@ -454,15 +455,19 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         bytes32 investor,
         uint32 maxClaims
     ) private view returns (uint128 cancelledShareAmount) {
-        (bool isCancelling, uint128 queuedAmount) =
-            batchRequestManager.queuedRedeemRequest(poolId, scId, assetId, investor);
+        (bool isCancelling, uint128 queuedAmount) = batchRequestManager
+            .queuedRedeemRequest(poolId, scId, assetId, investor);
 
         if (!isCancelling) return 0;
 
-        (uint128 pending, uint32 lastUpdate) =
-            batchRequestManager.redeemRequest(poolId, scId, assetId, investor);
+        (uint128 pending, uint32 lastUpdate) = batchRequestManager
+            .redeemRequest(poolId, scId, assetId, investor);
 
-        uint32 nowEpoch = batchRequestManager.nowRedeemEpoch(poolId, scId, assetId);
+        uint32 nowEpoch = batchRequestManager.nowRedeemEpoch(
+            poolId,
+            scId,
+            assetId
+        );
 
         // Check if claiming to last epoch
         if (lastUpdate + maxClaims >= nowEpoch) {
@@ -470,18 +475,15 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         }
     }
 
-
     // ═══════════════════════════════════════════════════════════════
     // GHOST VARIABLE UPDATES - Tracking for invariant properties
     // ═══════════════════════════════════════════════════════════════
 
     /// @dev Updates all ghost variables after deposit claim
-    /// @param pendingBeforeARM Pending amount in AsyncRequestManger before claim
     /// @param totalPayoutShareAmount Total shares paid out from claim
     /// @param totalPaymentAssetAmount Total assets used for payment
     /// @param cancelledAssetAmount Amount of assets cancelled
     function _updateDepositGhostVariables(
-        uint128 pendingBeforeARM,
         uint128 totalPayoutShareAmount,
         uint128 totalPaymentAssetAmount,
         uint128 cancelledAssetAmount
@@ -491,13 +493,9 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         address actor = _getActor();
 
-        (, , , , uint128 pendingAfterARM, , , , , ) = asyncRequestManager
-            .investments(vault, actor);
-
-        if (pendingBeforeARM >= pendingAfterARM) {
-            sumOfFulfilledDeposits[vault.share()] += (pendingBeforeARM -
-                pendingAfterARM);
-        }
+        // Track shares that were actually fulfilled and delivered to escrow
+        // Use totalPayoutShareAmount which represents the actual shares paid out during this notification
+        sumOfFulfilledDeposits[vault.share()] += totalPayoutShareAmount;
 
         sumOfClaimedDeposits[vault.share()] += totalPayoutShareAmount;
         userDepositProcessed[scId][assetId][actor] += totalPaymentAssetAmount;
@@ -521,7 +519,11 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     ) private {
         _validateDepositEpochUpdate(investor);
         _validateNoCancellationQueued(investor);
-        _validateDepositPendingDelta(investor, pendingBeforeSCM, totalPaymentAssetAmount);
+        _validateDepositPendingDelta(
+            investor,
+            pendingBeforeSCM,
+            totalPaymentAssetAmount
+        );
         _validateMaxMintDecrease(maxMintBefore, totalPaymentAssetAmount);
     }
 
@@ -533,8 +535,17 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
-        (, uint32 lastUpdate) = batchRequestManager.depositRequest(poolId, scId, assetId, investor);
-        (uint32 depositEpochId, , , ) = batchRequestManager.epochId(poolId, scId, assetId);
+        (, uint32 lastUpdate) = batchRequestManager.depositRequest(
+            poolId,
+            scId,
+            assetId,
+            investor
+        );
+        (uint32 depositEpochId, , , ) = batchRequestManager.epochId(
+            poolId,
+            scId,
+            assetId
+        );
 
         eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
     }
@@ -547,9 +558,17 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
-        (bool isCancellingAfter, ) = batchRequestManager.queuedDepositRequest(poolId, scId, assetId, investor);
+        (bool isCancellingAfter, ) = batchRequestManager.queuedDepositRequest(
+            poolId,
+            scId,
+            assetId,
+            investor
+        );
 
-        t(!isCancellingAfter, "queued cancellation post claiming should not be possible");
+        t(
+            !isCancellingAfter,
+            "queued cancellation post claiming should not be possible"
+        );
     }
 
     /// @dev Validates pending deposit amount delta
@@ -566,7 +585,12 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
-        (uint128 pendingAfterSCM, ) = batchRequestManager.depositRequest(poolId, scId, assetId, investor);
+        (uint128 pendingAfterSCM, ) = batchRequestManager.depositRequest(
+            poolId,
+            scId,
+            assetId,
+            investor
+        );
 
         uint128 pendingDelta = pendingBeforeSCM >= pendingAfterSCM
             ? pendingBeforeSCM - pendingAfterSCM
@@ -605,7 +629,6 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     // EXECUTION HELPERS - Core logic for notify operations
     // ═══════════════════════════════════════════════════════════════
 
-
     /// @dev Updates all ghost variables after redeem claim
     /// @param investorClaimableBefore Claimable amount before claim
     /// @param investorClaimableAfter Claimable amount after claim
@@ -634,5 +657,4 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             vault.share()
         ] += cancelledShareAmount;
     }
-
 }

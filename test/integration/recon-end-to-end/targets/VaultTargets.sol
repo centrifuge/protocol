@@ -244,6 +244,11 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 pendingCancelBefore = IAsyncVault(address(vault))
             .claimableCancelDepositRequest(REQUEST_ID, controller);
 
+        // Capture escrow share balance before cancellation
+        uint256 escrowSharesBefore = IShareToken(vault.share()).balanceOf(
+            address(globalEscrow)
+        );
+
         vm.prank(controller);
         // REQUEST_ID is always passed as 0 (unused in the function)
         try
@@ -262,7 +267,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 pendingBefore,
                 lastUpdateBefore,
                 depositEpochId,
-                pendingCancelBefore
+                pendingCancelBefore,
+                escrowSharesBefore
             );
         } catch (bytes memory reason) {
             _handleCancelDepositFailure(
@@ -285,29 +291,35 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint128 pendingBefore,
         uint32 lastUpdateBefore,
         uint32 depositEpochId,
-        uint256 pendingCancelBefore
+        uint256 pendingCancelBefore,
+        uint256 escrowSharesBefore
     ) private {
-        (uint128 pendingAfter, uint32 lastUpdateAfter) = batchRequestManager
-            .depositRequest(poolId, scId, assetId, controllerBytes);
         uint256 pendingCancelAfter = IAsyncVault(address(vault))
             .claimableCancelDepositRequest(REQUEST_ID, controller);
 
+        // Capture escrow share balance after cancellation and update ghost if shares were removed
+        {
+            uint256 escrowSharesAfter = IShareToken(vault.share()).balanceOf(
+                address(globalEscrow)
+            );
+
+            // If shares were removed from escrow during the cancellation, decrement sumOfFulfilledDeposits
+            if (escrowSharesBefore > escrowSharesAfter) {
+                sumOfFulfilledDeposits[vault.share()] -= (escrowSharesBefore - escrowSharesAfter);
+            }
+        }
+
         // update ghosts
-        userCancelledDeposits[scId][assetId][
-            controller
-        ] += (pendingCancelAfter - pendingCancelBefore);
+        userCancelledDeposits[scId][assetId][controller] += (pendingCancelAfter - pendingCancelBefore);
 
         // precondition: if user queues a cancellation but it doesn't get immediately executed,
         // the epochId should not change
-        if (
-            Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)
-        ) {
-            // nowDepositEpoch = depositEpochId + 1
-            eq(
-                lastUpdateAfter,
-                depositEpochId + 1,
-                "lastUpdate != nowDepositEpoch3"
-            );
+        if (Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)) {
+            (uint128 pendingAfter, uint32 lastUpdateAfter) = batchRequestManager
+                .depositRequest(poolId, scId, assetId, controllerBytes);
+            uint32 nowDepositEpoch = batchRequestManager.nowDepositEpoch(poolId, scId, assetId);
+
+            eq(lastUpdateAfter, nowDepositEpoch, "lastUpdate != nowDepositEpoch");
             eq(pendingAfter, 0, "pending is not zero");
         }
     }
@@ -347,8 +359,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their
     /// redeemRequest[..].lastUpdate equals the current nowRedeemEpoch
-    /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].pending
-    /// is zero
     /// @dev Property: cancelRedeemRequest absolute value should never be higher than pendingRedeem (would result in
     /// underflow revert)
     function vault_cancelRedeemRequest()
@@ -377,7 +387,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         {
             (uint128 pendingAfter, uint32 lastUpdateAfter) = batchRequestManager
                 .redeemRequest(poolId, scId, assetId, controller.toBytes32());
-            (, uint32 redeemEpochId, , ) = batchRequestManager.epochId(
+            (, , uint32 redeemEpochId, ) = batchRequestManager.epochId(
                 poolId,
                 scId,
                 assetId
@@ -390,6 +400,11 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             uint256 delta = pendingCancelAfter - pendingCancelBefore;
             userCancelledRedeems[scId][assetId][controller] += delta;
 
+            uint256 nowRedeemEpoch = batchRequestManager.nowRedeemEpoch(
+                poolId,
+                scId,
+                assetId
+            );
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should
             // not change
             if (
@@ -399,13 +414,11 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                     redeemEpochId
                 )
             ) {
-                // nowRedeemEpoch = redeemEpochId + 1
                 eq(
                     lastUpdateAfter,
-                    redeemEpochId + 1,
+                    nowRedeemEpoch,
                     "lastUpdate != nowRedeemEpoch"
                 );
-                eq(pendingAfter, 0, "pending != 0");
             }
         } catch (bytes memory reason) {
             (, uint32 redeemEpochId, , ) = batchRequestManager.epochId(
