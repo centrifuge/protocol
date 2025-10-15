@@ -133,19 +133,6 @@ contract TestData is BaseTestData {
         );
 
         testSyncVaultFlow(syncPoolId, syncScId, token, 1_000_000e6);
-        hub.updateSharePrice(poolId, scId, pricePoolPerShare, uint64(block.timestamp));
-        hub.notifySharePrice(poolId, scId, centrifugeId, msg.sender);
-        hub.notifyAssetPrice(poolId, scId, assetId, msg.sender);
-
-        hub.updateContract(
-            poolId,
-            scId,
-            centrifugeId,
-            address(syncManager).toBytes32(),
-            abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), assetId.raw(), type(uint128).max),
-            0,
-            msg.sender
-        );
 
         vm.stopBroadcast();
     }

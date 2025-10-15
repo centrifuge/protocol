@@ -8,7 +8,7 @@ import {D18, d18} from "../src/misc/types/D18.sol";
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../src/core/types/PoolId.sol";
-import {ShareClassId} from "../src/core/types/ShareClassId.sol";
+import {ShareClassId, newShareClassId} from "../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
 import {IShareToken} from "../src/core/spoke/interfaces/IShareToken.sol";
 
@@ -110,20 +110,20 @@ contract TestCrossChainSpoke is BaseTestData {
         // Get the first share class ID for each pool
         // Note: We can use shareClassManager to get the next ID, then subtract 1
         // But since we know it's the first share class, we can calculate it
-        ShareClassId asyncScId = _getFirstShareClassId(asyncPoolId);
-        ShareClassId syncScId = _getFirstShareClassId(syncPoolId);
+        ShareClassId asyncScId = newShareClassId(asyncPoolId, 1);
+        ShareClassId syncScId = newShareClassId(syncPoolId, 1);
 
         console.log("  Async ShareClassId:", vm.toString(abi.encode(asyncScId)));
         console.log("  Sync ShareClassId:", vm.toString(abi.encode(syncScId)));
 
         // Try to get share tokens to verify pools exist
-        address asyncShareToken = spoke.shareToken(asyncPoolId, asyncScId);
-        address syncShareToken = spoke.shareToken(syncPoolId, syncScId);
+        address asyncShareToken = address(spoke.shareToken(asyncPoolId, asyncScId));
+        address syncShareToken = address(spoke.shareToken(syncPoolId, syncScId));
 
         if (asyncShareToken != address(0)) {
             console.log("\n[SUCCESS] Async pool found!");
             console.log("  ShareToken:", asyncShareToken);
-            _testAsyncVault(asyncPoolId, asyncScId, asyncShareToken);
+            _testAsyncVault(asyncShareToken);
         } else {
             console.log("\n[WAITING] Async pool not yet available");
             console.log("  Messages may still be in transit");
@@ -133,7 +133,7 @@ contract TestCrossChainSpoke is BaseTestData {
         if (syncShareToken != address(0)) {
             console.log("\n[SUCCESS] Sync pool found!");
             console.log("  ShareToken:", syncShareToken);
-            _testSyncVault(syncPoolId, syncScId, syncShareToken);
+            _testSyncVault(syncShareToken);
         } else {
             console.log("\n[WAITING] Sync pool not yet available");
             console.log("  Messages may still be in transit");
@@ -143,7 +143,7 @@ contract TestCrossChainSpoke is BaseTestData {
         console.log("\n=== Spoke Test Complete ===");
     }
 
-    function _testAsyncVault(PoolId poolId, ShareClassId scId, address shareTokenAddress) internal {
+    function _testAsyncVault(address shareTokenAddress) internal {
         console.log("\n--- Testing Async Vault ---");
         
         IShareToken shareToken = IShareToken(shareTokenAddress);
@@ -152,7 +152,7 @@ contract TestCrossChainSpoke is BaseTestData {
         AssetId assetId = newAssetId(spokeCentrifugeId, 1);
         
         // Get USDC address - it should have been registered on this spoke
-        address usdcAddress = spoke.asset(assetId);
+        (address usdcAddress, ) = spoke.idToAsset(assetId);
         
         if (usdcAddress == address(0)) {
             console.log("[ERROR] USDC not registered on spoke chain for assetId:", assetId.raw());
@@ -193,7 +193,7 @@ contract TestCrossChainSpoke is BaseTestData {
         console.log("  To fulfill: Run hub operations to approve and issue shares");
     }
 
-    function _testSyncVault(PoolId poolId, ShareClassId scId, address shareTokenAddress) internal {
+    function _testSyncVault(address shareTokenAddress) internal {
         console.log("\n--- Testing Sync Vault ---");
         
         IShareToken shareToken = IShareToken(shareTokenAddress);
@@ -202,7 +202,7 @@ contract TestCrossChainSpoke is BaseTestData {
         AssetId assetId = newAssetId(spokeCentrifugeId, 1);
         
         // Get USDC address
-        address usdcAddress = spoke.asset(assetId);
+        (address usdcAddress, ) = spoke.idToAsset(assetId);
         
         if (usdcAddress == address(0)) {
             console.log("[ERROR] USDC not registered on spoke chain for assetId:", assetId.raw());
@@ -245,16 +245,6 @@ contract TestCrossChainSpoke is BaseTestData {
         }
     }
 
-    /**
-     * @notice Calculate the first share class ID for a pool
-     * @dev ShareClassId is derived from poolId and index
-     */
-    function _getFirstShareClassId(PoolId poolId) internal pure returns (ShareClassId) {
-        // First share class has index 1
-        // ShareClassId = keccak256(abi.encodePacked(poolId, uint128(1)))
-        bytes16 poolIdBytes = PoolId.unwrap(poolId);
-        bytes32 hash = keccak256(abi.encodePacked(poolIdBytes, uint128(1)));
-        return ShareClassId.wrap(bytes16(hash));
-    }
+    
 }
 

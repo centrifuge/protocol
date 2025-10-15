@@ -164,7 +164,7 @@ contract TestCrossChainHub is BaseTestData {
         uint48 asyncPoolIndex = uint48(uint64(spokeCentrifugeId) * 1000 + poolIndexOffset * 2 + 1);
         uint48 syncPoolIndex  = uint48(uint64(spokeCentrifugeId) * 1000 + poolIndexOffset * 2 + 2);
 
-        // Compute PoolIds and check existence
+        // Compute PoolIds using the spoke centrifugeId
         PoolId asyncPoolId = hubRegistry.poolId(spokeCentrifugeId, asyncPoolIndex);
         PoolId syncPoolId  = hubRegistry.poolId(spokeCentrifugeId, syncPoolIndex);
 
@@ -206,7 +206,6 @@ contract TestCrossChainHub is BaseTestData {
 
         (PoolId poolId, ShareClassId scId) = deployAsyncVault(
             AsyncVaultParams({
-                hubCentrifugeId: hubCentrifugeId,
                 targetCentrifugeId: spokeCentrifugeId,
                 poolIndex: asyncPoolIndex,
                 token: token,
@@ -245,7 +244,6 @@ contract TestCrossChainHub is BaseTestData {
 
         (PoolId poolId, ShareClassId scId) = deploySyncDepositVault(
             SyncVaultParams({
-                hubCentrifugeId: hubCentrifugeId,
                 targetCentrifugeId: spokeCentrifugeId,
                 poolIndex: syncPoolIndex,
                 token: token,
@@ -265,11 +263,6 @@ contract TestCrossChainHub is BaseTestData {
         console.log("  Cross-chain messages sent to spokeCentrifugeId:", spokeCentrifugeId);
     }
 
-    function _getNetworkShortName(string memory network) internal pure returns (string memory) {
-        if (keccak256(bytes(network)) == keccak256(bytes("base-sepolia"))) return "BASE";
-        if (keccak256(bytes(network)) == keccak256(bytes("arbitrum-sepolia"))) return "ARB";
-        if (keccak256(bytes(network)) == keccak256(bytes("sepolia"))) return "ETH";
-        return "UNKNOWN";
-    }
+
 }
 
