@@ -126,6 +126,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
     ShareClassId scId = SC_ID;
     bytes32 investor = bytes32("investor");
     address immutable REFUND = makeAddr("refund");
+    address immutable MANAGER = makeAddr("manager");
     IHubRequestManagerCallback immutable hub = IHubRequestManagerCallback(address(new IsContract()));
 
     modifier notThisContract(address addr) {
@@ -145,6 +146,7 @@ abstract contract BatchRequestManagerBaseTest is Test {
             abi.encode()
         );
         batchRequestManager.file("hub", address(hub));
+        hubRegistryMock.updateManager(poolId, MANAGER, true);
 
         assertEq(IHubRegistry(address(hubRegistryMock)).decimals(poolId), DECIMALS_POOL);
         assertEq(IHubRegistry(address(hubRegistryMock)).decimals(USDC), DECIMALS_USDC);
