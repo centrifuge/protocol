@@ -244,6 +244,11 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 pendingCancelBefore = IAsyncVault(address(vault))
             .claimableCancelDepositRequest(REQUEST_ID, controller);
 
+        // Capture escrow share balance before cancellation
+        uint256 escrowSharesBefore = IShareToken(vault.share()).balanceOf(
+            address(globalEscrow)
+        );
+
         vm.prank(controller);
         // REQUEST_ID is always passed as 0 (unused in the function)
         try
@@ -262,7 +267,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 pendingBefore,
                 lastUpdateBefore,
                 depositEpochId,
-                pendingCancelBefore
+                pendingCancelBefore,
+                escrowSharesBefore
             );
         } catch (bytes memory reason) {
             _handleCancelDepositFailure(
@@ -285,33 +291,35 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint128 pendingBefore,
         uint32 lastUpdateBefore,
         uint32 depositEpochId,
-        uint256 pendingCancelBefore
+        uint256 pendingCancelBefore,
+        uint256 escrowSharesBefore
     ) private {
-        (uint128 pendingAfter, uint32 lastUpdateAfter) = batchRequestManager
-            .depositRequest(poolId, scId, assetId, controllerBytes);
         uint256 pendingCancelAfter = IAsyncVault(address(vault))
             .claimableCancelDepositRequest(REQUEST_ID, controller);
 
-        // update ghosts
-        userCancelledDeposits[scId][assetId][
-            controller
-        ] += (pendingCancelAfter - pendingCancelBefore);
+        // Capture escrow share balance after cancellation and update ghost if shares were removed
+        {
+            uint256 escrowSharesAfter = IShareToken(vault.share()).balanceOf(
+                address(globalEscrow)
+            );
 
-        uint256 nowDepositEpoch = batchRequestManager.nowDepositEpoch(
-            poolId,
-            scId,
-            assetId
-        );
+            // If shares were removed from escrow during the cancellation, decrement sumOfFulfilledDeposits
+            if (escrowSharesBefore > escrowSharesAfter) {
+                sumOfFulfilledDeposits[vault.share()] -= (escrowSharesBefore - escrowSharesAfter);
+            }
+        }
+
+        // update ghosts
+        userCancelledDeposits[scId][assetId][controller] += (pendingCancelAfter - pendingCancelBefore);
+
         // precondition: if user queues a cancellation but it doesn't get immediately executed,
         // the epochId should not change
-        if (
-            Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)
-        ) {
-            eq(
-                lastUpdateAfter,
-                nowDepositEpoch,
-                "lastUpdate != nowDepositEpoch"
-            );
+        if (Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)) {
+            (uint128 pendingAfter, uint32 lastUpdateAfter) = batchRequestManager
+                .depositRequest(poolId, scId, assetId, controllerBytes);
+            uint32 nowDepositEpoch = batchRequestManager.nowDepositEpoch(poolId, scId, assetId);
+
+            eq(lastUpdateAfter, nowDepositEpoch, "lastUpdate != nowDepositEpoch");
             eq(pendingAfter, 0, "pending is not zero");
         }
     }

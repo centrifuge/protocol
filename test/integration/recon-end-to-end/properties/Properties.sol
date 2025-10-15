@@ -537,26 +537,6 @@ abstract contract Properties is
             address(globalEscrow)
         );
 
-        console2.log(
-            "sumOfFulfilledDeposits[address(shareToken)]: ",
-            sumOfFulfilledDeposits[address(shareToken)]
-        );
-        console2.log(
-            "sumOfRedeemRequests[address(shareToken)]: ",
-            sumOfRedeemRequests[address(shareToken)]
-        );
-        console2.log(
-            "sumOfClaimedDeposits[address(shareToken)]: ",
-            sumOfClaimedDeposits[address(shareToken)]
-        );
-        console2.log(
-            "executedRedemptions[address(shareToken)]: ",
-            executedRedemptions[address(shareToken)]
-        );
-        console2.log(
-            "sumOfClaimedCancelledRedeemShares[address(shareToken)])): ",
-            sumOfClaimedCancelledRedeemShares[address(shareToken)]
-        );
         unchecked {
             ghostBalanceOfEscrow = ((sumOfFulfilledDeposits[
                 address(shareToken)
@@ -1199,17 +1179,20 @@ abstract contract Properties is
             assetId,
             uint8(AccountType.Asset)
         );
-        (, uint128 assets) = accounting.accountValue(poolId, accountId);
+        (, uint128 assetsValue) = accounting.accountValue(poolId, accountId);
         uint128 holdingsValue = holdings.value(poolId, scId, assetId);
 
         // This property holds all of the system accounting together
         // NOTE: If priceAssetPerPool == 0, this equality might break, investigate then
-        uint128 deltaAssetsHoldingValue = assets - holdingsValue;
-        t(
-            deltaAssetsHoldingValue == 0 ||
-                _before.pricePoolPerAsset[poolId][scId][assetId].raw() == 0,
-            "Assets and Holdings value must match except if price is zero"
-        );
+        // uint128 deltaAssetsHoldingValue = assets - holdingsValue;
+        // precondition: pricePoolPerAsset != 0
+        if (_before.pricePoolPerAsset[poolId][scId][assetId].raw() != 0) {
+            eq(
+                assetsValue,
+                holdingsValue,
+                "Assets and Holdings value must match"
+            );
+        }
     }
 
     /// @dev Property: Total Yield = assets - equity
