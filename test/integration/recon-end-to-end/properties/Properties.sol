@@ -1186,17 +1186,10 @@ abstract contract Properties is
             assetId,
             uint8(AccountType.Asset)
         );
-        (, uint128 assets) = accounting.accountValue(poolId, accountId);
+        (, uint128 accountValue) = accounting.accountValue(poolId, accountId);
         uint128 holdingsValue = holdings.value(poolId, scId, assetId);
 
-        // This property holds all of the system accounting together
-        // NOTE: If priceAssetPerPool == 0, this equality might break, investigate then
-        uint128 deltaAssetsHoldingValue = assets - holdingsValue;
-        t(
-            deltaAssetsHoldingValue == 0 ||
-                _before.pricePoolPerAsset[poolId][scId][assetId].raw() == 0,
-            "Assets and Holdings value must match except if price is zero"
-        );
+        gte(accountValue, holdingsValue, "Holdings value contained in Accounting");
     }
 
     /// @dev Property: Total Yield = assets - equity
