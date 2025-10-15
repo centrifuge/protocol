@@ -203,9 +203,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         );
     }
 
-    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint128 gasLimit, address refund)
-        public
-    {
+    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint128 gasLimit, address refund) public {
         vm.assume(invalidOrigin != address(GATEWAY));
         gasLimit = uint128(bound(gasLimit, 0, adapter.RECEIVE_COST() - 1));
 

@@ -220,9 +220,9 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         shareQueue.queuedAssetCounter -= assetCounter;
 
         emit SubmitQueuedAssets(poolId, scId, assetId, data, pricePoolPerAsset);
-        sender.sendUpdateHoldingAmount{value: msgValue()}(
-            poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit, refund
-        );
+        sender.sendUpdateHoldingAmount{
+            value: msgValue()
+        }(poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit, refund);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -329,9 +329,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     // Internal
     //----------------------------------------------------------------------------------------------
 
-    function _updateAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, bool isDeposit)
-        internal
-    {
+    function _updateAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, bool isDeposit) internal {
         if (amount == 0) return;
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];

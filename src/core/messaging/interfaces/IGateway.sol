@@ -136,9 +136,7 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @param message The message to send
     /// @param extraGasLimit Extra gas limit for execution
     /// @param refund Address to refund excess payment
-    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit, address refund)
-        external
-        payable;
+    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit, address refund) external payable;
 
     //----------------------------------------------------------------------------------------------
     // Batching
