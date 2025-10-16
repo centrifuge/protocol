@@ -96,12 +96,12 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     // Step 3
     function spoke_addShareClass(
         uint128 scIdAsUint,
-        uint8 decimals,
-        address hook
+        uint8 decimals
     ) public updateGhosts asAdmin returns (address, bytes16) {
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
         bytes16 scId = bytes16(scIdAsUint);
+        address hook = address(fullRestrictions);
 
         spoke.addShareClass(
             _getPool(),
@@ -126,7 +126,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     // Step 4 - deploy the pool
     function spoke_deployVault(
         bool isAsync
-    ) public updateGhosts asAdmin returns (address) {
+    ) public updateGhostsWithType(OpType.ADMIN) asAdmin returns (address) {
         address vault;
         if (isAsync) {
             vault = address(

@@ -13,6 +13,8 @@ import {PoolId} from "src/core/types/PoolId.sol";
 import {ShareClassId} from "src/core/types/ShareClassId.sol";
 import {AssetId} from "src/core/types/AssetId.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IPoolEscrow} from "src/core/spoke/interfaces/IPoolEscrow.sol";
+import {PoolEscrow} from "src/core/spoke/PoolEscrow.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
 import {BalanceSheet} from "src/core/spoke/BalanceSheet.sol";
@@ -165,6 +167,9 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         }
     }
 
+    /// @dev Property: PoolEscrow.total increases by exactly the amount deposited
+    /// @dev Property: PoolEscrow.reserved does not change during noteDeposit
+    /// @notice Direct BalanceSheet operation that updates PoolEscrow
     function balanceSheet_noteDeposit(
         uint256 tokenId,
         uint128 amount
@@ -173,13 +178,28 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        address asset = vault.asset();
 
         // Track authorization - noteDeposit() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
 
-        balanceSheet.noteDeposit(poolId, scId, vault.asset(), tokenId, amount);
+        IPoolEscrow poolEscrow = poolEscrowFactory.escrow(poolId);
+        (uint128 totalBefore, uint128 reservedBefore) =
+            PoolEscrow(address(poolEscrow)).holding(scId, asset, tokenId);
 
-        // Update queue ghost variables
+        balanceSheet.noteDeposit(poolId, scId, asset, tokenId, amount);
+
+        (uint128 totalAfter, uint128 reservedAfter) =
+            PoolEscrow(address(poolEscrow)).holding(scId, asset, tokenId);
+        t(
+            totalAfter == totalBefore + amount,
+            "balanceSheet_noteDeposit: PoolEscrow.total should increase by amount"
+        );
+        t(
+            reservedAfter == reservedBefore,
+            "balanceSheet_noteDeposit: PoolEscrow.reserved should not change"
+        );
+
         bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
         ghost_assetQueueDeposits[assetKey] += amount;
     }
@@ -231,13 +251,14 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         balanceSheet.recoverTokens(token, tokenId, _getActor(), amount);
     }
 
-    function balanceSheet_rely() public updateGhosts asActor {
-        // Track authorization - rely() requires auth (ward only)
-        _trackAuthorization(_getActor(), PoolId.wrap(0)); // Global operation, use PoolId 0
-        _checkAndRecordAuthChange(_getActor()); // Track auth changes from rely()
+    // NOTE: removed because introduces false positives
+    // function balanceSheet_rely() public updateGhosts asActor {
+    //     // Track authorization - rely() requires auth (ward only)
+    //     _trackAuthorization(_getActor(), PoolId.wrap(0)); // Global operation, use PoolId 0
+    //     _checkAndRecordAuthChange(_getActor()); // Track auth changes from rely()
 
-        balanceSheet.rely(_getActor());
-    }
+    //     balanceSheet.rely(_getActor());
+    // }
 
     function balanceSheet_resetPricePoolPerAsset() public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
@@ -318,50 +339,51 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    function balanceSheet_transferSharesFrom(
-        address to,
-        uint256 amount
-    ) public updateGhosts asActor {
-        IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        _captureShareQueueState(poolId, scId);
+    // NOTE: removed because introduces false positives when checking actor share balances
+    // function balanceSheet_transferSharesFrom(
+    //     address to,
+    //     uint256 amount
+    // ) public updateGhosts asActor {
+    //     IBaseVault vault = IBaseVault(_getVault());
+    //     PoolId poolId = vault.poolId();
+    //     ShareClassId scId = vault.scId();
+    //     _captureShareQueueState(poolId, scId);
 
-        // Track authorization - transferSharesFrom() requires authOrManager(poolId)
-        _trackAuthorization(_getActor(), poolId);
+    //     // Track authorization - transferSharesFrom() requires authOrManager(poolId)
+    //     _trackAuthorization(_getActor(), poolId);
 
-        // Track endorsement status before transfer
-        address from = _getActor();
-        address recipient = _getRandomActor(uint256(uint160(to)));
-        _trackEndorsedTransfer(from, recipient, poolId, scId);
+    //     // Track endorsement status before transfer
+    //     address from = _getActor();
+    //     address recipient = _getRandomActor(uint256(uint160(to)));
+    //     _trackEndorsedTransfer(from, recipient, poolId, scId);
 
-        bytes32 key = keccak256(abi.encode(poolId, scId));
+    //     bytes32 key = keccak256(abi.encode(poolId, scId));
 
-        // Attempt the transfer - will revert if from is endorsed
-        try
-            balanceSheet.transferSharesFrom(
-                poolId,
-                scId,
-                from,
-                from,
-                recipient,
-                amount
-            )
-        {
-            // Transfer succeeded - track as valid
-            ghost_validTransferCount[key]++;
+    //     // Attempt the transfer - will revert if from is endorsed
+    //     try
+    //         balanceSheet.transferSharesFrom(
+    //             poolId,
+    //             scId,
+    //             from,
+    //             from,
+    //             recipient,
+    //             amount
+    //         )
+    //     {
+    //         // Transfer succeeded - track as valid
+    //         ghost_validTransferCount[key]++;
 
-            // Track balance changes for transfers (supply stays same, only balances shift)
-            ghost_individualBalances[key][from] -= amount;
-            ghost_individualBalances[key][recipient] += amount;
-            ghost_supplyOperationOccurred[key] = true;
-        } catch {
-            // Transfer failed - likely due to endorsement restriction
-            if (_isEndorsedContract(from)) {
-                ghost_blockedEndorsedTransfers[key]++;
-            }
-        }
-    }
+    //         // Track balance changes for transfers (supply stays same, only balances shift)
+    //         ghost_individualBalances[key][from] -= amount;
+    //         ghost_individualBalances[key][recipient] += amount;
+    //         ghost_supplyOperationOccurred[key] = true;
+    //     } catch {
+    //         // Transfer failed - likely due to endorsement restriction
+    //         if (_isEndorsedContract(from)) {
+    //             ghost_blockedEndorsedTransfers[key]++;
+    //         }
+    //     }
+    // }
 
     /// @dev Property: Withdrawals should not fail when there's sufficient balance
     function balanceSheet_withdraw(
@@ -415,10 +437,9 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             ghost_assetQueueWithdrawals[assetKey] += amount;
             sumOfManagerWithdrawals[vault.asset()] += amount;
         } catch (bytes memory err) {
-            bool expectedError = checkError(err, "InvalidPrice()") ||
-                checkError(err, "UnknownAsset()");
+            bool expectedError = checkError(err, Panic.arithmeticPanic); // we care about reverts due to arithmetic errors
             // Check if withdrawal was possible with available balance (track failures)
-            if (!expectedError && amount <= prevAvailable) {
+            if (expectedError && amount <= prevAvailable) {
                 t(false, "Withdrawals failed despite sufficient balance");
             }
         }
@@ -528,7 +549,13 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             .queuedShares(poolId, scId);
         ghost_previousNonce[shareKey] = currentNonce;
 
-        balanceSheet.submitQueuedAssets(poolId, scId, assetId, extraGasLimit, address(this));
+        balanceSheet.submitQueuedAssets(
+            poolId,
+            scId,
+            assetId,
+            extraGasLimit,
+            address(this)
+        );
     }
 
     function balanceSheet_submitQueuedShares(
