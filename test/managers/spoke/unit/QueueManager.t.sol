@@ -7,9 +7,8 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
-import {CrosschainBatcher} from "../../../../src/core/messaging/CrosschainBatcher.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {IBatchedMulticall} from "../../../../src/core/utils/interfaces/IBatchedMulticall.sol";
+import {CrosschainBatcher} from "../../../../src/core/messaging/CrosschainBatcher.sol";
 
 import {QueueManager} from "../../../../src/managers/spoke/QueueManager.sol";
 import {IQueueManager} from "../../../../src/managers/spoke/interfaces/IQueueManager.sol";

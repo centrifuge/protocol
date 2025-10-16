@@ -8,10 +8,9 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
-import {CrosschainBatcher} from "../../../../src/core/messaging/CrosschainBatcher.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {CrosschainBatcher} from "../../../../src/core/messaging/CrosschainBatcher.sol";
 import {ShareClassId, newShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IBatchedMulticall} from "../../../../src/core/utils/interfaces/IBatchedMulticall.sol";
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
 
 import {SimplePriceManager} from "../../../../src/managers/hub/SimplePriceManager.sol";

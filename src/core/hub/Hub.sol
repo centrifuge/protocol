@@ -18,7 +18,6 @@ import {Recoverable} from "../../misc/Recoverable.sol";
 import {MathLib} from "../../misc/libraries/MathLib.sol";
 
 import {IAdapter} from "../messaging/interfaces/IAdapter.sol";
-import {IGateway} from "../messaging/interfaces/IGateway.sol";
 import {CrosschainBatcher} from "../messaging/CrosschainBatcher.sol";
 import {IMultiAdapter} from "../messaging/interfaces/IMultiAdapter.sol";
 import {IHubMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";

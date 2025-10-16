@@ -158,5 +158,4 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Returns the current gateway batching level
     /// @return Whether the gateway is currently batching
     function isBatching() external view returns (bool);
-
 }

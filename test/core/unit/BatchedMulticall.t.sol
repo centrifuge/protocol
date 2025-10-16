@@ -2,8 +2,8 @@
 pragma solidity 0.8.28;
 
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
-import {CrosschainBatcher} from "../../../src/core/messaging/CrosschainBatcher.sol";
 import {BatchedMulticall} from "../../../src/core/utils/BatchedMulticall.sol";
+import {CrosschainBatcher} from "../../../src/core/messaging/CrosschainBatcher.sol";
 
 import "forge-std/Test.sol";
 

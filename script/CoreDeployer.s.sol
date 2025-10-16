@@ -9,7 +9,6 @@ import {Spoke} from "../src/core/spoke/Spoke.sol";
 import {Holdings} from "../src/core/hub/Holdings.sol";
 import {Accounting} from "../src/core/hub/Accounting.sol";
 import {Gateway} from "../src/core/messaging/Gateway.sol";
-import {CrosschainBatcher} from "../src/core/messaging/CrosschainBatcher.sol";
 import {HubHandler} from "../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
@@ -21,6 +20,7 @@ import {ContractUpdater} from "../src/core/utils/ContractUpdater.sol";
 import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
 import {TokenFactory} from "../src/core/spoke/factories/TokenFactory.sol";
 import {MessageProcessor} from "../src/core/messaging/MessageProcessor.sol";
+import {CrosschainBatcher} from "../src/core/messaging/CrosschainBatcher.sol";
 import {MessageDispatcher} from "../src/core/messaging/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
 
@@ -379,7 +379,9 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
                 generateSalt("hub"),
                 abi.encodePacked(
                     type(Hub).creationCode,
-                    abi.encode(crosschainBatcher, holdings, accounting, hubRegistry, multiAdapter, shareClassManager, deployer)
+                    abi.encode(
+                        crosschainBatcher, holdings, accounting, hubRegistry, multiAdapter, shareClassManager, deployer
+                    )
                 )
             )
         );

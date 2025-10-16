@@ -11,9 +11,8 @@ import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol"
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
-import {CrosschainBatcher} from "../../core/messaging/CrosschainBatcher.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
+import {CrosschainBatcher} from "../../core/messaging/CrosschainBatcher.sol";
 import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified

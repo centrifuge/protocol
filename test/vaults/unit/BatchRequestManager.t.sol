@@ -12,8 +12,8 @@ import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
-import {CrosschainBatcher} from "../../../src/core/messaging/CrosschainBatcher.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {CrosschainBatcher} from "../../../src/core/messaging/CrosschainBatcher.sol";
 import {IHubRequestManagerCallback} from "../../../src/core/hub/interfaces/IHubRequestManagerCallback.sol";
 import {
     IHubRequestManager,

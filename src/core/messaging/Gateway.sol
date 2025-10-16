@@ -257,8 +257,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         _refund(refund, msg.value - cost);
     }
 
-
-
     /// @inheritdoc IGateway
     function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external onlyAuthOrManager(poolId) {
         isOutgoingBlocked[centrifugeId][poolId] = isBlocked;

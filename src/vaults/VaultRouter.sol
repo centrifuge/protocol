@@ -16,10 +16,9 @@ import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
-import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
-import {CrosschainBatcher} from "../core/messaging/CrosschainBatcher.sol";
 import {BatchedMulticall} from "../core/utils/BatchedMulticall.sol";
 import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
+import {CrosschainBatcher} from "../core/messaging/CrosschainBatcher.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 
 /// @title  VaultRouter

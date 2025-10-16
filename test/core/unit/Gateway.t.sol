@@ -9,10 +9,11 @@ import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageL
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {Gateway} from "../../../src/core/messaging/Gateway.sol";
-import {CrosschainBatcher} from "../../../src/core/messaging/CrosschainBatcher.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {CrosschainBatcher} from "../../../src/core/messaging/CrosschainBatcher.sol";
 import {IMessageLimits} from "../../../src/core/messaging/interfaces/IMessageLimits.sol";
 import {IProtocolPauser} from "../../../src/core/messaging/interfaces/IProtocolPauser.sol";
+import {ICrosschainBatcher} from "../../../src/core/messaging/interfaces/ICrosschainBatcher.sol";
 import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
 import {IGateway, GAS_FAIL_MESSAGE_STORAGE} from "../../../src/core/messaging/interfaces/IGateway.sol";
 
@@ -921,13 +922,13 @@ contract GatewayTestWithBatch is GatewayTest {
 
     function testErrCallFailedWithEmptyRevert() public {
         vm.prank(ANY);
-        vm.expectRevert(CrosschainBatcher.CallFailedWithEmptyRevert.selector);
+        vm.expectRevert(ICrosschainBatcher.CallFailedWithEmptyRevert.selector);
         integration.callEmptyError(REFUND);
     }
 
     function testErrCallbackWasNotLocked() public {
         vm.prank(ANY);
-        vm.expectRevert(CrosschainBatcher.CallbackWasNotLocked.selector);
+        vm.expectRevert(ICrosschainBatcher.CallbackWasNotLocked.selector);
         integration.callNotLocked(REFUND);
     }
 
@@ -940,7 +941,7 @@ contract GatewayTestWithBatch is GatewayTest {
     function testErrNotEnoughValueForCallback() public {
         vm.prank(ANY);
         vm.deal(ANY, 1234);
-        vm.expectRevert(CrosschainBatcher.NotEnoughValueForCallback.selector);
+        vm.expectRevert(ICrosschainBatcher.NotEnoughValueForCallback.selector);
         integration.callPaid{value: 1234}(REFUND, 2000);
     }
 
@@ -969,5 +970,3 @@ contract GatewayTestWithBatch is GatewayTest {
         assertEq(address(integration).balance, integration.PAYMENT());
     }
 }
-
-

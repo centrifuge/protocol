@@ -35,8 +35,6 @@ import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
 import {RefundEscrowFactory} from "../src/vaults/factories/RefundEscrowFactory.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
-import {CrosschainBatcher} from "../src/core/messaging/CrosschainBatcher.sol";
-
 import "forge-std/Script.sol";
 
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";

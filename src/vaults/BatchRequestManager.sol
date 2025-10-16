@@ -25,10 +25,9 @@ import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
-import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
-import {CrosschainBatcher} from "../core/messaging/CrosschainBatcher.sol";
 import {BatchedMulticall} from "../core/utils/BatchedMulticall.sol";
 import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
+import {CrosschainBatcher} from "../core/messaging/CrosschainBatcher.sol";
 import {IHubRequestManagerCallback} from "../core/hub/interfaces/IHubRequestManagerCallback.sol";
 import {IHubRequestManager, IHubRequestManagerNotifications} from "../core/hub/interfaces/IHubRequestManager.sol";
 

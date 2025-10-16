@@ -541,7 +541,6 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(vaultRouter.spoke()), address(spoke));
         assertEq(address(vaultRouter.escrow()), address(routerEscrow));
-        assertEq(address(vaultRouter.gateway()), address(gateway));
 
         // root endorsements
         assertEq(root.endorsed(address(vaultRouter)), true);
@@ -628,7 +627,6 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(queueManager.contractUpdater()), address(contractUpdater));
         assertEq(address(queueManager.balanceSheet()), address(balanceSheet));
-        assertEq(address(queueManager.gateway()), address(gateway));
     }
 
     function testIdentityValuation() public view {

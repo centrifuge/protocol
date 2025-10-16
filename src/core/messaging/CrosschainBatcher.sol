@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "../../misc/Auth.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
 import {ICrosschainBatcher} from "./interfaces/ICrosschainBatcher.sol";
+
+import {Auth} from "../../misc/Auth.sol";
 
 contract CrosschainBatcher is Auth, ICrosschainBatcher {
     /// @inheritdoc ICrosschainBatcher
