@@ -71,7 +71,6 @@ contract QueueManagerTest is Test {
         vm.mockCall(
             balanceSheet, abi.encodeWithSelector(IBalanceSheet.queuedShares.selector), abi.encode(0, false, 0, 0)
         );
-        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.lockCallback.selector), abi.encode(address(this)));
     }
 
     function _deployManager() internal {
