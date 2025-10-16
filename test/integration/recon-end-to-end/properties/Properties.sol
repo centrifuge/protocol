@@ -1264,44 +1264,74 @@ abstract contract Properties is
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
 
-        // get the account ids for each account
-        AccountId assetAccountId = holdings.accountId(
+        // Get all assets that share accountId as current assetId
+        AssetId[] memory assetAssetIds = _getAssetIdsForAccountType(
             poolId,
             scId,
             assetId,
-            uint8(AccountType.Asset)
+            AccountType.Asset
         );
-        AccountId equityAccountId = holdings.accountId(
+        console2.log("assetAssetIds[0]: ", assetAssetIds[0].raw());
+        console2.log("assetAssetIds[1]: ", assetAssetIds[1].raw());
+
+        AssetId[] memory equityAssetIds = _getAssetIdsForAccountType(
             poolId,
             scId,
             assetId,
-            uint8(AccountType.Equity)
-        );
-        AccountId gainAccountId = holdings.accountId(
-            poolId,
-            scId,
-            assetId,
-            uint8(AccountType.Gain)
-        );
-        AccountId lossAccountId = holdings.accountId(
-            poolId,
-            scId,
-            assetId,
-            uint8(AccountType.Loss)
+            AccountType.Equity
         );
 
-        (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
-        (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
-        (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
-        (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
+        AssetId[] memory gainAssetIds = _getAssetIdsForAccountType(
+            poolId,
+            scId,
+            assetId,
+            AccountType.Gain
+        );
 
-        // assets = accountValue(Equity) + accountValue(Gain) - accountValue(Loss)
-        console2.log("assets:", assets);
-        console2.log("equity:", equity);
-        console2.log("gain:", gain);
-        console2.log("loss:", loss);
-        console2.log("equity + gain - loss:", equity + gain - loss);
-        t(assets == equity + gain - loss, "property_asset_soundness"); // Loss is already negative
+        AssetId[] memory lossAssetIds = _getAssetIdsForAccountType(
+            poolId,
+            scId,
+            assetId,
+            AccountType.Loss
+        );
+
+        // Get the shared equity, gain, and loss account values
+        uint128 totalAssets = _sumAccountValuesForAssets(
+            poolId,
+            scId,
+            assetAssetIds,
+            AccountType.Asset
+        );
+
+        uint128 totalEquity = _sumAccountValuesForAssets(
+            poolId,
+            scId,
+            equityAssetIds,
+            AccountType.Equity
+        );
+
+        uint128 totalGain = _sumAccountValuesForAssets(
+            poolId,
+            scId,
+            gainAssetIds,
+            AccountType.Gain
+        );
+
+        uint128 totalLoss = _sumAccountValuesForAssets(
+            poolId,
+            scId,
+            lossAssetIds,
+            AccountType.Loss
+        );
+
+        console2.log("totalAssets: ", totalAssets);
+        console2.log("totalEquity: ", totalEquity);
+        console2.log("totalGain: ", totalGain);
+        console2.log("totalLoss: ", totalLoss);
+        t(
+            totalAssets == totalEquity + totalGain - totalLoss,
+            "property_asset_soundness"
+        );
     }
 
     /// @dev Property: equity = assets - loss - gain
@@ -1495,28 +1525,29 @@ abstract contract Properties is
     /// @dev Property: The amount of holdings of an asset for a pool-shareClass pair in Holdings MUST always be equal to
     /// the balance of the escrow for said pool-shareClass for the respective token
     /// @dev This property is undefined when price is zero (no shares issued, so holdings don't track escrow movements)
-    function property_holdings_balance_equals_escrow_balance() public {
-        IBaseVault vault = _getVault();
+    /// NOTE: removed because this doesn't hold before submitQueuedAssets is called, escrow balance is nonzero and Holding balance is 0
+    // function property_holdings_balance_equals_escrow_balance() public {
+    //     IBaseVault vault = _getVault();
 
-        // this property only applies to async vaults
-        if (!Helpers.isAsyncVault(address(vault))) return;
+    //     // this property only applies to async vaults
+    //     if (!Helpers.isAsyncVault(address(vault))) return;
 
-        // Guard: Skip when price is zero (property is undefined)
-        if (_before.pricePerShare[address(_getVault())] == 0) return;
+    //     // Guard: Skip when price is zero (property is undefined)
+    //     if (_before.pricePerShare[address(_getVault())] == 0) return;
 
-        address asset = vault.asset();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+    //     address asset = vault.asset();
+    //     AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
-        (uint128 holdingAssetAmount, , , ) = holdings.holding(
-            vault.poolId(),
-            vault.scId(),
-            assetId
-        );
-        address poolEscrow = address(poolEscrowFactory.escrow(vault.poolId()));
-        uint256 escrowBalance = MockERC20(asset).balanceOf(poolEscrow);
+    //     (uint128 holdingAssetAmount, , , ) = holdings.holding(
+    //         vault.poolId(),
+    //         vault.scId(),
+    //         assetId
+    //     );
+    //     address poolEscrow = address(poolEscrowFactory.escrow(vault.poolId()));
+    //     uint256 escrowBalance = MockERC20(asset).balanceOf(poolEscrow);
 
-        eq(holdingAssetAmount, escrowBalance, "holding != escrow balance");
-    }
+    //     eq(holdingAssetAmount, escrowBalance, "holding != escrow balance");
+    // }
 
     /// @dev Property: The total issuance of a share class is <= the sum of issued shares and burned shares
     function property_total_issuance_soundness() public {
@@ -3202,5 +3233,92 @@ abstract contract Properties is
         }
 
         return false;
+    }
+
+    /// @notice Helper function to get all assetIds that use a specific account type
+    /// @param poolId The pool ID to check
+    /// @param scId The share class ID to check
+    /// @param accountType The account type to filter by
+    /// @param assetId The target asset ID to match
+    /// @return matchingAssetIds Array of asset IDs that have the given account type mapped to the target account ID
+    function _getAssetIdsForAccountType(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        AccountType accountType
+    ) internal view returns (AssetId[] memory matchingAssetIds) {
+        AssetId[] memory allAssetIds = _getAssetIds();
+
+        AccountId accountIdToMatch = holdings.accountId(
+            poolId,
+            scId,
+            assetId,
+            uint8(accountType)
+        );
+
+        // NOTE: needs to be done in two steps because can't have dynamic sized memory arrays
+        // First pass: count matches
+        uint256 matchCount = 0;
+        for (uint256 i = 0; i < allAssetIds.length; i++) {
+            AccountId accountId = holdings.accountId(
+                poolId,
+                scId,
+                allAssetIds[i],
+                uint8(accountType)
+            );
+            if (accountId.raw() == accountIdToMatch.raw()) {
+                matchCount++;
+            }
+        }
+
+        // Second pass: populate result array
+        matchingAssetIds = new AssetId[](matchCount + 1);
+        uint256 currentIndex = 0;
+        for (uint256 i = 0; i < allAssetIds.length; i++) {
+            AccountId accountId = holdings.accountId(
+                poolId,
+                scId,
+                allAssetIds[i],
+                uint8(accountType)
+            );
+            if (accountId.raw() == accountIdToMatch.raw()) {
+                matchingAssetIds[currentIndex] = allAssetIds[i];
+                currentIndex++;
+            }
+        }
+
+        // Add currently set assetId
+        matchingAssetIds[matchingAssetIds.length - 1] = assetId;
+
+        return matchingAssetIds;
+    }
+
+    /// @notice Helper function to sum account values for multiple assets
+    /// @param poolId The pool ID to check
+    /// @param scId The share class ID to check
+    /// @param assetIds Array of asset IDs to sum values for
+    /// @param accountType The account type to query for each asset
+    /// @return totalValue The sum of all account values
+    function _sumAccountValuesForAssets(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId[] memory assetIds,
+        AccountType accountType
+    ) internal view returns (uint128 totalValue) {
+        totalValue = 0;
+
+        for (uint256 i = 0; i < assetIds.length; i++) {
+            AccountId accountId = holdings.accountId(
+                poolId,
+                scId,
+                assetIds[i],
+                uint8(accountType)
+            );
+
+            (, uint128 value) = accounting.accountValue(poolId, accountId);
+            totalValue += value;
+        }
+
+        return totalValue;
     }
 }

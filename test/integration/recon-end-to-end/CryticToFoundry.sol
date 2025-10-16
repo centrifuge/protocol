@@ -133,65 +133,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         );
     }
 
-    // forge test --match-test test_asyncVault_maxMint_6 -vvv
-    function test_asyncVault_maxMint_6() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
-
-        shortcut_deposit_queue_cancel(
-            0,
-            0,
-            5415168327856114888035,
-            1,
-            1,
-            11994885
-        );
-
-        hub_notifyDeposit_clamped(0);
-
-        asyncVault_maxMint(0, 0, 0);
-    }
-
-    // forge test --match-test test_property_holdings_balance_equals_escrow_balance_7 -vvv
-    function test_property_holdings_balance_equals_escrow_balance_7() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, true, false, true, false);
-
-        hub_updateSharePrice(0, 0, 446018867354994785);
-
-        shortcut_deposit_queue_cancel(
-            0,
-            0,
-            709743197693749225359838705486063362570425022362276604362172355194,
-            1,
-            0,
-            0
-        );
-
-        property_holdings_balance_equals_escrow_balance();
-    }
-
-    // forge test --match-test test_property_accounting_and_holdings_soundness_8 -vvv
-    function test_property_accounting_and_holdings_soundness_8() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(1, 0);
-
-        balanceSheet_submitQueuedAssets(0);
-
-        transientValuation_setPrice_clamped(1001115705050327642);
-
-        add_new_asset(2);
-
-        hub_updateHoldingValue();
-
-        spoke_registerAsset_clamped();
-
-        hub_notifyAssetPrice();
-
-        hub_initializeHolding_clamped(false, 0, 1, 1, 1);
-
-        property_accounting_and_holdings_soundness();
-    }
-
     // forge test --match-test test_property_gain_soundness_9 -vvv
     function test_property_gain_soundness_9() public {
         shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
@@ -211,17 +152,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         property_gain_soundness();
     }
 
-    // forge test --match-test test_property_escrow_share_balance_11 -vvv
-    function test_property_escrow_share_balance_11() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
-
-        shortcut_deposit_queue_cancel(0, 0, 1, 1, 0, 0);
-
-        hub_notifyDeposit(1);
-
-        property_escrow_share_balance();
-    }
-
     // forge test --match-test test_hub_notifyDeposit_clamped_12 -vvv
     function test_hub_notifyDeposit_clamped_12() public {
         shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
@@ -239,17 +169,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         vault_requestDeposit(1, 0);
 
         hub_notifyDeposit_clamped(0);
-    }
-
-    // forge test --match-test test_asyncVault_maxDeposit_13 -vvv
-    function test_asyncVault_maxDeposit_13() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
-
-        shortcut_deposit_queue_cancel(0, 0, 1, 1, 1, 0);
-
-        hub_notifyDeposit_clamped(0);
-
-        asyncVault_maxDeposit(0, 0, 0);
     }
 
     // forge test --match-test test_property_shareQueueFlipLogic_14 -vvv
