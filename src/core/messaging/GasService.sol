@@ -15,7 +15,6 @@ contract GasService is IGasService {
 
     /// @dev Takes into account diverge computation from the base benchmarked value.
     uint128 public constant BASE_COST = 50_000;
-    uint16 public constant GAS_MULTIPLIER = 10; // 10%
 
     uint128 public immutable scheduleUpgrade;
     uint128 public immutable cancelUpgrade;
