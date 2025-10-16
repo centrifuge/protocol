@@ -42,7 +42,19 @@ contract TestCrossChain is Script {
     }
     
     function _testEthereumSepolia() internal {
-        PoolId poolId = hubRegistry.poolId(localCentrifugeId, 995);
+        // Generate a pseudo-random 3-digit pool index (100-999), allow override via POOL_INDEX
+        uint256 seed = uint256(keccak256(abi.encodePacked(block.timestamp, blockhash(block.number - 1), tx.origin)));
+        uint256 defaultIdx = 100 + (seed % 900);
+        uint64 poolIndex = uint64(vm.envOr("POOL_INDEX", defaultIdx));
+        if (poolIndex < 100) {
+            poolIndex = 100;
+        } else if (poolIndex > 999) {
+            poolIndex = 999;
+        }
+
+        PoolId poolId = hubRegistry.poolId(localCentrifugeId, uint48(poolIndex));
+        console.log("Using poolIndex:", poolIndex);
+        console.log("PoolId:", vm.toString(abi.encode(poolId)));
         
         console.log("Creating pool...");
         AssetId usdId = newAssetId(840);
