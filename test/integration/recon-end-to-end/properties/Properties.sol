@@ -1189,309 +1189,6 @@ abstract contract Properties is
         );
     }
 
-    /// @dev Property: Total Yield = assets - equity
-    function property_total_yield() public {
-        PoolId[] memory _createdPools = _getPools();
-        for (uint256 i = 0; i < _createdPools.length; i++) {
-            PoolId poolId = _createdPools[i];
-            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
-            // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = shareClassManager.previewShareClassId(
-                    poolId,
-                    j
-                );
-                AssetId assetId = _getAssetId();
-
-                // get the account ids for each account
-                AccountId assetAccountId = holdings.accountId(
-                    poolId,
-                    scId,
-                    assetId,
-                    uint8(AccountType.Asset)
-                );
-                AccountId equityAccountId = holdings.accountId(
-                    poolId,
-                    scId,
-                    assetId,
-                    uint8(AccountType.Equity)
-                );
-                AccountId gainAccountId = holdings.accountId(
-                    poolId,
-                    scId,
-                    assetId,
-                    uint8(AccountType.Gain)
-                );
-                AccountId lossAccountId = holdings.accountId(
-                    poolId,
-                    scId,
-                    assetId,
-                    uint8(AccountType.Loss)
-                );
-
-                (, uint128 assets) = accounting.accountValue(
-                    poolId,
-                    assetAccountId
-                );
-                (, uint128 equity) = accounting.accountValue(
-                    poolId,
-                    equityAccountId
-                );
-
-                if (assets > equity) {
-                    // Yield
-                    (, uint128 yield) = accounting.accountValue(
-                        poolId,
-                        gainAccountId
-                    );
-                    t(yield == assets - equity, "property_total_yield gain");
-                } else if (assets < equity) {
-                    // Loss
-                    (, uint128 loss) = accounting.accountValue(
-                        poolId,
-                        lossAccountId
-                    );
-                    t(loss == assets - equity, "property_total_yield loss"); // Loss is negative
-                }
-            }
-        }
-    }
-
-    /// @dev Property: assets = equity + gain + loss
-    function property_asset_soundness() public {
-        IBaseVault vault = _getVault();
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = _getAssetId();
-
-        // Get all assets that share accountId as current assetId
-        AssetId[] memory assetAssetIds = _getAssetIdsForAccountType(
-            poolId,
-            scId,
-            assetId,
-            AccountType.Asset
-        );
-        console2.log("assetAssetIds[0]: ", assetAssetIds[0].raw());
-        console2.log("assetAssetIds[1]: ", assetAssetIds[1].raw());
-
-        AssetId[] memory equityAssetIds = _getAssetIdsForAccountType(
-            poolId,
-            scId,
-            assetId,
-            AccountType.Equity
-        );
-
-        AssetId[] memory gainAssetIds = _getAssetIdsForAccountType(
-            poolId,
-            scId,
-            assetId,
-            AccountType.Gain
-        );
-
-        AssetId[] memory lossAssetIds = _getAssetIdsForAccountType(
-            poolId,
-            scId,
-            assetId,
-            AccountType.Loss
-        );
-
-        // Get the shared equity, gain, and loss account values
-        uint128 totalAssets = _sumAccountValuesForAssets(
-            poolId,
-            scId,
-            assetAssetIds,
-            AccountType.Asset
-        );
-
-        uint128 totalEquity = _sumAccountValuesForAssets(
-            poolId,
-            scId,
-            equityAssetIds,
-            AccountType.Equity
-        );
-
-        uint128 totalGain = _sumAccountValuesForAssets(
-            poolId,
-            scId,
-            gainAssetIds,
-            AccountType.Gain
-        );
-
-        uint128 totalLoss = _sumAccountValuesForAssets(
-            poolId,
-            scId,
-            lossAssetIds,
-            AccountType.Loss
-        );
-
-        console2.log("totalAssets: ", totalAssets);
-        console2.log("totalEquity: ", totalEquity);
-        console2.log("totalGain: ", totalGain);
-        console2.log("totalLoss: ", totalLoss);
-        t(
-            totalAssets == totalEquity + totalGain - totalLoss,
-            "property_asset_soundness"
-        );
-    }
-
-    /// @dev Property: equity = assets - loss - gain
-    function property_equity_soundness() public {
-        PoolId[] memory _createdPools = _getPools();
-        for (uint256 i = 0; i < _createdPools.length; i++) {
-            PoolId poolId = _createdPools[i];
-            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
-            // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = shareClassManager.previewShareClassId(
-                    poolId,
-                    j
-                );
-                AssetId assetId = _getAssetId();
-
-                // get the account ids for each account
-                AccountId assetAccountId = holdings.accountId(
-                    poolId,
-                    scId,
-                    assetId,
-                    uint8(AccountType.Asset)
-                );
-                AccountId equityAccountId = holdings.accountId(
-                    poolId,
-                    scId,
-                    assetId,
-                    uint8(AccountType.Equity)
-                );
-                AccountId gainAccountId = holdings.accountId(
-                    poolId,
-                    scId,
-                    assetId,
-                    uint8(AccountType.Gain)
-                );
-                AccountId lossAccountId = holdings.accountId(
-                    poolId,
-                    scId,
-                    assetId,
-                    uint8(AccountType.Loss)
-                );
-
-                (, uint128 assets) = accounting.accountValue(
-                    poolId,
-                    assetAccountId
-                );
-                (, uint128 equity) = accounting.accountValue(
-                    poolId,
-                    equityAccountId
-                );
-                (, uint128 gain) = accounting.accountValue(
-                    poolId,
-                    gainAccountId
-                );
-                (, uint128 loss) = accounting.accountValue(
-                    poolId,
-                    lossAccountId
-                );
-
-                // equity = accountValue(Asset) + (ABS(accountValue(Loss)) - accountValue(Gain) // Loss comes back, gain
-                // is subtracted
-                t(equity == assets + loss - gain, "property_equity_soundness"); // Loss comes back, gain is subtracted,
-                // since loss is negative we need to negate it
-            }
-        }
-    }
-
-    /// @dev Property: gain = totalYield + loss
-    function property_gain_soundness() public {
-        IBaseVault vault = _getVault();
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = _getAssetId();
-
-        // get the account ids for each account
-        AccountId assetAccountId = holdings.accountId(
-            poolId,
-            scId,
-            assetId,
-            uint8(AccountType.Asset)
-        );
-        AccountId equityAccountId = holdings.accountId(
-            poolId,
-            scId,
-            assetId,
-            uint8(AccountType.Equity)
-        );
-        AccountId gainAccountId = holdings.accountId(
-            poolId,
-            scId,
-            assetId,
-            uint8(AccountType.Gain)
-        );
-        AccountId lossAccountId = holdings.accountId(
-            poolId,
-            scId,
-            assetId,
-            uint8(AccountType.Loss)
-        );
-
-        (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
-        (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
-        (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
-        (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
-
-        console2.log("assets: ", assets);
-        console2.log("equity: ", equity);
-        console2.log("gain: ", gain);
-        console2.log("loss: ", loss);
-        uint128 totalYield = assets - equity; // Can be positive or negative
-        console2.log("totalYield: ", totalYield);
-        t(gain == (totalYield - loss), "property_gain_soundness");
-    }
-
-    /// @dev Property: loss = totalYield - gain
-    function property_loss_soundness() public {
-        PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
-        AssetId assetId = _getAssetId();
-
-        // get the account ids for each account
-        AccountId assetAccountId = holdings.accountId(
-            poolId,
-            scId,
-            assetId,
-            uint8(AccountType.Asset)
-        );
-        AccountId equityAccountId = holdings.accountId(
-            poolId,
-            scId,
-            assetId,
-            uint8(AccountType.Equity)
-        );
-        AccountId gainAccountId = holdings.accountId(
-            poolId,
-            scId,
-            assetId,
-            uint8(AccountType.Gain)
-        );
-        AccountId lossAccountId = holdings.accountId(
-            poolId,
-            scId,
-            assetId,
-            uint8(AccountType.Loss)
-        );
-        (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
-        (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
-        (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
-        (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
-
-        uint128 totalYield = assets - equity; // Can be positive or negative
-        console2.log("loss:", loss);
-        console2.log("assets:", assets);
-        console2.log("equity:", equity);
-        console2.log("totalYield:", totalYield);
-        console2.log("gain:", gain);
-        console2.log("totalYield - gain:", totalYield - gain);
-        t(loss == totalYield - gain, "property_loss_soundness");
-    }
-
     /// @dev Property: A user cannot mutate their pending redeem amount pendingRedeem[...] if the
     /// pendingRedeem[..].lastUpdate is <= the latest redeem approval epochId[..].redeem
     function property_user_cannot_mutate_pending_redeem() public {
@@ -3209,6 +2906,315 @@ abstract contract Properties is
         }
     }
 
+    // Removed Properties - better implemented with continuous monitoring
+    /// @dev Property: Total Yield = assets - equity
+    // NOTE: removed because difficult to check with admin functions in setup
+    // function property_total_yield() public {
+    //     PoolId[] memory _createdPools = _getPools();
+    //     for (uint256 i = 0; i < _createdPools.length; i++) {
+    //         PoolId poolId = _createdPools[i];
+    //         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+    //         // skip the first share class because it's never assigned
+    //         for (uint32 j = 1; j < shareClassCount; j++) {
+    //             ShareClassId scId = shareClassManager.previewShareClassId(
+    //                 poolId,
+    //                 j
+    //             );
+    //             AssetId assetId = _getAssetId();
+
+    //             // get the account ids for each account
+    //             AccountId assetAccountId = holdings.accountId(
+    //                 poolId,
+    //                 scId,
+    //                 assetId,
+    //                 uint8(AccountType.Asset)
+    //             );
+    //             AccountId equityAccountId = holdings.accountId(
+    //                 poolId,
+    //                 scId,
+    //                 assetId,
+    //                 uint8(AccountType.Equity)
+    //             );
+    //             AccountId gainAccountId = holdings.accountId(
+    //                 poolId,
+    //                 scId,
+    //                 assetId,
+    //                 uint8(AccountType.Gain)
+    //             );
+    //             AccountId lossAccountId = holdings.accountId(
+    //                 poolId,
+    //                 scId,
+    //                 assetId,
+    //                 uint8(AccountType.Loss)
+    //             );
+
+    //             (, uint128 assets) = accounting.accountValue(
+    //                 poolId,
+    //                 assetAccountId
+    //             );
+    //             (, uint128 equity) = accounting.accountValue(
+    //                 poolId,
+    //                 equityAccountId
+    //             );
+
+    //             if (assets > equity) {
+    //                 // Yield
+    //                 (, uint128 yield) = accounting.accountValue(
+    //                     poolId,
+    //                     gainAccountId
+    //                 );
+    //                 t(yield == assets - equity, "property_total_yield gain");
+    //             } else if (assets < equity) {
+    //                 // Loss
+    //                 (, uint128 loss) = accounting.accountValue(
+    //                     poolId,
+    //                     lossAccountId
+    //                 );
+    //                 t(loss == assets - equity, "property_total_yield loss"); // Loss is negative
+    //             }
+    //         }
+    //     }
+    // }
+
+    /// @dev Property: assets = equity + gain + loss
+    // NOTE: removed because difficult to check with admin functions in setup
+    // function property_asset_soundness() public {
+    //     IBaseVault vault = _getVault();
+    //     PoolId poolId = vault.poolId();
+    //     ShareClassId scId = vault.scId();
+    //     AssetId assetId = _getAssetId();
+
+    //     // Get all assets that share accountId as current assetId
+    //     AssetId[] memory assetAssetIds = _getAssetIdsForAccountType(
+    //         poolId,
+    //         scId,
+    //         assetId,
+    //         AccountType.Asset
+    //     );
+    //     console2.log("assetAssetIds[0]: ", assetAssetIds[0].raw());
+    //     console2.log("assetAssetIds[1]: ", assetAssetIds[1].raw());
+
+    //     AssetId[] memory equityAssetIds = _getAssetIdsForAccountType(
+    //         poolId,
+    //         scId,
+    //         assetId,
+    //         AccountType.Equity
+    //     );
+
+    //     AssetId[] memory gainAssetIds = _getAssetIdsForAccountType(
+    //         poolId,
+    //         scId,
+    //         assetId,
+    //         AccountType.Gain
+    //     );
+
+    //     AssetId[] memory lossAssetIds = _getAssetIdsForAccountType(
+    //         poolId,
+    //         scId,
+    //         assetId,
+    //         AccountType.Loss
+    //     );
+
+    //     // Get the shared equity, gain, and loss account values
+    //     uint128 totalAssets = _sumAccountValuesForAssets(
+    //         poolId,
+    //         scId,
+    //         assetAssetIds,
+    //         AccountType.Asset
+    //     );
+
+    //     uint128 totalEquity = _sumAccountValuesForAssets(
+    //         poolId,
+    //         scId,
+    //         equityAssetIds,
+    //         AccountType.Equity
+    //     );
+
+    //     uint128 totalGain = _sumAccountValuesForAssets(
+    //         poolId,
+    //         scId,
+    //         gainAssetIds,
+    //         AccountType.Gain
+    //     );
+
+    //     uint128 totalLoss = _sumAccountValuesForAssets(
+    //         poolId,
+    //         scId,
+    //         lossAssetIds,
+    //         AccountType.Loss
+    //     );
+
+    //     console2.log("totalAssets: ", totalAssets);
+    //     console2.log("totalEquity: ", totalEquity);
+    //     console2.log("totalGain: ", totalGain);
+    //     console2.log("totalLoss: ", totalLoss);
+    //     t(
+    //         totalAssets == totalEquity + totalGain - totalLoss,
+    //         "property_asset_soundness"
+    //     );
+    // }
+
+    /// @dev Property: equity = assets - loss - gain
+    // NOTE: removed because difficult to check with admin functions in setup
+    // function property_equity_soundness() public {
+    //     PoolId[] memory _createdPools = _getPools();
+    //     for (uint256 i = 0; i < _createdPools.length; i++) {
+    //         PoolId poolId = _createdPools[i];
+    //         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+    //         // skip the first share class because it's never assigned
+    //         for (uint32 j = 1; j < shareClassCount; j++) {
+    //             ShareClassId scId = shareClassManager.previewShareClassId(
+    //                 poolId,
+    //                 j
+    //             );
+    //             AssetId assetId = _getAssetId();
+
+    //             // get the account ids for each account
+    //             AccountId assetAccountId = holdings.accountId(
+    //                 poolId,
+    //                 scId,
+    //                 assetId,
+    //                 uint8(AccountType.Asset)
+    //             );
+    //             AccountId equityAccountId = holdings.accountId(
+    //                 poolId,
+    //                 scId,
+    //                 assetId,
+    //                 uint8(AccountType.Equity)
+    //             );
+    //             AccountId gainAccountId = holdings.accountId(
+    //                 poolId,
+    //                 scId,
+    //                 assetId,
+    //                 uint8(AccountType.Gain)
+    //             );
+    //             AccountId lossAccountId = holdings.accountId(
+    //                 poolId,
+    //                 scId,
+    //                 assetId,
+    //                 uint8(AccountType.Loss)
+    //             );
+
+    //             (, uint128 assets) = accounting.accountValue(
+    //                 poolId,
+    //                 assetAccountId
+    //             );
+    //             (, uint128 equity) = accounting.accountValue(
+    //                 poolId,
+    //                 equityAccountId
+    //             );
+    //             (, uint128 gain) = accounting.accountValue(
+    //                 poolId,
+    //                 gainAccountId
+    //             );
+    //             (, uint128 loss) = accounting.accountValue(
+    //                 poolId,
+    //                 lossAccountId
+    //             );
+
+    //             // equity = accountValue(Asset) + (ABS(accountValue(Loss)) - accountValue(Gain) // Loss comes back, gain
+    //             // is subtracted
+    //             t(equity == assets + loss - gain, "property_equity_soundness"); // Loss comes back, gain is subtracted,
+    //             // since loss is negative we need to negate it
+    //         }
+    //     }
+    // }
+
+    /// @dev Property: gain = totalYield + loss
+    // NOTE: removed because difficult to check with admin functions in setup
+    // function property_gain_soundness() public {
+    //     IBaseVault vault = _getVault();
+    //     PoolId poolId = vault.poolId();
+    //     ShareClassId scId = vault.scId();
+    //     AssetId assetId = _getAssetId();
+
+    //     // get the account ids for each account
+    //     AccountId assetAccountId = holdings.accountId(
+    //         poolId,
+    //         scId,
+    //         assetId,
+    //         uint8(AccountType.Asset)
+    //     );
+    //     AccountId equityAccountId = holdings.accountId(
+    //         poolId,
+    //         scId,
+    //         assetId,
+    //         uint8(AccountType.Equity)
+    //     );
+    //     AccountId gainAccountId = holdings.accountId(
+    //         poolId,
+    //         scId,
+    //         assetId,
+    //         uint8(AccountType.Gain)
+    //     );
+    //     AccountId lossAccountId = holdings.accountId(
+    //         poolId,
+    //         scId,
+    //         assetId,
+    //         uint8(AccountType.Loss)
+    //     );
+
+    //     (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
+    //     (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
+    //     (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
+    //     (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
+
+    //     console2.log("assets: ", assets);
+    //     console2.log("equity: ", equity);
+    //     console2.log("gain: ", gain);
+    //     console2.log("loss: ", loss);
+    //     uint128 totalYield = assets - equity; // Can be positive or negative
+    //     console2.log("totalYield: ", totalYield);
+    //     t(gain == (totalYield - loss), "property_gain_soundness");
+    // }
+
+    /// @dev Property: loss = totalYield - gain
+    // NOTE: removed because difficult to check with admin functions in setup
+    // function property_loss_soundness() public {
+    //     PoolId poolId = _getPool();
+    //     ShareClassId scId = _getShareClassId();
+    //     AssetId assetId = _getAssetId();
+
+    //     // get the account ids for each account
+    //     AccountId assetAccountId = holdings.accountId(
+    //         poolId,
+    //         scId,
+    //         assetId,
+    //         uint8(AccountType.Asset)
+    //     );
+    //     AccountId equityAccountId = holdings.accountId(
+    //         poolId,
+    //         scId,
+    //         assetId,
+    //         uint8(AccountType.Equity)
+    //     );
+    //     AccountId gainAccountId = holdings.accountId(
+    //         poolId,
+    //         scId,
+    //         assetId,
+    //         uint8(AccountType.Gain)
+    //     );
+    //     AccountId lossAccountId = holdings.accountId(
+    //         poolId,
+    //         scId,
+    //         assetId,
+    //         uint8(AccountType.Loss)
+    //     );
+    //     (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
+    //     (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
+    //     (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
+    //     (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
+
+    //     uint128 totalYield = assets - equity; // Can be positive or negative
+    //     console2.log("loss:", loss);
+    //     console2.log("assets:", assets);
+    //     console2.log("equity:", equity);
+    //     console2.log("totalYield:", totalYield);
+    //     console2.log("gain:", gain);
+    //     console2.log("totalYield - gain:", totalYield - gain);
+    //     t(loss == totalYield - gain, "property_loss_soundness");
+    // }
+
     /// @notice Helper function to check if a pool/shareclass has any async vaults
     /// @param poolId The pool ID to check
     /// @param scId The share class ID to check
@@ -3233,92 +3239,5 @@ abstract contract Properties is
         }
 
         return false;
-    }
-
-    /// @notice Helper function to get all assetIds that use a specific account type
-    /// @param poolId The pool ID to check
-    /// @param scId The share class ID to check
-    /// @param accountType The account type to filter by
-    /// @param assetId The target asset ID to match
-    /// @return matchingAssetIds Array of asset IDs that have the given account type mapped to the target account ID
-    function _getAssetIdsForAccountType(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        AccountType accountType
-    ) internal view returns (AssetId[] memory matchingAssetIds) {
-        AssetId[] memory allAssetIds = _getAssetIds();
-
-        AccountId accountIdToMatch = holdings.accountId(
-            poolId,
-            scId,
-            assetId,
-            uint8(accountType)
-        );
-
-        // NOTE: needs to be done in two steps because can't have dynamic sized memory arrays
-        // First pass: count matches
-        uint256 matchCount = 0;
-        for (uint256 i = 0; i < allAssetIds.length; i++) {
-            AccountId accountId = holdings.accountId(
-                poolId,
-                scId,
-                allAssetIds[i],
-                uint8(accountType)
-            );
-            if (accountId.raw() == accountIdToMatch.raw()) {
-                matchCount++;
-            }
-        }
-
-        // Second pass: populate result array
-        matchingAssetIds = new AssetId[](matchCount + 1);
-        uint256 currentIndex = 0;
-        for (uint256 i = 0; i < allAssetIds.length; i++) {
-            AccountId accountId = holdings.accountId(
-                poolId,
-                scId,
-                allAssetIds[i],
-                uint8(accountType)
-            );
-            if (accountId.raw() == accountIdToMatch.raw()) {
-                matchingAssetIds[currentIndex] = allAssetIds[i];
-                currentIndex++;
-            }
-        }
-
-        // Add currently set assetId
-        matchingAssetIds[matchingAssetIds.length - 1] = assetId;
-
-        return matchingAssetIds;
-    }
-
-    /// @notice Helper function to sum account values for multiple assets
-    /// @param poolId The pool ID to check
-    /// @param scId The share class ID to check
-    /// @param assetIds Array of asset IDs to sum values for
-    /// @param accountType The account type to query for each asset
-    /// @return totalValue The sum of all account values
-    function _sumAccountValuesForAssets(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId[] memory assetIds,
-        AccountType accountType
-    ) internal view returns (uint128 totalValue) {
-        totalValue = 0;
-
-        for (uint256 i = 0; i < assetIds.length; i++) {
-            AccountId accountId = holdings.accountId(
-                poolId,
-                scId,
-                assetIds[i],
-                uint8(accountType)
-            );
-
-            (, uint128 value) = accounting.accountValue(poolId, accountId);
-            totalValue += value;
-        }
-
-        return totalValue;
     }
 }
