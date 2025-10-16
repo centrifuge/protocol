@@ -25,6 +25,10 @@ contract BatchedMulticallImpl is BatchedMulticall, Test {
 contract MockGateway {
     address internal transient _batcher;
 
+    function isBatching() external view returns (bool) {
+        return _batcher != address(0);
+    }
+
     function startBatching() external {
         _batcher = msg.sender;
     }
