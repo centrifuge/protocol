@@ -22,6 +22,13 @@ struct Price {
     uint64 computedAt;
 }
 
+struct IssuancePerNetwork {
+    /// @dev Total accumulated amount of shares issued on this network
+    uint128 issuances;
+    /// @dev Total accumulated amount of shares revoked on this network
+    uint128 revocations;
+}
+
 interface IShareClassManager {
     //----------------------------------------------------------------------------------------------
     // Events
@@ -50,7 +57,7 @@ interface IShareClassManager {
     error AlreadyUsedSalt();
     error PoolMissing();
     error ShareClassNotFound();
-    error DecreaseMoreThanIssued();
+    error NegativeIssuance();
     error CannotSetFuturePrice();
 
     //----------------------------------------------------------------------------------------------
