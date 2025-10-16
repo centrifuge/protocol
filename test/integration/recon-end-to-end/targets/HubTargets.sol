@@ -493,10 +493,6 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         address actor = _getActor();
 
-        // Track shares that were actually fulfilled and delivered to escrow
-        // Use totalPayoutShareAmount which represents the actual shares paid out during this notification
-        sumOfFulfilledDeposits[vault.share()] += totalPayoutShareAmount;
-
         sumOfClaimedDeposits[vault.share()] += totalPayoutShareAmount;
         userDepositProcessed[scId][assetId][actor] += totalPaymentAssetAmount;
         userCancelledDeposits[scId][assetId][actor] += cancelledAssetAmount;
