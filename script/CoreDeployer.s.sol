@@ -9,6 +9,7 @@ import {Spoke} from "../src/core/spoke/Spoke.sol";
 import {Holdings} from "../src/core/hub/Holdings.sol";
 import {Accounting} from "../src/core/hub/Accounting.sol";
 import {Gateway} from "../src/core/messaging/Gateway.sol";
+import {CrosschainBatcher} from "../src/core/messaging/CrosschainBatcher.sol";
 import {HubHandler} from "../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
@@ -33,6 +34,7 @@ struct CoreInput {
 
 struct CoreReport {
     Gateway gateway;
+    CrosschainBatcher crosschainBatcher;
     MultiAdapter multiAdapter;
     GasService gasService;
     MessageProcessor messageProcessor;
@@ -229,6 +231,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
     bytes32 public version;
 
     Gateway public gateway;
+    CrosschainBatcher public crosschainBatcher;
     MultiAdapter public multiAdapter;
 
     GasService public gasService;
@@ -257,7 +260,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
         return bytes32(abi.encodePacked(bytes20(msg.sender), bytes1(0x0), bytes11(baseHash)));
     }
 
-    function deployCore(CoreInput memory input, CoreActionBatcher batcher) public {
+    function deployCore(CoreInput memory input, CoreActionBatcher deployer) public {
         setUpCreateXFactory();
 
         version = input.version;
@@ -266,21 +269,28 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
         gateway = Gateway(
             create3(
                 generateSalt("gateway"),
-                abi.encodePacked(type(Gateway).creationCode, abi.encode(input.centrifugeId, input.root, batcher))
+                abi.encodePacked(type(Gateway).creationCode, abi.encode(input.centrifugeId, input.root, deployer))
+            )
+        );
+
+        crosschainBatcher = CrosschainBatcher(
+            create3(
+                generateSalt("crosschainBatcher"),
+                abi.encodePacked(type(CrosschainBatcher).creationCode, abi.encode(gateway, deployer))
             )
         );
 
         multiAdapter = MultiAdapter(
             create3(
                 generateSalt("multiAdapter"),
-                abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, batcher))
+                abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, deployer))
             )
         );
 
         contractUpdater = ContractUpdater(
             create3(
                 generateSalt("contractUpdater"),
-                abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(batcher))
+                abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(deployer))
             )
         );
 
@@ -292,7 +302,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
         messageProcessor = MessageProcessor(
             create3(
                 generateSalt("messageProcessor"),
-                abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(input.root, batcher))
+                abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(input.root, deployer))
             )
         );
 
@@ -300,7 +310,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
             create3(
                 generateSalt("messageDispatcher"),
                 abi.encodePacked(
-                    type(MessageDispatcher).creationCode, abi.encode(input.centrifugeId, input.root, gateway, batcher)
+                    type(MessageDispatcher).creationCode, abi.encode(input.centrifugeId, input.root, gateway, deployer)
                 )
             )
         );
@@ -309,56 +319,58 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
         tokenFactory = TokenFactory(
             create3(
                 generateSalt("tokenFactory"),
-                abi.encodePacked(type(TokenFactory).creationCode, abi.encode(input.root, batcher))
+                abi.encodePacked(type(TokenFactory).creationCode, abi.encode(input.root, deployer))
             )
         );
 
         spoke = Spoke(
             create3(
-                generateSalt("spoke"), abi.encodePacked(type(Spoke).creationCode, abi.encode(tokenFactory, batcher))
+                generateSalt("spoke"), abi.encodePacked(type(Spoke).creationCode, abi.encode(tokenFactory, deployer))
             )
         );
 
         balanceSheet = BalanceSheet(
             create3(
                 generateSalt("balanceSheet"),
-                abi.encodePacked(type(BalanceSheet).creationCode, abi.encode(input.root, batcher))
+                abi.encodePacked(
+                    type(BalanceSheet).creationCode, abi.encode(input.root, gateway, crosschainBatcher, deployer)
+                )
             )
         );
 
         vaultRegistry = VaultRegistry(
             create3(
-                generateSalt("vaultRegistry"), abi.encodePacked(type(VaultRegistry).creationCode, abi.encode(batcher))
+                generateSalt("vaultRegistry"), abi.encodePacked(type(VaultRegistry).creationCode, abi.encode(deployer))
             )
         );
 
         poolEscrowFactory = PoolEscrowFactory(
             create3(
                 generateSalt("poolEscrowFactory"),
-                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(input.root, batcher))
+                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(input.root, deployer))
             )
         );
 
         // Hub
         hubRegistry = HubRegistry(
-            create3(generateSalt("hubRegistry"), abi.encodePacked(type(HubRegistry).creationCode, abi.encode(batcher)))
+            create3(generateSalt("hubRegistry"), abi.encodePacked(type(HubRegistry).creationCode, abi.encode(deployer)))
         );
 
         accounting = Accounting(
-            create3(generateSalt("accounting"), abi.encodePacked(type(Accounting).creationCode, abi.encode(batcher)))
+            create3(generateSalt("accounting"), abi.encodePacked(type(Accounting).creationCode, abi.encode(deployer)))
         );
 
         holdings = Holdings(
             create3(
                 generateSalt("holdings"),
-                abi.encodePacked(type(Holdings).creationCode, abi.encode(hubRegistry, batcher))
+                abi.encodePacked(type(Holdings).creationCode, abi.encode(hubRegistry, deployer))
             )
         );
 
         shareClassManager = ShareClassManager(
             create3(
                 generateSalt("shareClassManager"),
-                abi.encodePacked(type(ShareClassManager).creationCode, abi.encode(hubRegistry, batcher))
+                abi.encodePacked(type(ShareClassManager).creationCode, abi.encode(hubRegistry, deployer))
             )
         );
 
@@ -367,7 +379,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
                 generateSalt("hub"),
                 abi.encodePacked(
                     type(Hub).creationCode,
-                    abi.encode(gateway, holdings, accounting, hubRegistry, multiAdapter, shareClassManager, batcher)
+                    abi.encode(crosschainBatcher, holdings, accounting, hubRegistry, multiAdapter, shareClassManager, deployer)
                 )
             )
         );
@@ -376,15 +388,16 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
             create3(
                 generateSalt("hubHandler"),
                 abi.encodePacked(
-                    type(HubHandler).creationCode, abi.encode(hub, holdings, hubRegistry, shareClassManager, batcher)
+                    type(HubHandler).creationCode, abi.encode(hub, holdings, hubRegistry, shareClassManager, deployer)
                 )
             )
         );
 
-        batcher.engageCore(_coreReport(), input.root);
+        deployer.engageCore(_coreReport(), input.root);
 
         // Core
         register("gateway", address(gateway));
+        register("crosschainBatcher", address(crosschainBatcher));
         register("multiAdapter", address(multiAdapter));
         register("contractUpdater", address(contractUpdater));
 
@@ -409,13 +422,14 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
         register("hub", address(hub));
     }
 
-    function removeCoreDeployerAccess(CoreActionBatcher batcher) public {
-        batcher.revokeCore(_coreReport());
+    function removeCoreDeployerAccess(CoreActionBatcher deployer) public {
+        deployer.revokeCore(_coreReport());
     }
 
     function _coreReport() internal view returns (CoreReport memory) {
         return CoreReport(
             gateway,
+            crosschainBatcher,
             multiAdapter,
             gasService,
             messageProcessor,

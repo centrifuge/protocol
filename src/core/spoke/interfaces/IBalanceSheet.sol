@@ -7,6 +7,7 @@ import {IEndorsements} from "./IEndorsements.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
 
+import {IGateway} from "../../messaging/interfaces/IGateway.sol";
 import {ISpokeMessageSender} from "../../messaging/interfaces/IGatewaySenders.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
@@ -90,6 +91,10 @@ interface IBalanceSheet is IBatchedMulticall {
     /// @param what Accepts a bytes32 representation of 'spoke', 'sender', 'gateway', 'poolEscrowProvider'
     /// @param data The new address
     function file(bytes32 what, address data) external;
+
+    /// @notice Returns the gateway contract
+    /// @return The gateway contract instance
+    function gateway() external view returns (IGateway);
 
     //----------------------------------------------------------------------------------------------
     // Management functions

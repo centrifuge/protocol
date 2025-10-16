@@ -12,6 +12,7 @@ import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
+import {CrosschainBatcher} from "../../../src/core/messaging/CrosschainBatcher.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IHubRequestManagerCallback} from "../../../src/core/hub/interfaces/IHubRequestManagerCallback.sol";
 import {
@@ -77,8 +78,8 @@ contract HubRegistryMock {
 }
 
 contract BatchRequestManagerHarness is BatchRequestManager {
-    constructor(IHubRegistry hubRegistry_, IGateway gateway_, address deployer)
-        BatchRequestManager(hubRegistry_, gateway_, deployer)
+    constructor(IHubRegistry hubRegistry_, CrosschainBatcher batcher_, address deployer)
+        BatchRequestManager(hubRegistry_, batcher_, deployer)
     {}
 
     function claimDeposit(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
@@ -136,8 +137,9 @@ abstract contract BatchRequestManagerBaseTest is Test {
 
     function setUp() public virtual {
         hubRegistryMock = new HubRegistryMock();
+        CrosschainBatcher batcher = new CrosschainBatcher(gateway, address(this));
         batchRequestManager =
-            new BatchRequestManagerHarness(IHubRegistry(address(hubRegistryMock)), gateway, address(this));
+            new BatchRequestManagerHarness(IHubRegistry(address(hubRegistryMock)), batcher, address(this));
 
         vm.mockCall(
             address(hub),

@@ -227,30 +227,13 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function withBatch(bytes memory data, uint256 value, address refund) public payable {
-        require(value <= msg.value, NotEnoughValueForCallback());
-
-        bool wasBatching = isBatching;
-        isBatching = true;
-
+    function startBatching() external auth {
         _batcher = msg.sender;
-        (bool success, bytes memory returnData) = msg.sender.call{value: value}(data);
-        if (!success) {
-            uint256 length = returnData.length;
-            require(length != 0, CallFailedWithEmptyRevert());
-
-            assembly ("memory-safe") {
-                revert(add(32, returnData), length)
-            }
-        }
-
-        // Force the user to call lockCallback()
-        require(address(_batcher) == address(0), CallbackWasNotLocked());
-
-        if (!wasBatching) _endBatching(msg.value - value, refund);
+        isBatching = true;
     }
 
-    function _endBatching(uint256 fuel, address refund) internal {
+    /// @inheritdoc IGateway
+    function endBatching(address refund) external payable auth {
         require(isBatching, NoBatched());
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
 
@@ -263,7 +246,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             uint128 gasLimit = _gasLimitSlot(centrifugeId, poolId).tloadUint128();
             bytes memory batch = TransientBytesLib.get(outboundBatchSlot);
 
-            cost += _send(centrifugeId, batch, gasLimit, refund, fuel - cost);
+            cost += _send(centrifugeId, batch, gasLimit, refund, msg.value - cost);
 
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
@@ -271,26 +254,20 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         isBatching = false;
 
-        _refund(refund, fuel - cost);
+        _refund(refund, msg.value - cost);
     }
 
-    /// @inheritdoc IGateway
-    function withBatch(bytes memory data, address refund) external payable {
-        withBatch(data, 0, refund);
-    }
 
-    /// @inheritdoc IGateway
-    function lockCallback() external {
-        require(_batcher != address(0), CallbackIsLocked());
-        require(msg.sender == _batcher, CallbackWasNotFromSender());
-        _batcher = address(0);
-    }
 
     /// @inheritdoc IGateway
     function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external onlyAuthOrManager(poolId) {
         isOutgoingBlocked[centrifugeId][poolId] = isBlocked;
         emit BlockOutgoing(centrifugeId, poolId, isBlocked);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
 
     //----------------------------------------------------------------------------------------------
     // Helpers

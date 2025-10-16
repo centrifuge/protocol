@@ -308,7 +308,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(hub.hubRegistry()), address(hubRegistry));
-        assertEq(address(hub.gateway()), address(gateway));
         assertEq(address(hub.holdings()), address(holdings));
         assertEq(address(hub.accounting()), address(accounting));
         assertEq(address(hub.multiAdapter()), address(multiAdapter));

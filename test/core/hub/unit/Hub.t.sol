@@ -14,6 +14,7 @@ import {IHoldings} from "../../../../src/core/hub/interfaces/IHoldings.sol";
 import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
 import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
+import {CrosschainBatcher} from "../../../../src/core/messaging/CrosschainBatcher.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IHub, VaultUpdateKind} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {ISnapshotHook} from "../../../../src/core/hub/interfaces/ISnapshotHook.sol";
@@ -52,10 +53,11 @@ contract TestCommon is Test {
     IMultiAdapter immutable multiAdapter = IMultiAdapter(makeAddr("MultiAdapter"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
+    CrosschainBatcher immutable batcher = new CrosschainBatcher(gateway, address(this));
     IHubMessageSender immutable sender = IHubMessageSender(makeAddr("Sender"));
     MockFeeHook immutable feeHook = new MockFeeHook();
 
-    Hub hub = new Hub(gateway, holdings, accounting, hubRegistry, multiAdapter, scm, address(this));
+    Hub hub = new Hub(batcher, holdings, accounting, hubRegistry, multiAdapter, scm, address(this));
 
     function setUp() public {
         vm.mockCall(
@@ -430,16 +432,6 @@ contract TestSetAccountMetadata is TestCommon {
 }
 
 contract TestHubFile is TestCommon {
-    function testFileGateway() public {
-        IGateway newGateway = IGateway(makeAddr("NewGateway"));
-
-        vm.expectEmit(true, true, true, true);
-        emit IHub.File("gateway", address(newGateway));
-
-        hub.file("gateway", address(newGateway));
-        assertEq(address(hub.gateway()), address(newGateway));
-    }
-
     function testFileFeeHook() public {
         IFeeHook newFeeHook = IFeeHook(makeAddr("NewFeeHook"));
 

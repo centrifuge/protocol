@@ -19,6 +19,7 @@ import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol";
 
 import {IGateway} from "../messaging/interfaces/IGateway.sol";
+import {CrosschainBatcher} from "../messaging/CrosschainBatcher.sol";
 import {ISpokeMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
 import {IBalanceSheetGatewayHandler} from "../messaging/interfaces/IGatewayHandlers.sol";
 
@@ -39,6 +40,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     using MathLib for *;
     using CastLib for bytes32;
 
+    IGateway public gateway;
     ISpoke public spoke;
     ISpokeMessageSender public sender;
     IEndorsements public immutable endorsements;
@@ -48,8 +50,12 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     mapping(PoolId => mapping(ShareClassId => ShareQueueAmount)) public queuedShares;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => AssetQueueAmount))) public queuedAssets;
 
-    constructor(IEndorsements endorsements_, address deployer) Auth(deployer) BatchedMulticall(gateway) {
+    constructor(IEndorsements endorsements_, IGateway gateway_, CrosschainBatcher batcher_, address deployer)
+        Auth(deployer)
+        BatchedMulticall(batcher_)
+    {
         endorsements = endorsements_;
+        gateway = gateway_;
     }
 
     /// @dev Check if the msgSender() is ward or a manager
@@ -66,7 +72,6 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     function file(bytes32 what, address data) external auth {
         if (what == "spoke") spoke = ISpoke(data);
         else if (what == "sender") sender = ISpokeMessageSender(data);
-        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
 

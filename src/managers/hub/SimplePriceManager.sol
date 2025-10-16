@@ -10,13 +10,14 @@ import {PoolId} from "../../core/types/PoolId.sol";
 import {IHub} from "../../core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
+import {CrosschainBatcher} from "../../core/messaging/CrosschainBatcher.sol";
 import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "../../core/hub/interfaces/IShareClassManager.sol";
 
 /// @notice Base share price calculation manager for single share class pools.
 contract SimplePriceManager is ISimplePriceManager {
     IHub public immutable hub;
-    IGateway public immutable gateway;
+    CrosschainBatcher public immutable batcher;
     address public immutable navUpdater;
     IHubRegistry public immutable hubRegistry;
     IShareClassManager public immutable shareClassManager;
@@ -25,9 +26,9 @@ contract SimplePriceManager is ISimplePriceManager {
     mapping(PoolId => uint16[]) internal _notifiedNetworks;
     mapping(PoolId => mapping(uint16 centrifugeId => NetworkMetrics)) public networkMetrics;
 
-    constructor(IHub hub_, address navUpdater_) {
+    constructor(IHub hub_, CrosschainBatcher batcher_, address navUpdater_) {
         hub = hub_;
-        gateway = hub_.gateway();
+        batcher = batcher_;
         hubRegistry = hub_.hubRegistry();
         shareClassManager = hub_.shareClassManager();
         navUpdater = navUpdater_;
@@ -75,7 +76,7 @@ contract SimplePriceManager is ISimplePriceManager {
         require(msg.sender == navUpdater, NotAuthorized());
         require(scId.index() == 1, InvalidShareClass());
 
-        gateway.withBatch(
+        batcher.withBatch(
             abi.encodeWithSelector(
                 SimplePriceManager.onUpdateCallback.selector, poolId, scId, centrifugeId, netAssetValue
             ),
@@ -84,7 +85,7 @@ contract SimplePriceManager is ISimplePriceManager {
     }
 
     function onUpdateCallback(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) external {
-        gateway.lockCallback();
+        batcher.lockCallback();
 
         NetworkMetrics storage networkMetrics_ = networkMetrics[poolId][centrifugeId];
         Metrics storage metrics_ = metrics[poolId];

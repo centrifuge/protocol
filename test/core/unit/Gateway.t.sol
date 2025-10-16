@@ -9,6 +9,7 @@ import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageL
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {Gateway} from "../../../src/core/messaging/Gateway.sol";
+import {CrosschainBatcher} from "../../../src/core/messaging/CrosschainBatcher.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IMessageLimits} from "../../../src/core/messaging/interfaces/IMessageLimits.sol";
 import {IProtocolPauser} from "../../../src/core/messaging/interfaces/IProtocolPauser.sol";
@@ -124,17 +125,7 @@ contract GatewayExt is Gateway {
         }
     }
 
-    function startBatching() public {
-        isBatching = true;
-    }
-
-    function endBatching(address refund) public payable {
-        _endBatching(msg.value, refund);
-    }
-
-    function batcher() public view returns (address) {
-        return _batcher;
-    }
+    // Remove these helper functions as they're now part of the main Gateway contract
 }
 
 // -----------------------------------------
@@ -839,71 +830,72 @@ contract GatewayTestBlockOutgoing is GatewayTest {
 contract IntegrationMock is Test {
     bool public wasCalled;
     GatewayExt public gateway;
+    CrosschainBatcher public batcher;
     uint256 public constant PAYMENT = 234;
 
-    constructor(GatewayExt gateway_) {
+    constructor(GatewayExt gateway_, CrosschainBatcher batcher_) {
         gateway = gateway_;
+        batcher = batcher_;
     }
 
     function _nested() external {
-        gateway.lockCallback();
-        gateway.withBatch(abi.encodeWithSelector(this._success.selector, false, 2), address(0));
+        batcher.lockCallback();
+        batcher.withBatch(abi.encodeWithSelector(this._success.selector, false, 2), address(0));
     }
 
     function _emptyError() external {
-        gateway.lockCallback();
+        batcher.lockCallback();
         revert();
     }
 
     function _notLocked() external {}
 
     function _success(bool, uint256) external {
-        assertEq(gateway.batcher(), address(this));
-        gateway.lockCallback();
+        batcher.lockCallback();
         wasCalled = true;
     }
 
     function _justLock() external {
-        gateway.lockCallback();
+        batcher.lockCallback();
     }
 
     function _paid() external payable {
         assertEq(msg.value, PAYMENT);
-        gateway.lockCallback();
+        batcher.lockCallback();
     }
 
     function callNested(address refund) external {
-        gateway.withBatch(abi.encodeWithSelector(this._nested.selector), refund);
+        batcher.withBatch(abi.encodeWithSelector(this._nested.selector), refund);
     }
 
     function callEmptyError(address refund) external {
-        gateway.withBatch(abi.encodeWithSelector(this._emptyError.selector), refund);
+        batcher.withBatch(abi.encodeWithSelector(this._emptyError.selector), refund);
     }
 
     function callSuccess(address refund) external payable {
-        gateway.withBatch{value: msg.value}(abi.encodeWithSelector(this._success.selector, true, 1), refund);
+        batcher.withBatch{value: msg.value}(abi.encodeWithSelector(this._success.selector, true, 1), refund);
     }
 
     function callNotLocked(address refund) external {
-        gateway.withBatch(abi.encodeWithSelector(this._notLocked.selector), refund);
+        batcher.withBatch(abi.encodeWithSelector(this._notLocked.selector), refund);
     }
 
     function callPaid(address refund, uint256 value) external payable {
-        gateway.withBatch{value: msg.value}(abi.encodeWithSelector(this._paid.selector), value, refund);
+        batcher.withBatch{value: msg.value}(abi.encodeWithSelector(this._paid.selector), value, refund);
     }
 }
 
 contract AttackerIntegrationMock is Test {
     IntegrationMock prey;
-    IGateway gateway;
+    CrosschainBatcher batcher;
 
-    constructor(IGateway gateway_, IntegrationMock prey_) {
-        gateway = gateway_;
+    constructor(CrosschainBatcher batcher_, IntegrationMock prey_) {
+        batcher = batcher_;
         prey = prey_;
     }
 
     function callAttack(address refund) external {
-        gateway.withBatch(abi.encodeWithSelector(this._attack.selector), refund);
+        batcher.withBatch(abi.encodeWithSelector(this._attack.selector), refund);
     }
 
     function _attack() external payable {
@@ -912,24 +904,30 @@ contract AttackerIntegrationMock is Test {
 }
 
 contract GatewayTestWithBatch is GatewayTest {
+    CrosschainBatcher batcher;
     IntegrationMock integration;
     AttackerIntegrationMock attacker;
 
     function setUp() public override {
         super.setUp();
-        integration = new IntegrationMock(gateway);
-        attacker = new AttackerIntegrationMock(gateway, integration);
+        batcher = new CrosschainBatcher(gateway, address(this));
+
+        vm.prank(address(this));
+        gateway.rely(address(batcher));
+
+        integration = new IntegrationMock(gateway, batcher);
+        attacker = new AttackerIntegrationMock(batcher, integration);
     }
 
     function testErrCallFailedWithEmptyRevert() public {
         vm.prank(ANY);
-        vm.expectRevert(IGateway.CallFailedWithEmptyRevert.selector);
+        vm.expectRevert(CrosschainBatcher.CallFailedWithEmptyRevert.selector);
         integration.callEmptyError(REFUND);
     }
 
     function testErrCallbackWasNotLocked() public {
         vm.prank(ANY);
-        vm.expectRevert(IGateway.CallbackWasNotLocked.selector);
+        vm.expectRevert(CrosschainBatcher.CallbackWasNotLocked.selector);
         integration.callNotLocked(REFUND);
     }
 
@@ -942,7 +940,7 @@ contract GatewayTestWithBatch is GatewayTest {
     function testErrNotEnoughValueForCallback() public {
         vm.prank(ANY);
         vm.deal(ANY, 1234);
-        vm.expectRevert(IGateway.NotEnoughValueForCallback.selector);
+        vm.expectRevert(CrosschainBatcher.NotEnoughValueForCallback.selector);
         integration.callPaid{value: 1234}(REFUND, 2000);
     }
 
@@ -972,9 +970,4 @@ contract GatewayTestWithBatch is GatewayTest {
     }
 }
 
-contract GatewayTestLockCallback is GatewayTest {
-    function testErrCallbackIsLocked() public {
-        vm.expectRevert(IGateway.CallbackIsLocked.selector);
-        gateway.lockCallback();
-    }
-}
+

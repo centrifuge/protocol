@@ -35,6 +35,8 @@ import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
 import {RefundEscrowFactory} from "../src/vaults/factories/RefundEscrowFactory.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
+import {CrosschainBatcher} from "../src/core/messaging/CrosschainBatcher.sol";
+
 import "forge-std/Script.sol";
 
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
@@ -370,7 +372,7 @@ contract FullDeployer is CoreDeployer {
                 generateSalt("vaultRouter"),
                 abi.encodePacked(
                     type(VaultRouter).creationCode,
-                    abi.encode(address(routerEscrow), gateway, spoke, vaultRegistry, batcher)
+                    abi.encode(address(routerEscrow), crosschainBatcher, spoke, vaultRegistry, address(batcher))
                 )
             )
         );
@@ -466,7 +468,8 @@ contract FullDeployer is CoreDeployer {
             create3(
                 generateSalt("queueManager"),
                 abi.encodePacked(
-                    type(QueueManager).creationCode, abi.encode(contractUpdater, balanceSheet, address(batcher))
+                    type(QueueManager).creationCode,
+                    abi.encode(contractUpdater, balanceSheet, crosschainBatcher, address(batcher))
                 )
             )
         );
@@ -496,7 +499,9 @@ contract FullDeployer is CoreDeployer {
         batchRequestManager = BatchRequestManager(
             create3(
                 generateSalt("batchRequestManager"),
-                abi.encodePacked(type(BatchRequestManager).creationCode, abi.encode(hubRegistry, gateway, batcher))
+                abi.encodePacked(
+                    type(BatchRequestManager).creationCode, abi.encode(hubRegistry, crosschainBatcher, address(batcher))
+                )
             )
         );
 
@@ -521,7 +526,9 @@ contract FullDeployer is CoreDeployer {
         simplePriceManager = SimplePriceManager(
             create3(
                 generateSalt("simplePriceManager"),
-                abi.encodePacked(type(SimplePriceManager).creationCode, abi.encode(hub, address(navManager)))
+                abi.encodePacked(
+                    type(SimplePriceManager).creationCode, abi.encode(hub, crosschainBatcher, address(navManager))
+                )
             )
         );
 

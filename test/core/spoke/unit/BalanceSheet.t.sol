@@ -13,6 +13,7 @@ import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
+import {CrosschainBatcher} from "../../../../src/core/messaging/CrosschainBatcher.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IEndorsements} from "../../../../src/core/spoke/interfaces/IEndorsements.sol";
@@ -29,8 +30,26 @@ import "forge-std/Test.sol";
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}
 
+contract MockGateway {
+    address internal transient _batcher;
+
+    function startBatching() external {
+        _batcher = msg.sender;
+    }
+
+    function endBatching(address) external payable {
+        _batcher = address(0);
+    }
+
+    function batcher() external view returns (address) {
+        return _batcher;
+    }
+}
+
 contract BalanceSheetExt is BalanceSheet {
-    constructor(IRoot root_, address deployer) BalanceSheet(root_, deployer) {}
+    constructor(IRoot root_, IGateway gateway_, CrosschainBatcher batcher_, address deployer)
+        BalanceSheet(root_, gateway_, batcher_, deployer)
+    {}
 
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (D18) {
         return super._pricePoolPerAsset(poolId, scId, assetId);
@@ -47,7 +66,8 @@ contract BalanceSheetTest is Test {
 
     IRoot root = IRoot(makeAddr("Root"));
     ISpoke spoke = ISpoke(makeAddr("Spoke"));
-    IGateway gateway = IGateway(makeAddr("Gateway"));
+    MockGateway mockGateway = new MockGateway();
+    IGateway gateway = IGateway(address(mockGateway));
     ISpokeMessageSender sender = ISpokeMessageSender(address(new IsContract()));
     address erc6909 = address(new IsContract());
     address erc20 = address(new IsContract());
@@ -79,7 +99,8 @@ contract BalanceSheetTest is Test {
     D18 immutable ASSET_PRICE = d18(2, 1);
     D18 immutable SHARE_PRICE = d18(3, 1);
 
-    BalanceSheetExt balanceSheet = new BalanceSheetExt(root, AUTH);
+    CrosschainBatcher batcher = new CrosschainBatcher(gateway, address(this));
+    BalanceSheetExt balanceSheet = new BalanceSheetExt(root, gateway, batcher, AUTH);
 
     function setUp() public {
         vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.assetToId.selector, erc20, 0), abi.encode(ASSET_20));

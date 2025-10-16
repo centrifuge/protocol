@@ -12,6 +12,7 @@ import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
+import {CrosschainBatcher} from "../../core/messaging/CrosschainBatcher.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
@@ -21,16 +22,18 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
     using CastLib for *;
     using BitmapLib for *;
 
-    IGateway public immutable gateway;
+    CrosschainBatcher public immutable batcher;
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
 
     mapping(PoolId => mapping(ShareClassId => ShareClassQueueState)) public scQueueState;
 
-    constructor(address contractUpdater_, IBalanceSheet balanceSheet_, address deployer) Auth(deployer) {
+    constructor(address contractUpdater_, IBalanceSheet balanceSheet_, CrosschainBatcher batcher_, address deployer)
+        Auth(deployer)
+    {
         contractUpdater = contractUpdater_;
         balanceSheet = balanceSheet_;
-        gateway = balanceSheet_.gateway();
+        batcher = batcher_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -54,13 +57,13 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
 
     /// @inheritdoc IQueueManager
     function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds, address refund) external payable {
-        gateway.withBatch{
+        batcher.withBatch{
             value: msg.value
         }(abi.encodeWithSelector(QueueManager.syncCallback.selector, poolId, scId, assetIds), refund);
     }
 
     function syncCallback(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external {
-        gateway.lockCallback();
+        batcher.lockCallback();
 
         ShareClassQueueState storage sc = scQueueState[poolId][scId];
         require(sc.lastSync == 0 || block.timestamp >= sc.lastSync + sc.minDelay, MinDelayNotElapsed());

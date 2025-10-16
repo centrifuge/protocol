@@ -5,7 +5,7 @@ import {IBatchedMulticall} from "./interfaces/IBatchedMulticall.sol";
 
 import {Multicall, IMulticall} from "../../misc/Multicall.sol";
 
-import {IGateway} from "../messaging/interfaces/IGateway.sol";
+import {CrosschainBatcher} from "../messaging/CrosschainBatcher.sol";
 
 /// @title  BatchedMulticall
 /// @notice Abstract contract that extends Multicall with gateway batching support, enabling efficient
@@ -13,25 +13,25 @@ import {IGateway} from "../messaging/interfaces/IGateway.sol";
 ///         while coordinating payment handling across batched operations.
 /// @dev    Integrators MUST replace msg.sender with msgSender().
 abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
-    IGateway public gateway;
+    CrosschainBatcher public immutable batcher;
     address private transient _sender;
 
-    constructor(IGateway gateway_) {
-        gateway = gateway_;
+    constructor(CrosschainBatcher batcher_) {
+        batcher = batcher_;
     }
 
     /// @inheritdoc IMulticall
     /// @notice     With extra support for batching
     function multicall(bytes[] calldata data) public payable override {
         _sender = msg.sender;
-        gateway.withBatch{
+        batcher.withBatch{
             value: msg.value
         }(abi.encodeWithSelector(BatchedMulticall.executeMulticall.selector, data), msg.sender);
         _sender = address(0);
     }
 
     function executeMulticall(bytes[] calldata data) external payable protected {
-        gateway.lockCallback();
+        batcher.lockCallback();
         super.multicall(data);
     }
 

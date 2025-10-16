@@ -7,6 +7,7 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
+import {CrosschainBatcher} from "../../../../src/core/messaging/CrosschainBatcher.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {IBatchedMulticall} from "../../../../src/core/utils/interfaces/IBatchedMulticall.sol";
 
@@ -63,9 +64,7 @@ contract QueueManagerTest is Test {
 
     function _setupMocks() internal {
         vm.mockCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBatchedMulticall.gateway.selector),
-            abi.encode(IGateway(gateway))
+            address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.gateway.selector), abi.encode(IGateway(gateway))
         );
         vm.mockCall(balanceSheet, abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector), abi.encode(0));
         vm.mockCall(balanceSheet, abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector), abi.encode(0));
@@ -77,7 +76,8 @@ contract QueueManagerTest is Test {
     }
 
     function _deployManager() internal {
-        queueManager = new QueueManager(contractUpdater, IBalanceSheet(address(balanceSheet)), auth);
+        CrosschainBatcher batcher = new CrosschainBatcher(IGateway(gateway), address(this));
+        queueManager = new QueueManager(contractUpdater, IBalanceSheet(address(balanceSheet)), batcher, auth);
     }
 
     function _mockQueuedShares(

@@ -17,6 +17,7 @@ import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 import {PoolId} from "../core/types/PoolId.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
+import {CrosschainBatcher} from "../core/messaging/CrosschainBatcher.sol";
 import {BatchedMulticall} from "../core/utils/BatchedMulticall.sol";
 import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
@@ -42,10 +43,13 @@ contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
     /// @inheritdoc IVaultRouter
     mapping(address controller => mapping(IBaseVault vault => uint256 amount)) public lockedRequests;
 
-    constructor(address escrow_, IGateway gateway_, ISpoke spoke_, IVaultRegistry vaultRegistry_, address deployer)
-        Auth(deployer)
-        BatchedMulticall(gateway_)
-    {
+    constructor(
+        address escrow_,
+        CrosschainBatcher batcher_,
+        ISpoke spoke_,
+        IVaultRegistry vaultRegistry_,
+        address deployer
+    ) Auth(deployer) BatchedMulticall(batcher_) {
         escrow = IEscrow(escrow_);
         spoke = spoke_;
         vaultRegistry = vaultRegistry_;
@@ -116,7 +120,7 @@ contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vault.share(), owner, address(this), shares);
 
         spoke.crosschainTransferShares{
-            value: gateway.isBatching() ? 0 : msg.value
+            value: msgValue()
         }(centrifugeId, vault.poolId(), vault.scId(), receiver, shares, extraGasLimit, remoteExtraGasLimit, refund);
     }
 

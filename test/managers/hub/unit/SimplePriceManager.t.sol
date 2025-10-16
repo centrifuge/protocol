@@ -8,6 +8,7 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
+import {CrosschainBatcher} from "../../../../src/core/messaging/CrosschainBatcher.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {ShareClassId, newShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IBatchedMulticall} from "../../../../src/core/utils/interfaces/IBatchedMulticall.sol";
@@ -73,7 +74,7 @@ contract SimplePriceManagerTest is Test {
     function _setupMocks() internal {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.shareClassManager.selector), abi.encode(shareClassManager));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.hubRegistry.selector), abi.encode(hubRegistry));
-        vm.mockCall(hub, abi.encodeWithSelector(IBatchedMulticall.gateway.selector), abi.encode(gateway));
+        vm.mockCall(hub, abi.encodeWithSelector(IHub.gateway.selector), abi.encode(gateway));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateSharePrice.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.notifySharePrice.selector), abi.encode(uint256(0)));
 
@@ -106,7 +107,8 @@ contract SimplePriceManagerTest is Test {
     }
 
     function _deployManager() internal {
-        priceManager = new SimplePriceManager(IHub(hub), caller);
+        CrosschainBatcher batcher = new CrosschainBatcher(IGateway(gateway), address(this));
+        priceManager = new SimplePriceManager(IHub(hub), batcher, caller);
 
         vm.deal(address(priceManager), 1 ether);
     }

@@ -11,6 +11,7 @@ import {IShareClassManager} from "./IShareClassManager.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
 
+import {IGateway} from "../../messaging/interfaces/IGateway.sol";
 import {IAdapter} from "../../messaging/interfaces/IAdapter.sol";
 import {VaultUpdateKind} from "../../messaging/libraries/MessageLib.sol";
 import {IHubMessageSender} from "../../messaging/interfaces/IGatewaySenders.sol";
@@ -505,4 +506,5 @@ interface IHub is IBatchedMulticall {
     /// @param assetId The asset identifier
     /// @return The price in pool units per asset unit
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (D18);
+
 }

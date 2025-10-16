@@ -26,6 +26,7 @@ import {AssetId} from "../core/types/AssetId.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
+import {CrosschainBatcher} from "../core/messaging/CrosschainBatcher.sol";
 import {BatchedMulticall} from "../core/utils/BatchedMulticall.sol";
 import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
 import {IHubRequestManagerCallback} from "../core/hub/interfaces/IHubRequestManagerCallback.sol";
@@ -70,9 +71,9 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(bytes32 investor => bool)))) public
         allowForceRedeemCancel;
 
-    constructor(IHubRegistry hubRegistry_, IGateway gateway_, address deployer)
+    constructor(IHubRegistry hubRegistry_, CrosschainBatcher batcher_, address deployer)
         Auth(deployer)
-        BatchedMulticall(gateway_)
+        BatchedMulticall(batcher_)
     {
         hubRegistry = hubRegistry_;
     }

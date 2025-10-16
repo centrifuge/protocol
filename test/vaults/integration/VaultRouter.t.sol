@@ -12,6 +12,7 @@ import "../../core/spoke/integration/BaseTest.sol";
 
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
+import {CrosschainBatcher} from "../../../src/core/messaging/CrosschainBatcher.sol";
 
 import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
@@ -578,10 +579,10 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
     function testInitialization() public {
         // redeploying within test to increase coverage
-        new VaultRouter(address(routerEscrow), gateway, spoke, vaultRegistry, address(this));
+        CrosschainBatcher batcher = new CrosschainBatcher(gateway, address(this));
+        new VaultRouter(address(routerEscrow), batcher, spoke, vaultRegistry, address(this));
 
         assertEq(address(vaultRouter.escrow()), address(routerEscrow));
-        assertEq(address(vaultRouter.gateway()), address(gateway));
         assertEq(address(vaultRouter.spoke()), address(spoke));
     }
 

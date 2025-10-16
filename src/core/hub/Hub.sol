@@ -19,6 +19,7 @@ import {MathLib} from "../../misc/libraries/MathLib.sol";
 
 import {IAdapter} from "../messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../messaging/interfaces/IGateway.sol";
+import {CrosschainBatcher} from "../messaging/CrosschainBatcher.sol";
 import {IMultiAdapter} from "../messaging/interfaces/IMultiAdapter.sol";
 import {IHubMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
 
@@ -48,14 +49,14 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     IShareClassManager public shareClassManager;
 
     constructor(
-        IGateway gateway_,
+        CrosschainBatcher batcher_,
         IHoldings holdings_,
         IAccounting accounting_,
         IHubRegistry hubRegistry_,
         IMultiAdapter multiAdapter_,
         IShareClassManager shareClassManager_,
         address deployer
-    ) Auth(deployer) BatchedMulticall(gateway_) {
+    ) Auth(deployer) BatchedMulticall(batcher_) {
         holdings = holdings_;
         accounting = accounting_;
         hubRegistry = hubRegistry_;
@@ -71,8 +72,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function file(bytes32 what, address data) external {
         _auth();
 
-        if (what == "gateway") gateway = IGateway(data);
-        else if (what == "feeHook") feeHook = IFeeHook(data);
+        if (what == "feeHook") feeHook = IFeeHook(data);
         else if (what == "holdings") holdings = IHoldings(data);
         else if (what == "sender") sender = IHubMessageSender(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);

@@ -142,41 +142,14 @@ interface IGateway is IMessageHandler, IRecoverable {
     // Batching
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Automatic batching of cross-chain transactions through a callback.
-    ///         Any cross-chain transactions triggered in this callback will automatically be batched.
-    /// @dev    Should be used like:
-    ///         ```
-    ///         contract Integration {
-    ///             IGateway gateway;
-    ///
-    ///             function doSomething(PoolId poolId) external {
-    ///                 gateway.withBatch(abi.encodeWithSelector(Integration.callback.selector, poolId));
-    ///             }
-    ///
-    ///             function callback(PoolId poolId) external {
-    ///                 // Avoid reentrancy to the callback and ensure it's called from withBatch in the same contract:
-    ///                 gateway.lockCallback();
-    ///
-    ///                 // Call several hub, balance sheet, or spoke methods that trigger cross-chain transactions
-    ///             }
-    ///         }
-    ///         ```
-    ///
-    ///         NOTE: inside callback, `msgSender` should be used instead of msg.sender
-    /// @param  callbackData encoding data for the callback method
-    /// @param  callbackValue msg.value to send to the callback
+    /// @notice Start batching mode (auth only)
+    /// @dev    Called by CrosschainBatcher to initiate batch mode
+    function startBatching() external;
+
+    /// @notice End batching mode and send all batched messages (auth only)
+    /// @dev    Called by CrosschainBatcher to finalize and send batched messages
     /// @param  refund Address to refund excess payment
-    function withBatch(bytes memory callbackData, uint256 callbackValue, address refund) external payable;
-
-    /// @notice Same as withBatch(..), but without sending any msg.value to the callback
-    function withBatch(bytes memory callbackData, address refund) external payable;
-
-    /// @notice Ensures the callback is called by withBatch in the same contract.
-    /// @dev calling this at the very beginning inside the multicall means:
-    ///         - The callback is called from the gateway under `withBatch`.
-    ///         - The callback is called from the same contract, because withBatch uses `msg.sender` as target for the callback
-    ///         - The callback that uses this can only be called once inside withBatch scope. No reentrancy.
-    function lockCallback() external;
+    function endBatching(address refund) external payable;
 
     //----------------------------------------------------------------------------------------------
     // View methods
@@ -185,4 +158,5 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Returns the current gateway batching level
     /// @return Whether the gateway is currently batching
     function isBatching() external view returns (bool);
+
 }
