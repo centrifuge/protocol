@@ -30,6 +30,13 @@ contract MockGateway {
         }
         return 0;
     }
+
+    function isBatching() external pure returns (bool) {
+        return false;
+    }
+
+    function startBatching() external {}
+    function endBatching(address) external payable {}
 }
 
 contract QueueManagerTest is Test {

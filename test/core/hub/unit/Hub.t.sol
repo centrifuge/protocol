@@ -480,6 +480,6 @@ contract TestHubFile is TestCommon {
     function testFileNotAuthorized() public {
         vm.prank(makeAddr("notAuthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.file("gateway", address(0));
+        hub.file("batcher", address(0));
     }
 }

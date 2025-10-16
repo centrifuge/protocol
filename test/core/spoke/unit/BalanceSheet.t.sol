@@ -135,7 +135,6 @@ contract BalanceSheetTest is Test {
         balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(sender));
         balanceSheet.file("poolEscrowProvider", address(escrowProvider));
-        balanceSheet.file("gateway", address(gateway));
         balanceSheet.updateManager(POOL_A, MANAGER, true);
         vm.stopPrank();
 

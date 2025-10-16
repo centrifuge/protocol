@@ -13,7 +13,7 @@ import {CrosschainBatcher} from "../messaging/CrosschainBatcher.sol";
 ///         while coordinating payment handling across batched operations.
 /// @dev    Integrators MUST replace msg.sender with msgSender().
 abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
-    CrosschainBatcher public immutable batcher;
+    CrosschainBatcher public batcher;
     address private transient _sender;
 
     constructor(CrosschainBatcher batcher_) {

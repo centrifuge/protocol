@@ -34,7 +34,10 @@ contract CrosschainBatcher is Auth, ICrosschainBatcher {
     function withBatch(bytes memory data, uint256 value, address refund) public payable {
         require(value <= msg.value, NotEnoughValueForCallback());
 
-        gateway.startBatching();
+        bool isBatching = gateway.isBatching();
+        if (!isBatching) {
+            gateway.startBatching();
+        }
 
         _callbackSender = msg.sender;
 
@@ -51,7 +54,9 @@ contract CrosschainBatcher is Auth, ICrosschainBatcher {
         // Force the user to call lockCallback()
         require(_callbackSender == address(0), CallbackWasNotLocked());
 
-        gateway.endBatching{value: msg.value - value}(refund);
+        if (!isBatching) {
+            gateway.endBatching{value: msg.value - value}(refund);
+        }
     }
 
     /// @inheritdoc ICrosschainBatcher

@@ -84,6 +84,7 @@ contract CoreActionBatcher is Constants {
     function engageCore(CoreReport memory report, address root) public onlyDeployer {
         // Rely root
         report.gateway.rely(root);
+        report.crosschainBatcher.rely(root);
         report.multiAdapter.rely(root);
 
         report.messageDispatcher.rely(root);
@@ -109,6 +110,9 @@ contract CoreActionBatcher is Constants {
 
         // Rely multiAdapter
         report.gateway.rely(address(report.multiAdapter));
+
+        // Rely crosschainBatcher
+        report.gateway.rely(address(report.crosschainBatcher));
 
         // Rely messageDispatcher
         report.gateway.rely(address(report.messageDispatcher));
@@ -184,7 +188,6 @@ contract CoreActionBatcher is Constants {
         report.spoke.file("sender", address(report.messageDispatcher));
 
         report.balanceSheet.file("spoke", address(report.spoke));
-        report.balanceSheet.file("gateway", address(report.gateway));
         report.balanceSheet.file("poolEscrowProvider", address(report.poolEscrowFactory));
         report.balanceSheet.file("sender", address(report.messageDispatcher));
 

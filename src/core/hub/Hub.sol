@@ -71,7 +71,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function file(bytes32 what, address data) external {
         _auth();
 
-        if (what == "feeHook") feeHook = IFeeHook(data);
+        if (what == "batcher") batcher = CrosschainBatcher(data);
+        else if (what == "feeHook") feeHook = IFeeHook(data);
         else if (what == "holdings") holdings = IHoldings(data);
         else if (what == "sender") sender = IHubMessageSender(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
