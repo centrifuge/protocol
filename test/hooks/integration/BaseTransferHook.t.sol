@@ -6,7 +6,11 @@ import {ESCROW_HOOK_ID} from "../../../src/core/spoke/interfaces/ITransferHook.s
 import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
 
 import {
-    FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput
+    FullActionBatcher,
+    FullDeployer,
+    FullInput,
+    noAdaptersInput,
+    CoreInput
 } from "../../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";

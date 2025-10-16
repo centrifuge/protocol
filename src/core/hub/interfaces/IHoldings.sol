@@ -190,8 +190,7 @@ interface IHoldings {
     /// @param assetId The asset identifier
     /// @param kind The account type/kind
     /// @param accountId The account identifier to set
-    function setAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
-        external;
+    function setAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId) external;
 
     /// @notice Sets the snapshot state for a share class on a specific network
     /// @param poolId The pool identifier
@@ -199,8 +198,7 @@ interface IHoldings {
     /// @param centrifugeId The network identifier
     /// @param isSnapshot Whether the state is a snapshot
     /// @param nonce The snapshot nonce for validation
-    function setSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bool isSnapshot, uint64 nonce)
-        external;
+    function setSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bool isSnapshot, uint64 nonce) external;
 
     /// @notice Sets the snapshot hook for a pool
     /// @param poolId The pool identifier
@@ -281,10 +279,7 @@ interface IHoldings {
     /// @param assetId The asset identifier
     /// @param kind The account type/kind
     /// @return The account identifier
-    function accountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind)
-        external
-        view
-        returns (AccountId);
+    function accountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind) external view returns (AccountId);
 
     /// @notice Tells if the holding was initialized for an asset in a share class
     /// @param poolId The pool identifier

@@ -58,9 +58,8 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
             POOL_A,
             defaultTypedShareClassId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: address(this).toBytes32(),
-                validUntil: MAX_UINT64
-            }).serialize()
+                    user: address(this).toBytes32(), validUntil: MAX_UINT64
+                }).serialize()
         );
 
         factory = new OnOfframpManagerFactory(address(contractUpdater), balanceSheet);

@@ -97,7 +97,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _isManager(poolId);
 
         emit NotifyPool(centrifugeId, poolId);
-        sender.sendNotifyPool{value: _payment()}(centrifugeId, poolId, refund);
+        sender.sendNotifyPool{value: msgValue()}(centrifugeId, poolId, refund);
     }
 
     /// @inheritdoc IHub
@@ -113,22 +113,19 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         uint8 decimals = hubRegistry.decimals(poolId);
 
         emit NotifyShareClass(centrifugeId, poolId, scId);
-        sender.sendNotifyShareClass{value: _payment()}(
-            centrifugeId, poolId, scId, name, symbol, decimals, salt, hook, refund
-        );
+        sender.sendNotifyShareClass{
+            value: msgValue()
+        }(centrifugeId, poolId, scId, name, symbol, decimals, salt, hook, refund);
     }
 
     /// @inheritdoc IHub
-    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund)
-        public
-        payable
-    {
+    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) public payable {
         _isManager(poolId);
 
         (string memory name, string memory symbol,) = shareClassManager.metadata(poolId, scId);
 
         emit NotifyShareMetadata(centrifugeId, poolId, scId, name, symbol);
-        sender.sendNotifyShareMetadata{value: _payment()}(centrifugeId, poolId, scId, name, symbol, refund);
+        sender.sendNotifyShareMetadata{value: msgValue()}(centrifugeId, poolId, scId, name, symbol, refund);
     }
 
     /// @inheritdoc IHub
@@ -139,7 +136,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _isManager(poolId);
 
         emit UpdateShareHook(centrifugeId, poolId, scId, hook);
-        sender.sendUpdateShareHook{value: _payment()}(centrifugeId, poolId, scId, hook, refund);
+        sender.sendUpdateShareHook{value: msgValue()}(centrifugeId, poolId, scId, hook, refund);
     }
 
     /// @inheritdoc IHub
@@ -149,9 +146,9 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         (D18 pricePoolPerShare, uint64 computedAt) = shareClassManager.pricePoolPerShare(poolId, scId);
 
         emit NotifySharePrice(centrifugeId, poolId, scId, pricePoolPerShare, computedAt);
-        sender.sendNotifyPricePoolPerShare{value: _payment()}(
-            centrifugeId, poolId, scId, pricePoolPerShare, computedAt, refund
-        );
+        sender.sendNotifyPricePoolPerShare{
+            value: msgValue()
+        }(centrifugeId, poolId, scId, pricePoolPerShare, computedAt, refund);
     }
 
     /// @inheritdoc IHub
@@ -160,7 +157,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         D18 pricePoolPerAsset_ = pricePoolPerAsset(poolId, scId, assetId);
         emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset_);
-        sender.sendNotifyPricePoolPerAsset{value: _payment()}(poolId, scId, assetId, pricePoolPerAsset_, refund);
+        sender.sendNotifyPricePoolPerAsset{value: msgValue()}(poolId, scId, assetId, pricePoolPerAsset_, refund);
 
         if (address(feeHook) != address(0)) feeHook.accrue(poolId, scId);
     }
@@ -173,7 +170,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _isManager(poolId);
 
         emit SetMaxAssetPriceAge(poolId, scId, assetId, maxPriceAge);
-        sender.sendSetMaxAssetPriceAge{value: _payment()}(poolId, scId, assetId, maxPriceAge, refund);
+        sender.sendSetMaxAssetPriceAge{value: msgValue()}(poolId, scId, assetId, maxPriceAge, refund);
     }
 
     /// @inheritdoc IHub
@@ -187,7 +184,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _isManager(poolId);
 
         emit SetMaxSharePriceAge(centrifugeId, poolId, scId, maxPriceAge);
-        sender.sendSetMaxSharePriceAge{value: _payment()}(centrifugeId, poolId, scId, maxPriceAge, refund);
+        sender.sendSetMaxSharePriceAge{value: msgValue()}(centrifugeId, poolId, scId, maxPriceAge, refund);
     }
 
     /// @inheritdoc IHub
@@ -234,7 +231,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         hubRegistry.setHubRequestManager(poolId, centrifugeId, hubManager);
 
         emit SetSpokeRequestManager(centrifugeId, poolId, spokeManager);
-        sender.sendSetRequestManager{value: _payment()}(centrifugeId, poolId, spokeManager, refund);
+        sender.sendSetRequestManager{value: msgValue()}(centrifugeId, poolId, spokeManager, refund);
     }
 
     /// @inheritdoc IHub
@@ -245,7 +242,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _isManager(poolId);
 
         emit UpdateBalanceSheetManager(centrifugeId, poolId, who, canManage);
-        sender.sendUpdateBalanceSheetManager{value: _payment()}(centrifugeId, poolId, who, canManage, refund);
+        sender.sendUpdateBalanceSheetManager{value: msgValue()}(centrifugeId, poolId, who, canManage, refund);
     }
 
     /// @inheritdoc IHub
@@ -272,7 +269,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         emit UpdateRestriction(centrifugeId, poolId, scId, payload);
-        sender.sendUpdateRestriction{value: _payment()}(centrifugeId, poolId, scId, payload, extraGasLimit, refund);
+        sender.sendUpdateRestriction{value: msgValue()}(centrifugeId, poolId, scId, payload, extraGasLimit, refund);
     }
 
     /// @inheritdoc IHub
@@ -290,7 +287,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         emit UpdateVault(poolId, scId, assetId, vaultOrFactory, kind);
-        sender.sendUpdateVault{value: _payment()}(poolId, scId, assetId, vaultOrFactory, kind, extraGasLimit, refund);
+        sender.sendUpdateVault{value: msgValue()}(poolId, scId, assetId, vaultOrFactory, kind, extraGasLimit, refund);
     }
 
     /// @inheritdoc IHub
@@ -308,9 +305,9 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         emit UpdateContract(centrifugeId, poolId, scId, target, payload);
-        sender.sendTrustedContractUpdate{value: _payment()}(
-            centrifugeId, poolId, scId, target, payload, extraGasLimit, refund
-        );
+        sender.sendTrustedContractUpdate{
+            value: msgValue()
+        }(centrifugeId, poolId, scId, target, payload, extraGasLimit, refund);
     }
 
     /// @inheritdoc IHub
@@ -468,9 +465,9 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         multiAdapter.setAdapters(centrifugeId, poolId, localAdapters, threshold, recoveryIndex);
 
-        sender.sendSetPoolAdapters{value: _payment()}(
-            centrifugeId, poolId, remoteAdapters, threshold, recoveryIndex, refund
-        );
+        sender.sendSetPoolAdapters{
+            value: msgValue()
+        }(centrifugeId, poolId, remoteAdapters, threshold, recoveryIndex, refund);
     }
 
     /// @inheritdoc IHub
@@ -480,7 +477,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     {
         _isManager(poolId);
 
-        sender.sendUpdateGatewayManager{value: _payment()}(centrifugeId, poolId, who, canManage, refund);
+        sender.sendUpdateGatewayManager{value: msgValue()}(centrifugeId, poolId, who, canManage, refund);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -500,7 +497,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         require(address(manager) != address(0), InvalidRequestManager());
         require(msg.sender == address(manager), NotAuthorized());
 
-        sender.sendRequestCallback{value: _payment()}(poolId, scId, assetId, payload, extraGasLimit, refund);
+        sender.sendRequestCallback{value: msgValue()}(poolId, scId, assetId, payload, extraGasLimit, refund);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -629,6 +626,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @dev Ensure the sender is a pool admin
     function _isManager(PoolId poolId) internal view {
-        require(hubRegistry.manager(poolId, msg.sender), IHub.NotManager());
+        require(hubRegistry.manager(poolId, msgSender()), IHub.NotManager());
     }
 }

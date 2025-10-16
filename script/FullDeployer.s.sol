@@ -197,7 +197,6 @@ contract FullActionBatcher is CoreActionBatcher {
 
         // Rely vaultRouter
         report.routerEscrow.rely(address(report.vaultRouter));
-        report.core.gateway.rely(address(report.vaultRouter));
 
         // Rely adminSafe
         if (address(report.layerZeroAdapter) != address(0)) {
@@ -357,14 +356,12 @@ contract FullDeployer is CoreDeployer {
         );
 
         asyncRequestManager = AsyncRequestManager(
-            payable(
-                create3(
+            payable(create3(
                     generateSalt("asyncRequestManager-2"),
                     abi.encodePacked(
                         type(AsyncRequestManager).creationCode, abi.encode(globalEscrow, refundEscrowFactory, batcher)
                     )
-                )
-            )
+                ))
         );
 
         syncManager = SyncManager(
@@ -502,7 +499,7 @@ contract FullDeployer is CoreDeployer {
         batchRequestManager = BatchRequestManager(
             create3(
                 generateSalt("batchRequestManager"),
-                abi.encodePacked(type(BatchRequestManager).creationCode, abi.encode(hubRegistry, batcher))
+                abi.encodePacked(type(BatchRequestManager).creationCode, abi.encode(hubRegistry, gateway, batcher))
             )
         );
 

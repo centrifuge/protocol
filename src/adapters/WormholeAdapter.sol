@@ -24,7 +24,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     using CastLib for bytes32;
 
     /// @dev Cost of executing `receiveWormholeMessages()` except entrypoint.handle()
-    uint256 public constant RECEIVE_COST = 4000;
+    uint256 public constant RECEIVE_COST = 120_000;
 
     uint16 public immutable localWormholeId;
     IMessageHandler public immutable entrypoint;
@@ -91,9 +91,9 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         WormholeDestination memory destination = destinations[centrifugeId];
         require(destination.wormholeId != 0, UnknownChainId());
 
-        uint64 sequence = relayer.sendPayloadToEvm{value: msg.value}(
-            destination.wormholeId, destination.addr, payload, 0, gasLimit + RECEIVE_COST, localWormholeId, refund
-        );
+        uint64 sequence = relayer.sendPayloadToEvm{
+            value: msg.value
+        }(destination.wormholeId, destination.addr, payload, 0, gasLimit + RECEIVE_COST, localWormholeId, refund);
 
         adapterData = bytes32(bytes8(sequence));
     }
