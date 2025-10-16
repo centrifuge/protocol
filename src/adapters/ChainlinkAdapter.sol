@@ -21,7 +21,7 @@ import {IMessageHandler} from "../core/messaging/interfaces/IMessageHandler.sol"
 import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 
 /// @title  Chainlink Adapter
-/// @notice Routing contract that integrates with Chainlink Chainlink
+/// @notice Routing contract that integrates with Chainlink CCIP
 contract ChainlinkAdapter is Auth, IChainlinkAdapter {
     using CastLib for *;
 
