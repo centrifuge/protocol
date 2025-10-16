@@ -2277,6 +2277,9 @@ contract BatchRequestManagerAuthTest is BatchRequestManagerBaseTest {
         batchRequestManager.approveDeposits{
             value: COST
         }(poolId, scId, USDC, 1, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND);
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, 1, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND);
     }
 
     function testApproveRedeemsUnauthorized() public {
