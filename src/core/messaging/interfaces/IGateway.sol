@@ -142,11 +142,9 @@ interface IGateway is IMessageHandler, IRecoverable {
     // Batching
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Calls a method that should be in the same contract as the caller, as a callback.
-    ///         The method called will be wrapped inside startBatching and endBatching,
-    ///         so any method call inside that requires messaging will be batched.
-    /// @dev    Helper contract that enables integrations to automatically batch multiple cross-chain transactions.
-    ///         Should be used like:
+    /// @notice Automatic batching of cross-chain transactions through a callback.
+    ///         Any cross-chain transactions triggered in this callback will automatically be batched.
+    /// @dev    Should be used like:
     ///         ```
     ///         contract Integration {
     ///             IGateway gateway;
