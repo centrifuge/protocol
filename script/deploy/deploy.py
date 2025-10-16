@@ -46,7 +46,7 @@ Examples:
 
     parser.add_argument("network", nargs="?", help="Network name (must match env/<network>.json)")
     parser.add_argument("step", nargs="?", help="Deployment step", choices=[
-        "deploy:protocol", "deploy:full", "wire:adapters",
+        "deploy:protocol", "deploy:full", "deploy:adapters", "wire:adapters",
         "deploy:test", "verify:protocol", "dump:config", "release:sepolia"
     ])
     parser.add_argument("--catapulta", action="store_true", help="Use Catapulta for deployment")
@@ -161,7 +161,7 @@ def main():
             print_info(f"Deployment mode: {'Catapulta' if args.catapulta else 'Forge'}")
 
             # Validate network configuration for deployment and wiring steps
-            if args.step in ["deploy:protocol", "deploy:full", "wire:adapters", "deploy:test"]:
+            if args.step in ["deploy:protocol", "deploy:full", "deploy:adapters", "wire:adapters", "deploy:test"]:
                 env_loader.validate_network()
 
             # Set up deployment runner and verifier (only for deployment steps)
@@ -230,6 +230,14 @@ def main():
             else:
                 # Forge would only get there if the --verify has completed
                 verify_success = verifier.verify_contracts("LaunchDeployer")
+
+        elif args.step == "deploy:adapters":
+            print_section(f"Deploying adapters only for {args.network}")
+            deploy_success = runner.run_deploy("OnlyAdapters")
+            # After deploying with forge, also run our verifier to merge env/latest into env/<network>.json
+            if deploy_success:
+                print_section(f"Verifying deployment for {args.network}")
+                verify_success = verifier.verify_contracts("OnlyAdapters")
 
         elif args.step == "wire:adapters":
             print_step(f"Wiring adapters for {args.network}")

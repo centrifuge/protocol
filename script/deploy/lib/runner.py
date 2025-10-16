@@ -56,7 +56,13 @@ class DeploymentRunner:
 
     def run_deploy(self, script_name: str) -> bool:
         """Run a forge script deployment"""
+        # Default location: script/<ScriptName>.s.sol
         self.script_path = self.env_loader.root_dir / "script" / f"{script_name}.s.sol"
+        # Fallback for hidden helpers (adapters-only, etc.)
+        if not self.script_path.exists():
+            hidden_path = self.env_loader.root_dir / "script" / "deploy" / "solidityHelpers" / f"{script_name}.s.sol"
+            if hidden_path.exists():
+                self.script_path = hidden_path
         print_subsection(f"Deploying {script_name}.s.sol")
         print_step(f"Deployment Info:")
         print_info(f"Script: {script_name}")

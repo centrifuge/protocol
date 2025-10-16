@@ -57,7 +57,6 @@
     "spoke": "0x7D5FD9ea432C9129e1d63583d8B7f296a8Bd8325",
     "vaultRouter": "0xb475437349d3421DF096375322c457ffA722EeFC",
     "balanceSheet": "0xFBF70982edDfbdfe13DFaE44804F65fc34030988",
-    "axelarAdapter": "0x39Df703A2bAEBBaE4e5f9e8340d37bC2F6CfdBcA",
     "hubHelpers": "0x1a1570daFb05b0A796faB21A718B09FF2bd62DEe",
     "contractUpdater": "0xa5494011Ee5d80838Cd10A2C2f388fC964a764af",
     "onOfframpManagerFactory": "0xefe3119872B211bB631DEbD252BCdd96d3f890e1",
@@ -75,13 +74,18 @@
     "oracleValuation": "0x1D12411346b11fafc8a5F9aEadc1b49A2Ee190af",
     "navManager": "0x0048191F985b7FeDadE9bc53e02074898c455a1E",
     "simplePriceManager": "0x5070777F95d2085964A1f647bF9abB0A42399365",
-    "layerZeroAdapter": "0x751449A0C26ab28eBC661bef3ebB90e2064d5631"
+    "layerZeroAdapter": "0xDD54D55533Fc3a0755428c3c8fc069A651F9E6Ce"
   },
   "deploymentInfo": {
     "deploy:protocol": {
       "gitCommit": "f5ca86f8",
       "timestamp": "2025-10-15T12:27:24Z",
       "version": "v3.1.1"
+    },
+    "deploy:adapters": {
+      "gitCommit": "e54f27b1",
+      "timestamp": "2025-10-16T08:28:21Z",
+      "version": "test-v3.0.1"
     }
   }
 }

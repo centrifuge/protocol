@@ -22,7 +22,6 @@ contract WireAdapters is Script {
     address private sourceWormholeAddr;  // Source Wormhole adapter address (if deployed)
     address private sourceLayerZeroAddr; // Source LayerZero adapter address (if deployed)
     address private sourceAxelarAddr;    // Source Axelar adapter address (if deployed)
-    uint8 constant GAS_MULTIPLIER = 10; // 10%
 
     /// @notice Detects and stores source adapter addresses from source network config
     /// @dev Checks if adapter is marked for deployment and the address exists
@@ -140,7 +139,6 @@ contract WireAdapters is Script {
                     remoteAdapters[count] = IAdapter(sourceLayerZeroAddr);
                     count++;
                     bytes memory layerZeroData = abi.encode(
-                        GAS_MULTIPLIER,
                         uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
                         remoteLayerZeroAddr
                     );
@@ -156,7 +154,6 @@ contract WireAdapters is Script {
                     remoteAdapters[count] = IAdapter(sourceAxelarAddr);
                     count++;
                     bytes memory axelarData = abi.encode(
-                        GAS_MULTIPLIER,
                         vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
                         vm.toString(remoteAxelarAddr)
                     );
