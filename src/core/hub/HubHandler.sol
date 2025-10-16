@@ -108,10 +108,6 @@ contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
     ) external auth {
         shareClassManager.updateShares(centrifugeId, poolId, scId, amount, isIssuance);
 
-        if (isSnapshot) {
-            shareClassManager.settle(centrifugeId, poolId, scId);
-        }
-
         holdings.setSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
     }
 
