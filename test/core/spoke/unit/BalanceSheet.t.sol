@@ -109,7 +109,6 @@ contract BalanceSheetTest is Test {
             abi.encodeWithSelector(IPoolEscrowProvider.escrow.selector, POOL_A),
             abi.encode(escrow)
         );
-        vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.isBatching.selector), abi.encode(false));
 
         vm.startPrank(AUTH);
         balanceSheet.file("spoke", address(spoke));
@@ -243,10 +242,10 @@ contract BalanceSheetTestNoteDeposit is BalanceSheetTest {
         balanceSheet.deposit(POOL_A, SC_1, erc20, 0, AMOUNT);
     }
 
-    function testNoteDeposit(bool managerOrAuth) public {
+    function testNoteDeposit() public {
         _mockEscrowDeposit(erc20, 0, AMOUNT);
 
-        vm.prank(managerOrAuth ? MANAGER : AUTH);
+        vm.prank(MANAGER);
         vm.expectEmit();
         emit IBalanceSheet.NoteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT, ASSET_PRICE);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
@@ -261,7 +260,7 @@ contract BalanceSheetTestNoteDeposit is BalanceSheetTest {
     function testNoteDepositZero() public {
         _mockEscrowDeposit(erc20, 0, 0);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, 0);
 
         (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
@@ -271,7 +270,7 @@ contract BalanceSheetTestNoteDeposit is BalanceSheetTest {
     function testNoteDepositTwice() public {
         _mockEscrowDeposit(erc20, 0, AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
 
@@ -285,7 +284,7 @@ contract BalanceSheetTestNoteDeposit is BalanceSheetTest {
     function testNoteDepositPriceOverridingPrice() public {
         _mockEscrowDeposit(erc20, 0, AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.overridePricePoolPerAsset(POOL_A, SC_1, ASSET_20, IDENTITY_PRICE);
 
         vm.expectEmit();
@@ -301,16 +300,14 @@ contract BalanceSheetTestDeposit is BalanceSheetTest {
         balanceSheet.deposit(POOL_A, SC_1, erc20, 0, AMOUNT);
     }
 
-    function testDepositERC20(bool managerOrAuth) public {
+    function testDepositERC20() public {
         _mockEscrowDeposit(erc20, 0, AMOUNT);
 
         vm.mockCall(
-            erc20,
-            abi.encodeWithSelector(IERC20.transferFrom.selector, managerOrAuth ? MANAGER : AUTH, escrow, AMOUNT),
-            abi.encode(true)
+            erc20, abi.encodeWithSelector(IERC20.transferFrom.selector, MANAGER, escrow, AMOUNT), abi.encode(true)
         );
 
-        vm.prank(managerOrAuth ? MANAGER : AUTH);
+        vm.prank(MANAGER);
         vm.expectEmit();
         emit IBalanceSheet.NoteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT, ASSET_PRICE);
         vm.expectEmit();
@@ -323,11 +320,11 @@ contract BalanceSheetTestDeposit is BalanceSheetTest {
 
         vm.mockCall(
             address(erc6909),
-            abi.encodeWithSelector(IERC6909.transferFrom.selector, AUTH, escrow, TOKEN_ID, AMOUNT),
+            abi.encodeWithSelector(IERC6909.transferFrom.selector, MANAGER, escrow, TOKEN_ID, AMOUNT),
             abi.encode(true)
         );
 
-        vm.prank(AUTH);
+        vm.prank(MANAGER);
         balanceSheet.deposit(POOL_A, SC_1, address(erc6909), TOKEN_ID, AMOUNT);
     }
 }
@@ -339,10 +336,10 @@ contract BalanceSheetTestWithdraw is BalanceSheetTest {
         balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT);
     }
 
-    function testWithdraw(bool managerOrAuth) public {
+    function testWithdraw() public {
         _mockEscrowWithdraw(erc20, 0, AMOUNT);
 
-        vm.prank(managerOrAuth ? MANAGER : AUTH);
+        vm.prank(MANAGER);
         vm.expectEmit();
         emit IBalanceSheet.Withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, ASSET_PRICE);
         balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT);
@@ -357,7 +354,7 @@ contract BalanceSheetTestWithdraw is BalanceSheetTest {
     function testWithdrawZero() public {
         _mockEscrowWithdraw(erc20, 0, 0);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, 0);
 
         (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
@@ -367,7 +364,7 @@ contract BalanceSheetTestWithdraw is BalanceSheetTest {
     function testWithdrawTwice() public {
         _mockEscrowWithdraw(erc20, 0, AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT);
         balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT);
 
@@ -381,7 +378,7 @@ contract BalanceSheetTestWithdraw is BalanceSheetTest {
     function testWithdrawOverridingPrice() public {
         _mockEscrowWithdraw(erc20, 0, AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.overridePricePoolPerAsset(POOL_A, SC_1, ASSET_20, IDENTITY_PRICE);
 
         vm.expectEmit();
@@ -397,10 +394,10 @@ contract BalanceSheetTestReserve is BalanceSheetTest {
         balanceSheet.reserve(POOL_A, SC_1, erc20, 0, AMOUNT);
     }
 
-    function testReserve(bool managerOrAuth) public {
+    function testReserve() public {
         vm.mockCall(escrow, abi.encodeWithSelector(IPoolEscrow.reserve.selector, SC_1, erc20, 0, AMOUNT), abi.encode());
 
-        vm.prank(managerOrAuth ? MANAGER : AUTH);
+        vm.prank(MANAGER);
         balanceSheet.reserve(POOL_A, SC_1, erc20, 0, AMOUNT);
     }
 }
@@ -412,12 +409,12 @@ contract BalanceSheetTestUnreserve is BalanceSheetTest {
         balanceSheet.unreserve(POOL_A, SC_1, erc20, 0, AMOUNT);
     }
 
-    function testReserve(bool managerOrAuth) public {
+    function testUnreserve() public {
         vm.mockCall(
             escrow, abi.encodeWithSelector(IPoolEscrow.unreserve.selector, SC_1, erc20, 0, AMOUNT), abi.encode()
         );
 
-        vm.prank(managerOrAuth ? MANAGER : AUTH);
+        vm.prank(MANAGER);
         balanceSheet.unreserve(POOL_A, SC_1, erc20, 0, AMOUNT);
     }
 }
@@ -429,10 +426,10 @@ contract BalanceSheetTestIssue is BalanceSheetTest {
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
     }
 
-    function testIssue(bool managerOrAuth) public {
+    function testIssue() public {
         _mockShareMint(AMOUNT);
 
-        vm.prank(managerOrAuth ? MANAGER : AUTH);
+        vm.prank(MANAGER);
         vm.expectEmit();
         emit IBalanceSheet.Issue(POOL_A, SC_1, TO, SHARE_PRICE, AMOUNT);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
@@ -445,7 +442,7 @@ contract BalanceSheetTestIssue is BalanceSheetTest {
     function testIssueTwice() public {
         _mockShareMint(AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
 
@@ -457,7 +454,7 @@ contract BalanceSheetTestIssue is BalanceSheetTest {
     function testIssueOverridingPrice() public {
         _mockShareMint(AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.overridePricePoolPerShare(POOL_A, SC_1, IDENTITY_PRICE);
 
         vm.expectEmit();
@@ -473,13 +470,13 @@ contract BalanceSheetTestRevoke is BalanceSheetTest {
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
     }
 
-    function testRevoke(bool managerOrAuth) public {
+    function testRevoke() public {
         _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(managerOrAuth ? MANAGER : AUTH, address(balanceSheet), AMOUNT);
+        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
 
-        vm.prank(managerOrAuth ? MANAGER : AUTH);
+        vm.prank(MANAGER);
         vm.expectEmit();
-        emit IBalanceSheet.Revoke(POOL_A, SC_1, managerOrAuth ? MANAGER : AUTH, SHARE_PRICE, AMOUNT);
+        emit IBalanceSheet.Revoke(POOL_A, SC_1, MANAGER, SHARE_PRICE, AMOUNT);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
 
         (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, SC_1);
@@ -489,9 +486,9 @@ contract BalanceSheetTestRevoke is BalanceSheetTest {
 
     function testRevokeTwice() public {
         _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT);
+        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
 
@@ -502,13 +499,13 @@ contract BalanceSheetTestRevoke is BalanceSheetTest {
 
     function testRevokeOverridingPrice() public {
         _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT);
+        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.overridePricePoolPerShare(POOL_A, SC_1, IDENTITY_PRICE);
 
         vm.expectEmit();
-        emit IBalanceSheet.Revoke(POOL_A, SC_1, AUTH, IDENTITY_PRICE, AMOUNT);
+        emit IBalanceSheet.Revoke(POOL_A, SC_1, MANAGER, IDENTITY_PRICE, AMOUNT);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
     }
 }
@@ -517,9 +514,9 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
     function testIssueAndThenRevokeSameAmount() public {
         _mockShareMint(AMOUNT);
         _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT);
+        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
 
@@ -531,9 +528,9 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
     function testIssueAndThenRevokeAndThenIssueSameAmount() public {
         _mockShareMint(AMOUNT);
         _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT);
+        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
@@ -546,9 +543,9 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
     function testIssueAndThenRevokeWithLessAmount() public {
         _mockShareMint(AMOUNT);
         _mockShareBurn(AMOUNT / 4);
-        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT / 4);
+        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT / 4);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT / 4);
 
@@ -560,9 +557,9 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
     function testIssueAndThenRevokeWithMoreAmount() public {
         _mockShareMint(AMOUNT);
         _mockShareBurn(2 * AMOUNT);
-        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), 2 * AMOUNT);
+        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), 2 * AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
         balanceSheet.revoke(POOL_A, SC_1, 2 * AMOUNT);
 
@@ -573,10 +570,10 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
 
     function testRevokeAndThenIssueAndThenRevokeSameAmount() public {
         _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT);
+        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
         _mockShareMint(AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
@@ -588,10 +585,10 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
 
     function testRevokeAndThenIssueSameAmount() public {
         _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT);
+        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
         _mockShareMint(AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
 
@@ -602,10 +599,10 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
 
     function testRevokeAndThenIssueWithLessAmount() public {
         _mockShareBurn(AMOUNT / 4);
-        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT / 4);
+        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT / 4);
         _mockShareMint(AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT / 4);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
 
@@ -616,10 +613,10 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
 
     function testRevokeAndThenIssueWithMoreAmount() public {
         _mockShareBurn(2 * AMOUNT);
-        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), 2 * AMOUNT);
+        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), 2 * AMOUNT);
         _mockShareMint(AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.revoke(POOL_A, SC_1, 2 * AMOUNT);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
 
@@ -636,10 +633,10 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
     }
 
-    function testSubmitQueuedAssets(bool managerOrAuth) public {
+    function testSubmitQueuedAssets() public {
         _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
 
-        vm.prank(managerOrAuth ? MANAGER : AUTH);
+        vm.prank(MANAGER);
         balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
 
         (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
@@ -649,7 +646,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     function testSubmitQueuedAssetsOverridingPrice() public {
         _mockSendUpdateHoldingAmount(ASSET_20, 0, IDENTITY_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.overridePricePoolPerAsset(POOL_A, SC_1, ASSET_20, IDENTITY_PRICE);
 
         vm.expectEmit();
@@ -664,7 +661,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         _mockEscrowWithdraw(erc20, 0, AMOUNT);
         _mockSendUpdateHoldingAmount(ASSET_20, AMOUNT * 2, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 0);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT * 3);
         balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT);
 
@@ -688,7 +685,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         _mockEscrowWithdraw(erc20, 0, AMOUNT * 3);
         _mockSendUpdateHoldingAmount(ASSET_20, AMOUNT * 2, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
         balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT * 3);
         balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
@@ -707,7 +704,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         _mockEscrowWithdraw(erc20, 0, AMOUNT);
         _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
         balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT);
         balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
@@ -726,7 +723,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         _mockEscrowDeposit(erc6909, TOKEN_ID, AMOUNT);
         _mockSendUpdateHoldingAmount(ASSET_20, AMOUNT, ASSET_PRICE, IS_DEPOSIT, !IS_SNAPSHOT, 0);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc6909, TOKEN_ID, AMOUNT);
         balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
@@ -741,7 +738,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     }
 
     function testSubmitQueuedAssetsTwice() public {
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
         balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
 
@@ -760,10 +757,10 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
         balanceSheet.submitQueuedShares{value: COST}(POOL_A, SC_1, EXTRA_GAS, REFUND);
     }
 
-    function testSubmitQueuedShares(bool managerOrAuth) public {
+    function testSubmitQueuedShares() public {
         _mockSendUpdateShares(0, !IS_ISSUANCE, IS_SNAPSHOT, 0);
 
-        vm.prank(managerOrAuth ? MANAGER : AUTH);
+        vm.prank(MANAGER);
         balanceSheet.submitQueuedShares{value: COST}(POOL_A, SC_1, EXTRA_GAS, REFUND);
 
         (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
@@ -774,7 +771,7 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
         _mockShareMint(AMOUNT);
         _mockSendUpdateShares(AMOUNT, IS_ISSUANCE, IS_SNAPSHOT, 0);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
 
         vm.expectEmit();
@@ -791,10 +788,10 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
 
     function testSubmitQueuedSharesWithDeltaNegative() public {
         _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT);
+        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
         _mockSendUpdateShares(AMOUNT, !IS_ISSUANCE, IS_SNAPSHOT, 0);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
         balanceSheet.submitQueuedShares{value: COST}(POOL_A, SC_1, EXTRA_GAS, REFUND);
     }
@@ -804,7 +801,7 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
         _mockSendUpdateShares(AMOUNT, IS_ISSUANCE, !IS_SNAPSHOT, 0);
         _mockEscrowDeposit(erc20, 0, AMOUNT);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
         balanceSheet.submitQueuedShares{value: COST}(POOL_A, SC_1, EXTRA_GAS, REFUND);
@@ -813,7 +810,7 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
     function testSubmitQueuedSharesTwice() public {
         _mockSendUpdateShares(0, IS_ISSUANCE, IS_SNAPSHOT, 2);
 
-        vm.startPrank(AUTH);
+        vm.startPrank(MANAGER);
         _mockSendUpdateShares(0, !IS_ISSUANCE, IS_SNAPSHOT, 0);
         balanceSheet.submitQueuedShares{value: COST}(POOL_A, SC_1, EXTRA_GAS, REFUND);
         _mockSendUpdateShares(0, !IS_ISSUANCE, IS_SNAPSHOT, 1);
@@ -834,12 +831,12 @@ contract BalanceSheetTestTransferSharesFrom is BalanceSheetTest {
     function testErrCannotTransferFromEndorsedContract() public {
         vm.mockCall(address(root), abi.encodeWithSelector(IEndorsements.endorsed.selector, FROM), abi.encode(true));
 
-        vm.prank(AUTH);
+        vm.prank(MANAGER);
         vm.expectRevert(IBalanceSheet.CannotTransferFromEndorsedContract.selector);
         balanceSheet.transferSharesFrom(POOL_A, SC_1, SENDER, FROM, TO, AMOUNT);
     }
 
-    function testOverrideAsset(bool managerOrAuth) public {
+    function testTransferSharesFrom() public {
         vm.mockCall(address(root), abi.encodeWithSelector(IEndorsements.endorsed.selector, FROM), abi.encode(false));
         vm.mockCall(
             share,
@@ -847,7 +844,7 @@ contract BalanceSheetTestTransferSharesFrom is BalanceSheetTest {
             abi.encode(true)
         );
 
-        vm.prank(managerOrAuth ? MANAGER : AUTH);
+        vm.prank(MANAGER);
         vm.expectEmit();
         emit IBalanceSheet.TransferSharesFrom(POOL_A, SC_1, SENDER, FROM, TO, AMOUNT);
         balanceSheet.transferSharesFrom(POOL_A, SC_1, SENDER, FROM, TO, AMOUNT);
@@ -861,8 +858,8 @@ contract BalanceSheetTestOverridePricePoolPerAsset is BalanceSheetTest {
         balanceSheet.overridePricePoolPerAsset(POOL_A, SC_1, ASSET_20, IDENTITY_PRICE);
     }
 
-    function testOverrideAsset(bool managerOrAuth) public {
-        vm.prank(managerOrAuth ? MANAGER : AUTH);
+    function testOverrideAsset() public {
+        vm.prank(MANAGER);
         balanceSheet.overridePricePoolPerAsset(POOL_A, SC_1, ASSET_20, IDENTITY_PRICE);
 
         assertEq(balanceSheet.pricePoolPerAsset(POOL_A, SC_1, ASSET_20).raw(), IDENTITY_PRICE.raw());
@@ -876,8 +873,8 @@ contract BalanceSheetTestOverridePricePoolPerShare is BalanceSheetTest {
         balanceSheet.overridePricePoolPerShare(POOL_A, SC_1, IDENTITY_PRICE);
     }
 
-    function testOverrideShare(bool managerOrAuth) public {
-        vm.prank(managerOrAuth ? MANAGER : AUTH);
+    function testOverrideShare() public {
+        vm.prank(MANAGER);
         balanceSheet.overridePricePoolPerShare(POOL_A, SC_1, IDENTITY_PRICE);
 
         assertEq(balanceSheet.pricePoolPerShare(POOL_A, SC_1).raw(), IDENTITY_PRICE.raw());
@@ -891,8 +888,8 @@ contract BalanceSheetTestResetPricePoolPerAsset is BalanceSheetTest {
         balanceSheet.resetPricePoolPerAsset(POOL_A, SC_1, ASSET_20);
     }
 
-    function testResetAsset(bool managerOrAuth) public {
-        vm.startPrank(managerOrAuth ? MANAGER : AUTH);
+    function testResetAsset() public {
+        vm.startPrank(MANAGER);
         balanceSheet.overridePricePoolPerAsset(POOL_A, SC_1, ASSET_20, IDENTITY_PRICE);
         balanceSheet.resetPricePoolPerAsset(POOL_A, SC_1, ASSET_20);
 
@@ -907,8 +904,8 @@ contract BalanceSheetTestResetPricePoolPerShare is BalanceSheetTest {
         balanceSheet.resetPricePoolPerShare(POOL_A, SC_1);
     }
 
-    function testResetShare(bool managerOrAuth) public {
-        vm.startPrank(managerOrAuth ? MANAGER : AUTH);
+    function testResetShare() public {
+        vm.startPrank(MANAGER);
         balanceSheet.overridePricePoolPerShare(POOL_A, SC_1, IDENTITY_PRICE);
         balanceSheet.resetPricePoolPerShare(POOL_A, SC_1);
 

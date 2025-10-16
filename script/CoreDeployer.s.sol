@@ -132,7 +132,6 @@ contract CoreActionBatcher is Constants {
         report.poolEscrowFactory.rely(address(report.spoke));
 
         // Rely balanceSheet
-        report.gateway.rely(address(report.balanceSheet));
         report.messageDispatcher.rely(address(report.balanceSheet));
 
         // Rely vaultRegistry
@@ -140,7 +139,6 @@ contract CoreActionBatcher is Constants {
         report.messageDispatcher.rely(address(report.vaultRegistry));
 
         // Rely hub
-        report.gateway.rely(address(report.hub));
         report.multiAdapter.rely(address(report.hub));
         report.accounting.rely(address(report.hub));
         report.holdings.rely(address(report.hub));

@@ -120,6 +120,7 @@ contract BaseTest is FullDeployer, Test, FullActionBatcher {
         );
 
         asyncRequestManager.depositSubsidy{value: 0.5 ether}(POOL_A);
+        balanceSheet.updateManager(POOL_A, address(this), true);
 
         // We should not use the block ChainID
         vm.chainId(BLOCK_CHAIN_ID);

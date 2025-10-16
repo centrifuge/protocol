@@ -173,8 +173,11 @@ contract NAVManager is INAVManager {
         AccountId gainAccount_ = gainAccount(centrifugeId);
         AccountId lossAccount_ = lossAccount(centrifugeId);
 
-        (, uint128 gainValue) = accounting.accountValue(poolId, gainAccount_);
-        (, uint128 lossValue) = accounting.accountValue(poolId, lossAccount_);
+        (bool gainIsPositive, uint128 gainValue) = accounting.accountValue(poolId, gainAccount_);
+        (bool lossIsPositive, uint128 lossValue) = accounting.accountValue(poolId, lossAccount_);
+
+        // Gain and loss accounts should never be negative
+        require(gainIsPositive && lossIsPositive, InvalidStateOfAccounts());
 
         uint256 count = (gainValue > 0 ? 1 : 0) + (lossValue > 0 ? 1 : 0);
         if (count == 0) return;

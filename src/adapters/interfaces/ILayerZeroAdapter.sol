@@ -83,7 +83,6 @@ struct LayerZeroSource {
 }
 
 struct LayerZeroDestination {
-    uint8 gasBufferPercentage;
     uint32 layerZeroEid;
     address addr;
 }
@@ -118,11 +117,7 @@ interface ILayerZeroAdapter is IAdapter, IAdapterWiring, ILayerZeroReceiver {
 
     /// @notice Returns the destination configuration for a given chain id
     /// @param centrifugeId The remote chain id
-    /// @return gasBufferPercentage multiplier applied to the gas estimation
     /// @return layerZeroEid The remote LayerZero Endpoint ID
     /// @return addr The address of the remote layerzero adapter
-    function destinations(uint16 centrifugeId)
-        external
-        view
-        returns (uint8 gasBufferPercentage, uint32 layerZeroEid, address addr);
+    function destinations(uint16 centrifugeId) external view returns (uint32 layerZeroEid, address addr);
 }

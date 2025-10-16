@@ -39,3 +39,26 @@ contract TestIdentityValuation is Test {
         assertEq(valuation.getQuote(POOL_B, SC_1, C6, 100 * 1e6), 100 * 1e18);
     }
 }
+
+contract TestIdentityValuationGetPrice is Test {
+    address hubRegistry = makeAddr("hubRegistry");
+    IdentityValuation valuation = new IdentityValuation(IHubRegistry(hubRegistry));
+
+    function testGetPriceReturnsOne() public view {
+        uint256 price = valuation.getPrice(POOL_A, SC_1, C6).raw();
+        assertEq(price, 1e18);
+    }
+
+    function testGetPriceAlwaysReturnsOne() public view {
+        // Test with different pool IDs, share class IDs, and asset IDs
+        assertEq(valuation.getPrice(POOL_A, SC_1, C6).raw(), 1e18);
+        assertEq(valuation.getPrice(POOL_B, SC_1, C18).raw(), 1e18);
+        assertEq(valuation.getPrice(POOL_A, SC_1, C18).raw(), 1e18);
+        assertEq(valuation.getPrice(POOL_B, SC_1, C6).raw(), 1e18);
+    }
+
+    function testGetPriceFuzz(uint64 poolId, bytes16 scId, uint128 assetId) public view {
+        uint256 price = valuation.getPrice(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId)).raw();
+        assertEq(price, 1e18);
+    }
+}
