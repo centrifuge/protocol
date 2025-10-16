@@ -22,6 +22,15 @@ struct Price {
     uint64 computedAt;
 }
 
+struct IssuancePerNetwork {
+    /// @dev The settled issuance for this network
+    uint128 issuance;
+    /// @dev Pending increases from remote issuances and transfers
+    uint128 pendingIncrease;
+    /// @dev Pending decreases from remote revocations and transfers
+    uint128 pendingDecrease;
+}
+
 interface IShareClassManager {
     //----------------------------------------------------------------------------------------------
     // Events
@@ -57,7 +66,7 @@ interface IShareClassManager {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Update the share class issuance
+    /// @notice Update the share class issuance by adding to pending increase/decrease
     /// @param centrifugeId Identifier of the chain
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
@@ -65,6 +74,12 @@ interface IShareClassManager {
     /// @param isIssuance Whether it is an issuance or revocation
     function updateShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint128 amount, bool isIssuance)
         external;
+
+    /// @notice Settle pending issuance changes for a network
+    /// @param centrifugeId Identifier of the chain
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    function settle(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external;
 
     /// @notice Adds a new share class to the given pool
     /// @param poolId Identifier of the pool
@@ -128,6 +143,16 @@ interface IShareClassManager {
     /// @param centrifugeId Identifier of the chain
     /// @return The share issuance on the specified network
     function issuance(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external view returns (uint128);
+
+    /// @notice Exposes pending issuance changes of a share class on a given network
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    /// @param centrifugeId Identifier of the chain
+    /// @return The pending share issuance changes on the specified network
+    function pendingIssuance(PoolId poolId, ShareClassId scId, uint16 centrifugeId)
+        external
+        view
+        returns (IssuancePerNetwork memory);
 
     /// @notice Determines the next share class id for the given pool
     /// @param poolId Identifier of the pool

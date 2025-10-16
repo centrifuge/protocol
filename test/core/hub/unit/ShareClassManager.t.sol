@@ -11,7 +11,7 @@ import {PricingLib} from "../../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {ShareClassManager} from "../../../../src/core/hub/ShareClassManager.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
+import {IShareClassManager, IssuancePerNetwork} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
 
 import "forge-std/Test.sol";
 
@@ -230,6 +230,19 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         emit IShareClassManager.RemoteIssueShares(centrifugeId, poolId, scId, amount);
         shareClass.updateShares(centrifugeId, poolId, scId, amount, true);
 
+        IssuancePerNetwork memory ipn = shareClass.pendingIssuance(poolId, scId, centrifugeId);
+        assertEq(ipn.issuance, 0, "Settled issuance should be zero");
+        assertEq(ipn.pendingIncrease, amount, "Pending increase should match");
+        assertEq(ipn.pendingDecrease, 0, "Pending decrease should be zero");
+
+        shareClass.settle(centrifugeId, poolId, scId);
+
+        ipn = shareClass.pendingIssuance(poolId, scId, centrifugeId);
+
+        assertEq(ipn.issuance, amount, "Settled issuance should match");
+        assertEq(ipn.pendingIncrease, 0, "Pending increase should be reset");
+        assertEq(ipn.pendingDecrease, 0, "Pending decrease should be zero");
+
         assertEq(shareClass.totalIssuance(poolId, scId), amount);
         (D18 pricePoolPerShare, uint64 computedAt) = shareClass.pricePoolPerShare(poolId, scId);
         assertEq(pricePoolPerShare.raw(), 0, "pricePoolPerShare metric should not be updated");
@@ -275,9 +288,10 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
     }
 
     function testDecreaseOverFlow() public {
-        // vm.expectRevert(ShareClassManager.DecreaseMoreThanIssued.selector); // Error doesn't exist
-        vm.expectRevert();
         shareClass.updateShares(centrifugeId, poolId, scId, 1, false);
+
+        vm.expectRevert(IShareClassManager.DecreaseMoreThanIssued.selector);
+        shareClass.settle(centrifugeId, poolId, scId);
     }
 
     function testAddShareClassInvalidNameEmpty() public {
