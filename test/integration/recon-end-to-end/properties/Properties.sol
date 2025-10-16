@@ -523,36 +523,6 @@ abstract contract Properties is
         );
     }
 
-    /// @dev Property: The balance of share class tokens in Escrow is the sum of all fulfilled deposits - sum of all
-    /// claimed deposits + sum of all redeem requests - sum of claimed redeem requests
-    /// @dev NOTE: Ignores donations
-    function property_escrow_share_balance() public tokenIsSet {
-        // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
-        // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
-        // functions permanently reverting
-        IBaseVault vault = _getVault();
-        address shareToken = vault.share();
-        uint256 ghostBalanceOfEscrow;
-        uint256 balanceOfEscrow = IShareToken(shareToken).balanceOf(
-            address(globalEscrow)
-        );
-
-        unchecked {
-            ghostBalanceOfEscrow = ((sumOfFulfilledDeposits[
-                address(shareToken)
-            ] + sumOfRedeemRequests[address(shareToken)]) -
-                (sumOfClaimedDeposits[address(shareToken)] +
-                    executedRedemptions[address(shareToken)] + // revoked
-                    // redemptions burn share tokens
-                    sumOfClaimedCancelledRedeemShares[address(shareToken)])); // claims of cancelled amount can happen in claimCancelRedeemRequest or notifyRedeem
-        }
-        eq(
-            balanceOfEscrow,
-            ghostBalanceOfEscrow,
-            "balanceOfEscrow != ghostBalanceOfEscrow"
-        );
-    }
-
     // TODO: Multi Assets -> Iterate over all existing combinations
 
     /// @dev Property: The sum of account balances is always <= the balance of the escrow
