@@ -178,9 +178,14 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(!isOutgoingBlocked[centrifugeId][adapterPoolId], OutgoingBlocked());
 
         cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
-        if (fuel >= cost) {
+        if (cost == type(uint256).max) {
+            // No estimation provided, send with available gas
+            adapter.send{value: fuel}(centrifugeId, batch, batchGasLimit, refund);
+        } else if (fuel >= cost) {
+            // Sufficient gas provided for estimation
             adapter.send{value: cost}(centrifugeId, batch, batchGasLimit, refund);
         } else if (unpaidMode) {
+            // Insufficient gas provided for estimation, store for repayment later
             _addUnpaidBatch(centrifugeId, batch, batchGasLimit);
             cost = 0;
         } else {

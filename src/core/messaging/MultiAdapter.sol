@@ -183,7 +183,9 @@ contract MultiAdapter is Auth, IMultiAdapter {
         IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
 
         for (uint256 i; i < adapters_.length; i++) {
-            total += adapters_[i].estimate(centrifugeId, payload, gasLimit);
+            uint256 estimate = adapters_[i].estimate(centrifugeId, payload, gasLimit);
+            if (estimate == type(uint256).max) return total = estimate;
+            else total += estimate;
         }
     }
 

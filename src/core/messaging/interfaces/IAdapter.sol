@@ -28,6 +28,6 @@ interface IAdapter {
     /// @param centrifugeId The destination chain ID
     /// @param payload The message payload to send
     /// @param gasLimit The gas limit for execution on the destination chain
-    /// @return The estimated cost in native gas tokens
+    /// @return The estimated cost in native gas tokens. If no estimation is possible, MUST return `type(uint256).max`
     function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256);
 }
