@@ -46,34 +46,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     /// === Potential Issues === ///
 
-    // forge test --match-test test_asyncVault_maxWithdraw_10 -vvv
-    function test_asyncVault_maxWithdraw_10() public {
-        shortcut_deployNewTokenPoolAndShare(
-            0,
-            8778664289070303075299151923959162754305582055552427094917892994,
-            false,
-            false,
-            true,
-            false
-        );
-
-        shortcut_deposit_sync(0, 0);
-
-        balanceSheet_issue(2217628569924748703);
-
-        shortcut_withdraw_and_claim_clamped(
-            1545396975049151431210270314788294139588999430773257358467053226428371,
-            1,
-            62646255437656557400577538483110178859161456931467934641438668326688823
-        );
-
-        asyncVault_maxWithdraw(
-            0,
-            0,
-            552145642103275777949766396659126973099380420
-        );
-    }
-
     /// === Categorized Issues === ///
 
     // forge test --match-test test_doomsday_zeroPrice_noPanics_3 -vvv
@@ -96,5 +68,47 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         balanceSheet_withdraw(0, 1);
 
         property_availableGtQueued();
+    }
+
+    // forge test --match-test test_property_authorizationBypass_0 -vvv
+    // NOTE: issue here: https://github.com/Recon-Fuzz/centrifuge-invariants/issues/10
+    function test_property_authorizationBypass_0() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        switch_actor(174920634904368324500);
+
+        balanceSheet_overridePricePoolPerShare(D18.wrap(0));
+
+        property_authorizationBypass();
+    }
+
+    // forge test --match-test test_asyncVault_maxWithdraw_6 -vvv
+    // NOTE: admin can cause withdraws to fail if the allocate insufficient reserves
+    // issue here: https://github.com/Recon-Fuzz/centrifuge-invariants/issues/9
+    function test_asyncVault_maxWithdraw_6() public {
+        shortcut_deployNewTokenPoolAndShare(
+            0,
+            5133034522568139688867726516420444120114859979835844169205038226137238,
+            false,
+            false,
+            true,
+            false
+        );
+
+        shortcut_deposit_sync(0, 0);
+
+        balanceSheet_issue(4982072670431461270);
+
+        shortcut_withdraw_and_claim_clamped(
+            275682026535535531214523369603174721404519600237692593863600962365642936,
+            1,
+            440723970389807847737712878058492487915750186421824605771738298891959171
+        );
+
+        asyncVault_maxWithdraw(
+            46,
+            0,
+            3504958222297179309436837969327488759080211702641964324755758
+        );
     }
 }
