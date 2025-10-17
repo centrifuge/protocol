@@ -279,6 +279,7 @@ abstract contract AsyncVaultCentrifugeProperties is
     ) public statelessTest {
         uint256 maxMintBefore = _getVault().maxMint(_getActor());
         uint256 maxDepositBefore = _getVault().maxDeposit(_getActor());
+        bool isAsyncVault = Helpers.isAsyncVault(address(_getVault()));
         require(maxMintBefore > 0, "must be able to mint");
 
         mintAmount = between(mintAmount, 1, maxMintBefore);
@@ -293,22 +294,20 @@ abstract contract AsyncVaultCentrifugeProperties is
             scId
         );
 
+        AsyncClaimState memory claimState;
+        if (isAsyncVault) {
+            claimState = _captureAsyncClaimStateBefore(
+                _getVault(),
+                _getActor()
+            );
+        }
+
         vm.prank(_getActor());
-        console2.log(" === Before asyncVault_maxMint mint === ");
         try _getVault().mint(mintAmount, _getActor()) returns (uint256 assets) {
-            console2.log(" === After asyncVault_maxMint mint === ");
             uint256 maxMintAfter = _getVault().maxMint(_getActor());
             uint256 maxDepositAfter = _getVault().maxDeposit(_getActor());
 
-            bool isAsyncVault = Helpers.isAsyncVault(address(_getVault()));
-
             if (isAsyncVault) {
-                // For async vaults, validate globalEscrow share transfers instead of poolEscrow
-                AsyncClaimState
-                    memory claimState = _captureAsyncClaimStateBefore(
-                        _getVault(),
-                        _getActor()
-                    );
                 claimState.sharesReturned = mintAmount;
                 _updateAsyncClaimStateAfter(
                     claimState,
