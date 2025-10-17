@@ -14,7 +14,7 @@ import {AccountId} from "../src/core/types/AccountId.sol";
 import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../src/core/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
+import {AssetId} from "../src/core/types/AssetId.sol";
 import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
 import {IShareToken} from "../src/core/spoke/interfaces/IShareToken.sol";
 import {VaultUpdateKind} from "../src/core/messaging/libraries/MessageLib.sol";

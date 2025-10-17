@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CoreDeployer} from "./CoreDeployer.s.sol";
+import {CoreDeployer} from "../../CoreDeployer.s.sol";
 
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
-
-import {Root} from "../../../src/admin/Root.sol";
-import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
-import {ProtocolGuardian} from "../../../src/admin/ProtocolGuardian.sol";
 
 import "forge-std/Script.sol";
 

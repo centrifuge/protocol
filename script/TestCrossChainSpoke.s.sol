@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {BaseTestData} from "./BaseTestData.s.sol";
 
 import {ERC20} from "../src/misc/ERC20.sol";
-import {D18, d18} from "../src/misc/types/D18.sol";
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../src/core/types/PoolId.sol";
