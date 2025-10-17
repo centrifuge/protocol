@@ -1148,11 +1148,18 @@ abstract contract Properties is
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
+
+        // Check if this holding is a liability to determine the correct account type
+        bool isLiability = holdings.isLiability(poolId, scId, assetId);
+        AccountType accountType = isLiability
+            ? AccountType.Liability
+            : AccountType.Asset;
+
         AccountId accountId = holdings.accountId(
             poolId,
             scId,
             assetId,
-            uint8(AccountType.Asset)
+            uint8(accountType)
         );
         (, uint128 accountValue) = accounting.accountValue(poolId, accountId);
         uint128 holdingsValue = holdings.value(poolId, scId, assetId);
