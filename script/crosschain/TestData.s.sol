@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseTestData} from "./BaseTestData.s.sol";
+import {BaseTestData} from "../BaseTestData.s.sol";
 
-import {ERC20} from "../src/misc/ERC20.sol";
-import {d18} from "../src/misc/types/D18.sol";
-import {CastLib} from "../src/misc/libraries/CastLib.sol";
+import {ERC20} from "../../src/misc/ERC20.sol";
+import {d18} from "../../src/misc/types/D18.sol";
+import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../src/core/types/PoolId.sol";
-import {AccountId} from "../src/core/types/AccountId.sol";
-import {ShareClassId} from "../src/core/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
+import {PoolId} from "../../src/core/types/PoolId.sol";
+import {AccountId} from "../../src/core/types/AccountId.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
 
-import {UpdateRestrictionMessageLib} from "../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import "forge-std/Script.sol";
 
