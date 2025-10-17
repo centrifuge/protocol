@@ -740,9 +740,6 @@ abstract contract AsyncVaultCentrifugeProperties is
             string.concat(operationName, ": reserved amount should not change")
         );
 
-        console2.log("state.totalBefore: ", state.totalBefore);
-        console2.log("uint128(assetAmount): ", uint128(assetAmount));
-        console2.log("state.totalAfter: ", state.totalAfter);
         t(
             state.totalBefore + uint128(assetAmount) == state.totalAfter,
             string.concat(
@@ -755,12 +752,19 @@ abstract contract AsyncVaultCentrifugeProperties is
         if (state.isNormalStateBefore && state.isNormalStateAfter) {
             // Scenario 1: Normal -> Normal (total > reserved before and after)
             // SyncVault: maxDeposit = maxReserve - availableBalance
+
+            // For Mint operations, convert assetAmount to shares; for Deposit, use as-is
+            uint256 expectedDecrease = (keccak256(bytes(operationName)) ==
+                keccak256(bytes("Mint")))
+                ? _getVault().convertToShares(assetAmount)
+                : assetAmount;
+
             t(
-                maxValueAfter == maxValueBefore - assetAmount,
+                maxValueAfter == maxValueBefore - expectedDecrease,
                 string.concat(
                     "Sync Normal->Normal: max",
                     operationName,
-                    " should decrease by exact asset amount"
+                    " should decrease by exact amount"
                 )
             );
         } else if (!state.isNormalStateBefore && !state.isNormalStateAfter) {
@@ -789,16 +793,40 @@ abstract contract AsyncVaultCentrifugeProperties is
             // PoolEscrow state transition effects on availableBalance calculation
             uint256 actualDecrease = maxValueBefore - maxValueAfter;
 
-            // The decrease is bounded by: (assetAmount - reserved) ≤ actualDecrease ≤ assetAmount
-            // This is because actualDecrease = totalBefore + assetAmount - reserved, where 0 ≤ totalBefore ≤
-            // reserved
+            // For Mint operations, we need to convert assetAmount to shares to compare in the same units
+            // For Deposit operations, both values are already in asset units
+            uint256 expectedAmount;
+            uint256 lowerBound;
+            uint256 upperBound;
+
+            if (keccak256(bytes(operationName)) == keccak256(bytes("Mint"))) {
+                // Convert assetAmount to shares for Mint operations
+                expectedAmount = _getVault().convertToShares(assetAmount);
+
+                // Convert reserved to shares as well for the lower bound
+                uint256 reservedInShares = state.reservedAfter > 0
+                    ? _getVault().convertToShares(state.reservedAfter)
+                    : 0;
+
+                lowerBound = expectedAmount > reservedInShares
+                    ? expectedAmount - reservedInShares
+                    : 0;
+                upperBound = expectedAmount;
+            } else {
+                // For Deposit operations, compare in asset units
+                expectedAmount = assetAmount;
+                lowerBound = assetAmount > state.reservedAfter
+                    ? assetAmount - state.reservedAfter
+                    : 0;
+                upperBound = assetAmount;
+            }
+
             t(
-                actualDecrease >= assetAmount - state.reservedAfter &&
-                    actualDecrease <= assetAmount,
+                actualDecrease >= lowerBound && actualDecrease <= upperBound,
                 string.concat(
                     "Sync Critical->Normal: max",
                     operationName,
-                    " decrease should be within [assetAmount - reserved, assetAmount]"
+                    " decrease should be within [expectedAmount - reserved, expectedAmount]"
                 )
             );
 
