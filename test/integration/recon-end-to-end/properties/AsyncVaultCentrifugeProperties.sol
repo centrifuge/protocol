@@ -396,11 +396,12 @@ abstract contract AsyncVaultCentrifugeProperties is
                     "maxMintManagerAfter in request should be 0 after maxMint"
                 );
             }
-        } catch {
+        } catch (bytes memory err) {
             // Determine vault type for proper validation
             bool isAsyncVault = Helpers.isAsyncVault(address(_getVault()));
+            bool expectedError = checkError(err, "VaultNotLinked()");
 
-            if (isAsyncVault) {
+            if (isAsyncVault && !expectedError) {
                 _validateAsyncMintFailure(mintAmount);
             } else {
                 console2.log(
@@ -474,11 +475,12 @@ abstract contract AsyncVaultCentrifugeProperties is
                     "shares withdrawn surpass maxWithdraw"
                 );
             }
-        } catch {
+        } catch (bytes memory err) {
             // Determine vault type for proper validation
             bool isAsyncVault = Helpers.isAsyncVault(address(_getVault()));
+            bool expectedError = checkError(err, "VaultNotLinked()");
 
-            if (isAsyncVault) {
+            if (isAsyncVault && !expectedError) {
                 bool unknownFailure = _validateAsyncWithdrawFailure(
                     withdrawAmount
                 );
