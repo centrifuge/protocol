@@ -136,6 +136,17 @@ interface IShareClassManager {
     /// @return The share issuance on the specified network
     function issuance(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external view returns (uint128);
 
+    /// @notice Returns the detailed issuance tracking (issuances and revocations) for a share class on a given network
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    /// @param centrifugeId Identifier of the chain
+    /// @return issuances The total accumulated amount of shares issued on this network
+    /// @return revocations The total accumulated amount of shares revoked on this network
+    function issuancePerNetwork(PoolId poolId, ShareClassId scId, uint16 centrifugeId)
+        external
+        view
+        returns (uint128 issuances, uint128 revocations);
+
     /// @notice Determines the next share class id for the given pool
     /// @param poolId Identifier of the pool
     /// @return scId Identifier of the next share class

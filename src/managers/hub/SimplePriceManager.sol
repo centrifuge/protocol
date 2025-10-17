@@ -99,7 +99,7 @@ contract SimplePriceManager is ISimplePriceManager {
             networkMetrics_.issuance, newIssuance, networkMetrics_.transferredIn, networkMetrics_.transferredOut
         );
 
-        metrics_.issuance = isIncrease) ? metrics_.issuance + issuanceDelta : metrics_.issuance - issuanceDelta;
+        metrics_.issuance = isIncrease ? metrics_.issuance + issuanceDelta : metrics_.issuance - issuanceDelta;
 
         metrics_.netAssetValue = metrics_.netAssetValue + netAssetValue - networkMetrics_.netAssetValue;
         networkMetrics_.netAssetValue = netAssetValue;
