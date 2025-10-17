@@ -102,6 +102,33 @@ abstract contract BaseTestData is LaunchDeployer {
         bytes32 shareClassMeta; // share class metadata
     }
 
+    // Cross-chain variants for hub-side scripts (PoolId uses hubCentrifugeId)
+    struct XcAsyncVaultParams {
+        uint16 hubCentrifugeId; // hub centrifugeId (where pool lives)
+        uint16 targetCentrifugeId; // spoke centrifugeId (where vault is deployed)
+        uint48 poolIndex;
+        ERC20 token;
+        AssetId assetId;
+        address admin;
+        string poolMetadata;
+        string shareClassName;
+        string shareClassSymbol;
+        bytes32 shareClassMeta;
+    }
+
+    struct XcSyncVaultParams {
+        uint16 hubCentrifugeId; // hub centrifugeId (where pool lives)
+        uint16 targetCentrifugeId; // spoke centrifugeId (where vault is deployed)
+        uint48 poolIndex;
+        ERC20 token;
+        AssetId assetId;
+        address admin;
+        string poolMetadata;
+        string shareClassName;
+        string shareClassSymbol;
+        bytes32 shareClassMeta;
+    }
+
     /**
      * @notice Deploy an async vault with the given parameters
      * @dev This sends cross-chain messages if targetCentrifugeId differs from the hub's centrifugeId
@@ -122,7 +149,7 @@ abstract contract BaseTestData is LaunchDeployer {
         // Set metadata
         hub.setPoolMetadata(poolId, bytes(params.poolMetadata));
         hub.addShareClass(poolId, params.shareClassName, params.shareClassSymbol, params.shareClassMeta);
-        
+
         // Notify
         hub.notifyPool(poolId, params.targetCentrifugeId, msg.sender);
         hub.notifyShareClass(
@@ -137,7 +164,7 @@ abstract contract BaseTestData is LaunchDeployer {
             address(asyncRequestManager).toBytes32(),
             msg.sender
         );
-        
+
         // Update balance sheet manager
         hub.updateBalanceSheetManager(
             poolId, params.targetCentrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender
@@ -152,7 +179,7 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
         hub.createAccount(poolId, AccountId.wrap(0x04), true);
-        
+
         // Initialize holding (single-chain semantics)
         hub.initializeHolding(
             poolId,
@@ -188,10 +215,7 @@ abstract contract BaseTestData is LaunchDeployer {
      * @return poolId The pool ID
      * @return scId The share class ID
      */
-    function deploySyncDepositVault(SyncVaultParams memory params)
-        internal
-        returns (PoolId poolId, ShareClassId scId)
-    {
+    function deploySyncDepositVault(SyncVaultParams memory params) internal returns (PoolId poolId, ShareClassId scId) {
         poolId = hubRegistry.poolId(params.targetCentrifugeId, params.poolIndex);
         asyncRequestManager.depositSubsidy(poolId);
 
@@ -205,7 +229,7 @@ abstract contract BaseTestData is LaunchDeployer {
         // Set metadata
         hub.setPoolMetadata(poolId, bytes(params.poolMetadata));
         hub.addShareClass(poolId, params.shareClassName, params.shareClassSymbol, params.shareClassMeta);
-        
+
         // Notify
         hub.notifyPool(poolId, params.targetCentrifugeId, msg.sender);
         hub.notifyShareClass(
@@ -220,7 +244,7 @@ abstract contract BaseTestData is LaunchDeployer {
             address(asyncRequestManager).toBytes32(),
             msg.sender
         );
-        
+
         // Configure balance sheet managers
         hub.updateBalanceSheetManager(
             poolId, params.targetCentrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender
@@ -234,7 +258,7 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
         hub.createAccount(poolId, AccountId.wrap(0x04), true);
-        
+
         // Initialize holding
         hub.initializeHolding(
             poolId,
@@ -273,15 +297,32 @@ abstract contract BaseTestData is LaunchDeployer {
             0,
             msg.sender
         );
+
+        // Test async redemption path for sync vaults
+        IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
+        SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(params.token)));
+
+        uint128 testDepositAmount = 1_000e6;
+        params.token.approve(address(vault), testDepositAmount);
+        vault.deposit(testDepositAmount, msg.sender);
+
+        uint256 shares = shareToken.balanceOf(msg.sender);
+        if (shares > 0) {
+            vault.requestRedeem(shares, msg.sender, msg.sender);
+        }
     }
 
     /**
      * @notice Perform full async vault test flow (deposit, withdraw, issue, redeem, etc.)
      * @dev This is the full test flow from TestData.s.sol, extracted for reuse
      */
-    function testAsyncVaultFlow(PoolId poolId, ShareClassId scId, AssetId assetId, ERC20 token, uint16 targetCentrifugeId)
-        internal
-    {
+    function testAsyncVaultFlow(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        ERC20 token,
+        uint16 targetCentrifugeId
+    ) internal {
         // Get vault
         IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
@@ -303,8 +344,7 @@ abstract contract BaseTestData is LaunchDeployer {
         uint32 nowIssueEpoch = batchRequestManager.nowIssueEpoch(poolId, scId, assetId);
         batchRequestManager.issueShares(poolId, scId, assetId, nowIssueEpoch, d18(1, 1), 0, msg.sender);
         balanceSheet.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS, msg.sender);
-        uint32 maxClaims =
-            batchRequestManager.maxDepositClaims(poolId, scId, msg.sender.toBytes32(), assetId);
+        uint32 maxClaims = batchRequestManager.maxDepositClaims(poolId, scId, msg.sender.toBytes32(), assetId);
         batchRequestManager.notifyDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims, msg.sender);
         vault.mint(1_000_000e18, msg.sender);
 
@@ -319,9 +359,8 @@ abstract contract BaseTestData is LaunchDeployer {
             scId,
             targetCentrifugeId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: bytes32(bytes20(msg.sender)),
-                validUntil: type(uint64).max
-            }).serialize(),
+                    user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max
+                }).serialize(),
             0,
             msg.sender
         );
@@ -365,6 +404,166 @@ abstract contract BaseTestData is LaunchDeployer {
         token.approve(address(vault), investAmount);
         vault.deposit(investAmount, msg.sender);
     }
+
+    // Cross-chain helpers (use hubCentrifugeId for poolId and fund XC calls)
+    function deployAsyncVaultXc(XcAsyncVaultParams memory params) internal returns (PoolId poolId, ShareClassId scId) {
+        if (xcGasPerCall == 0) {
+            xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
+        }
+        poolId = hubRegistry.poolId(params.hubCentrifugeId, params.poolIndex);
+        asyncRequestManager.depositSubsidy{value: 0.5 ether}(poolId);
+
+        opsGuardian.createPool(poolId, msg.sender, USD_ID);
+        hub.updateHubManager(poolId, params.admin, true);
+        scId = shareClassManager.previewNextShareClassId(poolId);
+
+        D18 pricePoolPerShare = d18(1, 1);
+        hub.setPoolMetadata(poolId, bytes(params.poolMetadata));
+        hub.addShareClass(poolId, params.shareClassName, params.shareClassSymbol, params.shareClassMeta);
+        hub.notifyPool{value: xcGasPerCall}(poolId, params.targetCentrifugeId, msg.sender);
+        hub.notifyShareClass{
+            value: xcGasPerCall
+        }(poolId, scId, params.targetCentrifugeId, address(redemptionRestrictionsHook).toBytes32(), msg.sender);
+        hub.setRequestManager{
+            value: xcGasPerCall
+        }(
+            poolId,
+            params.targetCentrifugeId,
+            IHubRequestManager(batchRequestManager),
+            address(asyncRequestManager).toBytes32(),
+            msg.sender
+        );
+        hub.updateBalanceSheetManager{
+            value: xcGasPerCall
+        }(poolId, params.targetCentrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender);
+        hub.updateBalanceSheetManager{
+            value: xcGasPerCall
+        }(poolId, params.targetCentrifugeId, address(params.admin).toBytes32(), true, msg.sender);
+        hub.createAccount(poolId, AccountId.wrap(0x01), true);
+        hub.createAccount(poolId, AccountId.wrap(0x02), false);
+        hub.createAccount(poolId, AccountId.wrap(0x03), false);
+        hub.createAccount(poolId, AccountId.wrap(0x04), true);
+        if (hubRegistry.isRegistered(params.assetId)) {
+            hub.initializeHolding(
+                poolId,
+                scId,
+                params.assetId,
+                identityValuation,
+                AccountId.wrap(0x01),
+                AccountId.wrap(0x02),
+                AccountId.wrap(0x03),
+                AccountId.wrap(0x04)
+            );
+        }
+        hub.updateVault{
+            value: xcGasPerCall
+        }(
+            poolId,
+            scId,
+            params.assetId,
+            address(asyncVaultFactory).toBytes32(),
+            VaultUpdateKind.DeployAndLink,
+            0,
+            msg.sender
+        );
+        hub.updateSharePrice(poolId, scId, pricePoolPerShare, uint64(block.timestamp));
+        hub.notifySharePrice{value: xcGasPerCall}(poolId, scId, params.targetCentrifugeId, msg.sender);
+        hub.notifyAssetPrice{value: xcGasPerCall}(poolId, scId, params.assetId, msg.sender);
+    }
+
+    function deploySyncDepositVaultXc(XcSyncVaultParams memory params)
+        internal
+        returns (PoolId poolId, ShareClassId scId)
+    {
+        if (xcGasPerCall == 0) {
+            xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
+        }
+        poolId = hubRegistry.poolId(params.hubCentrifugeId, params.poolIndex);
+        asyncRequestManager.depositSubsidy(poolId);
+
+        opsGuardian.createPool(poolId, msg.sender, USD_ID);
+        hub.updateHubManager(poolId, params.admin, true);
+        scId = shareClassManager.previewNextShareClassId(poolId);
+
+        D18 pricePoolPerShare = d18(1, 1);
+        hub.setPoolMetadata(poolId, bytes(params.poolMetadata));
+        hub.addShareClass(poolId, params.shareClassName, params.shareClassSymbol, params.shareClassMeta);
+        hub.notifyPool{value: xcGasPerCall}(poolId, params.targetCentrifugeId, msg.sender);
+        hub.notifyShareClass{
+            value: xcGasPerCall
+        }(poolId, scId, params.targetCentrifugeId, address(redemptionRestrictionsHook).toBytes32(), msg.sender);
+        hub.setRequestManager{
+            value: xcGasPerCall
+        }(
+            poolId,
+            params.targetCentrifugeId,
+            IHubRequestManager(batchRequestManager),
+            address(asyncRequestManager).toBytes32(),
+            msg.sender
+        );
+        hub.updateBalanceSheetManager{
+            value: xcGasPerCall
+        }(poolId, params.targetCentrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender);
+        hub.updateBalanceSheetManager{
+            value: xcGasPerCall
+        }(poolId, params.targetCentrifugeId, address(syncManager).toBytes32(), true, msg.sender);
+        hub.createAccount(poolId, AccountId.wrap(0x01), true);
+        hub.createAccount(poolId, AccountId.wrap(0x02), false);
+        hub.createAccount(poolId, AccountId.wrap(0x03), false);
+        hub.createAccount(poolId, AccountId.wrap(0x04), true);
+        if (hubRegistry.isRegistered(params.assetId)) {
+            hub.initializeHolding(
+                poolId,
+                scId,
+                params.assetId,
+                identityValuation,
+                AccountId.wrap(0x01),
+                AccountId.wrap(0x02),
+                AccountId.wrap(0x03),
+                AccountId.wrap(0x04)
+            );
+        }
+        hub.updateVault{
+            value: xcGasPerCall
+        }(
+            poolId,
+            scId,
+            params.assetId,
+            address(syncDepositVaultFactory).toBytes32(),
+            VaultUpdateKind.DeployAndLink,
+            0,
+            msg.sender
+        );
+        hub.updateSharePrice(poolId, scId, pricePoolPerShare, uint64(block.timestamp));
+        hub.notifySharePrice{value: xcGasPerCall}(poolId, scId, params.targetCentrifugeId, msg.sender);
+        hub.notifyAssetPrice{value: xcGasPerCall}(poolId, scId, params.assetId, msg.sender);
+        hub.updateContract{
+            value: xcGasPerCall
+        }(
+            poolId,
+            scId,
+            params.targetCentrifugeId,
+            address(syncManager).toBytes32(),
+            abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), params.assetId.raw(), type(uint128).max),
+            0,
+            msg.sender
+        );
+
+        // Test async redemption path for sync vaults (cross-chain variant)
+        // Note: vault may not exist yet if cross-chain messages haven't been relayed
+        try spoke.shareToken(poolId, scId) returns (IShareToken shareToken) {
+            address vaultAddr = shareToken.vault(address(params.token));
+            if (vaultAddr != address(0)) {
+                SyncDepositVault vault = SyncDepositVault(vaultAddr);
+                uint128 testDepositAmount = 1_000e6;
+                params.token.approve(address(vault), testDepositAmount);
+                try vault.deposit(testDepositAmount, msg.sender) {
+                    uint256 shares = shareToken.balanceOf(msg.sender);
+                    if (shares > 0) {
+                        vault.requestRedeem(shares, msg.sender, msg.sender);
+                    }
+                } catch {}
+            }
+        } catch {}
+    }
 }
-
-

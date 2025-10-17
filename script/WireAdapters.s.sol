@@ -11,7 +11,7 @@ import "forge-std/Script.sol";
 /// @notice Configures the source network's adapters to communicate with destination networks.
 /// @dev This script sets up one-directional communication (source → destination).
 ///      For bidirectional communication, the script must be run on each network separately.
-///      
+///
 ///      The script enforces symmetric adapter configuration:
 ///      - Only registers adapters that exist on BOTH source and destination networks
 ///      - Only wires adapters that are configured for the destination network
@@ -19,18 +19,18 @@ import "forge-std/Script.sol";
 ///
 ///      Intended for testnet use only.
 contract WireAdapters is Script {
-    address private sourceWormholeAddr;  // Source Wormhole adapter address (if deployed)
+    address private sourceWormholeAddr; // Source Wormhole adapter address (if deployed)
     address private sourceLayerZeroAddr; // Source LayerZero adapter address (if deployed)
-    address private sourceAxelarAddr;    // Source Axelar adapter address (if deployed)
+    address private sourceAxelarAddr; // Source Axelar adapter address (if deployed)
 
     /// @notice Detects and stores source adapter addresses from source network config
     /// @dev Checks if adapter is marked for deployment and the address exists
     /// @return addr The adapter address if found, address(0) if not found
-    function _maybeAddAdapter(
-        string memory config,
-        string memory adapterLabel,
-        string memory network
-    ) private pure returns (address addr) {
+    function _maybeAddAdapter(string memory config, string memory adapterLabel, string memory network)
+        private
+        pure
+        returns (address addr)
+    {
         string memory contractJsonPath;
         string memory deployJsonPath;
 
@@ -59,7 +59,7 @@ contract WireAdapters is Script {
         } catch {
             // treat as not deployed if key not found
             deploy = false;
-            console.log( adapterLabel, "not configured to be deployed on", network);
+            console.log(adapterLabel, "not configured to be deployed on", network);
             console.log("Skipping", adapterLabel);
             return address(0);
         }
@@ -67,7 +67,7 @@ contract WireAdapters is Script {
         try vm.parseJsonAddress(config, contractJsonPath) returns (address parsedAddr) {
             if (parsedAddr != address(0)) {
                 return parsedAddr;
-            } else { 
+            } else {
                 console.log("Unexpected:", adapterLabel, "is zero in config for", network);
             }
         } catch {
@@ -102,7 +102,8 @@ contract WireAdapters is Script {
 
         // Get list of destination networks to connect to
         string[] memory connectsTo = vm.parseJsonStringArray(sourceConfig, "$.network.connectsTo");
-        IProtocolGuardian protocolGuardian = IProtocolGuardian(vm.parseJsonAddress(sourceConfig, "$.contracts.protocolGuardian"));
+        IProtocolGuardian protocolGuardian =
+            IProtocolGuardian(vm.parseJsonAddress(sourceConfig, "$.contracts.protocolGuardian"));
 
         vm.startBroadcast();
 
@@ -124,8 +125,7 @@ contract WireAdapters is Script {
                     remoteAdapters[count] = IAdapter(sourceWormholeAddr);
                     count++;
                     bytes memory wormholeData = abi.encode(
-                        uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
-                        remoteWormholeAddr
+                        uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")), remoteWormholeAddr
                     );
                     protocolGuardian.wire(sourceWormholeAddr, remoteCentrifugeId, wormholeData);
                     console.log("Wired WormholeAdapter from source", sourceNetwork, "to destination", remoteNetwork);
@@ -139,8 +139,7 @@ contract WireAdapters is Script {
                     remoteAdapters[count] = IAdapter(sourceLayerZeroAddr);
                     count++;
                     bytes memory layerZeroData = abi.encode(
-                        uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
-                        remoteLayerZeroAddr
+                        uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerZero.layerZeroEid")), remoteLayerZeroAddr
                     );
                     protocolGuardian.wire(sourceLayerZeroAddr, remoteCentrifugeId, layerZeroData);
                     console.log("Wired LayerZeroAdapter from source", sourceNetwork, "to destination", remoteNetwork);
@@ -154,8 +153,7 @@ contract WireAdapters is Script {
                     remoteAdapters[count] = IAdapter(sourceAxelarAddr);
                     count++;
                     bytes memory axelarData = abi.encode(
-                        vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
-                        vm.toString(remoteAxelarAddr)
+                        vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"), vm.toString(remoteAxelarAddr)
                     );
                     protocolGuardian.wire(sourceAxelarAddr, remoteCentrifugeId, axelarData);
                     console.log("Wired AxelarAdapter from source", sourceNetwork, "to destination", remoteNetwork);
@@ -178,7 +176,7 @@ contract WireAdapters is Script {
                 protocolGuardian.setAdapters(remoteCentrifugeId, adaptersToRegister, threshold, recoveryIndex);
                 console.log("Registered", count, "source adapters on", vm.envString("NETWORK"));
                 console.log("Registered adapters for destination", remoteNetwork);
-            }            
+            }
         }
         vm.stopBroadcast();
     }

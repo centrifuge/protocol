@@ -20,6 +20,7 @@ import {LayerZeroAdapter} from "../../../src/adapters/LayerZeroAdapter.sol";
 /// @notice Deploys only messaging adapters, reusing existing core addresses from env/<network>.json
 contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
     using CastLib for *;
+
     WormholeAdapter public wormholeAdapter;
     AxelarAdapter public axelarAdapter;
     LayerZeroAdapter public layerZeroAdapter;
@@ -31,8 +32,6 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
     }
 
     function run() public {
-        
-
         string memory network = vm.envString("NETWORK");
         string memory config = _fetchConfig(network);
 
@@ -51,9 +50,15 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
         bool deployWormhole = false;
         bool deployAxelar = false;
         bool deployLayerZero = false;
-        try vm.parseJsonBool(config, "$.adapters.wormhole.deploy") returns (bool v1) { deployWormhole = v1; } catch {}
-        try vm.parseJsonBool(config, "$.adapters.axelar.deploy") returns (bool v2) { deployAxelar = v2; } catch {}
-        try vm.parseJsonBool(config, "$.adapters.layerZero.deploy") returns (bool v3) { deployLayerZero = v3; } catch {}
+        try vm.parseJsonBool(config, "$.adapters.wormhole.deploy") returns (bool v1) {
+            deployWormhole = v1;
+        } catch {}
+        try vm.parseJsonBool(config, "$.adapters.axelar.deploy") returns (bool v2) {
+            deployAxelar = v2;
+        } catch {}
+        try vm.parseJsonBool(config, "$.adapters.layerZero.deploy") returns (bool v3) {
+            deployLayerZero = v3;
+        } catch {}
 
         address deployerEOA = tx.origin; // the broadcaster EOA becomes initial ward
 
@@ -70,8 +75,7 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
                 create3(
                     generateSalt("wormholeAdapter"),
                     abi.encodePacked(
-                        type(WormholeAdapter).creationCode,
-                        abi.encode(multiAdapter, wormholeRelayer, deployerEOA)
+                        type(WormholeAdapter).creationCode, abi.encode(multiAdapter, wormholeRelayer, deployerEOA)
                     )
                 )
             );
@@ -131,5 +135,3 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
         vm.stopBroadcast();
     }
 }
-
-

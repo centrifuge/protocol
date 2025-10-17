@@ -57,7 +57,7 @@ contract TestData is BaseTestData {
         loadContractsFromConfig(config);
 
         vm.startBroadcast();
-        
+
         // Deploy and register test USDC
         ERC20 token = new ERC20(6);
         token.file("name", "USD Coin");
@@ -136,5 +136,4 @@ contract TestData is BaseTestData {
 
         vm.stopBroadcast();
     }
-
 }
