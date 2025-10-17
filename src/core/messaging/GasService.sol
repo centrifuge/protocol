@@ -60,7 +60,7 @@ contract GasService is IGasService {
         notifyPricePoolPerAsset = _gasValue(112224);
         notifyShareMetadata = _gasValue(122653);
         updateShareHook = _gasValue(97545);
-        initiateTransferShares = _gasValue(287761);
+        initiateTransferShares = _gasValue(286650);
         executeTransferShares = _gasValue(178642);
         updateRestriction = _gasValue(115624);
         trustedContractUpdate = _gasValue(142141);
@@ -71,7 +71,7 @@ contract GasService is IGasService {
         setRequestManager = _gasValue(106582);
         updateBalanceSheetManager = _gasValue(105313);
         updateHoldingAmount = _gasValue(305467);
-        updateShares = _gasValue(202669);
+        updateShares = _gasValue(202290);
         maxAssetPriceAge = _gasValue(111376);
         maxSharePriceAge = _gasValue(108262);
         updateGatewayManager = _gasValue(94102);
