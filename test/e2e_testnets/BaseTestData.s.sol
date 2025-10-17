@@ -548,22 +548,5 @@ abstract contract BaseTestData is LaunchDeployer {
             0,
             msg.sender
         );
-
-        // Test async redemption path for sync vaults (cross-chain variant)
-        // Note: vault may not exist yet if cross-chain messages haven't been relayed
-        try spoke.shareToken(poolId, scId) returns (IShareToken shareToken) {
-            address vaultAddr = shareToken.vault(address(params.token));
-            if (vaultAddr != address(0)) {
-                SyncDepositVault vault = SyncDepositVault(vaultAddr);
-                uint128 testDepositAmount = 1_000e6;
-                params.token.approve(address(vault), testDepositAmount);
-                try vault.deposit(testDepositAmount, msg.sender) {
-                    uint256 shares = shareToken.balanceOf(msg.sender);
-                    if (shares > 0) {
-                        vault.requestRedeem(shares, msg.sender, msg.sender);
-                    }
-                } catch {}
-            }
-        } catch {}
     }
 }
