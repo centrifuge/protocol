@@ -88,21 +88,30 @@ contract SimplePriceManager is ISimplePriceManager {
 
         NetworkMetrics storage networkMetrics_ = networkMetrics[poolId][centrifugeId];
         Metrics storage metrics_ = metrics[poolId];
-        uint128 issuance = shareClassManager.issuance(poolId, scId, centrifugeId);
+        uint128 newIssuance = shareClassManager.issuance(poolId, scId, centrifugeId);
 
-        metrics_.issuance = metrics_.issuance + issuance - networkMetrics_.issuance;
+        // When shares are transferred, the issuance in the SCM updates immediately,
+        // but in this contract they are tracked separately as transferredIn/Out.
+        // Here we get the diff between the current stale SPM issuance and the new SCM issuance,
+        // but we need to negate the transferred amounts to avoid double-counting them in the global issuance.
+        // This adjusted diff is then applied to the global issuance.
+        (uint128 issuanceDelta, bool isIncrease) = _calculateIssuanceDelta(
+            networkMetrics_.issuance, newIssuance, networkMetrics_.transferredIn, networkMetrics_.transferredOut
+        );
+
+        metrics_.issuance = isIncrease ? metrics_.issuance + issuanceDelta : metrics_.issuance - issuanceDelta;
+
         metrics_.netAssetValue = metrics_.netAssetValue + netAssetValue - networkMetrics_.netAssetValue;
+        networkMetrics_.netAssetValue = netAssetValue;
+        networkMetrics_.issuance = newIssuance;
+        networkMetrics_.transferredIn = 0;
+        networkMetrics_.transferredOut = 0;
 
         D18 pricePoolPerShare_ = pricePoolPerShare(poolId);
-
-        networkMetrics_.netAssetValue = netAssetValue;
-        networkMetrics_.issuance = issuance;
-
-        uint16[] storage networks_ = _notifiedNetworks[poolId];
-        uint256 networkCount = networks_.length;
         hub.updateSharePrice(poolId, scId, pricePoolPerShare_, uint64(block.timestamp));
 
-        for (uint256 i; i < networkCount; i++) {
+        uint16[] storage networks_ = _notifiedNetworks[poolId];
+        for (uint256 i; i < networks_.length; i++) {
             hub.notifySharePrice(poolId, scId, networks_[i], address(0));
         }
 
@@ -121,8 +130,8 @@ contract SimplePriceManager is ISimplePriceManager {
         require(scId.index() == 1, InvalidShareClass());
         NetworkMetrics storage fromMetrics = networkMetrics[poolId][fromCentrifugeId];
         NetworkMetrics storage toMetrics = networkMetrics[poolId][toCentrifugeId];
-        fromMetrics.issuance -= sharesTransferred;
-        toMetrics.issuance += sharesTransferred;
+        fromMetrics.transferredOut += sharesTransferred;
+        toMetrics.transferredIn += sharesTransferred;
 
         emit Transfer(poolId, scId, fromCentrifugeId, toCentrifugeId, sharesTransferred);
     }
@@ -139,5 +148,23 @@ contract SimplePriceManager is ISimplePriceManager {
     function pricePoolPerShare(PoolId poolId) public view returns (D18) {
         Metrics memory metrics_ = metrics[poolId];
         return metrics_.issuance == 0 ? d18(1, 1) : d18(metrics_.netAssetValue) / d18(metrics_.issuance);
+    }
+
+    function _calculateIssuanceDelta(
+        uint128 oldIssuance,
+        uint128 newIssuance,
+        uint128 transferredIn,
+        uint128 transferredOut
+    ) internal pure returns (uint128 delta, bool isIncrease) {
+        // transferredIn was already added to SCM, so needs to be subtracted
+        // transferredOut was already removed from SCM, so needs to be added back
+        // delta = (newIssuance - oldIssuance) - transferredIn + transferredOut
+        // which is the same as (newIssuance + transferredOut) - (oldIssuance + transferredIn)
+        // and avoids potential underflow
+        uint128 adjustedNew = newIssuance + transferredOut;
+        uint128 adjustedOld = oldIssuance + transferredIn;
+
+        if (adjustedNew >= adjustedOld) return (adjustedNew - adjustedOld, true);
+        else return (adjustedOld - adjustedNew, false);
     }
 }

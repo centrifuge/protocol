@@ -122,8 +122,8 @@ contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
         uint128 extraGasLimit,
         address refund
     ) external payable auth {
-        shareClassManager.updateShares(originCentrifugeId, poolId, scId, amount, false);
         shareClassManager.updateShares(targetCentrifugeId, poolId, scId, amount, true);
+        shareClassManager.updateShares(originCentrifugeId, poolId, scId, amount, false);
 
         holdings.callOnTransferSnapshot(poolId, scId, originCentrifugeId, targetCentrifugeId, amount);
 

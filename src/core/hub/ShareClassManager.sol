@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
-import {IShareClassManager, ShareClassMetadata, Price} from "./interfaces/IShareClassManager.sol";
+import {IShareClassManager, ShareClassMetadata, Price, IssuancePerNetwork} from "./interfaces/IShareClassManager.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
@@ -21,7 +21,8 @@ contract ShareClassManager is Auth, IShareClassManager {
     mapping(PoolId => mapping(ShareClassId => uint128)) public totalIssuance;
     mapping(PoolId => mapping(ShareClassId => Price)) public pricePoolPerShare;
     mapping(PoolId => mapping(ShareClassId => ShareClassMetadata)) public metadata;
-    mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => uint128))) public issuance;
+    mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => IssuancePerNetwork))) public
+        issuancePerNetwork;
 
     constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
         hubRegistry = hubRegistry_;
@@ -79,13 +80,16 @@ contract ShareClassManager is Auth, IShareClassManager {
         auth
     {
         require(exists(poolId, scId_), ShareClassNotFound());
-        require(isIssuance || issuance[poolId][scId_][centrifugeId] >= amount, DecreaseMoreThanIssued());
 
-        uint128 newTotalIssuance =
-            isIssuance ? totalIssuance[poolId][scId_] + amount : totalIssuance[poolId][scId_] - amount;
-        totalIssuance[poolId][scId_] = newTotalIssuance;
-        uint128 newIssuancePerNetwork = isIssuance ? issuance[poolId][scId_][centrifugeId] + amount : issuance[poolId][scId_][centrifugeId] - amount; // forgefmt: disable-line
-        issuance[poolId][scId_][centrifugeId] = newIssuancePerNetwork;
+        IssuancePerNetwork storage ipn = issuancePerNetwork[poolId][scId_][centrifugeId];
+
+        if (isIssuance) {
+            ipn.issuances += amount;
+            totalIssuance[poolId][scId_] += amount;
+        } else {
+            ipn.revocations += amount;
+            totalIssuance[poolId][scId_] -= amount;
+        }
 
         if (isIssuance) emit RemoteIssueShares(centrifugeId, poolId, scId_, amount);
         else emit RemoteRevokeShares(centrifugeId, poolId, scId_, amount);
@@ -108,6 +112,13 @@ contract ShareClassManager is Auth, IShareClassManager {
     /// @inheritdoc IShareClassManager
     function exists(PoolId poolId, ShareClassId scId_) public view returns (bool) {
         return shareClassIds[poolId][scId_];
+    }
+
+    /// @inheritdoc IShareClassManager
+    function issuance(PoolId poolId, ShareClassId scId_, uint16 centrifugeId) public view returns (uint128) {
+        IssuancePerNetwork storage ipn = issuancePerNetwork[poolId][scId_][centrifugeId];
+        require(ipn.issuances >= ipn.revocations, NegativeIssuance());
+        return ipn.issuances - ipn.revocations;
     }
 
     //----------------------------------------------------------------------------------------------
