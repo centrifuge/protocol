@@ -46,13 +46,32 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     /// === Potential Issues === ///
 
-    // forge test --match-test test_asyncVault_maxMint_4 -vvv
-    function test_asyncVault_maxMint_4() public {
-        shortcut_deployNewTokenPoolAndShare(15, 1, true, false, false, false);
+    // forge test --match-test test_asyncVault_maxWithdraw_10 -vvv
+    function test_asyncVault_maxWithdraw_10() public {
+        shortcut_deployNewTokenPoolAndShare(
+            0,
+            8778664289070303075299151923959162754305582055552427094917892994,
+            false,
+            false,
+            true,
+            false
+        );
 
-        shortcut_mint_sync(0, 1043787997448711703416);
+        shortcut_deposit_sync(0, 0);
 
-        asyncVault_maxMint(0, 0, 0);
+        balanceSheet_issue(2217628569924748703);
+
+        shortcut_withdraw_and_claim_clamped(
+            1545396975049151431210270314788294139588999430773257358467053226428371,
+            1,
+            62646255437656557400577538483110178859161456931467934641438668326688823
+        );
+
+        asyncVault_maxWithdraw(
+            0,
+            0,
+            552145642103275777949766396659126973099380420
+        );
     }
 
     /// === Categorized Issues === ///
@@ -64,19 +83,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
 
         doomsday_zeroPrice_noPanics();
-    }
-
-    // forge test --match-test test_asyncVault_maxDeposit_11 -vvv
-    // NOTE: see issue here: https://github.com/Recon-Fuzz/centrifuge-invariants/issues/4
-    // forge test --match-test test_asyncVault_maxDeposit_1 -vvv
-    function test_asyncVault_maxDeposit_1() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(0, 0);
-
-        hub_addShareClass(203001861288931809357260237786);
-
-        asyncVault_maxDeposit(0, 2, 0);
     }
 
     // forge test --match-test test_property_availableGtQueued_26 -vvv
