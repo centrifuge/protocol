@@ -2,17 +2,17 @@
 pragma solidity 0.8.28;
 
 import {CoreDeployer} from "./CoreDeployer.s.sol";
+import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 
-import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
-import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
+import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
 
 import "forge-std/Script.sol";
 
-import {JsonRegistry} from "../../utils/JsonRegistry.s.sol";
-import {AxelarAdapter} from "../../../src/adapters/AxelarAdapter.sol";
-import {WormholeAdapter} from "../../../src/adapters/WormholeAdapter.sol";
-import {LayerZeroAdapter} from "../../../src/adapters/LayerZeroAdapter.sol";
+import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
+import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
+import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 
 /// @title OnlyAdapters
 /// @notice Deploys only messaging adapters, reusing existing core addresses from env/<network>.json
