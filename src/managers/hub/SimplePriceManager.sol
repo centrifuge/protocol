@@ -99,11 +99,7 @@ contract SimplePriceManager is ISimplePriceManager {
             networkMetrics_.issuance, newIssuance, networkMetrics_.transferredIn, networkMetrics_.transferredOut
         );
 
-        if (isIncrease) {
-            metrics_.issuance = metrics_.issuance + issuanceDelta;
-        } else {
-            metrics_.issuance = metrics_.issuance - issuanceDelta;
-        }
+        metrics_.issuance = isIncrease) ? metrics_.issuance + issuanceDelta : metrics_.issuance - issuanceDelta;
 
         metrics_.netAssetValue = metrics_.netAssetValue + netAssetValue - networkMetrics_.netAssetValue;
         networkMetrics_.netAssetValue = netAssetValue;
@@ -168,10 +164,7 @@ contract SimplePriceManager is ISimplePriceManager {
         uint128 adjustedNew = newIssuance + transferredOut;
         uint128 adjustedOld = oldIssuance + transferredIn;
 
-        if (adjustedNew >= adjustedOld) {
-            return (adjustedNew - adjustedOld, true);
-        } else {
-            return (adjustedOld - adjustedNew, false);
-        }
+        if (adjustedNew >= adjustedOld) return (adjustedNew - adjustedOld, true);
+        else return (adjustedOld - adjustedNew, false);
     }
 }
