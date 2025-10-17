@@ -92,7 +92,7 @@ contract SimplePriceManager is ISimplePriceManager {
 
         // When shares are transferred, the issuance in the SCM updates immediately,
         // but in this contract they are tracked separately as transferredIn/Out.
-        // Here we get the diff between the old SPM issuance and the new SCM issuance,
+        // Here we get the diff between the current stale SPM issuance and the new SCM issuance,
         // but we need to negate the transferred amounts to avoid double-counting them in the global issuance.
         // This adjusted diff is then applied to the global issuance.
         (uint128 issuanceDelta, bool isIncrease) = _calculateIssuanceDelta(
