@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseTestData} from "./BaseTestData.s.sol";
+import {BaseTestData} from "../BaseTestData.s.sol";
 
-import {ERC20} from "../src/misc/ERC20.sol";
+import {ERC20} from "../../src/misc/ERC20.sol";
 
-import {PoolId} from "../src/core/types/PoolId.sol";
-import {ShareClassId} from "../src/core/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
+import {PoolId} from "../../src/core/types/PoolId.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
 
 import "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
@@ -34,7 +34,7 @@ import {console} from "forge-std/console.sol";
  *   source env/latest/11155111-latest.json
  *
  *   # First run (uses timestamp-based offset)
- *   forge script script/TestCrossChainHub.s.sol:TestCrossChainHub \
+ *   forge script script/crosschain/TestCrossChainHub.s.sol:TestCrossChainHub \
  *     --rpc-url $RPC_URL \
  *     --broadcast \
  *     -vvvv
@@ -42,7 +42,7 @@ import {console} from "forge-std/console.sol";
  *   # Subsequent runs with custom offset to avoid conflicts
  *   export POOL_INDEX_OFFSET=500
  *   export TEST_RUN_ID="adapter-test-1"
- *   forge script script/TestCrossChainHub.s.sol:TestCrossChainHub \
+ *   forge script script/crosschain/TestCrossChainHub.s.sol:TestCrossChainHub \
  *     --rpc-url $RPC_URL \
  *     --broadcast \
  *     -vvvv
@@ -127,7 +127,7 @@ contract TestCrossChainHub is BaseTestData {
         console.log("   export HUB_CENTRIFUGE_ID=%s", hubCentrifugeId);
         console.log("   export POOL_INDEX_OFFSET=%s", poolIndexOffset);
         console.log("   export TEST_RUN_ID=%s", testRunId);
-        console.log("   forge script script/TestCrossChainSpoke.s.sol:TestCrossChainSpoke --rpc-url $RPC_URL -vvvv");
+        console.log("   forge script script/crosschain/TestCrossChainSpoke.s.sol:TestCrossChainSpoke --rpc-url $RPC_URL -vvvv");
     }
 
     function _processNetwork(string memory spokeNetworkName) internal {
@@ -262,3 +262,4 @@ contract TestCrossChainHub is BaseTestData {
         console.log("  Cross-chain messages sent to spokeCentrifugeId:", spokeCentrifugeId);
     }
 }
+

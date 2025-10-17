@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAdapter} from "../src/core/messaging/interfaces/IAdapter.sol";
+import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 
-import {IProtocolGuardian} from "../src/admin/interfaces/IProtocolGuardian.sol";
+import {IProtocolGuardian} from "../../src/admin/interfaces/IProtocolGuardian.sol";
 
 import "forge-std/Script.sol";
 
@@ -181,3 +181,4 @@ contract WireAdapters is Script {
         vm.stopBroadcast();
     }
 }
+

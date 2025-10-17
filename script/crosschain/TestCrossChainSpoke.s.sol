@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseTestData} from "./BaseTestData.s.sol";
+import {BaseTestData} from "../BaseTestData.s.sol";
 
-import {ERC20} from "../src/misc/ERC20.sol";
-import {CastLib} from "../src/misc/libraries/CastLib.sol";
+import {ERC20} from "../../src/misc/ERC20.sol";
+import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../src/core/types/PoolId.sol";
-import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
-import {IShareToken} from "../src/core/spoke/interfaces/IShareToken.sol";
-import {ShareClassId, newShareClassId} from "../src/core/types/ShareClassId.sol";
+import {PoolId} from "../../src/core/types/PoolId.sol";
+import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
+import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
+import {ShareClassId, newShareClassId} from "../../src/core/types/ShareClassId.sol";
 
-import {UpdateRestrictionMessageLib} from "../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {SyncDepositVault} from "../src/vaults/SyncDepositVault.sol";
-import {IAsyncVault} from "../src/vaults/interfaces/IAsyncVault.sol";
+import {SyncDepositVault} from "../../src/vaults/SyncDepositVault.sol";
+import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 
 import "forge-std/Script.sol";
 
@@ -40,7 +40,7 @@ import "forge-std/Script.sol";
  *   export HUB_CENTRIFUGE_ID=1
  *   export POOL_INDEX_OFFSET=123  # Must match hub script
  *   export TEST_RUN_ID="adapter-test-1"  # Optional
- *   forge script script/TestCrossChainSpoke.s.sol:TestCrossChainSpoke \
+ *   forge script script/crosschain/TestCrossChainSpoke.s.sol:TestCrossChainSpoke \
  *     --rpc-url $RPC_URL \
  *     --broadcast \
  *     -vvvv
@@ -244,3 +244,4 @@ contract TestCrossChainSpoke is BaseTestData {
         }
     }
 }
+
