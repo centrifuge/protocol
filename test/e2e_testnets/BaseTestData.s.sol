@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {LaunchDeployer} from "../../script/LaunchDeployer.s.sol";
-
 import {ERC20} from "../../src/misc/ERC20.sol";
 import {D18, d18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
@@ -36,6 +34,8 @@ import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../../src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../../src/vaults/factories/SyncDepositVaultFactory.sol";
+
+import {LaunchDeployer} from "../../script/LaunchDeployer.s.sol";
 
 import "forge-std/Script.sol";
 

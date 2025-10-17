@@ -12,7 +12,14 @@ import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHa
 import "forge-std/Test.sol";
 
 import {LayerZeroAdapter} from "../../../src/adapters/LayerZeroAdapter.sol";
-import { ILayerZeroAdapter, IAdapter, MessagingParams, MessagingFee, MessagingReceipt, Origin } from "../../../src/adapters/interfaces/ILayerZeroAdapter.sol";
+import {
+    ILayerZeroAdapter,
+    IAdapter,
+    MessagingParams,
+    MessagingFee,
+    MessagingReceipt,
+    Origin
+} from "../../../src/adapters/interfaces/ILayerZeroAdapter.sol";
 
 contract MockLayerZeroEndpoint is Mock {
     function send(MessagingParams calldata params, address refundAddress)

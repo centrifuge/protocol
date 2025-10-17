@@ -181,4 +181,3 @@ contract WireAdapters is Script {
         vm.stopBroadcast();
     }
 }
-

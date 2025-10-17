@@ -2,7 +2,15 @@
 pragma solidity 0.8.28;
 
 import {CoreInput} from "./CoreDeployer.s.sol";
-import { FullInput, FullActionBatcher, FullDeployer, AdaptersInput, WormholeInput, AxelarInput, LayerZeroInput } from "./FullDeployer.s.sol";
+import {
+    FullInput,
+    FullActionBatcher,
+    FullDeployer,
+    AdaptersInput,
+    WormholeInput,
+    AxelarInput,
+    LayerZeroInput
+} from "./FullDeployer.s.sol";
 
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 

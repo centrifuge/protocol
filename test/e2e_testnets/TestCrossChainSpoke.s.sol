@@ -244,4 +244,3 @@ contract TestCrossChainSpoke is BaseTestData {
         }
     }
 }
-

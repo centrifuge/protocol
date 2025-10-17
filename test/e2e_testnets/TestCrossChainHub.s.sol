@@ -127,7 +127,9 @@ contract TestCrossChainHub is BaseTestData {
         console.log("   export HUB_CENTRIFUGE_ID=%s", hubCentrifugeId);
         console.log("   export POOL_INDEX_OFFSET=%s", poolIndexOffset);
         console.log("   export TEST_RUN_ID=%s", testRunId);
-        console.log("   forge script script/crosschain/TestCrossChainSpoke.s.sol:TestCrossChainSpoke --rpc-url $RPC_URL -vvvv");
+        console.log(
+            "   forge script script/crosschain/TestCrossChainSpoke.s.sol:TestCrossChainSpoke --rpc-url $RPC_URL -vvvv"
+        );
     }
 
     function _processNetwork(string memory spokeNetworkName) internal {
@@ -262,4 +264,3 @@ contract TestCrossChainHub is BaseTestData {
         console.log("  Cross-chain messages sent to spokeCentrifugeId:", spokeCentrifugeId);
     }
 }
-

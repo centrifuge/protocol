@@ -14,10 +14,19 @@ import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IHubRequestManagerCallback} from "../../../src/core/hub/interfaces/IHubRequestManagerCallback.sol";
-import { IHubRequestManager, IHubRequestManagerNotifications } from "../../../src/core/hub/interfaces/IHubRequestManager.sol";
+import {
+    IHubRequestManager,
+    IHubRequestManagerNotifications
+} from "../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
 import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
-import { IBatchRequestManager, EpochInvestAmounts, EpochRedeemAmounts, UserOrder, QueuedOrder } from "../../../src/vaults/interfaces/IBatchRequestManager.sol";
+import {
+    IBatchRequestManager,
+    EpochInvestAmounts,
+    EpochRedeemAmounts,
+    UserOrder,
+    QueuedOrder
+} from "../../../src/vaults/interfaces/IBatchRequestManager.sol";
 
 import "forge-std/Test.sol";
 

@@ -4,7 +4,15 @@ pragma solidity 0.8.28;
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
 import {CoreInput} from "../../script/CoreDeployer.s.sol";
-import { FullInput, FullActionBatcher, FullDeployer, AdaptersInput, WormholeInput, AxelarInput, LayerZeroInput } from "../../script/FullDeployer.s.sol";
+import {
+    FullInput,
+    FullActionBatcher,
+    FullDeployer,
+    AdaptersInput,
+    WormholeInput,
+    AxelarInput,
+    LayerZeroInput
+} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
