@@ -530,18 +530,16 @@ abstract contract AsyncVaultCentrifugeProperties is
             uint256 maxRedeemAfter = _getVault().maxRedeem(_getActor());
             uint256 difference = maxRedeemBefore - redeemAmount;
 
-            // for optimizing the difference between the two
-            if (maxRedeemAfter > maxRedeemBefore) {
-                maxRedeemGreater = int256(maxRedeemAfter - maxRedeemBefore);
-            } else {
-                maxRedeemLess = int256(maxRedeemBefore - maxRedeemAfter);
-            }
-
             address poolEscrow = address(
                 poolEscrowFactory.escrow(_getVault().poolId())
             );
 
-            t(difference == maxRedeemAfter, "rounding error in maxRedeem");
+            // maxRedeemAfter needs to at least be decreased by the difference amount
+            gte(
+                difference,
+                maxRedeemAfter,
+                "maxRedeemAfter isn't sufficiently decreased"
+            );
 
             if (redeemAmount == maxRedeemBefore) {
                 (
