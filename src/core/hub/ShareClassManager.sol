@@ -21,8 +21,8 @@ contract ShareClassManager is Auth, IShareClassManager {
     mapping(PoolId => mapping(ShareClassId => uint128)) public totalIssuance;
     mapping(PoolId => mapping(ShareClassId => Price)) public pricePoolPerShare;
     mapping(PoolId => mapping(ShareClassId => ShareClassMetadata)) public metadata;
-    mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => IssuancePerNetwork))) internal
-        _issuancePerNetwork;
+    mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => IssuancePerNetwork))) public
+        issuancePerNetwork;
 
     constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
         hubRegistry = hubRegistry_;
@@ -81,7 +81,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     {
         require(exists(poolId, scId_), ShareClassNotFound());
 
-        IssuancePerNetwork storage ipn = _issuancePerNetwork[poolId][scId_][centrifugeId];
+        IssuancePerNetwork storage ipn = issuancePerNetwork[poolId][scId_][centrifugeId];
 
         if (isIssuance) {
             ipn.issuances += amount;
@@ -116,7 +116,7 @@ contract ShareClassManager is Auth, IShareClassManager {
 
     /// @inheritdoc IShareClassManager
     function issuance(PoolId poolId, ShareClassId scId_, uint16 centrifugeId) public view returns (uint128) {
-        IssuancePerNetwork storage ipn = _issuancePerNetwork[poolId][scId_][centrifugeId];
+        IssuancePerNetwork storage ipn = issuancePerNetwork[poolId][scId_][centrifugeId];
         require(ipn.issuances >= ipn.revocations, NegativeIssuance());
         return ipn.issuances - ipn.revocations;
     }
