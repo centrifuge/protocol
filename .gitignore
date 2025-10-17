@@ -15,6 +15,7 @@ lcov.info
 /echidna
 **/*.log
 **/anvil/*.json
+**/env/anvil.json
 **/anvil
 ## Recon Separate Configs
 /medusa-core

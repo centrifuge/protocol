@@ -1,41 +1,41 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {LaunchDeployer} from "./LaunchDeployer.s.sol";
+import {LaunchDeployer} from "../../script/LaunchDeployer.s.sol";
 
-import {ERC20} from "../src/misc/ERC20.sol";
-import {D18, d18} from "../src/misc/types/D18.sol";
-import {CastLib} from "../src/misc/libraries/CastLib.sol";
+import {ERC20} from "../../src/misc/ERC20.sol";
+import {D18, d18} from "../../src/misc/types/D18.sol";
+import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
-import {Hub} from "../src/core/hub/Hub.sol";
-import {Spoke} from "../src/core/spoke/Spoke.sol";
-import {PoolId} from "../src/core/types/PoolId.sol";
-import {AssetId} from "../src/core/types/AssetId.sol";
-import {AccountId} from "../src/core/types/AccountId.sol";
-import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
-import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
-import {ShareClassId} from "../src/core/types/ShareClassId.sol";
-import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
-import {IShareToken} from "../src/core/spoke/interfaces/IShareToken.sol";
-import {VaultUpdateKind} from "../src/core/messaging/libraries/MessageLib.sol";
-import {IHubRequestManager} from "../src/core/hub/interfaces/IHubRequestManager.sol";
+import {Hub} from "../../src/core/hub/Hub.sol";
+import {Spoke} from "../../src/core/spoke/Spoke.sol";
+import {PoolId} from "../../src/core/types/PoolId.sol";
+import {AssetId} from "../../src/core/types/AssetId.sol";
+import {AccountId} from "../../src/core/types/AccountId.sol";
+import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
+import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
+import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
+import {VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
+import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 
-import {OpsGuardian} from "../src/admin/OpsGuardian.sol";
-import {ProtocolGuardian} from "../src/admin/ProtocolGuardian.sol";
+import {OpsGuardian} from "../../src/admin/OpsGuardian.sol";
+import {ProtocolGuardian} from "../../src/admin/ProtocolGuardian.sol";
 
-import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
-import {UpdateRestrictionMessageLib} from "../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {RedemptionRestrictions} from "../../src/hooks/RedemptionRestrictions.sol";
+import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
+import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
 
-import {SyncManager} from "../src/vaults/SyncManager.sol";
-import {SyncDepositVault} from "../src/vaults/SyncDepositVault.sol";
-import {IAsyncVault} from "../src/vaults/interfaces/IAsyncVault.sol";
-import {ISyncManager} from "../src/vaults/interfaces/IVaultManagers.sol";
-import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
-import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
-import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
+import {SyncManager} from "../../src/vaults/SyncManager.sol";
+import {SyncDepositVault} from "../../src/vaults/SyncDepositVault.sol";
+import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
+import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
+import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
+import {AsyncVaultFactory} from "../../src/vaults/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "../../src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import "forge-std/Script.sol";
 
