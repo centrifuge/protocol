@@ -251,4 +251,37 @@ contract TestCases is BaseTest {
         assertEq(m2.price, sharePrice.raw(), "Share price mismatch");
         assertEq(m2.timestamp, block.timestamp.toUint64());
     }
+
+    function testTransferShares() public {
+        (PoolId poolId, ShareClassId scId) = testPoolCreation(true);
+        vm.stopPrank();
+
+        vm.mockCall(
+            address(hubHandler.sender()),
+            abi.encodeWithSignature(
+                "sendExecuteTransferShares(uint16,uint64,bytes16,bytes32,uint128,uint128,address)",
+                CHAIN_CP,
+                poolId.raw(),
+                scId.raw(),
+                INVESTOR,
+                100,
+                0,
+                REFUND
+            ),
+            abi.encode(0)
+        );
+
+        // Test that initiateTransferShares works correctly even before shares are issued
+        vm.prank(address(messageProcessor));
+        hubHandler.initiateTransferShares(
+            CHAIN_CV, // originCentrifugeId
+            CHAIN_CP, // targetCentrifugeId
+            poolId,
+            scId,
+            INVESTOR, // receiver
+            100, // amount
+            0, // extraGasLimit
+            REFUND
+        );
+    }
 }

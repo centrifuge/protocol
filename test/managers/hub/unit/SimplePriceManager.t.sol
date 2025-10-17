@@ -248,7 +248,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         assertEq(globalIssuance, 100);
         assertEq(globalNAV, netAssetValue);
 
-        (uint128 networkNAV, uint128 networkIssuance,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
+        (uint128 networkNAV, uint128 networkIssuance,,,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
         assertEq(networkNAV, netAssetValue);
         assertEq(networkIssuance, 100);
     }
@@ -413,11 +413,20 @@ contract SimplePriceManagerOnTransferTest is SimplePriceManagerTest {
         vm.prank(caller);
         priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, sharesTransferred);
 
-        (uint128 fromNAV, uint128 fromIssuance,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
-        (uint128 toNAV, uint128 toIssuance,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
+        (uint128 fromNAV, uint128 fromIssuance, uint128 fromTransferredIn, uint128 fromTransferredOut,,) =
+            priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
+        (uint128 toNAV, uint128 toIssuance, uint128 toTransferredIn, uint128 toTransferredOut,,) =
+            priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
 
-        assertEq(fromIssuance, 50); // 100 - 50
-        assertEq(toIssuance, 250); // 200 + 50
+        // Issuance should remain unchanged until next onUpdate
+        assertEq(fromIssuance, 100);
+        assertEq(toIssuance, 200);
+
+        // Transferred amounts should be updated
+        assertEq(fromTransferredOut, 50);
+        assertEq(fromTransferredIn, 0);
+        assertEq(toTransferredIn, 50);
+        assertEq(toTransferredOut, 0);
 
         // NAV should remain unchanged
         assertEq(fromNAV, 1000);
@@ -434,8 +443,8 @@ contract SimplePriceManagerOnTransferTest is SimplePriceManagerTest {
         vm.prank(caller);
         priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 0);
 
-        (, uint128 fromIssuance,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
-        (, uint128 toIssuance,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
+        (, uint128 fromIssuance,,,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
+        (, uint128 toIssuance,,,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
 
         assertEq(fromIssuance, 100);
         assertEq(toIssuance, 200);
@@ -445,5 +454,369 @@ contract SimplePriceManagerOnTransferTest is SimplePriceManagerTest {
         vm.expectRevert(ISimplePriceManager.InvalidShareClass.selector);
         vm.prank(caller);
         priceManager.onTransfer(POOL_A, SC_2, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 50);
+    }
+
+    function testOnTransferWithUpdate() public {
+        uint128 sharesTransferred = 50;
+
+        (, uint128 initialGlobalIssuance) = priceManager.metrics(POOL_A);
+        assertEq(initialGlobalIssuance, 300); // 100 + 200
+
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(50) // 100 - 50
+        );
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_2),
+            abi.encode(250) // 200 + 50
+        );
+
+        vm.prank(caller);
+        priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, sharesTransferred);
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
+
+        (, uint128 globalIssuance) = priceManager.metrics(POOL_A);
+        (, uint128 fromIssuance, uint128 fromTransferredIn, uint128 fromTransferredOut,,) =
+            priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
+        (, uint128 toIssuance, uint128 toTransferredIn, uint128 toTransferredOut,,) =
+            priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
+
+        // fromIssuance is now the same as in ShareClassManager
+        // global issuance remains unchanged
+        assertEq(globalIssuance, 300);
+
+        // toIssuance is still stale until we call onUpdate for that network
+        assertEq(fromIssuance, 50);
+        assertEq(toIssuance, 200);
+
+        assertEq(fromTransferredOut, 0);
+        assertEq(fromTransferredIn, 0);
+        assertEq(toTransferredIn, 50);
+        assertEq(toTransferredOut, 0);
+
+        // Update the first network again, just to make sure it doesn't break anything
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
+
+        (, globalIssuance) = priceManager.metrics(POOL_A);
+        (, fromIssuance, fromTransferredIn, fromTransferredOut,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
+        (, toIssuance, toTransferredIn, toTransferredOut,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
+
+        assertEq(globalIssuance, 300);
+        assertEq(fromIssuance, 50);
+        assertEq(toIssuance, 200);
+        assertEq(fromTransferredOut, 0);
+        assertEq(fromTransferredIn, 0);
+        assertEq(toTransferredIn, 50);
+        assertEq(toTransferredOut, 0);
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_2, 2000);
+
+        (, globalIssuance) = priceManager.metrics(POOL_A);
+        (, fromIssuance, fromTransferredIn, fromTransferredOut,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
+        (, toIssuance, toTransferredIn, toTransferredOut,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
+
+        assertEq(globalIssuance, 300);
+        assertEq(fromIssuance, 50);
+        assertEq(toIssuance, 250);
+        assertEq(fromTransferredOut, 0);
+        assertEq(fromTransferredIn, 0);
+        assertEq(toTransferredIn, 0);
+        assertEq(toTransferredOut, 0);
+
+        // Change in shares in ShareClassManager from remote issuance
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(80)
+        );
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1200);
+
+        (, globalIssuance) = priceManager.metrics(POOL_A);
+        (, fromIssuance, fromTransferredIn, fromTransferredOut,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
+        (, toIssuance, toTransferredIn, toTransferredOut,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
+
+        assertEq(globalIssuance, 330);
+        assertEq(fromIssuance, 80);
+        assertEq(toIssuance, 250);
+    }
+
+    function testOnTransferMultipleTransfersBeforeUpdate() public {
+        // Transfer 30 shares from network 1 to 2
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(70)
+        );
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_2),
+            abi.encode(230)
+        );
+
+        vm.prank(caller);
+        priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 30);
+
+        // Transfer another 20 shares from network 1 to 2
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(50)
+        );
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_2),
+            abi.encode(250)
+        );
+
+        vm.prank(caller);
+        priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 20);
+
+        (, uint128 fromIssuance, uint128 fromTransferredIn, uint128 fromTransferredOut,,) =
+            priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
+        (, uint128 toIssuance, uint128 toTransferredIn,,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
+
+        // Transferred amounts should accumulate
+        assertEq(fromTransferredOut, 50); // 30 + 20
+        assertEq(toTransferredIn, 50); // 30 + 20
+        assertEq(fromIssuance, 100); // Not updated yet
+        assertEq(toIssuance, 200); // Not updated yet
+
+        // Update network 1
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
+
+        (, uint128 globalIssuance) = priceManager.metrics(POOL_A);
+        (, fromIssuance, fromTransferredIn, fromTransferredOut,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
+
+        // Global issuance should remain 300 (100 + 200)
+        // because transferred amounts net to zero globally
+        assertEq(globalIssuance, 300);
+        assertEq(fromIssuance, 50);
+        assertEq(fromTransferredOut, 0); // Reset after update
+        assertEq(fromTransferredIn, 0);
+    }
+
+    function testOnTransferBidirectional() public {
+        // Transfer 30 shares from network 1 to 2
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(70)
+        );
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_2),
+            abi.encode(230)
+        );
+
+        vm.prank(caller);
+        priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 30);
+
+        // Transfer 10 shares back from network 2 to 1
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(80)
+        );
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_2),
+            abi.encode(220)
+        );
+
+        vm.prank(caller);
+        priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_2, CENTRIFUGE_ID_1, 10);
+
+        (, uint128 fromIssuance, uint128 fromTransferredIn, uint128 fromTransferredOut,,) =
+            priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
+        (, uint128 toIssuance, uint128 toTransferredIn, uint128 toTransferredOut,,) =
+            priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
+
+        // Network 1: out 30, in 10 = net out 20
+        assertEq(fromTransferredOut, 30);
+        assertEq(fromTransferredIn, 10);
+        assertEq(fromIssuance, 100); // Not updated yet
+
+        // Network 2: in 30, out 10 = net in 20
+        assertEq(toTransferredIn, 30);
+        assertEq(toTransferredOut, 10);
+        assertEq(toIssuance, 200); // Not updated yet
+
+        // Update network 1
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
+
+        (, uint128 globalIssuance) = priceManager.metrics(POOL_A);
+        (, fromIssuance, fromTransferredIn, fromTransferredOut,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
+
+        // Global should remain 300
+        assertEq(globalIssuance, 300);
+        // Network 1 issuance should be 80 (as in SCM)
+        assertEq(fromIssuance, 80);
+        // Transferred amounts should be reset
+        assertEq(fromTransferredOut, 0);
+        assertEq(fromTransferredIn, 0);
+    }
+}
+
+contract SimplePriceManagerIssuanceDeltaEdgeCasesTest is SimplePriceManagerTest {
+    function setUp() public override {
+        super.setUp();
+
+        // Initial update for both networks to set them up
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_2, 2000);
+    }
+
+    function testDeltaCalculationNoTransfers() public {
+        // Simple case: issuance increases with no transfers
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(150) // Increased from 100 to 150
+        );
+
+        (, uint128 initialGlobal) = priceManager.metrics(POOL_A);
+        assertEq(initialGlobal, 300);
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1500);
+
+        (, uint128 finalGlobal) = priceManager.metrics(POOL_A);
+        assertEq(finalGlobal, 350); // 300 + 50
+    }
+
+    function testDeltaCalculationWithTransferIn() public {
+        // Issuance increases but part of it is from transfers
+        // Transfer 30 in
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(130)
+        );
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_2),
+            abi.encode(170)
+        );
+
+        vm.prank(caller);
+        priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_2, CENTRIFUGE_ID_1, 30);
+
+        // Now update with SCM showing issuance of 150 (100 + 30 transferred + 20 new issuance)
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(150)
+        );
+
+        (, uint128 initialGlobal) = priceManager.metrics(POOL_A);
+        assertEq(initialGlobal, 300);
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1500);
+
+        (, uint128 finalGlobal) = priceManager.metrics(POOL_A);
+        // Delta = (150 + 0) - (100 + 30) = 150 - 130 = 20
+        // Global = 300 + 20 = 320
+        assertEq(finalGlobal, 320);
+    }
+
+    function testDeltaCalculationWithTransferOut() public {
+        // Issuance decreases from transfers
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(70)
+        );
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_2),
+            abi.encode(230)
+        );
+
+        vm.prank(caller);
+        priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 30);
+
+        // Update with new issuance showing 90 (70 from SCM after transfer + 20 new issuance)
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(90)
+        );
+
+        (, uint128 initialGlobal) = priceManager.metrics(POOL_A);
+        assertEq(initialGlobal, 300);
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1500);
+
+        (, uint128 finalGlobal) = priceManager.metrics(POOL_A);
+        // Delta = (90 + 30) - (100 + 0) = 120 - 100 = 20
+        // Global = 300 + 20 = 320
+        assertEq(finalGlobal, 320);
+    }
+
+    function testDeltaCalculationDecrease() public {
+        // Issuance decreases (revocation)
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(80) // Decreased from 100 to 80
+        );
+
+        (, uint128 initialGlobal) = priceManager.metrics(POOL_A);
+        assertEq(initialGlobal, 300);
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1200);
+
+        (, uint128 finalGlobal) = priceManager.metrics(POOL_A);
+        assertEq(finalGlobal, 280); // 300 - 20
+    }
+
+    function testDeltaCalculationDecreaseWithTransferIn() public {
+        // Net decrease despite transfer in
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(130)
+        );
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_2),
+            abi.encode(170)
+        );
+
+        vm.prank(caller);
+        priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_2, CENTRIFUGE_ID_1, 30);
+
+        // Now update showing net revocation: 110 (100 + 30 transferred - 20 revoked)
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(110)
+        );
+
+        (, uint128 initialGlobal) = priceManager.metrics(POOL_A);
+        assertEq(initialGlobal, 300);
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1500);
+
+        (, uint128 finalGlobal) = priceManager.metrics(POOL_A);
+        // Delta = (110 + 0) - (100 + 30) = 110 - 130 = -20 (decrease)
+        // Global = 300 - 20 = 280
+        assertEq(finalGlobal, 280);
     }
 }
