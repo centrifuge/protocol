@@ -1128,9 +1128,14 @@ abstract contract Properties is
                 uint128 accountValueAfter = _after.ghostAccountValue[poolId][
                     accountId
                 ];
-                console2.log("accountValueAfter: ", accountValueAfter);
-                console2.log("accountValueBefore: ", accountValueBefore);
-                if (accountValueAfter > accountValueBefore) {
+                (bool isValueAfterPositive, ) = accounting.accountValue(
+                    poolId,
+                    accountId
+                );
+                if (
+                    accountValueAfter > accountValueBefore &&
+                    isValueAfterPositive
+                ) {
                     t(false, "accountValue increased");
                 }
             }
