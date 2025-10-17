@@ -1273,6 +1273,7 @@ abstract contract Properties is
         // lte(totalIssuance, minted - burned, "total issuance is > issuedHubShares + issuedBalanceSheetShares");
     }
 
+    /// @dev Property: operations which increase deposits/shares don't decrease PPS
     function property_additions_dont_cause_ppfs_loss() public {
         if (currentOperation == OpType.ADD) {
             gte(
@@ -1288,6 +1289,7 @@ abstract contract Properties is
         }
     }
 
+    /// @dev Property: operations which remove deposits/shares don't decrease PPS
     function property_removals_dont_cause_ppfs_loss() public {
         if (currentOperation == OpType.REMOVE) {
             lte(
@@ -1696,8 +1698,7 @@ abstract contract Properties is
     /// @dev These properties verify the critical share queue flip logic that poses the greatest risk to protocol
     /// integrity
 
-    // TODO: come back to this, need a way to determine which shares joined/left queue before/after
-    // Property 3.2: Issue/Revoke Logic Correctness
+    /// @dev Property: Issue/Revoke Logic Correctness
     function property_shareQueueFlipLogic() public {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
@@ -1737,7 +1738,7 @@ abstract contract Properties is
         }
     }
 
-    // Property 3.1: Issue/Revoke Logic Correctness
+    /// @dev Property: Issue/Revoke Logic Correctness
     function property_deltaCheck() public {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
@@ -1783,8 +1784,7 @@ abstract contract Properties is
         }
     }
 
-    // Property 3.3: Verify flip detection and boundaries
-    /// @notice Verifies that flips between positive and negative net positions are correctly detected
+    /// @dev Property: flips between positive and negative net positions are correctly detected
     function property_shareQueueFlipBoundaries() public {
         PoolId[] memory pools = _getPools();
         for (uint256 i = 0; i < pools.length; i++) {
@@ -1839,8 +1839,7 @@ abstract contract Properties is
         }
     }
 
-    // Property 3.5: Net Position Commutativity
-    /// @notice Verifies that net position equals total issued minus total revoked (mathematical invariant)
+    /// @dev Property: net position equals total issued minus total revoked (mathematical invariant)
     function property_shareQueueCommutativity() public {
         // This property requires testing operation sequences
         // Best tested through specific handler sequences in integration tests
@@ -1869,8 +1868,7 @@ abstract contract Properties is
         }
     }
 
-    // Property 3.6 & 3.7: Queue Reset and Snapshot Logic
-    /// @notice Verifies queue submission logic and reset behavior
+    /// @dev Property: verifies queue submission logic and reset behavior
     function property_shareQueueSubmission() public {
         PoolId[] memory pools = _getPools();
         for (uint256 i = 0; i < pools.length; i++) {
@@ -1906,8 +1904,7 @@ abstract contract Properties is
         }
     }
 
-    // Property 3.8: Asset Counter Consistency
-    /// @notice Verifies that the asset counter accurately reflects non-empty asset queues
+    /// @dev Property: Verifies that the asset counter accurately reflects non-empty asset queues
     function property_shareQueueAssetCounter() public {
         PoolId[] memory pools = _getPools();
         for (uint256 i = 0; i < pools.length; i++) {
@@ -2386,6 +2383,7 @@ abstract contract Properties is
     //     }
     // }
 
+    /// @dev Property: authorization checks can't be bypassed
     function property_authorizationBypass() public {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
@@ -2405,6 +2403,7 @@ abstract contract Properties is
         );
     }
 
+    /// @dev Property: successful authorized calls must be made by authorized accounts
     function property_authorizationLevel() public {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
@@ -2436,6 +2435,7 @@ abstract contract Properties is
         }
     }
 
+    /// @dev Property: authorization changes are correctly tracked
     function property_authorizationChange() public {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();

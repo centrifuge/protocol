@@ -21,7 +21,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
     // TODO: change to 10 ** max(MockERC20(_getAsset()).decimals(), IShareToken(_getShareToken()).decimals())
     uint256 MAX_ROUNDING_ERROR = 10 ** 18;
 
-    /// @dev 7540-3	convertToAssets(totalSupply) == totalAssets unless price is 0.0
+    /// @dev Property: 7540-3 convertToAssets(totalSupply) == totalAssets unless price is 0.0
     function asyncVault_3(address asyncVaultTarget) public virtual {
         // Doesn't hold on zero price
         if (
@@ -39,7 +39,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         );
     }
 
-    /// @dev 7540-4	convertToShares(totalAssets) == totalSupply unless price is 0.0
+    /// @dev Property: 7540-4 convertToShares(totalAssets) == totalSupply unless price is 0.0
     function asyncVault_4(address asyncVaultTarget) public virtual {
         if (
             IAsyncVault(asyncVaultTarget).convertToAssets(
@@ -58,7 +58,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         );
     }
 
-    /// @dev 7540-5	max* never reverts
+    /// @dev Property: 7540-5 max* never reverts
     function asyncVault_5(address asyncVaultTarget) public virtual {
         // max* never reverts
         try IAsyncVault(asyncVaultTarget).maxDeposit(_getActor()) {}
@@ -80,7 +80,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
     }
 
     /// == asyncVault_6 == //
-    /// @dev 7540-6	claiming more than max always reverts
+    /// @dev Property: 7540-6 claiming more than max always reverts
     function asyncVault_6_deposit(address asyncVaultTarget, uint256 amt) public virtual {
         // Skip 0
         if (amt == 0) {
@@ -180,7 +180,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
 
     /// == END asyncVault_6 == //
 
-    /// @dev 7540-7	requestRedeem reverts if the share balance is less than amount
+    /// @dev Property: 7540-7 requestRedeem reverts if the share balance is less than amount
     function asyncVault_7(address asyncVaultTarget, uint256 shares) public virtual {
         if (shares == 0) {
             return; // Skip
@@ -209,7 +209,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         t(false, "Property: 7540-7 requestRedeem does not revert for shares > balance");
     }
 
-    /// @dev 7540-8	preview* always reverts
+    /// @dev Property: 7540-8 preview* always reverts
     function asyncVault_8(address asyncVaultTarget) public virtual {
         // preview* always reverts
         try IAsyncVault(asyncVaultTarget).previewDeposit(0) {
@@ -227,7 +227,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
     }
 
     /// == asyncVault_9 == //
-    /// @dev 7540-9 if max[method] > 0, then [method] (max) should not revert
+    /// @dev Property: 7540-9 if max[method] > 0, then [method] (max) should not revert
     function asyncVault_9_deposit(address asyncVaultTarget) public virtual {
         // Per asyncVault_5
         uint256 maxDeposit = IAsyncVault(asyncVaultTarget).maxDeposit(_getActor());

@@ -256,7 +256,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    /// @dev Doomsday test: System handles all operations gracefully at zero price
+    /// @dev Property: System handles all operations gracefully at zero price
     function doomsday_zeroPrice_noPanics() public statelessTest {
         IBaseVault vault = _getVault();
         if (address(vault) == address(0)) return;
