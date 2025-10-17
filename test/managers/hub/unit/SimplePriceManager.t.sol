@@ -581,8 +581,7 @@ contract SimplePriceManagerOnTransferTest is SimplePriceManagerTest {
 
         (, uint128 fromIssuance, uint128 fromTransferredIn, uint128 fromTransferredOut,,) =
             priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
-        (, uint128 toIssuance, uint128 toTransferredIn, uint128 toTransferredOut,,) =
-            priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
+        (, uint128 toIssuance, uint128 toTransferredIn,,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
 
         // Transferred amounts should accumulate
         assertEq(fromTransferredOut, 50); // 30 + 20
