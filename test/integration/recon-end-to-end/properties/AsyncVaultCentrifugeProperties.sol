@@ -365,7 +365,7 @@ abstract contract AsyncVaultCentrifugeProperties is
                     0,
                     "maxMint in vault should be 0 after maxMint"
                 );
-                lte(shares, maxDepositBefore, "shares minted surpass maxMint");
+                lte(assets, maxDepositBefore, "assets consumed surpass maxDeposit");
 
                 uint256 maxMintManagerAfter;
                 if (Helpers.isAsyncVault(address(_getVault()))) {
@@ -519,6 +519,15 @@ abstract contract AsyncVaultCentrifugeProperties is
             scId,
             assetId
         );
+
+        // Fetch the actual approved share amount for this epoch
+        (uint128 approvedShareAmount, , , , , ) = batchRequestManager.epochRedeemAmounts(
+            poolId,
+            scId,
+            assetId,
+            latestRedeemApproval
+        );
+
         (uint256 pendingRedeemBefore, ) = batchRequestManager.redeemRequest(
             poolId,
             scId,
@@ -585,7 +594,7 @@ abstract contract AsyncVaultCentrifugeProperties is
             // NOTE: this is because maxRedeem rounds up so there's always 1 wei that can't be redeemed
             if (redeemAmount > 1) {
                 t(
-                    latestRedeemApproval < redeemAmount,
+                    approvedShareAmount < redeemAmount,
                     "reverts on redeem for approved amount"
                 );
             }
@@ -816,12 +825,13 @@ abstract contract AsyncVaultCentrifugeProperties is
             );
 
             // The before value should follow maxReserve logic (could be large)
+            // Use expectedAmount which is already converted to the correct units based on operation type
             t(
-                maxValueBefore >= assetAmount,
+                maxValueBefore >= expectedAmount,
                 string.concat(
                     "Sync Critical->Normal: max",
                     operationName,
-                    "Before should be >= asset amount"
+                    "Before should be >= expected amount"
                 )
             );
         } else {
