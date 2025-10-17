@@ -464,6 +464,13 @@ abstract contract Properties is
         {
             (, uint256 redeemPrice) = _getDepositAndRedeemPrice();
 
+            // Get the pending redeem request amount
+            (, , , , , uint128 pendingRedeemRequest, , , , ) =
+                asyncRequestManager.investments(IBaseVault(address(_getVault())), address(_getActor()));
+
+            // Skip check if there's no active redeem request
+            if (pendingRedeemRequest == 0) return;
+
             lte(
                 redeemPrice,
                 _after
