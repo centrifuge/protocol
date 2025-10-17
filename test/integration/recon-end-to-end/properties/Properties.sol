@@ -465,8 +465,21 @@ abstract contract Properties is
             (, uint256 redeemPrice) = _getDepositAndRedeemPrice();
 
             // Get the pending redeem request amount
-            (, , , , , uint128 pendingRedeemRequest, , , , ) =
-                asyncRequestManager.investments(IBaseVault(address(_getVault())), address(_getActor()));
+            (
+                ,
+                ,
+                ,
+                ,
+                ,
+                uint128 pendingRedeemRequest,
+                ,
+                ,
+                ,
+
+            ) = asyncRequestManager.investments(
+                    IBaseVault(address(_getVault())),
+                    address(_getActor())
+                );
 
             // Skip check if there's no active redeem request
             if (pendingRedeemRequest == 0) return;
@@ -2602,24 +2615,19 @@ abstract contract Properties is
             for (uint256 k = 0; k < actors.length; k++) {
                 uint256 balance = shareToken.balanceOf(actors[k]);
                 balancesSummed += balance;
-
-                // Allow 1 wei tolerance per actor for rounding
-                uint256 tolerance = actors.length;
-                // actualSupply = balancesSummed +/- tolerance
-
-                uint256 difference;
-                if (actualSupply >= balancesSummed) {
-                    difference = actualSupply - balancesSummed;
-                } else {
-                    difference = balancesSummed - actualSupply;
-                }
-
-                lte(
-                    difference,
-                    tolerance,
-                    "supply difference exceeds tolerance"
-                );
             }
+
+            // Allow 1 wei tolerance per actor for rounding
+            uint256 tolerance = actors.length;
+            uint256 difference;
+            // actualSupply = balancesSummed +/- tolerance
+            if (actualSupply >= balancesSummed) {
+                difference = actualSupply - balancesSummed;
+            } else {
+                difference = balancesSummed - actualSupply;
+            }
+
+            lte(difference, tolerance, "supply difference exceeds tolerance");
         } catch {}
     }
 
