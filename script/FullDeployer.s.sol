@@ -197,7 +197,6 @@ contract FullActionBatcher is CoreActionBatcher {
 
         // Rely vaultRouter
         report.routerEscrow.rely(address(report.vaultRouter));
-        report.core.gateway.rely(address(report.vaultRouter));
 
         // Rely adminSafe
         if (address(report.layerZeroAdapter) != address(0)) {
@@ -497,7 +496,7 @@ contract FullDeployer is CoreDeployer {
         batchRequestManager = BatchRequestManager(
             create3(
                 generateSalt("batchRequestManager"),
-                abi.encodePacked(type(BatchRequestManager).creationCode, abi.encode(hubRegistry, batcher))
+                abi.encodePacked(type(BatchRequestManager).creationCode, abi.encode(hubRegistry, gateway, batcher))
             )
         );
 

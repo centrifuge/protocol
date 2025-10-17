@@ -124,6 +124,14 @@ contract GatewayExt is Gateway {
         }
     }
 
+    function startBatching() public {
+        isBatching = true;
+    }
+
+    function endBatching(address refund) public payable {
+        _endBatching(msg.value, refund);
+    }
+
     function batcher() public view returns (address) {
         return _batcher;
     }
@@ -391,34 +399,6 @@ contract GatewayTestRetry is GatewayTest {
     }
 }
 
-contract GatewayTestStartBatching is GatewayTest {
-    function testErrNotAuthorized() public {
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.startBatching();
-    }
-
-    function testErrAlreadyBatching() public {
-        gateway.startBatching();
-
-        vm.expectRevert(IGateway.AlreadyBatching.selector);
-        gateway.startBatching();
-    }
-
-    function testStartBatching() public {
-        gateway.startBatching();
-
-        assertEq(gateway.isBatching(), true);
-    }
-
-    /// forge-config: default.isolate = true
-    function testStartBatchingIsTransactional() public {
-        gateway.startBatching();
-
-        assertEq(gateway.isBatching(), false);
-    }
-}
-
 contract GatewayTestSend is GatewayTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
@@ -610,12 +590,6 @@ contract GatewayTestSend is GatewayTest {
 }
 
 contract GatewayTestEndBatching is GatewayTest {
-    function testErrNotAuthorized() public {
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.endBatching(REFUND);
-    }
-
     function testErrNoBatched() public {
         vm.expectRevert(IGateway.NoBatched.selector);
         gateway.endBatching(REFUND);
@@ -865,30 +839,36 @@ contract GatewayTestBlockOutgoing is GatewayTest {
 contract IntegrationMock is Test {
     bool public wasCalled;
     GatewayExt public gateway;
+    uint256 public constant PAYMENT = 234;
 
     constructor(GatewayExt gateway_) {
         gateway = gateway_;
     }
 
-    function _nested() external payable {
+    function _nested() external {
         gateway.lockCallback();
         gateway.withBatch(abi.encodeWithSelector(this._success.selector, false, 2), address(0));
     }
 
-    function _emptyError() external payable {
+    function _emptyError() external {
         gateway.lockCallback();
         revert();
     }
 
-    function _notLocked() external payable {}
+    function _notLocked() external {}
 
-    function _success(bool, uint256) external payable {
+    function _success(bool, uint256) external {
         assertEq(gateway.batcher(), address(this));
         gateway.lockCallback();
         wasCalled = true;
     }
 
-    function _justLock() external payable {
+    function _justLock() external {
+        gateway.lockCallback();
+    }
+
+    function _paid() external payable {
+        assertEq(msg.value, PAYMENT);
         gateway.lockCallback();
     }
 
@@ -906,6 +886,10 @@ contract IntegrationMock is Test {
 
     function callNotLocked(address refund) external {
         gateway.withBatch(abi.encodeWithSelector(this._notLocked.selector), refund);
+    }
+
+    function callPaid(address refund, uint256 value) external payable {
+        gateway.withBatch{value: msg.value}(abi.encodeWithSelector(this._paid.selector), value, refund);
     }
 }
 
@@ -955,6 +939,13 @@ contract GatewayTestWithBatch is GatewayTest {
         attacker.callAttack(REFUND);
     }
 
+    function testErrNotEnoughValueForCallback() public {
+        vm.prank(ANY);
+        vm.deal(ANY, 1234);
+        vm.expectRevert(IGateway.NotEnoughValueForCallback.selector);
+        integration.callPaid{value: 1234}(REFUND, 2000);
+    }
+
     function testWithCallback() public {
         vm.prank(ANY);
         vm.deal(ANY, 1234);
@@ -969,6 +960,15 @@ contract GatewayTestWithBatch is GatewayTest {
         integration.callNested(REFUND);
 
         assertEq(integration.wasCalled(), true);
+    }
+
+    function testWithCallbackPaid() public {
+        vm.prank(ANY);
+        vm.deal(ANY, 1234);
+        integration.callPaid{value: 1234}(REFUND, integration.PAYMENT());
+
+        assertEq(REFUND.balance, 1000);
+        assertEq(address(integration).balance, integration.PAYMENT());
     }
 }
 

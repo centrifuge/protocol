@@ -6,6 +6,7 @@ import {IAuth} from "../../../../../src/misc/interfaces/IAuth.sol";
 import {ShareToken} from "../../../../../src/core/spoke/ShareToken.sol";
 import {IShareToken} from "../../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {TokenFactory} from "../../../../../src/core/spoke/factories/TokenFactory.sol";
+import {ITokenFactory} from "../../../../../src/core/spoke/factories/interfaces/ITokenFactory.sol";
 
 import {Root} from "../../../../../src/admin/Root.sol";
 
@@ -81,5 +82,55 @@ contract FactoryTest is Test {
         assembly {
             result := mload(add(source, 32))
         }
+    }
+}
+
+contract TokenFactoryFileTest is Test {
+    address root = address(new Root(48 hours, address(this)));
+    TokenFactory tokenFactory = new TokenFactory(root, address(this));
+
+    function testFileWards() public {
+        address[] memory newWards = new address[](3);
+        newWards[0] = makeAddr("ward1");
+        newWards[1] = makeAddr("ward2");
+        newWards[2] = makeAddr("ward3");
+
+        vm.expectEmit(true, true, true, true);
+        emit ITokenFactory.File("wards", newWards);
+
+        tokenFactory.file("wards", newWards);
+
+        assertEq(tokenFactory.tokenWards(0), newWards[0]);
+        assertEq(tokenFactory.tokenWards(1), newWards[1]);
+        assertEq(tokenFactory.tokenWards(2), newWards[2]);
+    }
+
+    function testFileWardsEmpty() public {
+        address[] memory emptyWards = new address[](0);
+
+        vm.expectEmit(true, true, true, true);
+        emit ITokenFactory.File("wards", emptyWards);
+
+        tokenFactory.file("wards", emptyWards);
+
+        vm.expectRevert();
+        tokenFactory.tokenWards(0);
+    }
+
+    function testFileUnrecognizedParam() public {
+        address[] memory data = new address[](1);
+        data[0] = address(1);
+
+        vm.expectRevert(ITokenFactory.FileUnrecognizedParam.selector);
+        tokenFactory.file("unknown", data);
+    }
+
+    function testFileNotAuthorized() public {
+        address[] memory data = new address[](1);
+        data[0] = address(1);
+
+        vm.prank(makeAddr("notAuthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        tokenFactory.file("wards", data);
     }
 }

@@ -139,6 +139,37 @@ library PricingLib {
         );
     }
 
+    /// @dev Calculates the maximum amount of assets that can be converted to shares without uint128 overflow.
+    ///      Returns the maximum asset amount such that assetToShareAmount(result) <= maxShares.
+    /// @dev Assumes handling of zero denominator price (pricePoolPerAsset) by consumer.
+    /// @param  shareToken Address of the share token
+    /// @param  asset Address of the asset
+    /// @param  tokenId Token ID for ERC6909 (0 for ERC20)
+    /// @param  maxShares Maximum allowed shares (typically type(uint128).max)
+    /// @param  pricePoolPerShare Price of share in pool units (numerator)
+    /// @param  pricePoolPerAsset Price of asset in pool units (denominator)
+    /// @return Maximum asset amount that won't cause overflow, or type(uint256).max if no overflow possible
+    function maxConvertibleAssetAmount(
+        address shareToken,
+        address asset,
+        uint256 tokenId,
+        uint256 maxShares,
+        D18 pricePoolPerShare,
+        D18 pricePoolPerAsset
+    ) internal view returns (uint256) {
+        require(pricePoolPerAsset.isNotZero(), DivisionByZero());
+
+        uint8 assetDecimals = _getAssetDecimals(asset, tokenId);
+        uint8 shareDecimals = IERC20Metadata(shareToken).decimals();
+
+        return MathLib.mulDiv(
+            maxShares,
+            uint256(10 ** assetDecimals) * pricePoolPerShare.raw(),
+            uint256(10 ** shareDecimals) * pricePoolPerAsset.raw(),
+            MathLib.Rounding.Down
+        );
+    }
+
     //----------------------------------------------------------------------------------------------
     // Pure methods
     //----------------------------------------------------------------------------------------------

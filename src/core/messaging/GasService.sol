@@ -13,9 +13,8 @@ import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.s
 contract GasService is IGasService {
     using MessageLib for *;
 
-    /// @dev Takes into account diverge computation from the base menchmarked value.
-    /// Also takens into account
-    uint128 public constant BASE_COST = 20_000;
+    /// @dev Takes into account diverge computation from the base benchmarked value.
+    uint128 public constant BASE_COST = 100_000;
 
     uint128 public immutable scheduleUpgrade;
     uint128 public immutable cancelUpgrade;
