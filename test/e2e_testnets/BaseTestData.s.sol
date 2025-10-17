@@ -298,6 +298,18 @@ abstract contract BaseTestData is LaunchDeployer {
             msg.sender
         );
 
+        // Make sender a member to submit redeem request
+        hub.updateRestriction(
+            poolId,
+            scId,
+            targetCentrifugeId,
+            UpdateRestrictionMessageLib.UpdateRestrictionMember({
+                    user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max
+                }).serialize(),
+            0,
+            msg.sender
+        );
+
         // Test async redemption path for sync vaults
         IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
         SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(params.token)));
