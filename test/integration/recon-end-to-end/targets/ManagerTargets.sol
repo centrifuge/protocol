@@ -11,7 +11,7 @@ import {console2} from "forge-std/console2.sol";
 // Dependencies
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
-import {BeforeAfter} from "../BeforeAfter.sol";
+import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
 
 // Target functions that are effectively inherited from the Actor and AssetManagers
@@ -19,43 +19,59 @@ import {Properties} from "../properties/Properties.sol";
 // Keeping them out makes your project more custom
 abstract contract ManagerTargets is BaseTargetFunctions, Properties {
     /// @dev Start acting as another actor
-    function switch_actor(uint256 entropy) public updateGhosts {
+    function switch_actor(
+        uint256 entropy
+    ) public updateGhostsWithType(OpType.ADMIN) {
         _switchActor(entropy);
     }
 
     /// @dev Starts using a new asset
-    function switch_asset(uint256 entropy) public updateGhosts {
+    function switch_asset(
+        uint256 entropy
+    ) public updateGhostsWithType(OpType.ADMIN) {
         _switchAsset(entropy);
     }
 
     /// @dev Starts using a new pool
-    function switch_pool(uint256 entropy) public updateGhosts {
+    function switch_pool(
+        uint256 entropy
+    ) public updateGhostsWithType(OpType.ADMIN) {
         _switchPool(entropy);
     }
 
     /// @dev Starts using a new share class
-    function switch_share_class(uint256 entropy) public updateGhosts {
+    function switch_share_class(
+        uint256 entropy
+    ) public updateGhostsWithType(OpType.ADMIN) {
         _switchShareClassId(entropy);
     }
 
     /// @dev Starts using a new assetId
-    function switch_asset_id(uint256 entropy) public {
+    function switch_asset_id(
+        uint256 entropy
+    ) public updateGhostsWithType(OpType.ADMIN) {
         _switchAssetId(entropy);
     }
 
     /// @dev Starts using a new vault
     /// @notice We `updateGhosts` so we can know if the vault changed
-    function switch_vault(uint256 entropy) public updateGhosts {
+    function switch_vault(
+        uint256 entropy
+    ) public updateGhostsWithType(OpType.ADMIN) {
         _switchVault(entropy);
     }
 
     /// @dev Starts using a new shareToken
-    function switch_share_token(uint256 entropy) public {
+    function switch_share_token(
+        uint256 entropy
+    ) public updateGhostsWithType(OpType.ADMIN) {
         _switchShareToken(entropy);
     }
 
     /// @dev Deploy a new token and add it to the list of assets, then set it as the current asset
-    function add_new_asset(uint8 decimals) public returns (address) {
+    function add_new_asset(
+        uint8 decimals
+    ) public updateGhostsWithType(OpType.ADMIN) returns (address) {
         address newAsset = _newAsset(decimals);
         return newAsset;
     }
