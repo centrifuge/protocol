@@ -365,7 +365,11 @@ abstract contract AsyncVaultCentrifugeProperties is
                     0,
                     "maxMint in vault should be 0 after maxMint"
                 );
-                lte(assets, maxDepositBefore, "assets consumed surpass maxDeposit");
+                lte(
+                    assets,
+                    maxDepositBefore,
+                    "assets consumed surpass maxDeposit"
+                );
 
                 uint256 maxMintManagerAfter;
                 if (Helpers.isAsyncVault(address(_getVault()))) {
@@ -472,7 +476,7 @@ abstract contract AsyncVaultCentrifugeProperties is
                 lte(
                     assets,
                     maxWithdrawBefore,
-                    "shares withdrawn surpass maxWithdraw"
+                    "assets withdrawn surpass maxWithdraw"
                 );
             }
         } catch (bytes memory err) {
@@ -521,12 +525,8 @@ abstract contract AsyncVaultCentrifugeProperties is
         );
 
         // Fetch the actual approved share amount for this epoch
-        (uint128 approvedShareAmount, , , , , ) = batchRequestManager.epochRedeemAmounts(
-            poolId,
-            scId,
-            assetId,
-            latestRedeemApproval
-        );
+        (uint128 approvedShareAmount, , , , , ) = batchRequestManager
+            .epochRedeemAmounts(poolId, scId, assetId, latestRedeemApproval);
 
         (uint256 pendingRedeemBefore, ) = batchRequestManager.redeemRequest(
             poolId,
