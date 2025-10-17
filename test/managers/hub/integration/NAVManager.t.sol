@@ -10,6 +10,7 @@ import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
 import {ISnapshotHook} from "../../../../src/core/hub/interfaces/ISnapshotHook.sol";
+import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
 
 import {INAVHook} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
 
