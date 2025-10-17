@@ -256,7 +256,6 @@ contract TestCases is BaseTest {
         (PoolId poolId, ShareClassId scId) = testPoolCreation(true);
         vm.stopPrank();
 
-        // Mock the sendExecuteTransferShares call
         vm.mockCall(
             address(hubHandler.sender()),
             abi.encodeWithSignature(
