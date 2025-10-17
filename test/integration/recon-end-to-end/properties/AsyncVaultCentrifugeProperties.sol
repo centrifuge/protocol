@@ -256,9 +256,10 @@ abstract contract AsyncVaultCentrifugeProperties is
                 }
                 eq(maxMintAfter, 0, "maxMint should be 0 after maxDeposit");
             }
-        } catch {
+        } catch (bytes memory err) {
+            bool expectedError = checkError(err, "VaultNotLinked()");
             // For async vaults, validate failure reason
-            if (isAsyncVault) {
+            if (isAsyncVault && !expectedError) {
                 _validateAsyncDepositFailure(depositAmount);
             } else {
                 console2.log(
