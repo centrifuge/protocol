@@ -4,9 +4,10 @@ pragma solidity 0.8.28;
 import {BaseTestData} from "./BaseTestData.s.sol";
 
 import {ERC20} from "../src/misc/ERC20.sol";
-import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
+
 import {PoolId} from "../src/core/types/PoolId.sol";
 import {ShareClassId} from "../src/core/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
 
 import "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";

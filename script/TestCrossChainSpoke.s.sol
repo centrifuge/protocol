@@ -8,14 +8,14 @@ import {D18, d18} from "../src/misc/types/D18.sol";
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../src/core/types/PoolId.sol";
-import {ShareClassId, newShareClassId} from "../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
 import {IShareToken} from "../src/core/spoke/interfaces/IShareToken.sol";
-
-import {IAsyncVault} from "../src/vaults/interfaces/IAsyncVault.sol";
-import {SyncDepositVault} from "../src/vaults/SyncDepositVault.sol";
+import {ShareClassId, newShareClassId} from "../src/core/types/ShareClassId.sol";
 
 import {UpdateRestrictionMessageLib} from "../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
+import {SyncDepositVault} from "../src/vaults/SyncDepositVault.sol";
+import {IAsyncVault} from "../src/vaults/interfaces/IAsyncVault.sol";
 
 import "forge-std/Script.sol";
 

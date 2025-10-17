@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "forge-std/Script.sol";
+import {CoreDeployer} from "./CoreDeployer.s.sol";
+
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {CoreDeployer} from "../../CoreDeployer.s.sol";
-import {JsonRegistry} from "../../utils/JsonRegistry.s.sol";
-
 import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
-import {ProtocolGuardian} from "../../../src/admin/ProtocolGuardian.sol";
-import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
-import {Root} from "../../../src/admin/Root.sol";
 
-import {WormholeAdapter} from "../../../src/adapters/WormholeAdapter.sol";
+import {Root} from "../../../src/admin/Root.sol";
+import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
+import {ProtocolGuardian} from "../../../src/admin/ProtocolGuardian.sol";
+
+import "forge-std/Script.sol";
+
+import {JsonRegistry} from "../../utils/JsonRegistry.s.sol";
 import {AxelarAdapter} from "../../../src/adapters/AxelarAdapter.sol";
+import {WormholeAdapter} from "../../../src/adapters/WormholeAdapter.sol";
 import {LayerZeroAdapter} from "../../../src/adapters/LayerZeroAdapter.sol";
 
 /// @title OnlyAdapters
