@@ -302,7 +302,7 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.updateRestriction(
             poolId,
             scId,
-            targetCentrifugeId,
+            params.targetCentrifugeId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
                     user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max
                 }).serialize(),
