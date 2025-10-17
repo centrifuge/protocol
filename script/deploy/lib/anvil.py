@@ -11,6 +11,7 @@ import time
 import json
 import urllib.request
 from os import environ
+import os
 from pathlib import Path
 import random
 import string
@@ -22,78 +23,69 @@ from .verifier import ContractVerifier
 class AnvilManager:
     def __init__(self, root_dir: Path):
         self.root_dir = root_dir
-        self.anvil_url = "http://localhost:8545"
-        self.chain_id = "31337"
         self.protocol_admin_address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"  # 2nd Anvil account
         self.ops_admin_address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"  # 2nd Anvil account (same for now)
         self.private_key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"  # 1st account
-        self.anvil_config_file = self.root_dir / "env" / "anvil.json"
+        
 
-    def _create_anvil_env(self):
-        """Create a minimal environment mock that works with DeploymentRunner"""
-        # Set the random VERSION in environment variables
-        # Generate a random 8-character string for Anvil to avoid collisions
-        random_version = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
-        environ["VERSION"] = random_version
-        print_info(f"Using random VERSION for Anvil: {random_version}")
+    def _create_anvil_env(self, network_name: str):
+        """Create per-fork env under env/anvil and return a minimal loader-like object."""
+        import shutil
+        env_root = self.root_dir / "env"
+        anvil_dir = env_root / "anvil"
+        anvil_dir.mkdir(parents=True, exist_ok=True)
+
+        # Copy base config to env/anvil/<net>.json
+        src_cfg: Path = env_root / f"{network_name}.json"
+        dst_cfg: Path = anvil_dir / f"{network_name}.json"
+        shutil.copyfile(src_cfg, dst_cfg)
+
+        # Rewrite connectsTo to point to anvil/* configs
+        try:
+            with open(dst_cfg, "r") as f:
+                cfg = json.load(f)
+            connects = cfg.get("network", {}).get("connectsTo", [])
+            if isinstance(connects, list):
+                allowed = {"sepolia", "arbitrum-sepolia"}
+                filtered = [n for n in connects if n in allowed]
+                cfg["network"]["connectsTo"] = [f"anvil/{n}" for n in filtered]
+            with open(dst_cfg, "w") as f:
+                json.dump(cfg, f, indent=2)
+        except Exception as e:
+            print_warning(f"Failed to rewrite connectsTo for {dst_cfg}: {e}")
+
+        if network_name == "sepolia":
+            port, chain_id = (8545, "31337")
+        elif network_name == "arbitrum-sepolia":
+            port, chain_id = (8546, "31338")
+        else:
+            raise ValueError(f"Unsupported anvil network: {network_name}")
 
         class AnvilEnv:
-            def __init__(self, manager):
-                # Simple attributes - no need for properties since no logic required
-                self.network_name = "anvil"
-                self.chain_id = manager.chain_id
+            def __init__(self, manager, net_name_base: str, port_inner: int, config_path: Path, chain_id_inner: str):
+                # Attributes expected by DeploymentRunner/ContractVerifier
+                self.network_name = f"anvil/{net_name_base}"
+                self.base_network = net_name_base
+                self.chain_id = chain_id_inner
                 self.root_dir = manager.root_dir
-                self.rpc_url = manager.anvil_url
+                self.rpc_url = f"http://localhost:{port_inner}"
                 self.private_key = manager.private_key
                 self.etherscan_api_key = ""  # Not needed for anvil
                 self.protocol_admin_address = manager.protocol_admin_address
                 self.ops_admin_address = manager.ops_admin_address
                 self.is_testnet = True
-                self.config_file = manager.anvil_config_file
+                self.config_file = config_path
 
-        return AnvilEnv(self)
-
-    def _create_anvil_config(self) -> None:
-        """Create temporary anvil.json config file for Solidity scripts"""
-        if self.anvil_config_file.exists():
-            self.anvil_config_file.unlink()
-            print_step("Cleaned up existing anvil.json config")
-        anvil_config = {
-            "network": {
-                "chainId": int(self.chain_id),
-                "centrifugeId": 9,  # Anvil's centrifuge ID
-                "environment": "testnet",
-                "connectsTo": [],
-            },
-            "contracts": {},  # Will be populated after LaunchDeployer runs
-            "adapters": {
-                "wormhole": {
-                "wormholeId": "10002",
-                "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",
-                "deploy": "true"
-                },
-                "axelar": {
-                "axelarId": "ethereum-sepolia",
-                "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
-                "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
-                "deploy": "true"
-                }
-            }
-        }
-
-        with open(self.anvil_config_file, 'w') as f:
-            json.dump(anvil_config, f, indent=2)
-
-        print_step("Created temporary anvil.json config")
+        return AnvilEnv(self, network_name, port, dst_cfg, chain_id)
 
 
     def deploy_full_protocol(self) -> bool:
-        """Deploy full protocol to Anvil - handles everything"""
-        print_section("Anvil Setup")
-        # 1. Create temporary anvil.json config file
-        self._create_anvil_config()
+        """Backward-compat entrypoint. Now delegates to deploy()."""
+        return self.deploy()
 
-        # 2. Setup Anvil
+    def deploy(self) -> bool:
+        """Fork Sepolia (8545) and Arbitrum Sepolia (8546), deploy both (protocol + test data), then wire."""
+        print_section("Dual-fork deploy + wire")
 
         class Args:
             def __init__(self):
@@ -103,67 +95,112 @@ class AnvilManager:
                 self.forge_args = []
 
         args = Args()
+        
+        # Generate a random 8-character string for VERSION to avoid collisions on running Anvil multiple times
+        random_version = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+        environ["VERSION"] = random_version
+        print_info(f"Using random VERSION for Anvil: {random_version}")
 
-        temp_loader = EnvironmentLoader("sepolia", self.root_dir, args)
-        api_key = temp_loader._get_secret("alchemy_api")
-        fork_url = f"https://eth-sepolia.g.alchemy.com/v2/{api_key}"
-        print_success("Using Alchemy RPC with API key")
-
-        self._setup_anvil(fork_url)
-
-        # 3. Create simple environment for DeploymentRunner
-        env_mock = self._create_anvil_env()
-
-        # 4. Create mock args for DeploymentRunner
-        runner = DeploymentRunner(env_mock, args)
+        # Prepare API keys
+        sepolia_loader = EnvironmentLoader("sepolia", self.root_dir, args)
+        api_key = sepolia_loader._get_secret("alchemy_api")
 
 
-        # 5. Deploy protocol using same logic as regular deployments
-        print_section("Contract deployments")
-
-        verifier = ContractVerifier(env_mock, args)
-        runner.build_contracts()
-
-        # Deploy protocol
-        print_subsection("Deploying protocol")
-        if not runner.run_deploy("LaunchDeployer"):
+        # SEPOLIA
+        sep_env = self._create_anvil_env("sepolia")
+        # Start Sepolia fork
+        self._setup_anvil(sep_env, api_key)
+        if not self._deploy_fork(sep_env, args):
             return False
-        args.step = "deploy:protocol"
-        verifier.update_network_config()
+        print_success("Sepolia fork deployed")
 
-        # Deploy test data - temporarily use admin account's private key
-        # We need to sign TestData with the ADMIN key
-        env_mock.private_key = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"  # 2nd account private key
-        print_section("Test data deployment")
-        print_info(f"Using Anvil account #2 private key for TestData script {format_account(env_mock.private_key)}")
-        if not runner.run_deploy("TestData"):
+        # ARBITRUM SEPOLIA
+        # Create env for Arbitrum Sepolia
+        arb_env = self._create_anvil_env("arbitrum-sepolia")
+        # Start Arbitrum Sepolia fork
+        self._setup_anvil(arb_env, api_key, kill_existing=False)
+        if not self._deploy_fork(arb_env, args):
             return False
+        print_success("Arbitrum Sepolia fork deployed")
 
+        # Wiring after both forks have deployed and configs are merged
+        print_subsection("Wiring adapters on both forks")
+        for net_env in [sep_env, arb_env]:
+            try:
+                args.step = "wire:adapters"
+                wire_runner = DeploymentRunner(net_env, args)
+                if not wire_runner.run_deploy("WireAdapters"):
+                    return False
+            except Exception as e:
+                print_error(f"Wiring failed on {net_env.network_name}: {e}")
+                return False
 
-
-        # All steps succeeded
-        print_success("Protocol and adapters deployed successfully")
-        print_success("TestData deployed successfully")
-        print_info(f"Deployed contract addresses can be found in {self.anvil_config_file}")
-        print_warning("Anvil is still running for you to test the protocol")
-        print_warning("Use 'pkill anvil' to stop it")
+        print_success("Dual-fork deploy and bidirectional wiring completed (8545: sepolia, 8546: arbitrum-sepolia)")
+        # Auto-stop anvil in CI for cleanliness
+        try:
+            if os.environ.get("GITHUB_ACTIONS"):
+                subprocess.run(["pkill", "anvil"], capture_output=True)
+                print_success("Anvil instances stopped (CI)")
+            else:
+                print_warning("Use 'pkill anvil' to stop both instances")
+        except Exception:
+            print_warning("Failed to stop anvil automatically")
         return True
 
+    def _deploy_fork(self, net_env, args):
+        runner = DeploymentRunner(net_env, args)
+        # Deploy core protocol
+        args.step = "deploy:protocol"
+        if not runner.run_deploy("LaunchDeployer"):
+            return False
+        # Merge latest into env/anvil/<net>.json
+        try:
+            verifier = ContractVerifier(net_env, args)
+            verifier.update_network_config()
+        except Exception as e:
+            print_warning(f"Failed to merge deployment into config: {e}")
+        # Verify deployments after merge
+        self._verify_deployments(net_env)
 
-    def _setup_anvil(self, fork_url: str) -> None:
+        print_section(f"Test data deployment ({getattr(net_env, 'base_network', net_env.network_name)})")
+        net_env.private_key = "0x59c6995e998f97a5a0044966f0945389e86dae88c7a8412f4603b6b78690d"
+        args.step = "deploy:test"
+        if not runner.run_deploy("TestData"):
+            return False
+        # Merge test deployments as well
+        try:
+            verifier = ContractVerifier(net_env, args)
+            verifier.update_network_config()
+        except Exception as e:
+            print_warning(f"Failed to merge test deployment into config: {e}")
+        # Do not wire here; wiring happens after both forks deploy
+        return True
+
+    def _setup_anvil(self,net_env, api_key, kill_existing: bool = True) -> None:
         """Setup and start Anvil"""
+        base_net = getattr(net_env, "base_network", net_env.network_name.split("/")[-1])
+        if base_net == "sepolia":
+            fork_url = f"https://eth-sepolia.g.alchemy.com/v2/{api_key}"
+            port = 8545
+        elif base_net == "arbitrum-sepolia":
+            fork_url = f"https://arb-sepolia.g.alchemy.com/v2/{api_key}"
+            port = 8546
+
         print_subsection("Setting up Anvil local network")
-        subprocess.run(["pkill", "anvil"], capture_output=True)
-        time.sleep(1)
+        if kill_existing:
+            subprocess.run(["pkill", "anvil"], capture_output=True)
+            print_success("Running Anvil processes killed")
+            time.sleep(1)
 
         # Start Anvil
         print_step("Starting Anvil")
         cmd = [
             "anvil",
-            "--chain-id", self.chain_id,
+            "--chain-id", net_env.chain_id,
             "--gas-limit", "50000000",
             "--code-size-limit", "50000",
-            "--fork-url", fork_url
+            "--fork-url", fork_url,
+            "--port", str(port)
         ]
         # Needed to mask the rpc_url in the command
         class MockEnvLoader:
@@ -181,19 +218,19 @@ class AnvilManager:
 
         # Verify it's running
         if subprocess.run(["pgrep", "anvil"], capture_output=True).returncode == 0:
-            print_success(f"Anvil started on {self.anvil_url}")
+            print_success(f"Anvil started on http://localhost:{port}")
         else:
             raise RuntimeError("Anvil failed to start")
 
 
 
-    def _verify_deployments(self) -> bool:
+    def _verify_deployments(self, net_env) -> bool:
         """Verify contracts are deployed by checking code"""
         print_subsection("Verifying deployments on Anvil")
 
         try:
             # Read deployment output
-            with open(self.anvil_config_file, 'r') as f:
+            with open(net_env.config_file, 'r') as f:
                 deployment = json.load(f)
 
             contracts = deployment.get("contracts", {})
@@ -203,7 +240,7 @@ class AnvilManager:
 
             verified_count = 0
             for name, address in contracts.items():
-                if self._has_contract_code(address):
+                if self._has_contract_code(net_env, address):
                     print_success(f"{name}: {address} ✓")
                     verified_count += 1
                 else:
@@ -216,7 +253,7 @@ class AnvilManager:
             print_error(f"Verification failed: {e}")
             return False
 
-    def _has_contract_code(self, address: str) -> bool:
+    def _has_contract_code(self, net_env, address: str) -> bool:
         """Check if address has contract code"""
         payload = {
             "jsonrpc": "2.0",
@@ -227,7 +264,7 @@ class AnvilManager:
 
         try:
             req = urllib.request.Request(
-                self.anvil_url,
+                net_env.rpc_url,
                 data=json.dumps(payload).encode(),
                 headers={"Content-Type": "application/json"}
             )

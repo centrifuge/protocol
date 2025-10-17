@@ -40,7 +40,7 @@ Examples:
   python3 deploy.py sepolia deploy:test --resume
   python3 deploy.py sepolia verify:protocol
   python3 deploy.py arbitrum-sepolia verify:protocol
-  VERSION=vXYZ python3 deploy.py release:sepolia  # Deploy all Sepolia testnets
+  VERSION=vXYZ python3 deploy.py release:sepolia  # Deploy all Sepolia testnets (auto-resumes)
         """
     )
 
@@ -130,6 +130,11 @@ def main():
     script_dir = pathlib.Path(__file__).parent
     root_dir = script_dir.parent.parent
 
+    # Handle special case where release:sepolia is passed as network argument
+    if args.network == "release:sepolia":
+        args.step = "release:sepolia"
+        args.network = None
+    
     # Validate arguments
     if args.network != "anvil" and args.step != "release:sepolia":
         validate_arguments(args, root_dir)
@@ -147,7 +152,6 @@ def main():
             success = anvil_manager.deploy_full_protocol()
             sys.exit(0 if success else 1)
 
-        # Handle release:sepolia specially - it orchestrates multiple networks
         if args.step != "release:sepolia":
             # Create environment loader for single network deployments
             env_loader = EnvironmentLoader(
