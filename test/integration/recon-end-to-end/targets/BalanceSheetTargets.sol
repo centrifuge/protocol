@@ -592,5 +592,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Reset ghost_netSharePosition to match the cleared queue state
         // After submitQueuedShares, the BalanceSheet contract resets delta=0 and isPositive=false
         ghost_netSharePosition[shareKey] = 0;
+        ghost_totalIssued[shareKey] = 0;
+        ghost_totalRevoked[shareKey] = 0;
     }
 }
