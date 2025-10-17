@@ -332,4 +332,38 @@ contract NAVManagerIntegrationTest is BaseTest {
         assertEq(navHub, 250e18);
         assertEq(navSpoke, 3400e18);
     }
+
+    /// forge-config: default.isolate = true
+    function testEdgeCaseTransferWithZeroIssuanceCausesRevert() public {
+        // When ShareClassManager.issuance is 0 on the source network and a transfer happens,
+        // calling SimplePriceManager.onUpdate causes ShareClassManager.issuance() to revert with NegativeIssuance.
+        // This blocks NAV updates for the pool until submitQueuedShares with snapshot = true is called from the Spoke on the source network.
+
+        vm.startPrank(manager);
+        navManager.initializeNetwork(POOL_A, CHAIN_CP);
+        navManager.initializeNetwork(POOL_A, CHAIN_CV);
+        navManager.initializeHolding(POOL_A, scId, asset3, IValuation(address(valuation)));
+        vm.stopPrank();
+
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(
+            CHAIN_CP, POOL_A, scId, asset3, uint128(500 * 10 ** asset3Decimals), d18(1, 1), true, false, 0
+        );
+
+        // Issue shares only to destination network to have some global issuance
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateShares(CHAIN_CV, POOL_A, scId, 200e18, true, true, 0);
+
+        vm.prank(address(root));
+        hubHandler.initiateTransferShares{
+            value: 0.1 ether
+        }(CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32("receiver"), 100e18, 0, manager);
+
+        // issuance is -100 on source network after transfer
+        // calling ShareClassManager.issuance in onUpdate will revert
+
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.NegativeIssuance.selector));
+        vm.prank(address(navManager));
+        simplePriceManager.onUpdate(POOL_A, scId, CHAIN_CP, 500e18);
+    }
 }
