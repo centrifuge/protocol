@@ -26,13 +26,14 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
 
-    function balanceSheet_deny() public updateGhosts asActor {
-        // Track authorization - deny() requires auth (ward only)
-        _trackAuthorization(_getActor(), PoolId.wrap(0)); // Global operation, use PoolId 0
-        _checkAndRecordAuthChange(_getActor()); // Track auth changes from deny()
+    // NOTE: removed because introduces false positives with auth checks
+    // function balanceSheet_deny() public updateGhosts asActor {
+    //     // Track authorization - deny() requires auth (ward only)
+    //     _trackAuthorization(_getActor(), PoolId.wrap(0)); // Global operation, use PoolId 0
+    //     _checkAndRecordAuthChange(_getActor()); // Track auth changes from deny()
 
-        balanceSheet.deny(_getActor());
-    }
+    //     balanceSheet.deny(_getActor());
+    // }
 
     function balanceSheet_deposit(
         uint256 tokenId,
@@ -184,13 +185,15 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         _trackAuthorization(_getActor(), poolId);
 
         IPoolEscrow poolEscrow = poolEscrowFactory.escrow(poolId);
-        (uint128 totalBefore, uint128 reservedBefore) =
-            PoolEscrow(address(poolEscrow)).holding(scId, asset, tokenId);
+        (uint128 totalBefore, uint128 reservedBefore) = PoolEscrow(
+            address(poolEscrow)
+        ).holding(scId, asset, tokenId);
 
         balanceSheet.noteDeposit(poolId, scId, asset, tokenId, amount);
 
-        (uint128 totalAfter, uint128 reservedAfter) =
-            PoolEscrow(address(poolEscrow)).holding(scId, asset, tokenId);
+        (uint128 totalAfter, uint128 reservedAfter) = PoolEscrow(
+            address(poolEscrow)
+        ).holding(scId, asset, tokenId);
         t(
             totalAfter == totalBefore + amount,
             "balanceSheet_noteDeposit: PoolEscrow.total should increase by amount"
@@ -585,5 +588,9 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             extraGasLimit,
             address(this)
         );
+
+        // Reset ghost_netSharePosition to match the cleared queue state
+        // After submitQueuedShares, the BalanceSheet contract resets delta=0 and isPositive=false
+        ghost_netSharePosition[shareKey] = 0;
     }
 }

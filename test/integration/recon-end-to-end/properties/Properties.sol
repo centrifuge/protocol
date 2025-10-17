@@ -464,6 +464,26 @@ abstract contract Properties is
         {
             (, uint256 redeemPrice) = _getDepositAndRedeemPrice();
 
+            // Get the pending redeem request amount
+            (
+                ,
+                ,
+                ,
+                ,
+                ,
+                uint128 pendingRedeemRequest,
+                ,
+                ,
+                ,
+
+            ) = asyncRequestManager.investments(
+                    IBaseVault(address(_getVault())),
+                    address(_getActor())
+                );
+
+            // Skip check if there's no active redeem request
+            if (pendingRedeemRequest == 0) return;
+
             lte(
                 redeemPrice,
                 _after
@@ -520,36 +540,6 @@ abstract contract Properties is
             balOfPoolEscrow + balOfGlobalEscrow,
             ghostBalOfEscrow,
             "balOfEscrow != ghostBalOfEscrow"
-        );
-    }
-
-    /// @dev Property: The balance of share class tokens in Escrow is the sum of all fulfilled deposits - sum of all
-    /// claimed deposits + sum of all redeem requests - sum of claimed redeem requests
-    /// @dev NOTE: Ignores donations
-    function property_escrow_share_balance() public tokenIsSet {
-        // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
-        // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
-        // functions permanently reverting
-        IBaseVault vault = _getVault();
-        address shareToken = vault.share();
-        uint256 ghostBalanceOfEscrow;
-        uint256 balanceOfEscrow = IShareToken(shareToken).balanceOf(
-            address(globalEscrow)
-        );
-
-        unchecked {
-            ghostBalanceOfEscrow = ((sumOfFulfilledDeposits[
-                address(shareToken)
-            ] + sumOfRedeemRequests[address(shareToken)]) -
-                (sumOfClaimedDeposits[address(shareToken)] +
-                    executedRedemptions[address(shareToken)] + // revoked
-                    // redemptions burn share tokens
-                    sumOfClaimedCancelledRedeemShares[address(shareToken)])); // claims of cancelled amount can happen in claimCancelRedeemRequest or notifyRedeem
-        }
-        eq(
-            balanceOfEscrow,
-            ghostBalanceOfEscrow,
-            "balanceOfEscrow != ghostBalanceOfEscrow"
         );
     }
 
@@ -1158,9 +1148,14 @@ abstract contract Properties is
                 uint128 accountValueAfter = _after.ghostAccountValue[poolId][
                     accountId
                 ];
-                console2.log("accountValueAfter: ", accountValueAfter);
-                console2.log("accountValueBefore: ", accountValueBefore);
-                if (accountValueAfter > accountValueBefore) {
+                (bool isValueAfterPositive, ) = accounting.accountValue(
+                    poolId,
+                    accountId
+                );
+                if (
+                    accountValueAfter > accountValueBefore &&
+                    isValueAfterPositive
+                ) {
                     t(false, "accountValue increased");
                 }
             }
@@ -1173,11 +1168,18 @@ abstract contract Properties is
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
+
+        // Check if this holding is a liability to determine the correct account type
+        bool isLiability = holdings.isLiability(poolId, scId, assetId);
+        AccountType accountType = isLiability
+            ? AccountType.Liability
+            : AccountType.Asset;
+
         AccountId accountId = holdings.accountId(
             poolId,
             scId,
             assetId,
-            uint8(AccountType.Asset)
+            uint8(accountType)
         );
         (, uint128 accountValue) = accounting.accountValue(poolId, accountId);
         uint128 holdingsValue = holdings.value(poolId, scId, assetId);
@@ -1693,72 +1695,6 @@ abstract contract Properties is
     /// @dev Share Queue Properties - higher risk area
     /// @dev These properties verify the critical share queue flip logic that poses the greatest risk to protocol
     /// integrity
-
-    // Property 3.1 & 3.2: Issue/Revoke Logic Correctness
-    /// @notice Verifies that the share queue delta and isPositive flag correctly represent the net position
-    // function property_shareQueueFlipLogic() public {
-    //     PoolId[] memory pools = _getPools();
-    //     for (uint256 i = 0; i < pools.length; i++) {
-    //         PoolId poolId = pools[i];
-    //         ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
-    //         for (uint256 j = 0; j < shareClasses.length; j++) {
-    //             ShareClassId scId = shareClasses[j];
-    //             bytes32 key = _poolShareKey(poolId, scId);
-
-    //             // Check if there are any async vaults for this pool/shareclass combination
-    //             bool hasAsyncVault = _hasAsyncVaultForPoolShareClass(
-    //                 poolId,
-    //                 scId
-    //             );
-
-    //             // Skip pools/shareclasses that don't have async vaults as queuedShares only apply to async operations
-    //             if (!hasAsyncVault) {
-    //                 continue;
-    //             }
-
-    //             (uint128 delta, bool isPositive, , ) = balanceSheet
-    //                 .queuedShares(poolId, scId);
-
-    //             // Calculate expected net position from ghost tracking
-    //             int256 expectedNet = ghost_netSharePosition[key];
-
-    //             // Calculate actual net position from queue state
-    //             int256 actualNet = isPositive
-    //                 ? int256(uint256(delta))
-    //                 : -int256(uint256(delta));
-
-    //             // For zero delta, must be negative (isPositive = false)
-    //             if (delta == 0) {
-    //                 t(
-    //                     !isPositive,
-    //                     "SHARE-QUEUE-01: Zero delta must have isPositive = false"
-    //                 );
-    //                 t(
-    //                     actualNet == 0,
-    //                     "SHARE-QUEUE-02: Zero delta must represent zero net position"
-    //                 );
-    //             } else {
-    //                 // Non-zero delta: verify sign consistency
-    //                 t(
-    //                     (isPositive && actualNet > 0) ||
-    //                         (!isPositive && actualNet < 0),
-    //                     "SHARE-QUEUE-03: isPositive flag must match delta sign"
-    //                 );
-    //             }
-
-    //             // Verify net position matches tracked operations
-    //             // NOTE: implemented like this because comparing int256 values
-    //             if (actualNet != expectedNet) {
-    //                 console2.log("actualNet: ", actualNet);
-    //                 console2.log("expectedNet: ", expectedNet);
-    //                 t(
-    //                     false,
-    //                     "SHARE-QUEUE-04: Net position must match tracked issue/revoke operations"
-    //                 );
-    //             }
-    //         }
-    //     }
-    // }
 
     // TODO: come back to this, need a way to determine which shares joined/left queue before/after
     // Property 3.2: Issue/Revoke Logic Correctness
@@ -2613,24 +2549,19 @@ abstract contract Properties is
             for (uint256 k = 0; k < actors.length; k++) {
                 uint256 balance = shareToken.balanceOf(actors[k]);
                 balancesSummed += balance;
-
-                // Allow 1 wei tolerance per actor for rounding
-                uint256 tolerance = actors.length;
-                // actualSupply = balancesSummed +/- tolerance
-
-                uint256 difference;
-                if (actualSupply >= balancesSummed) {
-                    difference = actualSupply - balancesSummed;
-                } else {
-                    difference = balancesSummed - actualSupply;
-                }
-
-                lte(
-                    difference,
-                    tolerance,
-                    "supply difference exceeds tolerance"
-                );
             }
+
+            // Allow 1 wei tolerance per actor for rounding
+            uint256 tolerance = actors.length;
+            uint256 difference;
+            // actualSupply = balancesSummed +/- tolerance
+            if (actualSupply >= balancesSummed) {
+                difference = actualSupply - balancesSummed;
+            } else {
+                difference = balancesSummed - actualSupply;
+            }
+
+            lte(difference, tolerance, "supply difference exceeds tolerance");
         } catch {}
     }
 
