@@ -48,10 +48,14 @@ class EnvironmentLoader:
                 if "=" in line:
                     k, v = line.strip().split("=", 1)
                     env_vars[k] = v
+            os.remove(env_file)
+            # Reload the config now that .env is removed
+            self._load_config()
         else:
             env_vars = {}
 
         # Update or add the relevant keys
+        env_vars["NETWORK"] = self.network_name
         env_vars["ETHERSCAN_API_KEY"] = self.etherscan_api_key
         env_vars["PROTOCOL_ADMIN"] = self.protocol_admin_address
         env_vars["OPS_ADMIN"] = self.ops_admin_address
@@ -63,6 +67,30 @@ class EnvironmentLoader:
             for k, v in env_vars.items():
                 f.write(f"{k}={v}\n")
         print_success("Config written to .env")
+
+    def validate_network(self):
+        """Check if existing .env file is for the correct network"""
+        if not os.path.exists(".env"):
+            return True
+            
+        with open(".env", "r") as f:
+            for line in f:
+                if line.startswith("NETWORK="):
+                    existing_network = line.split("=", 1)[1].strip()
+                    if existing_network != self.network_name:
+                        print_warning(f"Existing .env file is configured for network '{existing_network}'")
+                        print_warning(f"Current deployment is for network '{self.network_name}'")
+                        print_info("This could lead to deploying to the wrong network or using wrong credentials.")
+                        
+                        response = input("Do you want to continue? [y/N]: ").strip().lower()
+                        if response not in ("y", "yes"):
+                            print_info("Please run 'python3 script/deploy/deploy.py {network} dump:config' to update .env for the correct network")
+                            print_error("Aborted by user.")
+                            raise SystemExit(1)
+                        else:
+                            print_warning("Continuing with mismatched network configuration...")
+                    return True
+        return True
 
     def _check_env_file(self, variable_name: str):
         if os.path.exists(".env"):
