@@ -146,18 +146,14 @@ abstract contract AsyncVaultCentrifugeProperties is
         uint32 scEntropy,
         uint256 depositAmount
     ) public statelessTest {
-
         uint256 maxDepositBefore = _getVault().maxDeposit(_getActor());
 
         depositAmount = between(depositAmount, 1, maxDepositBefore);
 
-        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(
-            shareClassManager,
-            poolId,
-            scEntropy
-        );
-        AssetId assetId = _getAssetId();
+        PoolId poolId = _getVault().poolId();
+        ShareClassId scId = _getVault().scId();
+        AssetId assetId = vaultRegistry.vaultDetails(_getVault()).assetId;
+
         (uint256 pendingDepositBefore, ) = batchRequestManager.depositRequest(
             poolId,
             scId,
@@ -172,11 +168,13 @@ abstract contract AsyncVaultCentrifugeProperties is
             scId
         );
 
-
         uint256 maxMintBefore;
         AsyncClaimState memory claimState;
         if (isAsyncVault) {
-            claimState = _captureAsyncClaimStateBefore(_getVault(), _getActor());
+            claimState = _captureAsyncClaimStateBefore(
+                _getVault(),
+                _getActor()
+            );
             maxMintBefore = claimState.maxMintBefore;
         }
         // TODO(wischli): Re-enable after merging main with maxMint refactor to overcome Uint128_Overflow
@@ -194,8 +192,16 @@ abstract contract AsyncVaultCentrifugeProperties is
             if (isAsyncVault) {
                 // For async vaults, validate globalEscrow share transfers instead of poolEscrow
                 claimState.sharesReturned = shares;
-                _updateAsyncClaimStateAfter(claimState, _getVault(), _getActor());
-                _validateAsyncVaultClaim(claimState, depositAmount, "asyncVault_maxDeposit");
+                _updateAsyncClaimStateAfter(
+                    claimState,
+                    _getVault(),
+                    _getActor()
+                );
+                _validateAsyncVaultClaim(
+                    claimState,
+                    depositAmount,
+                    "asyncVault_maxDeposit"
+                );
 
                 _validateAsyncMaxValueChange(
                     maxDepositBefore,
@@ -277,13 +283,9 @@ abstract contract AsyncVaultCentrifugeProperties is
 
         mintAmount = between(mintAmount, 1, maxMintBefore);
 
-        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(
-            shareClassManager,
-            poolId,
-            scEntropy
-        );
-        AssetId assetId = _getAssetId();
+        PoolId poolId = _getVault().poolId();
+        ShareClassId scId = _getVault().scId();
+        AssetId assetId = vaultRegistry.vaultDetails(_getVault()).assetId;
 
         // === PoolEscrow State Analysis Before Mint ===
         PoolEscrowState memory escrowState = _analyzePoolEscrowState(
@@ -302,10 +304,22 @@ abstract contract AsyncVaultCentrifugeProperties is
 
             if (isAsyncVault) {
                 // For async vaults, validate globalEscrow share transfers instead of poolEscrow
-                AsyncClaimState memory claimState = _captureAsyncClaimStateBefore(_getVault(), _getActor());
+                AsyncClaimState
+                    memory claimState = _captureAsyncClaimStateBefore(
+                        _getVault(),
+                        _getActor()
+                    );
                 claimState.sharesReturned = mintAmount;
-                _updateAsyncClaimStateAfter(claimState, _getVault(), _getActor());
-                _validateAsyncVaultClaim(claimState, assets, "asyncVault_maxMint");
+                _updateAsyncClaimStateAfter(
+                    claimState,
+                    _getVault(),
+                    _getActor()
+                );
+                _validateAsyncVaultClaim(
+                    claimState,
+                    assets,
+                    "asyncVault_maxMint"
+                );
 
                 _validateAsyncMaxValueChange(
                     maxMintBefore,
@@ -410,13 +424,9 @@ abstract contract AsyncVaultCentrifugeProperties is
 
         withdrawAmount = between(withdrawAmount, 1, maxWithdrawBefore);
 
-        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(
-            shareClassManager,
-            poolId,
-            scEntropy
-        );
-        AssetId assetId = _getAssetId();
+        PoolId poolId = _getVault().poolId();
+        ShareClassId scId = _getVault().scId();
+        AssetId assetId = vaultRegistry.vaultDetails(_getVault()).assetId;
 
         vm.prank(_getActor());
         try
@@ -498,13 +508,10 @@ abstract contract AsyncVaultCentrifugeProperties is
 
         redeemAmount = between(redeemAmount, 1, maxRedeemBefore);
 
-        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(
-            shareClassManager,
-            poolId,
-            scEntropy
-        );
-        AssetId assetId = _getAssetId();
+        PoolId poolId = _getVault().poolId();
+        ShareClassId scId = _getVault().scId();
+        AssetId assetId = vaultRegistry.vaultDetails(_getVault()).assetId;
+
         (, uint32 latestRedeemApproval, , ) = batchRequestManager.epochId(
             poolId,
             scId,
@@ -685,7 +692,6 @@ abstract contract AsyncVaultCentrifugeProperties is
         state.isNormalStateAfter = state.totalAfter > state.reservedAfter;
     }
 
-
     /// @dev Validates AsyncVault max value changes
     /// @param operationAmount The operation amount (shares for maxMint, assets for maxDeposit)
     /// @param operationName The name of the operation ("Deposit" or "Mint")
@@ -734,6 +740,9 @@ abstract contract AsyncVaultCentrifugeProperties is
             string.concat(operationName, ": reserved amount should not change")
         );
 
+        console2.log("state.totalBefore: ", state.totalBefore);
+        console2.log("uint128(assetAmount): ", uint128(assetAmount));
+        console2.log("state.totalAfter: ", state.totalAfter);
         t(
             state.totalBefore + uint128(assetAmount) == state.totalAfter,
             string.concat(
@@ -856,10 +865,13 @@ abstract contract AsyncVaultCentrifugeProperties is
         address shareToken = vault.share();
         address globalEscrowAddr = address(asyncRequestManager.globalEscrow());
 
-        state.globalEscrowSharesBefore = IERC20(shareToken).balanceOf(globalEscrowAddr);
+        state.globalEscrowSharesBefore = IERC20(shareToken).balanceOf(
+            globalEscrowAddr
+        );
         state.receiverSharesBefore = IERC20(shareToken).balanceOf(receiver);
 
-        (state.maxMintBefore, , , , , , , , , ) = asyncRequestManager.investments(vault, _getActor());
+        (state.maxMintBefore, , , , , , , , , ) = asyncRequestManager
+            .investments(vault, _getActor());
         return state;
     }
 
@@ -873,10 +885,13 @@ abstract contract AsyncVaultCentrifugeProperties is
         address shareToken = vault.share();
         address globalEscrowAddr = address(asyncRequestManager.globalEscrow());
 
-        state.globalEscrowSharesAfter = IERC20(shareToken).balanceOf(globalEscrowAddr);
+        state.globalEscrowSharesAfter = IERC20(shareToken).balanceOf(
+            globalEscrowAddr
+        );
         state.receiverSharesAfter = IERC20(shareToken).balanceOf(receiver);
 
-        (state.maxMintAfter, , , , , , , , , ) = asyncRequestManager.investments(vault, _getActor());
+        (state.maxMintAfter, , , , , , , , , ) = asyncRequestManager
+            .investments(vault, _getActor());
     }
 
     /// @dev Validates async vault claim operations
@@ -890,54 +905,83 @@ abstract contract AsyncVaultCentrifugeProperties is
             eq(
                 state.sharesReturned,
                 0,
-                string.concat(operationName, ": zero deposit should return zero shares")
+                string.concat(
+                    operationName,
+                    ": zero deposit should return zero shares"
+                )
             );
             eq(
                 state.globalEscrowSharesBefore,
                 state.globalEscrowSharesAfter,
-                string.concat(operationName, ": zero deposit should not change globalEscrow")
+                string.concat(
+                    operationName,
+                    ": zero deposit should not change globalEscrow"
+                )
             );
             eq(
                 state.receiverSharesBefore,
                 state.receiverSharesAfter,
-                string.concat(operationName, ": zero deposit should not change receiver balance")
+                string.concat(
+                    operationName,
+                    ": zero deposit should not change receiver balance"
+                )
             );
             eq(
                 state.maxMintBefore,
                 state.maxMintAfter,
-                string.concat(operationName, ": zero deposit should not change maxMint")
+                string.concat(
+                    operationName,
+                    ": zero deposit should not change maxMint"
+                )
             );
             return;
         }
 
-        uint256 globalEscrowDecrease = state.globalEscrowSharesBefore - state.globalEscrowSharesAfter;
-        uint256 receiverIncrease = state.receiverSharesAfter - state.receiverSharesBefore;
+        uint256 globalEscrowDecrease = state.globalEscrowSharesBefore -
+            state.globalEscrowSharesAfter;
+        uint256 receiverIncrease = state.receiverSharesAfter -
+            state.receiverSharesBefore;
         eq(
             globalEscrowDecrease,
             state.sharesReturned,
-            string.concat(operationName, ": globalEscrow must decrease by exact shares returned")
+            string.concat(
+                operationName,
+                ": globalEscrow must decrease by exact shares returned"
+            )
         );
         eq(
             receiverIncrease,
             state.sharesReturned,
-            string.concat(operationName, ": receiver must receive exact shares returned")
+            string.concat(
+                operationName,
+                ": receiver must receive exact shares returned"
+            )
         );
         eq(
             globalEscrowDecrease,
             receiverIncrease,
-            string.concat(operationName, ": shares leaving globalEscrow must equal shares received")
+            string.concat(
+                operationName,
+                ": shares leaving globalEscrow must equal shares received"
+            )
         );
 
         uint128 maxMintDecrease = state.maxMintBefore - state.maxMintAfter;
         gte(
             maxMintDecrease,
             state.sharesReturned,
-            string.concat(operationName, ": maxMint must decrease by at least shares returned")
+            string.concat(
+                operationName,
+                ": maxMint must decrease by at least shares returned"
+            )
         );
         lte(
             maxMintDecrease,
             state.sharesReturned + 1,
-            string.concat(operationName, ": maxMint must decrease by at at most shares returned +1 due to rounding")
+            string.concat(
+                operationName,
+                ": maxMint must decrease by at at most shares returned +1 due to rounding"
+            )
         );
     }
 
@@ -989,7 +1033,9 @@ abstract contract AsyncVaultCentrifugeProperties is
         ) = asyncRequestManager.investments(_getVault(), _getActor());
 
         if (!depositPrice.isZero()) {
-            VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(_getVault());
+            VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(
+                _getVault()
+            );
             uint128 sharesUp = PricingLib.assetToShareAmount(
                 _getVault().share(),
                 vaultDetails.asset,
@@ -1026,7 +1072,9 @@ abstract contract AsyncVaultCentrifugeProperties is
         );
 
         if (!depositPrice.isZero()) {
-            VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(_getVault());
+            VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(
+                _getVault()
+            );
             uint256 assetsRequired = PricingLib.shareToAssetAmount(
                 _getVault().share(),
                 mintAmount.toUint128(),
@@ -1067,7 +1115,9 @@ abstract contract AsyncVaultCentrifugeProperties is
 
         if (!redeemPrice.isZero()) {
             // Calculate shares required for the withdraw using exact AsyncRequestManager logic
-            VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(_getVault());
+            VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(
+                _getVault()
+            );
             uint128 sharesRequired = PricingLib.assetToShareAmount(
                 _getVault().share(),
                 vaultDetails.asset,
