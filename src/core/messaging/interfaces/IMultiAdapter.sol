@@ -51,6 +51,8 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
         bytes payload,
         IAdapter adapter,
         bytes32 adapterData,
+        uint256 gasLimit,
+        uint256 gasPaid,
         address refund
     );
 

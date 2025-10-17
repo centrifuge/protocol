@@ -13,9 +13,8 @@ import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.s
 contract GasService is IGasService {
     using MessageLib for *;
 
-    /// @dev Takes into account diverge computation from the base menchmarked value.
-    /// Also takens into account
-    uint128 public constant BASE_COST = 20_000;
+    /// @dev Takes into account diverge computation from the base benchmarked value.
+    uint128 public constant BASE_COST = 100_000;
 
     uint128 public immutable scheduleUpgrade;
     uint128 public immutable cancelUpgrade;
@@ -48,34 +47,34 @@ contract GasService is IGasService {
 
     constructor() {
         // NOTE: Below values should be updated using script/utils/benchmark.sh
-        scheduleUpgrade = _gasValue(93864);
-        cancelUpgrade = _gasValue(74271);
-        recoverTokens = _gasValue(151069);
-        registerAsset = _gasValue(103986);
-        setPoolAdapters = _gasValue(481610); // using MAX_ADAPTER_COUNT
-        request = _gasValue(220618);
-        notifyPool = _gasValue(1150829); // create escrow case
-        notifyShareClass = _gasValue(1853040);
-        notifyPricePoolPerShare = _gasValue(107101);
-        notifyPricePoolPerAsset = _gasValue(111107);
-        notifyShareMetadata = _gasValue(121509);
-        updateShareHook = _gasValue(96438);
-        initiateTransferShares = _gasValue(286644);
-        executeTransferShares = _gasValue(177525);
-        updateRestriction = _gasValue(114472);
-        trustedContractUpdate = _gasValue(142278);
-        requestCallback = _gasValue(258513); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2853077);
-        updateVaultLink = _gasValue(185386);
-        updateVaultUnlink = _gasValue(134104);
-        setRequestManager = _gasValue(100931);
-        updateBalanceSheetManager = _gasValue(104206);
-        updateHoldingAmount = _gasValue(304350);
-        updateShares = _gasValue(201562);
-        maxAssetPriceAge = _gasValue(110269);
-        maxSharePriceAge = _gasValue(107155);
-        updateGatewayManager = _gasValue(88451);
-        untrustedContractUpdate = _gasValue(83838);
+        scheduleUpgrade = _gasValue(94780);
+        cancelUpgrade = _gasValue(75187);
+        recoverTokens = _gasValue(151956);
+        registerAsset = _gasValue(104893);
+        setPoolAdapters = _gasValue(482589); // using MAX_ADAPTER_COUNT
+        request = _gasValue(226261);
+        notifyPool = _gasValue(1161511); // create escrow case
+        notifyShareClass = _gasValue(1843529);
+        notifyPricePoolPerShare = _gasValue(108164);
+        notifyPricePoolPerAsset = _gasValue(112180);
+        notifyShareMetadata = _gasValue(122609);
+        updateShareHook = _gasValue(97501);
+        initiateTransferShares = _gasValue(286650);
+        executeTransferShares = _gasValue(178598);
+        updateRestriction = _gasValue(115580);
+        trustedContractUpdate = _gasValue(142097);
+        requestCallback = _gasValue(262247); // approve deposit case
+        updateVaultDeployAndLink = _gasValue(2843520);
+        updateVaultLink = _gasValue(186459);
+        updateVaultUnlink = _gasValue(135177);
+        setRequestManager = _gasValue(106538);
+        updateBalanceSheetManager = _gasValue(105291);
+        updateHoldingAmount = _gasValue(305423);
+        updateShares = _gasValue(202268);
+        maxAssetPriceAge = _gasValue(111332);
+        maxSharePriceAge = _gasValue(108218);
+        updateGatewayManager = _gasValue(94036);
+        untrustedContractUpdate = _gasValue(89268);
     }
 
     /// @inheritdoc IMessageLimits
@@ -110,8 +109,8 @@ contract GasService is IGasService {
         if (kind == MessageType.UpdateBalanceSheetManager) return updateBalanceSheetManager;
         if (kind == MessageType.UpdateHoldingAmount) return updateHoldingAmount;
         if (kind == MessageType.UpdateShares) return updateShares;
-        if (kind == MessageType.MaxAssetPriceAge) return maxAssetPriceAge;
-        if (kind == MessageType.MaxSharePriceAge) return maxSharePriceAge;
+        if (kind == MessageType.SetMaxAssetPriceAge) return maxAssetPriceAge;
+        if (kind == MessageType.SetMaxSharePriceAge) return maxSharePriceAge;
         if (kind == MessageType.UpdateGatewayManager) return updateGatewayManager;
         if (kind == MessageType.UntrustedContractUpdate) return untrustedContractUpdate;
         revert InvalidMessageType(); // Unreachable

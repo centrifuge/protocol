@@ -12,11 +12,11 @@ import {Gateway} from "../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
-import {ContractUpdater} from "../src/core/ContractUpdater.sol";
 import {GasService} from "../src/core/messaging/GasService.sol";
 import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
 import {VaultRegistry} from "../src/core/spoke/VaultRegistry.sol";
 import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
+import {ContractUpdater} from "../src/core/utils/ContractUpdater.sol";
 import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
 import {TokenFactory} from "../src/core/spoke/factories/TokenFactory.sol";
 import {MessageProcessor} from "../src/core/messaging/MessageProcessor.sol";
@@ -132,7 +132,6 @@ contract CoreActionBatcher is Constants {
         report.poolEscrowFactory.rely(address(report.spoke));
 
         // Rely balanceSheet
-        report.gateway.rely(address(report.balanceSheet));
         report.messageDispatcher.rely(address(report.balanceSheet));
 
         // Rely vaultRegistry
@@ -140,7 +139,6 @@ contract CoreActionBatcher is Constants {
         report.messageDispatcher.rely(address(report.vaultRegistry));
 
         // Rely hub
-        report.gateway.rely(address(report.hub));
         report.multiAdapter.rely(address(report.hub));
         report.accounting.rely(address(report.hub));
         report.holdings.rely(address(report.hub));

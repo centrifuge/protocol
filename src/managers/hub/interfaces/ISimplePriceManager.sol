@@ -24,6 +24,7 @@ interface ISimplePriceManager is INAVHook {
     );
     event UpdateNetworks(PoolId indexed poolId, uint16[] networks);
 
+    error NotAuthorized();
     error InvalidShareClassCount();
     error InvalidShareClass();
     error MismatchedEpochs();
@@ -37,6 +38,8 @@ interface ISimplePriceManager is INAVHook {
     struct NetworkMetrics {
         uint128 netAssetValue;
         uint128 issuance;
+        uint128 transferredIn;
+        uint128 transferredOut;
         uint32 issueEpochsBehind;
         uint32 revokeEpochsBehind;
     }
@@ -46,7 +49,14 @@ interface ISimplePriceManager is INAVHook {
     function networkMetrics(PoolId poolId, uint16 centrifugeId)
         external
         view
-        returns (uint128 netAssetValue, uint128 issuance, uint32 issueEpochsBehind, uint32 revokeEpochsBehind);
+        returns (
+            uint128 netAssetValue,
+            uint128 issuance,
+            uint128 transferredIn,
+            uint128 transferredOut,
+            uint32 issueEpochsBehind,
+            uint32 revokeEpochsBehind
+        );
 
     //----------------------------------------------------------------------------------------------
     // Administration

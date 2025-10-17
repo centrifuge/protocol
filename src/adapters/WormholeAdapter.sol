@@ -1,15 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {
-    IWormholeAdapter,
-    IAdapter,
-    IWormholeRelayer,
-    IWormholeDeliveryProvider,
-    IWormholeReceiver,
-    WormholeSource,
-    WormholeDestination
-} from "./interfaces/IWormholeAdapter.sol";
+import { IWormholeAdapter, IAdapter, IWormholeRelayer, IWormholeDeliveryProvider, IWormholeReceiver, WormholeSource, WormholeDestination } from "./interfaces/IWormholeAdapter.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
@@ -24,7 +16,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     using CastLib for bytes32;
 
     /// @dev Cost of executing `receiveWormholeMessages()` except entrypoint.handle()
-    uint256 public constant RECEIVE_COST = 4000;
+    uint256 public constant RECEIVE_COST = 70_000;
 
     uint16 public immutable localWormholeId;
     IMessageHandler public immutable entrypoint;
@@ -91,9 +83,9 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         WormholeDestination memory destination = destinations[centrifugeId];
         require(destination.wormholeId != 0, UnknownChainId());
 
-        uint64 sequence = relayer.sendPayloadToEvm{value: msg.value}(
-            destination.wormholeId, destination.addr, payload, 0, gasLimit + RECEIVE_COST, localWormholeId, refund
-        );
+        uint64 sequence = relayer.sendPayloadToEvm{
+            value: msg.value
+        }(destination.wormholeId, destination.addr, payload, 0, gasLimit + RECEIVE_COST, localWormholeId, refund);
 
         adapterData = bytes32(bytes8(sequence));
     }

@@ -1,0 +1,104 @@
+@startuml
+title Fund Management Flow - Queued Assets State Changes
+
+skinparam sequenceArrowThickness 3
+skinparam backgroundColor white
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 250
+skinparam roundcorner 10
+skinparam shadowing false
+skinparam defaultFontName "Monospaced"
+
+skinparam sequence {
+    ArrowColor #333333
+    BoxBorderColor #999999
+    BoxBackgroundColor #F9F9F9
+    GroupBorderColor #AAAAAA
+    GroupBackgroundColor #EEEEEE
+}
+
+actor "Balance Sheet Manager" as BSM
+participant BalanceSheet
+participant PoolEscrow
+participant "Hub" as Hub
+
+note over BalanceSheet, Hub
+    BalanceSheet → Hub communication
+    routes through Spoke & Messaging
+end note
+
+== Initial State ==
+note over BalanceSheet
+    **Queued Assets:** 500 USDC deposits, 200 USDC withdrawals
+    **Net Queued:** +300 USDC
+end note
+
+note over PoolEscrow
+    **Available Balance:** 2000 USDC
+end note
+
+note over Hub
+    **Holdings:** 5000 USDC
+    **Issued Shares:** 10000 tokens
+end note
+
+== Deposit Operation ==
+BSM -> BalanceSheet: deposit(1000 USDC)
+activate BalanceSheet
+BalanceSheet -> PoolEscrow: transfer 1000 USDC from BSM
+activate PoolEscrow
+PoolEscrow --> PoolEscrow: availableBalance: 2000 → 3000 USDC
+deactivate PoolEscrow
+BalanceSheet --> BalanceSheet: queuedDeposits: 500 → 1500 USDC
+deactivate BalanceSheet
+
+note over BalanceSheet
+    **Queued Assets:** 1500 USDC deposits, 200 USDC withdrawals
+    **Net Queued:** +1300 USDC
+end note
+
+== Withdraw Operation ==
+BSM -> BalanceSheet: withdraw(800 USDC, to BSM)
+activate BalanceSheet
+BalanceSheet -> PoolEscrow: transfer 800 USDC to BSM
+activate PoolEscrow
+PoolEscrow --> PoolEscrow: availableBalance: 3000 → 2200 USDC
+deactivate PoolEscrow
+BalanceSheet --> BalanceSheet: queuedWithdrawals: 200 → 1000 USDC
+deactivate BalanceSheet
+
+note over BalanceSheet
+    **Queued Assets:** 1500 USDC deposits, 1000 USDC withdrawals
+    **Net Queued:** +500 USDC
+end note
+
+== Submit Queued Assets ==
+BSM -> BalanceSheet: submitQueuedAssets()
+activate BalanceSheet
+BalanceSheet --> BalanceSheet: calculate net: +500 USDC
+group Send snapshot to Hub
+BalanceSheet -> Hub: sendUpdateHoldingAmount(+500 USDC)
+activate Hub
+Hub -> Hub: holdings: 5000 → 5500 USDC
+Hub -> Hub: update accounting with +500 USDC
+deactivate Hub
+end
+BalanceSheet --> BalanceSheet: clear queues to zero
+deactivate BalanceSheet
+
+== Final State ==
+note over BalanceSheet
+    **Queued Assets:** 0 USDC deposits, 0 USDC withdrawals
+    **Net Queued:** 0 USDC
+end note
+
+note over PoolEscrow
+    **Available Balance:** 2200 USDC
+end note
+
+note over Hub
+    **Holdings:** 5500 USDC
+    **Issued Shares:** 10000 tokens
+end note
+
+@enduml 

@@ -40,8 +40,8 @@ library PricingLib {
         uint8 shareDecimals = IERC20Metadata(shareToken).decimals();
 
         return PricingLib.convertWithReciprocalPrice(
-            assetAmount, assetDecimals, shareDecimals, priceAssetPerShare_, rounding
-        ).toUint128();
+                assetAmount, assetDecimals, shareDecimals, priceAssetPerShare_, rounding
+            ).toUint128();
     }
 
     /// @dev Converts the given asset amount to share amount. Returned value is in share decimals.
@@ -63,8 +63,8 @@ library PricingLib {
         uint8 shareDecimals = IERC20Metadata(shareToken).decimals();
 
         return PricingLib.assetToShareAmount(
-            assetAmount, assetDecimals, shareDecimals, pricePoolPerAsset, pricePoolPerShare, rounding
-        ).toUint128();
+                assetAmount, assetDecimals, shareDecimals, pricePoolPerAsset, pricePoolPerShare, rounding
+            ).toUint128();
     }
 
     /// @dev Converts the given share amount to asset amount. Returned value is in share decimals.
@@ -110,8 +110,8 @@ library PricingLib {
 
         // NOTE: Pool and share denomination are always equal by design
         return PricingLib.shareToAssetAmount(
-            shareAmount, shareDecimals, assetDecimals, pricePoolPerShare, pricePoolPerAsset, rounding
-        ).toUint128();
+                shareAmount, shareDecimals, assetDecimals, pricePoolPerShare, pricePoolPerAsset, rounding
+            ).toUint128();
     }
 
     /// @dev Calculates the asset price per share returns the value in price decimals
@@ -134,9 +134,39 @@ library PricingLib {
 
         // NOTE: More precise than utilizing D18
         return d18(
-            _toPriceDecimals(assets, assetDecimals).mulDiv(
-                10 ** PRICE_DECIMALS, _toPriceDecimals(shares, shareDecimals), rounding
-            ).toUint128()
+            _toPriceDecimals(assets, assetDecimals)
+                .mulDiv(10 ** PRICE_DECIMALS, _toPriceDecimals(shares, shareDecimals), rounding).toUint128()
+        );
+    }
+
+    /// @dev Calculates the maximum amount of assets that can be converted to shares without uint128 overflow.
+    ///      Returns the maximum asset amount such that assetToShareAmount(result) <= maxShares.
+    /// @dev Assumes handling of zero denominator price (pricePoolPerAsset) by consumer.
+    /// @param  shareToken Address of the share token
+    /// @param  asset Address of the asset
+    /// @param  tokenId Token ID for ERC6909 (0 for ERC20)
+    /// @param  maxShares Maximum allowed shares (typically type(uint128).max)
+    /// @param  pricePoolPerShare Price of share in pool units (numerator)
+    /// @param  pricePoolPerAsset Price of asset in pool units (denominator)
+    /// @return Maximum asset amount that won't cause overflow, or type(uint256).max if no overflow possible
+    function maxConvertibleAssetAmount(
+        address shareToken,
+        address asset,
+        uint256 tokenId,
+        uint256 maxShares,
+        D18 pricePoolPerShare,
+        D18 pricePoolPerAsset
+    ) internal view returns (uint256) {
+        require(pricePoolPerAsset.isNotZero(), DivisionByZero());
+
+        uint8 assetDecimals = _getAssetDecimals(asset, tokenId);
+        uint8 shareDecimals = IERC20Metadata(shareToken).decimals();
+
+        return MathLib.mulDiv(
+            maxShares,
+            uint256(10 ** assetDecimals) * pricePoolPerShare.raw(),
+            uint256(10 ** shareDecimals) * pricePoolPerAsset.raw(),
+            MathLib.Rounding.Down
         );
     }
 
@@ -166,8 +196,11 @@ library PricingLib {
         }
 
         return MathLib.mulDiv(
-            priceQuotePerBase.raw(), baseAmount * 10 ** quoteDecimals, 10 ** (baseDecimals + PRICE_DECIMALS), rounding
-        ) // cancel out exponentiation from D18 multiplication
+                priceQuotePerBase.raw(),
+                baseAmount * 10 ** quoteDecimals,
+                10 ** (baseDecimals + PRICE_DECIMALS),
+                rounding
+            ) // cancel out exponentiation from D18 multiplication
             .toUint128();
     }
 
@@ -189,11 +222,11 @@ library PricingLib {
         }
 
         return MathLib.mulDiv(
-            10 ** quoteDecimals * baseAmount,
-            10 ** PRICE_DECIMALS,
-            10 ** baseDecimals * priceBasePerQuote.raw(),
-            rounding
-        ).toUint128();
+                10 ** quoteDecimals * baseAmount,
+                10 ** PRICE_DECIMALS,
+                10 ** baseDecimals * priceBasePerQuote.raw(),
+                rounding
+            ).toUint128();
     }
 
     /// @dev Converts an amount using decimals and two prices.
@@ -211,11 +244,11 @@ library PricingLib {
         require(priceDenominator.isNotZero(), DivisionByZero());
 
         return MathLib.mulDiv(
-            priceNumerator.raw(),
-            10 ** quoteDecimals * baseAmount,
-            10 ** baseDecimals * priceDenominator.raw(),
-            rounding
-        ).toUint128();
+                priceNumerator.raw(),
+                10 ** quoteDecimals * baseAmount,
+                10 ** baseDecimals * priceDenominator.raw(),
+                rounding
+            ).toUint128();
     }
 
     /// @dev Converts asset amount to share amount.
@@ -230,8 +263,9 @@ library PricingLib {
         D18 pricePoolPerShare,
         MathLib.Rounding rounding
     ) internal pure returns (uint128 shareAmount) {
-        return
-            convertWithPrices(assetAmount, assetDecimals, shareDecimals, pricePoolPerAsset, pricePoolPerShare, rounding);
+        return convertWithPrices(
+            assetAmount, assetDecimals, shareDecimals, pricePoolPerAsset, pricePoolPerShare, rounding
+        );
     }
 
     /// @dev Converts share amount to asset asset amount.
@@ -246,8 +280,9 @@ library PricingLib {
         D18 pricePoolPerAsset,
         MathLib.Rounding rounding
     ) internal pure returns (uint128 assetAmount) {
-        return
-            convertWithPrices(shareAmount, shareDecimals, assetDecimals, pricePoolPerShare, pricePoolPerAsset, rounding);
+        return convertWithPrices(
+            shareAmount, shareDecimals, assetDecimals, pricePoolPerShare, pricePoolPerAsset, rounding
+        );
     }
 
     /// @dev Converts pool amount to asset amount.

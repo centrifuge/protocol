@@ -61,6 +61,9 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when a handle is called without enough gas to process the message.
     error NotEnoughGasToProcess();
 
+    /// @notice Dispatched when the content of a batch doesn't belong to the same pool
+    error MalformedBatch();
+
     /// @notice Dispatched when a message is sent but the gateway is blocked for sending messages
     error OutgoingBlocked();
 
@@ -73,9 +76,6 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when a message was batched but there was a payment for it
     error NotPayable();
 
-    /// @notice Dispatched when withBatch is called but the system is already batching
-    error AlreadyBatching();
-
     /// @notice Dispatched when the callback fails with no error
     error CallFailedWithEmptyRevert();
 
@@ -87,6 +87,9 @@ interface IGateway is IMessageHandler, IRecoverable {
 
     /// @notice Dispatched when the callback was not from the sender
     error CallbackWasNotFromSender();
+
+    /// @notice Dispatched when there is not enough msg.value to send to the callback
+    error NotEnoughValueForCallback();
 
     //----------------------------------------------------------------------------------------------
     // Administration
@@ -133,26 +136,15 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @param message The message to send
     /// @param extraGasLimit Extra gas limit for execution
     /// @param refund Address to refund excess payment
-    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit, address refund)
-        external
-        payable;
+    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit, address refund) external payable;
 
     //----------------------------------------------------------------------------------------------
     // Batching
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Initialize batching message
-    function startBatching() external;
-
-    /// @notice Finalize batching messages and send the resulting batch message
-    /// @param refund Address to refund excess payment
-    function endBatching(address refund) external payable;
-
-    /// @notice Calls a method that should be in the same contract as the caller, as a callback.
-    ///         The method called will be wrapped inside startBatching and endBatching,
-    ///         so any method call inside that requires messaging will be batched.
-    /// @dev    Helper contract that enables integrations to automatically batch multiple cross-chain transactions.
-    ///         Should be used like:
+    /// @notice Automatic batching of cross-chain transactions through a callback.
+    ///         Any cross-chain transactions triggered in this callback will automatically be batched.
+    /// @dev    Should be used like:
     ///         ```
     ///         contract Integration {
     ///             IGateway gateway;
@@ -162,8 +154,8 @@ interface IGateway is IMessageHandler, IRecoverable {
     ///             }
     ///
     ///             function callback(PoolId poolId) external {
-    ///                 // Avoid direct reentrancy to the callback and ensure it's called from withBatch in the same contract:
-    ///                 address msgSender = gateway.lockCallback();
+    ///                 // Avoid reentrancy to the callback and ensure it's called from withBatch in the same contract:
+    ///                 gateway.lockCallback();
     ///
     ///                 // Call several hub, balance sheet, or spoke methods that trigger cross-chain transactions
     ///             }
@@ -172,16 +164,19 @@ interface IGateway is IMessageHandler, IRecoverable {
     ///
     ///         NOTE: inside callback, `msgSender` should be used instead of msg.sender
     /// @param  callbackData encoding data for the callback method
-    /// @param refund Address to refund excess payment
+    /// @param  callbackValue msg.value to send to the callback
+    /// @param  refund Address to refund excess payment
+    function withBatch(bytes memory callbackData, uint256 callbackValue, address refund) external payable;
+
+    /// @notice Same as withBatch(..), but without sending any msg.value to the callback
     function withBatch(bytes memory callbackData, address refund) external payable;
 
-    /// @notice Returns the current caller used to call withBatch and block any reentrancy.
+    /// @notice Ensures the callback is called by withBatch in the same contract.
     /// @dev calling this at the very beginning inside the multicall means:
     ///         - The callback is called from the gateway under `withBatch`.
     ///         - The callback is called from the same contract, because withBatch uses `msg.sender` as target for the callback
-    ///         - The callback that uses this can only be called once inside withBatch scope.
-    /// @return The locked callback sender
-    function lockCallback() external returns (address);
+    ///         - The callback that uses this can only be called once inside withBatch scope. No reentrancy.
+    function lockCallback() external;
 
     //----------------------------------------------------------------------------------------------
     // View methods

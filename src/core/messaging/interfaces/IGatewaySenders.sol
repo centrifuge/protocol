@@ -119,9 +119,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external payable;
 
     /// @notice Creates and send the message
-    function sendSetRequestManager(uint16 centrifugeId, PoolId poolId, bytes32 manager, address refund)
-        external
-        payable;
+    function sendSetRequestManager(uint16 centrifugeId, PoolId poolId, bytes32 manager, address refund) external payable;
 
     /// @notice Creates and send the message
     function sendUpdateBalanceSheetManager(
@@ -144,12 +142,16 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external payable;
 
     /// @notice Creates and send the message
-    function sendMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge, address refund)
-        external
-        payable;
+    function sendSetMaxAssetPriceAge(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint64 maxPriceAge,
+        address refund
+    ) external payable;
 
     /// @notice Creates and send the message
-    function sendMaxSharePriceAge(
+    function sendSetMaxSharePriceAge(
         uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,

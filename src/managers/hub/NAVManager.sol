@@ -3,8 +3,6 @@ pragma solidity 0.8.28;
 
 import {INAVManager, INAVHook} from "./interfaces/INAVManager.sol";
 
-import {Auth} from "../../misc/Auth.sol";
-
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
@@ -17,7 +15,7 @@ import {IAccounting, JournalEntry} from "../../core/hub/interfaces/IAccounting.s
 import {AccountId, withCentrifugeId, withAssetId} from "../../core/types/AccountId.sol";
 
 /// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
-contract NAVManager is INAVManager, Auth {
+contract NAVManager is INAVManager {
     IHub public immutable hub;
     IHoldings public immutable holdings;
     IAccounting public immutable accounting;
@@ -27,7 +25,7 @@ contract NAVManager is INAVManager, Auth {
     mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId => mapping(uint16 centrifugeId => bool)) public initialized;
 
-    constructor(IHub hub_, address deployer) Auth(deployer) {
+    constructor(IHub hub_) {
         hub = hub_;
         hubRegistry = hub_.hubRegistry();
         holdings = hub.holdings();
@@ -124,7 +122,8 @@ contract NAVManager is INAVManager, Auth {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISnapshotHook
-    function onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external auth {
+    function onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external {
+        require(msg.sender == address(holdings), NotAuthorized());
         require(address(navHook[poolId]) != address(0), InvalidNAVHook());
 
         uint128 netAssetValue_ = netAssetValue(poolId, centrifugeId);
@@ -140,7 +139,8 @@ contract NAVManager is INAVManager, Auth {
         uint16 fromCentrifugeId,
         uint16 toCentrifugeId,
         uint128 sharesTransferred
-    ) external auth {
+    ) external {
+        require(msg.sender == address(holdings), NotAuthorized());
         require(address(navHook[poolId]) != address(0), InvalidNAVHook());
 
         navHook[poolId].onTransfer(poolId, scId, fromCentrifugeId, toCentrifugeId, sharesTransferred);
@@ -173,8 +173,11 @@ contract NAVManager is INAVManager, Auth {
         AccountId gainAccount_ = gainAccount(centrifugeId);
         AccountId lossAccount_ = lossAccount(centrifugeId);
 
-        (, uint128 gainValue) = accounting.accountValue(poolId, gainAccount_);
-        (, uint128 lossValue) = accounting.accountValue(poolId, lossAccount_);
+        (bool gainIsPositive, uint128 gainValue) = accounting.accountValue(poolId, gainAccount_);
+        (bool lossIsPositive, uint128 lossValue) = accounting.accountValue(poolId, lossAccount_);
+
+        // Gain and loss accounts should never be negative
+        require(gainIsPositive && lossIsPositive, InvalidStateOfAccounts());
 
         uint256 count = (gainValue > 0 ? 1 : 0) + (lossValue > 0 ? 1 : 0);
         if (count == 0) return;
@@ -208,9 +211,30 @@ contract NAVManager is INAVManager, Auth {
         (bool lossIsPositive, uint128 loss) = accounting.accountValue(poolId, lossAccount(centrifugeId));
         (bool liabilityIsPositive, uint128 liability) = accounting.accountValue(poolId, liabilityAccount(centrifugeId));
 
-        require(equityIsPositive && gainIsPositive && lossIsPositive && liabilityIsPositive, InvalidNAV());
+        uint128 totalPositive = 0;
+        uint128 totalNegative = 0;
 
-        return equity + gain - loss - liability;
+        // Compute NAV = equity + gain - loss - liability
+
+        // Equity: normally positive, if negative flip to negative side
+        if (equityIsPositive) totalPositive += equity;
+        else totalNegative += equity;
+
+        // Gain: normally positive, if negative flip to negative side
+        if (gainIsPositive) totalPositive += gain;
+        else totalNegative += gain;
+
+        // Loss: normally negative, if positive flip to positive side
+        if (lossIsPositive) totalNegative += loss;
+        else totalPositive += loss;
+
+        // Liability: normally negative, if positive flip to positive side
+        if (liabilityIsPositive) totalNegative += liability;
+        else totalPositive += liability;
+
+        if (totalNegative >= totalPositive) return 0;
+
+        return totalPositive - totalNegative;
     }
 
     //----------------------------------------------------------------------------------------------

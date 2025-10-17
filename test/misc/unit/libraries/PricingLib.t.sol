@@ -192,8 +192,9 @@ contract ConvertWithReciprocalPriceTest is PricingLibBaseTest {
         uint256 expectedUp = MathLib.mulDiv(
             baseAmount * 10 ** quoteDecimals, 1e18, 10 ** baseDecimals * price.raw(), MathLib.Rounding.Up
         );
-        uint256 result =
-            PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
+        uint256 result = PricingLib.convertWithReciprocalPrice(
+            baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down
+        );
         assertGe(result, underestimate, "convertWithReciprocalPrice should be at least as large as underestimate");
         assertEq(result, expectedDown, "convertWithReciprocalPrice failed");
         assertApproxEqAbs(expectedDown, expectedUp, 1, "Rounding diff should be at most one");
@@ -208,8 +209,9 @@ contract ConvertWithReciprocalPriceEdgeCasesTest is PricingLibBaseTest {
 
     function testEdgeCaseWithReciprocalPriceMinBaseAmount() public view {
         D18 price = d18(1e18 - 1);
-        uint256 result =
-            PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
+        uint256 result = PricingLib.convertWithReciprocalPrice(
+            baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down
+        );
         uint256 expected = price.reciprocalMulUint256(amountWithoutPrice, MathLib.Rounding.Down);
         assertEq(result, expected);
         assertEq(expected, amountWithoutPrice);
@@ -217,8 +219,9 @@ contract ConvertWithReciprocalPriceEdgeCasesTest is PricingLibBaseTest {
 
     function testEdgeCaseWithReciprocalPriceSmallestPrice() public view {
         D18 price = d18(1);
-        uint256 result =
-            PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
+        uint256 result = PricingLib.convertWithReciprocalPrice(
+            baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down
+        );
         uint256 expected = price.reciprocalMulUint256(amountWithoutPrice, MathLib.Rounding.Down);
         assertEq(result, expected);
         assertEq(expected, 1e28);
@@ -226,13 +229,15 @@ contract ConvertWithReciprocalPriceEdgeCasesTest is PricingLibBaseTest {
 
     function testEdgeCaseWithReciprocalPriceSmallestPriceToZero() public view {
         D18 price = d18(1e28 + 1);
-        uint256 result =
-            PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
+        uint256 result = PricingLib.convertWithReciprocalPrice(
+            baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down
+        );
         assertEq(result, 0, "Reciprocal rounding edge case (smallest price to result in 0) failed");
 
         price = d18(1e28);
-        result =
-            PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
+        result = PricingLib.convertWithReciprocalPrice(
+            baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down
+        );
         assertEq(result, 1, "Reciprocal rounding edge case (smallest price to result in 1) failed");
     }
 
@@ -615,12 +620,10 @@ contract PoolToAssetAmountTest is PricingLibBaseTest {
             uint256(poolAmount).mulDiv(10 ** assetDecimals, 10 ** POOL_DECIMALS, MathLib.Rounding.Down),
             MathLib.Rounding.Down
         );
-        uint256 expectedDown = uint256(poolAmount).mulDiv(
-            10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.raw(), MathLib.Rounding.Down
-        );
-        uint256 expectedUp = uint256(poolAmount).mulDiv(
-            10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.raw(), MathLib.Rounding.Up
-        );
+        uint256 expectedDown = uint256(poolAmount)
+            .mulDiv(10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.raw(), MathLib.Rounding.Down);
+        uint256 expectedUp = uint256(poolAmount)
+            .mulDiv(10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.raw(), MathLib.Rounding.Up);
 
         uint256 result = PricingLib.poolToAssetAmount(
             poolAmount, POOL_DECIMALS, assetDecimals, pricePoolPerAsset, MathLib.Rounding.Down
@@ -672,7 +675,9 @@ contract CalcPriceAssetPerShareTest is Test {
     function _assertPrice(uint256 shares, uint256 assets, uint128 expected, MathLib.Rounding rounding) internal view {
         D18 calculated = shares == 0
             ? d18(0)
-            : PricingLib.calculatePriceAssetPerShare(shareToken, shares.toUint128(), asset, 0, assets.toUint128(), rounding);
+            : PricingLib.calculatePriceAssetPerShare(
+                shareToken, shares.toUint128(), asset, 0, assets.toUint128(), rounding
+            );
         assertEq(calculated.raw(), expected);
     }
 
@@ -721,5 +726,105 @@ contract CalcPriceAssetPerShareTest is Test {
 
         // Rounding.Up
         _assertPrice(shares, assets, expected / 3 + 1, MathLib.Rounding.Up);
+    }
+}
+
+contract MaxConvertibleAssetAmountTest is PricingLibBaseTest {
+    using PricingLib for *;
+
+    uint8 constant DEFAULT_ASSET_DECIMALS = 6;
+
+    address asset = makeAddr("Asset");
+    address shareToken = makeAddr("ShareToken");
+    uint256 tokenId = 0;
+
+    function setUp() public {
+        vm.mockCall(
+            shareToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(SHARE_DECIMALS))
+        );
+        vm.mockCall(
+            asset, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(DEFAULT_ASSET_DECIMALS))
+        );
+    }
+
+    function testMaxConvertibleWithEqualPrices() public {
+        vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(SHARE_DECIMALS)));
+
+        uint256 maxAssets =
+            PricingLib.maxConvertibleAssetAmount(shareToken, asset, tokenId, type(uint128).max, d18(1, 1), d18(1, 1));
+
+        assertEq(maxAssets, type(uint128).max, "Equal prices should allow max uint128");
+    }
+
+    function testMaxConvertibleWithDecimalDifference() public view {
+        D18 poolPerShare = d18(1, 1);
+        D18 poolPerAsset = d18(5, 10);
+
+        uint256 maxAssets = PricingLib.maxConvertibleAssetAmount(
+            shareToken, asset, tokenId, type(uint128).max, poolPerShare, poolPerAsset
+        );
+
+        uint128 shares = PricingLib.assetToShareAmount(
+            shareToken, asset, tokenId, uint128(maxAssets), poolPerAsset, poolPerShare, MathLib.Rounding.Down
+        );
+
+        assertLe(shares, type(uint128).max, "Converted shares should not exceed uint128.max");
+        assertTrue(maxAssets > 0, "maxAssets should be positive");
+        assertTrue(maxAssets < type(uint128).max, "maxAssets should be clamped due to overflow risk");
+        assertEq(
+            maxAssets,
+            type(uint128).max / 5 / 1e11, // = max * 5 / 10 * 10^6 / 10^18
+            "maxAssets should be max / poolPerAsset * 10^(assetDecimals - shareDecimals)"
+        );
+    }
+
+    function testMaxConvertibleWithZeroNumerator() public view {
+        uint256 maxAssets =
+            PricingLib.maxConvertibleAssetAmount(shareToken, asset, tokenId, type(uint128).max, d18(0), d18(1, 1));
+
+        assertEq(maxAssets, 0, "Zero numerator should return 0 (shares are worthless)");
+    }
+
+    function testMaxConvertibleRoundtrip(uint8 assetDecimals_, uint128 poolPerShare_, uint128 poolPerAsset_) public {
+        uint8 assetDecimals = uint8(bound(assetDecimals_, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
+        D18 poolPerShare = d18(uint128(bound(poolPerShare_, MIN_PRICE, MAX_PRICE_POOL_PER_SHARE)));
+        D18 poolPerAsset = d18(uint128(bound(poolPerAsset_, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
+
+        vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(assetDecimals));
+
+        uint256 maxAssets = PricingLib.maxConvertibleAssetAmount(
+            shareToken, asset, tokenId, type(uint128).max, poolPerShare, poolPerAsset
+        );
+
+        uint128 shares = PricingLib.assetToShareAmount(
+            shareToken,
+            asset,
+            tokenId,
+            uint128(maxAssets <= type(uint128).max ? maxAssets : type(uint128).max),
+            poolPerAsset,
+            poolPerShare,
+            MathLib.Rounding.Down
+        );
+
+        assertLe(shares, type(uint128).max, "Should not overflow for any ratio");
+    }
+
+    function testMaxConvertibleWithZeroDenominatorReverts() public {
+        vm.expectRevert(PricingLib.DivisionByZero.selector);
+        this.maxConvertibleAssetAmount_(shareToken, asset, tokenId, type(uint128).max, d18(1, 1), d18(0));
+    }
+
+    // Helper functions to test revert behavior (must be external for expectRevert to work)
+    function maxConvertibleAssetAmount_(
+        address shareToken_,
+        address asset_,
+        uint256 tokenId_,
+        uint256 maxShares,
+        D18 poolPerShare,
+        D18 poolPerAsset
+    ) external view returns (uint256) {
+        return PricingLib.maxConvertibleAssetAmount(
+            shareToken_, asset_, tokenId_, maxShares, poolPerShare, poolPerAsset
+        );
     }
 }

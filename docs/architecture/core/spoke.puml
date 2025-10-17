@@ -1,0 +1,52 @@
+@startuml spoke
+title Spoke
+hide empty members
+
+skinparam linetype ortho
+
+package core {
+    interface IGateway
+    interface IRequestManager
+}
+
+package messaging {
+    interface ISpokeMessageSender
+    interface IMessageProcessor
+}
+
+class Spoke
+class ShareToken
+class BalanceSheet
+class TokenFactory
+class VaultRegistry
+class PoolEscrowFactory
+class PoolEscrow
+
+interface IVaultFactory
+interface IVault
+interface ITransferHook
+
+Spoke --> TokenFactory
+Spoke --> PoolEscrowFactory
+Spoke o-- "n" ShareToken
+Spoke --> IGateway
+Spoke --> ISpokeMessageSender
+Spoke --> VaultRegistry
+Spoke <-> IRequestManager
+Spoke <-- IMessageProcessor
+
+VaultRegistry --> IVaultFactory
+VaultRegistry o-[norank]- "n" IVault
+
+BalanceSheet --> Spoke
+BalanceSheet --> ISpokeMessageSender
+
+PoolEscrowFactory o-- "n" PoolEscrow
+PoolEscrowFactory ..> PoolEscrow
+
+ShareToken .[dotted].> ITransferHook
+
+TokenFactory ..> ShareToken
+IVaultFactory ..> IVault
+
+@enduml

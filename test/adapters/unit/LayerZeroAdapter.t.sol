@@ -12,18 +12,7 @@ import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHa
 import "forge-std/Test.sol";
 
 import {LayerZeroAdapter} from "../../../src/adapters/LayerZeroAdapter.sol";
-import {
-    ILayerZeroAdapter,
-    IAdapter,
-    ILayerZeroReceiver,
-    ILayerZeroEndpointV2,
-    MessagingParams,
-    MessagingFee,
-    MessagingReceipt,
-    Origin,
-    LayerZeroSource,
-    LayerZeroDestination
-} from "../../../src/adapters/interfaces/ILayerZeroAdapter.sol";
+import { ILayerZeroAdapter, IAdapter, MessagingParams, MessagingFee, MessagingReceipt, Origin } from "../../../src/adapters/interfaces/ILayerZeroAdapter.sol";
 
 contract MockLayerZeroEndpoint is Mock {
     function send(MessagingParams calldata params, address refundAddress)
@@ -201,9 +190,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         );
     }
 
-    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint128 gasLimit, address refund)
-        public
-    {
+    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint128 gasLimit, address refund) public {
         vm.assume(invalidOrigin != address(GATEWAY));
         gasLimit = uint128(bound(gasLimit, 0, adapter.RECEIVE_COST() - 1));
 

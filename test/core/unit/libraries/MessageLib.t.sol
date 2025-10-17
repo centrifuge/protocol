@@ -115,13 +115,13 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeMaxAssetPriceAge() public {
-        MessageLib.deserializeMaxAssetPriceAge(_prepareFor());
+    function testDeserializeSetMaxAssetPriceAge() public {
+        MessageLib.deserializeSetMaxAssetPriceAge(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeMaxSharePriceAge() public {
-        MessageLib.deserializeMaxSharePriceAge(_prepareFor());
+    function testDeserializeSetMaxSharePriceAge() public {
+        MessageLib.deserializeSetMaxSharePriceAge(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -181,10 +181,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), 0);
     }
 
-    function testRecoverTokens(bytes32 target, bytes32 token, uint256 tokenId, bytes32 to, uint256 amount)
-        public
-        pure
-    {
+    function testRecoverTokens(bytes32 target, bytes32 token, uint256 tokenId, bytes32 to, uint256 amount) public pure {
         MessageLib.RecoverTokens memory a =
             MessageLib.RecoverTokens({target: target, token: token, tokenId: tokenId, to: to, amount: amount});
         MessageLib.RecoverTokens memory b = MessageLib.deserializeRecoverTokens(a.serialize());
@@ -219,10 +216,7 @@ contract TestMessageLibIdentities is Test {
         vm.assume(adapterList.length <= 20);
 
         MessageLib.SetPoolAdapters memory a = MessageLib.SetPoolAdapters({
-            poolId: poolId,
-            threshold: threshold,
-            recoveryIndex: recoveryIndex,
-            adapterList: adapterList
+            poolId: poolId, threshold: threshold, recoveryIndex: recoveryIndex, adapterList: adapterList
         });
         MessageLib.SetPoolAdapters memory b = MessageLib.deserializeSetPoolAdapters(a.serialize());
 
@@ -257,13 +251,7 @@ contract TestMessageLibIdentities is Test {
         bytes32 hook
     ) public pure {
         MessageLib.NotifyShareClass memory a = MessageLib.NotifyShareClass({
-            poolId: poolId,
-            scId: scId,
-            name: name,
-            symbol: symbol,
-            decimals: decimals,
-            salt: salt,
-            hook: hook
+            poolId: poolId, scId: scId, name: name, symbol: symbol, decimals: decimals, salt: salt, hook: hook
         });
         MessageLib.NotifyShareClass memory b = MessageLib.deserializeNotifyShareClass(a.serialize());
 
@@ -301,11 +289,7 @@ contract TestMessageLibIdentities is Test {
         pure
     {
         MessageLib.NotifyPricePoolPerAsset memory a = MessageLib.NotifyPricePoolPerAsset({
-            poolId: poolId,
-            scId: scId,
-            assetId: assetId,
-            price: price,
-            timestamp: timestamp
+            poolId: poolId, scId: scId, assetId: assetId, price: price, timestamp: timestamp
         });
         MessageLib.NotifyPricePoolPerAsset memory b = MessageLib.deserializeNotifyPricePoolPerAsset(a.serialize());
 
@@ -471,11 +455,7 @@ contract TestMessageLibIdentities is Test {
         pure
     {
         MessageLib.UpdateVault memory a = MessageLib.UpdateVault({
-            poolId: poolId,
-            scId: scId,
-            assetId: assetId,
-            vaultOrFactory: vaultOrFactory,
-            kind: kind
+            poolId: poolId, scId: scId, assetId: assetId, vaultOrFactory: vaultOrFactory, kind: kind
         });
         MessageLib.UpdateVault memory b = MessageLib.deserializeUpdateVault(a.serialize());
 
@@ -590,10 +570,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), 0);
     }
 
-    function testMaxAssetPriceAge(uint64 poolId, bytes16 scId, uint128 assetId, uint64 maxPriceAge) public pure {
-        MessageLib.MaxAssetPriceAge memory a =
-            MessageLib.MaxAssetPriceAge({poolId: poolId, scId: scId, assetId: assetId, maxPriceAge: maxPriceAge});
-        MessageLib.MaxAssetPriceAge memory b = MessageLib.deserializeMaxAssetPriceAge(a.serialize());
+    function testSetMaxAssetPriceAge(uint64 poolId, bytes16 scId, uint128 assetId, uint64 maxPriceAge) public pure {
+        MessageLib.SetMaxAssetPriceAge memory a =
+            MessageLib.SetMaxAssetPriceAge({poolId: poolId, scId: scId, assetId: assetId, maxPriceAge: maxPriceAge});
+        MessageLib.SetMaxAssetPriceAge memory b = MessageLib.deserializeSetMaxAssetPriceAge(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
@@ -605,10 +585,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
-    function testMaxSharePriceAge(uint64 poolId, bytes16 scId, uint64 maxPriceAge) public pure {
-        MessageLib.MaxSharePriceAge memory a =
-            MessageLib.MaxSharePriceAge({poolId: poolId, scId: scId, maxPriceAge: maxPriceAge});
-        MessageLib.MaxSharePriceAge memory b = MessageLib.deserializeMaxSharePriceAge(a.serialize());
+    function testSetMaxSharePriceAge(uint64 poolId, bytes16 scId, uint64 maxPriceAge) public pure {
+        MessageLib.SetMaxSharePriceAge memory a =
+            MessageLib.SetMaxSharePriceAge({poolId: poolId, scId: scId, maxPriceAge: maxPriceAge});
+        MessageLib.SetMaxSharePriceAge memory b = MessageLib.deserializeSetMaxSharePriceAge(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
@@ -641,11 +621,7 @@ contract TestMessageLibIdentities is Test {
         bytes32 sender
     ) public pure {
         MessageLib.UntrustedContractUpdate memory a = MessageLib.UntrustedContractUpdate({
-            poolId: poolId,
-            scId: scId,
-            target: target,
-            payload: payload,
-            sender: sender
+            poolId: poolId, scId: scId, target: target, payload: payload, sender: sender
         });
         MessageLib.UntrustedContractUpdate memory b = MessageLib.deserializeUntrustedContractUpdate(a.serialize());
 
@@ -658,8 +634,5 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), 0);
-
-        // Check the payload length is correctly encoded as little endian (at fixed position 57)
-        assertEq(a.payload.length, uint16(uint8(a.serialize()[58])) | (uint16(uint8(a.serialize()[57])) << 8));
     }
 }

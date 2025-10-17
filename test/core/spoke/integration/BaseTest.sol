@@ -23,13 +23,7 @@ import {ISafe} from "../../../../src/admin/interfaces/ISafe.sol";
 import {AsyncVault} from "../../../../src/vaults/AsyncVault.sol";
 import {SyncDepositVault} from "../../../../src/vaults/SyncDepositVault.sol";
 
-import {
-    FullActionBatcher,
-    FullDeployer,
-    FullInput,
-    noAdaptersInput,
-    CoreInput
-} from "../../../../script/FullDeployer.s.sol";
+import { FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput } from "../../../../script/FullDeployer.s.sol";
 
 import {MockAdapter} from "../../mocks/MockAdapter.sol";
 import {MockCentrifugeChain} from "../mocks/MockCentrifugeChain.sol";
@@ -120,6 +114,7 @@ contract BaseTest is FullDeployer, Test, FullActionBatcher {
         );
 
         asyncRequestManager.depositSubsidy{value: 0.5 ether}(POOL_A);
+        balanceSheet.updateManager(POOL_A, address(this), true);
 
         // We should not use the block ChainID
         vm.chainId(BLOCK_CHAIN_ID);

@@ -169,9 +169,7 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
         );
     }
 
-    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund)
-        public
-    {
+    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund) public {
         gasLimit = uint256(bound(gasLimit, 0, adapter.RECEIVE_COST() - 1));
         vm.assume(invalidOrigin != address(GATEWAY));
 
