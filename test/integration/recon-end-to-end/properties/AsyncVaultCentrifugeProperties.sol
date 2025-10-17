@@ -528,17 +528,8 @@ abstract contract AsyncVaultCentrifugeProperties is
         try _getVault().redeem(redeemAmount, _getActor(), _getActor()) returns (
             uint256 assets
         ) {
-            console2.log(" === After maxRedeem === ");
             uint256 maxRedeemAfter = _getVault().maxRedeem(_getActor());
-            // uint256 difference = maxRedeemBefore - redeemAmount; // Unused
-            uint256 shares = _getVault().convertToShares(assets);
-
-            // console2.log("difference:", difference);
-            // console2.log("maxRedeemBefore:", maxRedeemBefore);
-            // console2.log("maxRedeemAfter:", maxRedeemAfter);
-            // console2.log("redeemAmount:", redeemAmount);
-            // console2.log("shares:", shares);
-            // console2.log("assets:", assets);
+            uint256 difference = maxRedeemBefore - redeemAmount;
 
             // for optimizing the difference between the two
             if (maxRedeemAfter > maxRedeemBefore) {
@@ -550,14 +541,8 @@ abstract contract AsyncVaultCentrifugeProperties is
             address poolEscrow = address(
                 poolEscrowFactory.escrow(_getVault().poolId())
             );
-            console2.log(
-                "pool escrow balance after maxRedeem: ",
-                MockERC20(address(_getVault().asset())).balanceOf(poolEscrow)
-            );
 
-            // NOTE: temporarily remove the assertion to optimize the difference
-            // otherwise it asserts false and undoes state changes
-            // t(difference == maxRedeemAfter, "rounding error in maxRedeem");
+            t(difference == maxRedeemAfter, "rounding error in maxRedeem");
 
             if (redeemAmount == maxRedeemBefore) {
                 (
@@ -590,7 +575,7 @@ abstract contract AsyncVaultCentrifugeProperties is
                     "pendingRedeem should not increase"
                 );
                 lte(
-                    shares,
+                    redeemAmount,
                     maxRedeemBefore,
                     "shares redeemed surpass maxRedeem"
                 );
