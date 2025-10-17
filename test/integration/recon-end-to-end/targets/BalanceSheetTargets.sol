@@ -588,5 +588,9 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             extraGasLimit,
             address(this)
         );
+
+        // Reset ghost_netSharePosition to match the cleared queue state
+        // After submitQueuedShares, the BalanceSheet contract resets delta=0 and isPositive=false
+        ghost_netSharePosition[shareKey] = 0;
     }
 }
