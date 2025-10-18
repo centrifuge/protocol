@@ -4,7 +4,7 @@ broadcast/
 .env
 .idea/
 .DS_Store
-.env
+.env.back
 lcov.info
 .vscode
 **/latest
@@ -14,8 +14,9 @@ lcov.info
 /crytic-export
 /echidna
 **/*.log
-/env/anvil.json
-
+**/anvil/*.json
+**/env/anvil.json
+**/anvil
 ## Recon Separate Configs
 /medusa-core
 /medusa-aggregator

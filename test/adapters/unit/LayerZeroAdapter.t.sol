@@ -15,14 +15,10 @@ import {LayerZeroAdapter} from "../../../src/adapters/LayerZeroAdapter.sol";
 import {
     ILayerZeroAdapter,
     IAdapter,
-    ILayerZeroReceiver,
-    ILayerZeroEndpointV2,
     MessagingParams,
     MessagingFee,
     MessagingReceipt,
-    Origin,
-    LayerZeroSource,
-    LayerZeroDestination
+    Origin
 } from "../../../src/adapters/interfaces/ILayerZeroAdapter.sol";
 
 contract MockLayerZeroEndpoint is Mock {
