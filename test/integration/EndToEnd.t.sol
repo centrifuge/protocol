@@ -1110,4 +1110,35 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.deal(spokeSender, GAS);
         s.spoke.updateContract{value: GAS}(POOL_A, SC_1, hubContract.toBytes32(), "data", EXTRA_GAS, REFUND);
     }
+
+    /// forge-config: default.isolate = true
+    function testNestedMulticall(bool sameChain) public {
+        _configurePool(sameChain);
+
+        address MANAGER = makeAddr("Manager");
+        vm.startPrank(FM);
+        h.hub.updateHubManager(POOL_A, MANAGER, true);
+        vm.stopPrank();
+
+        // Create inner multicall: updateHubManager (requires manager permission)
+        bytes[] memory innerCalls = new bytes[](1);
+        innerCalls[0] = abi.encodeWithSelector(
+            h.hub.updateHubManager.selector,
+            POOL_A,
+            makeAddr("AnotherManager"),
+            true
+        );
+
+        // Create outer multicall: contains a nested multicall
+        bytes[] memory outerCalls = new bytes[](1);
+        outerCalls[0] = abi.encodeWithSelector(
+            h.hub.multicall.selector,
+            innerCalls
+        );
+
+        vm.startPrank(MANAGER);
+        vm.deal(MANAGER, GAS);
+        h.hub.multicall{value: GAS}(outerCalls);
+        vm.stopPrank();
+    }
 }
