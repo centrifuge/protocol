@@ -1122,19 +1122,12 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         // Create inner multicall: updateHubManager (requires manager permission)
         bytes[] memory innerCalls = new bytes[](1);
-        innerCalls[0] = abi.encodeWithSelector(
-            h.hub.updateHubManager.selector,
-            POOL_A,
-            makeAddr("AnotherManager"),
-            true
-        );
+        innerCalls[0] =
+            abi.encodeWithSelector(h.hub.updateHubManager.selector, POOL_A, makeAddr("AnotherManager"), true);
 
         // Create outer multicall: contains a nested multicall
         bytes[] memory outerCalls = new bytes[](1);
-        outerCalls[0] = abi.encodeWithSelector(
-            h.hub.multicall.selector,
-            innerCalls
-        );
+        outerCalls[0] = abi.encodeWithSelector(h.hub.multicall.selector, innerCalls);
 
         vm.startPrank(MANAGER);
         vm.deal(MANAGER, GAS);
