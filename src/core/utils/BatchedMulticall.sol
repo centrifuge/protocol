@@ -24,6 +24,10 @@ abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
     /// @notice     With extra support for batching
     function multicall(bytes[] calldata data) public payable override {
         bool isNested = _sender != address(0);
+        // Prevent reentrancy attacks: if we're in a nested call (_sender is set),
+        // only allow the gateway to call multicall (legitimate nested multicalls)
+        require(!isNested || msg.sender == address(gateway), "BatchedMulticall/invalid-nested-caller");
+
         if (!isNested) _sender = msg.sender;
         gateway.withBatch{
             value: msg.value

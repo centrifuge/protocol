@@ -29,6 +29,17 @@ contract BatchedMulticallImpl is BatchedMulticall, Test {
         // This performs a nested multicall
         this.multicall(data);
     }
+
+    // Public getter for msgSender (for testing purposes)
+    function getCurrentSender() external view returns (address) {
+        return msgSender();
+    }
+
+    // Call an external contract (for reentrancy testing)
+    function callExternal(address target, bytes calldata data) external {
+        (bool success,) = target.call(data);
+        require(success, "external call failed");
+    }
 }
 
 contract MockGateway {
@@ -50,6 +61,35 @@ contract MockGateway {
     function lockCallback() external returns (address caller) {
         caller = _batcher;
         _batcher = address(0);
+    }
+}
+
+/// @dev Malicious contract that performs reentrancy to impersonate the original caller
+contract MaliciousReentrancy {
+    BatchedMulticallImpl public target;
+    address public stolenSender;
+    bool public hasReentered;
+
+    constructor(BatchedMulticallImpl _target) {
+        target = _target;
+    }
+
+    /// @dev This function is called during the first multicall
+    /// It re-enters multicall() while _sender is still set to the victim's address
+    function attack() external {
+        if (!hasReentered) {
+            hasReentered = true;
+
+            // Re-enter multicall while _sender is still set to the original caller
+            // This allows us to steal their identity by calling recordSender on the target
+            bytes[] memory maliciousCalls = new bytes[](1);
+            maliciousCalls[0] = abi.encodeWithSelector(target.recordSender.selector);
+
+            target.multicall(maliciousCalls);
+
+            // After the reentrancy, read the stolen sender from the target
+            stolenSender = target.lastSender();
+        }
     }
 }
 
@@ -82,14 +122,47 @@ contract BatchedMulticallTestMulticall is BatchedMulticallTest {
         bytes[] memory innerCalls = new bytes[](1);
         innerCalls[0] = abi.encodeWithSelector(multicall.recordSender.selector);
 
-        // Create outer multicall that calls nestedCall
+        // Create outer multicall that includes a nested multicall encoded in the data
+        // This is the CORRECT pattern - encoding multicall as call data, which executes through gateway
         bytes[] memory outerCalls = new bytes[](1);
-        outerCalls[0] = abi.encodeWithSelector(multicall.nestedCall.selector, innerCalls);
+        outerCalls[0] = abi.encodeWithSelector(multicall.multicall.selector, innerCalls);
 
         // Execute the nested multicall
         multicall.multicall{value: 1}(outerCalls);
 
         // Expected: msgSender() inside recordSender should be address(this) (the test contract)
         assertEq(multicall.lastSender(), address(this), "msgSender should be preserved in nested multicall");
+    }
+
+    function testReentrancyBlocked() external {
+        // Deploy malicious contract
+        MaliciousReentrancy attacker = new MaliciousReentrancy(multicall);
+
+        // Victim is the test contract (address(this))
+        address victim = address(this);
+
+        console2.log("Victim address:", victim);
+        console2.log("Attacker address:", address(attacker));
+
+        // Victim calls multicall with a call that triggers the attacker
+        bytes[] memory calls = new bytes[](1);
+        calls[0] = abi.encodeWithSelector(
+            multicall.callExternal.selector, address(attacker), abi.encodeWithSelector(attacker.attack.selector)
+        );
+
+        // The attacker's reentrancy attempt should be blocked
+        // The require(!isNested || msg.sender == address(gateway)) protection
+        // prevents the malicious nested multicall because:
+        // 1. When attacker calls target.multicall(), _sender is still set (transient storage persists)
+        // 2. So isNested = true
+        // 3. But msg.sender is the attacker contract, not the gateway
+        // 4. The require fails, blocking the reentrancy attack
+
+        // This call should revert with "external call failed" because the inner attack fails
+        vm.expectRevert("external call failed");
+        multicall.multicall{value: 1}(calls);
+
+        // If we reach here, the test passed - reentrancy was successfully blocked
+        console2.log("SUCCESS: Reentrancy attack was blocked by the protection!");
     }
 }
