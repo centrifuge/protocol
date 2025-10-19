@@ -305,21 +305,34 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
             // If shares were removed from escrow during the cancellation, decrement sumOfFulfilledDeposits
             if (escrowSharesBefore > escrowSharesAfter) {
-                sumOfFulfilledDeposits[vault.share()] -= (escrowSharesBefore - escrowSharesAfter);
+                sumOfFulfilledDeposits[vault.share()] -= (escrowSharesBefore -
+                    escrowSharesAfter);
             }
         }
 
         // update ghosts
-        userCancelledDeposits[scId][assetId][controller] += (pendingCancelAfter - pendingCancelBefore);
+        userCancelledDeposits[scId][assetId][
+            controller
+        ] += (pendingCancelAfter - pendingCancelBefore);
 
         // precondition: if user queues a cancellation but it doesn't get immediately executed,
         // the epochId should not change
-        if (Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)) {
+        if (
+            Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)
+        ) {
             (uint128 pendingAfter, uint32 lastUpdateAfter) = batchRequestManager
                 .depositRequest(poolId, scId, assetId, controllerBytes);
-            uint32 nowDepositEpoch = batchRequestManager.nowDepositEpoch(poolId, scId, assetId);
+            uint32 nowDepositEpoch = batchRequestManager.nowDepositEpoch(
+                poolId,
+                scId,
+                assetId
+            );
 
-            eq(lastUpdateAfter, nowDepositEpoch, "lastUpdate != nowDepositEpoch");
+            eq(
+                lastUpdateAfter,
+                nowDepositEpoch,
+                "lastUpdate != nowDepositEpoch"
+            );
             eq(pendingAfter, 0, "pending is not zero");
         }
     }
@@ -525,7 +538,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 abi.encode(vault.poolId(), vault.scId())
             );
             ghost_totalIssued[shareKey] += shares;
-            ghost_netSharePosition[shareKey] += int256(uint256(shares));
 
             // Update ghost_individualBalances when shares are minted to user
             // For sync vaults, shares are minted immediately. For async vaults, they're minted later.
@@ -578,6 +590,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             }
 
             executedInvestments[vault.share()] += shares;
+            ghost_netSharePosition[
+                keccak256(abi.encode(vault.poolId(), vault.scId()))
+            ] += int256(uint256(shares)); // encodes the share key; not state variable because of stack too deep
 
             sumOfSyncDepositsAsset[vault.asset()] += assets;
             sumOfSyncDepositsShare[vault.share()] += shares;
@@ -661,7 +676,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 abi.encode(vault.poolId(), vault.scId())
             );
             ghost_totalIssued[shareKey] += shares;
-            ghost_netSharePosition[shareKey] += int256(uint256(shares));
 
             // Update ghost_individualBalances when shares are minted to user
             ghost_individualBalances[shareKey][to] += shares;
@@ -715,6 +729,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                     );
             }
 
+            ghost_netSharePosition[
+                keccak256(abi.encode(vault.poolId(), vault.scId()))
+            ] += int256(uint256(shares)); // encodes the share key; not state variable because of stack too deep
             userRequestDeposited[vault.scId()][
                 vaultRegistry.vaultDetails(vault).assetId
             ][_getActor()] += assets;
