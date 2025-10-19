@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {BatchedMulticall} from "../../../src/core/utils/BatchedMulticall.sol";
+import {IBatchedMulticall} from "../../../src/core/utils/interfaces/IBatchedMulticall.sol";
 
 import "forge-std/Test.sol";
 
@@ -65,5 +66,16 @@ contract BatchedMulticallTestMulticall is BatchedMulticallTest {
         multicall.multicall{value: 1}(calls);
 
         assertEq(multicall.total(), 5);
+    }
+
+    function testNestedMulticallIsBlocked() external {
+        bytes[] memory innerCalls = new bytes[](1);
+        innerCalls[0] = abi.encodeWithSelector(multicall.add.selector);
+
+        bytes[] memory outerCalls = new bytes[](1);
+        outerCalls[0] = abi.encodeWithSelector(multicall.multicall.selector, innerCalls);
+
+        vm.expectRevert(IBatchedMulticall.AlreadyBatching.selector);
+        multicall.multicall{value: 1}(outerCalls);
     }
 }
