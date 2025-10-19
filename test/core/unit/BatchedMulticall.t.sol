@@ -8,6 +8,7 @@ import "forge-std/Test.sol";
 
 contract BatchedMulticallImpl is BatchedMulticall, Test {
     uint256 public total;
+    address public lastSender;
 
     constructor(IGateway gateway) BatchedMulticall(gateway) {}
 
@@ -18,6 +19,15 @@ contract BatchedMulticallImpl is BatchedMulticall, Test {
     function add(uint256 i) external payable {
         assertEq(msgValue(), 0);
         total += i;
+    }
+
+    function recordSender() external {
+        lastSender = msgSender();
+    }
+
+    function nestedCall(bytes[] calldata data) external {
+        // This performs a nested multicall
+        this.multicall(data);
     }
 }
 
@@ -65,5 +75,21 @@ contract BatchedMulticallTestMulticall is BatchedMulticallTest {
         multicall.multicall{value: 1}(calls);
 
         assertEq(multicall.total(), 5);
+    }
+
+    function testNestedMulticall() external {
+        // Create inner multicall that records the sender
+        bytes[] memory innerCalls = new bytes[](1);
+        innerCalls[0] = abi.encodeWithSelector(multicall.recordSender.selector);
+
+        // Create outer multicall that calls nestedCall
+        bytes[] memory outerCalls = new bytes[](1);
+        outerCalls[0] = abi.encodeWithSelector(multicall.nestedCall.selector, innerCalls);
+
+        // Execute the nested multicall
+        multicall.multicall{value: 1}(outerCalls);
+
+        // Expected: msgSender() inside recordSender should be address(this) (the test contract)
+        assertEq(multicall.lastSender(), address(this), "msgSender should be preserved in nested multicall");
     }
 }

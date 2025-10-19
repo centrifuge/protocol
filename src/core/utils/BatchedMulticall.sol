@@ -23,11 +23,12 @@ abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
     /// @inheritdoc IMulticall
     /// @notice     With extra support for batching
     function multicall(bytes[] calldata data) public payable override {
-        _sender = msg.sender;
+        bool isNested = _sender != address(0);
+        if (!isNested) _sender = msg.sender;
         gateway.withBatch{
             value: msg.value
         }(abi.encodeWithSelector(BatchedMulticall.executeMulticall.selector, data), msg.sender);
-        _sender = address(0);
+        if (!isNested) _sender = address(0);
     }
 
     function executeMulticall(bytes[] calldata data) external payable protected {
