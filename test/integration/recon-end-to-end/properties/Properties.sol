@@ -15,8 +15,8 @@ import {AccountType} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {PricingLib} from "../../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {Holding} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
-import {VaultDetails} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
+import {VaultDetails} from "../../../../src/core/spoke/interfaces/IVaultRegistry.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 

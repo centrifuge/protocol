@@ -642,7 +642,7 @@ library MessageLib {
         bytes16 scId;
         uint128 assetId;
         bytes32 vaultOrFactory;
-        uint8 kind;
+        uint8 kind; // VaultUpdateKind
     }
 
     function deserializeUpdateVault(bytes memory data) internal pure returns (UpdateVault memory) {

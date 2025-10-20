@@ -26,17 +26,6 @@ struct ShareClassDetails {
     Price pricePoolPerShare;
 }
 
-struct VaultDetails {
-    /// @dev AssetId of the asset
-    AssetId assetId;
-    /// @dev Address of the asset
-    address asset;
-    /// @dev TokenId of the asset - zero if asset is ERC20, non-zero if asset is ERC6909
-    uint256 tokenId;
-    /// @dev Whether the vault is linked to a share class atm
-    bool isLinked;
-}
-
 struct AssetIdKey {
     /// @dev The address of the asset
     address asset;
