@@ -90,6 +90,25 @@ class ContractVerifier:
 
         return True
 
+    def config_has_latest_contracts(self) -> bool:
+        """Fast check: are contracts from env/latest already merged into env/<network>.json?"""
+        try:
+            if not self.latest_deployment.exists():
+                return False
+            with open(self.latest_deployment, 'r') as f:
+                latest = json.load(f)
+            with open(self.env_loader.config_file, 'r') as f:
+                cfg = json.load(f)
+            latest_contracts = latest.get('contracts', {}) or {}
+            config_contracts = cfg.get('contracts', {}) or {}
+            # Require every contract in latest to exist in config with identical address
+            for name, addr in latest_contracts.items():
+                if name not in config_contracts or config_contracts[name].lower() != addr.lower():
+                    return False
+            return True if latest_contracts else False
+        except Exception:
+            return False
+
     def _is_contract_deployed(self, address: str) -> bool:
         """Check if contract has code deployed"""
         payload = {
