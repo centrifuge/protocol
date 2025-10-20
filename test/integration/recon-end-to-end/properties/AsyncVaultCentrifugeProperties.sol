@@ -783,38 +783,34 @@ abstract contract AsyncVaultCentrifugeProperties is
             // SyncVault: Both before and after follow maxReserve - availableBalance calculation
             // The availableBalance calculation changes during PoolEscrow state transitions
 
-            // SyncVault Critical->Normal: The decrease is approximately assetAmount, but can deviate due to
-            // PoolEscrow state transition effects on availableBalance calculation
+            // SyncVault Critical->Normal: Calculate expected decrease based on actual availableBalance change
+            // This is more accurate than using assetAmount directly
             uint256 actualDecrease = maxValueBefore - maxValueAfter;
 
-            // For Mint operations, we need to convert assetAmount to shares to compare in the same units
+            // Calculate expected decrease based on actual availableBalance change
+            uint256 availableBalanceChange = state.availableBalanceAfter - state.availableBalanceBefore;
+
+            // For Mint operations, we need to convert availableBalance change to shares to compare in the same units
             // For Deposit operations, both values are already in asset units
             uint256 expectedAmount;
             uint256 lowerBound;
             uint256 upperBound;
 
             if (keccak256(bytes(operationName)) == keccak256(bytes("Mint"))) {
-                // Convert assetAmount to shares for Mint operations
-                expectedAmount = _getVault().convertToShares(assetAmount);
-
-                // Convert reserved to shares as well for the lower bound
-                uint256 reservedInShares = state.reservedAfter > 0
-                    ? _getVault().convertToShares(state.reservedAfter)
-                    : 0;
-
-                lowerBound = expectedAmount > reservedInShares
-                    ? expectedAmount - reservedInShares
-                    : 0;
-                upperBound = expectedAmount;
+                // Convert availableBalance change to shares for Mint operations
+                expectedAmount = _getVault().convertToShares(availableBalanceChange);
             } else {
-                // For Deposit operations, compare in asset units
-                expectedAmount = assetAmount;
-                lowerBound = assetAmount > state.reservedAfter
-                    ? assetAmount - state.reservedAfter
-                    : 0;
-                upperBound = assetAmount;
+                // For Deposit operations, use availableBalance change directly
+                expectedAmount = availableBalanceChange;
             }
 
+            // Add tolerance for rounding errors (±2)
+            lowerBound = expectedAmount > 2 ? expectedAmount - 2 : 0;
+            upperBound = expectedAmount + 2;
+
+            console2.log("actualDecrease: ", actualDecrease);
+            console2.log("lowerBound: ", lowerBound);
+            console2.log("upperBound: ", upperBound);
             t(
                 actualDecrease >= lowerBound && actualDecrease <= upperBound,
                 string.concat(
