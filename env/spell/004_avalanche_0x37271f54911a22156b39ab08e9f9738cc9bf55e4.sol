@@ -94,7 +94,7 @@ import {VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol
 import {ISpokeGatewayHandler} from "../../src/core/interfaces/IGatewayHandlers.sol";
 
 import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
-import {VaultDetails} from "../../src/core/spoke/interfaces/ISpoke.sol";
+import {VaultDetails} from "../../src/core/spoke/interfaces/IVaultRegistry.sol";
 
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
 
