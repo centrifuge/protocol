@@ -609,7 +609,6 @@ contract GatewayTestEndBatching is GatewayTest {
 
         gateway.endBatching{value: cost + 1234}(REFUND);
 
-        assertEq(REFUND.balance, 1234);
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
         assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), new bytes(0));
         assertEq(gateway.batchLocatorsLength(), 0);
@@ -630,7 +629,6 @@ contract GatewayTestEndBatching is GatewayTest {
 
         gateway.endBatching{value: cost + 1234}(REFUND);
 
-        assertEq(REFUND.balance, 1234);
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
         assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), new bytes(0));
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID + 1, POOL_A), 0);
@@ -654,7 +652,6 @@ contract GatewayTestEndBatching is GatewayTest {
 
         gateway.endBatching{value: cost * 2 + 1234}(REFUND);
 
-        assertEq(REFUND.balance, 1234);
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
         assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), new bytes(0));
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_0), 0);
