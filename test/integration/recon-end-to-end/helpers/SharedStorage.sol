@@ -198,27 +198,27 @@ abstract contract SharedStorage {
     // ===============================
     // SHARE QUEUE GHOST VARIABLES
     // ===============================
-    mapping(bytes32 => int256) public ghost_netSharePosition; // Net share position (positive for issuance, negative for revocation)
-    mapping(bytes32 => uint256) public ghost_flipCount; // Count of position flips between issuance and revocation
-    mapping(bytes32 => uint256) public ghost_totalIssued; // Total shares issued cumulatively
-    mapping(bytes32 => uint256) public ghost_totalRevoked; // Total shares revoked cumulatively
-    mapping(bytes32 => uint256) public ghost_assetQueueDeposits; // Cumulative deposits in asset queue
-    mapping(bytes32 => uint256) public ghost_assetQueueWithdrawals; // Cumulative withdrawals in asset queue
-    mapping(bytes32 => uint256) public ghost_shareQueueNonce; // Track nonce progression for share queue
-    mapping(bytes32 => uint256) public ghost_previousNonce; // To verify monotonicity
+    mapping(bytes32 => int256) internal ghost_netSharePosition; // Net share position (positive for issuance, negative for revocation)
+    mapping(bytes32 => uint256) internal ghost_flipCount; // Count of position flips between issuance and revocation
+    mapping(bytes32 => uint256) internal ghost_totalIssued; // Total shares issued cumulatively
+    mapping(bytes32 => uint256) internal ghost_totalRevoked; // Total shares revoked cumulatively
+    mapping(bytes32 => uint256) internal ghost_assetQueueDeposits; // Cumulative deposits in asset queue
+    mapping(bytes32 => uint256) internal ghost_assetQueueWithdrawals; // Cumulative withdrawals in asset queue
+    mapping(bytes32 => uint256) internal ghost_shareQueueNonce; // Track nonce progression for share queue
+    mapping(bytes32 => uint256) internal ghost_previousNonce; // To verify monotonicity
 
     // Before/after state tracking for share queues
-    mapping(bytes32 => uint128) public before_shareQueueDelta;
-    mapping(bytes32 => bool) public before_shareQueueIsPositive;
-    mapping(bytes32 => uint64) public before_nonce;
+    mapping(bytes32 => uint128) internal before_shareQueueDelta;
+    mapping(bytes32 => bool) internal before_shareQueueIsPositive;
+    mapping(bytes32 => uint64) internal before_nonce;
 
     // ===============================
     // RESERVE GHOST VARIABLES
     // ===============================
-    mapping(bytes32 => uint256) public ghost_totalReserveOperations;
-    mapping(bytes32 => uint256) public ghost_totalUnreserveOperations;
-    mapping(bytes32 => uint256) public ghost_netReserved;
-    mapping(bytes32 => uint256) public ghost_reserveIntegrityViolations;
+    mapping(bytes32 => uint256) internal ghost_totalReserveOperations;
+    mapping(bytes32 => uint256) internal ghost_totalUnreserveOperations;
+    mapping(bytes32 => uint256) internal ghost_netReserved;
+    mapping(bytes32 => uint256) internal ghost_reserveIntegrityViolations;
 
     // ===============================
     // AUTHORIZATION GHOST VARIABLES
@@ -228,52 +228,53 @@ abstract contract SharedStorage {
         MANAGER,
         WARD
     }
-    mapping(address => AuthLevel) public ghost_authorizationLevel;
-    mapping(bytes32 => uint256) public ghost_unauthorizedAttempts;
-    mapping(bytes32 => uint256) public ghost_privilegedOperationCount;
-    mapping(bytes32 => address) public ghost_lastAuthorizedCaller;
-    mapping(address => uint256) public ghost_authorizationChanges;
-    mapping(bytes32 => bool) public ghost_authorizationBypass;
+    mapping(address => AuthLevel) internal ghost_authorizationLevel;
+    mapping(bytes32 => uint256) internal ghost_unauthorizedAttempts;
+    mapping(bytes32 => uint256) internal ghost_privilegedOperationCount;
+    mapping(bytes32 => address) internal ghost_lastAuthorizedCaller;
+    mapping(address => uint256) internal ghost_authorizationChanges;
+    mapping(bytes32 => bool) internal ghost_authorizationBypass;
 
     // ===============================
     // TRANSFER RESTRICTION GHOST VARIABLES
     // ===============================
-    mapping(address => bool) public ghost_isEndorsedContract;
-    mapping(bytes32 => uint256) public ghost_endorsedTransferAttempts;
-    mapping(bytes32 => uint256) public ghost_blockedEndorsedTransfers;
-    mapping(bytes32 => uint256) public ghost_validTransferCount;
-    mapping(bytes32 => address) public ghost_lastTransferFrom;
-    mapping(address => uint256) public ghost_endorsementChanges;
+    mapping(address => bool) internal ghost_isEndorsedContract;
+    mapping(bytes32 => uint256) internal ghost_endorsedTransferAttempts;
+    mapping(bytes32 => uint256) internal ghost_blockedEndorsedTransfers;
+    mapping(bytes32 => uint256) internal ghost_validTransferCount;
+    mapping(bytes32 => address) internal ghost_lastTransferFrom;
+    mapping(address => uint256) internal ghost_endorsementChanges;
 
     // ===============================
     // SUPPLY CONSISTENCY GHOST VARIABLES
     // ===============================
-    mapping(bytes32 => uint256) public ghost_totalShareSupply;
+    mapping(bytes32 => uint256) internal ghost_totalShareSupply;
     mapping(bytes32 => mapping(address => uint256))
-        public ghost_individualBalances;
-    mapping(bytes32 => uint256) public ghost_supplyMintEvents;
-    mapping(bytes32 => uint256) public ghost_supplyBurnEvents;
-    mapping(bytes32 => bool) public ghost_supplyOperationOccurred;
+        internal ghost_individualBalances;
+    mapping(bytes32 => uint256) internal ghost_supplyMintEvents;
+    mapping(bytes32 => uint256) internal ghost_supplyBurnEvents;
+    mapping(bytes32 => bool) internal ghost_supplyOperationOccurred;
 
     // ===============================
     // ASSET PROPORTIONALITY GHOST VARIABLES
     // ===============================
     // Deposit proportionality tracking
-    mapping(bytes32 => uint256) public ghost_cumulativeAssetsDeposited;
-    mapping(bytes32 => uint256) public ghost_cumulativeSharesIssuedForDeposits;
-    mapping(bytes32 => uint256) public ghost_depositExchangeRate;
-    mapping(bytes32 => bool) public ghost_depositProportionalityTracked;
+    mapping(bytes32 => uint256) internal ghost_cumulativeAssetsDeposited;
+    mapping(bytes32 => uint256)
+        internal ghost_cumulativeSharesIssuedForDeposits;
+    mapping(bytes32 => uint256) internal ghost_depositExchangeRate;
+    mapping(bytes32 => bool) internal ghost_depositProportionalityTracked;
 
     // Withdrawal proportionality tracking
-    mapping(bytes32 => uint256) public ghost_cumulativeAssetsWithdrawn;
+    mapping(bytes32 => uint256) internal ghost_cumulativeAssetsWithdrawn;
     mapping(bytes32 => uint256)
-        public ghost_cumulativeSharesRevokedForWithdrawals;
-    mapping(bytes32 => bool) public ghost_withdrawalProportionalityTracked;
+        internal ghost_cumulativeSharesRevokedForWithdrawals;
+    mapping(bytes32 => bool) internal ghost_withdrawalProportionalityTracked;
 
     // ===============================
     // ESCROW SUFFICIENCY TRACKING
     // ===============================
-    mapping(bytes32 => uint256) public ghost_escrowReservedBalance;
-    mapping(bytes32 => uint256) public ghost_escrowAvailableBalance;
-    mapping(bytes32 => bool) public ghost_escrowSufficiencyTracked;
+    mapping(bytes32 => uint256) internal ghost_escrowReservedBalance;
+    mapping(bytes32 => uint256) internal ghost_escrowAvailableBalance;
+    mapping(bytes32 => bool) internal ghost_escrowSufficiencyTracked;
 }
