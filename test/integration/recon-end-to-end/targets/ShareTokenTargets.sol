@@ -26,6 +26,7 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
     /// @dev Property: must revert if sending to a non-member who is not endorsed
     function token_transfer(address to, uint256 value) public updateGhosts {
         require(_canDonate(to), "never donate to escrow");
+        require(_isActor(to), "can't transfer to non-actors");
 
         // Clamp
         value = between(
@@ -66,6 +67,7 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
     /// @dev Property: must revert if sending to a non-member who is not endorsed
     function token_transferFrom(address to, uint256 value) public updateGhosts {
         require(_canDonate(to), "never donate to escrow");
+        require(_isActor(to), "can't transfer to non-actors");
 
         value = between(
             value,

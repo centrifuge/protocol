@@ -283,7 +283,7 @@ abstract contract Properties is
                     vaultRegistry.vaultDetails(_getVault()).assetId,
                     _getActor().toBytes32()
                 );
-            (, uint32 redeemEpochId, , ) = batchRequestManager.epochId(
+            (, , uint32 redeemEpochId, ) = batchRequestManager.epochId(
                 _getVault().poolId(),
                 _getVault().scId(),
                 vaultRegistry.vaultDetails(_getVault()).assetId
@@ -1662,6 +1662,16 @@ abstract contract Properties is
         }
 
         return true;
+    }
+
+    function _isActor(address to) internal view returns (bool) {
+        address[] memory actors = _getActors();
+
+        for (uint256 i; i < actors.length; i++) {
+            if (actors[i] == to) return true;
+        }
+
+        return false;
     }
 
     /// @dev utility to ensure the target is not in the system addresses
