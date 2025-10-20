@@ -84,10 +84,6 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint32 maxClaimsBound = batchRequestManager.maxRedeemClaims(poolId, scId, investor, assetId);
         maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
 
-        // Capture state for ghost variables
-        address actor = _getActor();
-        uint256 investorClaimableBefore = asyncRequestManager.maxWithdraw(_getVault(), actor);
-
         // Handle validation or continuation
         if (maxClaimsBound > 0) {
             // Continue claiming remaining epochs
@@ -116,13 +112,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         return _poolId;
     }
 
-    function hub_createPool_clamped(uint64 poolIdAsUint, uint128 assetEntropy)
-        public
-        asActor
-        returns (
-            PoolId /* poolId */
-        )
-    {
+    function hub_createPool_clamped(uint64 poolIdAsUint, uint128 assetEntropy) public asActor {
         AssetId _assetId = Helpers.getRandomAssetId(createdAssetIds, assetEntropy);
 
         hub_createPool(poolIdAsUint, _getActor(), _assetId.raw());
@@ -272,7 +262,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     // ═══════════════════════════════════════════════════════════════
     // ADMIN FUNCTIONS
     // ═══════════════════════════════════════════════════════════════
-    function hub_setRequestManager(uint64 poolId, bytes16 shareClassId, uint128 assetId, address requestManager)
+    function hub_setRequestManager(uint64 poolId, bytes16 /* shareClassId */, uint128 /* assetId */, address requestManager)
         public
         asAdmin
     {

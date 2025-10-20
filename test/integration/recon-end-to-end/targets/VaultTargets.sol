@@ -71,13 +71,13 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
     function _handleRequestDepositSuccess(
         IBaseVault vault,
-        PoolId poolId,
+        PoolId /* poolId */,
         ShareClassId scId,
         AssetId assetId,
         address to,
         uint256 assets,
-        uint128 prevDeposits,
-        uint128 prevWithdrawals
+        uint128 /* prevDeposits */,
+        uint128 /* prevWithdrawals */
     ) private {
         // ghost tracking
         userRequestDeposited[scId][assetId][to] += assets;
@@ -301,7 +301,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         vm.prank(controller);
         try IAsyncVault(address(_getVault())).cancelRedeemRequest(REQUEST_ID, controller) {
-            (uint128 pendingAfter, uint32 lastUpdateAfter) =
+            (, uint32 lastUpdateAfter) =
                 batchRequestManager.redeemRequest(poolId, scId, assetId, controller.toBytes32());
             (,, uint32 redeemEpochId,) = batchRequestManager.epochId(poolId, scId, assetId);
             uint256 pendingCancelAfter =
@@ -430,12 +430,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);
             }
 
-            // Track asset counter for Queue State Consistency properties
-            if (assets > 0) {
-                bytes32 assetKey =
-                    keccak256(abi.encode(vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId));
-            }
-
             executedInvestments[vault.share()] += shares;
             ghost_netSharePosition[keccak256(abi.encode(vault.poolId(), vault.scId()))] += int256(uint256(shares)); // encodes the share key; not state variable because of stack too deep
 
@@ -489,9 +483,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // check if vault is sync or async
         bool isAsyncVault = Helpers.isAsyncVault(address(vault));
 
-        // Bal b4
-        uint256 shareUserB4 = IShareToken(vault.share()).balanceOf(to);
-        uint256 shareEscrowB4 = IShareToken(vault.share()).balanceOf(address(globalEscrow));
         (uint128 pendingBefore,) = batchRequestManager.depositRequest(
             vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId, to.toBytes32()
         );
@@ -537,16 +528,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // for sync vaults, deposits are fulfilled immediately
         // NOTE: async vaults don't request deposits but we need to track this value for the escrow balance property
         if (!isAsyncVault) {
-            // Track asset counter for Queue State Consistency properties
-            if (assets > 0) {
-                bytes32 assetKey =
-                    keccak256(abi.encode(vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId));
-
-                // Check if asset queue became non-empty after deposit
-                (uint128 currentDeposits, uint128 currentWithdrawals) =
-                    balanceSheet.queuedAssets(vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId);
-            }
-
             ghost_netSharePosition[keccak256(abi.encode(vault.poolId(), vault.scId()))] += int256(uint256(shares)); // encodes the share key; not state variable because of stack too deep
             userRequestDeposited[vault.scId()][vaultRegistry.vaultDetails(vault).assetId][_getActor()] += assets;
             userDepositProcessed[vault.scId()][vaultRegistry.vaultDetails(vault).assetId][_getActor()] += assets;
@@ -607,7 +588,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhostsWithType(OpType.REMOVE) {
+    function vault_withdraw(uint256 /* assets */, uint256 /* toEntropy */) public updateGhostsWithType(OpType.REMOVE) {
         IBaseVault vault = _getVault();
         _captureShareQueueState(vault.poolId(), vault.scId());
 

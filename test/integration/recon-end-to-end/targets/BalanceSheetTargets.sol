@@ -48,12 +48,8 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Update queue ghost variables
         bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
 
-        // Track asset counter for Queue State Consistency properties
-        (uint128 prevDeposits, uint128 prevWithdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
-
         // Track escrow balance sufficiency
         ghost_escrowSufficiencyTracked[assetKey] = true;
-        uint128 prevAvailable = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
 
         // Track asset-share proportionality for deposits
         // Track deposit amounts and exchange rate before deposit
@@ -102,7 +98,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
         // Track previous net position for flip detection
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
-        bytes32 userKey = keccak256(abi.encode(shareKey, _getActor()));
 
         // Track supply operations
         ghost_supplyOperationOccurred[shareKey] = true;
@@ -340,7 +335,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
         // Track escrow balance sufficiency
         ghost_escrowSufficiencyTracked[assetKey] = true;
-        uint128 prevAvailable = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
 
         try balanceSheet.withdraw(poolId, scId, vault.asset(), tokenId, _getActor(), amount) {
             // Successful withdrawal
@@ -353,7 +347,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             ghost_cumulativeAssetsWithdrawn[assetKey] += amount;
             ghost_assetQueueWithdrawals[assetKey] += amount;
             sumOfManagerWithdrawals[vault.asset()] += amount;
-        } catch (bytes memory err) {
+        } catch (bytes memory /* err */) {
             // NOTE: removed because admin can easily cause this to fail
             // bool expectedError = checkError(err, Panic.arithmeticPanic); // we care about reverts due to arithmetic errors
             // // Check if withdrawal was possible with available balance (track failures)
@@ -447,11 +441,10 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         _trackAuthorization(_getActor(), poolId);
 
         // Track nonce monotonicity for Queue State Consistency properties
-        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
 
         // Get current nonce to track monotonicity
-        (,, uint32 queuedAssetCounter, uint64 currentNonce) = balanceSheet.queuedShares(poolId, scId);
+        (,,, uint64 currentNonce) = balanceSheet.queuedShares(poolId, scId);
         ghost_previousNonce[shareKey] = currentNonce;
 
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, extraGasLimit, address(this));
@@ -470,7 +463,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
 
         // Get current nonce to track monotonicity
-        (,, uint32 queuedAssetCounter, uint64 currentNonce) = balanceSheet.queuedShares(poolId, scId);
+        (,,, uint64 currentNonce) = balanceSheet.queuedShares(poolId, scId);
         ghost_previousNonce[shareKey] = currentNonce;
 
         ghost_shareQueueNonce[shareKey]++;

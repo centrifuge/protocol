@@ -475,7 +475,7 @@ abstract contract TargetFunctions is
     // ═══════════════════════════════════════════════════════════════
     // TRANSIENT VALUATION
     // ═══════════════════════════════════════════════════════════════
-    function transientValuation_setPrice(AssetId base, AssetId quote, uint128 price) public {
+    function transientValuation_setPrice(AssetId base, AssetId /* quote */, uint128 price) public {
         IBaseVault vault = _getVault();
         if (address(vault) == address(0)) return;
 

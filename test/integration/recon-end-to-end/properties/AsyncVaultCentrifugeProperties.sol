@@ -123,7 +123,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: For async vaults, validates globalEscrow share transfers
     /// @dev Property: For sync vaults, validates PoolEscrow state changes
     // TODO(wischli): Add back statelessTest modifier after optimizer run
-    function asyncVault_maxDeposit(uint64 poolEntropy, uint32 scEntropy, uint256 depositAmount) public statelessTest {
+    function asyncVault_maxDeposit(uint64 /* poolEntropy */, uint32 /* scEntropy */, uint256 depositAmount) public statelessTest {
         uint256 maxDepositBefore = _getVault().maxDeposit(_getActor());
 
         depositAmount = between(depositAmount, 1, maxDepositBefore);
@@ -200,7 +200,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: user can always mint an amount between 1 and maxMint if they have > 0 assets and are approved
     /// @dev Property: maxMint should be 0 after using maxMint as mintAmount
     /// @dev Property: minting maxMint should not mint more than maxDeposit shares
-    function asyncVault_maxMint(uint64 poolEntropy, uint32 scEntropy, uint256 mintAmount) public statelessTest {
+    function asyncVault_maxMint(uint64 /* poolEntropy */, uint32 /* scEntropy */, uint256 mintAmount) public statelessTest {
         uint256 maxMintBefore = _getVault().maxMint(_getActor());
         uint256 maxDepositBefore = _getVault().maxDeposit(_getActor());
         bool isAsyncVault = Helpers.isAsyncVault(address(_getVault()));
@@ -210,7 +210,6 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
         PoolId poolId = _getVault().poolId();
         ShareClassId scId = _getVault().scId();
-        AssetId assetId = vaultRegistry.vaultDetails(_getVault()).assetId;
 
         // === PoolEscrow State Analysis Before Mint ===
         PoolEscrowState memory escrowState = _analyzePoolEscrowState(poolId, scId);
@@ -242,8 +241,6 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
                 _logPoolEscrowAnalysis("Mint", maxMintBefore, maxMintAfter, mintAmount, escrowState);
             }
 
-            uint256 shares = _getVault().convertToShares(assets);
-
             if (mintAmount == maxMintBefore) {
                 uint256 maxMintVaultAfter = _getVault().maxMint(_getActor());
 
@@ -260,10 +257,10 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             }
         } catch (bytes memory err) {
             // Determine vault type for proper validation
-            bool isAsyncVault = Helpers.isAsyncVault(address(_getVault()));
+            bool isAsyncVaultCheck = Helpers.isAsyncVault(address(_getVault()));
             bool expectedError = checkError(err, "VaultNotLinked()");
 
-            if (isAsyncVault && !expectedError) {
+            if (isAsyncVaultCheck && !expectedError) {
                 _validateAsyncMintFailure(mintAmount);
             } else {
                 console2.log("Sync vault mint failed - likely due to transfer restrictions");
@@ -275,7 +272,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: user can always withdraw an amount between 1 and maxWithdraw if they have > 0 shares and are
     /// approved
     /// @dev Property: maxWithdraw should decrease by the amount withdrawn
-    function asyncVault_maxWithdraw(uint64 poolEntropy, uint32 scEntropy, uint256 withdrawAmount) public statelessTest {
+    function asyncVault_maxWithdraw(uint64 /* poolEntropy */, uint32 /* scEntropy */, uint256 withdrawAmount) public statelessTest {
         uint256 maxWithdrawBefore = _getVault().maxWithdraw(_getActor());
         require(maxWithdrawBefore > 0, "must be able to withdraw");
 
@@ -320,7 +317,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: user can always redeem an amount between 1 and maxRedeem if they have > 0 shares and are approved
     /// @dev Property: redeeming maxRedeem does not increase the pendingRedeem
     // TODO(wischli): Add back statelessTest modifier after optimizer run
-    function asyncVault_maxRedeem(uint64 poolEntropy, uint32 scEntropy, uint256 redeemAmount) public statelessTest {
+    function asyncVault_maxRedeem(uint64 /* poolEntropy */, uint32 /* scEntropy */, uint256 redeemAmount) public statelessTest {
         uint256 maxRedeemBefore = _getVault().maxRedeem(_getActor());
         require(maxRedeemBefore > 0, "must be able to redeem");
 
@@ -340,11 +337,9 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             batchRequestManager.redeemRequest(poolId, scId, assetId, _getActor().toBytes32());
 
         vm.prank(_getActor());
-        try _getVault().redeem(redeemAmount, _getActor(), _getActor()) returns (uint256 assets) {
+        try _getVault().redeem(redeemAmount, _getActor(), _getActor()) returns (uint256 /* assets */) {
             uint256 maxRedeemAfter = _getVault().maxRedeem(_getActor());
             uint256 difference = maxRedeemBefore - redeemAmount;
-
-            address poolEscrow = address(poolEscrowFactory.escrow(_getVault().poolId()));
 
             // maxRedeemAfter needs to at least be decreased by the difference amount
             gte(difference, maxRedeemAfter, "maxRedeemAfter isn't sufficiently decreased");
@@ -775,7 +770,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     }
 
     /// @dev Helper to validate async vault withdraw failures
-    function _validateAsyncWithdrawFailure(uint256 withdrawAmount) internal returns (bool) {
+    function _validateAsyncWithdrawFailure(uint256 withdrawAmount) internal view returns (bool) {
         (,,, D18 redeemPrice,,,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
 
         if (!redeemPrice.isZero()) {

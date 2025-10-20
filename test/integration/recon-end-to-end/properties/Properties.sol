@@ -969,12 +969,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     // }
 
     /// @dev Property: The total issuance of a share class is <= the sum of issued shares and burned shares
-    function property_total_issuance_soundness() public {
-        IBaseVault vault = _getVault();
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = _getAssetId();
-
+    function property_total_issuance_soundness() public pure {
         // TODO(wischli): Find feasible replacement now that queues are always enabled
         // precondition: if queue is enabled, return early because the totalIssuance is only updated immediately when
         // the queue isn't enabled
@@ -1366,7 +1361,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_deltaCheck() public {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
-        bytes32 key = _poolShareKey(poolId, scId);
 
         // Check if there are any async vaults for this pool/shareclass combination
         bool hasAsyncVault = _hasAsyncVaultForPoolShareClass(poolId, scId);
@@ -1377,9 +1371,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
 
         (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(poolId, scId);
-
-        // Calculate expected net position from ghost tracking
-        int256 expectedNet = ghost_netSharePosition[key];
 
         // Calculate actual net position from queue state
         int256 actualNet = isPositive ? int256(uint256(delta)) : -int256(uint256(delta));
@@ -1480,7 +1471,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                 ShareClassId scId = shareClasses[j];
                 bytes32 key = _poolShareKey(poolId, scId);
 
-                (uint128 delta, bool isPositive, uint32 assetCounter, uint64 nonce) =
+                (,,, uint64 nonce) =
                     balanceSheet.queuedShares(poolId, scId);
 
                 // If a submission occurred, verify reset
@@ -1778,11 +1769,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: BalanceSheet must always have sufficient balance for queued assets
     function property_availableGtQueued() public {
-        PoolId[] memory pools = _getPools();
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
-        bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
         address asset = _getVault().asset();
 
         // Get current available balance
@@ -1801,7 +1790,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     //     PoolId[] memory pools = _getPools();
     //     for (uint256 i = 0; i < pools.length; i++) {
     //         PoolId poolId = pools[i];
-    //         bytes32 poolKey = keccak256(abi.encode(poolId));
 
     //         // No unauthorized operations should succeed
     //         eq(
@@ -1894,7 +1882,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: authorization checks can't be bypassed
     function property_authorizationBypass() public {
         PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
         bytes32 poolKey = keccak256(abi.encode(poolId));
 
         // No unauthorized operations should succeed
@@ -1908,7 +1895,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_authorizationLevel() public {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
-        bytes32 poolKey = keccak256(abi.encode(poolId));
         bytes32 key = keccak256(abi.encode(poolId, scId));
 
         // Verify all privileged operations had proper authorization
@@ -1933,8 +1919,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_authorizationChange() public {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
-        bytes32 poolKey = keccak256(abi.encode(poolId));
-        bytes32 key = keccak256(abi.encode(poolId, scId));
         AuthLevel actualAuth = AuthLevel.NONE;
 
         // Determine actual authorization level
@@ -2041,7 +2025,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         if (!poolHasShareClass) return;
 
-        try spoke.shareToken(poolId, scId) returns (IShareToken shareToken) {}
+        try spoke.shareToken(poolId, scId) returns (IShareToken /* shareToken */) {}
         catch Error(string memory reason) {
             if (ghost_supplyOperationOccurred[key]) {
                 t(false, string.concat("Share token unexpectedly missing: ", reason));
@@ -2072,14 +2056,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
                     uint256 cumulativeAssets = ghost_cumulativeAssetsDeposited[assetKey];
                     uint256 cumulativeShares = ghost_cumulativeSharesIssuedForDeposits[assetKey];
-                    uint256 avgExchangeRate = ghost_depositExchangeRate[assetKey];
 
                     // Skip if no meaningful deposits occurred
                     if (cumulativeAssets == 0) continue;
-
-                    // Calculate expected shares based on average exchange rate
-                    // expectedShares = cumulativeAssets * avgExchangeRate / 1e18
-                    uint256 expectedShares = (cumulativeAssets * avgExchangeRate) / 1e18;
 
                     // EXACT INVARIANT: Use theoretical bounds instead of arbitrary tolerances
                     // Fetch prices for direct PricingLib calls (handles zero prices internally)
@@ -2173,10 +2152,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                                 if (D18.unwrap(pricePerShare) == 0 || D18.unwrap(pricePerAsset) == 0) {
                                     continue;
                                 }
-
-                                // Calculate expected assets for the revoked shares at current prices
-                                uint256 expectedAssets =
-                                    (cumulativeRevoked * D18.unwrap(pricePerShare)) / D18.unwrap(pricePerAsset);
 
                                 // Get real addresses for proper decimal handling
                                 address shareToken = address(spoke.shareToken(poolId, scId));
