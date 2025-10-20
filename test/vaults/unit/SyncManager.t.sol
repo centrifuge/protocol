@@ -10,8 +10,8 @@ import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {ISpoke, VaultDetails} from "../../../src/core/spoke/interfaces/ISpoke.sol";
-import {IVaultRegistry} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
+import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
+import {VaultDetails, IVaultRegistry} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
 
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";

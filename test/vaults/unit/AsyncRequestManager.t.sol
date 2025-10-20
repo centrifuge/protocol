@@ -17,8 +17,8 @@ import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {IPoolEscrow} from "../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {ISpoke, VaultDetails} from "../../../src/core/spoke/interfaces/ISpoke.sol";
-import {IVaultRegistry} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
+import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
+import {VaultDetails, IVaultRegistry} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";

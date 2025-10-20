@@ -3,8 +3,8 @@ pragma solidity 0.8.28;
 
 import {IShareToken} from "./interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "./interfaces/IVault.sol";
-import {VaultDetails, ISpoke} from "./interfaces/ISpoke.sol";
-import {IVaultRegistry} from "./interfaces/IVaultRegistry.sol";
+import {ISpoke} from "./interfaces/ISpoke.sol";
+import {VaultDetails, IVaultRegistry} from "./interfaces/IVaultRegistry.sol";
 import {IVaultFactory} from "./factories/interfaces/IVaultFactory.sol";
 
 import {Auth} from "../../misc/Auth.sol";

@@ -29,9 +29,9 @@ import {IPoolEscrow} from "../core/spoke/interfaces/IPoolEscrow.sol";
 import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
 import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
-import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
+import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
-import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
+import {VaultDetails, IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  Async Request Manager

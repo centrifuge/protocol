@@ -19,8 +19,8 @@ import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
-import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
-import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
+import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
+import {VaultDetails, IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  Sync Manager
