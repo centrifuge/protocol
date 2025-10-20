@@ -3,6 +3,7 @@
     "chainId": 11155111,
     "environment": "testnet",
     "centrifugeId": 1,
+    "etherscanUrl": "https://sepolia.etherscan.io/",
     "connectsTo": [
       "arbitrum-sepolia",
       "base-sepolia"

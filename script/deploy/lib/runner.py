@@ -100,7 +100,7 @@ class DeploymentRunner:
                 return False
             print_success("Forge contracts deployed successfully")
             # 2. Verify (only for protocol and adapter scripts)
-            if not self.env_loader.network_name.startswith("anvil") and script_name not in ["TestData"]:
+            if not self.env_loader.network_name.startswith("anvil") and "Test" not in script_name and "Wire" not in script_name:
                 cmd = base_cmd.copy()
                 cmd.append("--verify")
                 if "--resume" not in cmd:

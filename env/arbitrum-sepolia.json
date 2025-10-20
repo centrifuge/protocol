@@ -4,6 +4,7 @@
     "environment": "testnet",
     "centrifugeId": 3,
     "network": "arbitrum",
+    "etherscanUrl": "https://sepolia.arbiscan.io/",
     "catapultaNetwork": "arbitrumSepolia",
     "connectsTo": [
       "sepolia",

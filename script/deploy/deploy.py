@@ -23,6 +23,7 @@ from lib.runner import DeploymentRunner
 from lib.verifier import ContractVerifier
 from lib.anvil import AnvilManager
 from lib.release import ReleaseManager
+from lib.crosschain import CrossChainTestManager
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -43,13 +44,16 @@ Examples:
   python3 deploy.py sepolia verify:protocol
   python3 deploy.py arbitrum-sepolia verify:protocol
   VERSION=vXYZ python3 deploy.py deploy:testnets  # Deploy all Sepolia testnets (auto-resumes)
+  python3 deploy.py sepolia crosschaintest:hub  # Run cross-chain hub test
+  python3 deploy.py base-sepolia crosschaintest:spoke  # Run cross-chain spoke tests
         """
     )
 
     parser.add_argument("network", nargs="?", help="Network name (must match env/<network>.json)")
     parser.add_argument("step", nargs="?", help="Deployment step", choices=[
         "deploy:protocol", "deploy:adapters", "deploy:testnets",
-        "wire", "wire:all", "verify:protocol", "config:show", "crosschaintest"
+        "wire", "wire:all", "verify:protocol", "config:show", 
+        "crosschaintest:hub", "crosschaintest:spoke"
     ])
     parser.add_argument("--catapulta", action="store_true", help="Use Catapulta for deployment")
     parser.add_argument("--ledger", action="store_true", help="Force use of Ledger hardware wallet")
@@ -300,10 +304,17 @@ def main():
             env_loader.dump_config()
 
         elif args.step == "crosschaintest:hub":
-            print_section("Cross-chain test placeholder")
+            print_section("Cross-Chain Hub Test")
+            crosschain_manager = CrossChainTestManager(env_loader, args, root_dir)
+            result = crosschain_manager.run_hub_test()
+            print_success("Cross-chain hub test completed successfully")
             sys.exit(0)
+            
         elif args.step == "crosschaintest:spoke":
-            print_section("Cross-chain test placeholder")
+            print_section("Cross-Chain Spoke Tests")
+            crosschain_manager = CrossChainTestManager(env_loader, args, root_dir)
+            result = crosschain_manager.run_spoke_tests()
+            print_success("Cross-chain spoke tests completed")
             sys.exit(0)            
 
         # Handle errors
