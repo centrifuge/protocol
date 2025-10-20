@@ -227,14 +227,14 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function withBatch(bytes memory data, uint256 value, address refund) public payable {
-        require(value <= msg.value, NotEnoughValueForCallback());
+    function withBatch(bytes memory data, uint256 callbackValue, address refund) public payable {
+        require(callbackValue <= msg.value, NotEnoughValueForCallback());
 
-        bool wasBatching = isBatching;
+        bool isNested = isBatching;
         isBatching = true;
 
         _batcher = msg.sender;
-        (bool success, bytes memory returnData) = msg.sender.call{value: value}(data);
+        (bool success, bytes memory returnData) = msg.sender.call{value: callbackValue}(data);
         if (!success) {
             uint256 length = returnData.length;
             require(length != 0, CallFailedWithEmptyRevert());
@@ -247,16 +247,20 @@ contract Gateway is Auth, Recoverable, IGateway {
         // Force the user to call lockCallback()
         require(address(_batcher) == address(0), CallbackWasNotLocked());
 
-        if (!wasBatching) _endBatching(msg.value - value, refund);
+        if (isNested) {
+            _refund(refund, msg.value - callbackValue);
+        } else {
+            uint256 cost = _endBatching(msg.value - callbackValue, refund);
+            _refund(refund, msg.value - callbackValue - cost);
+        }
     }
 
-    function _endBatching(uint256 fuel, address refund) internal {
+    function _endBatching(uint256 fuel, address refund) internal returns (uint256 cost) {
         require(isBatching, NoBatched());
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
 
         TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
 
-        uint256 cost;
         for (uint256 i; i < locators.length; i++) {
             (uint16 centrifugeId, PoolId poolId) = _parseLocator(locators[i]);
             bytes32 outboundBatchSlot = _outboundBatchSlot(centrifugeId, poolId);
@@ -270,8 +274,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         }
 
         isBatching = false;
-
-        _refund(refund, fuel - cost);
     }
 
     /// @inheritdoc IGateway

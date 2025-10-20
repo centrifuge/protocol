@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {VaultDetails} from "./ISpoke.sol";
 import {IVault, VaultKind} from "./IVault.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
@@ -9,6 +8,17 @@ import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 import {IRequestManager} from "../../interfaces/IRequestManager.sol";
 import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
+
+struct VaultDetails {
+    /// @dev AssetId of the asset
+    AssetId assetId;
+    /// @dev Address of the asset
+    address asset;
+    /// @dev TokenId of the asset - zero if asset is ERC20, non-zero if asset is ERC6909
+    uint256 tokenId;
+    /// @dev Whether the vault is linked to a share class atm
+    bool isLinked;
+}
 
 interface IVaultRegistry {
     //----------------------------------------------------------------------------------------------
