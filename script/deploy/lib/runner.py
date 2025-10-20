@@ -87,7 +87,7 @@ class DeploymentRunner:
                 return False
             print_success("Forge contracts deployed successfully")
             # 2. Verify (only for protocol and adapter scripts)
-            if self.env_loader.network_name != "anvil" and script_name not in ["TestData"]:
+            if not self.env_loader.network_name.startswith("anvil") and script_name not in ["TestData"]:
                 cmd = base_cmd.copy()
                 cmd.append("--verify")
                 if "--resume" not in cmd:
@@ -115,13 +115,11 @@ class DeploymentRunner:
         elif (is_testnet and not self.args.ledger) or "tenderly" in self.env_loader.rpc_url:
             # Only access private_key when actually needed (not using ledger)
             private_key = self.env_loader.private_key
-            # Get the public key from the private key using 'cast'
-            result = subprocess.run(["cast", "wallet", "address", "--private-key", private_key],
-                capture_output=True, text=True, check=True)
-            print_info(f"Deploying address (Testnet shared account): {format_account(result.stdout.strip())}")
             if self.args.catapulta:
+                public_key = subprocess.run(["cast", "wallet", "address", "--private-key", private_key],
+                capture_output=True, text=True, check=True)
                 #--sender Optional, specify the sender address (required when using --private-key)
-                return ["--private-key", private_key, "--sender", result.stdout.strip()]
+                return ["--private-key", private_key, "--sender", public_key.stdout.strip()]
             else:
                 return ["--private-key", private_key]
             
@@ -193,7 +191,6 @@ class DeploymentRunner:
                     return True
                 else:
                     print_error(f"Verification failed with exit code: {result.returncode}")
-                    print_error(f"Check the log file for details: {log_file}")
                     return False
                 
         except subprocess.CalledProcessError as e:

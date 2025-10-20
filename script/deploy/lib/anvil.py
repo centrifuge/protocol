@@ -23,10 +23,18 @@ from .verifier import ContractVerifier
 class AnvilManager:
     def __init__(self, root_dir: Path):
         self.root_dir = root_dir
-        self.protocol_admin_address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"  # 2nd Anvil account
-        self.ops_admin_address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"  # 2nd Anvil account (same for now)
-        self.private_key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"  # 1st account
-        
+        # https://getfoundry.sh/anvil/overview/
+        self.anvil_account0 = {
+            "private_key": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+            "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+        }
+        self.anvil_account1 = {
+            "private_key": "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+        }
+        self.deploy_key = self.anvil_account0["private_key"]
+        self.protocol_admin_address = self.anvil_account1["address"]
+        self.ops_admin_address = self.anvil_account1["address"]
 
     def _create_anvil_env(self, network_name: str):
         """Create per-fork env under env/anvil and return a minimal loader-like object."""
@@ -69,7 +77,7 @@ class AnvilManager:
                 self.chain_id = chain_id_inner
                 self.root_dir = manager.root_dir
                 self.rpc_url = f"http://localhost:{port_inner}"
-                self.private_key = manager.private_key
+                self.private_key = manager.deploy_key
                 self.etherscan_api_key = ""  # Not needed for anvil
                 self.protocol_admin_address = manager.protocol_admin_address
                 self.ops_admin_address = manager.ops_admin_address
@@ -163,7 +171,8 @@ class AnvilManager:
         self._verify_deployments(net_env)
 
         print_section(f"Test data deployment ({getattr(net_env, 'base_network', net_env.network_name)})")
-        net_env.private_key = "0x59c6995e998f97a5a0044966f0945389e86dae88c7a8412f4603b6b78690d"
+        # Use the protocol admin key for TestData so actions come from the admin
+        net_env.private_key = self.anvil_account1["private_key"]
         args.step = "deploy:test"
         if not runner.run_deploy("TestData"):
             return False
@@ -207,7 +216,7 @@ class AnvilManager:
             def __init__(self, manager, rpc_url):
                 self.rpc_url = rpc_url
                 # Add other attributes that formatter might expect
-                self.private_key = manager.private_key
+                self.private_key = manager.deploy_key
                 self.etherscan_api_key = ""
 
         print_command(cmd, env_loader=MockEnvLoader(self,rpc_url=fork_url))
