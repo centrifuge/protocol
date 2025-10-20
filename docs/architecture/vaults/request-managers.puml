@@ -1,0 +1,39 @@
+@startuml request-managers
+title Vault Request Managers
+hide empty members
+
+skinparam linetype ortho
+
+package misc {
+    class "Escrow" as GlobalEscrow<<global>>
+    class "Escrow" as RouterEscrow<<router>>
+}
+
+package spoke {
+    class Spoke
+    class BalanceSheet
+    interface ITrustedContractUpdate
+    interface IRequestManager
+}
+
+interface IBaseRequestManager
+
+interface IAsyncRequestManager
+interface ISyncManager
+
+IBaseRequestManager -up-|> IRequestManager
+
+IAsyncRequestManager -up-|> IBaseRequestManager
+ISyncManager -up-|> ITrustedContractUpdate
+
+AsyncRequestManager -up--> GlobalEscrow
+AsyncRequestManager -up--> BalanceSheet
+AsyncRequestManager -up-|> IAsyncRequestManager
+
+SyncManager -up-|> ISyncManager
+SyncManager -up--> BalanceSheet
+
+VaultRouter -up-> RouterEscrow
+VaultRouter -up-> Spoke
+
+@enduml

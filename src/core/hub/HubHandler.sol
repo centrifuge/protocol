@@ -11,11 +11,12 @@ import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
 
+import {IHubMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
+import {IHubGatewayHandler} from "../messaging/interfaces/IGatewayHandlers.sol";
+
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {IHubMessageSender} from "../interfaces/IGatewaySenders.sol";
-import {IHubGatewayHandler} from "../interfaces/IGatewayHandlers.sol";
 
 /// @title  HubHandler
 /// @notice This contract processes incoming cross-chain messages for the Hub, handling asset registration,
@@ -121,15 +122,15 @@ contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
         uint128 extraGasLimit,
         address refund
     ) external payable auth {
-        shareClassManager.updateShares(originCentrifugeId, poolId, scId, amount, false);
         shareClassManager.updateShares(targetCentrifugeId, poolId, scId, amount, true);
+        shareClassManager.updateShares(originCentrifugeId, poolId, scId, amount, false);
 
         holdings.callOnTransferSnapshot(poolId, scId, originCentrifugeId, targetCentrifugeId, amount);
 
         emit ForwardTransferShares(originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount);
 
-        return sender.sendExecuteTransferShares{value: msg.value}(
-            targetCentrifugeId, poolId, scId, receiver, amount, extraGasLimit, refund
-        );
+        return sender.sendExecuteTransferShares{
+            value: msg.value
+        }(targetCentrifugeId, poolId, scId, receiver, amount, extraGasLimit, refund);
     }
 }

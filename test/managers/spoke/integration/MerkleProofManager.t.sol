@@ -18,11 +18,9 @@ import {MerkleProofManager, PolicyLeaf, Call} from "../../../../src/managers/spo
 import {IMerkleProofManager, IERC7751} from "../../../../src/managers/spoke/interfaces/IMerkleProofManager.sol";
 
 import {MerkleTreeLib} from "../libraries/MerkleTreeLib.sol";
-import {UpdateContractMessageLib} from "../../../../src/libraries/UpdateContractMessageLib.sol";
 
 abstract contract MerkleProofManagerBaseTest is BaseTest {
     using CastLib for *;
-    using UpdateContractMessageLib for *;
     using UpdateRestrictionMessageLib for *;
 
     uint128 defaultAmount;
@@ -63,9 +61,8 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
             POOL_A,
             defaultTypedShareClassId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: address(this).toBytes32(),
-                validUntil: MAX_UINT64
-            }).serialize()
+                    user: address(this).toBytes32(), validUntil: MAX_UINT64
+                }).serialize()
         );
 
         manager = new MerkleProofManager(POOL_A, address(spoke));
@@ -81,11 +78,7 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
         bytes32 rootHash = tree[tree.length - 1][0];
 
         vm.prank(address(spoke));
-        manager.trustedCall(
-            POOL_A,
-            defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: rootHash}).serialize()
-        );
+        manager.trustedCall(POOL_A, defaultTypedShareClassId, abi.encode(address(this).toBytes32(), rootHash));
     }
 
     function _selector(string memory signature) internal pure returns (bytes4) {
@@ -368,7 +361,9 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
                     decoder: address(decoder),
                     target: address(balanceSheet),
                     selector: BalanceSheet.withdraw.selector,
-                    addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, address(erc20), makeAddr("otherTarget")),
+                    addresses: abi.encodePacked(
+                        POOL_A, defaultTypedShareClassId, address(erc20), makeAddr("otherTarget")
+                    ),
                     valueNonZero: false
                 }),
                 proofs[0]
@@ -380,7 +375,6 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
 
 contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
     using CastLib for *;
-    using UpdateContractMessageLib for *;
 
     function testReceiveEther() public {
         (bool success,) = address(manager).call{value: 1 ether}("");
@@ -475,7 +469,12 @@ contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
             decoder: address(decoder),
             target: address(balanceSheet),
             targetData: abi.encodeWithSelector(
-                BalanceSheet.deposit.selector, POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, depositAmount
+                BalanceSheet.deposit.selector,
+                POOL_A,
+                defaultTypedShareClassId,
+                address(erc20),
+                erc20TokenId,
+                depositAmount
             ),
             value: 0,
             proof: proofs[2]

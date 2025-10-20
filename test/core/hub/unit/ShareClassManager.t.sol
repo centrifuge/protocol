@@ -330,3 +330,123 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
         shareClass.updateMetadata(poolId, scId, SC_NAME, string(abi.encodePacked(new bytes(33))));
     }
 }
+
+contract ShareClassManagerPendingIssuanceTest is ShareClassManagerBaseTest {
+    function testIssuanceViewAfterIssue() public {
+        uint128 amount = 1000;
+        shareClass.updateShares(centrifugeId, poolId, scId, amount, true);
+
+        assertEq(shareClass.issuance(poolId, scId, centrifugeId), amount);
+        assertEq(shareClass.totalIssuance(poolId, scId), amount);
+    }
+
+    function testIssuanceViewAfterRevoke() public {
+        uint128 issueAmount = 1000;
+        uint128 revokeAmount = 300;
+
+        shareClass.updateShares(centrifugeId, poolId, scId, issueAmount, true);
+        shareClass.updateShares(centrifugeId, poolId, scId, revokeAmount, false);
+
+        assertEq(shareClass.issuance(poolId, scId, centrifugeId), issueAmount - revokeAmount);
+        assertEq(shareClass.totalIssuance(poolId, scId), issueAmount - revokeAmount);
+    }
+
+    function testIssuanceViewMultipleIssuesAndRevokes() public {
+        // Issue 1000
+        shareClass.updateShares(centrifugeId, poolId, scId, 1000, true);
+        assertEq(shareClass.issuance(poolId, scId, centrifugeId), 1000);
+
+        // Revoke 300
+        shareClass.updateShares(centrifugeId, poolId, scId, 300, false);
+        assertEq(shareClass.issuance(poolId, scId, centrifugeId), 700);
+
+        // Issue another 500
+        shareClass.updateShares(centrifugeId, poolId, scId, 500, true);
+        assertEq(shareClass.issuance(poolId, scId, centrifugeId), 1200);
+
+        // Revoke 200
+        shareClass.updateShares(centrifugeId, poolId, scId, 200, false);
+        assertEq(shareClass.issuance(poolId, scId, centrifugeId), 1000);
+    }
+
+    function testIssuanceViewMultipleNetworks() public {
+        uint16 network1 = 1;
+        uint16 network2 = 2;
+
+        shareClass.updateShares(network1, poolId, scId, 1000, true);
+        shareClass.updateShares(network2, poolId, scId, 2000, true);
+
+        assertEq(shareClass.issuance(poolId, scId, network1), 1000);
+        assertEq(shareClass.issuance(poolId, scId, network2), 2000);
+        assertEq(shareClass.totalIssuance(poolId, scId), 3000);
+
+        shareClass.updateShares(network1, poolId, scId, 300, false);
+
+        assertEq(shareClass.issuance(poolId, scId, network1), 700);
+        assertEq(shareClass.issuance(poolId, scId, network2), 2000);
+        assertEq(shareClass.totalIssuance(poolId, scId), 2700);
+    }
+
+    function testNegativeIssuanceReverts() public {
+        // Issue on another network to keep totalIssuance positive
+        shareClass.updateShares(2, poolId, scId, 1000, true);
+
+        // Try to revoke without any issuance on network 1
+        shareClass.updateShares(centrifugeId, poolId, scId, 100, false);
+
+        // Reading issuance for network 1 should revert with NegativeIssuance
+        vm.expectRevert(IShareClassManager.NegativeIssuance.selector);
+        shareClass.issuance(poolId, scId, centrifugeId);
+
+        // But we can still read issuance for network 2
+        assertEq(shareClass.issuance(poolId, scId, 2), 1000);
+    }
+
+    function testNegativeIssuanceRevertsAfterPartialRevoke() public {
+        // Issue 500 on network 1 and 1000 on network 2
+        shareClass.updateShares(centrifugeId, poolId, scId, 500, true);
+        shareClass.updateShares(2, poolId, scId, 1000, true);
+
+        // Revoke 600 on network 1 (more than issued on that network)
+        shareClass.updateShares(centrifugeId, poolId, scId, 600, false);
+
+        // This should revert when trying to read issuance for network 1
+        vm.expectRevert(IShareClassManager.NegativeIssuance.selector);
+        shareClass.issuance(poolId, scId, centrifugeId);
+
+        // But we can still read issuance for network 2
+        assertEq(shareClass.issuance(poolId, scId, 2), 1000);
+
+        // Total issuance should be 500 + 1000 - 600 = 900
+        assertEq(shareClass.totalIssuance(poolId, scId), 900);
+    }
+
+    function testTotalIssuanceWithNegativeNetwork() public {
+        // Issue on network 1
+        shareClass.updateShares(1, poolId, scId, 1000, true);
+
+        // Create negative issuance on network 2 (revoke more than issued)
+        shareClass.updateShares(2, poolId, scId, 500, false);
+
+        // Total issuance should reflect the revocation
+        assertEq(shareClass.totalIssuance(poolId, scId), 500);
+
+        // But reading issuance for network 2 should revert
+        vm.expectRevert(IShareClassManager.NegativeIssuance.selector);
+        shareClass.issuance(poolId, scId, 2);
+    }
+
+    function testFuzzIssuanceAccounting(uint128 issue1, uint128 revoke1, uint128 issue2) public {
+        vm.assume(issue1 >= revoke1);
+        vm.assume(uint256(issue1) + uint256(issue2) <= type(uint128).max);
+        vm.assume(uint256(issue1) - uint256(revoke1) + uint256(issue2) <= type(uint128).max);
+
+        shareClass.updateShares(centrifugeId, poolId, scId, issue1, true);
+        shareClass.updateShares(centrifugeId, poolId, scId, revoke1, false);
+        shareClass.updateShares(centrifugeId, poolId, scId, issue2, true);
+
+        uint128 expectedIssuance = issue1 - revoke1 + issue2;
+        assertEq(shareClass.issuance(poolId, scId, centrifugeId), expectedIssuance);
+        assertEq(shareClass.totalIssuance(poolId, scId), expectedIssuance);
+    }
+}

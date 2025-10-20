@@ -1,0 +1,29 @@
+@startuml spoke-managers
+title Spoke Managers
+hide empty members
+
+package core {
+    interface IBalanceSheet
+}
+
+OnOfframpManager --> IBalanceSheet
+MerkleProofManager --> IBalanceSheet
+QueueManager --> IBalanceSheet
+
+note top of OnOfframpManager
+  Manages on/off-ramping
+  for assets entering/exiting
+  the protocol
+end note
+
+note top of MerkleProofManager
+  Allows granular permissioned
+  operations with merkle proofs
+end note
+
+note top of QueueManager
+  Manages submission of queued
+  assets and shares
+end note
+
+@enduml

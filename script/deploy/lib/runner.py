@@ -56,7 +56,18 @@ class DeploymentRunner:
 
     def run_deploy(self, script_name: str) -> bool:
         """Run a forge script deployment"""
+        # Default location: script/<ScriptName>.s.sol
         self.script_path = self.env_loader.root_dir / "script" / f"{script_name}.s.sol"
+        # Fallback for hidden helpers (adapters-only, etc.)
+        if not self.script_path.exists():
+            hidden_path = self.env_loader.root_dir / "script" / "deploy" / "solidityHelpers" / f"{script_name}.s.sol"
+            if hidden_path.exists():
+                self.script_path = hidden_path
+        # Fallback for test scripts moved to test/e2e_testnets/
+        if not self.script_path.exists() and script_name == "TestData":
+            test_path = self.env_loader.root_dir / "test" / "e2e_testnets" / f"{script_name}.s.sol"
+            if test_path.exists():
+                self.script_path = test_path
         print_subsection(f"Deploying {script_name}.s.sol")
         print_step(f"Deployment Info:")
         print_info(f"Script: {script_name}")
@@ -78,10 +89,9 @@ class DeploymentRunner:
             print_success("Catapulta finished successfully")
             print_info("Check catapulta dashboard: https://catapulta.sh/project/68317077d1b8de690e3569e9")
         else:
-            # Assume forge
             print_step(f"Running forge script")
+            
             # 1. Deploy without verification
-
             print_info(f"Deploying scripts (without verification)...")            
             if not self._run_command(base_cmd):
                 return False
@@ -135,7 +145,6 @@ class DeploymentRunner:
             base_cmd = [
                 "forge", "script", str(self.script_path),
                 "--tc", script_name,
-                "--optimize",
                 "--rpc-url", self.env_loader.rpc_url,
                 "--chain-id", self.env_loader.chain_id,
                 *auth_args,
@@ -224,8 +233,6 @@ class DeploymentRunner:
         """Build contracts with forge"""
         print_subsection("Building contracts")
         
-        # Clean first
-        subprocess.run(["forge", "clean"], check=True)
         
         # Build with parallel jobs
         cpu_count = multiprocessing.cpu_count()

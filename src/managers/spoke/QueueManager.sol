@@ -10,12 +10,10 @@ import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol"
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
-import {IGateway} from "../../core/interfaces/IGateway.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
-
-import {UpdateContractMessageLib, UpdateContractType} from "../../libraries/UpdateContractMessageLib.sol";
+import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified
 ///      (e.g. if the on/off ramp manager is used, or if sync deposits are enabled). This prevents spam.
@@ -40,20 +38,14 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId, ShareClassId scId, bytes calldata payload) external {
+    function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external {
         require(msg.sender == contractUpdater, NotContractUpdater());
 
-        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
-        if (kind == uint8(UpdateContractType.UpdateQueue)) {
-            UpdateContractMessageLib.UpdateContractUpdateQueue memory m =
-                UpdateContractMessageLib.deserializeUpdateContractUpdateQueue(payload);
-            ShareClassQueueState storage sc = scQueueState[poolId][scId];
-            sc.minDelay = m.minDelay;
-            sc.extraGasLimit = m.extraGasLimit;
-            emit UpdateQueueConfig(poolId, scId, m.minDelay, m.extraGasLimit);
-        } else {
-            revert UnknownUpdateContractType();
-        }
+        (uint64 minDelay, uint64 extraGasLimit) = abi.decode(payload, (uint64, uint64));
+        ShareClassQueueState storage sc = scQueueState[poolId][scId];
+        sc.minDelay = minDelay;
+        sc.extraGasLimit = extraGasLimit;
+        emit UpdateQueueConfig(poolId, scId, minDelay, extraGasLimit);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -62,23 +54,19 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
 
     /// @inheritdoc IQueueManager
     function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds, address refund) external payable {
-        gateway.withBatch{value: msg.value}(
-            abi.encodeWithSelector(QueueManager.syncCallback.selector, poolId, scId, assetIds), refund
-        );
+        gateway.withBatch{
+            value: msg.value
+        }(abi.encodeWithSelector(QueueManager.syncCallback.selector, poolId, scId, assetIds), refund);
     }
 
     function syncCallback(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external {
         gateway.lockCallback();
 
         ShareClassQueueState storage sc = scQueueState[poolId][scId];
-        require(
-            sc.lastSync == 0 || sc.minDelay == 0 || block.timestamp >= sc.lastSync + sc.minDelay, MinDelayNotElapsed()
-        );
+        require(sc.lastSync == 0 || block.timestamp >= sc.lastSync + sc.minDelay, MinDelayNotElapsed());
 
-        (uint128 delta,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
-        uint256 validCount = 0;
         for (uint256 i = 0; i < assetIds.length; i++) {
-            bytes32 key = keccak256(abi.encode(scId.raw(), assetIds[i].raw()));
+            bytes32 key = keccak256(abi.encode(poolId.raw(), scId.raw(), assetIds[i].raw()));
             if (TransientStorageLib.tloadBool(key)) continue; // Skip duplicate
             TransientStorageLib.tstore(key, true);
 
@@ -86,12 +74,11 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
             (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(poolId, scId, assetIds[i]);
             if (deposits > 0 || withdrawals > 0) {
                 balanceSheet.submitQueuedAssets(poolId, scId, assetIds[i], sc.extraGasLimit, address(0));
-                validCount++;
             }
         }
 
-        bool submitShares = delta > 0 && validCount == queuedAssetCounter;
-        require(validCount > 0 || submitShares, NoUpdates());
+        (uint128 delta,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
+        bool submitShares = delta > 0 && queuedAssetCounter == 0;
 
         if (submitShares) {
             balanceSheet.submitQueuedShares(poolId, scId, sc.extraGasLimit, address(0));

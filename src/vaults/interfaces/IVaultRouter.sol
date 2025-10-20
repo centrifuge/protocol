@@ -6,7 +6,7 @@ import {IAsyncVault} from "./IAsyncVault.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IBatchedMulticall} from "../../core/interfaces/IBatchedMulticall.sol";
+import {IBatchedMulticall} from "../../core/utils/interfaces/IBatchedMulticall.sol";
 
 import {BaseSyncDepositVault} from "../BaseVaults.sol";
 

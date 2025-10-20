@@ -13,9 +13,7 @@ import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
-
-import {UpdateContractType, UpdateContractMessageLib} from "../../libraries/UpdateContractMessageLib.sol";
+import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  OnOfframpManager
 /// @notice Balance sheet manager for depositing and withdrawing ERC20 assets.
@@ -47,44 +45,41 @@ contract OnOfframpManager is IOnOfframpManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId_, ShareClassId scId_, bytes calldata payload) external {
+    function trustedCall(PoolId poolId_, ShareClassId scId_, bytes memory payload) external {
         require(poolId == poolId_, InvalidPoolId());
         require(scId == scId_, InvalidShareClassId());
         require(msg.sender == contractUpdater, NotContractUpdater());
 
-        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
+        uint8 kindValue = abi.decode(payload, (uint8));
+        require(kindValue <= uint8(type(TrustedCall).max), UnknownTrustedCall());
 
-        if (kind == uint8(UpdateContractType.UpdateAddress)) {
-            UpdateContractMessageLib.UpdateContractUpdateAddress memory m =
-                UpdateContractMessageLib.deserializeUpdateContractUpdateAddress(payload);
+        TrustedCall kind = TrustedCall(kindValue);
+        if (kind == TrustedCall.Onramp) {
+            (, uint128 assetId, bool isEnabled) = abi.decode(payload, (uint8, uint128, bool));
+            (address asset, uint256 tokenId) = balanceSheet.spoke().idToAsset(AssetId.wrap(assetId));
+            require(tokenId == 0, ERC6909NotSupported());
 
-            if (m.kind == "onramp") {
-                (address asset, uint256 tokenId) = balanceSheet.spoke().idToAsset(AssetId.wrap(m.assetId));
-                require(tokenId == 0, ERC6909NotSupported());
+            onramp[asset] = isEnabled;
 
-                onramp[asset] = m.isEnabled;
+            if (isEnabled) SafeTransferLib.safeApprove(asset, address(balanceSheet), type(uint256).max);
+            else SafeTransferLib.safeApprove(asset, address(balanceSheet), 0);
 
-                if (m.isEnabled) SafeTransferLib.safeApprove(asset, address(balanceSheet), type(uint256).max);
-                else SafeTransferLib.safeApprove(asset, address(balanceSheet), 0);
+            emit UpdateOnramp(asset, isEnabled);
+        } else if (kind == TrustedCall.Relayer) {
+            (, bytes32 relayerAddress, bool isEnabled) = abi.decode(payload, (uint8, bytes32, bool));
+            address relayer_ = relayerAddress.toAddress();
 
-                emit UpdateOnramp(asset, m.isEnabled);
-            } else if (m.kind == "relayer") {
-                address relayer_ = m.what.toAddress();
+            relayer[relayer_] = isEnabled;
+            emit UpdateRelayer(relayer_, isEnabled);
+        } else if (kind == TrustedCall.Offramp) {
+            (, uint128 assetId, bytes32 receiverAddress, bool isEnabled) =
+                abi.decode(payload, (uint8, uint128, bytes32, bool));
+            (address asset, uint256 tokenId) = balanceSheet.spoke().idToAsset(AssetId.wrap(assetId));
+            require(tokenId == 0, ERC6909NotSupported());
+            address receiver = receiverAddress.toAddress();
 
-                relayer[relayer_] = m.isEnabled;
-                emit UpdateRelayer(relayer_, m.isEnabled);
-            } else if (m.kind == "offramp") {
-                (address asset, uint256 tokenId) = balanceSheet.spoke().idToAsset(AssetId.wrap(m.assetId));
-                require(tokenId == 0, ERC6909NotSupported());
-                address receiver = m.what.toAddress();
-
-                offramp[asset][receiver] = m.isEnabled;
-                emit UpdateOfframp(asset, receiver, m.isEnabled);
-            } else {
-                revert UnknownUpdateContractKind();
-            }
-        } else {
-            revert UnknownUpdateContractType();
+            offramp[asset][receiver] = isEnabled;
+            emit UpdateOfframp(asset, receiver, isEnabled);
         }
     }
 
@@ -99,7 +94,9 @@ contract OnOfframpManager is IOnOfframpManager {
         /* tokenId */
         uint128 amount,
         address /* owner */
-    ) external {
+    )
+        external
+    {
         require(onramp[asset], NotAllowedOnrampAsset());
 
         balanceSheet.deposit(poolId, scId, asset, 0, amount);
@@ -112,7 +109,9 @@ contract OnOfframpManager is IOnOfframpManager {
         /* tokenId */
         uint128 amount,
         address receiver
-    ) external {
+    )
+        external
+    {
         require(relayer[msg.sender], NotRelayer());
         require(receiver != address(0) && offramp[asset][receiver], InvalidOfframpDestination());
 
@@ -143,9 +142,9 @@ contract OnOfframpManagerFactory is IOnOfframpManagerFactory {
     function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOfframpManager) {
         balanceSheet.spoke().shareToken(poolId, scId); // Check for existence
 
-        OnOfframpManager manager = new OnOfframpManager{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
-            poolId, scId, contractUpdater, balanceSheet
-        );
+        OnOfframpManager manager = new OnOfframpManager{
+            salt: keccak256(abi.encode(poolId.raw(), scId.raw()))
+        }(poolId, scId, contractUpdater, balanceSheet);
 
         emit DeployOnOfframpManager(poolId, scId, address(manager));
         return IOnOfframpManager(manager);

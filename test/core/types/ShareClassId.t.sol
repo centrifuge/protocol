@@ -8,7 +8,7 @@ import "forge-std/Test.sol";
 
 contract ShareClassIdTest is Test {
     function testShareClassId(bytes16 id) public pure {
-        vm.assume(id > 0);
+        id = bytes16(uint128(bound(uint128(id), 1, type(uint128).max)));
         ShareClassId scId = ShareClassId.wrap(id);
         ShareClassId scId2 = ShareClassId.wrap(id);
 

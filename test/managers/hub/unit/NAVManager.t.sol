@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {d18} from "../../../../src/misc/types/D18.sol";
-import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
 import {Mock} from "../../../core/mocks/Mock.sol";
 import {MockValuation} from "../../../core/mocks/MockValuation.sol";
@@ -83,9 +82,7 @@ contract NAVManagerTest is Test {
     }
 
     function _deployManager() internal {
-        navManager = new NAVManager(IHub(hub), address(this));
-        navManager.rely(hub);
-        navManager.rely(holdings);
+        navManager = new NAVManager(IHub(hub));
 
         vm.prank(hubManager);
         navManager.updateManager(POOL_A, manager, true);
@@ -121,7 +118,7 @@ contract NAVManagerConfigureTest is NAVManagerTest {
     }
 
     function testSetNAVHookUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.setNAVHook(POOL_A, navHook);
     }
@@ -164,7 +161,7 @@ contract NAVManagerConfigureTest is NAVManagerTest {
     function testUpdateManagerUnauthorized() public {
         address managerAddr = makeAddr("newManager");
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.updateManager(POOL_A, managerAddr, true);
     }
@@ -210,7 +207,7 @@ contract NAVManagerConfigureTest is NAVManagerTest {
     }
 
     function testInitializeNetworkUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.initializeNetwork(POOL_A, CENTRIFUGE_ID_1);
     }
@@ -276,7 +273,7 @@ contract NAVManagerHoldingInitializationTest is NAVManagerTest {
     }
 
     function testInitializeHoldingUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.initializeHolding(POOL_A, SC_1, asset1, mockValuation);
     }
@@ -324,7 +321,7 @@ contract NAVManagerLiabilityInitializationTest is NAVManagerTest {
     }
 
     function testInitializeLiabilityUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.initializeLiability(POOL_A, SC_1, asset1, mockValuation);
     }
@@ -359,7 +356,7 @@ contract NAVManagerOnSyncTest is NAVManagerTest {
     }
 
     function testOnSyncNotAuthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.onSync(POOL_A, SC_1, CENTRIFUGE_ID_1);
     }
@@ -393,17 +390,44 @@ contract NAVManagerNetAssetValueTest is NAVManagerTest {
         assertEq(nav, 0);
     }
 
-    function testNetAssetValueNegative() public {
-        // Mock values that result in negative NAV
-        // equity=100, gain=50, loss=200, liability=100
-        // NAV = 100 + 50 - 200 - 100 = -150
-        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 100, true);
-        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 50, true);
-        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 200, true);
-        _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 100, true);
+    function testNetAssetValueZeroWhenNegative() public {
+        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 500, true);
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, true);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, true);
+        _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 600, true);
 
-        vm.expectRevert();
-        navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
+        uint128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
+        assertEq(nav, 0);
+    }
+
+    function testNetAssetValueWithUnexpectedSigns(
+        bool equityIsPositive,
+        bool gainIsPositive,
+        bool lossIsPositive,
+        bool liabilityIsPositive,
+        uint128 equityAmount,
+        uint128 gainAmount,
+        uint128 lossAmount,
+        uint128 liabilityAmount
+    ) public {
+        equityAmount = uint128(bound(equityAmount, 1, type(uint128).max / 4));
+        gainAmount = uint128(bound(gainAmount, 1, type(uint128).max / 4));
+        lossAmount = uint128(bound(lossAmount, 0, type(uint128).max / 4));
+        liabilityAmount = uint128(bound(liabilityAmount, 0, type(uint128).max / 4));
+
+        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), equityAmount, equityIsPositive);
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), gainAmount, gainIsPositive);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), lossAmount, lossIsPositive);
+        _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), liabilityAmount, liabilityIsPositive);
+
+        uint128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
+
+        // If all accounts have expected signs and equity+gain > loss+liability, NAV should be positive
+        if (equityIsPositive && gainIsPositive && lossIsPositive && liabilityIsPositive) {
+            if (equityAmount + gainAmount > lossAmount + liabilityAmount) {
+                assertGt(nav, 0);
+            }
+        }
     }
 }
 
@@ -427,7 +451,7 @@ contract NAVManagerUpdateHoldingTest is NAVManagerTest {
     }
 
     function testUpdateHoldingValuationUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.updateHoldingValuation(POOL_A, SC_1, asset1, mockValuation);
     }
@@ -507,8 +531,18 @@ contract NAVManagerCloseGainLossTest is NAVManagerTest {
     }
 
     function testCloseGainLossUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
+        navManager.closeGainLoss(POOL_A, CENTRIFUGE_ID_1);
+    }
+
+    function testCloseGainLossInvalidStateOfAccounts(bool gainIsPositive, bool lossIsPositive) public {
+        vm.assume(!gainIsPositive || !lossIsPositive); // At least one account is negative
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, gainIsPositive);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, lossIsPositive);
+
+        vm.expectRevert(INAVManager.InvalidStateOfAccounts.selector);
+        vm.prank(manager);
         navManager.closeGainLoss(POOL_A, CENTRIFUGE_ID_1);
     }
 }
@@ -569,7 +603,7 @@ contract NAVManagerOnTransferTest is NAVManagerTest {
     }
 
     function testOnTransferUnauthorized() public {
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 1);
     }
@@ -579,7 +613,7 @@ contract NAVManagerOnTransferTest is NAVManagerTest {
         navManager.setNAVHook(POOL_A, INAVHook(address(0)));
 
         vm.expectRevert(INAVManager.InvalidNAVHook.selector);
-        vm.prank(hub);
+        vm.prank(holdings);
         navManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 1);
     }
 
@@ -592,7 +626,7 @@ contract NAVManagerOnTransferTest is NAVManagerTest {
         vm.expectEmit(true, true, true, true);
         emit INAVManager.Transfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 1);
 
-        vm.prank(hub);
+        vm.prank(holdings);
         navManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 1);
     }
 }

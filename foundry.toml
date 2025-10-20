@@ -17,6 +17,17 @@ fs_permissions = [
   { access = "read-write", path = "snapshots" },
 ]
 
+# {@see {@link https://github.com/foundry-rs/foundry/issues/4060} }
+auto_detect_remappings = false
+
+# Whether to store the referenced sources in the metadata as literal data. Helps with verification
+use_literal_content = true
+
+# The metadata hash is machine dependent. By default, this is set to none to allow for deterministic code.
+# {@see {@link https://docs.soliditylang.org/en/latest/metadata.html} }
+bytecode_hash = "none"
+cbor_metadata = false
+
 # Deployment specific settings
 gas_reports = ["*"]
 gas_reports_ignore = ["test/*", "script/*"]
@@ -55,9 +66,7 @@ fail_on_revert = false
 
 [profile.ci-coverage]
 verbosity = 2
-
-[profile.ci-coverage.coverage]
-ignore = ["test/spoke/fuzzing/**/*.sol"]
+no_match_coverage = "test/spoke/fuzzing/**/*.sol"
 
 [profile.ci-coverage.fuzz]
 runs = 512                # 2x of default

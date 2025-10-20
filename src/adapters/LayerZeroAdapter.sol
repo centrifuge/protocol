@@ -18,7 +18,7 @@ import {Auth} from "../misc/Auth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 
-import {IMessageHandler} from "../core/interfaces/IMessageHandler.sol";
+import {IMessageHandler} from "../core/messaging/interfaces/IMessageHandler.sol";
 
 import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 
@@ -121,6 +121,8 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     /// @inheritdoc IAdapter
     function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256) {
         LayerZeroDestination memory destination = destinations[centrifugeId];
+        require(destination.layerZeroEid != 0, UnknownChainId());
+
         MessagingFee memory fee = endpoint.quote(_params(destination, payload, gasLimit + RECEIVE_COST), address(this));
         return fee.nativeFee;
     }

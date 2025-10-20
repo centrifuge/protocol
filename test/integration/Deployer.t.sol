@@ -79,7 +79,9 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
                 adapters: AdaptersInput({
                     wormhole: WormholeInput({shouldDeploy: true, relayer: WORMHOLE_RELAYER}),
                     axelar: AxelarInput({shouldDeploy: true, gateway: AXELAR_GATEWAY, gasService: AXELAR_GAS_SERVICE}),
-                    layerZero: LayerZeroInput({shouldDeploy: true, endpoint: LAYERZERO_ENDPOINT, delegate: LAYERZERO_DELEGATE})
+                    layerZero: LayerZeroInput({
+                        shouldDeploy: true, endpoint: LAYERZERO_ENDPOINT, delegate: LAYERZERO_DELEGATE
+                    })
                 })
             }),
             batcher
@@ -98,9 +100,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         vm.assume(nonWard != address(messageDispatcher));
         vm.assume(nonWard != address(messageProcessor));
         vm.assume(nonWard != address(spoke));
-        vm.assume(nonWard != address(balanceSheet));
-        vm.assume(nonWard != address(hub));
-        vm.assume(nonWard != address(vaultRouter));
 
         assertEq(gateway.wards(address(root)), 1);
         assertEq(gateway.wards(address(protocolGuardian)), 1);
@@ -108,9 +107,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(gateway.wards(address(messageDispatcher)), 1);
         assertEq(gateway.wards(address(messageProcessor)), 1);
         assertEq(gateway.wards(address(spoke)), 1);
-        assertEq(gateway.wards(address(balanceSheet)), 1);
-        assertEq(gateway.wards(address(hub)), 1);
-        assertEq(gateway.wards(address(vaultRouter)), 1);
         assertEq(gateway.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -647,22 +643,30 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         assertEq(address(oracleValuation.hub()), address(hub));
     }
 
-    function testNavManager(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(holdings));
-        vm.assume(nonWard != address(hubHandler));
-
-        assertEq(navManager.wards(address(holdings)), 1);
-        assertEq(navManager.wards(address(hubHandler)), 1);
-        assertEq(navManager.wards(nonWard), 0);
-
+    function testNavManager() public view {
         // dependencies set correctly
         assertEq(address(navManager.hub()), address(hub));
+        assertEq(address(navManager.holdings()), address(holdings));
     }
 
     function testSimplePriceManager() public view {
         // dependencies set correctly
+        assertEq(address(simplePriceManager.navUpdater()), address(navManager));
+
+        // dependencies set correctly
         assertEq(address(simplePriceManager.hub()), address(hub));
+    }
+
+    function testBatchRequestManager(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(hub));
+        vm.assume(nonWard != address(hubHandler));
+
+        assertEq(batchRequestManager.wards(address(root)), 1);
+        assertEq(batchRequestManager.wards(address(hub)), 1);
+        assertEq(batchRequestManager.wards(address(hubHandler)), 1);
+        assertEq(batchRequestManager.wards(nonWard), 0);
     }
 
     function testWormholeAdapter(address nonWard) public view {

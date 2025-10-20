@@ -9,7 +9,7 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {ITrustedContractUpdate} from "../../core/interfaces/IContractUpdate.sol";
+import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 //----------------------------------------------------------------------------------------------
 // Deposit Manager Interfaces
@@ -36,9 +36,7 @@ interface IDepositManager {
     ///         The shares required to fulfill the mint have already been minted and transferred to the escrow on
     ///         fulfillDepositRequest.
     ///         Receiver has to pass all the share token restrictions in order to receive the shares.
-    function mint(IBaseVault vault, uint256 shares, address receiver, address owner)
-        external
-        returns (uint256 assets);
+    function mint(IBaseVault vault, uint256 shares, address receiver, address owner) external returns (uint256 assets);
 
     /// @notice Returns the max amount of assets based on the unclaimed amount of shares after at least one successful
     ///         deposit order fulfillment on the corresponding CP instance.
@@ -122,9 +120,7 @@ interface IRedeemManager {
     ///         on fulfillRedeemRequest.
     ///         The assets required to fulfill the redemption have already been reserved in escrow on
     ///         fulfillRedeemtRequest.
-    function redeem(IBaseVault vault, uint256 shares, address receiver, address owner)
-        external
-        returns (uint256 assets);
+    function redeem(IBaseVault vault, uint256 shares, address receiver, address owner) external returns (uint256 assets);
 
     /// @notice Processes owner's asset withdrawal after the epoch has been executed on the corresponding CP instance
     ///         and the redeem order has been successfully processed (partial fulfillment possible).
@@ -240,6 +236,12 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
     error ExceedsMaxMint();
     error ShareTokenDoesNotExist();
     error SecondaryManagerDoesNotExist();
+    error UnknownTrustedCall();
+
+    enum TrustedCall {
+        Valuation,
+        MaxReserve
+    }
 
     /// @notice Updates contract parameters of type address.
     /// @param what The bytes32 representation of 'gateway' or 'spoke'.
