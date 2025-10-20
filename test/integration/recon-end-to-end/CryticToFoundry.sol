@@ -111,4 +111,18 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
             3504958222297179309436837969327488759080211702641964324755758
         );
     }
+
+    // forge test --match-test test_property_accounting_and_holdings_soundness_6 -vvv
+    // NOTE: see issue here: https://github.com/Recon-Fuzz/centrifuge-invariants/issues/11
+    function test_property_accounting_and_holdings_soundness_6() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, true, false, true, false);
+
+        shortcut_deposit_queue_cancel(0, 0, 1, 1, 0, 0);
+
+        hub_updateHoldingIsLiability_clamped(true);
+
+        balanceSheet_submitQueuedAssets(0);
+
+        property_accounting_and_holdings_soundness();
+    }
 }
