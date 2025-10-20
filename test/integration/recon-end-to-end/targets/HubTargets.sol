@@ -23,7 +23,7 @@ import {ShareClassId} from "src/core/types/ShareClassId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MAX_MESSAGE_COST} from "src/core/messaging/interfaces/IGasService.sol";
 import {RequestCallbackMessageLib} from "src/vaults/libraries/RequestCallbackMessageLib.sol";
-import {IHubMessageSender} from "src/core/interfaces/IGatewaySenders.sol";
+import {IHubMessageSender} from "src/core/messaging/interfaces/IGatewaySenders.sol";
 
 // Test Utils
 import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";

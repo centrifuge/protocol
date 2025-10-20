@@ -8,11 +8,12 @@ import {TransientBytesLib} from "../../../src/misc/libraries/TransientBytesLib.s
 import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {Gateway, IGateway} from "../../../src/core/Gateway.sol";
-import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
-import {IMessageLimits} from "../../../src/core/interfaces/IMessageLimits.sol";
-import {IProtocolPauser} from "../../../src/core/interfaces/IProtocolPauser.sol";
-import {IMessageProperties} from "../../../src/core/interfaces/IMessageProperties.sol";
+import {Gateway} from "../../../src/core/messaging/Gateway.sol";
+import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IMessageLimits} from "../../../src/core/messaging/interfaces/IMessageLimits.sol";
+import {IProtocolPauser} from "../../../src/core/messaging/interfaces/IProtocolPauser.sol";
+import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
+import {IGateway, GAS_FAIL_MESSAGE_STORAGE} from "../../../src/core/messaging/interfaces/IGateway.sol";
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 
@@ -83,6 +84,7 @@ contract MockProcessor is IMessageProperties {
         if (message.toUint8(0) == uint8(MessageKind.WithPool0)) return POOL_0;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA1)) return POOL_A;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA2)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.WithPoolAFail)) return POOL_A;
         revert("Unreachable: message never asked for pool");
     }
 }
@@ -120,6 +122,18 @@ contract GatewayExt is Gateway {
             failedMessages[centrifugeId][messageHash]++;
             emit FailMessage(centrifugeId, message, messageHash, err);
         }
+    }
+
+    function startBatching() public {
+        isBatching = true;
+    }
+
+    function endBatching(address refund) public payable {
+        _endBatching(msg.value, refund);
+    }
+
+    function batcher() public view returns (address) {
+        return _batcher;
     }
 }
 
@@ -247,12 +261,21 @@ contract GatewayTestHandle is GatewayTest {
 
     function testErrNotEnoughGasToProcess() public {
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        uint256 notEnough = gateway.GAS_FAIL_MESSAGE_STORAGE();
+        uint256 notEnough = GAS_FAIL_MESSAGE_STORAGE;
 
         vm.expectRevert(IGateway.NotEnoughGasToProcess.selector);
 
         // NOTE: The own handle() also consume some gas, so passing gas + <small value> can also make it fails
         gateway.handle{gas: notEnough}(REMOTE_CENT_ID, batch);
+    }
+
+    function testErrMalformedBatch() public {
+        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
+        bytes memory message2 = MessageKind.WithPool0.asBytes();
+        bytes memory batch = abi.encodePacked(message1, message2);
+
+        vm.expectRevert(IGateway.MalformedBatch.selector);
+        gateway.handle(REMOTE_CENT_ID, batch);
     }
 
     function testMessage() public {
@@ -373,34 +396,6 @@ contract GatewayTestRetry is GatewayTest {
         assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
         assertEq(processor.processed(REMOTE_CENT_ID, 1), batch);
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);
-    }
-}
-
-contract GatewayTestStartBatching is GatewayTest {
-    function testErrNotAuthorized() public {
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.startBatching();
-    }
-
-    function testErrAlreadyBatching() public {
-        gateway.startBatching();
-
-        vm.expectRevert(IGateway.AlreadyBatching.selector);
-        gateway.startBatching();
-    }
-
-    function testStartBatching() public {
-        gateway.startBatching();
-
-        assertEq(gateway.isBatching(), true);
-    }
-
-    /// forge-config: default.isolate = true
-    function testStartBatchingIsTransactional() public {
-        gateway.startBatching();
-
-        assertEq(gateway.isBatching(), false);
     }
 }
 
@@ -595,12 +590,6 @@ contract GatewayTestSend is GatewayTest {
 }
 
 contract GatewayTestEndBatching is GatewayTest {
-    function testErrNotAuthorized() public {
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.endBatching(REFUND);
-    }
-
     function testErrNoBatched() public {
         vm.expectRevert(IGateway.NoBatched.selector);
         gateway.endBatching(REFUND);
@@ -849,30 +838,37 @@ contract GatewayTestBlockOutgoing is GatewayTest {
 
 contract IntegrationMock is Test {
     bool public wasCalled;
-    IGateway public gateway;
+    GatewayExt public gateway;
+    uint256 public constant PAYMENT = 234;
 
-    constructor(IGateway gateway_) {
+    constructor(GatewayExt gateway_) {
         gateway = gateway_;
     }
 
-    function _nested() external payable {
-        assertEq(gateway.lockCallback(), address(this));
+    function _nested() external {
+        gateway.lockCallback();
         gateway.withBatch(abi.encodeWithSelector(this._success.selector, false, 2), address(0));
     }
 
-    function _emptyError() external payable {
-        assertEq(gateway.lockCallback(), address(this));
+    function _emptyError() external {
+        gateway.lockCallback();
         revert();
     }
 
-    function _notLocked() external payable {}
+    function _notLocked() external {}
 
-    function _success(bool, uint256) external payable {
-        assertEq(gateway.lockCallback(), address(this));
+    function _success(bool, uint256) external {
+        assertEq(gateway.batcher(), address(this));
+        gateway.lockCallback();
         wasCalled = true;
     }
 
-    function _justLock() external payable {
+    function _justLock() external {
+        gateway.lockCallback();
+    }
+
+    function _paid() external payable {
+        assertEq(msg.value, PAYMENT);
         gateway.lockCallback();
     }
 
@@ -890,6 +886,10 @@ contract IntegrationMock is Test {
 
     function callNotLocked(address refund) external {
         gateway.withBatch(abi.encodeWithSelector(this._notLocked.selector), refund);
+    }
+
+    function callPaid(address refund, uint256 value) external payable {
+        gateway.withBatch{value: msg.value}(abi.encodeWithSelector(this._paid.selector), value, refund);
     }
 }
 
@@ -939,6 +939,13 @@ contract GatewayTestWithBatch is GatewayTest {
         attacker.callAttack(REFUND);
     }
 
+    function testErrNotEnoughValueForCallback() public {
+        vm.prank(ANY);
+        vm.deal(ANY, 1234);
+        vm.expectRevert(IGateway.NotEnoughValueForCallback.selector);
+        integration.callPaid{value: 1234}(REFUND, 2000);
+    }
+
     function testWithCallback() public {
         vm.prank(ANY);
         vm.deal(ANY, 1234);
@@ -954,11 +961,20 @@ contract GatewayTestWithBatch is GatewayTest {
 
         assertEq(integration.wasCalled(), true);
     }
+
+    function testWithCallbackPaid() public {
+        vm.prank(ANY);
+        vm.deal(ANY, 1234);
+        integration.callPaid{value: 1234}(REFUND, integration.PAYMENT());
+
+        assertEq(REFUND.balance, 1000);
+        assertEq(address(integration).balance, integration.PAYMENT());
+    }
 }
 
 contract GatewayTestLockCallback is GatewayTest {
     function testErrCallbackIsLocked() public {
         vm.expectRevert(IGateway.CallbackIsLocked.selector);
-        assertEq(gateway.lockCallback(), address(0));
+        gateway.lockCallback();
     }
 }

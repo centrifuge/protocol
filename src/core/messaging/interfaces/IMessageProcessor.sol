@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IMessageHandler} from "../../interfaces/IMessageHandler.sol";
-import {IMessageProperties} from "../../interfaces/IMessageProperties.sol";
+import {IMessageHandler} from "./IMessageHandler.sol";
+import {IMessageProperties} from "./IMessageProperties.sol";
 
 interface IMessageProcessor is IMessageHandler, IMessageProperties {
     //----------------------------------------------------------------------------------------------
@@ -22,6 +22,9 @@ interface IMessageProcessor is IMessageHandler, IMessageProperties {
 
     /// @notice Dispatched when a message is tried to send from a different chain than mainnet
     error OnlyFromMainnet();
+
+    /// @notice Dispatched when an invalid message is trying to handle
+    error InvalidMessage(uint8 code);
 
     //----------------------------------------------------------------------------------------------
     // Administration

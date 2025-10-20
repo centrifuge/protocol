@@ -6,7 +6,7 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {Mock} from "../../core/mocks/Mock.sol";
 
-import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
+import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
 
@@ -27,7 +27,13 @@ contract MockAxelarGateway is Mock {
 }
 
 contract MockAxelarGasService is Mock {
-    function estimateGasFee(string calldata, string calldata, bytes calldata, uint256, bytes calldata /* params */ )
+    function estimateGasFee(
+        string calldata,
+        string calldata,
+        bytes calldata,
+        uint256,
+        bytes calldata /* params */
+    )
         external
         view
         returns (uint256 gasEstimate)
@@ -113,8 +119,9 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
     }
 
     function testEstimate(uint256 gasLimit) public {
-        vm.assume(gasLimit > 0);
-        vm.assume(gasLimit < adapter.RECEIVE_COST());
+        gasLimit = uint128(bound(gasLimit, 1, adapter.RECEIVE_COST() - 1));
+
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR));
 
         bytes memory payload = "irrelevant";
 
@@ -181,9 +188,7 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
         adapter.execute(commandId, AXELAR_CHAIN_ID, validAddress.toAxelarString(), payload);
     }
 
-    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund)
-        public
-    {
+    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund) public {
         vm.assume(invalidOrigin != address(GATEWAY));
 
         vm.deal(address(this), 0.1 ether);

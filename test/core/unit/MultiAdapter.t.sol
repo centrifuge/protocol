@@ -5,11 +5,11 @@ import {IAuth} from "../../../src/misc/Auth.sol";
 import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {MultiAdapter} from "../../../src/core/MultiAdapter.sol";
-import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
-import {IMessageProperties} from "../../../src/core/interfaces/IMessageProperties.sol";
-import {IMultiAdapter, MAX_ADAPTER_COUNT} from "../../../src/core/interfaces/IMultiAdapter.sol";
+import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
+import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
+import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
+import {IMultiAdapter, MAX_ADAPTER_COUNT} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 
 import "forge-std/Test.sol";
 
@@ -535,11 +535,38 @@ contract MultiAdapterTestSend is MultiAdapterTest {
         _mockAdapter(adapter3, MESSAGE_1, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
 
         vm.expectEmit();
-        emit IMultiAdapter.SendPayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter1, ADAPTER_DATA_1, address(REFUND));
+        emit IMultiAdapter.SendPayload(
+            REMOTE_CENT_ID,
+            payloadId,
+            MESSAGE_1,
+            adapter1,
+            ADAPTER_DATA_1,
+            GAS_LIMIT,
+            GAS_LIMIT + ADAPTER_ESTIMATE_1,
+            address(REFUND)
+        );
         vm.expectEmit();
-        emit IMultiAdapter.SendPayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter2, ADAPTER_DATA_2, address(REFUND));
+        emit IMultiAdapter.SendPayload(
+            REMOTE_CENT_ID,
+            payloadId,
+            MESSAGE_1,
+            adapter2,
+            ADAPTER_DATA_2,
+            GAS_LIMIT,
+            GAS_LIMIT + ADAPTER_ESTIMATE_2,
+            address(REFUND)
+        );
         vm.expectEmit();
-        emit IMultiAdapter.SendPayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter3, ADAPTER_DATA_3, address(REFUND));
+        emit IMultiAdapter.SendPayload(
+            REMOTE_CENT_ID,
+            payloadId,
+            MESSAGE_1,
+            adapter3,
+            ADAPTER_DATA_3,
+            GAS_LIMIT,
+            GAS_LIMIT + ADAPTER_ESTIMATE_3,
+            address(REFUND)
+        );
         multiAdapter.send{value: cost}(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
     }
 
@@ -582,5 +609,14 @@ contract MultiAdapterTestEstimate is MultiAdapterTest {
         uint256 estimation = GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
 
         assertEq(multiAdapter.estimate(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT), estimation);
+    }
+}
+
+contract MultiAdapterTestGetters is MultiAdapterTest {
+    function testGettersOnEmptyState() public view {
+        assertEq(multiAdapter.quorum(REMOTE_CENT_ID, POOL_A), 0);
+        assertEq(multiAdapter.threshold(REMOTE_CENT_ID, POOL_A), 0);
+        assertEq(multiAdapter.recoveryIndex(REMOTE_CENT_ID, POOL_A), 0);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 0);
     }
 }

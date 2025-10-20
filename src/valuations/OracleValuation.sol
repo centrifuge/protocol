@@ -17,9 +17,9 @@ import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
 /// @notice Provides an implementation for valuation of assets by trusted price feeders.
 ///         Prices should be denominated in the pool currency.
 ///         Quorum is always 1, i.e. there is no aggregation of prices across multiple feeders.
-/// @dev    To set up, add a price feeder using hub.updateFeeder(), set this contract as the valuation
+/// @dev    To set up, add a price feeder using `updateFeeder()`, set this contract as the valuation
 ///         for one or more assets, and set this contract as a hub manager, so it can call
-///         hub.updateHoldingValue().
+///         `hub.updateHoldingValue()`.
 contract OracleValuation is IOracleValuation {
     IHub public immutable hub;
     IHubRegistry public immutable hubRegistry;

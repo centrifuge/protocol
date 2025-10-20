@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {BatchRequestManager} from "src/vaults/BatchRequestManager.sol";
 import {IHubRegistry} from "src/core/hub/interfaces/IHubRegistry.sol";
+import {IGateway} from "src/core/messaging/interfaces/IGateway.sol";
 import {PoolId} from "src/core/types/PoolId.sol";
 import {AssetId} from "src/core/types/AssetId.sol";
 import {ShareClassId} from "src/core/types/ShareClassId.sol";
@@ -12,8 +13,8 @@ import {RequestCallbackMessageLib} from "src/vaults/libraries/RequestCallbackMes
 /// @notice Test harness that overrides notifyDeposit/notifyRedeem to return internal values
 /// @dev Used in invariant tests to get exact claimed/cancelled breakdowns without event parsing
 contract BatchRequestManagerHarness is BatchRequestManager {
-    constructor(IHubRegistry hubRegistry_, address deployer)
-        BatchRequestManager(hubRegistry_, deployer) {}
+    constructor(IHubRegistry hubRegistry_, IGateway gateway_, address deployer)
+        BatchRequestManager(hubRegistry_, gateway_, deployer) {}
 
     /// @notice Wrapper around notifyDeposit that returns the calculated amounts
     /// @dev This allows tests to capture exact amounts without parsing events

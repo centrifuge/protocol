@@ -18,15 +18,15 @@ import {IERC20Metadata} from "../../misc/interfaces/IERC20.sol";
 import {IERC6909MetadataExt} from "../../misc/interfaces/IERC6909.sol";
 import {ReentrancyProtection} from "../../misc/ReentrancyProtection.sol";
 
+import {IGateway} from "../messaging/interfaces/IGateway.sol";
 import {MessageLib} from "../messaging/libraries/MessageLib.sol";
+import {ISpokeMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
+import {ISpokeGatewayHandler} from "../messaging/interfaces/IGatewayHandlers.sol";
 
 import {PoolId} from "../types/PoolId.sol";
-import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {newAssetId, AssetId} from "../types/AssetId.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
-import {ISpokeMessageSender} from "../interfaces/IGatewaySenders.sol";
-import {ISpokeGatewayHandler} from "../interfaces/IGatewayHandlers.sol";
 
 /// @title  Spoke
 /// @notice This contract manages which pools & share classes exist, controlling allowed pool currencies,
@@ -99,9 +99,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         emit InitiateTransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
 
-        sender.sendInitiateTransferShares{value: msg.value}(
-            centrifugeId, poolId, scId, receiver, amount, extraGasLimit, remoteExtraGasLimit, refund
-        );
+        sender.sendInitiateTransferShares{
+            value: msg.value
+        }(centrifugeId, poolId, scId, receiver, amount, extraGasLimit, remoteExtraGasLimit, refund);
     }
 
     /// @inheritdoc ISpoke
@@ -166,9 +166,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     ) external payable {
         emit UntrustedContractUpdate(poolId.centrifugeId(), poolId, scId, target, payload, msg.sender);
 
-        sender.sendUntrustedContractUpdate{value: msg.value}(
-            poolId, scId, target, payload, msg.sender.toBytes32(), extraGasLimit, refund
-        );
+        sender.sendUntrustedContractUpdate{
+            value: msg.value
+        }(poolId, scId, target, payload, msg.sender.toBytes32(), extraGasLimit, refund);
     }
 
     //----------------------------------------------------------------------------------------------

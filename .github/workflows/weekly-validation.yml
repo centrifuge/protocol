@@ -3,7 +3,7 @@ name: Weekly Chain Validation
 on:
   schedule:
     # Run every Monday at 6:00 AM UTC (7:00 AM CET)
-    - cron: '0 6 * * 1'
+    - cron: "0 6 * * 1"
   workflow_dispatch:
     # Allow manual triggering for testing
 
@@ -38,18 +38,18 @@ jobs:
             test: "test_validatePlume"
             emoji: "🟣"
             # rpc_secret: "PLUME_RPC_URL"
-    
+
     name: "Validate ${{ matrix.chain.name }}"
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.3.6
-      
+          version: v1.4.1
+
       - name: Create build cache
         uses: actions/cache@v4
         with:
@@ -59,10 +59,10 @@ jobs:
           key: ${{ runner.os }}-foundry-${{ hashFiles('lib/**', 'src/**', 'test/**') }}
           restore-keys: |
             ${{ runner.os }}-foundry-
-      
+
       - name: Install dependencies
         run: forge install --no-commit
-      
+
       - name: Validate ${{ matrix.chain.name }} deployment
         # env:
         #   ${{ matrix.chain.rpc_secret }}: ${{ secrets[matrix.chain.rpc_secret] }}

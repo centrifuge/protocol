@@ -9,10 +9,10 @@ import {IERC6909Fungible} from "../../../../src/misc/interfaces/IERC6909.sol";
 
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {newAssetId} from "../../../../src/core/types/AssetId.sol";
-import {IAdapter} from "../../../../src/core/interfaces/IAdapter.sol";
 import {PoolId, newPoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
+import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {MAX_MESSAGE_COST} from "../../../../src/core/messaging/interfaces/IGasService.sol";
 import {IVaultFactory} from "../../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
@@ -120,6 +120,7 @@ contract BaseTest is FullDeployer, Test, FullActionBatcher {
         );
 
         asyncRequestManager.depositSubsidy{value: 0.5 ether}(POOL_A);
+        balanceSheet.updateManager(POOL_A, address(this), true);
 
         // We should not use the block ChainID
         vm.chainId(BLOCK_CHAIN_ID);

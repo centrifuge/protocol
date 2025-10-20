@@ -6,8 +6,8 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {Mock} from "../../core/mocks/Mock.sol";
 
-import {IAdapter} from "../../../src/core/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../../../src/core/interfaces/IMessageHandler.sol";
+import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
 
@@ -105,7 +105,9 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
         assertEq(adapter.wards(address(this)), 1);
     }
 
-    function testEstimate(uint64 gasLimit) public view {
+    function testEstimate(uint64 gasLimit) public {
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR));
+
         bytes memory payload = "irrelevant";
         assertEq(
             adapter.estimate(CENTRIFUGE_CHAIN_ID, payload, gasLimit), uint128(gasLimit + adapter.RECEIVE_COST()) * 2
@@ -167,10 +169,8 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
         );
     }
 
-    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund)
-        public
-    {
-        vm.assume(gasLimit < adapter.RECEIVE_COST());
+    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund) public {
+        gasLimit = uint256(bound(gasLimit, 0, adapter.RECEIVE_COST() - 1));
         vm.assume(invalidOrigin != address(GATEWAY));
 
         vm.deal(address(this), 0.1 ether);

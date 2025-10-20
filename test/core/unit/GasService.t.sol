@@ -20,10 +20,6 @@ contract GasServiceTest is Test {
     function testGasLimit(bytes calldata message) public view {
         vm.assume(message.length > 0);
         vm.assume(message.messageCode() > 0);
-        vm.assume(
-            message.messageCode() < uint8(MessageType._Placeholder6)
-                || message.messageCode() > uint8(MessageType._Placeholder15)
-        );
         vm.assume(message.messageCode() <= uint8(type(MessageType).max));
 
         if (message.messageCode() == uint8(MessageType.UpdateVault)) {

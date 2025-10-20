@@ -21,9 +21,7 @@ import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../core/spoke/interfaces/ISpoke.sol";
 import {IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
-import {ITrustedContractUpdate} from "../core/interfaces/IContractUpdate.sol";
-
-import {UpdateContractMessageLib, UpdateContractType} from "../libraries/UpdateContractMessageLib.sol";
+import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  Sync Manager
 /// @notice This is the main contract for synchronous ERC-4626 deposits.
@@ -31,7 +29,6 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     using MathLib for *;
     using CastLib for *;
     using BytesLib for bytes;
-    using UpdateContractMessageLib for *;
 
     ISpoke public spoke;
     IBalanceSheet public balanceSheet;
@@ -58,25 +55,21 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
 
     /// @inheritdoc ITrustedContractUpdate
     function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
-        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
+        uint8 kindValue = abi.decode(payload, (uint8));
+        require(kindValue <= uint8(type(TrustedCall).max), UnknownTrustedCall());
 
-        if (kind == uint8(UpdateContractType.Valuation)) {
-            UpdateContractMessageLib.UpdateContractValuation memory m =
-                UpdateContractMessageLib.deserializeUpdateContractValuation(payload);
-
+        TrustedCall kind = TrustedCall(kindValue);
+        if (kind == TrustedCall.Valuation) {
+            (, bytes32 valuation_) = abi.decode(payload, (uint8, bytes32));
             require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
 
-            setValuation(poolId, scId, m.valuation.toAddress());
-        } else if (kind == uint8(UpdateContractType.SyncDepositMaxReserve)) {
-            UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve memory m =
-                UpdateContractMessageLib.deserializeUpdateContractSyncDepositMaxReserve(payload);
-
+            setValuation(poolId, scId, valuation_.toAddress());
+        } else if (kind == TrustedCall.MaxReserve) {
+            (, uint128 assetId, uint128 maxReserve_) = abi.decode(payload, (uint8, uint128, uint128));
             require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
-            (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(m.assetId));
 
-            setMaxReserve(poolId, scId, asset, tokenId, m.maxReserve);
-        } else {
-            revert UnknownUpdateContractType();
+            (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(assetId));
+            setMaxReserve(poolId, scId, asset, tokenId, maxReserve_);
         }
     }
 
@@ -144,15 +137,20 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
         uint128 maxAssets =
             _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
-        shares = convertToShares(vault_, maxAssets);
+        (, shares) = _maxAssetsAndShares(vault_, maxAssets, vaultDetails);
         if (!_canTransfer(vault_, address(0), owner, shares)) return 0;
     }
 
     /// @inheritdoc IDepositManager
     function maxDeposit(IBaseVault vault_, address owner) public view returns (uint256 assets) {
         VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
-        assets = _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
-        if (!_canTransfer(vault_, address(0), owner, assets)) return 0;
+        uint128 maxAssets =
+            _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
+
+        uint256 shares;
+        (assets, shares) = _maxAssetsAndShares(vault_, maxAssets, vaultDetails);
+
+        if (shares == 0 || !_canTransfer(vault_, address(0), owner, shares)) return 0;
     }
 
     /// @inheritdoc ISyncManager
@@ -257,5 +255,38 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     function _canTransfer(IBaseVault vault_, address from, address to, uint256 value) internal view returns (bool) {
         IShareToken share = IShareToken(vault_.share());
         return share.checkTransferRestriction(from, to, value);
+    }
+
+    /// @dev    Calculates safe maximum assets and corresponding shares, handling overflow and zero prices correctly.
+    function _maxAssetsAndShares(IBaseVault vault_, uint256 maxAssets, VaultDetails memory vaultDetails)
+        internal
+        view
+        returns (uint256 clampedAssets, uint256 shares)
+    {
+        uint128 maxConvertible = _maxConvertibleAssets(vault_, vaultDetails);
+        clampedAssets = maxAssets < maxConvertible ? maxAssets : maxConvertible;
+
+        // NOTE: Returns 0 if any price is zero
+        shares = convertToShares(vault_, clampedAssets);
+    }
+
+    /// @dev    Calculates the maximum amount of assets that can be converted to shares without uint128 overflow.
+    ///         Uses PricingLib to determine safe input bounds based on inverse conversion formula.
+    function _maxConvertibleAssets(IBaseVault vault_, VaultDetails memory vaultDetails)
+        internal
+        view
+        returns (uint128)
+    {
+        D18 poolPerShare = pricePoolPerShare(vault_.poolId(), vault_.scId());
+        D18 poolPerAsset = spoke.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
+
+        if (poolPerShare.isZero() || poolPerAsset.isZero()) return 0;
+
+        uint256 maxAssets = PricingLib.maxConvertibleAssetAmount(
+            vault_.share(), vaultDetails.asset, vaultDetails.tokenId, type(uint128).max, poolPerShare, poolPerAsset
+        );
+
+        // Clamp to uint128 if calculation exceeds max
+        return maxAssets > type(uint128).max ? type(uint128).max : uint128(maxAssets);
     }
 }

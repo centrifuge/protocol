@@ -178,15 +178,11 @@ contract FullActionBatcher is CoreActionBatcher {
         report.root.rely(address(report.core.messageProcessor));
         report.tokenRecoverer.rely(address(report.core.messageProcessor));
 
-        // Rely Holdings
-        report.navManager.rely(address(report.core.holdings));
-
         // Rely hub
         report.batchRequestManager.rely(address(report.core.hub));
 
         // Rely hubHandler
         report.batchRequestManager.rely(address(report.core.hubHandler));
-        report.navManager.rely(address(report.core.hubHandler));
 
         // Rely asyncRequestManager
         report.globalEscrow.rely(address(report.asyncRequestManager));
@@ -201,10 +197,6 @@ contract FullActionBatcher is CoreActionBatcher {
 
         // Rely vaultRouter
         report.routerEscrow.rely(address(report.vaultRouter));
-        report.core.gateway.rely(address(report.vaultRouter));
-
-        // Rely navManager
-        report.simplePriceManager.rely(address(report.navManager));
 
         // Rely adminSafe
         if (address(report.layerZeroAdapter) != address(0)) {
@@ -258,8 +250,6 @@ contract FullActionBatcher is CoreActionBatcher {
         report.redemptionRestrictionsHook.deny(address(this));
 
         report.batchRequestManager.deny(address(this));
-        report.navManager.deny(address(this));
-        report.simplePriceManager.deny(address(this));
 
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.deny(address(this));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
@@ -314,6 +304,9 @@ contract FullDeployer is CoreDeployer {
         adminSafe = input.adminSafe;
         opsSafe = input.opsSafe;
 
+        // Ensure salts incorporate the intended version for ALL contracts, including root which is deployed first
+        version = input.core.version;
+
         if (input.core.root == address(0)) {
             root = Root(
                 create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher)))
@@ -363,14 +356,12 @@ contract FullDeployer is CoreDeployer {
         );
 
         asyncRequestManager = AsyncRequestManager(
-            payable(
-                create3(
+            payable(create3(
                     generateSalt("asyncRequestManager-2"),
                     abi.encodePacked(
                         type(AsyncRequestManager).creationCode, abi.encode(globalEscrow, refundEscrowFactory, batcher)
                     )
-                )
-            )
+                ))
         );
 
         syncManager = SyncManager(
@@ -508,7 +499,7 @@ contract FullDeployer is CoreDeployer {
         batchRequestManager = BatchRequestManager(
             create3(
                 generateSalt("batchRequestManager"),
-                abi.encodePacked(type(BatchRequestManager).creationCode, abi.encode(hubRegistry, batcher))
+                abi.encodePacked(type(BatchRequestManager).creationCode, abi.encode(hubRegistry, gateway, batcher))
             )
         );
 
@@ -527,16 +518,13 @@ contract FullDeployer is CoreDeployer {
         );
 
         navManager = NAVManager(
-            create3(
-                generateSalt("navManager"),
-                abi.encodePacked(type(NAVManager).creationCode, abi.encode(hub, address(batcher)))
-            )
+            create3(generateSalt("navManager"), abi.encodePacked(type(NAVManager).creationCode, abi.encode(hub)))
         );
 
         simplePriceManager = SimplePriceManager(
             create3(
                 generateSalt("simplePriceManager"),
-                abi.encodePacked(type(SimplePriceManager).creationCode, abi.encode(hub, address(batcher)))
+                abi.encodePacked(type(SimplePriceManager).creationCode, abi.encode(hub, address(navManager)))
             )
         );
 

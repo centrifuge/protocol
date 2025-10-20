@@ -1,0 +1,39 @@
+@startuml hub
+title Hub
+hide empty members
+
+skinparam linetype ortho
+
+package messaging {
+    interface IMessageDispatcher
+    interface IMesssageProcessor
+}
+
+class Hub
+class HubHandler
+class Holdings
+class HubRegistry
+class ShareClassManager
+class Accounting
+
+interface ISnapshotHook
+interface IValuation
+interface IFeeHook
+interface IHubRequestManager
+
+Hub --> Holdings
+Hub --> HubRegistry
+Hub --> ShareClassManager
+Hub --> Accounting
+Hub --> IMessageDispatcher
+Hub .[dotted].> IFeeHook
+
+HubHandler --> Hub
+IMesssageProcessor --> HubHandler
+
+IHubRequestManager --> Hub
+
+Holdings --> IValuation
+Holdings .[dotted].> ISnapshotHook
+
+@enduml

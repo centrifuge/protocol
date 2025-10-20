@@ -11,15 +11,15 @@ import {IShareClassManager} from "./IShareClassManager.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
 
+import {IAdapter} from "../../messaging/interfaces/IAdapter.sol";
 import {VaultUpdateKind} from "../../messaging/libraries/MessageLib.sol";
+import {IHubMessageSender} from "../../messaging/interfaces/IGatewaySenders.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {AccountId} from "../../types/AccountId.sol";
-import {IAdapter} from "../../interfaces/IAdapter.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IHubMessageSender} from "../../interfaces/IGatewaySenders.sol";
-import {IBatchedMulticall} from "../../interfaces/IBatchedMulticall.sol";
+import {IBatchedMulticall} from "../../utils/interfaces/IBatchedMulticall.sol";
 
 /// @notice Account types used by Hub
 enum AccountType {
@@ -159,9 +159,7 @@ interface IHub is IBatchedMulticall {
     /// @param scId The share class identifier
     /// @param centrifugeId Chain where CV instance lives
     /// @param refund Address to receive excess gas refund
-    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund)
-        external
-        payable;
+    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) external payable;
 
     /// @notice Update on a CV instance the hook of a share token
     /// @param poolId The pool identifier
@@ -425,9 +423,7 @@ interface IHub is IBatchedMulticall {
     /// @param poolId The pool identifier
     /// @param debits Array of debit journal entries
     /// @param credits Array of credit journal entries
-    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits)
-        external
-        payable;
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external payable;
 
     /// @notice Set adapters for a pool in another chain
     /// @param poolId Pool associated to this configuration

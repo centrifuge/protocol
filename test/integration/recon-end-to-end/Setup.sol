@@ -28,7 +28,7 @@ import {VaultRegistry} from "src/core/spoke/VaultRegistry.sol";
 // Hub
 import {Accounting} from "src/core/hub/Accounting.sol";
 import {HubRegistry} from "src/core/hub/HubRegistry.sol";
-import {Gateway} from "src/core/Gateway.sol";
+import {Gateway} from "src/core/messaging/Gateway.sol";
 import {Holdings} from "src/core/hub/Holdings.sol";
 import {Hub} from "src/core/hub/Hub.sol";
 import {ShareClassManager} from "src/core/hub/ShareClassManager.sol";
@@ -49,16 +49,16 @@ import {IHubRegistry} from "src/core/hub/interfaces/IHubRegistry.sol";
 import {IHub} from "src/core/hub/interfaces/IHub.sol";
 import {IAccounting} from "src/core/hub/interfaces/IAccounting.sol";
 import {IHoldings} from "src/core/hub/interfaces/IHoldings.sol";
-import {IHubMessageSender} from "src/core/interfaces/IGatewaySenders.sol";
+import {IHubMessageSender} from "src/core/messaging/interfaces/IGatewaySenders.sol";
 import {IShareClassManager} from "src/core/hub/interfaces/IShareClassManager.sol";
 import {IBatchRequestManager} from "src/vaults/interfaces/IBatchRequestManager.sol";
 import {IHubRequestManager} from "src/core/hub/interfaces/IHubRequestManager.sol";
-import {IGateway} from "src/core/interfaces/IGateway.sol";
-import {IMessageHandler} from "src/core/interfaces/IMessageHandler.sol";
+import {IGateway} from "src/core/messaging/interfaces/IGateway.sol";
+import {IMessageHandler} from "src/core/messaging/interfaces/IMessageHandler.sol";
 import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
 import {IVaultFactory} from "src/core/spoke/factories/interfaces/IVaultFactory.sol";
 import {IHubHandler} from "src/core/hub/interfaces/IHubHandler.sol";
-import {IMultiAdapter} from "src/core/interfaces/IMultiAdapter.sol";
+import {IMultiAdapter} from "src/core/messaging/interfaces/IMultiAdapter.sol";
 
 // Common
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
@@ -300,6 +300,7 @@ abstract contract Setup is
         );
         batchRequestManager = new BatchRequestManagerHarness(
             IHubRegistry(address(hubRegistry)),
+            IGateway(address(gateway)),
             address(this)
         );
         hub = new Hub(

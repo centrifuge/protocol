@@ -4,54 +4,53 @@
 [gha-badge]: https://github.com/centrifuge/protocol/actions/workflows/ci.yml/badge.svg
 [foundry]: https://getfoundry.sh
 [foundry-badge]: https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg
-[docs]: https://docs.centrifuge.io/developer/protocol/overview/
+[docs]: https://v3-1.documentation-569.pages.dev/developer/protocol/overview/
 [docs-badge]: https://img.shields.io/badge/Docs-docs.centrifuge.io-6EDFFB.svg
 
 # Centrifuge Protocol
 
-Centrifuge is an open, decentralized protocol for onchain asset management. Built on immutable smart contracts, it enables permissionless deployment of customizable tokenization products.
+The Centrifuge Protocol is an open-source, decentralized protocol for tokenizing and distributing financial products across multiple blockchain networks. Built on immutable smart contracts, it provides the infrastructure for creating customizable asset management products with seamless multi-chain deployment.
 
-Build a wide range of use cases, from permissioned funds to onchain loans, while enabling fast, secure deployment. ERC-4626 and ERC-7540 vaults allow seamless integration into DeFi.
+The protocol is designed to be non-opinionated and extensible, empowering builders to create diverse financial products, from permissioned investment funds to freely tradable tokenized assets, onchain loans, and custom financial structures.
 
-Using protocol-level chain abstraction, tokenization issuers access liquidity across any network, all managed from one Hub chain of their choice.
+The protocol has had [19 security reviews](https://v3-1.documentation-569.pages.dev/developer/protocol/security/) to date, and is currently live on [6 blockchains](https://v3-1.documentation-569.pages.dev/developer/protocol/deployments/).
 
-## Protocol
+![](https://v3-1.documentation-569.pages.dev/assets/images/overview-90c6c9bb0c401d551c5c16cb3c64dd14.png)
 
-The Centrifuge Protocol operates on a [hub-and-spoke model](https://docs.centrifuge.io/developer/protocol/chain-abstraction/). Each pool chooses a single hub chain, and can tokenize and manage liquidity on many spoke chains.
+## Key features
 
-![](https://docs.centrifuge.io/assets/images/overview-6f95e12a2317402da85bcd8d953f2115.png)
+### Multi-chain asset management
+
+Using protocol-level [chain abstraction](https://v3-1.documentation-569.pages.dev/developer/protocol/features/chain-abstraction/), issuers can access and manage liquidity across any supported network while maintaining unified control from a single hub chain. The protocol operates on a hub-and-spoke model where one hub chain handles operational management, accounting, pricing, and investment request processing, while multiple spoke chains act as separate balance sheets where tokens can be issued, transferred, and redeemed. Cross-chain transfers use a secure burn-and-mint mechanism for 1:1 token movement between chains.
+
+### Standards-based composability
+
+The protocol provides [vault implementations](https://v3-1.documentation-569.pages.dev/developer/protocol/features/vaults/) that integrate seamlessly with the broader DeFi ecosystem. Share tokens are issued as ERC-20 tokens. ERC-4626 vaults offer the standard tokenized vault interface for synchronous deposits and redemptions, while ERC-7540 vaults provide an asynchronous standard for request-based investment flows. The protocol also supports ERC-7575, enabling multi-asset vaults where a single share token can be exchanged for different accepted assets. These standards enable easy integration with existing DeFi protocols, aggregators, and tools.
+
+### Immutable core, modular extensions
+
+The protocol combines an [immutable core](https://v3-1.documentation-569.pages.dev/developer/protocol/architecture/overview/) with a [modular set of extensions](https://v3-1.documentation-569.pages.dev/developer/protocol/features/modularity/) for customization. The protocol allows customizing investment vaults, transfer hooks for compliance logic, balance sheet managers for asset allocation strategies, hub managers for automated pricing and order management, valuation contracts for asset pricing, per-pool cross-chain adapters, and much more. This architecture enables builders to innovate at the extension layer while maintaining the security guarantees of the immutable core.
+
+### Onchain accounting
+
+The protocol implements [fully onchain and automated accounting](https://v3-1.documentation-569.pages.dev/developer/protocol/features/onchain-accounting/) of tokenized assets across all chains. The Hub maintains a complete double-entry bookkeeping system that records all financial transactions, as well as a ledger for all pool holdings. An automated cross-chain synchronization mechanism ensures that data across many chains can be aggregated in a single smart contract.
+The usage of the accounting system is optional, allowing issuers to automate processes according to their needs.
+
+### One-click deployment
+
+The protocol uses monolithic contracts for the immutable core, with automated deployment of share tokens, escrows for pool holdings, vaults and much more. This enables tokenizing financial products and launching tokens and vaults on new chains in a single click.
+
+## Protocol architecture
+
+The Centrifuge Protocol operates on a [hub-and-spoke model](https://v3-1.documentation-569.pages.dev/developer/protocol/features/chain-abstraction/). Each pool selects a single hub chain for management and can tokenize and distribute liquidity on many spoke chains.
 
 ### Centrifuge Hub
-* Manage and control your tokens from a single chain of your choice
-* Consolidate accounting of all your vaults in a single place
-* Control price oracles across all networks
-* Manage investment requests from all investors
+
+The hub chain serves as the central control and accounting layer for the entire pool. From a single chain of your choice, you can manage all tokens and vaults across every deployment. The hub maintains consolidated accounting using double-entry bookkeeping, tracking all vault balances and holdings in one place. NAV calculations are performed on the hub, with price oracle updates pushed to all networks
 
 ### Centrifuge Spoke
-* Tokenize ownership using ERC-20 - customizable with modules of your choice
-* Distribute to DeFi with ERC-4626 and ERC-7540 vaults
-* Multiple vaults supported for pooled liquidity from different assets
-* Support 1:1 token transfers between chains using burn-and-mint process
 
-## Project structure
-```
-.
-├── deployments
-├── docs
-│  └── audits
-├── script
-├── src
-├── test
-├── foundry.toml
-└── README.json
-```
-
-- [`docs`](./docs) documentation, diagrams and security audit reports
-- [`env`](./env) contains the deployment information of the supported chains
-- [`script`](./script) deployment scripts used to deploy a part or the full system, along with adapters.
-- [`src`](./src) main source containing all the contracts. Look for the interfaces and libraries inside of each module.
-- [`test`](./test) contains all tests: unit tests, integration test per module, and end-to-end integration tests
-
+Spoke chains provide the tokenization and distribution layer where end users interact with the protocol. Each spoke deploys ERC-20 share tokens that are customizable with transfer hooks for compliance and restrictions. Both ERC-4626 and ERC-7540 vaults can be deployed for seamless DeFi integration, with multiple vaults supported per share class to accept different payment assets.
 
 ## Contributing
 #### Getting started
@@ -65,10 +64,6 @@ To build and run all tests locally:
 ```sh
 forge test
 ```
-
-## Security
-
-Reports from security reviews can be found in the [documentation](https://docs.centrifuge.io/developer/protocol/security/).
 
 ## License
 The primary license is the [Business Source License 1.1](https://github.com/centrifuge/protocol/blob/main/LICENSE). However, all files in the [`src/misc`](./src/misc) folder, [`src/managers/MerkleProofManager.sol`](./src/managers/MerkleProofManager.sol), and any interface file can also be licensed under `GPL-2.0-or-later` (as indicated in their SPDX headers).

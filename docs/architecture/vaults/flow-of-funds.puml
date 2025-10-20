@@ -1,0 +1,100 @@
+@startuml
+skinparam sequenceArrowThickness 3
+skinparam backgroundColor white
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 500
+skinparam roundcorner 10
+skinparam shadowing false
+skinparam defaultFontName "Monospaced"
+skinparam defaultFontSize 25
+
+skinparam sequence {
+    ArrowColor #333333
+    BoxBorderColor #999999
+    BoxBackgroundColor #F9F9F9
+    GroupBorderColor #AAAAAA
+    GroupBackgroundColor #EEEEEE
+}
+
+actor Investor
+actor BalanceSheetManager
+participant Vault
+participant AsyncRequestManager
+participant GlobalEscrow
+participant BalanceSheet
+participant PoolEscrow
+participant Hub
+actor HubManager
+
+note over Hub, AsyncRequestManager
+    All Hub ↔ AsyncRequestManager communication
+    routes through Spoke & cross-chain Messaging
+end note
+
+== investor deposits ==
+
+Investor -> Vault : requestDeposit()
+Vault --> GlobalEscrow : transfer assets
+
+== hub manager approves ==
+
+HubManager -> Hub : approvedDeposits()
+Hub -> AsyncRequestManager :
+AsyncRequestManager --> GlobalEscrow :
+GlobalEscrow --> PoolEscrow : transfer assets
+
+== balance sheet manager withdraws ==
+
+BalanceSheetManager -> BalanceSheet : withdraw
+BalanceSheet -> PoolEscrow : 
+PoolEscrow --> BalanceSheetManager : transfer assets
+
+== hub manager issues shares ==
+
+HubManager -> Hub : issueShares()
+Hub --> AsyncRequestManager :
+AsyncRequestManager --> BalanceSheet :
+BalanceSheet --> GlobalEscrow : mint shares
+
+== bot triggers fulfillment ==
+
+Bot -> Hub : notifyDeposit()
+Hub --> AsyncRequestManager : fulfill deposit request
+
+== investor claims ==
+
+Investor -> Vault : mint()
+Vault -> GlobalEscrow :
+GlobalEscrow --> Investor : transfer shares
+
+== investor submit redemption request ==
+
+Investor -> Vault : requestRedeem()
+Vault --> GlobalEscrow : transfer shares
+HubManager -> Hub : approvedRedeems()
+
+== balance sheet manager repays ==
+
+BalanceSheetManager -> BalanceSheet : deposit
+BalanceSheet --> PoolEscrow : transfer assets
+
+== hub manager revokes shares ==
+
+HubManager -> Hub : revokeShares()
+Hub -> AsyncRequestManager : revokedShares()
+AsyncRequestManager --> GlobalEscrow : burn shares
+AsyncRequestManager --> PoolEscrow : reserve assets
+
+== bot triggers fulfillment ==
+
+Bot -> Hub : notifyRedeem()
+Hub --> AsyncRequestManager : fulfill redeem request
+
+== investor claims redemption ==
+
+Investor -> Vault : withdraw()
+Vault --> AsyncRequestManager :
+AsyncRequestManager --> PoolEscrow : unreserve assets
+PoolEscrow --> Investor : transfer assets
+
+@enduml
