@@ -125,4 +125,27 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         property_accounting_and_holdings_soundness();
     }
+
+    // forge test --match-test test_asyncVault_maxMint_1 -vvv
+    // NOTE: see issue here: https://github.com/Recon-Fuzz/centrifuge-invariants/issues/12
+    function test_asyncVault_maxMint_1() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
+
+        shortcut_deposit_queue_cancel(
+            0,
+            0,
+            18917595704346110,
+            1,
+            1,
+            50924292192
+        );
+
+        hub_notifyDeposit(1);
+
+        shortcut_deposit_and_claim(0, 0, 2, 0, 0);
+
+        vault_cancelDepositRequest();
+
+        asyncVault_maxMint(0, 0, 0);
+    }
 }
