@@ -8,10 +8,10 @@ import {BytesLib} from "../../../../src/misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
-import {IAdapter} from "../../../../src/core/interfaces/IAdapter.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {MessageLib} from "../../../../src/core/messaging/libraries/MessageLib.sol";
-import {IMessageHandler} from "../../../../src/core/interfaces/IMessageHandler.sol";
+import {IMessageHandler} from "../../../../src/core/messaging/interfaces/IMessageHandler.sol";
 
 import {RequestMessageLib} from "../../../../src/vaults/libraries/RequestMessageLib.sol";
 
@@ -45,25 +45,23 @@ contract MockVaults is Test, Auth, IAdapter {
         handler.handle(
             sourceChainId,
             MessageLib.Request(
-                poolId.raw(),
-                scId.raw(),
-                assetId.raw(),
-                RequestMessageLib.DepositRequest({investor: investor, amount: amount}).serialize()
-            ).serialize()
+                    poolId.raw(),
+                    scId.raw(),
+                    assetId.raw(),
+                    RequestMessageLib.DepositRequest({investor: investor, amount: amount}).serialize()
+                ).serialize()
         );
     }
 
-    function requestRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint128 amount)
-        public
-    {
+    function requestRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint128 amount) public {
         handler.handle(
             sourceChainId,
             MessageLib.Request(
-                poolId.raw(),
-                scId.raw(),
-                assetId.raw(),
-                RequestMessageLib.RedeemRequest({investor: investor, amount: amount}).serialize()
-            ).serialize()
+                    poolId.raw(),
+                    scId.raw(),
+                    assetId.raw(),
+                    RequestMessageLib.RedeemRequest({investor: investor, amount: amount}).serialize()
+                ).serialize()
         );
     }
 
@@ -71,11 +69,11 @@ contract MockVaults is Test, Auth, IAdapter {
         handler.handle(
             sourceChainId,
             MessageLib.Request(
-                poolId.raw(),
-                scId.raw(),
-                assetId.raw(),
-                RequestMessageLib.CancelDepositRequest({investor: investor}).serialize()
-            ).serialize()
+                    poolId.raw(),
+                    scId.raw(),
+                    assetId.raw(),
+                    RequestMessageLib.CancelDepositRequest({investor: investor}).serialize()
+                ).serialize()
         );
     }
 
@@ -83,11 +81,11 @@ contract MockVaults is Test, Auth, IAdapter {
         handler.handle(
             sourceChainId,
             MessageLib.Request(
-                poolId.raw(),
-                scId.raw(),
-                assetId.raw(),
-                RequestMessageLib.CancelRedeemRequest({investor: investor}).serialize()
-            ).serialize()
+                    poolId.raw(),
+                    scId.raw(),
+                    assetId.raw(),
+                    RequestMessageLib.CancelRedeemRequest({investor: investor}).serialize()
+                ).serialize()
         );
     }
 
@@ -117,16 +115,16 @@ contract MockVaults is Test, Auth, IAdapter {
         handler.handle(
             sourceChainId,
             MessageLib.UpdateHoldingAmount({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                assetId: assetId.raw(),
-                amount: amount,
-                pricePoolPerAsset: pricePoolPerAsset.raw(),
-                timestamp: 0,
-                isIncrease: isIncrease,
-                isSnapshot: isSnapshot,
-                nonce: nonce
-            }).serialize()
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    amount: amount,
+                    pricePoolPerAsset: pricePoolPerAsset.raw(),
+                    timestamp: 0,
+                    isIncrease: isIncrease,
+                    isSnapshot: isSnapshot,
+                    nonce: nonce
+                }).serialize()
         );
     }
 
@@ -141,14 +139,14 @@ contract MockVaults is Test, Auth, IAdapter {
         handler.handle(
             sourceChainId,
             MessageLib.UpdateShares({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                shares: amount,
-                timestamp: 0,
-                isIssuance: isIssuance,
-                isSnapshot: isSnapshot,
-                nonce: nonce
-            }).serialize()
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    shares: amount,
+                    timestamp: 0,
+                    isIssuance: isIssuance,
+                    isSnapshot: isSnapshot,
+                    nonce: nonce
+                }).serialize()
         );
     }
 

@@ -87,6 +87,7 @@ contract HubRegistry is Auth, IHubRegistry {
     function updateCurrency(PoolId poolId_, AssetId currency_) external auth {
         require(exists(poolId_), NonExistingPool(poolId_));
         require(!currency_.isNull(), EmptyCurrency());
+        require(isRegistered(currency_), AssetNotFound());
 
         currency[poolId_] = currency_;
 

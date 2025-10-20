@@ -138,7 +138,9 @@ contract Holdings is Auth, IHoldings {
         uint128 amount_
     ) external auth {
         ISnapshotHook hook = snapshotHook[poolId];
-        if (address(hook) != address(0)) hook.onTransfer(poolId, scId, originCentrifugeId, targetCentrifugeId, amount_);
+        if (address(hook) != address(0)) {
+            hook.onTransfer(poolId, scId, originCentrifugeId, targetCentrifugeId, amount_);
+        }
     }
 
     //----------------------------------------------------------------------------------------------
@@ -193,8 +195,7 @@ contract Holdings is Auth, IHoldings {
         uint128 currentAmountValue = holding_.valuation.getQuote(poolId, scId, assetId, holding_.assetAmount);
 
         isPositive = currentAmountValue >= holding_.assetAmountValue;
-        diffValue =
-            isPositive ? currentAmountValue - holding_.assetAmountValue : holding_.assetAmountValue - currentAmountValue;
+        diffValue = isPositive ? currentAmountValue - holding_.assetAmountValue : holding_.assetAmountValue - currentAmountValue; // forgefmt: disable-line
 
         holding_.assetAmountValue = currentAmountValue;
 

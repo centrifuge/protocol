@@ -7,10 +7,10 @@ import {IERC6909MetadataExt} from "../../../../src/misc/interfaces/IERC6909.sol"
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {Spoke, ISpoke} from "../../../../src/core/spoke/Spoke.sol";
-import {IGateway} from "../../../../src/core/interfaces/IGateway.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {VaultRegistry} from "../../../../src/core/spoke/VaultRegistry.sol";
+import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
@@ -19,7 +19,7 @@ import {VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageL
 import {ITokenFactory} from "../../../../src/core/spoke/factories/interfaces/ITokenFactory.sol";
 import {IVaultFactory} from "../../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
 import {IPoolEscrowFactory} from "../../../../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
-import {ISpokeMessageSender, ILocalCentrifugeId} from "../../../../src/core/interfaces/IGatewaySenders.sol";
+import {ISpokeMessageSender, ILocalCentrifugeId} from "../../../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
 import "forge-std/Test.sol";
 
@@ -494,5 +494,31 @@ contract VaultRegistryTestVaultDetails is VaultRegistryTest {
         vm.prank(ANY);
         vm.expectRevert(ISpoke.UnknownVault.selector);
         vaultRegistry.vaultDetails(vault);
+    }
+}
+
+contract VaultRegistryTestFile is VaultRegistryTest {
+    function testFileSpoke() public {
+        ISpoke newSpoke = ISpoke(makeAddr("NewSpoke"));
+
+        vm.expectEmit(true, true, true, true);
+        emit ISpoke.File("spoke", address(newSpoke));
+
+        vm.prank(AUTH);
+        vaultRegistry.file("spoke", address(newSpoke));
+
+        assertEq(address(vaultRegistry.spoke()), address(newSpoke));
+    }
+
+    function testFileUnrecognizedParam() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.FileUnrecognizedParam.selector);
+        vaultRegistry.file("unknown", address(0));
+    }
+
+    function testFileNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vaultRegistry.file("spoke", address(0));
     }
 }

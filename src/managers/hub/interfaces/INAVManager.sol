@@ -51,12 +51,13 @@ interface INAVManager is ISnapshotHook {
         uint128 sharesTransferred
     );
 
+    error NotAuthorized();
     error MismatchedEpochs();
     error AlreadyInitialized();
     error NotInitialized();
     error ExceedsMaxAccounts();
+    error InvalidStateOfAccounts();
     error InvalidNAVHook();
-    error InvalidNAV();
 
     //----------------------------------------------------------------------------------------------
     // Administration

@@ -14,8 +14,6 @@ import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/Updat
 import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
 import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
 
-import {UpdateContractMessageLib} from "../../../../src/libraries/UpdateContractMessageLib.sol";
-
 abstract contract OnOfframpManagerBaseTest is BaseTest {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
@@ -60,9 +58,8 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
             POOL_A,
             defaultTypedShareClassId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: address(this).toBytes32(),
-                validUntil: MAX_UINT64
-            }).serialize()
+                    user: address(this).toBytes32(), validUntil: MAX_UINT64
+                }).serialize()
         );
 
         factory = new OnOfframpManagerFactory(address(contractUpdater), balanceSheet);
@@ -78,7 +75,6 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
 
 contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
     using CastLib for *;
-    using UpdateContractMessageLib for *;
 
     function testDepositAndWithdrawHappyPath() public {
         uint128 amount = 100;
@@ -88,12 +84,7 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
         manager.trustedCall(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractUpdateAddress({
-                kind: bytes32("onramp"),
-                assetId: defaultAssetId,
-                what: bytes32(""),
-                isEnabled: true
-            }).serialize()
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Onramp), defaultAssetId, true)
         );
 
         // Enable relayer
@@ -101,12 +92,7 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
         manager.trustedCall(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractUpdateAddress({
-                kind: bytes32("relayer"),
-                assetId: 0,
-                what: relayer.toBytes32(),
-                isEnabled: true
-            }).serialize()
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Relayer), relayer.toBytes32(), true)
         );
 
         // Enable offramp destination
@@ -114,12 +100,7 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
         manager.trustedCall(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractUpdateAddress({
-                kind: bytes32("offramp"),
-                assetId: defaultAssetId,
-                what: receiver.toBytes32(),
-                isEnabled: true
-            }).serialize()
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Offramp), defaultAssetId, receiver.toBytes32(), true)
         );
 
         // Set manager permissions

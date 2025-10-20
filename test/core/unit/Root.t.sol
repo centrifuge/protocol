@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
-import {IProtocolPauser} from "../../../src/core/interfaces/IProtocolPauser.sol";
 import {IEndorsements} from "../../../src/core/spoke/interfaces/IEndorsements.sol";
 import {IScheduleAuth} from "../../../src/core/messaging/interfaces/IScheduleAuth.sol";
+import {IProtocolPauser} from "../../../src/core/messaging/interfaces/IProtocolPauser.sol";
 
 import {Root, IRoot} from "../../../src/admin/Root.sol";
 

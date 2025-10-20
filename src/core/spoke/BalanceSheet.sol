@@ -18,13 +18,14 @@ import {IERC6909} from "../../misc/interfaces/IERC6909.sol";
 import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol";
 
+import {IGateway} from "../messaging/interfaces/IGateway.sol";
+import {ISpokeMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
+import {IBalanceSheetGatewayHandler} from "../messaging/interfaces/IGatewayHandlers.sol";
+
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
-import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
-import {ISpokeMessageSender} from "../interfaces/IGatewaySenders.sol";
-import {IBalanceSheetGatewayHandler} from "../interfaces/IGatewayHandlers.sol";
 
 /// @title  Balance Sheet
 /// @notice Management contract that integrates all balance sheet functions of a pool:
@@ -51,9 +52,9 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         endorsements = endorsements_;
     }
 
-    /// @dev Check if the msg.sender is ward or a manager
-    modifier authOrManager(PoolId poolId) {
-        require(wards[msg.sender] == 1 || manager[poolId][msg.sender], IAuth.NotAuthorized());
+    /// @dev Check if the msgSender() is ward or a manager
+    modifier isManager(PoolId poolId) {
+        require(manager[poolId][msgSender()], IAuth.NotAuthorized());
         _;
     }
 
@@ -80,15 +81,15 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         external
         payable
-        authOrManager(poolId)
+        isManager(poolId)
     {
         noteDeposit(poolId, scId, asset, tokenId, amount);
 
         address escrow_ = address(escrow(poolId));
         if (tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(asset, msg.sender, escrow_, amount);
+            SafeTransferLib.safeTransferFrom(asset, msgSender(), escrow_, amount);
         } else {
-            IERC6909(asset).transferFrom(msg.sender, escrow_, tokenId, amount);
+            IERC6909(asset).transferFrom(msgSender(), escrow_, tokenId, amount);
         }
         emit Deposit(poolId, scId, asset, tokenId, amount);
     }
@@ -97,7 +98,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     function noteDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         public
         payable
-        authOrManager(poolId)
+        isManager(poolId)
     {
         AssetId assetId = spoke.assetToId(asset, tokenId);
         escrow(poolId).deposit(scId, asset, tokenId, amount);
@@ -116,7 +117,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         uint256 tokenId,
         address receiver,
         uint128 amount
-    ) external payable authOrManager(poolId) {
+    ) external payable isManager(poolId) {
         AssetId assetId = spoke.assetToId(asset, tokenId);
         IPoolEscrow escrow_ = escrow(poolId);
         escrow_.withdraw(scId, asset, tokenId, amount);
@@ -133,7 +134,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         public
         payable
-        authOrManager(poolId)
+        isManager(poolId)
     {
         escrow(poolId).reserve(scId, asset, tokenId, amount);
     }
@@ -142,17 +143,13 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     function unreserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         public
         payable
-        authOrManager(poolId)
+        isManager(poolId)
     {
         escrow(poolId).unreserve(scId, asset, tokenId, amount);
     }
 
     /// @inheritdoc IBalanceSheet
-    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares)
-        external
-        payable
-        authOrManager(poolId)
-    {
+    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external payable isManager(poolId) {
         emit Issue(poolId, scId, to, _pricePoolPerShare(poolId, scId), shares);
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
@@ -172,8 +169,8 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     }
 
     /// @inheritdoc IBalanceSheet
-    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external payable authOrManager(poolId) {
-        emit Revoke(poolId, scId, msg.sender, _pricePoolPerShare(poolId, scId), shares);
+    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external payable isManager(poolId) {
+        emit Revoke(poolId, scId, msgSender(), _pricePoolPerShare(poolId, scId), shares);
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         if (!shareQueue.isPositive) {
@@ -186,7 +183,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         }
 
         IShareToken token = spoke.shareToken(poolId, scId);
-        token.authTransferFrom(msg.sender, msg.sender, address(this), shares);
+        token.authTransferFrom(msgSender(), msgSender(), address(this), shares);
         token.burn(address(this), shares);
     }
 
@@ -197,7 +194,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         AssetId assetId,
         uint128 extraGasLimit,
         address refund
-    ) external payable authOrManager(poolId) {
+    ) external payable isManager(poolId) {
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
 
@@ -219,16 +216,16 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         shareQueue.queuedAssetCounter -= assetCounter;
 
         emit SubmitQueuedAssets(poolId, scId, assetId, data, pricePoolPerAsset);
-        sender.sendUpdateHoldingAmount{value: _payment()}(
-            poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit, refund
-        );
+        sender.sendUpdateHoldingAmount{
+            value: msgValue()
+        }(poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit, refund);
     }
 
     /// @inheritdoc IBalanceSheet
     function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit, address refund)
         external
         payable
-        authOrManager(poolId)
+        isManager(poolId)
     {
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
 
@@ -244,7 +241,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         shareQueue.nonce++;
 
         emit SubmitQueuedShares(poolId, scId, data);
-        sender.sendUpdateShares{value: _payment()}(poolId, scId, data, extraGasLimit, refund);
+        sender.sendUpdateShares{value: msgValue()}(poolId, scId, data, extraGasLimit, refund);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -255,7 +252,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         address from,
         address to,
         uint256 amount
-    ) external payable authOrManager(poolId) {
+    ) external payable isManager(poolId) {
         require(!endorsements.endorsed(from), CannotTransferFromEndorsedContract());
         IShareToken token = spoke.shareToken(poolId, scId);
         token.authTransferFrom(sender_, from, to, amount);
@@ -266,7 +263,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     function overridePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 value)
         external
         payable
-        authOrManager(poolId)
+        isManager(poolId)
     {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAsset", poolId, scId, assetId)), value.raw());
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAssetIsSet", poolId, scId, assetId)), true);
@@ -276,23 +273,19 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     function resetPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId)
         external
         payable
-        authOrManager(poolId)
+        isManager(poolId)
     {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAssetIsSet", poolId, scId, assetId)), false);
     }
 
     /// @inheritdoc IBalanceSheet
-    function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value)
-        external
-        payable
-        authOrManager(poolId)
-    {
+    function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external payable isManager(poolId) {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShare", poolId, scId)), value.raw());
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), true);
     }
 
     /// @inheritdoc IBalanceSheet
-    function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external payable authOrManager(poolId) {
+    function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external payable isManager(poolId) {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), false);
     }
 
@@ -328,9 +321,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     // Internal
     //----------------------------------------------------------------------------------------------
 
-    function _updateAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, bool isDeposit)
-        internal
-    {
+    function _updateAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, bool isDeposit) internal {
         if (amount == 0) return;
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];

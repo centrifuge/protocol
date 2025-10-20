@@ -64,7 +64,7 @@ contract LaunchDeployer is FullDeployer {
                 layerZero: LayerZeroInput({
                     shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.layerZero.deploy"),
                     endpoint: _parseJsonAddressOrDefault(config, "$.adapters.layerZero.endpoint"),
-                    delegate: _parseJsonAddressOrDefault(config, "$.adapters.layerZero.delegate")
+                    delegate: vm.envAddress("PROTOCOL_ADMIN")
                 })
             })
         });
@@ -73,6 +73,9 @@ contract LaunchDeployer is FullDeployer {
 
         // Cache version hash to avoid redundant hash recalculation
         if (input.core.version == "3.1") _verifyAdmin(input.adminSafe);
+
+        address protocolAdminEnv = vm.envAddress("PROTOCOL_ADMIN");
+        require(protocolAdminEnv != address(0), "PROTOCOL_ADMIN not set");
 
         deployFull(input, batcher);
 

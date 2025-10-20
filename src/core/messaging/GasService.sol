@@ -2,9 +2,9 @@
 pragma solidity 0.8.28;
 
 import {IGasService} from "./interfaces/IGasService.sol";
+import {IMessageLimits} from "./interfaces/IMessageLimits.sol";
+import {GAS_FAIL_MESSAGE_STORAGE} from "./interfaces/IGateway.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
-
-import {IMessageLimits} from "../interfaces/IMessageLimits.sol";
 
 /// @title  GasService
 /// @notice This contract stores the gas limits (in gas units) for cross-chain message execution.
@@ -13,8 +13,8 @@ import {IMessageLimits} from "../interfaces/IMessageLimits.sol";
 contract GasService is IGasService {
     using MessageLib for *;
 
-    /// @dev Takes into account Adapter + Gateway processing + some mismatch happened regarding the input values
-    uint128 public constant BASE_COST = 50_000;
+    /// @dev Takes into account diverge computation from the base benchmarked value.
+    uint128 public constant BASE_COST = 100_000;
 
     uint128 public immutable scheduleUpgrade;
     uint128 public immutable cancelUpgrade;
@@ -47,34 +47,34 @@ contract GasService is IGasService {
 
     constructor() {
         // NOTE: Below values should be updated using script/utils/benchmark.sh
-        scheduleUpgrade = BASE_COST + 93833;
-        cancelUpgrade = BASE_COST + 74240;
-        recoverTokens = BASE_COST + 151060;
-        registerAsset = BASE_COST + 103955;
-        setPoolAdapters = BASE_COST + 481579; // using MAX_ADAPTER_COUNT
-        request = BASE_COST + 220587;
-        notifyPool = BASE_COST + 1150798; // create escrow case
-        notifyShareClass = BASE_COST + 1853009;
-        notifyPricePoolPerShare = BASE_COST + 107070;
-        notifyPricePoolPerAsset = BASE_COST + 111076;
-        notifyShareMetadata = BASE_COST + 121478;
-        updateShareHook = BASE_COST + 96407;
-        initiateTransferShares = BASE_COST + 286613;
-        executeTransferShares = BASE_COST + 177494;
-        updateRestriction = BASE_COST + 114441;
-        trustedContractUpdate = BASE_COST + 142247;
-        requestCallback = BASE_COST + 258482; // approve deposit case
-        updateVaultDeployAndLink = BASE_COST + 2853046;
-        updateVaultLink = BASE_COST + 185355;
-        updateVaultUnlink = BASE_COST + 134073;
-        setRequestManager = BASE_COST + 100900;
-        updateBalanceSheetManager = BASE_COST + 104175;
-        updateHoldingAmount = BASE_COST + 304319;
-        updateShares = BASE_COST + 201531;
-        maxAssetPriceAge = BASE_COST + 110238;
-        maxSharePriceAge = BASE_COST + 107124;
-        updateGatewayManager = BASE_COST + 88442;
-        untrustedContractUpdate = BASE_COST + 83807;
+        scheduleUpgrade = _gasValue(94780);
+        cancelUpgrade = _gasValue(75187);
+        recoverTokens = _gasValue(151956);
+        registerAsset = _gasValue(104893);
+        setPoolAdapters = _gasValue(482589); // using MAX_ADAPTER_COUNT
+        request = _gasValue(226261);
+        notifyPool = _gasValue(1161511); // create escrow case
+        notifyShareClass = _gasValue(1843529);
+        notifyPricePoolPerShare = _gasValue(108164);
+        notifyPricePoolPerAsset = _gasValue(112180);
+        notifyShareMetadata = _gasValue(122609);
+        updateShareHook = _gasValue(97501);
+        initiateTransferShares = _gasValue(286650);
+        executeTransferShares = _gasValue(178598);
+        updateRestriction = _gasValue(115580);
+        trustedContractUpdate = _gasValue(142097);
+        requestCallback = _gasValue(262247); // approve deposit case
+        updateVaultDeployAndLink = _gasValue(2843520);
+        updateVaultLink = _gasValue(186459);
+        updateVaultUnlink = _gasValue(135177);
+        setRequestManager = _gasValue(106538);
+        updateBalanceSheetManager = _gasValue(105291);
+        updateHoldingAmount = _gasValue(305423);
+        updateShares = _gasValue(202268);
+        maxAssetPriceAge = _gasValue(111332);
+        maxSharePriceAge = _gasValue(108218);
+        updateGatewayManager = _gasValue(94036);
+        untrustedContractUpdate = _gasValue(89268);
     }
 
     /// @inheritdoc IMessageLimits
@@ -109,10 +109,18 @@ contract GasService is IGasService {
         if (kind == MessageType.UpdateBalanceSheetManager) return updateBalanceSheetManager;
         if (kind == MessageType.UpdateHoldingAmount) return updateHoldingAmount;
         if (kind == MessageType.UpdateShares) return updateShares;
-        if (kind == MessageType.MaxAssetPriceAge) return maxAssetPriceAge;
-        if (kind == MessageType.MaxSharePriceAge) return maxSharePriceAge;
+        if (kind == MessageType.SetMaxAssetPriceAge) return maxAssetPriceAge;
+        if (kind == MessageType.SetMaxSharePriceAge) return maxSharePriceAge;
         if (kind == MessageType.UpdateGatewayManager) return updateGatewayManager;
         if (kind == MessageType.UntrustedContractUpdate) return untrustedContractUpdate;
         revert InvalidMessageType(); // Unreachable
+    }
+
+    /// @dev - BASE_COST adds some offset to the benchmarked message
+    ///      - GAS_FAIL_MESSAGE_STORAGE is an extra required to process a possible message failure
+    ///      - Multiply by 64/63 is because EIP-150 pass 63/64 gas to each method call,
+    ///        so we add here the adapter call required gas.
+    function _gasValue(uint128 value) internal pure returns (uint128) {
+        return BASE_COST + uint128(GAS_FAIL_MESSAGE_STORAGE) + 64 * value / 63;
     }
 }

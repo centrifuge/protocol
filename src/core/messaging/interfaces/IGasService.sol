@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IMessageLimits} from "../../interfaces/IMessageLimits.sol";
+import {IMessageLimits} from "./IMessageLimits.sol";
 
 /// @dev Max cost. No messages will take more that this
-uint128 constant MAX_MESSAGE_COST = 3_000_000;
+uint128 constant MAX_MESSAGE_COST = 3_100_000;
 
 /// @title  IGasService
 /// @notice Interface for estimating gas costs for cross-chain messages

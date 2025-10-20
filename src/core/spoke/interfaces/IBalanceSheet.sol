@@ -7,11 +7,12 @@ import {IEndorsements} from "./IEndorsements.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
 
+import {ISpokeMessageSender} from "../../messaging/interfaces/IGatewaySenders.sol";
+
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IBatchedMulticall} from "../../interfaces/IBatchedMulticall.sol";
-import {ISpokeMessageSender} from "../../interfaces/IGatewaySenders.sol";
+import {IBatchedMulticall} from "../../utils/interfaces/IBatchedMulticall.sol";
 import {IPoolEscrowProvider} from "../factories/interfaces/IPoolEscrowFactory.sol";
 
 struct ShareQueueAmount {
@@ -100,9 +101,7 @@ interface IBalanceSheet is IBatchedMulticall {
     /// @param asset The asset address
     /// @param tokenId The token ID (SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported)
     /// @param amount The amount to deposit
-    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
-        external
-        payable;
+    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external payable;
 
     /// @notice Note a deposit of assets into the escrow of the pool.
     /// @dev    Must be followed by a transfer of the equivalent amount of assets to `IBalanceSheet.escrow(poolId)`
@@ -140,9 +139,7 @@ interface IBalanceSheet is IBatchedMulticall {
     /// @param asset The asset address
     /// @param tokenId The token ID
     /// @param amount The amount to reserve
-    function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
-        external
-        payable;
+    function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external payable;
 
     /// @notice Decrease the reserved balance of the pool
     /// @dev These assets are re-added to the available balance

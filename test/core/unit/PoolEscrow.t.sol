@@ -120,6 +120,13 @@ contract PoolEscrowTestBase is EscrowTestBase {
         vm.expectRevert(abi.encodeWithSelector(IEscrow.InsufficientBalance.selector, asset, tokenId, 600, 500));
         escrow.withdraw(scId, asset, tokenId, 600);
 
+        escrow.reserve(scId, asset, tokenId, 600);
+
+        vm.expectRevert(abi.encodeWithSelector(IEscrow.InsufficientBalance.selector, asset, tokenId, 600, 0));
+        escrow.withdraw(scId, asset, tokenId, 600);
+
+        escrow.unreserve(scId, asset, tokenId, 600);
+
         vm.expectEmit();
         emit IPoolEscrow.Withdraw(asset, tokenId, poolId, scId, 500);
         escrow.withdraw(scId, asset, tokenId, 500);

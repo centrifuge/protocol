@@ -10,8 +10,13 @@ def main(json_path, sol_path):
     missing = []
     for k, v in data.items():
         if k == "BENCHMARKING_RUN_ID": continue
-        pat = re.compile(rf'^(\s*{re.escape(k)}\s*=\s*BASE_COST\s*\+\s*)([0-9_]+)(\s*;)([^\n]*)?', re.M)
-        new_src, n = pat.subn(rf'\g<1>{int(v)}\3\4', src, count=1)
+        pat = re.compile(
+            rf'^(\s*{re.escape(k)}\s*=\s*)'          # indent + "<name> = "
+            rf'_gasValue\(\s*([0-9_]+)\s*\)'         # _gasValue(<number>)
+            rf'(\s*;)([^\n]*)?',                     # semicolon + trailing comment
+            re.M,
+        )
+        new_src, n = pat.subn(rf'\1_gasValue({int(v)})\3\4', src, count=1)
         if n == 0:
             missing.append((k, v))
         else:

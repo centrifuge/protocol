@@ -1,10 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IAdapter} from "./interfaces/IAdapter.sol";
+import {IGateway} from "./interfaces/IGateway.sol";
+import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
+import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
+import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {MessageType, MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
+import {
+    ISpokeGatewayHandler,
+    IBalanceSheetGatewayHandler,
+    IHubGatewayHandler,
+    IContractUpdateGatewayHandler,
+    IVaultRegistryGatewayHandler
+} from "./interfaces/IGatewayHandlers.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
@@ -14,20 +26,8 @@ import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
-import {IAdapter} from "../interfaces/IAdapter.sol";
-import {IGateway} from "../interfaces/IGateway.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {IMultiAdapter} from "../interfaces/IMultiAdapter.sol";
-import {IMessageHandler} from "../interfaces/IMessageHandler.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
-import {IMessageProperties} from "../interfaces/IMessageProperties.sol";
-import {
-    ISpokeGatewayHandler,
-    IBalanceSheetGatewayHandler,
-    IHubGatewayHandler,
-    IContractUpdateGatewayHandler,
-    IVaultRegistryGatewayHandler
-} from "../interfaces/IGatewayHandlers.sol";
 
 /// @title  MessageProcessor
 /// @notice This contract deserializes and processes incoming cross-chain messages, routing them to appropriate
@@ -220,13 +220,13 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 m.isSnapshot,
                 m.nonce
             );
-        } else if (kind == MessageType.MaxAssetPriceAge) {
-            MessageLib.MaxAssetPriceAge memory m = message.deserializeMaxAssetPriceAge();
+        } else if (kind == MessageType.SetMaxAssetPriceAge) {
+            MessageLib.SetMaxAssetPriceAge memory m = message.deserializeSetMaxAssetPriceAge();
             spoke.setMaxAssetPriceAge(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.maxPriceAge
             );
-        } else if (kind == MessageType.MaxSharePriceAge) {
-            MessageLib.MaxSharePriceAge memory m = message.deserializeMaxSharePriceAge();
+        } else if (kind == MessageType.SetMaxSharePriceAge) {
+            MessageLib.SetMaxSharePriceAge memory m = message.deserializeSetMaxSharePriceAge();
             spoke.setMaxSharePriceAge(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.maxPriceAge);
         } else if (kind == MessageType.UpdateGatewayManager) {
             MessageLib.UpdateGatewayManager memory m = message.deserializeUpdateGatewayManager();
