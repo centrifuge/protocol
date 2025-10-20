@@ -13,7 +13,8 @@ import {ISpokeGatewayHandler} from "../../src/core/interfaces/IGatewayHandlers.s
 import {IBalanceSheetGatewayHandler} from "../../src/core/interfaces/IGatewayHandlers.sol";
 
 import {IBalanceSheet} from "../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {ISpoke, VaultDetails} from "../../src/core/spoke/interfaces/ISpoke.sol";
+import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
+import {VaultDetails} from "../../src/core/spoke/interfaces/IVaultRegistry.sol";
 
 import {BaseVault} from "../../src/vaults/BaseVaults.sol";
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
