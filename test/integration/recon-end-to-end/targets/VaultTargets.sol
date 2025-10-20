@@ -532,16 +532,21 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         uint256 shares = vault.deposit(assets, _getActor());
 
+        // optimization values
+        if (assets == 0) {
+            maxSharesDepositNoAssets = int256(shares);
+        }
+
         // Add ghost flip tracking for share queue state changes
         {
             bytes32 shareKey = keccak256(
                 abi.encode(vault.poolId(), vault.scId())
             );
-            ghost_totalIssued[shareKey] += shares;
 
             // Update ghost_individualBalances when shares are minted to user
             // For sync vaults, shares are minted immediately. For async vaults, they're minted later.
             if (!isAsyncVault) {
+                ghost_totalIssued[shareKey] += shares;
                 ghost_individualBalances[shareKey][_getActor()] += shares;
                 ghost_totalShareSupply[shareKey] += shares;
                 ghost_supplyMintEvents[shareKey] += shares;
@@ -670,17 +675,25 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(to);
         uint256 assets = vault.mint(shares, to);
 
+        // optimization values
+        if (assets == 0) {
+            maxSharesMintNoAssets = int256(shares);
+        }
+
         // Add ghost flip tracking for share queue state changes
         {
             bytes32 shareKey = keccak256(
                 abi.encode(vault.poolId(), vault.scId())
             );
-            ghost_totalIssued[shareKey] += shares;
 
             // Update ghost_individualBalances when shares are minted to user
-            ghost_individualBalances[shareKey][to] += shares;
-            ghost_totalShareSupply[shareKey] += shares;
-            ghost_supplyMintEvents[shareKey] += shares;
+            // For sync vaults, shares are minted immediately. For async vaults, they're minted later.
+            if (!isAsyncVault) {
+                ghost_totalIssued[shareKey] += shares;
+                ghost_individualBalances[shareKey][to] += shares;
+                ghost_totalShareSupply[shareKey] += shares;
+                ghost_supplyMintEvents[shareKey] += shares;
+            }
 
             // Check for share queue flip
             (uint128 deltaAfter, bool isPositiveAfter, , ) = balanceSheet

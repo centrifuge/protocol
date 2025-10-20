@@ -1584,37 +1584,29 @@ abstract contract Properties is
     // ===============================
 
     /// @dev Optimization test to increase the difference between totalAssets and actualAssets is greater than 1 share
-    function optimize_totalAssets_solvency() public view returns (int256) {
-        uint256 totalAssets = _getVault().totalAssets();
-        uint256 actualAssets = MockERC20(_getVault().asset()).balanceOf(
-            address(globalEscrow)
-        );
-        uint256 difference = totalAssets - actualAssets;
+    // function optimize_totalAssets_solvency() public view returns (int256) {
+    //     uint256 totalAssets = _getVault().totalAssets();
+    //     uint256 actualAssets = MockERC20(_getVault().asset()).balanceOf(
+    //         address(globalEscrow)
+    //     );
+    //     uint256 difference = totalAssets - actualAssets;
 
-        return int256(difference);
-        // uint256 differenceInShares = _getVault().convertToShares(difference);
+    //     return int256(difference);
+    //     // uint256 differenceInShares = _getVault().convertToShares(difference);
 
-        // if (differenceInShares > (10 ** IShareToken(_getShareToken()).decimals()) - 1) {
-        //     return int256(difference);
-        // }
+    //     // if (differenceInShares > (10 ** IShareToken(_getShareToken()).decimals()) - 1) {
+    //     //     return int256(difference);
+    //     // }
 
-        // return 0;
+    //     // return 0;
+    // }
+
+    function optimize_minting_shares_no_assets() public view returns (int256) {
+        return maxSharesMintNoAssets;
     }
 
-    function optimize_maxDeposit_greater() public view returns (int256) {
-        return maxDepositGreater;
-    }
-
-    function optimize_maxDeposit_less() public view returns (int256) {
-        return maxDepositLess;
-    }
-
-    function optimize_maxRedeem_greater() public view returns (int256) {
-        return maxRedeemGreater;
-    }
-
-    function optimize_maxRedeem_less() public view returns (int256) {
-        return maxRedeemLess;
+    function optimize_deposit_shares_no_assets() public view returns (int256) {
+        return maxSharesDepositNoAssets;
     }
 
     // ===============================

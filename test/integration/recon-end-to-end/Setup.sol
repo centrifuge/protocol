@@ -151,10 +151,8 @@ abstract contract Setup is
     // mapping(PoolId => ShareClassId[]) public activeShareClasses; // Replaced by ReconPoolManager
     // AssetId[] public trackedAssets; // Replaced by ReconAssetIdManager
 
-    int256 maxDepositGreater;
-    int256 maxDepositLess;
-    int256 maxRedeemGreater;
-    int256 maxRedeemLess;
+    int256 maxSharesMintNoAssets;
+    int256 maxSharesDepositNoAssets;
 
     modifier asAdmin() {
         vm.prank(address(this));
