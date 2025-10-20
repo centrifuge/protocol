@@ -1,28 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import {Test} from "forge-std/Test.sol";
-import {console2} from "forge-std/console2.sol";
-import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";
-import {MockERC20} from "@recon/MockERC20.sol";
-
-import {ShareClassId} from "src/core/types/ShareClassId.sol";
-import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {AssetId} from "src/core/types/AssetId.sol";
-import {PoolId} from "src/core/types/PoolId.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {AccountId, AccountType} from "src/core/hub/interfaces/IHub.sol";
-import {PoolEscrow} from "src/core/spoke/PoolEscrow.sol";
-import {IERC20} from "src/misc/interfaces/IERC20.sol";
-import {IValuation} from "src/core/hub/interfaces/IValuation.sol";
-import {D18} from "src/misc/types/D18.sol";
-import {RequestMessageLib} from "src/vaults/libraries/RequestMessageLib.sol";
-import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
-
-import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 import {TargetFunctions} from "./TargetFunctions.sol";
-import {CryticSanity} from "./CryticSanity.sol";
+
+import {D18} from "../../../src/misc/types/D18.sol";
+
+import {Test} from "forge-std/Test.sol";
+
+import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";
 
 // forge test --match-contract CryticToFoundry -vv
 contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
@@ -31,7 +16,10 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     // Helper functions to handle bytes calldata parameters
-    function hub_updateRestriction_wrapper(uint16 /* chainId */) external {
+    function hub_updateRestriction_wrapper(
+        uint16 /* chainId */
+    )
+        external {
         // TODO: Fix bytes calldata issue - skipping for now
         // hub_updateRestriction(chainId, "");
     }
@@ -87,12 +75,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     // issue here: https://github.com/Recon-Fuzz/centrifuge-invariants/issues/9
     function test_asyncVault_maxWithdraw_6() public {
         shortcut_deployNewTokenPoolAndShare(
-            0,
-            5133034522568139688867726516420444120114859979835844169205038226137238,
-            false,
-            false,
-            true,
-            false
+            0, 5133034522568139688867726516420444120114859979835844169205038226137238, false, false, true, false
         );
 
         shortcut_deposit_sync(0, 0);
@@ -105,11 +88,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
             440723970389807847737712878058492487915750186421824605771738298891959171
         );
 
-        asyncVault_maxWithdraw(
-            46,
-            0,
-            3504958222297179309436837969327488759080211702641964324755758
-        );
+        asyncVault_maxWithdraw(46, 0, 3504958222297179309436837969327488759080211702641964324755758);
     }
 
     // forge test --match-test test_property_accounting_and_holdings_soundness_6 -vvv
@@ -131,14 +110,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function test_asyncVault_maxMint_1() public {
         shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true, false);
 
-        shortcut_deposit_queue_cancel(
-            0,
-            0,
-            18917595704346110,
-            1,
-            1,
-            50924292192
-        );
+        shortcut_deposit_queue_cancel(0, 0, 18917595704346110, 1, 1, 50924292192);
 
         hub_notifyDeposit(1);
 

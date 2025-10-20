@@ -1,23 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
+import {TargetFunctions} from "./TargetFunctions.sol";
+
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+
+import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
+import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
+
 import {Test} from "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
+
 import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";
-import {MockERC20} from "@recon/MockERC20.sol";
-
-import {ShareClassId} from "src/core/types/ShareClassId.sol";
-import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {AssetId} from "src/core/types/AssetId.sol";
-import {PoolId} from "src/core/types/PoolId.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {AccountId, AccountType} from "src/core/hub/interfaces/IHub.sol";
-import {PoolEscrow} from "src/core/spoke/PoolEscrow.sol";
-
-import {TargetFunctions} from "./TargetFunctions.sol";
-import {IERC20} from "src/misc/interfaces/IERC20.sol";
-import {RequestCallbackMessageLib} from "src/vaults/libraries/RequestCallbackMessageLib.sol";
 
 /// @dev sanity tests for the fuzzing suite setup
 // forge test --match-contract CryticSanity --match-path test/integration/recon-end-to-end/CryticSanity.sol -vv
@@ -34,22 +30,14 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
     function nowDepositEpoch() private view returns (uint32) {
         IBaseVault vault = IBaseVault(_getVault());
         return
-            batchRequestManager.nowDepositEpoch(
-                vault.poolId(),
-                vault.scId(),
-                vaultRegistry.vaultDetails(vault).assetId
-            );
+            batchRequestManager.nowDepositEpoch(vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId);
     }
 
     /// @dev Get the current redeem epoch for the current vault
     function nowRedeemEpoch() private view returns (uint32) {
         IBaseVault vault = IBaseVault(_getVault());
         return
-            batchRequestManager.nowRedeemEpoch(
-                vault.poolId(),
-                vault.scId(),
-                vaultRegistry.vaultDetails(vault).assetId
-            );
+            batchRequestManager.nowRedeemEpoch(vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId);
     }
 
     /// === SANITY CHECKS === ///
@@ -92,11 +80,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         // price needs to be set in valuation before calling updatePricePoolPerShare
         transientValuation_setPrice_clamped(1e18);
-        hub_updateSharePrice(
-            vault.poolId().raw(),
-            uint128(vault.scId().raw()),
-            1e18
-        );
+        hub_updateSharePrice(vault.poolId().raw(), uint128(vault.scId().raw()), 1e18);
 
         hub_notifyAssetPrice();
         hub_notifySharePrice_clamped();
@@ -314,10 +298,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         console2.log("Holding value after update:", holdingValue);
 
         // Verify the holding value is now nonzero
-        assertTrue(
-            holdingValue > 0,
-            "Holding value should be nonzero after deposit"
-        );
+        assertTrue(holdingValue > 0, "Holding value should be nonzero after deposit");
 
         // Change price to demonstrate that the liability branch works with value changes
         transientValuation_setPrice_clamped(2e18);
@@ -338,9 +319,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         bool stillLiab = holdings.isLiability(poolId, scId, assetId);
         assertTrue(stillLiab, "Holding should still be marked as liability");
 
-        console2.log(
-            "Test completed: hub_updateHoldingValue successfully reached liability branch"
-        );
+        console2.log("Test completed: hub_updateHoldingValue successfully reached liability branch");
     }
 
     // forge test --match-test test_shortcut_liability_vs_regular_holding -vvv
@@ -355,17 +334,12 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         // Verify it's NOT a liability
         bool isLiab1 = holdings.isLiability(poolId1, scId1, assetId1);
-        assertFalse(
-            isLiab1,
-            "Regular holding should NOT be marked as liability"
-        );
+        assertFalse(isLiab1, "Regular holding should NOT be marked as liability");
         console2.log("Regular holding verified - isLiability:", isLiab1);
 
         // Reset for second test (this is a simple demonstration)
         // In a real fuzzing scenario, you'd typically have separate test functions
-        console2.log(
-            "Test completed: Both regular and liability holdings work correctly"
-        );
+        console2.log("Test completed: Both regular and liability holdings work correctly");
     }
 
     function test_balanceSheet_issue_basic() public {
@@ -402,10 +376,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         // Approve and revoke
         IBaseVault vault = IBaseVault(_getVault());
         vm.startPrank(_getActor());
-        spoke.shareToken(vault.poolId(), vault.scId()).approve(
-            address(balanceSheet),
-            type(uint256).max
-        );
+        spoke.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
         vm.stopPrank();
 
         balanceSheet_revoke(100e18);
@@ -482,10 +453,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         // Approve for revocations
         IBaseVault vault = IBaseVault(_getVault());
         vm.startPrank(_getActor());
-        spoke.shareToken(vault.poolId(), vault.scId()).approve(
-            address(balanceSheet),
-            type(uint256).max
-        );
+        spoke.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
         vm.stopPrank();
 
         // Execute sequence

@@ -2,24 +2,24 @@
 pragma solidity 0.8.28;
 
 // Recon Deps
+
+import {D18} from "../../../../src/misc/types/D18.sol";
+import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
+
+import {PoolId} from "../../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../../src/core/types/AssetId.sol";
+import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {MessageLib} from "../../../../src/core/messaging/libraries/MessageLib.sol";
+
+import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
+import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
+
+import {OpType} from "../BeforeAfter.sol";
+import {Properties} from "../properties/Properties.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
-import {vm} from "@chimera/Hevm.sol";
-import {console2} from "forge-std/console2.sol";
 
 // Dependencies
-import {ERC20} from "src/misc/ERC20.sol";
-import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MessageLib} from "src/core/messaging/libraries/MessageLib.sol";
-import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
-import {ShareClassId} from "src/core/types/ShareClassId.sol";
-import {PoolId} from "src/core/types/PoolId.sol";
-import {AssetId} from "src/core/types/AssetId.sol";
-import {D18} from "src/misc/types/D18.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-
-import {Properties} from "../properties/Properties.sol";
-import {OpType} from "../BeforeAfter.sol";
 
 // Only for Share
 abstract contract SpokeTargets is BaseTargetFunctions, Properties {
@@ -65,17 +65,20 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     // }
 
     // Step 1
-    function spoke_registerAsset(
-        address assetAddress,
-        uint256 erc6909TokenId
-    ) public updateGhosts asAdmin returns (uint128 assetId) {
-        assetId = spoke
-        .registerAsset{value: 0.1 ether}(
-            DEFAULT_DESTINATION_CHAIN,
-            assetAddress,
-            erc6909TokenId,
-            address(this) // refund address
-        ).raw();
+    function spoke_registerAsset(address assetAddress, uint256 erc6909TokenId)
+        public
+        updateGhosts
+        asAdmin
+        returns (uint128 assetId)
+    {
+        assetId = spoke.registerAsset{
+            value: 0.1 ether
+        }(
+                DEFAULT_DESTINATION_CHAIN,
+                assetAddress,
+                erc6909TokenId,
+                address(this) // refund address
+            ).raw();
 
         // Only if successful
         assetAddressToAssetId[assetAddress] = assetId;
@@ -94,10 +97,12 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 3
-    function spoke_addShareClass(
-        uint128 scIdAsUint,
-        uint8 decimals
-    ) public updateGhosts asAdmin returns (address, bytes16) {
+    function spoke_addShareClass(uint128 scIdAsUint, uint8 decimals)
+        public
+        updateGhosts
+        asAdmin
+        returns (address, bytes16)
+    {
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
         bytes16 scId = bytes16(scIdAsUint);
@@ -112,9 +117,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
             keccak256(abi.encodePacked(_getPool(), scId)),
             hook
         );
-        address newToken = address(
-            spoke.shareToken(_getPool(), ShareClassId.wrap(scId))
-        );
+        address newToken = address(spoke.shareToken(_getPool(), ShareClassId.wrap(scId)));
 
         _addShareClassId(scId);
         _addShareClassToPool(_getPool(), ShareClassId.wrap(scId));
@@ -124,28 +127,12 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 4 - deploy the pool
-    function spoke_deployVault(
-        bool isAsync
-    ) public updateGhostsWithType(OpType.ADMIN) asAdmin returns (address) {
+    function spoke_deployVault(bool isAsync) public updateGhostsWithType(OpType.ADMIN) asAdmin returns (address) {
         address vault;
         if (isAsync) {
-            vault = address(
-                vaultRegistry.deployVault(
-                    _getPool(),
-                    _getShareClassId(),
-                    _getAssetId(),
-                    asyncVaultFactory
-                )
-            );
+            vault = address(vaultRegistry.deployVault(_getPool(), _getShareClassId(), _getAssetId(), asyncVaultFactory));
         } else {
-            vault = address(
-                vaultRegistry.deployVault(
-                    _getPool(),
-                    _getShareClassId(),
-                    _getAssetId(),
-                    syncVaultFactory
-                )
-            );
+            vault = address(vaultRegistry.deployVault(_getPool(), _getShareClassId(), _getAssetId(), syncVaultFactory));
         }
 
         _addVault(vault);
@@ -158,9 +145,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 5 - set the request manager
-    function spoke_setRequestManager(
-        address vault
-    ) public updateGhosts asAdmin {
+    function spoke_setRequestManager(address vault) public updateGhosts asAdmin {
         IBaseVault vaultInstance = IBaseVault(vault);
         PoolId poolId = vaultInstance.poolId();
 
@@ -183,12 +168,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
 
     // Extra 7 - remove the vault
     function spoke_unlinkVault() public updateGhosts asAdmin {
-        vaultRegistry.unlinkVault(
-            _getPool(),
-            _getShareClassId(),
-            _getAssetId(),
-            IBaseVault(_getVault())
-        );
+        vaultRegistry.unlinkVault(_getPool(), _getShareClassId(), _getAssetId(), IBaseVault(_getVault()));
     }
 
     /**
@@ -199,47 +179,26 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
             _getPool(),
             _getShareClassId(),
             UpdateRestrictionMessageLib.serialize(
-                UpdateRestrictionMessageLib.UpdateRestrictionMember(
-                    _getActor().toBytes32(),
-                    validUntil
-                )
+                UpdateRestrictionMessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil)
             )
         );
     }
 
     // NOTE: in e2e tests, these get called as callbacks in notifyAssetPrice and notifySharePrice
-    function spoke_updatePricePoolPerShare(
-        uint128 price,
-        uint64 computedAt
-    ) public updateGhostsWithType(OpType.ADMIN) asAdmin {
+    function spoke_updatePricePoolPerShare(uint128 price, uint64 computedAt)
+        public
+        updateGhostsWithType(OpType.ADMIN)
+        asAdmin
+    {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
-        spoke.updatePricePoolPerShare(
-            poolId,
-            scId,
-            D18.wrap(price),
-            computedAt
-        );
-        spoke.updatePricePoolPerAsset(
-            poolId,
-            scId,
-            assetId,
-            D18.wrap(price),
-            computedAt
-        );
+        spoke.updatePricePoolPerShare(poolId, scId, D18.wrap(price), computedAt);
+        spoke.updatePricePoolPerAsset(poolId, scId, assetId, D18.wrap(price), computedAt);
     }
 
-    function spoke_updateShareMetadata(
-        string memory tokenName,
-        string memory tokenSymbol
-    ) public updateGhosts asAdmin {
-        spoke.updateShareMetadata(
-            _getPool(),
-            _getShareClassId(),
-            tokenName,
-            tokenSymbol
-        );
+    function spoke_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public updateGhosts asAdmin {
+        spoke.updateShareMetadata(_getPool(), _getShareClassId(), tokenName, tokenSymbol);
     }
 
     function spoke_freeze() public updateGhosts asAdmin {
@@ -247,9 +206,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
             _getPool(),
             _getShareClassId(),
             UpdateRestrictionMessageLib.serialize(
-                UpdateRestrictionMessageLib.UpdateRestrictionFreeze(
-                    _getActor().toBytes32()
-                )
+                UpdateRestrictionMessageLib.UpdateRestrictionFreeze(_getActor().toBytes32())
             )
         );
     }
@@ -259,9 +216,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
             _getPool(),
             _getShareClassId(),
             UpdateRestrictionMessageLib.serialize(
-                UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(
-                    _getActor().toBytes32()
-                )
+                UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32())
             )
         );
     }

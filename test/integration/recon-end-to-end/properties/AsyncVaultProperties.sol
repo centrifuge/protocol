@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import {Asserts} from "@chimera/Asserts.sol";
-import {vm} from "@chimera/Hevm.sol";
+import {IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
+
+import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
+
+import {IAsyncVault} from "../../../../src/vaults/interfaces/IAsyncVault.sol";
+
 import "forge-std/console2.sol";
 
 import {Setup} from "../Setup.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
-import {IShareToken} from "src/core/spoke/interfaces/IShareToken.sol";
+import {Asserts} from "@chimera/Asserts.sol";
 
 /// @dev ERC-7540 Properties
 /// TODO: Make pointers with Reverts
@@ -25,15 +27,13 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
     function asyncVault_3(address asyncVaultTarget) public virtual {
         // Doesn't hold on zero price
         if (
-            IAsyncVault(asyncVaultTarget).convertToAssets(
-                10 ** IERC20Metadata(IAsyncVault(asyncVaultTarget).share()).decimals()
-            ) == 0
+            IAsyncVault(asyncVaultTarget)
+                    .convertToAssets(10 ** IERC20Metadata(IAsyncVault(asyncVaultTarget).share()).decimals()) == 0
         ) return;
 
         eq(
-            IAsyncVault(asyncVaultTarget).convertToAssets(
-                IERC20Metadata(IAsyncVault(asyncVaultTarget).share()).totalSupply()
-            ),
+            IAsyncVault(asyncVaultTarget)
+                .convertToAssets(IERC20Metadata(IAsyncVault(asyncVaultTarget).share()).totalSupply()),
             IAsyncVault(asyncVaultTarget).totalAssets(),
             "Property: 7540-3"
         );
@@ -42,9 +42,8 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
     /// @dev Property: 7540-4 convertToShares(totalAssets) == totalSupply unless price is 0.0
     function asyncVault_4(address asyncVaultTarget) public virtual {
         if (
-            IAsyncVault(asyncVaultTarget).convertToAssets(
-                10 ** IERC20Metadata(IAsyncVault(asyncVaultTarget).share()).decimals()
-            ) == 0
+            IAsyncVault(asyncVaultTarget)
+                    .convertToAssets(10 ** IERC20Metadata(IAsyncVault(asyncVaultTarget).share()).decimals()) == 0
         ) return;
 
         // convertToShares(totalAssets) == totalSupply
@@ -252,8 +251,9 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         }
 
         try IAsyncVault(asyncVaultTarget).mint(maxMint, _getActor()) {
-            // Success here
-        } catch {
+        // Success here
+        }
+        catch {
             t(false, "Property: 7540-9 max mint reverts");
         }
     }

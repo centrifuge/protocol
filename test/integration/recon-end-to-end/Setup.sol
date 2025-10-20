@@ -1,82 +1,77 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import {BaseSetup} from "@chimera/BaseSetup.sol";
+// Vaults
+
+import {MockGateway} from "./mocks/MockGateway.sol";
+import {SharedStorage} from "./helpers/SharedStorage.sol";
+import {MockAccountValue} from "./mocks/MockAccountValue.sol";
+import {ReconPoolManager} from "./managers/ReconPoolManager.sol";
+import {ReconShareManager} from "./managers/ReconShareManager.sol";
+import {ReconVaultManager} from "./managers/ReconVaultManager.sol";
+import {ReconAssetIdManager} from "./managers/ReconAssetIdManager.sol";
+import {ReconShareClassManager} from "./managers/ReconShareClassManager.sol";
+import {BatchRequestManagerHarness} from "./mocks/BatchRequestManagerHarness.sol";
+
+import {Escrow} from "../../../src/misc/Escrow.sol";
+import {D18, d18} from "../../../src/misc/types/D18.sol";
+
+import {MockAdapter} from "../../core/mocks/MockAdapter.sol";
+import {MockValuation} from "../../core/mocks/MockValuation.sol";
+
+import {Hub} from "../../../src/core/hub/Hub.sol";
+import {Spoke} from "../../../src/core/spoke/Spoke.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {Holdings} from "../../../src/core/hub/Holdings.sol";
+import {IHub} from "../../../src/core/hub/interfaces/IHub.sol";
+import {AccountId} from "../../../src/core/types/AccountId.sol";
+import {Accounting} from "../../../src/core/hub/Accounting.sol";
+import {Gateway} from "../../../src/core/messaging/Gateway.sol";
+import {HubHandler} from "../../../src/core/hub/HubHandler.sol";
+import {HubRegistry} from "../../../src/core/hub/HubRegistry.sol";
+import {BalanceSheet} from "../../../src/core/spoke/BalanceSheet.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
+import {IHoldings} from "../../../src/core/hub/interfaces/IHoldings.sol";
+import {IAccounting} from "../../../src/core/hub/interfaces/IAccounting.sol";
+import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
+import {ShareClassManager} from "../../../src/core/hub/ShareClassManager.sol";
+import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {TokenFactory} from "../../../src/core/spoke/factories/TokenFactory.sol";
+import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.sol";
+import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
+import {PoolEscrowFactory} from "../../../src/core/spoke/factories/PoolEscrowFactory.sol";
+import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
+import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassManager.sol";
+
+import {Root} from "../../../src/admin/Root.sol";
+import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
+import {TokenRecoverer} from "../../../src/admin/TokenRecoverer.sol";
+
+import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
+
+import {IdentityValuation} from "../../../src/valuations/IdentityValuation.sol";
+
+import {SyncManager} from "../../../src/vaults/SyncManager.sol";
+import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
+import {AsyncVaultFactory} from "../../../src/vaults/factories/AsyncVaultFactory.sol";
+import {RefundEscrowFactory} from "../../../src/vaults/factories/RefundEscrowFactory.sol";
+import {SyncDepositVaultFactory} from "../../../src/vaults/factories/SyncDepositVaultFactory.sol";
+
 import {vm} from "@chimera/Hevm.sol";
+import {Utils} from "@recon/Utils.sol";
+import {BaseSetup} from "@chimera/BaseSetup.sol";
 import {ActorManager} from "@recon/ActorManager.sol";
 import {AssetManager} from "@recon/AssetManager.sol";
-import {MockERC20} from "@recon/MockERC20.sol";
-import {Utils} from "@recon/Utils.sol";
-import {console2} from "forge-std/console2.sol";
-
-// Vaults
-import {Escrow} from "src/misc/Escrow.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {Root} from "src/admin/Root.sol";
-import {BalanceSheet} from "src/core/spoke/BalanceSheet.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
-import {RefundEscrowFactory} from "src/vaults/factories/RefundEscrowFactory.sol";
-import {TokenFactory} from "src/core/spoke/factories/TokenFactory.sol";
-import {PoolEscrowFactory} from "src/core/spoke/factories/PoolEscrowFactory.sol";
-import {SyncManager} from "src/vaults/SyncManager.sol";
-import {ShareToken} from "src/core/spoke/ShareToken.sol";
-import {Spoke} from "src/core/spoke/Spoke.sol";
-import {VaultRegistry} from "src/core/spoke/VaultRegistry.sol";
 
 // Hub
-import {Accounting} from "src/core/hub/Accounting.sol";
-import {HubRegistry} from "src/core/hub/HubRegistry.sol";
-import {Gateway} from "src/core/messaging/Gateway.sol";
-import {Holdings} from "src/core/hub/Holdings.sol";
-import {Hub} from "src/core/hub/Hub.sol";
-import {ShareClassManager} from "src/core/hub/ShareClassManager.sol";
-import {BatchRequestManagerHarness} from "test/integration/recon-end-to-end/mocks/BatchRequestManagerHarness.sol";
-import {IdentityValuation} from "src/valuations/IdentityValuation.sol";
-import {MessageProcessor} from "src/core/messaging/MessageProcessor.sol";
-import {MessageDispatcher} from "src/core/messaging/MessageDispatcher.sol";
-import {IMessageDispatcher} from "src/core/messaging/interfaces/IMessageDispatcher.sol";
-import {TokenRecoverer} from "src/admin/TokenRecoverer.sol";
-import {MockAdapter} from "test/core/mocks/MockAdapter.sol";
-import {AccountId} from "src/core/types/AccountId.sol";
-import {AssetId} from "src/core/types/AssetId.sol";
-import {HubHandler} from "src/core/hub/HubHandler.sol";
-import {ShareClassId} from "src/core/types/ShareClassId.sol";
 
 // Interfaces
-import {IHubRegistry} from "src/core/hub/interfaces/IHubRegistry.sol";
-import {IHub} from "src/core/hub/interfaces/IHub.sol";
-import {IAccounting} from "src/core/hub/interfaces/IAccounting.sol";
-import {IHoldings} from "src/core/hub/interfaces/IHoldings.sol";
-import {IHubMessageSender} from "src/core/messaging/interfaces/IGatewaySenders.sol";
-import {IShareClassManager} from "src/core/hub/interfaces/IShareClassManager.sol";
-import {IBatchRequestManager} from "src/vaults/interfaces/IBatchRequestManager.sol";
-import {IHubRequestManager} from "src/core/hub/interfaces/IHubRequestManager.sol";
-import {IGateway} from "src/core/messaging/interfaces/IGateway.sol";
-import {IMessageHandler} from "src/core/messaging/interfaces/IMessageHandler.sol";
-import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
-import {IVaultFactory} from "src/core/spoke/factories/interfaces/IVaultFactory.sol";
-import {IHubHandler} from "src/core/hub/interfaces/IHubHandler.sol";
-import {IMultiAdapter} from "src/core/messaging/interfaces/IMultiAdapter.sol";
 
 // Common
-import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {ERC20} from "src/misc/ERC20.sol";
-import {IRoot} from "src/admin/interfaces/IRoot.sol";
-import {PoolId} from "src/core/types/PoolId.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
-import {MockValuation} from "test/core/mocks/MockValuation.sol";
 
 // Test Utils
-import {SharedStorage} from "test/integration/recon-end-to-end/helpers/SharedStorage.sol";
-import {MockGateway} from "test/integration/recon-end-to-end/mocks/MockGateway.sol";
-import {MockAccountValue} from "test/integration/recon-end-to-end/mocks/MockAccountValue.sol";
-import {ReconPoolManager} from "test/integration/recon-end-to-end/managers/ReconPoolManager.sol";
-import {ReconShareClassManager} from "test/integration/recon-end-to-end/managers/ReconShareClassManager.sol";
-import {ReconAssetIdManager} from "test/integration/recon-end-to-end/managers/ReconAssetIdManager.sol";
-import {ReconVaultManager} from "test/integration/recon-end-to-end/managers/ReconVaultManager.sol";
-import {ReconShareManager} from "test/integration/recon-end-to-end/managers/ReconShareManager.sol";
 
 abstract contract Setup is
     BaseSetup,
@@ -202,40 +197,19 @@ abstract contract Setup is
 
         balanceSheet = new BalanceSheet(root, address(this));
         fullRestrictions = new FullRestrictions(
-            address(root),
-            address(spoke),
-            address(balanceSheet),
-            address(globalEscrow),
-            address(spoke),
-            address(this)
+            address(root), address(spoke), address(balanceSheet), address(globalEscrow), address(spoke), address(this)
         );
         refundEscrowFactory = new RefundEscrowFactory(address(this));
-        asyncRequestManager = new AsyncRequestManager(
-            globalEscrow,
-            refundEscrowFactory,
-            address(this)
-        );
+        asyncRequestManager = new AsyncRequestManager(globalEscrow, refundEscrowFactory, address(this));
         syncManager = new SyncManager(address(this));
-        asyncVaultFactory = new AsyncVaultFactory(
-            address(this),
-            asyncRequestManager,
-            address(this)
-        );
-        syncVaultFactory = new SyncDepositVaultFactory(
-            address(root),
-            syncManager,
-            asyncRequestManager,
-            address(this)
-        );
+        asyncVaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
+        syncVaultFactory = new SyncDepositVaultFactory(address(root), syncManager, asyncRequestManager, address(this));
         tokenFactory = new TokenFactory(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
         vaultRegistry = new VaultRegistry(address(this));
         spoke = new Spoke(tokenFactory, address(this));
 
-        tokenRecoverer = new TokenRecoverer(
-            IRoot(address(root)),
-            address(this)
-        );
+        tokenRecoverer = new TokenRecoverer(IRoot(address(root)), address(this));
         Root(address(root)).rely(address(tokenRecoverer));
         tokenRecoverer.rely(address(root));
         tokenRecoverer.rely(address(messageDispatcher));
@@ -282,26 +256,15 @@ abstract contract Setup is
         hubRegistry = new HubRegistry(address(this));
         transientValuation = new MockValuation(hubRegistry);
         identityValuation = new IdentityValuation(hubRegistry);
-        mockAdapter = new MockAdapter(
-            CENTRIFUGE_CHAIN_ID,
-            IMessageHandler(address(gateway))
-        );
+        mockAdapter = new MockAdapter(CENTRIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
         mockAccountValue = new MockAccountValue();
 
         // Core Hub Contracts
         accounting = new Accounting(address(this));
-        holdings = new Holdings(
-            IHubRegistry(address(hubRegistry)),
-            address(this)
-        );
-        shareClassManager = new ShareClassManager(
-            IHubRegistry(address(hubRegistry)),
-            address(this)
-        );
+        holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
+        shareClassManager = new ShareClassManager(IHubRegistry(address(hubRegistry)), address(this));
         batchRequestManager = new BatchRequestManagerHarness(
-            IHubRegistry(address(hubRegistry)),
-            IGateway(address(gateway)),
-            address(this)
+            IHubRegistry(address(hubRegistry)), IGateway(address(gateway)), address(this)
         );
         hub = new Hub(
             IGateway(address(gateway)),
@@ -386,9 +349,7 @@ abstract contract Setup is
     /// @dev Returns a random actor from the list of actors
     /// @dev This is useful for cases where we want to have caller and recipient be different actors
     /// @param entropy The determines which actor is chosen from the array
-    function _getRandomActor(
-        uint256 entropy
-    ) internal view returns (address randomActor) {
+    function _getRandomActor(uint256 entropy) internal view returns (address randomActor) {
         address[] memory actorsArray = _getActors();
         randomActor = actorsArray[entropy % actorsArray.length];
     }
@@ -483,18 +444,11 @@ abstract contract Setup is
     // ===============================
 
     /// @notice Capture share queue state before operation
-    function _captureShareQueueState(
-        PoolId poolId,
-        ShareClassId scId
-    ) internal {
+    function _captureShareQueueState(PoolId poolId, ShareClassId scId) internal {
         bytes32 key = _poolShareKey(poolId, scId);
 
-        (
-            uint128 delta,
-            bool isPositive,
-            uint32 queuedAssetCounter,
-            uint64 nonce
-        ) = balanceSheet.queuedShares(poolId, scId);
+        (uint128 delta, bool isPositive, uint32 queuedAssetCounter, uint64 nonce) =
+            balanceSheet.queuedShares(poolId, scId);
 
         before_shareQueueDelta[key] = delta;
         before_shareQueueIsPositive[key] = isPositive;
@@ -502,10 +456,7 @@ abstract contract Setup is
     }
 
     /// @notice Generate consistent key for pool-share class combination
-    function _poolShareKey(
-        PoolId poolId,
-        ShareClassId scId
-    ) internal pure returns (bytes32) {
+    function _poolShareKey(PoolId poolId, ShareClassId scId) internal pure returns (bytes32) {
         return keccak256(abi.encode(poolId, scId));
     }
 
@@ -606,12 +557,7 @@ abstract contract Setup is
     }
 
     /// @dev Track transfer attempts for endorsement validation
-    function _trackEndorsedTransfer(
-        address from,
-        address to,
-        PoolId poolId,
-        ShareClassId scId
-    ) internal {
+    function _trackEndorsedTransfer(address from, address to, PoolId poolId, ShareClassId scId) internal {
         bytes32 key = keccak256(abi.encode(poolId, scId));
 
         // Track transfer details
@@ -624,11 +570,7 @@ abstract contract Setup is
         }
 
         // Track system contracts as implicitly endorsed
-        if (
-            from == address(balanceSheet) ||
-            from == address(spoke) ||
-            from == address(hub)
-        ) {
+        if (from == address(balanceSheet) || from == address(spoke) || from == address(hub)) {
             ghost_isEndorsedContract[from] = true;
             ghost_endorsedTransferAttempts[key]++;
         }

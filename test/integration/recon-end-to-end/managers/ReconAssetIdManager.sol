@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.8.0;
 
-import {BaseSetup} from "@chimera/BaseSetup.sol";
-import {vm} from "@chimera/Hevm.sol";
-import {EnumerableSet} from "@recon/EnumerableSet.sol";
+import {AssetId} from "../../../../src/core/types/AssetId.sol";
 
-import {AssetId} from "src/core/types/AssetId.sol";
+import {EnumerableSet} from "@recon/EnumerableSet.sol";
 
 /// @dev Source of truth for the assetIds being used in the test
 /// @notice No assetIds should be used in the suite without being added here first
