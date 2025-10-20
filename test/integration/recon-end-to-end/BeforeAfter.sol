@@ -341,7 +341,8 @@ abstract contract BeforeAfter is Setup {
 
         try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 _priceShare) {
             _structToUpdate.pricePoolPerShare[poolId][scId] = _priceShare;
-        } catch (bytes memory /* reason */) {
+        } catch (bytes memory) {
+            /* reason */
             _structToUpdate.pricePoolPerShare[poolId][scId] = D18.wrap(0);
         }
 

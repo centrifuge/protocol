@@ -74,14 +74,8 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         view
         returns (uint128)
     {
-        (
-            uint128 approvedShareAmount,
-            ,
-            ,
-            ,
-            ,
-
-        ) = batchRequestManager.epochRedeemAmounts(poolId, scId, payoutAssetId, nowRevokeEpochId);
+        (uint128 approvedShareAmount,,,,,) =
+            batchRequestManager.epochRedeemAmounts(poolId, scId, payoutAssetId, nowRevokeEpochId);
 
         // Return the approved share amount which represents the revoked shares
         return approvedShareAmount;

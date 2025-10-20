@@ -447,8 +447,7 @@ abstract contract Setup is
     function _captureShareQueueState(PoolId poolId, ShareClassId scId) internal {
         bytes32 key = _poolShareKey(poolId, scId);
 
-        (uint128 delta, bool isPositive,, uint64 nonce) =
-            balanceSheet.queuedShares(poolId, scId);
+        (uint128 delta, bool isPositive,, uint64 nonce) = balanceSheet.queuedShares(poolId, scId);
 
         before_shareQueueDelta[key] = delta;
         before_shareQueueIsPositive[key] = isPositive;
@@ -557,7 +556,15 @@ abstract contract Setup is
     }
 
     /// @dev Track transfer attempts for endorsement validation
-    function _trackEndorsedTransfer(address from, address /* to */, PoolId poolId, ShareClassId scId) internal {
+    function _trackEndorsedTransfer(
+        address from,
+        address,
+        /* to */
+        PoolId poolId,
+        ShareClassId scId
+    )
+        internal
+    {
         bytes32 key = keccak256(abi.encode(poolId, scId));
 
         // Track transfer details

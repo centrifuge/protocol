@@ -1471,8 +1471,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                 ShareClassId scId = shareClasses[j];
                 bytes32 key = _poolShareKey(poolId, scId);
 
-                (,,, uint64 nonce) =
-                    balanceSheet.queuedShares(poolId, scId);
+                (,,, uint64 nonce) = balanceSheet.queuedShares(poolId, scId);
 
                 // If a submission occurred, verify reset
                 if (nonce > before_nonce[key]) {
@@ -2025,7 +2024,11 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         if (!poolHasShareClass) return;
 
-        try spoke.shareToken(poolId, scId) returns (IShareToken /* shareToken */) {}
+        try spoke.shareToken(
+            poolId, scId
+        ) returns (
+            IShareToken /* shareToken */
+        ) {}
         catch Error(string memory reason) {
             if (ghost_supplyOperationOccurred[key]) {
                 t(false, string.concat("Share token unexpectedly missing: ", reason));

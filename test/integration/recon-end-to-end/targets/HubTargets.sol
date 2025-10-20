@@ -262,7 +262,14 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     // ═══════════════════════════════════════════════════════════════
     // ADMIN FUNCTIONS
     // ═══════════════════════════════════════════════════════════════
-    function hub_setRequestManager(uint64 poolId, bytes16 /* shareClassId */, uint128 /* assetId */, address requestManager)
+    function hub_setRequestManager(
+        uint64 poolId,
+        bytes16,
+        /* shareClassId */
+        uint128,
+        /* assetId */
+        address requestManager
+    )
         public
         asAdmin
     {

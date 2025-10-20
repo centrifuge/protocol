@@ -71,12 +71,14 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
     function _handleRequestDepositSuccess(
         IBaseVault vault,
-        PoolId /* poolId */,
+        PoolId,
+        /* poolId */
         ShareClassId scId,
         AssetId assetId,
         address to,
         uint256 assets,
-        uint128 /* prevDeposits */,
+        uint128,
+        /* prevDeposits */
         uint128 /* prevWithdrawals */
     ) private {
         // ghost tracking
@@ -588,7 +590,14 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    function vault_withdraw(uint256 /* assets */, uint256 /* toEntropy */) public updateGhostsWithType(OpType.REMOVE) {
+    function vault_withdraw(
+        uint256,
+        /* assets */
+        uint256 /* toEntropy */
+    )
+        public
+        updateGhostsWithType(OpType.REMOVE)
+    {
         IBaseVault vault = _getVault();
         _captureShareQueueState(vault.poolId(), vault.scId());
 
