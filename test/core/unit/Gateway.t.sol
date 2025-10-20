@@ -609,7 +609,6 @@ contract GatewayTestEndBatching is GatewayTest {
 
         gateway.endBatching{value: cost + 1234}(REFUND);
 
-        assertEq(REFUND.balance, 1234);
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
         assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), new bytes(0));
         assertEq(gateway.batchLocatorsLength(), 0);
@@ -630,7 +629,6 @@ contract GatewayTestEndBatching is GatewayTest {
 
         gateway.endBatching{value: cost + 1234}(REFUND);
 
-        assertEq(REFUND.balance, 1234);
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
         assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), new bytes(0));
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID + 1, POOL_A), 0);
@@ -654,7 +652,6 @@ contract GatewayTestEndBatching is GatewayTest {
 
         gateway.endBatching{value: cost * 2 + 1234}(REFUND);
 
-        assertEq(REFUND.balance, 1234);
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
         assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), new bytes(0));
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_0), 0);
@@ -845,9 +842,10 @@ contract IntegrationMock is Test {
         gateway = gateway_;
     }
 
-    function _nested() external {
+    function _nested(address refund) external payable {
         gateway.lockCallback();
-        gateway.withBatch(abi.encodeWithSelector(this._success.selector, false, 2), address(0));
+        assertEq(msg.value, 1234);
+        gateway.withBatch{value: msg.value}(abi.encodeWithSelector(this._success.selector, false, 2), refund);
     }
 
     function _emptyError() external {
@@ -872,8 +870,8 @@ contract IntegrationMock is Test {
         gateway.lockCallback();
     }
 
-    function callNested(address refund) external {
-        gateway.withBatch(abi.encodeWithSelector(this._nested.selector), refund);
+    function callNested(address refund) external payable {
+        gateway.withBatch{value: msg.value}(abi.encodeWithSelector(this._nested.selector, refund), msg.value, refund);
     }
 
     function callEmptyError(address refund) external {
@@ -957,9 +955,11 @@ contract GatewayTestWithBatch is GatewayTest {
 
     function testWithCallbackNested() public {
         vm.prank(ANY);
-        integration.callNested(REFUND);
+        vm.deal(ANY, 1234);
+        integration.callNested{value: 1234}(REFUND);
 
         assertEq(integration.wasCalled(), true);
+        assertEq(REFUND.balance, 1234); // Refunded by the nested withBatch
     }
 
     function testWithCallbackPaid() public {
