@@ -1,0 +1,69 @@
+// SPDX-License-Identifier: GPL-2.0
+pragma solidity ^0.8.0;
+
+import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+
+import {EnumerableSet} from "@recon/EnumerableSet.sol";
+
+/// @dev Source of truth for the share classes being used in the test
+/// @notice No share classes should be used in the suite without being added here first
+abstract contract ReconShareClassManager {
+    using EnumerableSet for EnumerableSet.Bytes32Set;
+
+    /// @notice The current target for this set of variables
+    bytes16 private __shareClassId;
+
+    /// @notice The list of all share classes being used
+    EnumerableSet.Bytes32Set private _shareClassIds;
+
+    // If the current target is address(0) then it has not been setup yet and should revert
+    error ShareClassNotSetup();
+    // Do not allow duplicates
+    error ShareClassExists();
+    // Enable only added share classes
+    error ShareClassNotAdded();
+
+    /// @notice Returns the current active share class
+    function _getShareClassId() internal view returns (ShareClassId) {
+        return ShareClassId.wrap(__shareClassId);
+    }
+
+    /// @notice Returns all share classes being used
+    function _getShareClassIds() internal view returns (ShareClassId[] memory) {
+        bytes32[] memory rawValues = _shareClassIds.values();
+        ShareClassId[] memory result = new ShareClassId[](rawValues.length);
+        for (uint256 i = 0; i < rawValues.length; i++) {
+            result[i] = ShareClassId.wrap(bytes16(rawValues[i]));
+        }
+        return result;
+    }
+
+    /// @notice Adds a share class to the list of share classes and sets it as the current share class
+    /// @param target The id of the share class to add
+    function _addShareClassId(bytes16 target) internal {
+        if (_shareClassIds.contains(bytes32(target))) {
+            revert ShareClassExists();
+        }
+
+        _shareClassIds.add(bytes32(target));
+        __shareClassId = target;
+    }
+
+    /// @notice Removes a share class from the list of share classes
+    /// @param target The id of the share class to remove
+    function _removeShareClassId(bytes16 target) internal {
+        if (!_shareClassIds.contains(bytes32(target))) {
+            revert ShareClassNotAdded();
+        }
+
+        _shareClassIds.remove(bytes32(target));
+    }
+
+    /// @notice Switches the current share class based on the entropy
+    /// @param entropy The entropy to choose a random share class in the set for switching
+    function _switchShareClassId(uint256 entropy) internal {
+        bytes32[] memory values = _shareClassIds.values();
+        bytes16 target = bytes16(values[entropy % values.length]);
+        __shareClassId = target;
+    }
+}
