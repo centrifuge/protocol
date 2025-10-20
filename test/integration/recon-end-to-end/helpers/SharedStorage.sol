@@ -218,8 +218,6 @@ abstract contract SharedStorage {
     mapping(bytes32 => uint256) public ghost_totalReserveOperations;
     mapping(bytes32 => uint256) public ghost_totalUnreserveOperations;
     mapping(bytes32 => uint256) public ghost_netReserved;
-    mapping(bytes32 => bool) public ghost_reserveOverflow;
-    mapping(bytes32 => bool) public ghost_reserveUnderflow;
     mapping(bytes32 => uint256) public ghost_reserveIntegrityViolations;
 
     // ===============================

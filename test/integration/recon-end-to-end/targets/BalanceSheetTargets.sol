@@ -453,6 +453,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
     // QUEUE OPERATIONS
     // ===============================
 
+    /// @dev Property
     function balanceSheet_reserve(
         uint256 tokenId,
         uint128 amount
@@ -470,30 +471,32 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track reserve operations
         ghost_totalReserveOperations[key]++;
 
-        // Check for overflow before updating
-        if (ghost_netReserved[key] > type(uint256).max - amount) {
-            ghost_reserveOverflow[key] = true;
-            ghost_reserveIntegrityViolations[key]++;
-        } else {
-            ghost_netReserved[key] += amount;
+        try balanceSheet.reserve(poolId, scId, vault.asset(), tokenId, amount) {
+            if (ghost_netReserved[key] <= type(uint256).max - amount) {
+                ghost_netReserved[key] += amount;
+            }
 
-            // Update max reserved if needed
+            // Track escrow balance sufficiency
+            ghost_escrowSufficiencyTracked[key] = true;
+            uint128 newAvailable = balanceSheet.availableBalanceOf(
+                poolId,
+                scId,
+                vault.asset(),
+                tokenId
+            );
+            ghost_escrowAvailableBalance[key] = newAvailable;
+            ghost_escrowReservedBalance[key] = ghost_netReserved[key];
+        } catch (bytes memory err) {
+            bool overflowRevert = checkError(err, Panic.arithmeticPanic);
+
+            // Core Invariant 4: No overflow occurred
+            if (ghost_netReserved[key] > type(uint256).max - amount) {
+                t(!overflowRevert, "Reserve operation caused overflow");
+            }
         }
-
-        balanceSheet.reserve(poolId, scId, vault.asset(), tokenId, amount);
-
-        // Track escrow balance sufficiency
-        ghost_escrowSufficiencyTracked[key] = true;
-        uint128 newAvailable = balanceSheet.availableBalanceOf(
-            poolId,
-            scId,
-            vault.asset(),
-            tokenId
-        );
-        ghost_escrowAvailableBalance[key] = newAvailable;
-        ghost_escrowReservedBalance[key] = ghost_netReserved[key];
     }
 
+    /// @dev Property: unreserve causes an underflow revert
     function balanceSheet_unreserve(
         uint256 tokenId,
         uint128 amount
@@ -511,26 +514,31 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track unreserve operations
         ghost_totalUnreserveOperations[key]++;
 
-        // Check for underflow before updating
-        if (ghost_netReserved[key] < amount) {
-            ghost_reserveUnderflow[key] = true;
-            ghost_reserveIntegrityViolations[key]++;
-        } else {
-            ghost_netReserved[key] -= amount;
+        try
+            balanceSheet.unreserve(poolId, scId, vault.asset(), tokenId, amount)
+        {
+            if (ghost_netReserved[key] >= amount) {
+                ghost_netReserved[key] -= amount;
+            }
+
+            // Track escrow balance sufficiency
+            ghost_escrowSufficiencyTracked[key] = true;
+            uint128 newAvailable = balanceSheet.availableBalanceOf(
+                poolId,
+                scId,
+                vault.asset(),
+                tokenId
+            );
+            ghost_escrowAvailableBalance[key] = newAvailable;
+            ghost_escrowReservedBalance[key] = ghost_netReserved[key];
+        } catch (bytes memory err) {
+            bool underflowRevert = checkError(err, Panic.arithmeticPanic);
+
+            if (ghost_netReserved[key] < amount) {
+                // Core Invariant 5: No underflow occurred
+                t(!underflowRevert, "Unreserve operation caused underflow");
+            }
         }
-
-        balanceSheet.unreserve(poolId, scId, vault.asset(), tokenId, amount);
-
-        // Track escrow balance sufficiency
-        ghost_escrowSufficiencyTracked[key] = true;
-        uint128 newAvailable = balanceSheet.availableBalanceOf(
-            poolId,
-            scId,
-            vault.asset(),
-            tokenId
-        );
-        ghost_escrowAvailableBalance[key] = newAvailable;
-        ghost_escrowReservedBalance[key] = ghost_netReserved[key];
     }
 
     function balanceSheet_submitQueuedAssets(

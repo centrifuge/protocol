@@ -2171,18 +2171,6 @@ abstract contract Properties is
                     // Core Invariant 3: Net reserved matches ghost tracking
                     // This is implicitly tested since we use ghost_netReserved to calculate reserved
 
-                    // Core Invariant 4: No overflow occurred
-                    t(
-                        !ghost_reserveOverflow[key],
-                        "Reserve operation caused overflow"
-                    );
-
-                    // Core Invariant 5: No underflow occurred
-                    t(
-                        !ghost_reserveUnderflow[key],
-                        "Unreserve operation caused underflow"
-                    );
-
                     // Core Invariant 6: Available + Reserved = Total (automatically satisfied by construction)
                     eq(
                         uint256(available) + uint256(reserved),
