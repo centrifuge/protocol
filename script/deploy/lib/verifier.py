@@ -202,20 +202,19 @@ class ContractVerifier:
 
             # Determine which deployment info entry to update
             deployment_step = self.args.step
-            if self.args.step == "release:sepolia":
+            if deployment_step == "release:sepolia":
                 # For release:sepolia, update the deploy:protocol entry instead
                 deployment_step = "deploy:protocol"
             
-            if "deploy" in self.args.step or self.args.step == "release:sepolia":
+            if "deploy" in deployment_step:
+                # if there's a deploy:adapters, deploy:protocol overrides them. Delete:
+                if 'deploymentInfo' in config_data and 'deploy:adapters' in config_data['deploymentInfo']:
+                    del config_data['deploymentInfo']['deploy:adapters']
                 config_data['deploymentInfo'][deployment_step] = {
                     'gitCommit': git_commit,
                     'timestamp': deployment_timestamp,
+                    'version': os.environ.get("VERSION", "Null / NotSet")
                 }
-
-            # Always include VERSION key in deploymentInfo (may be empty string if not set)
-            if deployment_step not in config_data['deploymentInfo']:
-                config_data['deploymentInfo'][deployment_step] = {}
-            config_data['deploymentInfo'][deployment_step]['version'] = os.environ.get("VERSION", "Null / NotSet")
 
             # Write updated config
             with open(network_config, 'w') as f:
