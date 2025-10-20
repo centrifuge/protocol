@@ -1739,8 +1739,6 @@ abstract contract Properties is
         // Verify net position matches tracked operations
         // NOTE: implemented like this because comparing int256 values
         if (actualNet != expectedNet) {
-            console2.log("actualNet: ", actualNet);
-            console2.log("expectedNet: ", expectedNet);
             t(
                 false,
                 "SHARE-QUEUE-04: Net position must match tracked issue/revoke operations"
@@ -1866,9 +1864,17 @@ abstract contract Properties is
                 // Net position should equal total issued minus total revoked
                 int256 expectedFromTotals = int256(ghost_totalIssued[key]) -
                     int256(ghost_totalRevoked[key]);
-                int256 trackedNet = ghost_netSharePosition[key];
 
-                if (expectedFromTotals != trackedNet) {
+                // Get actual queue state from balance sheet
+                (uint128 delta, bool isPositive, , ) = balanceSheet
+                    .queuedShares(poolId, scId);
+
+                // Convert to signed integer based on isPositive flag
+                int256 actualNet = isPositive
+                    ? int256(uint256(delta))
+                    : -int256(uint256(delta));
+
+                if (expectedFromTotals != actualNet) {
                     t(
                         false,
                         "SHARE-QUEUE-06: Net position must be commutative (issued - revoked)"
