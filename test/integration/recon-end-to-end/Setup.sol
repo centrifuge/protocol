@@ -342,6 +342,7 @@ abstract contract Setup is
 
         // Add missing HubHelpers file configuration (matching HubDeployer)
         hubHandler.file("hub", address(hub));
+        hubHandler.file("sender", address(messageDispatcher));
     }
 
     /// === Helper Functions === ///
@@ -431,7 +432,7 @@ abstract contract Setup is
         // Rely gateway
         spoke.rely(address(gateway));
 
-        // Add missing Gateway permissions (matching CommonDeployer)
+        // Add missing Gateway permissions (matching CommonDeployer and CoreDeployer)
         gateway.rely(address(messageDispatcher));
 
         // Rely messageDispatcher - these contracts rely on messageDispatcher, not the other way around
