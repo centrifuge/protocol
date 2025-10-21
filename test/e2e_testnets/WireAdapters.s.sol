@@ -56,6 +56,12 @@ contract WireAdapters is Script {
         // parseJsonBool may revert, so we wrap in try-catch
         try vm.parseJsonBool(config, deployJsonPath) returns (bool parsedDeploy) {
             deploy = parsedDeploy;
+            // If deploy is false, skip this adapter entirely regardless of contract address            // If deploy is false, skip this adapter entirely regardless of contract address
+            if (!deploy) {
+                console.log(adapterLabel, "is set to deploy: false on", network);
+                console.log("Skipping", adapterLabel);
+                return address(0);
+            }
         } catch {
             // treat as not deployed if key not found
             deploy = false;
@@ -63,6 +69,10 @@ contract WireAdapters is Script {
             console.log("Skipping", adapterLabel);
             return address(0);
         }
+
+
+
+
         // parseJsonAddress may revert, so wrap in try-catch
         try vm.parseJsonAddress(config, contractJsonPath) returns (address parsedAddr) {
             if (parsedAddr != address(0)) {

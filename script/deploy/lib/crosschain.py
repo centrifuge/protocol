@@ -37,7 +37,7 @@ class CrossChainTestManager:
             raise SystemExit(1)
 
         # Validate required contracts exist
-        required_contracts = ["Gateway", "Hub", "BalanceSheet", "BatchRequestManager"]
+        required_contracts = ["gateway", "hub", "balanceSheet", "batchRequestManager"]
         contracts = self.env_loader.config.get("contracts", {})
         missing_contracts = [c for c in required_contracts if c not in contracts]
         if missing_contracts:
@@ -87,7 +87,7 @@ class CrossChainTestManager:
                 
             # Validate spoke has required contracts
             spoke_contracts = spoke_config.get("contracts", {})
-            spoke_required = ["Gateway", "Spoke", "VaultRegistry"]
+            spoke_required = ["gateway", "spoke", "vaultRegistry"]
             missing_spoke_contracts = [c for c in spoke_required if c not in spoke_contracts]
             if missing_spoke_contracts:
                 print_error(f"Spoke {spoke_network} missing required contracts: {', '.join(missing_spoke_contracts)}")
@@ -228,12 +228,12 @@ class CrossChainTestManager:
                     if etherscan_url:
                         contracts = spoke_config.get("contracts", {})
                         print_info(f"\n{spoke_network} contracts:")
-                        if "Gateway" in contracts:
-                            print_info(f"  Gateway: {etherscan_url}/address/{contracts['Gateway']}")
-                        if "Spoke" in contracts:
-                            print_info(f"  Spoke: {etherscan_url}/address/{contracts['Spoke']}")
-                        if "VaultRegistry" in contracts:
-                            print_info(f"  VaultRegistry: {etherscan_url}/address/{contracts['VaultRegistry']}")
+                        if "gateway" in contracts:
+                            print_info(f"  Gateway: {etherscan_url}/address/{contracts['gateway']}")
+                        if "spoke" in contracts:
+                            print_info(f"  Spoke: {etherscan_url}/address/{contracts['spoke']}")
+                        if "vaultRegistry" in contracts:
+                            print_info(f"  VaultRegistry: {etherscan_url}/address/{contracts['vaultRegistry']}")
 
     def _print_spoke_explorer_links(self, log_data: Dict[str, Any]) -> None:
         """Print hub explorer links for spoke tests"""
@@ -248,11 +248,11 @@ class CrossChainTestManager:
                 if etherscan_url:
                     contracts = hub_config.get("contracts", {})
                     print_info(f"\n{hub_network} hub contracts:")
-                    if "Gateway" in contracts:
-                        print_info(f"  Gateway: {etherscan_url}/address/{contracts['Gateway']}")
-                    if "Hub" in contracts:
-                        print_info(f"  Hub: {etherscan_url}/address/{contracts['Hub']}")
-                    if "BalanceSheet" in contracts:
-                        print_info(f"  BalanceSheet: {etherscan_url}/address/{contracts['BalanceSheet']}")
-                    if "BatchRequestManager" in contracts:
-                        print_info(f"  BatchRequestManager: {etherscan_url}/address/{contracts['BatchRequestManager']}")
+                    if "gateway" in contracts:
+                        print_info(f"  Gateway: {etherscan_url}/address/{contracts['gateway']}")
+                    if "hub" in contracts:
+                        print_info(f"  Hub: {etherscan_url}/address/{contracts['hub']}")
+                    if "balanceSheet" in contracts:
+                        print_info(f"  BalanceSheet: {etherscan_url}/address/{contracts['balanceSheet']}")
+                    if "batchRequestManager" in contracts:
+                        print_info(f"  BatchRequestManager: {etherscan_url}/address/{contracts['batchRequestManager']}")

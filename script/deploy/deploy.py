@@ -136,8 +136,8 @@ def main():
     script_dir = pathlib.Path(__file__).parent
     root_dir = script_dir.parent.parent
 
-    # Backward-compat: support calling old release:sepolia in network position
-    if args.network == "release:sepolia":
+    # Backward-compat: support calling old deploy:testnets in network position
+    if args.network == "deploy:testnets":
         args.step = "deploy:testnets"
         args.network = None
     
