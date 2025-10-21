@@ -37,7 +37,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
         _captureShareQueueState(poolId, scId);
 
-        // Track authorization - deposit() requires authOrManager(poolId)
+        // Track authorization - deposit() requires isManager(poolId)
         _trackAuthorization(_getActor(), poolId);
 
         // Track for property iteration
@@ -90,7 +90,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         _captureShareQueueState(poolId, scId);
 
-        // Track authorization - issue() requires authOrManager(poolId)
+        // Track authorization - issue() requires isManager(poolId)
         _trackAuthorization(_getActor(), poolId);
 
         // Track for property iteration
@@ -148,7 +148,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
         address asset = vault.asset();
 
-        // Track authorization - noteDeposit() requires authOrManager(poolId)
+        // Track authorization - noteDeposit() requires isManager(poolId)
         _trackAuthorization(_getActor(), poolId);
 
         IPoolEscrow poolEscrow = poolEscrowFactory.escrow(poolId);
@@ -168,7 +168,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
-        // Track authorization - overridePricePoolPerAsset() requires authOrManager(poolId)
+        // Track authorization - overridePricePoolPerAsset() requires isManager(poolId)
         _trackAuthorization(_getActor(), vault.poolId());
 
         balanceSheet.overridePricePoolPerAsset(vault.poolId(), vault.scId(), assetId, value);
@@ -177,7 +177,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
     function balanceSheet_overridePricePoolPerShare(D18 value) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
 
-        // Track authorization - overridePricePoolPerShare() requires authOrManager(poolId)
+        // Track authorization - overridePricePoolPerShare() requires isManager(poolId)
         _trackAuthorization(_getActor(), vault.poolId());
 
         balanceSheet.overridePricePoolPerShare(vault.poolId(), vault.scId(), value);
@@ -204,7 +204,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
-        // Track authorization - resetPricePoolPerAsset() requires authOrManager(poolId)
+        // Track authorization - resetPricePoolPerAsset() requires isManager(poolId)
         _trackAuthorization(_getActor(), vault.poolId());
 
         balanceSheet.resetPricePoolPerAsset(vault.poolId(), vault.scId(), assetId);
@@ -213,7 +213,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
     function balanceSheet_resetPricePoolPerShare() public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
 
-        // Track authorization - resetPricePoolPerShare() requires authOrManager(poolId)
+        // Track authorization - resetPricePoolPerShare() requires isManager(poolId)
         _trackAuthorization(_getActor(), vault.poolId());
 
         balanceSheet.resetPricePoolPerShare(vault.poolId(), vault.scId());
@@ -225,7 +225,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         _captureShareQueueState(poolId, scId);
 
-        // Track authorization - revoke() requires authOrManager(poolId)
+        // Track authorization - revoke() requires isManager(poolId)
         _trackAuthorization(_getActor(), poolId);
 
         // Track for property iteration
@@ -327,7 +327,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
         _captureShareQueueState(poolId, scId);
 
-        // Track authorization - withdraw() requires authOrManager(poolId)
+        // Track authorization - withdraw() requires isManager(poolId)
         _trackAuthorization(_getActor(), poolId);
 
         // Update queue ghost variables
@@ -368,7 +368,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
-        // Track authorization - reserve() requires authOrManager(poolId)
+        // Track authorization - reserve() requires isManager(poolId)
         _trackAuthorization(_getActor(), poolId);
 
         bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
@@ -403,7 +403,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
-        // Track authorization - unreserve() requires authOrManager(poolId)
+        // Track authorization - unreserve() requires isManager(poolId)
         _trackAuthorization(_getActor(), poolId);
 
         bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
@@ -437,7 +437,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
 
-        // Track authorization - submitQueuedAssets() requires authOrManager(poolId)
+        // Track authorization - submitQueuedAssets() requires isManager(poolId)
         _trackAuthorization(_getActor(), poolId);
 
         // Track nonce monotonicity for Queue State Consistency properties
@@ -456,7 +456,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         _captureShareQueueState(poolId, scId);
 
-        // Track authorization - submitQueuedShares() requires authOrManager(poolId)
+        // Track authorization - submitQueuedShares() requires isManager(poolId)
         _trackAuthorization(_getActor(), poolId);
 
         // Track nonce monotonicity for Queue State Consistency properties

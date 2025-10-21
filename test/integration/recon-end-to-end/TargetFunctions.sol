@@ -119,6 +119,11 @@ abstract contract TargetFunctions is
 
             spoke_addPool();
 
+            // Register managers for this pool
+            balanceSheet.updateManager(_poolId, address(asyncRequestManager), true);
+            balanceSheet.updateManager(_poolId, address(syncManager), true);
+            balanceSheet.updateManager(_poolId, address(this), true);
+
             POOL_ID_COUNTER++;
         }
 
