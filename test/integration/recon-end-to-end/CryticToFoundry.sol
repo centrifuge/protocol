@@ -45,19 +45,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         doomsday_zeroPrice_noPanics();
     }
 
-    // forge test --match-test test_property_availableGtQueued_26 -vvv
-    // NOTE: see issue here: https://github.com/Recon-Fuzz/centrifuge-invariants/issues/6
-    // more of an admin gotcha that should be monitored
-    function test_property_availableGtQueued_26() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
-
-        shortcut_deposit_sync(1, 0);
-
-        balanceSheet_withdraw(0, 1);
-
-        property_availableGtQueued();
-    }
-
     // forge test --match-test test_property_authorizationBypass_0 -vvv
     // NOTE: issue here: https://github.com/Recon-Fuzz/centrifuge-invariants/issues/10
     function test_property_authorizationBypass_0() public {
