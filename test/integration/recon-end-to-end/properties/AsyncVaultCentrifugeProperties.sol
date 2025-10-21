@@ -168,7 +168,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
                 // For async vaults, validate globalEscrow share transfers instead of poolEscrow
                 claimState.sharesReturned = shares;
                 _updateAsyncClaimStateAfter(claimState, _getVault(), _getActor());
-                _validateAsyncVaultClaim(claimState, depositAmount, "asyncVault_maxDeposit");
+                _validateAsyncVaultClaim(claimState, "asyncVault_maxDeposit");
 
                 _validateAsyncMaxValueChange(maxDepositBefore, maxDepositAfter, depositAmount, "Deposit");
             } else {
@@ -245,7 +245,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             if (isAsyncVault) {
                 claimState.sharesReturned = mintAmount;
                 _updateAsyncClaimStateAfter(claimState, _getVault(), _getActor());
-                _validateAsyncVaultClaim(claimState, assets, "asyncVault_maxMint");
+                _validateAsyncVaultClaim(claimState, "asyncVault_maxMint");
 
                 _validateAsyncMaxValueChange(maxMintBefore, maxMintAfter, mintAmount, "Mint");
 
@@ -661,29 +661,8 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
     /// @dev Validates async vault claim operations
     /// @notice During claims, globalEscrow shares transfer to receiver, PoolEscrow does NOT change
-    function _validateAsyncVaultClaim(AsyncClaimState memory state, uint256 depositAmount, string memory operationName)
-        internal
-    {
-        if (depositAmount == 0) {
-            eq(state.sharesReturned, 0, string.concat(operationName, ": zero deposit should return zero shares"));
-            eq(
-                state.globalEscrowSharesBefore,
-                state.globalEscrowSharesAfter,
-                string.concat(operationName, ": zero deposit should not change globalEscrow")
-            );
-            eq(
-                state.receiverSharesBefore,
-                state.receiverSharesAfter,
-                string.concat(operationName, ": zero deposit should not change receiver balance")
-            );
-            eq(
-                state.maxMintBefore,
-                state.maxMintAfter,
-                string.concat(operationName, ": zero deposit should not change maxMint")
-            );
-            return;
-        }
-
+    /// @notice This validation works for all cases including when sharesReturned == 0
+    function _validateAsyncVaultClaim(AsyncClaimState memory state, string memory operationName) internal {
         uint256 globalEscrowDecrease = state.globalEscrowSharesBefore - state.globalEscrowSharesAfter;
         uint256 receiverIncrease = state.receiverSharesAfter - state.receiverSharesBefore;
         eq(
