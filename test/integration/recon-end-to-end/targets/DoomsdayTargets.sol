@@ -10,6 +10,7 @@ import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {AccountId} from "../../../../src/core/types/AccountId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
+import {MAX_MESSAGE_COST} from "../../../../src/core/messaging/interfaces/IGasService.sol";
 
 import {BaseVault} from "../../../../src/vaults/BaseVaults.sol";
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
@@ -206,7 +207,14 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+
+        // Set zero prices in hub and transient valuation
         hub.updateSharePrice(poolId, scId, D18.wrap(0), uint64(block.timestamp));
+        transientValuation.setPrice(poolId, scId, assetId, D18.wrap(0));
+
+        // Notify spoke of price updates so Price structs are valid (computedAt != 0)
+        hub.notifySharePrice{value: MAX_MESSAGE_COST}(poolId, scId, CENTRIFUGE_CHAIN_ID, _getActor());
+        hub.notifyAssetPrice{value: MAX_MESSAGE_COST}(poolId, scId, assetId, _getActor());
 
         // === CONVERSION FUNCTION TESTS === //
         try vault.convertToShares(1e18) returns (uint256 shares) {
