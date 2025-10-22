@@ -246,7 +246,6 @@ abstract contract SharedStorage {
     // SUPPLY CONSISTENCY GHOST VARIABLES
     // ===============================
     mapping(bytes32 => uint256) internal ghost_totalShareSupply;
-    mapping(bytes32 => mapping(address => uint256)) internal ghost_individualBalances;
     mapping(bytes32 => uint256) internal ghost_supplyMintEvents;
     mapping(bytes32 => uint256) internal ghost_supplyBurnEvents;
     mapping(bytes32 => bool) internal ghost_supplyOperationOccurred;

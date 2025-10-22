@@ -175,14 +175,8 @@ abstract contract TargetFunctions is
 
             // Update balance sheet manager for async request manager
             hub_updateBalanceSheetManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(asyncRequestManager), true);
-        }
-
-        // 4a. Register request manager on hub side BEFORE deploying vaults (critical for async operations)
-        {
-            hub_setRequestManager(_getPool().raw(), _scId, _getAssetId().raw(), address(asyncRequestManager));
-
-            // Update balance sheet manager for async request manager
-            hub_updateBalanceSheetManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(asyncRequestManager), true);
+            hub_updateBalanceSheetManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(syncManager), true);
+            hub_updateBalanceSheetManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(this), true); // register admin actor as a balance sheet manager
         }
 
         // 5. Deploy new vault and register it

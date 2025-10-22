@@ -145,7 +145,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             ][vaultRegistry.vaultDetails(vault).assetId][to] += vault.convertToAssets(shares);
 
             bytes32 shareKey = keccak256(abi.encode(vault.poolId(), vault.scId()));
-            ghost_individualBalances[shareKey][_getActor()] -= shares;
 
             if (
                 fullRestrictions.isFrozen(vault.share(), _getActor()) == true
@@ -371,7 +370,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         bytes32 shareKey = keccak256(abi.encode(vault.poolId(), vault.scId()));
 
         sumOfClaimedCancelledRedeemShares[_getVault().share()] += shares;
-        ghost_individualBalances[shareKey][to] += shares;
     }
 
     function vault_deposit(uint256 assets) public updateGhostsWithType(OpType.ADD) {
@@ -400,11 +398,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         {
             bytes32 shareKey = keccak256(abi.encode(vault.poolId(), vault.scId()));
 
-            // Update ghost_individualBalances when shares are minted to user
             // For sync vaults, shares are minted immediately. For async vaults, they're minted later.
             if (!isAsyncVault) {
                 ghost_totalIssued[shareKey] += shares;
-                ghost_individualBalances[shareKey][_getActor()] += shares;
                 ghost_totalShareSupply[shareKey] += shares;
                 ghost_supplyMintEvents[shareKey] += shares;
             }
@@ -502,11 +498,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         {
             bytes32 shareKey = keccak256(abi.encode(vault.poolId(), vault.scId()));
 
-            // Update ghost_individualBalances when shares are minted to user
             // For sync vaults, shares are minted immediately. For async vaults, they're minted later.
             if (!isAsyncVault) {
                 ghost_totalIssued[shareKey] += shares;
-                ghost_individualBalances[shareKey][to] += shares;
                 ghost_totalShareSupply[shareKey] += shares;
                 ghost_supplyMintEvents[shareKey] += shares;
             }

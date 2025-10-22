@@ -102,7 +102,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track supply operations
         ghost_supplyOperationOccurred[shareKey] = true;
         ghost_totalShareSupply[shareKey] += shares;
-        ghost_individualBalances[shareKey][_getActor()] += shares;
         ghost_supplyMintEvents[shareKey] += shares;
 
         // Track asset-share proportionality for share issuance
@@ -237,7 +236,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track supply operations
         ghost_supplyOperationOccurred[shareKey] = true;
         ghost_totalShareSupply[shareKey] -= shares;
-        ghost_individualBalances[shareKey][_getActor()] -= shares;
         ghost_supplyBurnEvents[shareKey] += shares;
 
         // Track share revocation for withdrawals
@@ -308,8 +306,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
     //         ghost_validTransferCount[key]++;
 
     //         // Track balance changes for transfers (supply stays same, only balances shift)
-    //         ghost_individualBalances[key][from] -= amount;
-    //         ghost_individualBalances[key][recipient] += amount;
     //         ghost_supplyOperationOccurred[key] = true;
     //     } catch {
     //         // Transfer failed - likely due to endorsement restriction
