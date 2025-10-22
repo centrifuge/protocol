@@ -69,7 +69,7 @@
     "axelarAdapter": "0x52271c9A29D0f97c350BBE32b3377CdD26026d0a"
   },
   "deploymentInfo": {
-    "deploy:protocol": {
+    "deploy:full": {
       "gitCommit": "34c53fc2",
       "timestamp": "2025-07-15T13:40:56Z",
       "version": "3"

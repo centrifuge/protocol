@@ -77,12 +77,7 @@
     "axelarAdapter": "0xA935B1AE5520386B0922da240e6B6B4CdF7e0563"
   },
   "deploymentInfo": {
-    "deploy:protocol": {
-      "gitCommit": "f9f6ee70",
-      "timestamp": "2025-10-17T13:22:53Z",
-      "version": "3.1.12"
-    },
-    "deploy:testnets": {
+    "deploy:full": {
       "gitCommit": "fc9b8e7b",
       "timestamp": "2025-10-21T12:33:03Z",
       "version": "v3.1.5"

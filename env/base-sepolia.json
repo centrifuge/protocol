@@ -75,12 +75,7 @@
     "layerZeroAdapter": "0xc4161DcA8624CD8aBeEA6B4CaeE5CC805fAA92c2"
   },
   "deploymentInfo": {
-    "deploy:protocol": {
-      "gitCommit": "f5ca86f8",
-      "timestamp": "2025-10-15T12:27:31Z",
-      "version": "v3.1.1"
-    },
-    "deploy:testnets": {
+    "deploy:full": {
       "gitCommit": "fc9b8e7b",
       "timestamp": "2025-10-20T19:09:22Z",
       "version": "v3.1.5"
