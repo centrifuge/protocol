@@ -202,12 +202,12 @@ class ContractVerifier:
 
             # Determine which deployment info entry to update
             deployment_step = self.args.step
-            if deployment_step == "release:sepolia":
-                # For release:sepolia, update the deploy:protocol entry instead
-                deployment_step = "deploy:protocol"
+            if deployment_step in ["release:sepolia", "deploy:all"]:
+                # For release:sepolia and deploy:all, update the deploy:full entry instead
+                deployment_step = "deploy:full"
             
             if "deploy" in deployment_step:
-                # if there's a deploy:adapters, deploy:protocol overrides them. Delete:
+                # if there's a deploy:adapters, deploy:full overrides them. Delete:
                 if 'deploymentInfo' in config_data and 'deploy:adapters' in config_data['deploymentInfo']:
                     del config_data['deploymentInfo']['deploy:adapters']
                 config_data['deploymentInfo'][deployment_step] = {

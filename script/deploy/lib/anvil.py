@@ -158,7 +158,7 @@ class AnvilManager:
     def _deploy_fork(self, net_env, args):
         runner = DeploymentRunner(net_env, args)
         # Deploy core protocol
-        args.step = "deploy:protocol"
+        args.step = "deploy:full"
         if not runner.run_deploy("LaunchDeployer"):
             return False
         # Merge latest into env/anvil/<net>.json

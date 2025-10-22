@@ -37,13 +37,13 @@ IMPORTANT:
   - Run with VERSION=XYZ preceding the python3 command to avoid create3 collisions.
 
 Examples:
-  VERSION=vXYZ python3 deploy.py sepolia deploy:protocol
-  python3 deploy.py base-sepolia deploy:protocol --catapulta --priority-gas-price 2
+  VERSION=vXYZ python3 deploy.py sepolia deploy:full
+  python3 deploy.py base-sepolia deploy:full --catapulta --priority-gas-price 2
   python3 deploy.py sepolia deploy:adapters
   python3 deploy.py sepolia deploy:adapters --resume
   python3 deploy.py sepolia verify:protocol
   python3 deploy.py arbitrum-sepolia verify:protocol
-  VERSION=vXYZ python3 deploy.py deploy:testnets  # Deploy all Sepolia testnets (auto-resumes)
+  VERSION=vXYZ python3 deploy.py deploy:all  # Deploy all Sepolia testnets (auto-resumes)
   python3 deploy.py sepolia crosschaintest:hub  # Run cross-chain hub test
   python3 deploy.py base-sepolia crosschaintest:spoke  # Run cross-chain spoke tests
         """
@@ -51,8 +51,8 @@ Examples:
 
     parser.add_argument("network", nargs="?", help="Network name (must match env/<network>.json)")
     parser.add_argument("step", nargs="?", help="Deployment step", choices=[
-        "deploy:protocol", "deploy:adapters", "deploy:testnets",
-        "wire", "wire:all", "verify:protocol", "config:show", 
+        "deploy:full", "deploy:adapters", "deploy:all",
+        "wire", "wire:all", "verify:protocol", "config:dump", 
         "crosschaintest:hub", "crosschaintest:spoke"
     ])
     parser.add_argument("--catapulta", action="store_true", help="Use Catapulta for deployment")
@@ -138,17 +138,17 @@ def main():
 
     # Backward-compat: support calling old deploy:testnets in network position
     if args.network == "deploy:testnets":
-        args.step = "deploy:testnets"
+        args.step = "deploy:all"
         args.network = None
     
     # Validate arguments
-    if args.network != "anvil" and args.step != "deploy:testnets":
+    if args.network != "anvil" and args.step != "deploy:all":
         validate_arguments(args, root_dir)
-    elif args.step == "deploy:testnets":
-        # Special validation for deploy:testnets
+    elif args.step == "deploy:all":
+        # Special validation for deploy:all
         if not os.environ.get("VERSION"):
-            print_error("VERSION environment variable is required for deploy:testnets")
-            print_info("Example: VERSION=v3.1.4 python3 script/deploy/deploy.py deploy:testnets")
+            print_error("VERSION environment variable is required for deploy:all")
+            print_info("Example: VERSION=v3.1.4 python3 script/deploy/deploy.py deploy:all")
             sys.exit(1)
 
     try:
@@ -158,7 +158,7 @@ def main():
             success = anvil_manager.deploy_full_protocol()
             sys.exit(0 if success else 1)
 
-        if args.step != "deploy:testnets":
+        if args.step != "deploy:all":
             # Create environment loader for single network deployments
             env_loader = EnvironmentLoader(
                 network_name=args.network,
@@ -171,11 +171,11 @@ def main():
             print_info(f"Deployment mode: {'Catapulta' if args.catapulta else 'Forge'}")
 
             # Validate network configuration for deployment and wiring steps
-            if args.step in ["deploy:protocol", "deploy:adapters", "wire"]:
+            if args.step in ["deploy:full", "deploy:adapters", "wire"]:
                 env_loader.validate_network()
 
             # Set up deployment runner and verifier (only for deployment steps)
-            if args.step != "dump:config":
+            if args.step != "config:dump":
                 runner = DeploymentRunner(env_loader, args)
                 verifier = ContractVerifier(env_loader, args)
 
@@ -183,7 +183,7 @@ def main():
         verify_success = True
         deploy_success = True
 
-        if args.step == "deploy:protocol":
+        if args.step == "deploy:full":
             print_section("Running Protocol Deployment")
             already_deployed = False
             if "--resume" in args.forge_args:
@@ -246,7 +246,7 @@ def main():
                 print_section(f"Verifying deployment for {args.network}")
                 verify_success = verifier.verify_contracts("OnlyAdapters")
         
-        elif args.step == "deploy:testnets":
+        elif args.step == "deploy:all":
             # Orchestrated deployment across all Sepolia testnets
             release_manager = ReleaseManager(root_dir, args)
             success = release_manager.deploy_sepolia_testnets()

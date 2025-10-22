@@ -84,7 +84,7 @@ class EnvironmentLoader:
                         
                         response = input("Do you want to continue? [y/N]: ").strip().lower()
                         if response not in ("y", "yes"):
-                            print_info("Please run 'python3 script/deploy/deploy.py {network} dump:config' to update .env for the correct network")
+                            print_info("Please run 'python3 script/deploy/deploy.py {network} config:dump' to update .env for the correct network")
                             print_error("Aborted by user.")
                             raise SystemExit(1)
                         else:
