@@ -199,6 +199,12 @@ abstract contract TargetFunctions is
             hub_updateBalanceSheetManager(
                 CENTRIFUGE_CHAIN_ID,
                 _getPool().raw(),
+                address(syncManager),
+                true
+            );
+            hub_updateBalanceSheetManager(
+                CENTRIFUGE_CHAIN_ID,
+                _getPool().raw(),
                 address(this),
                 true
             ); // register admin actor as a balance sheet manager
