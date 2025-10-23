@@ -12,19 +12,15 @@ import "forge-std/console2.sol";
 import {Setup} from "../Setup.sol";
 import {Asserts} from "@chimera/Asserts.sol";
 
-/// @dev ERC-7540 Properties
-/// TODO: Make pointers with Reverts
-/// TODO: Make pointer to Vault Like Contract for re-usability
-
-/// Casted to ERC7540 -> Do the operation
-/// These are the re-usable ones, which do alter the state
-/// And we will not call
-abstract contract AsyncVaultProperties is Setup, Asserts {
+/// @notice ERC-7540 standard properties - reusable for any ERC-7540 compliant vault
+/// @dev These properties test compliance with the ERC-7540 Asynchronous Tokenized Vault standard
+/// @dev See https://eips.ethereum.org/EIPS/eip-7540 for the complete specification
+abstract contract ERC7540Properties is Setup, Asserts {
     // TODO: change to 10 ** max(MockERC20(_getAsset()).decimals(), IShareToken(_getShareToken()).decimals())
     uint256 MAX_ROUNDING_ERROR = 10 ** 18;
 
     /// @dev Property: 7540-3 convertToAssets(totalSupply) == totalAssets unless price is 0.0
-    function asyncVault_3(address asyncVaultTarget) public virtual {
+    function erc7540_3(address asyncVaultTarget) public virtual {
         // Doesn't hold on zero price
         if (
             IAsyncVault(asyncVaultTarget)
@@ -40,7 +36,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
     }
 
     /// @dev Property: 7540-4 convertToShares(totalAssets) == totalSupply unless price is 0.0
-    function asyncVault_4(address asyncVaultTarget) public virtual {
+    function erc7540_4(address asyncVaultTarget) public virtual {
         if (
             IAsyncVault(asyncVaultTarget)
                     .convertToAssets(10 ** IERC20Metadata(IAsyncVault(asyncVaultTarget).share()).decimals()) == 0
@@ -58,7 +54,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
     }
 
     /// @dev Property: 7540-5 max* never reverts
-    function asyncVault_5(address asyncVaultTarget) public virtual {
+    function erc7540_5(address asyncVaultTarget) public virtual {
         // max* never reverts
         try IAsyncVault(asyncVaultTarget).maxDeposit(_getActor()) {}
         catch {
@@ -78,9 +74,9 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         }
     }
 
-    /// == asyncVault_6 == //
+    /// == erc7540_6 == //
     /// @dev Property: 7540-6 claiming more than max always reverts
-    function asyncVault_6_deposit(address asyncVaultTarget, uint256 amt) public virtual {
+    function erc7540_6_deposit(address asyncVaultTarget, uint256 amt) public virtual {
         // Skip 0
         if (amt == 0) {
             return; // Skip
@@ -88,7 +84,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
 
         uint256 maxDep = IAsyncVault(asyncVaultTarget).maxDeposit(_getActor());
 
-        /// @audit No Revert is proven by asyncVault_5
+        /// @audit No Revert is proven by erc7540_5
 
         uint256 sum = maxDep + amt;
         if (sum == 0) {
@@ -106,7 +102,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         t(false, "Property: 7540-6 depositing more than max does not revert");
     }
 
-    function asyncVault_6_mint(address asyncVaultTarget, uint256 amt) public virtual {
+    function erc7540_6_mint(address asyncVaultTarget, uint256 amt) public virtual {
         // Skip 0
         if (amt == 0) {
             return;
@@ -130,7 +126,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         t(false, "Property: 7540-6 minting more than max does not revert");
     }
 
-    function asyncVault_6_withdraw(address asyncVaultTarget, uint256 amt) public virtual {
+    function erc7540_6_withdraw(address asyncVaultTarget, uint256 amt) public virtual {
         // Skip 0
         if (amt == 0) {
             return;
@@ -154,7 +150,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         t(false, "Property: 7540-6 withdrawing more than max does not revert");
     }
 
-    function asyncVault_6_redeem(address asyncVaultTarget, uint256 amt) public virtual {
+    function erc7540_6_redeem(address asyncVaultTarget, uint256 amt) public virtual {
         // Skip 0
         if (amt == 0) {
             return;
@@ -177,10 +173,10 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         t(false, "Property: 7540-6 redeeming more than max does not revert");
     }
 
-    /// == END asyncVault_6 == //
+    /// == END erc7540_6 == //
 
     /// @dev Property: 7540-7 requestRedeem reverts if the share balance is less than amount
-    function asyncVault_7(address asyncVaultTarget, uint256 shares) public virtual {
+    function erc7540_7(address asyncVaultTarget, uint256 shares) public virtual {
         if (shares == 0) {
             return; // Skip
         }
@@ -209,7 +205,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
     }
 
     /// @dev Property: 7540-8 preview* always reverts
-    function asyncVault_8(address asyncVaultTarget) public virtual {
+    function erc7540_8(address asyncVaultTarget) public virtual {
         // preview* always reverts
         try IAsyncVault(asyncVaultTarget).previewDeposit(0) {
             t(false, "Property: 7540-8 previewDeposit does not revert");
@@ -225,10 +221,10 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         } catch {}
     }
 
-    /// == asyncVault_9 == //
+    /// == erc7540_9 == //
     /// @dev Property: 7540-9 if max[method] > 0, then [method] (max) should not revert
-    function asyncVault_9_deposit(address asyncVaultTarget) public virtual {
-        // Per asyncVault_5
+    function erc7540_9_deposit(address asyncVaultTarget) public virtual {
+        // Per erc7540_5
         uint256 maxDeposit = IAsyncVault(asyncVaultTarget).maxDeposit(_getActor());
 
         if (maxDeposit == 0) {
@@ -243,7 +239,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         }
     }
 
-    function asyncVault_9_mint(address asyncVaultTarget) public virtual {
+    function erc7540_9_mint(address asyncVaultTarget) public virtual {
         uint256 maxMint = IAsyncVault(asyncVaultTarget).maxMint(_getActor());
 
         if (maxMint == 0) {
@@ -258,7 +254,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         }
     }
 
-    function asyncVault_9_withdraw(address asyncVaultTarget) public virtual {
+    function erc7540_9_withdraw(address asyncVaultTarget) public virtual {
         uint256 maxWithdraw = IAsyncVault(asyncVaultTarget).maxWithdraw(_getActor());
 
         if (maxWithdraw == 0) {
@@ -274,8 +270,8 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         }
     }
 
-    function asyncVault_9_redeem(address asyncVaultTarget) public virtual {
-        // Per asyncVault_5
+    function erc7540_9_redeem(address asyncVaultTarget) public virtual {
+        // Per erc7540_5
         uint256 maxRedeem = IAsyncVault(asyncVaultTarget).maxRedeem(_getActor());
 
         if (maxRedeem == 0) {
@@ -295,5 +291,5 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         return a > b ? a - b : b - a;
     }
 
-    /// == END asyncVault_9 == //
+    /// == END erc7540_9 == //
 }

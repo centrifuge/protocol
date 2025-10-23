@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {AsyncVaultProperties} from "./AsyncVaultProperties.sol";
+import {ERC7540Properties} from "./ERC7540Properties.sol";
 
 import {D18} from "../../../../src/misc/types/D18.sol";
 import {IERC20} from "../../../../src/misc/interfaces/IERC20.sol";
@@ -25,91 +25,90 @@ import {vm} from "@chimera/Hevm.sol";
 import {Asserts} from "@chimera/Asserts.sol";
 import {Helpers} from "../utils/Helpers.sol";
 
-/// @dev ERC-7540 Properties used by Centrifuge
-/// See `AsyncVaultProperties` for more properties that can be re-used in your project
-
 /// @notice Vault properties for Centrifuge vaults supporting both async and sync vault types
-abstract contract VaultProperties is Setup, Asserts, AsyncVaultProperties {
+/// @dev Extends ERC-7540 standard properties with Centrifuge-specific validations
+/// @dev See `ERC7540Properties` for reusable ERC-7540 standard properties
+abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
     using CastLib for *;
     using MathLib for *;
 
     /// === Overridden Implementations === ///
-    function vault_3(address asyncVaultTarget) public override {
+    function vault_3(address asyncVaultTarget) public {
         _centrifugeSpecificPreChecks();
 
-        AsyncVaultProperties.asyncVault_3(asyncVaultTarget);
+        ERC7540Properties.erc7540_3(asyncVaultTarget);
     }
 
-    function vault_4(address asyncVaultTarget) public override {
+    function vault_4(address asyncVaultTarget) public {
         _centrifugeSpecificPreChecks();
 
-        AsyncVaultProperties.asyncVault_4(asyncVaultTarget);
+        ERC7540Properties.erc7540_4(asyncVaultTarget);
     }
 
-    function vault_5(address asyncVaultTarget) public override {
+    function vault_5(address asyncVaultTarget) public {
         _centrifugeSpecificPreChecks();
 
-        AsyncVaultProperties.asyncVault_5(asyncVaultTarget);
+        ERC7540Properties.erc7540_5(asyncVaultTarget);
     }
 
-    function vault_6_deposit(address asyncVaultTarget, uint256 amt) public override {
+    function vault_6_deposit(address asyncVaultTarget, uint256 amt) public {
         _centrifugeSpecificPreChecks();
 
-        AsyncVaultProperties.asyncVault_6_deposit(asyncVaultTarget, amt);
+        ERC7540Properties.erc7540_6_deposit(asyncVaultTarget, amt);
     }
 
-    function vault_6_mint(address asyncVaultTarget, uint256 amt) public override {
+    function vault_6_mint(address asyncVaultTarget, uint256 amt) public {
         _centrifugeSpecificPreChecks();
 
-        AsyncVaultProperties.asyncVault_6_mint(asyncVaultTarget, amt);
+        ERC7540Properties.erc7540_6_mint(asyncVaultTarget, amt);
     }
 
-    function vault_6_withdraw(address asyncVaultTarget, uint256 amt) public override {
+    function vault_6_withdraw(address asyncVaultTarget, uint256 amt) public {
         _centrifugeSpecificPreChecks();
 
-        AsyncVaultProperties.asyncVault_6_withdraw(asyncVaultTarget, amt);
+        ERC7540Properties.erc7540_6_withdraw(asyncVaultTarget, amt);
     }
 
-    function vault_6_redeem(address asyncVaultTarget, uint256 amt) public override {
+    function vault_6_redeem(address asyncVaultTarget, uint256 amt) public {
         _centrifugeSpecificPreChecks();
 
-        AsyncVaultProperties.asyncVault_6_redeem(asyncVaultTarget, amt);
+        ERC7540Properties.erc7540_6_redeem(asyncVaultTarget, amt);
     }
 
-    function vault_7(address asyncVaultTarget, uint256 shares) public override {
+    function vault_7(address asyncVaultTarget, uint256 shares) public {
         _centrifugeSpecificPreChecks();
 
-        AsyncVaultProperties.asyncVault_7(asyncVaultTarget, shares);
+        ERC7540Properties.erc7540_7(asyncVaultTarget, shares);
     }
 
-    function vault_8(address asyncVaultTarget) public override {
+    function vault_8(address asyncVaultTarget) public {
         _centrifugeSpecificPreChecks();
 
-        AsyncVaultProperties.asyncVault_8(asyncVaultTarget);
+        ERC7540Properties.erc7540_8(asyncVaultTarget);
     }
 
-    function vault_9_deposit(address asyncVaultTarget) public override {
+    function vault_9_deposit(address asyncVaultTarget) public {
         _centrifugeSpecificPreChecks();
 
-        AsyncVaultProperties.asyncVault_9_deposit(asyncVaultTarget);
+        ERC7540Properties.erc7540_9_deposit(asyncVaultTarget);
     }
 
-    function vault_9_mint(address asyncVaultTarget) public override {
+    function vault_9_mint(address asyncVaultTarget) public {
         _centrifugeSpecificPreChecks();
 
-        AsyncVaultProperties.asyncVault_9_mint(asyncVaultTarget);
+        ERC7540Properties.erc7540_9_mint(asyncVaultTarget);
     }
 
-    function vault_9_withdraw(address asyncVaultTarget) public override {
+    function vault_9_withdraw(address asyncVaultTarget) public {
         _centrifugeSpecificPreChecks();
 
-        AsyncVaultProperties.asyncVault_9_withdraw(asyncVaultTarget);
+        ERC7540Properties.erc7540_9_withdraw(asyncVaultTarget);
     }
 
-    function vault_9_redeem(address asyncVaultTarget) public override {
+    function vault_9_redeem(address asyncVaultTarget) public {
         _centrifugeSpecificPreChecks();
 
-        AsyncVaultProperties.asyncVault_9_redeem(asyncVaultTarget);
+        ERC7540Properties.erc7540_9_redeem(asyncVaultTarget);
     }
 
     /// === Custom Properties === ///
