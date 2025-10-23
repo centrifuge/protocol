@@ -429,29 +429,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         eq(balOfPoolEscrow + balOfGlobalEscrow, ghostBalOfEscrow, "balOfEscrow != ghostBalOfEscrow");
     }
 
-    // TODO: Multi Assets -> Iterate over all existing combinations
-
-    /// @dev Property: The sum of account balances is always <= the balance of the escrow
-    // TODO: this can't currently hold, requires a different implementation
-    // function property_sum_of_account_balances_leq_escrow() public vaultIsSet {
-    //     IBaseVault vault = _getVault();
-    //     uint256 balOfEscrow = MockERC20(vault.asset()).balanceOf(address(globalEscrow));
-    //     address poolEscrow = address(poolEscrowFactory.escrow(vault.poolId()));
-    //     uint256 balOfPoolEscrow = MockERC20(vault.asset()).balanceOf(address(poolEscrow));
-
-    //     // Use acc to track max amount withdrawable for each actor
-    //     address[] memory actors = _getActors();
-    //     uint256 acc;
-    //     for (uint256 i; i < actors.length; i++) {
-    //         // NOTE: Accounts for scenario in which we didn't deploy the demo tranche
-    //         try vault.maxWithdraw(actors[i]) returns (uint256 amt) {
-    //             emit DebugWithString("amt", amt);
-    //             acc += amt;
-    //         } catch {}
-    //     }
-
-    //     lte(acc, balOfEscrow + balOfPoolEscrow, "sum of account balances > balOfEscrow");
-    // }
+    // TODO(maybe): Multi Assets -> Iterate over all existing combinations
 
     /// @dev Property: The sum of max claimable shares is always <= the share balance of the escrow
     function property_sum_of_possible_account_balances_leq_escrow() public vaultIsSet {
@@ -477,32 +455,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
     /// @dev Property: the totalAssets of a vault is always <= actual assets in the vault
     // NOTE: removed because this is trivially broken if an admin calls balanceSheet_issue since totalAssets is calculated using the totalSupply of shares
-    // function property_totalAssets_solvency() public {
-    //     // precondition: if the last call was an update to the share price by the admin, return early because it can
-    //     // incorrectly set the value of the shares greater than what it should be
-    //     if (currentOperation == OpType.UPDATE) {
-    //         return;
-    //     }
-
-    //     IBaseVault vault = _getVault();
-    //     uint256 totalAssets = vault.totalAssets();
-    //     address escrow = address(poolEscrowFactory.escrow(vault.poolId()));
-    //     uint256 actualAssets = MockERC20(vault.asset()).balanceOf(escrow);
-
-    //     uint256 differenceInAssets = totalAssets - actualAssets;
-    //     uint256 differenceInShares = vault.convertToShares(differenceInAssets);
-    //     console2.log("differenceInShares", differenceInShares);
-    //     console2.log("totalAssets", totalAssets);
-    //     console2.log("actualAssets", actualAssets);
-
-    //     // precondition: check if the difference is greater than one share
-    //     if (
-    //         differenceInShares >
-    //         (10 ** IShareToken(vault.share()).decimals()) - 1
-    //     ) {
-    //         lte(totalAssets, actualAssets, "totalAssets > actualAssets");
-    //     }
-    // }
+    // function property_totalAssets_solvency() public {}
 
     /// @dev Property: difference between totalAssets and actualAssets only increases
     function property_totalAssets_insolvency_only_increases() public {
@@ -669,68 +622,6 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         }
     }
 
-    /// @dev Property: escrow total must be >= reserved
-    // TODO: this can't currently hold, requires a different implementation
-    // function property_escrow_solvency() public {
-    //     IBaseVault vault = _getVault();
-    //     PoolId poolId = vault.poolId();
-    //     ShareClassId scId = vault.scId();
-    //     AssetId assetId = _getAssetId();
-    //     AssetId assetId = AssetId.wrap(_getAssetId());
-    //     (address assetAddr, uint256 tokenId) = spoke.idToAsset(assetId);
-
-    //     PoolEscrow poolEscrow = PoolEscrow(payable(address(poolEscrowFactory.escrow(poolId))));
-    //     (uint128 total, uint128 reserved) = poolEscrow.holding(scId, assetAddr, tokenId);
-    //     gte(total, reserved, "escrow total must be >= reserved");
-    // }
-
-    /// @dev Property: The price per share used in the entire system is ALWAYS provided by the admin
-    // TODO: this needs to be redefined as an inline property in the target functions where assets are transferred and
-    // shares are minted/burned
-    // function property_price_per_share_overall() public {
-    //     IBaseVault vault = _getVault();
-    //     PoolId poolId = vault.poolId();
-    //     ShareClassId scId = vault.scId();
-    //     AssetId assetId = _getAssetId();
-    //     AssetId assetId = AssetId.wrap(_getAssetId());
-
-    //     // first check if the share amount changed
-    //     uint256 shareDelta;
-    //     uint256 assetDelta;
-    //     if(_before.totalShareSupply != _after.totalShareSupply) {
-    //         if(_before.totalShareSupply > _after.totalShareSupply) {
-    //             shareDelta = _before.totalShareSupply - _after.totalShareSupply;
-    //             uint256 globalEscrowAssetDelta = _before.escrowAssetBalance - _after.escrowAssetBalance;
-    //             uint256 poolEscrowAssetDelta = _before.poolEscrowAssetBalance - _after.poolEscrowAssetBalance;
-    //             assetDelta = globalEscrowAssetDelta + poolEscrowAssetDelta;
-    //         } else {
-    //             shareDelta = _after.totalShareSupply - _before.totalShareSupply;
-    //             uint256 globalEscrowAssetDelta = _after.escrowAssetBalance - _before.escrowAssetBalance;
-    //             uint256 poolEscrowAssetDelta = _after.poolEscrowAssetBalance - _before.poolEscrowAssetBalance;
-    //             assetDelta = globalEscrowAssetDelta + poolEscrowAssetDelta;
-    //         }
-
-    //         // calculate the expected share delta using the asset delta and the price per share
-    //         VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
-    //         console2.log("shareDelta", shareDelta);
-    //         console2.log("assetDelta", assetDelta);
-    //         console2.log("pricePoolPerAsset", _before.pricePoolPerAsset[poolId][scId][assetId].raw());
-    //         console2.log("pricePoolPerShare", _before.pricePoolPerShare[poolId][scId].raw());
-    //         uint256 expectedShareDelta = PricingLib.assetToShareAmount(
-    //             vault.share(),
-    //             vaultDetails.asset,
-    //             vaultDetails.tokenId,
-    //             assetDelta.toUint128(),
-    //             _before.pricePoolPerAsset[poolId][scId][assetId],
-    //             _before.pricePoolPerShare[poolId][scId],
-    //             MathLib.Rounding.Down
-    //         );
-
-    //         // if the share amount changed, check if it used the correct price per share set by the admin
-    //         eq(shareDelta, expectedShareDelta, "shareDelta must be equal to expectedShareDelta");
-    //     }
-    // }
-
     // ===============================
     // HUB
     // ===============================
@@ -851,30 +742,6 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         }
     }
 
-    /// @dev Property: account.totalDebit and account.totalCredit is always less than uint128(type(int128).max)
-    // NOTE: this property is not relevant anymore with the latest implementation of the accountValue using uint128
-    // instead of int128
-    // function property_account_totalDebit_and_totalCredit_leq_max_int128() public {
-    //     PoolId[] memory _createdPools = _getPools();
-    //     for (uint256 i = 0; i < _createdPools.length; i++) {
-    //         PoolId poolId = _createdPools[i];
-    //         uint32 shareClassCount = batchRequestManager.shareClassCount(poolId);
-    //         // skip the first share class because it's never assigned
-    //         for (uint32 j = 1; j < shareClassCount; j++) {
-    //             ShareClassId scId = batchRequestManager.previewShareClassId(poolId, j);
-    //             AssetId assetId = _getAssetId();
-    //             AssetId assetId = AssetId.wrap(_getAssetId());
-    //             // loop over all account types defined in IHub::AccountType
-    //             for(uint8 kind = 0; kind < 6; kind++) {
-    //                 AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
-    //                 (uint128 totalDebit, uint128 totalCredit,,,) = accounting.accounts(poolId, accountId);
-    //                 lte(totalDebit, uint128(type(int128).max), "totalDebit is greater than max int128");
-    //                 lte(totalCredit, uint128(type(int128).max), "totalCredit is greater than max int128");
-    //             }
-    //         }
-    //     }
-    // }
-
     /// @dev Property: Any decrease in valuation should not result in an increase in accountValue
     function property_decrease_valuation_no_increase_in_accountValue() public {
         PoolId poolId = _getPool();
@@ -939,53 +806,6 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                 "lastUpdate is <= latest redeem revoke"
             );
         }
-    }
-
-    /// @dev Property: The amount of holdings of an asset for a pool-shareClass pair in Holdings MUST always be equal to
-    /// the balance of the escrow for said pool-shareClass for the respective token
-    /// @dev This property is undefined when price is zero (no shares issued, so holdings don't track escrow movements)
-    /// NOTE: removed because this doesn't hold before submitQueuedAssets is called, escrow balance is nonzero and Holding balance is 0
-    // function property_holdings_balance_equals_escrow_balance() public {
-    //     IBaseVault vault = _getVault();
-
-    //     // this property only applies to async vaults
-    //     if (!Helpers.isAsyncVault(address(vault))) return;
-
-    //     // Guard: Skip when price is zero (property is undefined)
-    //     if (_before.pricePerShare[address(_getVault())] == 0) return;
-
-    //     address asset = vault.asset();
-    //     AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
-
-    //     (uint128 holdingAssetAmount, , , ) = holdings.holding(
-    //         vault.poolId(),
-    //         vault.scId(),
-    //         assetId
-    //     );
-    //     address poolEscrow = address(poolEscrowFactory.escrow(vault.poolId()));
-    //     uint256 escrowBalance = MockERC20(asset).balanceOf(poolEscrow);
-
-    //     eq(holdingAssetAmount, escrowBalance, "holding != escrow balance");
-    // }
-
-    /// @dev Property: The total issuance of a share class is <= the sum of issued shares and burned shares
-    function property_total_issuance_soundness() public pure {
-        // TODO(wischli): Find feasible replacement now that queues are always enabled
-        // precondition: if queue is enabled, return early because the totalIssuance is only updated immediately when
-        // the queue isn't enabled
-        return;
-
-        // Unreachable code commented out to fix compiler warnings
-        // (uint128 totalIssuance,) = batchRequestManager.metrics(scId);
-        // uint256 minted = issuedHubShares[poolId][scId][assetId] + issuedBalanceSheetShares[poolId][scId]
-        //     + sumOfSyncDepositsShare[vault.share()];
-        // uint256 burned = revokedHubShares[poolId][scId][assetId] + revokedBalanceSheetShares[poolId][scId];
-        // console2.log("issuedHubShares:", issuedHubShares[poolId][scId][assetId]);
-        // console2.log("issuedBalanceSheetShares:", issuedBalanceSheetShares[poolId][scId]);
-        // console2.log("sumOfSyncDepositsShare:", sumOfSyncDepositsShare[vault.share()]);
-        // console2.log("revokedHubShares:", revokedHubShares[poolId][scId][assetId]);
-        // console2.log("revokedBalanceSheetShares:", revokedBalanceSheetShares[poolId][scId]);
-        // lte(totalIssuance, minted - burned, "total issuance is > issuedHubShares + issuedBalanceSheetShares");
     }
 
     /// @dev Property: operations which increase deposits/shares don't decrease PPS
@@ -1475,6 +1295,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
                 // If a submission occurred, verify reset
                 if (nonce > before_nonce[key]) {
+                    // TODO(wischli): Investigate
                     // After submission, delta should be 0 and isPositive false
                     // (unless new operations occurred after submission)
                     // Property 3.7: Snapshot logic
@@ -1719,52 +1540,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     /// @dev Property 2.4: Escrow Balance Sufficiency
     /// @notice Ensures available balance always covers withdrawals
     // NOTE: Removed because untestable; in BalanceSheet::withdraw, asset queue is increased at the same time that assets are sent to user which decreases holding_.total as well
-    // function property_escrowBalanceSufficiency() public {
-    //     PoolId[] memory pools = _getPools();
-    //     PoolId poolId = _getPool();
-    //     ShareClassId scId = _getShareClassId();
-    //     AssetId assetId = _getAssetId();
-    //     bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
-
-    //     // Skip if not tracked
-    //     if (!ghost_escrowSufficiencyTracked[key]) return;
-
-    //     // Use vault to get asset address
-    //     address asset = _getVault().asset();
-
-    //     // Get current available balance
-    //     uint128 available = balanceSheet.availableBalanceOf(
-    //         poolId,
-    //         scId,
-    //         asset,
-    //         0
-    //     );
-
-    //     // Get queued withdrawals
-    //     (, uint128 queuedWithdrawals) = balanceSheet.queuedAssets(
-    //         poolId,
-    //         scId,
-    //         assetId
-    //     );
-
-    //     // Core Invariant: Available = Total - Reserved
-    //     PoolEscrow poolEscrow = PoolEscrow(
-    //         address(balanceSheet.escrow(poolId))
-    //     );
-    //     (, uint128 reserved) = poolEscrow.holding(
-    //         scId,
-    //         asset,
-    //         _getAssetId().raw()
-    //     );
-    //     uint128 calculatedTotal = available + reserved;
-
-    //     // Total must cover all obligations
-    //     gte(
-    //         calculatedTotal,
-    //         reserved + queuedWithdrawals,
-    //         "Total balance insufficient for obligations"
-    //     );
-    // }
+    // function property_escrowBalanceSufficiency() public {}
 
     /// @dev Property: BalanceSheet must always have sufficient balance for queued assets
     function property_availableGtQueued() public {

@@ -121,7 +121,6 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
     /// @dev Property: depositing maxDeposit doesn't mint more than maxMint shares
     /// @dev Property: For async vaults, validates globalEscrow share transfers
     /// @dev Property: For sync vaults, validates PoolEscrow state changes
-    // TODO(wischli): Add back statelessTest modifier after optimizer run
     function vault_maxDeposit(
         uint64,
         /* poolEntropy */
@@ -152,11 +151,9 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         if (isAsyncVault) {
             claimState = _captureAsyncClaimStateBefore(_getVault(), _getActor());
             maxMintBefore = claimState.maxMintBefore;
+        } else {
+            maxMintBefore = syncManager.maxMint(_getVault(), _getActor());
         }
-        // TODO(wischli): Re-enable after merging main with maxMint refactor to overcome Uint128_Overflow
-        // else {
-        //     maxMintBefore = syncManager.maxMint(_getVault(), _getActor());
-        // }
 
         vm.prank(_getActor());
         try _getVault().deposit(depositAmount, _getActor()) returns (uint256 shares) {
@@ -184,10 +181,13 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
 
                 eq(pendingDeposit, pendingDepositBefore, "pendingDeposit should not increase");
 
+                // Verify shares minted don't exceed maxMint for both vault types
+                lte(shares, maxMintBefore, "shares minted surpass maxMint");
+
+                // Verify maxMint is exhausted after maxDeposit
                 uint256 maxMintAfter;
                 if (isAsyncVault) {
                     (maxMintAfter,,,,,,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
-                    lte(shares, maxMintBefore, "shares minted surpass maxMint");
                 } else {
                     maxMintAfter = syncManager.maxMint(_getVault(), _getActor());
                 }
@@ -342,7 +342,6 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
     /// @dev Property: user can always maxRedeem if they have > 0 shares and are approved
     /// @dev Property: user can always redeem an amount between 1 and maxRedeem if they have > 0 shares and are approved
     /// @dev Property: redeeming maxRedeem does not increase the pendingRedeem
-    // TODO(wischli): Add back statelessTest modifier after optimizer run
     function vault_maxRedeem(
         uint64,
         /* poolEntropy */
@@ -399,6 +398,37 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
             if (redeemAmount > 1) {
                 t(approvedShareAmount < redeemAmount, "reverts on redeem for approved amount");
             }
+        }
+    }
+
+    /// @dev Property: SyncManager.maxMint never overflows uint128
+    /// @dev Ensures safe conversion from assets to shares for sync vaults
+    function vault_sync_maxMint_no_overflow()
+        public
+        statelessTest
+    {
+        if (Helpers.isAsyncVault(address(_getVault()))) {
+            return;
+        }
+
+        uint256 maxMint = syncManager.maxMint(_getVault(), _getActor());
+        lte(maxMint, type(uint128).max, "SyncManager.maxMint must not exceed uint128.max");
+    }
+
+    /// @dev Property: SyncManager.maxDeposit never results in shares exceeding uint128
+    /// @dev Ensures that converting maxDeposit to shares stays within uint128 bounds
+    function vault_sync_maxDeposit_no_overflow()
+        public
+        statelessTest
+    {
+        if (Helpers.isAsyncVault(address(_getVault()))) {
+            return;
+        }
+
+        uint256 maxDeposit = syncManager.maxDeposit(_getVault(), _getActor());
+        if (maxDeposit > 0) {
+            uint256 shares = syncManager.convertToShares(_getVault(), maxDeposit);
+            lte(shares, type(uint128).max, "Shares from maxDeposit must not exceed uint128.max");
         }
     }
 
