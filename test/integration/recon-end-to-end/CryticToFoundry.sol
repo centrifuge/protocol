@@ -3,8 +3,6 @@ pragma solidity ^0.8.0;
 
 import {TargetFunctions} from "./TargetFunctions.sol";
 
-import {D18} from "../../../src/misc/types/D18.sol";
-
 import {Test} from "forge-std/Test.sol";
 
 import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";

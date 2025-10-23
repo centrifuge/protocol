@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import {AsyncVaultCentrifugeProperties} from "./AsyncVaultCentrifugeProperties.sol";
+import {VaultProperties} from "./VaultProperties.sol";
 
 import {D18} from "../../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
@@ -29,7 +29,7 @@ import {Helpers} from "../utils/Helpers.sol";
 import {BeforeAfter} from "../BeforeAfter.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 
-abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProperties {
+abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     using CastLib for *;
     using MathLib for D18;
     using MathLib for uint128;

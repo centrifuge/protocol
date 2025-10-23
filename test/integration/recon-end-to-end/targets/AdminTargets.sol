@@ -436,7 +436,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         hub.updateHoldingIsLiability(poolId, scId, assetId, isLiability);
     }
 
-    /// NOTE: When using NAVManager/Accounting, changing isLiability requires the corresponding accountId 
+    /// NOTE: When using NAVManager/Accounting, changing isLiability requires the corresponding accountId
     ///       to be set, otherwise holdings value won't be tracked in accounting.
     function hub_updateHoldingIsLiability_clamped(bool isLiability) public {
         PoolId poolId = _getPool();

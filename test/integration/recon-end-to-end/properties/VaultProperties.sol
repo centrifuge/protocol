@@ -28,85 +28,85 @@ import {Helpers} from "../utils/Helpers.sol";
 /// @dev ERC-7540 Properties used by Centrifuge
 /// See `AsyncVaultProperties` for more properties that can be re-used in your project
 
-// TODO(wischli): Rename to `(Base)VaultProperties` to indicate support for async as well as sync vaults
-abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultProperties {
+/// @notice Vault properties for Centrifuge vaults supporting both async and sync vault types
+abstract contract VaultProperties is Setup, Asserts, AsyncVaultProperties {
     using CastLib for *;
     using MathLib for *;
 
     /// === Overridden Implementations === ///
-    function asyncVault_3(address asyncVaultTarget) public override {
+    function vault_3(address asyncVaultTarget) public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_3(asyncVaultTarget);
     }
 
-    function asyncVault_4(address asyncVaultTarget) public override {
+    function vault_4(address asyncVaultTarget) public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_4(asyncVaultTarget);
     }
 
-    function asyncVault_5(address asyncVaultTarget) public override {
+    function vault_5(address asyncVaultTarget) public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_5(asyncVaultTarget);
     }
 
-    function asyncVault_6_deposit(address asyncVaultTarget, uint256 amt) public override {
+    function vault_6_deposit(address asyncVaultTarget, uint256 amt) public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_6_deposit(asyncVaultTarget, amt);
     }
 
-    function asyncVault_6_mint(address asyncVaultTarget, uint256 amt) public override {
+    function vault_6_mint(address asyncVaultTarget, uint256 amt) public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_6_mint(asyncVaultTarget, amt);
     }
 
-    function asyncVault_6_withdraw(address asyncVaultTarget, uint256 amt) public override {
+    function vault_6_withdraw(address asyncVaultTarget, uint256 amt) public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_6_withdraw(asyncVaultTarget, amt);
     }
 
-    function asyncVault_6_redeem(address asyncVaultTarget, uint256 amt) public override {
+    function vault_6_redeem(address asyncVaultTarget, uint256 amt) public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_6_redeem(asyncVaultTarget, amt);
     }
 
-    function asyncVault_7(address asyncVaultTarget, uint256 shares) public override {
+    function vault_7(address asyncVaultTarget, uint256 shares) public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_7(asyncVaultTarget, shares);
     }
 
-    function asyncVault_8(address asyncVaultTarget) public override {
+    function vault_8(address asyncVaultTarget) public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_8(asyncVaultTarget);
     }
 
-    function asyncVault_9_deposit(address asyncVaultTarget) public override {
+    function vault_9_deposit(address asyncVaultTarget) public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_9_deposit(asyncVaultTarget);
     }
 
-    function asyncVault_9_mint(address asyncVaultTarget) public override {
+    function vault_9_mint(address asyncVaultTarget) public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_9_mint(asyncVaultTarget);
     }
 
-    function asyncVault_9_withdraw(address asyncVaultTarget) public override {
+    function vault_9_withdraw(address asyncVaultTarget) public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_9_withdraw(asyncVaultTarget);
     }
 
-    function asyncVault_9_redeem(address asyncVaultTarget) public override {
+    function vault_9_redeem(address asyncVaultTarget) public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_9_redeem(asyncVaultTarget);
@@ -123,7 +123,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: For async vaults, validates globalEscrow share transfers
     /// @dev Property: For sync vaults, validates PoolEscrow state changes
     // TODO(wischli): Add back statelessTest modifier after optimizer run
-    function asyncVault_maxDeposit(
+    function vault_maxDeposit(
         uint64,
         /* poolEntropy */
         uint32,
@@ -168,7 +168,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
                 // For async vaults, validate globalEscrow share transfers instead of poolEscrow
                 claimState.sharesReturned = shares;
                 _updateAsyncClaimStateAfter(claimState, _getVault(), _getActor());
-                _validateAsyncVaultClaim(claimState, "asyncVault_maxDeposit");
+                _validateAsyncVaultClaim(claimState, "vault_maxDeposit");
 
                 _validateAsyncMaxValueChange(maxDepositBefore, maxDepositAfter, depositAmount, "Deposit");
             } else {
@@ -209,7 +209,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: user can always mint an amount between 1 and maxMint if they have > 0 assets and are approved
     /// @dev Property: maxMint should be 0 after using maxMint as mintAmount
     /// @dev Property: minting maxMint should not mint more than maxDeposit shares
-    function asyncVault_maxMint(
+    function vault_maxMint(
         uint64,
         /* poolEntropy */
         uint32,
@@ -245,7 +245,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             if (isAsyncVault) {
                 claimState.sharesReturned = mintAmount;
                 _updateAsyncClaimStateAfter(claimState, _getVault(), _getActor());
-                _validateAsyncVaultClaim(claimState, "asyncVault_maxMint");
+                _validateAsyncVaultClaim(claimState, "vault_maxMint");
 
                 _validateAsyncMaxValueChange(maxMintBefore, maxMintAfter, mintAmount, "Mint");
 
@@ -290,7 +290,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: user can always withdraw an amount between 1 and maxWithdraw if they have > 0 shares and are
     /// approved
     /// @dev Property: maxWithdraw should decrease by the amount withdrawn
-    function asyncVault_maxWithdraw(
+    function vault_maxWithdraw(
         uint64,
         /* poolEntropy */
         uint32,
@@ -344,7 +344,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: user can always redeem an amount between 1 and maxRedeem if they have > 0 shares and are approved
     /// @dev Property: redeeming maxRedeem does not increase the pendingRedeem
     // TODO(wischli): Add back statelessTest modifier after optimizer run
-    function asyncVault_maxRedeem(
+    function vault_maxRedeem(
         uint64,
         /* poolEntropy */
         uint32,

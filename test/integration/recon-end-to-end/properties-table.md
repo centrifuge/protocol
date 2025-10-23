@@ -1,30 +1,30 @@
 | # | Function Name | Property Description | Passing |
 |----|--------------|---------------------|----------|
-| 1 | asyncVault_maxDeposit | user can always maxDeposit if they have > 0 assets and are approved | ✅ |
-| 2 | asyncVault_maxDeposit | user can always deposit an amount between 1 and maxDeposit if they have > 0 assets and are approved | ✅ |
-| 3 | asyncVault_maxDeposit | maxDeposit should decrease by the amount deposited | ✅ |
-| 4 | asyncVault_maxDeposit | depositing maxDeposit blocks the user from depositing more | ✅ |
-| 5 | asyncVault_maxDeposit | depositing maxDeposit does not increase the pendingDeposit | ✅ |
-| 6 | asyncVault_maxDeposit | depositing maxDeposit doesn't mint more than maxMint shares | ✅ |
-| 7 | asyncVault_maxDeposit | For async vaults, validates globalEscrow share transfers | ✅ |
-| 8 | asyncVault_maxDeposit | For sync vaults, validates PoolEscrow state changes | ✅ |
-| 9 | asyncVault_maxMint | user can always maxMint if they have > 0 assets and are approved | ✅ |
-| 10 | asyncVault_maxMint | user can always mint an amount between 1 and maxMint if they have > 0 assets and are approved | ✅ |
-| 11 | asyncVault_maxMint | maxMint should be 0 after using maxMint as mintAmount | ✅ |
-| 12 | asyncVault_maxMint | minting maxMint should not mint more than maxDeposit shares | ✅ |
-| 13 | asyncVault_maxWithdraw | user can always maxWithdraw if they have > 0 shares and are approved | ✅ |
-| 14 | asyncVault_maxWithdraw | user can always withdraw an amount between 1 and maxWithdraw if they have > 0 shares and are approved | ❌ |
-| 15 | asyncVault_maxWithdraw | maxWithdraw should decrease by the amount withdrawn | ✅ |
-| 16 | asyncVault_maxRedeem | user can always maxRedeem if they have > 0 shares and are approved | ✅ |
-| 17 | asyncVault_maxRedeem | user can always redeem an amount between 1 and maxRedeem if they have > 0 shares and are approved | ✅ |
-| 18 | asyncVault_maxRedeem | redeeming maxRedeem does not increase the pendingRedeem | ✅ |
-| 19 | asyncVault_3 | 7540-3 convertToAssets(totalSupply) == totalAssets unless price is 0.0 | ✅ |
-| 20 | asyncVault_4 | 7540-4 convertToShares(totalAssets) == totalSupply unless price is 0.0 | ✅ |
-| 21 | asyncVault_5 | 7540-5 max* never reverts | ✅ |
-| 22 | asyncVault_6_deposit | 7540-6 claiming more than max always reverts | ✅ |
-| 23 | asyncVault_7 | 7540-7 requestRedeem reverts if the share balance is less than amount | ✅ |
-| 24 | asyncVault_8 | 7540-8 preview* always reverts | ✅ |
-| 25 | asyncVault_9_deposit | 7540-9 if max[method] > 0, then [method] (max) should not revert | ✅ |
+| 1 | vault_maxDeposit | user can always maxDeposit if they have > 0 assets and are approved | ✅ |
+| 2 | vault_maxDeposit | user can always deposit an amount between 1 and maxDeposit if they have > 0 assets and are approved | ✅ |
+| 3 | vault_maxDeposit | maxDeposit should decrease by the amount deposited | ✅ |
+| 4 | vault_maxDeposit | depositing maxDeposit blocks the user from depositing more | ✅ |
+| 5 | vault_maxDeposit | depositing maxDeposit does not increase the pendingDeposit | ✅ |
+| 6 | vault_maxDeposit | depositing maxDeposit doesn't mint more than maxMint shares | ✅ |
+| 7 | vault_maxDeposit | For async vaults, validates globalEscrow share transfers | ✅ |
+| 8 | vault_maxDeposit | For sync vaults, validates PoolEscrow state changes | ✅ |
+| 9 | vault_maxMint | user can always maxMint if they have > 0 assets and are approved | ✅ |
+| 10 | vault_maxMint | user can always mint an amount between 1 and maxMint if they have > 0 assets and are approved | ✅ |
+| 11 | vault_maxMint | maxMint should be 0 after using maxMint as mintAmount | ✅ |
+| 12 | vault_maxMint | minting maxMint should not mint more than maxDeposit shares | ✅ |
+| 13 | vault_maxWithdraw | user can always maxWithdraw if they have > 0 shares and are approved | ✅ |
+| 14 | vault_maxWithdraw | user can always withdraw an amount between 1 and maxWithdraw if they have > 0 shares and are approved | ❌ |
+| 15 | vault_maxWithdraw | maxWithdraw should decrease by the amount withdrawn | ✅ |
+| 16 | vault_maxRedeem | user can always maxRedeem if they have > 0 shares and are approved | ✅ |
+| 17 | vault_maxRedeem | user can always redeem an amount between 1 and maxRedeem if they have > 0 shares and are approved | ✅ |
+| 18 | vault_maxRedeem | redeeming maxRedeem does not increase the pendingRedeem | ✅ |
+| 19 | erc7540_3 | 7540-3 convertToAssets(totalSupply) == totalAssets unless price is 0.0 | ✅ |
+| 20 | erc7540_4 | 7540-4 convertToShares(totalAssets) == totalSupply unless price is 0.0 | ✅ |
+| 21 | erc7540_5 | 7540-5 max* never reverts | ✅ |
+| 22 | erc7540_6_deposit | 7540-6 claiming more than max always reverts | ✅ |
+| 23 | erc7540_7 | 7540-7 requestRedeem reverts if the share balance is less than amount | ✅ |
+| 24 | erc7540_8 | 7540-8 preview* always reverts | ✅ |
+| 25 | erc7540_9_deposit | 7540-9 if max[method] > 0, then [method] (max) should not revert | ✅ |
 | 26 | property_sum_of_shares_received | Sum of share tokens received on `deposit` and `mint` <= sum of fulfilledDepositRequest.shares | ✅ |
 | 27 | property_sum_of_assets_received | the sum of assets received on redeem and withdraw <= sum of payout of fulfilledRedeemRequest | ✅ |
 | 28 | property_sum_of_pending_redeem_request | the payout of the escrow is always <= sum of redemptions paid out | ✅ |
