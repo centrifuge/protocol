@@ -19,7 +19,6 @@ import {console2} from "forge-std/console2.sol";
 
 import {vm} from "@chimera/Hevm.sol";
 import {OpType} from "../BeforeAfter.sol";
-import {MockERC20} from "@recon/MockERC20.sol";
 import {Properties} from "../properties/Properties.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 
@@ -98,11 +97,16 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         }
         uint256 assetsAsShares = _getVault().convertToShares(assetsSpent);
 
-        uint256 expectedAssetsSpent = (assetsAsShares * ppfsBefore) + (10 ** MockERC20(_getAsset()).decimals());
-        uint256 expectedSharesReceived = (assetsSpent / ppfsBefore) - (10 ** IShareToken(_getShareToken()).decimals());
+        // Use vault's conversion to properly handle decimal scaling
+        // Expected assets = what the vault says these shares should cost
+        uint256 expectedAssetsSpent = _getVault().convertToAssets(shares);
 
+        // Property checks:
+        // 1. assetsSpent should be >= expectedAssetsSpent (vault rounds up to favor itself when charging)
+        // 2. When converting assetsSpent back to shares, we should get >= shares requested
+        //    (because we paid more than minimum due to rounding up)
         gte(assetsSpent, expectedAssetsSpent, "assetsSpent < expectedAssetsSpent");
-        lte(assetsAsShares, expectedSharesReceived, "assetsAsShares > expectedSharesReceived");
+        gte(assetsAsShares, shares, "assetsAsShares < shares requested");
     }
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare -

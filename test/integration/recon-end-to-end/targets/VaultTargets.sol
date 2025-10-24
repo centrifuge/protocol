@@ -435,6 +435,11 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             sumOfSyncDepositsShare[vault.share()] += shares;
             userDepositProcessed[vault.scId()][vaultRegistry.vaultDetails(vault).assetId][_getActor()] += assets;
             userRequestDeposited[vault.scId()][vaultRegistry.vaultDetails(vault).assetId][_getActor()] += assets;
+
+            // Track cumulative assets deposited for withdrawal proportionality property
+            AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+            bytes32 assetKey = keccak256(abi.encode(vault.poolId(), vault.scId(), assetId));
+            ghost_cumulativeAssetsDeposited[assetKey] += assets;
         }
 
         // Bal after
@@ -534,6 +539,11 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);
             }
             executedInvestments[vault.share()] += shares;
+
+            // Track cumulative assets deposited for withdrawal proportionality property
+            AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+            bytes32 assetKey = keccak256(abi.encode(vault.poolId(), vault.scId(), assetId));
+            ghost_cumulativeAssetsDeposited[assetKey] += assets;
         }
     }
 
