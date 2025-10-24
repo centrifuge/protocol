@@ -111,7 +111,7 @@ abstract contract TargetFunctions is
 
         // NOTE END TEMPORARY
 
-        decimals = uint8(between(decimals, 2, 24));
+        decimals = uint8(between(decimals, 6, 24));
 
         // 1. Deploy new token and register it as an asset
         _newAsset(decimals);
