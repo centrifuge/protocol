@@ -501,45 +501,45 @@ abstract contract Properties is
 
     /// @dev Property: The balance of currencies in Escrow is the sum of deposit requests -minus sum of claimed
     /// redemptions + transfers in -minus transfers out
-    /// @dev NOTE: Ignores donations
-    function property_escrow_balance() public assetIsSet {
-        if (address(globalEscrow) == address(0)) {
-            return;
-        }
+    /// @dev NOTE: Removed because too difficult to implement ghost tracking and escrow balance is checked in other properties
+    // function property_escrow_balance() public assetIsSet {
+    //     if (address(globalEscrow) == address(0)) {
+    //         return;
+    //     }
 
-        IBaseVault vault = _getVault();
-        address asset = vault.asset();
-        PoolId poolId = vault.poolId();
-        address poolEscrow = address(poolEscrowFactory.escrow(poolId));
-        uint256 balOfPoolEscrow = MockERC20(address(asset)).balanceOf(
-            address(poolEscrow)
-        ); // The balance of tokens in
-        // Escrow is sum of deposit requests plus transfers in minus transfers out
-        uint256 balOfGlobalEscrow = MockERC20(address(asset)).balanceOf(
-            address(globalEscrow)
-        );
+    //     IBaseVault vault = _getVault();
+    //     address asset = vault.asset();
+    //     PoolId poolId = vault.poolId();
+    //     address poolEscrow = address(poolEscrowFactory.escrow(poolId));
+    //     uint256 balOfPoolEscrow = MockERC20(address(asset)).balanceOf(
+    //         address(poolEscrow)
+    //     ); // The balance of tokens in
+    //     // Escrow is sum of deposit requests plus transfers in minus transfers out
+    //     uint256 balOfGlobalEscrow = MockERC20(address(asset)).balanceOf(
+    //         address(globalEscrow)
+    //     );
 
-        // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
-        // NOTE: Overflow should always result back to a rational value as assets cannot overflow due to other
-        // functions permanently reverting
-        uint256 ghostBalOfEscrow;
-        unchecked {
-            // Deposit Requests + Transfers In - Claimed Redemptions + TransfersOut
-            /// @audit Minted by Asset Payouts by Investors
-            ghostBalOfEscrow = ((sumOfDepositRequests[asset] +
-                sumOfSyncDepositsAsset[asset] +
-                sumOfManagerDeposits[asset]) -
-                (sumOfClaimedCancelledDeposits[asset] +
-                    sumOfClaimedRedemptions[asset] +
-                    sumOfManagerWithdrawals[asset]));
-        }
+    //     // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
+    //     // NOTE: Overflow should always result back to a rational value as assets cannot overflow due to other
+    //     // functions permanently reverting
+    //     uint256 ghostBalOfEscrow;
+    //     unchecked {
+    //         // Deposit Requests + Transfers In - Claimed Redemptions + TransfersOut
+    //         /// @audit Minted by Asset Payouts by Investors
+    //         ghostBalOfEscrow = ((sumOfDepositRequests[asset] +
+    //             sumOfSyncDepositsAsset[asset] +
+    //             sumOfManagerDeposits[asset]) -
+    //             (sumOfClaimedCancelledDeposits[asset] +
+    //                 sumOfClaimedRedemptions[asset] +
+    //                 sumOfManagerWithdrawals[asset]));
+    //     }
 
-        eq(
-            balOfPoolEscrow + balOfGlobalEscrow,
-            ghostBalOfEscrow,
-            "balOfEscrow != ghostBalOfEscrow"
-        );
-    }
+    //     eq(
+    //         balOfPoolEscrow + balOfGlobalEscrow,
+    //         ghostBalOfEscrow,
+    //         "balOfEscrow != ghostBalOfEscrow"
+    //     );
+    // }
 
     // TODO: Multi Assets -> Iterate over all existing combinations
 
