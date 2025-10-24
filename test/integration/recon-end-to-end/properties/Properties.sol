@@ -1134,6 +1134,12 @@ abstract contract Properties is
         ) {
             // loop over all account types defined in IHub::AccountType
             for (uint8 kind = 0; kind < 6; kind++) {
+                // Skip Loss account (kind=2) as it's expected to increase when holding value decreases
+                // This is correct double-entry accounting: when assets decrease, losses increase
+                if (kind == uint8(AccountType.Loss)) {
+                    continue;
+                }
+
                 AccountId accountId = holdings.accountId(
                     poolId,
                     scId,
