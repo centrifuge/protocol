@@ -18,7 +18,6 @@ import {console2} from "forge-std/console2.sol";
 
 import {vm} from "@chimera/Hevm.sol";
 import {OpType} from "../BeforeAfter.sol";
-import {MockERC20} from "@recon/MockERC20.sol";
 import {Properties} from "../properties/Properties.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 
