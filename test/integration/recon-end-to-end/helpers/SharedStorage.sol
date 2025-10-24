@@ -45,7 +45,10 @@ abstract contract SharedStorage {
     // Hash of index + salt, but we use number to be able to cycle
     bytes16 SHARE_ID = bytes16(bytes32(uint256(SHARE_COUNTER)));
     uint16 DEFAULT_DESTINATION_CHAIN = 1;
-    uint128 ASSET_ID = uint128(bytes16(abi.encodePacked(DEFAULT_DESTINATION_CHAIN, uint32(1))));
+    uint128 ASSET_ID =
+        uint128(
+            bytes16(abi.encodePacked(DEFAULT_DESTINATION_CHAIN, uint32(1)))
+        );
 
     // NOTE: TODO
     // ** INCOMPLETE - Deployment, Setup and Cycling of Assets, Shares, Pools and Vaults **/
@@ -179,8 +182,7 @@ abstract contract SharedStorage {
     mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userCancelledDeposits;
 
     mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRequestRedeemed;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256)))
-        userRequestRedeemedAssets;
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRequestRedeemedAssets;
     mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRedemptionsProcessed;
     mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userCancelledRedeems;
 
@@ -246,7 +248,6 @@ abstract contract SharedStorage {
     // SUPPLY CONSISTENCY GHOST VARIABLES
     // ===============================
     mapping(bytes32 => uint256) internal ghost_totalShareSupply;
-    mapping(bytes32 => mapping(address => uint256)) internal ghost_individualBalances;
     mapping(bytes32 => uint256) internal ghost_supplyMintEvents;
     mapping(bytes32 => uint256) internal ghost_supplyBurnEvents;
     mapping(bytes32 => bool) internal ghost_supplyOperationOccurred;
@@ -256,13 +257,15 @@ abstract contract SharedStorage {
     // ===============================
     // Deposit proportionality tracking
     mapping(bytes32 => uint256) internal ghost_cumulativeAssetsDeposited;
-    mapping(bytes32 => uint256) internal ghost_cumulativeSharesIssuedForDeposits;
+    mapping(bytes32 => uint256)
+        internal ghost_cumulativeSharesIssuedForDeposits;
     mapping(bytes32 => uint256) internal ghost_depositExchangeRate;
     mapping(bytes32 => bool) internal ghost_depositProportionalityTracked;
 
     // Withdrawal proportionality tracking
     mapping(bytes32 => uint256) internal ghost_cumulativeAssetsWithdrawn;
-    mapping(bytes32 => uint256) internal ghost_cumulativeSharesRevokedForWithdrawals;
+    mapping(bytes32 => uint256)
+        internal ghost_cumulativeSharesRevokedForWithdrawals;
     mapping(bytes32 => bool) internal ghost_withdrawalProportionalityTracked;
 
     // ===============================
