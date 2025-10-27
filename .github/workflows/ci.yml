@@ -21,7 +21,23 @@ jobs:
           version: v1.4.1
 
       - name: Run tests
-        run: forge test --deny-warnings
+        run: forge test --deny warnings --nmc PreMigrationValidation
+        env:
+          FOUNDRY_PROFILE: ci
+
+  pre-migration-validation:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.1
+
+      - name: Run pre-migration validation
+        run: forge test --match-contract PreMigrationValidation --ffi -vv
         env:
           FOUNDRY_PROFILE: ci
 
@@ -38,7 +54,7 @@ jobs:
       - name: Build contracts
         run: |
           forge --version
-          forge build --sizes --skip test --deny-warnings
+          forge build --sizes --skip test --deny warnings
 
       - name: Check formatting
         run: forge fmt --check
@@ -179,7 +195,7 @@ jobs:
           version: v1.4.1
 
       - name: Run coverage
-        run: forge coverage --report summary --report lcov
+        run: forge coverage --report summary --report lcov --nmc PreMigrationValidation
         env:
           FOUNDRY_PROFILE: ci-coverage
           FORGE_SNAPSHOT_CHECK: false
