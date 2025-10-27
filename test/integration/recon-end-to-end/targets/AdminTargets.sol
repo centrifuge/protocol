@@ -247,7 +247,9 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
-        uint256 escrowSharesBefore = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
+
+        address shareToken = address(spoke.shareToken(poolId, scId));
+        uint256 escrowSharesBefore = IShareToken(shareToken).balanceOf(address(globalEscrow));
 
         batchRequestManager.issueShares{
             value: MAX_MESSAGE_COST
@@ -256,11 +258,11 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         // Calculate issued amount in separate function to avoid stack depth
         uint128 issuedShareAmount = _calculateIssuedShares(poolId, scId, assetId, nowIssueEpochId, navPerShare);
 
-        uint256 escrowSharesAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
+        uint256 escrowSharesAfter = IShareToken(shareToken).balanceOf(address(globalEscrow));
 
         uint256 escrowShareDelta = escrowSharesAfter - escrowSharesBefore;
-        executedInvestments[_getShareToken()] += escrowShareDelta;
-        sumOfFulfilledDeposits[_getShareToken()] += escrowShareDelta;
+        executedInvestments[shareToken] += escrowShareDelta;
+        sumOfFulfilledDeposits[shareToken] += escrowShareDelta;
         issuedHubShares[poolId][scId][assetId] += issuedShareAmount;
 
         // Update ghost variables for share queue tracking
@@ -332,7 +334,9 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId payoutAssetId = _getAssetId();
-        uint256 sharesBefore = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
+
+        address shareToken = address(spoke.shareToken(poolId, scId));
+        uint256 sharesBefore = IShareToken(shareToken).balanceOf(address(globalEscrow));
 
         batchRequestManager.revokeShares{
             value: MAX_MESSAGE_COST
@@ -341,11 +345,11 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         // Get and process epoch data in separate function to avoid stack depth
         uint128 revokedShareAmount = _calculateRevokedShares(poolId, scId, payoutAssetId, nowRevokeEpochId);
 
-        uint256 sharesAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
+        uint256 sharesAfter = IShareToken(shareToken).balanceOf(address(globalEscrow));
         uint256 burnedShares = sharesBefore - sharesAfter;
 
         // NOTE: shares are burned on revoke
-        executedRedemptions[vault.share()] += burnedShares;
+        executedRedemptions[shareToken] += burnedShares;
         revokedHubShares[poolId][scId][payoutAssetId] += revokedShareAmount;
 
         // Update ghost variables for share queue tracking

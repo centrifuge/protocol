@@ -59,4 +59,11 @@ abstract contract ReconShareManager {
         address shareToken = shareTokens[entropy % shareTokens.length];
         __shareToken = shareToken;
     }
+
+    /// @notice Internal setter for share token - used by consistency hooks
+    /// @param shareToken The address to set as current share token
+    /// @dev Protected method for maintaining invariants. Does not validate if token is in the set.
+    function _setShareToken(address shareToken) internal {
+        __shareToken = shareToken;
+    }
 }

@@ -583,4 +583,18 @@ abstract contract Setup is
             ghost_endorsedTransferAttempts[key]++;
         }
     }
+
+    /// @notice Hook override to maintain invariant: _getShareToken() == spoke.shareToken(_getPool(), _getShareClassId())
+    /// @dev Called automatically when share class changes via _switchShareClassId() or _addShareClassId()
+    /// @dev This ensures ghost variables keyed by share token address remain synchronized with protocol state
+    /// @param newShareClassId The new share class that was just set as active
+    function _onShareClassIdChanged(ShareClassId newShareClassId) internal virtual override {
+        // Auto-sync share token with the new share class to maintain consistency
+        // This prevents ghost variable tracking bugs where _getShareToken() returns a token that doesn't match current (pool, shareClass)
+        address newShareToken = address(spoke.shareToken(_getPool(), newShareClassId));
+        
+        if (newShareToken != address(0)) {
+            _setShareToken(newShareToken);
+        }
+    }
 }
