@@ -160,7 +160,10 @@ class CrossChainTestManager:
                 # Set environment variables for the spoke script
                 spoke_env = spoke_runner.env.copy()
                 spoke_env["HUB_CENTRIFUGE_ID"] = str(log_data["hubCentrifugeId"])
-                spoke_env["POOL_INDEX_OFFSET"] = str(log_data["poolIndexOffset"])
+                # Allow environment variable to override log file value
+                import os
+                pool_offset = os.environ.get("POOL_INDEX_OFFSET", str(log_data["poolIndexOffset"]))
+                spoke_env["POOL_INDEX_OFFSET"] = pool_offset
                 spoke_env["TEST_RUN_ID"] = log_data["testRunId"]
                 
                 # Update runner environment
@@ -195,7 +198,11 @@ class CrossChainTestManager:
         }
 
     def _extract_pool_offset(self) -> int:
-        """Extract pool index offset from script output"""
+        """Extract pool index offset from environment or generate from timestamp"""
+        import os
+        # Check if POOL_INDEX_OFFSET is set in environment
+        if "POOL_INDEX_OFFSET" in os.environ:
+            return int(os.environ["POOL_INDEX_OFFSET"])
         # The TestCrossChainHub script uses timestamp-based default if not set
         # We'll use the same logic for consistency
         return int(time.time()) % 1000

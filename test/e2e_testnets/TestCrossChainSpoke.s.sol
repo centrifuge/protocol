@@ -97,8 +97,8 @@ contract TestCrossChainSpoke is BaseTestData {
         uint64 asyncPoolIndex = uint64(spokeCentrifugeId) * 1000 + poolIndexOffset * 2 + 1;
         uint64 syncPoolIndex = uint64(spokeCentrifugeId) * 1000 + poolIndexOffset * 2 + 2;
 
-        PoolId asyncPoolId = hubRegistry.poolId(spokeCentrifugeId, uint48(asyncPoolIndex));
-        PoolId syncPoolId = hubRegistry.poolId(spokeCentrifugeId, uint48(syncPoolIndex));
+        PoolId asyncPoolId = hubRegistry.poolId(hubCentrifugeId, uint48(asyncPoolIndex));
+        PoolId syncPoolId = hubRegistry.poolId(hubCentrifugeId, uint48(syncPoolIndex));
 
         console.log("Looking for async pool, poolIndex:", asyncPoolIndex);
         console.log("  PoolId:", vm.toString(abi.encode(asyncPoolId)));
