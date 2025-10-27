@@ -260,7 +260,7 @@ class DeploymentRunner:
         
         # Build with parallel jobs
         cpu_count = multiprocessing.cpu_count()
-        cmd = ["forge", "build", "--threads", str(cpu_count), "--skip", "test", "--deny-warnings"]
+        cmd = ["forge", "build", "--threads", str(cpu_count), "--skip", "test", "--deny warnings"]
         print_command(cmd)
         
         if not self.args.dry_run:
