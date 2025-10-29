@@ -88,8 +88,6 @@ abstract contract SharedStorage {
 
     // Global-1
     mapping(address => uint256) sumOfClaimedCancelledDeposits;
-    // Global-2
-    mapping(address => uint256) sumOfClaimedCancelledRedeemShares;
 
     // END === invariant_E_1 === //
 

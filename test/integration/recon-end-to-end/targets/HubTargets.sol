@@ -516,6 +516,5 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         userRedemptionsProcessed[scId][assetId][actor] += paymentShareAmount;
 
         userCancelledRedeems[scId][assetId][actor] += cancelledShareAmount;
-        sumOfClaimedCancelledRedeemShares[vault.share()] += cancelledShareAmount;
     }
 }

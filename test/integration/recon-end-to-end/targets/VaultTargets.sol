@@ -365,11 +365,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         console2.log("Share balance before:", shareBalanceBefore);
         console2.log("Share balance after:", shareBalanceAfter);
         console2.log("Balance change:", shareBalanceAfter - shareBalanceBefore);
-
-        // Track the ghost variables
-        bytes32 shareKey = keccak256(abi.encode(vault.poolId(), vault.scId()));
-
-        sumOfClaimedCancelledRedeemShares[_getVault().share()] += shares;
     }
 
     function vault_deposit(uint256 assets) public updateGhostsWithType(OpType.ADD) {

@@ -29,7 +29,7 @@
 | 27 | property_sum_of_assets_received | the sum of assets received on redeem and withdraw <= sum of payout of fulfilledRedeemRequest | ✅ |
 | 28 | property_sum_of_pending_redeem_request | the payout of the escrow is always <= sum of redemptions paid out | ✅ |
 | 29 | property_system_addresses_never_receive_share_tokens | System addresses should never receive share tokens | ✅ |
-| 30 | property_sum_of_received_leq_fulfilled_inductive | Total cancelled redeem shares <= total supply | ✅ |
+| 30 | property_sum_of_received_leq_fulfilled_inductive | Claimable cancel redeem request delta equals escrow balance delta | ✅ |
 | 31 | property_last_update_on_request_deposit | after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate | ✅ |
 | 32 | property_last_update_on_request_redeem | After successfully calling requestRedeem for an investor, their redeemRequest[..].lastUpdate equals nowRedeemEpoch | ✅ |
 | 33 | property_share_balance_delta | user share balance correctly changes by the same amount of shares added to the escrow | ✅ |
