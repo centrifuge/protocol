@@ -66,7 +66,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
     }
 
     function setUp() public virtual {
-        FullActionBatcher batcher = new FullActionBatcher();
+        FullActionBatcher batcher = new FullActionBatcher(address(this));
 
         _mockRealWormholeContracts();
         _mockRealLayerZeroContracts();

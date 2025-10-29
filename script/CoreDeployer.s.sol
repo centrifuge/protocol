@@ -60,19 +60,15 @@ abstract contract Constants {
 contract CoreActionBatcher is Constants {
     error NotDeployer();
 
-    address deployer;
+    address public deployer;
 
-    constructor() {
-        deployer = msg.sender;
+    constructor(address deployer_) {
+        deployer = deployer_;
     }
 
     modifier onlyDeployer() {
         require(msg.sender == deployer, NotDeployer());
         _;
-    }
-
-    function setDeployer(address newDeployer) public onlyDeployer {
-        deployer = newDeployer;
     }
 
     function lock() public onlyDeployer {
@@ -224,8 +220,16 @@ contract CoreActionBatcher is Constants {
     }
 }
 
+function makeSalt(string memory contractName, bytes32 version, address deployer) pure returns (bytes32) {
+    bytes32 baseHash = keccak256(abi.encodePacked(contractName, version));
+
+    // NOTE: To avoid CreateX InvalidSalt issues, 21st byte needs to be 0
+    return bytes32(abi.encodePacked(bytes20(deployer), bytes1(0x0), bytes11(baseHash)));
+}
+
 abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants {
     bytes32 public version;
+    address public deployer;
 
     Gateway public gateway;
     MultiAdapter public multiAdapter;
@@ -248,18 +252,21 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
     HubHandler public hubHandler;
     Hub public hub;
 
+    function _init(bytes32 version_, address deployer_) internal {
+        // NOTE: This implementation must be idempotent
+        setUpCreateXFactory();
+
+        version = version_;
+        deployer = deployer_;
+    }
+
     /// @dev Generates a deterministic salt based on contract name and optional VERSION
     function generateSalt(string memory contractName) internal view returns (bytes32) {
-        bytes32 baseHash = keccak256(abi.encodePacked(contractName, version));
-
-        // NOTE: To avoid CreateX InvalidSalt issues, 21st byte needs to be 0
-        return bytes32(abi.encodePacked(bytes20(msg.sender), bytes1(0x0), bytes11(baseHash)));
+        return makeSalt(contractName, version, deployer);
     }
 
     function deployCore(CoreInput memory input, CoreActionBatcher batcher) public {
-        setUpCreateXFactory();
-
-        version = input.version;
+        _init(input.version, batcher.deployer());
 
         // Core
         gateway = Gateway(
@@ -285,7 +292,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
 
         // Messaging
         gasService = GasService(
-            create3(generateSalt("gasService-2"), abi.encodePacked(type(GasService).creationCode, abi.encode()))
+            create3(generateSalt("gasService"), abi.encodePacked(type(GasService).creationCode, abi.encode()))
         );
 
         messageProcessor = MessageProcessor(

@@ -265,10 +265,9 @@ contract EndToEndDeployment is Test {
         internal
         returns (LocalAdapter adapter)
     {
-        FullActionBatcher batcher = new FullActionBatcher();
-        batcher.setDeployer(address(deploy));
+        FullActionBatcher batcher = new FullActionBatcher(address(deploy));
 
-        deploy.labelAddresses(string(abi.encodePacked(localCentrifugeId, "-")));
+        deploy.labelAddresses(string(abi.encodePacked(vm.toString(localCentrifugeId), "-")));
         deploy.deployFull(
             FullInput({
                 core: CoreInput({

@@ -69,7 +69,8 @@ contract LaunchDeployer is FullDeployer {
             })
         });
 
-        FullActionBatcher batcher = new FullActionBatcher();
+        // TODO: The batcher needs to be deployed in a previous stage or using create3 to be able Root to rely on it.
+        FullActionBatcher batcher = new FullActionBatcher(msg.sender);
 
         // Cache version hash to avoid redundant hash recalculation
         if (input.core.version == "3.1") _verifyAdmin(input.adminSafe);
