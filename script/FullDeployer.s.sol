@@ -312,6 +312,8 @@ contract FullDeployer is CoreDeployer {
                 create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher)))
             );
             input.core.root = address(root);
+        } else {
+            root = Root(input.core.root);
         }
 
         deployCore(input.core, batcher);

@@ -150,7 +150,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         vm.assume(nonWard != address(spoke));
         vm.assume(nonWard != address(balanceSheet));
         vm.assume(nonWard != address(contractUpdater));
-        vm.assume(nonWard != address(vaultRegistry));
         vm.assume(nonWard != address(hub));
         vm.assume(nonWard != address(hubHandler));
 
@@ -158,7 +157,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(messageDispatcher.wards(address(protocolGuardian)), 1);
         assertEq(messageDispatcher.wards(address(spoke)), 1);
         assertEq(messageDispatcher.wards(address(balanceSheet)), 1);
-        assertEq(messageDispatcher.wards(address(vaultRegistry)), 1);
         assertEq(messageDispatcher.wards(address(hub)), 1);
         assertEq(messageDispatcher.wards(address(hubHandler)), 1);
         assertEq(messageDispatcher.wards(nonWard), 0);
