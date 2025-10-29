@@ -26,7 +26,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     FullRestrictions public correctHook;
 
     function setUp() public {
-        FullActionBatcher batcher = new FullActionBatcher();
+        FullActionBatcher batcher = new FullActionBatcher(address(this));
         super.labelAddresses("");
         super.deployFull(
             FullInput({

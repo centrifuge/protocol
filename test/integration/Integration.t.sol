@@ -31,7 +31,7 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
 
     function setUp() public virtual {
         // Deployment
-        FullActionBatcher batcher = new FullActionBatcher();
+        FullActionBatcher batcher = new FullActionBatcher(address(this));
         super.labelAddresses("");
         super.deployFull(
             FullInput({

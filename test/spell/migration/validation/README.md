@@ -24,7 +24,7 @@ The test queries live data from the Centrifuge indexer and fails if any validati
 
 ## Adding New Validators
 
-1. Create a new file in `test/spell/migration/validators/Validate_YourCheck.sol`
+1. Create a new file in `test/spell/migration/validation/validators/Validate_YourCheck.sol`
 
 2. Extend BaseValidator and implement the validate() function:
 
@@ -94,7 +94,7 @@ for (uint256 i = 0; i < totalCount; i++) {
 ## Architecture
 
 ```
-test/spell/migration/
+test/spell/migration/validation/
 ├── BaseValidator.sol              # Abstract base with GraphQL + error helpers
 ├── PreMigrationValidation.t.sol   # Orchestrator that runs all validators
 └── validators/

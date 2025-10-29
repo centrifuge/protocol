@@ -84,7 +84,7 @@ contract BaseTest is FullDeployer, Test {
 
     function setUp() public virtual {
         // Deployment
-        FullActionBatcher batcher = new FullActionBatcher();
+        FullActionBatcher batcher = new FullActionBatcher(address(this));
         labelAddresses("");
         deployFull(
             FullInput({

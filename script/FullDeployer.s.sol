@@ -105,6 +105,8 @@ struct FullReport {
 }
 
 contract FullActionBatcher is CoreActionBatcher {
+    constructor(address deployer_) CoreActionBatcher(deployer_) {}
+
     function engageFull(FullReport memory report, ISafe adminSafe, ISafe opsSafe) public onlyDeployer {
         // Rely Root
         report.tokenRecoverer.rely(address(report.root));
@@ -301,11 +303,10 @@ contract FullDeployer is CoreDeployer {
     LayerZeroAdapter layerZeroAdapter;
 
     function deployFull(FullInput memory input, FullActionBatcher batcher) public {
+        _init(input.core.version, batcher.deployer());
+
         adminSafe = input.adminSafe;
         opsSafe = input.opsSafe;
-
-        // Ensure salts incorporate the intended version for ALL contracts, including root which is deployed first
-        version = input.core.version;
 
         if (input.core.root == address(0)) {
             root = Root(
@@ -359,7 +360,7 @@ contract FullDeployer is CoreDeployer {
 
         asyncRequestManager = AsyncRequestManager(
             payable(create3(
-                    generateSalt("asyncRequestManager-2"),
+                    generateSalt("asyncRequestManager"),
                     abi.encodePacked(
                         type(AsyncRequestManager).creationCode, abi.encode(globalEscrow, refundEscrowFactory, batcher)
                     )
@@ -382,7 +383,7 @@ contract FullDeployer is CoreDeployer {
 
         asyncVaultFactory = AsyncVaultFactory(
             create3(
-                generateSalt("asyncVaultFactory-3"),
+                generateSalt("asyncVaultFactory"),
                 abi.encodePacked(
                     type(AsyncVaultFactory).creationCode, abi.encode(address(root), asyncRequestManager, batcher)
                 )
@@ -391,7 +392,7 @@ contract FullDeployer is CoreDeployer {
 
         syncDepositVaultFactory = SyncDepositVaultFactory(
             create3(
-                generateSalt("syncDepositVaultFactory-3"),
+                generateSalt("syncDepositVaultFactory"),
                 abi.encodePacked(
                     type(SyncDepositVaultFactory).creationCode,
                     abi.encode(address(root), syncManager, asyncRequestManager, batcher)
@@ -401,7 +402,7 @@ contract FullDeployer is CoreDeployer {
 
         freezeOnlyHook = FreezeOnly(
             create3(
-                generateSalt("freezeOnlyHook-2"),
+                generateSalt("freezeOnlyHook"),
                 abi.encodePacked(
                     type(FreezeOnly).creationCode,
                     abi.encode(
@@ -418,7 +419,7 @@ contract FullDeployer is CoreDeployer {
 
         fullRestrictionsHook = FullRestrictions(
             create3(
-                generateSalt("fullRestrictionsHook-2"),
+                generateSalt("fullRestrictionsHook"),
                 abi.encodePacked(
                     type(FullRestrictions).creationCode,
                     abi.encode(
@@ -435,7 +436,7 @@ contract FullDeployer is CoreDeployer {
 
         freelyTransferableHook = FreelyTransferable(
             create3(
-                generateSalt("freelyTransferableHook-2"),
+                generateSalt("freelyTransferableHook"),
                 abi.encodePacked(
                     type(FreelyTransferable).creationCode,
                     abi.encode(
@@ -452,7 +453,7 @@ contract FullDeployer is CoreDeployer {
 
         redemptionRestrictionsHook = RedemptionRestrictions(
             create3(
-                generateSalt("redemptionRestrictionsHook-2"),
+                generateSalt("redemptionRestrictionsHook"),
                 abi.encodePacked(
                     type(RedemptionRestrictions).creationCode,
                     abi.encode(

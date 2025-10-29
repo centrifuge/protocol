@@ -36,7 +36,7 @@ import {MockCentrifugeChain} from "../mocks/MockCentrifugeChain.sol";
 
 import "forge-std/Test.sol";
 
-contract BaseTest is FullDeployer, Test, FullActionBatcher {
+contract BaseTest is FullDeployer, Test {
     using MessageLib for *;
 
     MockCentrifugeChain centrifugeChain;
@@ -81,7 +81,8 @@ contract BaseTest is FullDeployer, Test, FullActionBatcher {
     }
 
     function setUp() public virtual {
-        setDeployer(address(this));
+        FullActionBatcher batcher = new FullActionBatcher(address(this));
+
         labelAddresses("");
 
         deployFull(
@@ -91,9 +92,39 @@ contract BaseTest is FullDeployer, Test, FullActionBatcher {
                 opsSafe: ISafe(ADMIN),
                 adapters: noAdaptersInput()
             }),
-            this
+            batcher
         );
-        // removeExtendedSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
+
+        // Give permissions to address(this) for most call in these tests.
+        // NOTE: This can be removed when use cases use the correct pranks
+        vm.startPrank(address(batcher));
+        root.rely(address(this));
+        gateway.rely(address(this));
+        multiAdapter.rely(address(this));
+        messageDispatcher.rely(address(this));
+        messageProcessor.rely(address(this));
+        poolEscrowFactory.rely(address(this));
+        tokenFactory.rely(address(this));
+        spoke.rely(address(this));
+        balanceSheet.rely(address(this));
+        contractUpdater.rely(address(this));
+        vaultRegistry.rely(address(this));
+        tokenRecoverer.rely(address(this));
+        routerEscrow.rely(address(this));
+        globalEscrow.rely(address(this));
+        refundEscrowFactory.rely(address(this));
+        asyncVaultFactory.rely(address(this));
+        asyncRequestManager.rely(address(this));
+        syncDepositVaultFactory.rely(address(this));
+        syncManager.rely(address(this));
+        vaultRouter.rely(address(this));
+        freezeOnlyHook.rely(address(this));
+        fullRestrictionsHook.rely(address(this));
+        freelyTransferableHook.rely(address(this));
+        redemptionRestrictionsHook.rely(address(this));
+        vm.stopPrank();
+
+        removeFullDeployerAccess(batcher);
 
         // Ensure test contract has auth on vaultRegistry for testing
         vaultRegistry.rely(address(this));
