@@ -6,7 +6,8 @@
     "catapultaNetwork": "baseSepolia",
     "etherscanUrl": "https://api-sepolia.basescan.org/api",
     "connectsTo": [
-      "sepolia"
+      "sepolia",
+      "arbitrum-sepolia"
     ]
   },
   "adapters": {
@@ -19,7 +20,7 @@
       "axelarId": "base-sepolia",
       "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
       "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
-      "deploy": false
+      "deploy": true
     },
     "layerZero": {
       "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
@@ -72,12 +73,18 @@
     "oracleValuation": "0x039Ce02503F344956a85E3fDC159E6688b0dD3A5",
     "navManager": "0xD881527423fDEc2e6e058e8d35C7dad08F36ba70",
     "simplePriceManager": "0x9519474552d6DC9f73990B024289a9876aFC8512",
-    "layerZeroAdapter": "0xc4161DcA8624CD8aBeEA6B4CaeE5CC805fAA92c2"
+    "layerZeroAdapter": "0xc4161DcA8624CD8aBeEA6B4CaeE5CC805fAA92c2",
+    "axelarAdapter": "0xA935B1AE5520386B0922da240e6B6B4CdF7e0563"
   },
   "deploymentInfo": {
     "deploy:full": {
       "gitCommit": "fc9b8e7b",
       "timestamp": "2025-10-20T19:09:22Z",
+      "version": "v3.1.5"
+    },
+    "deploy:adapters": {
+      "gitCommit": "0c7998cb",
+      "timestamp": "2025-10-30T19:32:02Z",
       "version": "v3.1.5"
     }
   }
