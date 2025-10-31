@@ -74,13 +74,18 @@
     "navManager": "0xD881527423fDEc2e6e058e8d35C7dad08F36ba70",
     "simplePriceManager": "0x9519474552d6DC9f73990B024289a9876aFC8512",
     "layerZeroAdapter": "0xc4161DcA8624CD8aBeEA6B4CaeE5CC805fAA92c2",
-    "axelarAdapter": "0xA935B1AE5520386B0922da240e6B6B4CdF7e0563"
+    "axelarAdapter": "0xb23FaEf9D83B97cbfec3322E801FFe588D701E22"
   },
   "deploymentInfo": {
     "deploy:full": {
       "gitCommit": "fc9b8e7b",
       "timestamp": "2025-10-21T12:33:03Z",
       "version": "v3.1.5"
+    },
+    "deploy:adapters": {
+      "gitCommit": "22709bc3",
+      "timestamp": "2025-10-31T13:55:20Z",
+      "version": "v3.1.7"
     }
   }
 }

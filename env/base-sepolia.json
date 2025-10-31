@@ -13,7 +13,7 @@
   "adapters": {
     "wormhole": {
       "wormholeId": "10004",
-      "relayer": "0x93BAD53DDfB6132b0aC8E37f6029163E63372cEE",
+      "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",
       "deploy": true
     },
     "axelar": {
@@ -56,7 +56,7 @@
     "spoke": "0xc8bFDe31769549A3Ce2F1C1CC9965dfc772EEE34",
     "vaultRouter": "0x7aCf54795dd28CFd9DB2322c525bbd5a1C8b642b",
     "balanceSheet": "0xEDf117F20cDff49d09AC6609bCC1dcfFDe90b072",
-    "wormholeAdapter": "0x826A510725D98ef54e7C698bfB7e2Eefb8083fE4",
+    "wormholeAdapter": "0x930Ef8848168718976238BdbE253D1aA30081adc",
     "onOfframpManagerFactory": "0xa099d21555332752fc0c4b22b02F833b024C9d56",
     "merkleProofManagerFactory": "0x15cc9E21Cf2C56d5F0203567d58C59245ADdE006",
     "vaultDecoder": "0x1292E87D94FD455B03A123c56c4388a5207B409F",
@@ -73,8 +73,8 @@
     "oracleValuation": "0x039Ce02503F344956a85E3fDC159E6688b0dD3A5",
     "navManager": "0xD881527423fDEc2e6e058e8d35C7dad08F36ba70",
     "simplePriceManager": "0x9519474552d6DC9f73990B024289a9876aFC8512",
-    "layerZeroAdapter": "0xc4161DcA8624CD8aBeEA6B4CaeE5CC805fAA92c2",
-    "axelarAdapter": "0xA935B1AE5520386B0922da240e6B6B4CdF7e0563"
+    "layerZeroAdapter": "0xA85E1972d94D22566146F7E958a7DA4F4de9AfA3",
+    "axelarAdapter": "0xb23FaEf9D83B97cbfec3322E801FFe588D701E22"
   },
   "deploymentInfo": {
     "deploy:full": {
@@ -83,9 +83,9 @@
       "version": "v3.1.5"
     },
     "deploy:adapters": {
-      "gitCommit": "0c7998cb",
-      "timestamp": "2025-10-30T19:32:02Z",
-      "version": "v3.1.5"
+      "gitCommit": "c3c331c9",
+      "timestamp": "2025-10-31T13:50:22Z",
+      "version": "v3.1.7"
     }
   }
 }
