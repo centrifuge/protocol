@@ -51,15 +51,17 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "version=PR-${{ github.run_number }}-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "dry=--dry-run" >> $GITHUB_OUTPUT
           else
             if [ "${{ github.event.inputs.version }}" = "TEST" ]; then
               echo "version=TEST-${{ github.run_number }}-${{ github.sha }}" >> $GITHUB_OUTPUT
             else
               echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
             fi
+            echo "dry=" >> $GITHUB_OUTPUT
           fi
       - name: Deploying all testnets
         env:
           VERSION: ${{ steps.set-vars.outputs.version }}
         run: |
-          python3 script/deploy/deploy.py deploy:testnets
+          python3 script/deploy/deploy.py ${{ steps.set-vars.outputs.dry }} deploy:testnets
