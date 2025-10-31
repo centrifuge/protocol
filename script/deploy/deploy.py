@@ -43,7 +43,7 @@ Examples:
   python3 deploy.py sepolia deploy:adapters --resume
   python3 deploy.py sepolia verify:protocol
   python3 deploy.py arbitrum-sepolia verify:protocol
-  VERSION=vXYZ python3 deploy.py deploy:all  # Deploy all Sepolia testnets (auto-resumes)
+  VERSION=vXYZ python3 deploy.py deploy:testnets  # Deploy all Sepolia testnets (auto-resumes)
   python3 deploy.py sepolia crosschaintest:hub  # Run cross-chain hub test
   python3 deploy.py base-sepolia crosschaintest:spoke  # Run cross-chain spoke tests
         """
@@ -51,7 +51,7 @@ Examples:
 
     parser.add_argument("network", nargs="?", help="Network name (must match env/<network>.json)")
     parser.add_argument("step", nargs="?", help="Deployment step", choices=[
-        "deploy:full", "deploy:adapters", "deploy:all",
+        "deploy:full", "deploy:adapters", "deploy:testnets",
         "wire", "wire:all", "verify:protocol", "config:dump", 
         "crosschaintest:hub", "crosschaintest:spoke"
     ])
@@ -136,19 +136,14 @@ def main():
     script_dir = pathlib.Path(__file__).parent
     root_dir = script_dir.parent.parent
 
-    # Backward-compat: support calling old deploy:testnets in network position
-    if args.network == "deploy:testnets":
-        args.step = "deploy:all"
-        args.network = None
-    
     # Validate arguments
-    if args.network != "anvil" and args.step != "deploy:all":
+    if args.network != "anvil" and args.step != "deploy:testnets":
         validate_arguments(args, root_dir)
-    elif args.step == "deploy:all":
-        # Special validation for deploy:all
-        if not os.environ.get("VERSION"):
-            print_error("VERSION environment variable is required for deploy:all")
-            print_info("Example: VERSION=v3.1.4 python3 script/deploy/deploy.py deploy:all")
+    elif args.step == "deploy:testnets":
+        # Special validation for deploy:testnets
+        if not os.environ.get("VERSION") and not args.dry_run:
+            print_error("VERSION environment variable is required for deploy:testnets")
+            print_info("Example: VERSION=v3.1.4 python3 script/deploy/deploy.py deploy:testnets")
             sys.exit(1)
 
     try:
@@ -158,7 +153,7 @@ def main():
             success = anvil_manager.deploy_full_protocol()
             sys.exit(0 if success else 1)
 
-        if args.step != "deploy:all":
+        if args.step != "deploy:testnets":
             # Create environment loader for single network deployments
             env_loader = EnvironmentLoader(
                 network_name=args.network,
@@ -186,7 +181,7 @@ def main():
         if args.step == "deploy:full":
             print_section("Running Protocol Deployment")
             already_deployed = False
-            if "--resume" in args.forge_args:
+            if "--resume" in args.forge_args and not args.dry_run:
                 already_deployed = verifier.config_has_latest_contracts()
             
             # Why did we need to build before running forge script?
@@ -199,28 +194,34 @@ def main():
             else:
                 print_subsection(f"Deploying core protocol contracts for {args.network}")
                 deploy_success = runner.run_deploy("LaunchDeployer")
-            print_section(f"Verifying deployment for {args.network}")
-            if args.catapulta and not already_deployed:
-                print_info("Waiting for catapulta verification to complete...")
-                # Retry verification up to 3 times for catapulta since verification happens on their servers
-                retries = 3
-                verify_success = False
-                while not verify_success and retries > 0:
-                    print_info(f"Verification attempt {4-retries}/3 for catapulta...")
-                    time.sleep(120)  # Wait 2 minutes between attempts
+            
+            # Skip verification in dry-run mode
+            if not args.dry_run:
+                print_section(f"Verifying deployment for {args.network}")
+                if args.catapulta and not already_deployed:
+                    print_info("Waiting for catapulta verification to complete...")
+                    # Retry verification up to 3 times for catapulta since verification happens on their servers
+                    retries = 3
+                    verify_success = False
+                    while not verify_success and retries > 0:
+                        print_info(f"Verification attempt {4-retries}/3 for catapulta...")
+                        time.sleep(120)  # Wait 2 minutes between attempts
+                        verify_success = verifier.verify_contracts("LaunchDeployer")
+                        if not verify_success and retries > 1:
+                            print_warning("Verification failed, retrying...")
+                        retries -= 1
+                    if not verify_success:
+                        print_error("Verification failed after 3 attempts")
+                        sys.exit(1)
+                elif not already_deployed:
+                    # Forge would only get there if the --verify has completed
                     verify_success = verifier.verify_contracts("LaunchDeployer")
-                    if not verify_success and retries > 1:
-                        print_warning("Verification failed, retrying...")
-                    retries -= 1
-                if not verify_success:
-                    print_error("Verification failed after 3 attempts")
-                    sys.exit(1)
-            elif not already_deployed:
-                # Forge would only get there if the --verify has completed
-                verify_success = verifier.verify_contracts("LaunchDeployer")
+            else:
+                print_info("Dry-run mode: skipping verification")
+                verify_success = True
 
-            # Auto-run TestData on testnets
-            if verify_success and env_loader.is_testnet:
+            # Auto-run TestData on testnets (skip in dry-run)
+            if verify_success and env_loader.is_testnet and not args.dry_run:
                 print_info("Auto-running TestData for testnet")
                 if "--resume" in args.forge_args and not already_deployed:
                     # User triggered command with --resume, probably because the protocol deployment failed
@@ -233,6 +234,8 @@ def main():
                 print_success("TestData deployment completed successfully")
                 # Restore forge args
                 args.forge_args = original_forge_args
+            elif args.dry_run:
+                print_info("Dry-run mode: skipping TestData deployment")
         
         elif args.step == "verify":
             print_section(f"Verifying core protocol contracts for {args.network}")
@@ -242,11 +245,14 @@ def main():
             print_section(f"Deploying adapters only for {args.network}")
             deploy_success = runner.run_deploy("OnlyAdapters")
             # After deploying with forge, also run our verifier to merge env/latest into env/<network>.json
-            if deploy_success:
+            if deploy_success and not args.dry_run:
                 print_section(f"Verifying deployment for {args.network}")
                 verify_success = verifier.verify_contracts("OnlyAdapters")
+            elif args.dry_run:
+                print_info("Dry-run mode: skipping verification")
+                verify_success = True
         
-        elif args.step == "deploy:all":
+        elif args.step == "deploy:testnets":
             # Orchestrated deployment across all Sepolia testnets
             release_manager = ReleaseManager(root_dir, args)
             success = release_manager.deploy_sepolia_testnets()

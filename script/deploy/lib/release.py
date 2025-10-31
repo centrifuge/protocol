@@ -60,8 +60,8 @@ class ReleaseManager:
             print_info("📋 Resuming previous deployment...")
             self._print_resume_status()
         
-        # Build contracts once upfront (only if not resuming)
-        if not self.deployment_summary.get("networks"):
+        # Build contracts once upfront (only if not resuming and not dry-run)
+        if not self.deployment_summary.get("networks") and not self.args.dry_run:
             print_subsection("Building contracts")
             temp_env = EnvironmentLoader(network_name="sepolia", root_dir=self.root_dir, args=self.args)
             temp_runner = DeploymentRunner(temp_env, self.args)
@@ -138,12 +138,16 @@ class ReleaseManager:
         else:
             print_info("⏭️  Protocol already deployed, skipping...")
         
-        # Step 2: Verify contracts with retries (skip if already done)
+        # Step 2: Verify contracts with retries (skip if already done or dry-run)
         if not self.deployment_summary["networks"][network]["verification"]:
-            print_subsection(f"Step 2/4: Verifying contracts on {network}")
-            if not self._retry_verification(network, network_verifier, "LaunchDeployer", "verification"):
-                self._save_state()
-                return False
+            if not self.args.dry_run:
+                print_subsection(f"Step 2/4: Verifying contracts on {network}")
+                if not self._retry_verification(network, network_verifier, "LaunchDeployer", "verification"):
+                    self._save_state()
+                    return False
+            else:
+                print_info("⏭️  Dry-run mode: skipping verification")
+                self.deployment_summary["networks"][network]["verification"] = True
         else:
             print_info("⏭️  Contracts already verified, skipping...")
         
@@ -280,6 +284,9 @@ class ReleaseManager:
     
     def _save_state(self):
         """Save deployment state to file"""
+        if self.args.dry_run:
+            print_info("💾 Dry-run mode: skipping state save")
+            return
         try:
             with open(self.state_file, 'w') as f:
                 json.dump(self.deployment_summary, f, indent=2)

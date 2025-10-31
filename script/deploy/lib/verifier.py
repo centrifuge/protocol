@@ -202,8 +202,8 @@ class ContractVerifier:
 
             # Determine which deployment info entry to update
             deployment_step = self.args.step
-            if deployment_step in ["release:sepolia", "deploy:all"]:
-                # For release:sepolia and deploy:all, update the deploy:full entry instead
+            if deployment_step in ["release:sepolia", "deploy:testnets"]:
+                # For release:sepolia and deploy:testnets, update the deploy:full entry instead
                 deployment_step = "deploy:full"
             
             if "deploy" in deployment_step:
