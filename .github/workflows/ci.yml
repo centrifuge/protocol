@@ -21,7 +21,7 @@ jobs:
           version: v1.4.1
 
       - name: Run tests
-        run: forge test --deny warnings --nmc PreMigrationValidation
+        run: forge test --deny warnings --nmp "test/spell/**/*.sol"
         env:
           FOUNDRY_PROFILE: ci
 
@@ -195,7 +195,7 @@ jobs:
           version: v1.4.1
 
       - name: Run coverage
-        run: forge coverage --report summary --report lcov --nmc PreMigrationValidation
+        run: forge coverage --report summary --report lcov --nmp "test/spell/**/*.sol"
         env:
           FOUNDRY_PROFILE: ci-coverage
           FORGE_SNAPSHOT_CHECK: false

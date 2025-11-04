@@ -13,7 +13,7 @@ This module coordinates the deployment process by:
 If you want to modify the command arguments you need to search in this order:
 1. _build_command -> basic arguments for our CMD options
 2. _setup_auth_args -> wallet arguments (--ledger --private-key, etc)
-3. run_deploy -> additional arguments to deal with corner cases 
+3. run_deploy -> additional arguments to deal with corner cases
    (search for .append and .extend)
 """
 
@@ -33,7 +33,7 @@ class DeploymentRunner:
         self.args = args
         self.env = self._setup_env()
         self.script_path = None # initialize
-    
+
     def _setup_env(self):
         env = os.environ.copy()
         env["NETWORK"] = self.env_loader.network_name
@@ -90,9 +90,9 @@ class DeploymentRunner:
             print_info("Check catapulta dashboard: https://catapulta.sh/project/68317077d1b8de690e3569e9")
         else:
             print_step(f"Running forge script")
-            
+
             # 1. Deploy without verification
-            print_info(f"Deploying scripts (without verification)...")            
+            print_info(f"Deploying scripts (without verification)...")
             if not self._run_command(base_cmd):
                 return False
             print_success("Forge contracts deployed successfully")
@@ -101,21 +101,21 @@ class DeploymentRunner:
                 cmd = base_cmd.copy()
                 cmd.append("--verify")
                 if "--resume" not in cmd:
-                    cmd.append("--resume")            
+                    cmd.append("--resume")
                 # This doesn't really work:
                 # cmd.extend(["--skip", "FullActionBatcher", "--skip", "HubActionBatcher", "--skip", "ExtendedSpokeActionBatcher"])
                 print_step(f"Verifying contracts with forge")
                 if not self._run_command(cmd):
                     return False
                 print_success("Forge contracts verified successfully")
-            
+
         return True
 
-        
+
     def _setup_auth_args(self) -> List[str]:
         """Setup authentication arguments for forge/catapulta"""
         is_testnet = self.env_loader.is_testnet
-        
+
         if self.args.ledger:
             ledger = LedgerManager(self.args)
             print_info(f"Deployer address (Ledger): {format_account(ledger.get_ledger_account)}")
@@ -156,7 +156,7 @@ class DeploymentRunner:
             except subprocess.CalledProcessError:
                 print_warning("Failed to derive deployer address with 'cast'. Proceeding without address printout.")
                 return ["--private-key", private_key]
-            
+
         elif not is_testnet and not self.args.ledger:
             raise ValueError("No authentication method specified. Use --ledger for mainnet.")
 
@@ -193,7 +193,7 @@ class DeploymentRunner:
                 *self.args.forge_args
             ]
         return base_cmd
-    
+
     def _run_command(self, cmd: List[str]) -> bool:
         """Run a command"""
         print_info("Deployment Command")
@@ -218,14 +218,14 @@ class DeploymentRunner:
                 print("==== FORGE LOGS ====\n")
                 result = subprocess.run(cmd, env=self.env, text=True)
                 print("\n==== END OF LOGS ====\n")
-                
+
                 if result.returncode == 0:
                     print_success("Verification completed successfully")
                     return True
                 else:
                     print_error(f"Verification failed with exit code: {result.returncode}")
                     return False
-                
+
         except subprocess.CalledProcessError as e:
             print_error(f"Command failed:")
             # Use print_command to ensure secrets are masked
@@ -256,13 +256,13 @@ class DeploymentRunner:
     def build_contracts(self):
         """Build contracts with forge"""
         print_subsection("Building contracts")
-        
-        
+
+
         # Build with parallel jobs
         cpu_count = multiprocessing.cpu_count()
-        cmd = ["forge", "build", "--threads", str(cpu_count), "--skip", "test", "--deny warnings"]
+        cmd = ["forge", "build", "--threads", str(cpu_count), "--skip", "test", "--deny", "warnings"]
         print_command(cmd)
-        
+
         if not self.args.dry_run:
             if subprocess.run(cmd, check=True):
                 print_success("Contracts built successfully")
