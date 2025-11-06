@@ -132,6 +132,12 @@ def main():
     # Add unknown arguments as forge_args
     args.forge_args = unknown_args
 
+    # Normalize only the special case where the single positional is the testnets step
+    # Example: python3 deploy.py deploy:testnets [--flags]
+    if args.step is None and args.network == "deploy:testnets":
+        args.step = "deploy:testnets"
+        args.network = None
+
     # Get root directory early for validation
     script_dir = pathlib.Path(__file__).parent
     root_dir = script_dir.parent.parent

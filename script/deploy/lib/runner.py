@@ -99,8 +99,10 @@ class DeploymentRunner:
             if not self._run_command(base_cmd):
                 return False
             print_success("Forge contracts deployed successfully")
-            # 2. Verify (only for protocol and adapter scripts)
-            if not self.env_loader.network_name.startswith("anvil") and "Test" not in script_name and "Wire" not in script_name:
+            # 2. Verify (only for protocol and adapter scripts, and NOT in dry-run mode)
+            if (not self.args.dry_run and 
+                not self.env_loader.network_name.startswith("anvil") and 
+                "Test" not in script_name and "Wire" not in script_name):
                 cmd = base_cmd.copy()
                 cmd.append("--verify")
                 if "--resume" not in cmd:
@@ -111,6 +113,8 @@ class DeploymentRunner:
                 if not self._run_command(cmd):
                     return False
                 print_success("Forge contracts verified successfully")
+            elif self.args.dry_run:
+                print_info("⏭️  Dry-run mode: skipping verification (would broadcast transactions)")
             
         return True
 

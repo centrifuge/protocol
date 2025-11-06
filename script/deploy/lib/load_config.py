@@ -25,8 +25,11 @@ class EnvironmentLoader:
         self._etherscan_api_key = None
         self._protocol_admin_address = None
         self._ops_admin_address = None
+        self._env_network_validated = False
         print_subsection("Loading network configuration")
         self._load_config()
+        # Validate network early - if mismatch, don't load any .env values
+        self._validate_network_early()
         self.args = args
 
     def dump_config(self):
@@ -68,37 +71,47 @@ class EnvironmentLoader:
                 f.write(f"{k}={v}\n")
         print_success("Config written to .env")
 
-    def validate_network(self):
-        """Check if existing .env file is for the correct network"""
+    def _validate_network_early(self):
+        """Validate network early and set flag - if mismatch, .env values will be ignored"""
         if not os.path.exists(".env"):
-            return True
+            self._env_network_validated = True
+            return
             
         with open(".env", "r") as f:
             for line in f:
                 if line.startswith("NETWORK="):
                     existing_network = line.split("=", 1)[1].strip()
                     if existing_network != self.network_name:
-                        print_warning(f"Existing .env file is configured for network '{existing_network}'")
-                        print_warning(f"Current deployment is for network '{self.network_name}'")
-                        print_info("This could lead to deploying to the wrong network or using wrong credentials.")
-                        
-                        response = input("Do you want to continue? [y/N]: ").strip().lower()
-                        if response not in ("y", "yes"):
-                            print_info("Please run 'python3 script/deploy/deploy.py {network} config:dump' to update .env for the correct network")
-                            print_error("Aborted by user.")
-                            raise SystemExit(1)
-                        else:
-                            print_warning("Continuing with mismatched network configuration...")
-                    return True
-        return True
+                        print_error(f"❌ Network mismatch detected!")
+                        print_error(f"   .env file is configured for network: '{existing_network}'")
+                        print_error(f"   Current deployment is for network: '{self.network_name}'")
+                        print_error(f"   All .env values will be IGNORED to prevent deploying to the wrong network.")
+                        print_info("   To fix: Run 'python3 script/deploy/deploy.py {network} config:dump' to update .env")
+                        self._env_network_validated = False
+                        return
+                    else:
+                        self._env_network_validated = True
+                        return
+        # No NETWORK= in .env, so it's safe to use
+        self._env_network_validated = True
+
+    def validate_network(self):
+        """Check if existing .env file is for the correct network (legacy method for compatibility)"""
+        # This is now handled by _validate_network_early, but kept for backward compatibility
+        return self._env_network_validated
 
     def _check_env_file(self, variable_name: str):
+        """Check .env file for a variable, but only if network matches"""
+        if not self._env_network_validated:
+            # Network mismatch - don't load any .env values
+            return None
         if os.path.exists(".env"):
             with open(".env", "r") as f:
                 for line in f:
                     if line.startswith(f"{variable_name}="):
                         print_warning(f"Using {variable_name} from .env")
                         return line.split("=")[1].strip()
+        return None
                     
     def _load_config(self):
         if not self.config_file.exists():
