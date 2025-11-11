@@ -131,7 +131,7 @@ contract PoolMigrationSpell {
     }
 
     function _authorizedContracts(PoolParamsInput memory input) internal pure returns (address[] memory) {
-        address[] memory contracts = new address[](8);
+        address[] memory contracts = new address[](9);
         contracts[0] = address(input.spoke);
         contracts[1] = address(input.balanceSheet);
         contracts[2] = address(input.vaultRegistry);
@@ -139,7 +139,8 @@ contract PoolMigrationSpell {
         contracts[4] = address(input.shareClassManager);
         contracts[5] = address(input.syncManager);
         contracts[6] = address(input.batchRequestManager);
-        contracts[7] = address(input.v3.gateway);
+        contracts[7] = address(input.contractUpdater);
+        contracts[8] = address(input.v3.gateway);
         return contracts;
     }
 
@@ -342,7 +343,7 @@ contract PoolMigrationSpell {
         // ----- VAULT_REGISTRY -----
         for (uint256 i; i < input.vaults.length; i++) {
             IVault vault = IVault(input.vaults[i]);
-            if (vault.poolId() == poolId) {
+            if (vault.poolId() == poolId && vault.scId() == scId) {
                 address factory = (vault.vaultKind() == VaultKind.Async)
                     ? input.v3.asyncVaultFactory
                     : input.v3.syncDepositVaultFactory;

@@ -241,6 +241,8 @@ jobs:
         uses: codespell-project/actions-codespell@v2
         with:
           skip: ./docs
+          ignore_words_list: embrio
+
 
   check-benchmarks:
     runs-on: ubuntu-latest

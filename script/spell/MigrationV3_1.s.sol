@@ -29,6 +29,7 @@ import {stdJson} from "forge-std/StdJson.sol";
 
 import {makeSalt} from "../CoreDeployer.s.sol";
 import {CreateXScript} from "../utils/CreateXScript.sol";
+import {GraphQLQuery} from "../utils/GraphQLQuery.s.sol";
 import {
     PoolMigrationSpell,
     PoolParamsInput,
@@ -40,57 +41,43 @@ import {
     OldContracts as GeneralMigrationOldContracts
 } from "../../src/spell/migration_v3.1/GeneralMigrationSpell.sol";
 
-Root constant ROOT_V3 = Root(0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f);
-address constant GATEWAY_V3 = 0x51eA340B3fe9059B48f935D5A80e127d587B6f89;
-address constant POOL_ESCROW_FACTORRY_V3 = 0xD166B3210edBeEdEa73c7b2e8aB64BDd30c980E9;
-address constant HUB_REGISTRY_V3 = 0x12044ef361Cc3446Cb7d36541C8411EE4e6f52cb;
-address constant SHARE_CLASS_MANAGER_V3 = 0xe88e712d60bfd23048Dbc677FEb44E2145F2cDf4;
-address constant BALANCE_SHEET_V3 = 0xBcC8D02d409e439D98453C0b1ffa398dFFb31fda;
-address constant SPOKE_V3 = 0xd30Da1d7F964E5f6C2D9fE2AAA97517F6B23FA2B;
-address constant ASYNC_VAULT_FACTORY_V3 = 0xb47E57b4D477FF80c42dB8B02CB5cb1a74b5D20a;
-address constant ASYNC_REQUEST_MANAGER_V3 = 0xf06f89A1b6C601235729A689595571B7455Dd433;
-address constant SYNC_DEPOSIT_VAULT_FACTORY_V3 = 0x00E3c7EE9Bbc98B9Cb4Cc2c06fb211c1Bb199Ee5;
-address constant SYNC_MANAGER_V3 = 0x0D82d9fa76CFCd6F4cc59F053b2458665C6CE773;
-address constant FREEZE_ONLY_HOOK_V3 = 0xBb7ABFB0E62dfb36e02CeeCDA59ADFD71f50c88e;
-address constant FULL_RESTRICTIONS_HOOK_V3 = 0xa2C98F0F76Da0C97039688CA6280d082942d0b48;
-address constant FREELY_TRANSFERABLE_HOOK_V3 = 0xbce8C1f411484C28a64f7A6e3fA63C56b6f3dDDE;
-address constant REDEMPTION_RESTRICTIONS_HOOK_V3 = 0xf0C36EFD5F6465D18B9679ee1407a3FC9A2955dD;
-address constant MESSAGE_DISPATCHER_V3 = 0x21AF0C29611CFAaFf9271C8a3F84F2bC31d59132;
-
-contract MigrationV3_1 is Script, CreateXScript {
+contract MigrationV3_1 is Script, CreateXScript, GraphQLQuery {
     using stdJson for string;
 
-    string constant GRAPHQL_API = "https://api.centrifuge.io/graphql";
-    bytes32 constant VERSION = "3.1";
+    bytes32 constant NEW_VERSION = "3.1";
+    Root public immutable root;
     uint16 public immutable centrifugeId;
     address deployer;
 
-    constructor(address deployer_) {
-        centrifugeId = MessageDispatcher(MESSAGE_DISPATCHER_V3).localCentrifugeId();
+    constructor(address deployer_, uint16 centrifugeId_, bool isProduction) GraphQLQuery(isProduction) {
+        centrifugeId = centrifugeId_;
+        root = _root();
         deployer = deployer_;
     }
 
     receive() external payable {}
 
-    function run(GeneralMigrationSpell generalMigrationSpell, PoolMigrationSpell poolMigrationSpell) external {
+    function run(
+        GeneralMigrationSpell generalMigrationSpell,
+        PoolMigrationSpell poolMigrationSpell,
+        PoolId[] memory poolsToMigrate
+    ) external {
         vm.startBroadcast();
 
-        migrate(generalMigrationSpell, poolMigrationSpell);
+        migrate(generalMigrationSpell, poolMigrationSpell, poolsToMigrate);
 
         vm.stopBroadcast();
     }
 
-    function migrate(GeneralMigrationSpell generalMigrationSpell, PoolMigrationSpell poolMigrationSpell) public {
+    function migrate(
+        GeneralMigrationSpell generalMigrationSpell,
+        PoolMigrationSpell poolMigrationSpell,
+        PoolId[] memory poolsToMigrate
+    ) public {
         generalMigrationSpell.cast(
             GeneralParamsInput({
-                v3: GeneralMigrationOldContracts({
-                    gateway: GATEWAY_V3,
-                    spoke: SPOKE_V3,
-                    hubRegistry: HUB_REGISTRY_V3,
-                    asyncRequestManager: ASYNC_REQUEST_MANAGER_V3,
-                    syncManager: SYNC_MANAGER_V3
-                }),
-                root: ROOT_V3,
+                v3: generalMigrationOldContracts(),
+                root: root,
                 spoke: Spoke(_contractAddr("spoke")),
                 hubRegistry: HubRegistry(_contractAddr("hubRegistry")),
                 messageDispatcher: MessageDispatcher(_contractAddr("messageDispatcher")),
@@ -102,29 +89,13 @@ contract MigrationV3_1 is Script, CreateXScript {
             })
         );
 
-        PoolId[] memory poolsToMigrate = _pools();
         for (uint256 i; i < poolsToMigrate.length; i++) {
             PoolId poolId = poolsToMigrate[i];
             poolMigrationSpell.castPool(
                 poolId,
                 PoolParamsInput({
-                    v3: PoolMigrationOldContracts({
-                        gateway: GATEWAY_V3,
-                        poolEscrowFactory: POOL_ESCROW_FACTORRY_V3,
-                        spoke: SPOKE_V3,
-                        balanceSheet: BALANCE_SHEET_V3,
-                        hubRegistry: HUB_REGISTRY_V3,
-                        shareClassManager: SHARE_CLASS_MANAGER_V3,
-                        asyncVaultFactory: ASYNC_VAULT_FACTORY_V3,
-                        asyncRequestManager: ASYNC_REQUEST_MANAGER_V3,
-                        syncDepositVaultFactory: SYNC_DEPOSIT_VAULT_FACTORY_V3,
-                        syncManager: SYNC_MANAGER_V3,
-                        freezeOnly: FREEZE_ONLY_HOOK_V3,
-                        fullRestrictions: FULL_RESTRICTIONS_HOOK_V3,
-                        freelyTransferable: FREELY_TRANSFERABLE_HOOK_V3,
-                        redemptionRestrictions: REDEMPTION_RESTRICTIONS_HOOK_V3
-                    }),
-                    root: ROOT_V3,
+                    v3: poolMigrationOldContracts(),
+                    root: root,
                     spoke: Spoke(_contractAddr("spoke")),
                     balanceSheet: BalanceSheet(_contractAddr("balanceSheet")),
                     vaultRegistry: VaultRegistry(_contractAddr("vaultRegistry")),
@@ -156,58 +127,118 @@ contract MigrationV3_1 is Script, CreateXScript {
         poolMigrationSpell.lock();
     }
 
-    function _queryGraphQL(string memory query) internal returns (string memory json) {
-        query = string.concat('{"query": "{', query, '}"}');
-        string[] memory cmd = new string[](3);
-        cmd[0] = "bash";
-        cmd[1] = "-c";
-        cmd[2] =
-            string.concat("curl -s -X POST ", "-H 'Content-Type: application/json' ", "-d '", query, "' ", GRAPHQL_API);
-
-        json = string(vm.ffi(cmd));
-
-        if (json.keyExists(".errors[0].message")) {
-            revert(json.readString(".errors[0].message"));
-        }
-    }
-
-    function _buildJsonPath(string memory basePath, uint256 index, string memory fieldName)
-        internal
-        pure
-        returns (string memory)
-    {
-        return string.concat(basePath, "[", vm.toString(index), "].", fieldName);
-    }
-
-    function _jsonValue(uint256 value) internal pure returns (string memory) {
-        return string.concat("\\\"", vm.toString(value), "\\\"");
-    }
-
     function _contractAddr(string memory contractName) internal view returns (address) {
-        return computeCreate3Address(makeSalt(contractName, VERSION, deployer), deployer);
+        return computeCreate3Address(makeSalt(contractName, NEW_VERSION, deployer), deployer);
     }
 
-    function _pools()
+    function _root()
         internal
-        returns (PoolId[] memory pools)
+        returns (Root)
     {
 
         // forgefmt: disable-next-item
-        string memory json = _queryGraphQL(
-            "pools {"
-            "  totalCount"
-            "  items {"
-            "    id"
+        string memory where = string.concat(
+            "  where: {"
+            "      centrifugeId: ", _jsonValue(centrifugeId),
             "  }"
-            "}"
         );
 
-        uint256 totalCount = json.readUint(".data.pools.totalCount");
+        // forgefmt: disable-next-item
+        string memory json = _queryGraphQL(string.concat(
+            "deployments(", where, ") {",
+            "  items {"
+            "      root"
+            "  }"
+            "}"
+        ));
 
-        pools = new PoolId[](totalCount);
-        for (uint256 i = 0; i < totalCount; i++) {
-            pools[i] = PoolId.wrap(uint64(json.readUint(_buildJsonPath(".data.pools.items", i, "id"))));
+        return Root(json.readAddress(".data.deployments.items[0].root"));
+    }
+
+    function generalMigrationOldContracts()
+        public
+        returns (GeneralMigrationOldContracts memory v3)
+    {
+
+        // forgefmt: disable-next-item
+        string memory where = string.concat(
+            "  where: {"
+            "      centrifugeId: ", _jsonValue(centrifugeId),
+            "  }"
+        );
+
+        // forgefmt: disable-next-item
+        string memory json = _queryGraphQL(string.concat(
+            "deployments(", where, ") {",
+            "  items {"
+            "      gateway"
+            "      spoke"
+            "      hubRegistry"
+            "      asyncRequestManager"
+            "      syncManager"
+            "  }"
+            "}"
+        ));
+
+        v3.gateway = json.readAddress(".data.deployments.items[0].gateway");
+        v3.spoke = json.readAddress(".data.deployments.items[0].spoke");
+        v3.hubRegistry = json.readAddress(".data.deployments.items[0].hubRegistry");
+        v3.asyncRequestManager = json.readAddress(".data.deployments.items[0].asyncRequestManager");
+        v3.syncManager = json.readAddress(".data.deployments.items[0].syncManager");
+    }
+
+    function poolMigrationOldContracts()
+        public
+        returns (PoolMigrationOldContracts memory v3)
+    {
+
+        // forgefmt: disable-next-item
+        string memory where = string.concat(
+            "  where: {"
+            "      centrifugeId: ", _jsonValue(centrifugeId),
+            "  }"
+        );
+
+        // forgefmt: disable-next-item
+        string memory json = _queryGraphQL(string.concat(
+            "deployments(", where, ") {",
+            "  items {"
+            "      gateway"
+            "      poolEscrowFactory"
+            "      spoke"
+            "      balanceSheet"
+            "      hubRegistry"
+            "      shareClassManager"
+            "      asyncVaultFactory"
+            "      asyncRequestManager"
+            "      syncDepositVaultFactory"
+            "      syncManager"
+            "      freezeOnlyHook"
+            "      fullRestrictionsHook", (isProduction) ?
+            "      freelyTransferableHook" : "",
+            "      redemptionRestrictionsHook"
+            "  }"
+            "}"
+        ));
+
+        v3.gateway = json.readAddress(".data.deployments.items[0].gateway");
+        v3.poolEscrowFactory = json.readAddress(".data.deployments.items[0].poolEscrowFactory");
+        v3.spoke = json.readAddress(".data.deployments.items[0].spoke");
+        v3.balanceSheet = json.readAddress(".data.deployments.items[0].balanceSheet");
+        v3.hubRegistry = json.readAddress(".data.deployments.items[0].hubRegistry");
+        v3.shareClassManager = json.readAddress(".data.deployments.items[0].shareClassManager");
+        v3.asyncVaultFactory = json.readAddress(".data.deployments.items[0].asyncVaultFactory");
+        v3.asyncRequestManager = json.readAddress(".data.deployments.items[0].asyncRequestManager");
+        v3.syncDepositVaultFactory = json.readAddress(".data.deployments.items[0].syncDepositVaultFactory");
+        v3.syncManager = json.readAddress(".data.deployments.items[0].syncManager");
+        v3.freezeOnly = json.readAddress(".data.deployments.items[0].freezeOnlyHook");
+        v3.fullRestrictions = json.readAddress(".data.deployments.items[0].fullRestrictionsHook");
+        if (isProduction) {
+            v3.freelyTransferable = json.readAddress(".data.deployments.items[0].freelyTransferableHook");
+        } else {
+            v3.freelyTransferable = address(0xDEAD); // Not deployed in testnets
         }
+        v3.redemptionRestrictions = json.readAddress(".data.deployments.items[0].redemptionRestrictionsHook");
     }
 
     function _spokeAssetIds()
