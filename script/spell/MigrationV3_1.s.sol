@@ -1,17 +1,23 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {Escrow} from "../../src/misc/Escrow.sol";
+
 import {Spoke} from "../../src/core/spoke/Spoke.sol";
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
 import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
 import {VaultRegistry} from "../../src/core/spoke/VaultRegistry.sol";
+import {MultiAdapter} from "../../src/core/messaging/MultiAdapter.sol";
 import {ContractUpdater} from "../../src/core/utils/ContractUpdater.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
+import {MessageProcessor} from "../../src/core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../../src/core/messaging/MessageDispatcher.sol";
 
 import {Root} from "../../src/admin/Root.sol";
+import {TokenRecoverer} from "../../src/admin/TokenRecoverer.sol";
+import {ProtocolGuardian} from "../../src/admin/ProtocolGuardian.sol";
 
 import {FreezeOnly} from "../../src/hooks/FreezeOnly.sol";
 import {FullRestrictions} from "../../src/hooks/FullRestrictions.sol";
@@ -21,6 +27,7 @@ import {RedemptionRestrictions} from "../../src/hooks/RedemptionRestrictions.sol
 import {OnOfframpManagerFactory, OnOfframpManager} from "../../src/managers/spoke/OnOfframpManager.sol";
 
 import {SyncManager} from "../../src/vaults/SyncManager.sol";
+import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
 import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 
@@ -31,17 +38,24 @@ import {makeSalt} from "../CoreDeployer.s.sol";
 import {CreateXScript} from "../utils/CreateXScript.sol";
 import {GraphQLQuery} from "../utils/GraphQLQuery.s.sol";
 import {
-    PoolMigrationSpell,
+    MigrationSpell,
     PoolParamsInput,
-    OldContracts as PoolMigrationOldContracts
-} from "../../src/spell/migration_v3.1/PoolMigrationSpell.sol";
-import {
-    GeneralMigrationSpell,
-    GeneralParamsInput,
-    OldContracts as GeneralMigrationOldContracts
-} from "../../src/spell/migration_v3.1/GeneralMigrationSpell.sol";
+    PoolMigrationOldContracts,
+    GlobalParamsInput,
+    GlobalMigrationOldContracts
+} from "../../src/spell/migration_v3.1/MigrationSpell.sol";
 
-contract MigrationV3_1 is Script, CreateXScript, GraphQLQuery {
+contract MigrationV3_1Deployer is Script {
+    function run() external {
+        vm.startBroadcast();
+
+        new MigrationSpell(msg.sender);
+
+        vm.stopBroadcast();
+    }
+}
+
+contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
     using stdJson for string;
 
     bytes32 constant NEW_VERSION = "3.1";
@@ -49,40 +63,39 @@ contract MigrationV3_1 is Script, CreateXScript, GraphQLQuery {
     uint16 public immutable centrifugeId;
     address deployer;
 
-    constructor(address deployer_, uint16 centrifugeId_, bool isProduction) GraphQLQuery(isProduction) {
-        centrifugeId = centrifugeId_;
+    constructor(address deployer_, bool isProduction) GraphQLQuery(isProduction) {
+        deployer = deployer_; // This must be set before _contractAddr
+        centrifugeId = MessageDispatcher(_contractAddr("messageDispatcher")).localCentrifugeId();
         root = _root();
-        deployer = deployer_;
     }
 
     receive() external payable {}
 
-    function run(
-        GeneralMigrationSpell generalMigrationSpell,
-        PoolMigrationSpell poolMigrationSpell,
-        PoolId[] memory poolsToMigrate
-    ) external {
+    function run(MigrationSpell migrationSpell, PoolId[] memory poolsToMigrate) external {
         vm.startBroadcast();
 
-        migrate(generalMigrationSpell, poolMigrationSpell, poolsToMigrate);
+        migrate(migrationSpell, poolsToMigrate);
 
         vm.stopBroadcast();
     }
 
-    function migrate(
-        GeneralMigrationSpell generalMigrationSpell,
-        PoolMigrationSpell poolMigrationSpell,
-        PoolId[] memory poolsToMigrate
-    ) public {
-        generalMigrationSpell.cast(
-            GeneralParamsInput({
+    function migrate(MigrationSpell migrationSpell, PoolId[] memory poolsToMigrate) public {
+        migrationSpell.castGlobal(
+            GlobalParamsInput({
                 v3: generalMigrationOldContracts(),
                 root: root,
                 spoke: Spoke(_contractAddr("spoke")),
+                balanceSheet: BalanceSheet(_contractAddr("balanceSheet")),
                 hubRegistry: HubRegistry(_contractAddr("hubRegistry")),
+                multiAdapter: MultiAdapter(_contractAddr("multiAdapter")),
                 messageDispatcher: MessageDispatcher(_contractAddr("messageDispatcher")),
+                messageProcessor: MessageProcessor(_contractAddr("messageProcessor")),
                 asyncRequestManager: AsyncRequestManager(payable(_contractAddr("asyncRequestManager"))),
                 syncManager: SyncManager(_contractAddr("syncManager")),
+                protocolGuardian: ProtocolGuardian(_contractAddr("protocolGuardian")),
+                tokenRecoverer: TokenRecoverer(_contractAddr("tokenRecoverer")),
+                globalEscrow: Escrow(_contractAddr("globalEscrow")),
+                vaultRouter: VaultRouter(_contractAddr("vaultRouter")),
                 spokeAssetIds: _spokeAssetIds(),
                 hubAssetIds: _hubAssetIds(),
                 vaults: _vaults()
@@ -91,7 +104,7 @@ contract MigrationV3_1 is Script, CreateXScript, GraphQLQuery {
 
         for (uint256 i; i < poolsToMigrate.length; i++) {
             PoolId poolId = poolsToMigrate[i];
-            poolMigrationSpell.castPool(
+            migrationSpell.castPool(
                 poolId,
                 PoolParamsInput({
                     v3: poolMigrationOldContracts(),
@@ -124,7 +137,7 @@ contract MigrationV3_1 is Script, CreateXScript, GraphQLQuery {
             );
         }
 
-        poolMigrationSpell.lock();
+        migrationSpell.lock(root);
     }
 
     function _contractAddr(string memory contractName) internal view returns (address) {
@@ -157,7 +170,7 @@ contract MigrationV3_1 is Script, CreateXScript, GraphQLQuery {
 
     function generalMigrationOldContracts()
         public
-        returns (GeneralMigrationOldContracts memory v3)
+        returns (GlobalMigrationOldContracts memory v3)
     {
 
         // forgefmt: disable-next-item

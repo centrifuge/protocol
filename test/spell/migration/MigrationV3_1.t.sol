@@ -7,7 +7,7 @@ import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.s
 import {Root} from "../../../src/admin/Root.sol";
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 
-import {MigrationV3_1} from "../../../script/spell/MigrationV3_1.s.sol";
+import {MigrationV3_1Executor} from "../../../script/spell/MigrationV3_1.s.sol";
 import {
     FullActionBatcher,
     FullDeployer,
@@ -19,13 +19,14 @@ import {
 import "forge-std/Test.sol";
 
 import {
-    PoolMigrationSpell,
-    OldContracts as PoolMigrationOldContracts
-} from "../../../src/spell/migration_v3.1/PoolMigrationSpell.sol";
-import {
-    GeneralMigrationSpell,
-    OldContracts as GeneralMigrationOldContracts
-} from "../../../src/spell/migration_v3.1/GeneralMigrationSpell.sol";
+    MigrationSpell,
+    PoolMigrationOldContracts,
+    GlobalMigrationOldContracts
+} from "../../../src/spell/migration_v3.1/MigrationSpell.sol";
+
+interface MessageDispatcherV3Like {
+    function root() external view returns (Root root);
+}
 
 contract MigrationV3_1Test is Test {
     address constant PRODUCTION_MESSAGE_DISPATCHER_V3 = 0x21AF0C29611CFAaFf9271C8a3F84F2bC31d59132;
@@ -40,6 +41,7 @@ contract MigrationV3_1Test is Test {
 
         address rootWard = isProduction ? PRODUCTION_MESSAGE_DISPATCHER_V3 : TESTNET_MESSAGE_DISPATCHER_V3;
         uint16 localCentrifugeId = MessageDispatcher(rootWard).localCentrifugeId();
+        Root rootV3 = MessageDispatcherV3Like(rootWard).root();
 
         if (isProduction) {
             poolsToMigrate = [
@@ -58,15 +60,10 @@ contract MigrationV3_1Test is Test {
             poolsToMigrate = [PoolId.wrap(281474976710662), PoolId.wrap(281474976710668)];
         }
 
-        // ----- DEPLOYMENT (v3.1 and spells) -----
+        // ----- DEPLOYMENT (v3.1) -----
 
         FullDeployer deployer = new FullDeployer();
         FullActionBatcher batcher = new FullActionBatcher(address(deployer));
-        MigrationV3_1 migration = new MigrationV3_1(address(deployer), localCentrifugeId, isProduction);
-        Root rootV3 = migration.root();
-
-        vm.prank(rootWard);
-        rootV3.rely(address(batcher)); // Ideally through guardian.scheduleRely()
 
         deployer.labelAddresses("");
         deployer.deployFull(
@@ -79,8 +76,10 @@ contract MigrationV3_1Test is Test {
             batcher
         );
 
-        GeneralMigrationSpell generalMigrationSpell = new GeneralMigrationSpell(address(migration));
-        PoolMigrationSpell poolMigrationSpell = new PoolMigrationSpell(address(migration));
+        // ----- SPELL DEPLOYMENT -----
+
+        MigrationV3_1Executor migration = new MigrationV3_1Executor(address(deployer), isProduction);
+        MigrationSpell migrationSpell = new MigrationSpell(address(migration));
 
         // ----- LABELLING -----
 
@@ -89,11 +88,10 @@ contract MigrationV3_1Test is Test {
         vm.label(address(deployer), "deployer");
         vm.label(address(batcher), "batcher");
         vm.label(address(migration), "migration");
-        vm.label(address(generalMigrationSpell), "generalMigrationSpell");
-        vm.label(address(poolMigrationSpell), "poolMigrationSpell");
+        vm.label(address(migrationSpell), "migrationSpell");
 
         {
-            GeneralMigrationOldContracts memory v3 = migration.generalMigrationOldContracts();
+            GlobalMigrationOldContracts memory v3 = migration.generalMigrationOldContracts();
             vm.label(address(v3.gateway), "v3.gateway");
             vm.label(address(v3.spoke), "v3.spoke");
             vm.label(address(v3.hubRegistry), "v3.hubRegistry");
@@ -122,16 +120,13 @@ contract MigrationV3_1Test is Test {
         // ----- MIGRATION -----
 
         vm.prank(rootWard);
-        rootV3.rely(address(generalMigrationSpell)); // Ideally through guardian.scheduleRely()
-        vm.prank(rootWard);
-        rootV3.rely(address(poolMigrationSpell)); // Ideally through guardian.scheduleRely()
+        rootV3.rely(address(migrationSpell)); // Ideally through guardian.scheduleRely()
 
-        migration.migrate(generalMigrationSpell, poolMigrationSpell, poolsToMigrate);
+        migration.migrate(migrationSpell, poolsToMigrate);
 
         // ----- POST_CHECK -----
 
-        assertEq(generalMigrationSpell.owner(), address(0));
-        assertEq(poolMigrationSpell.owner(), address(0));
+        assertEq(migrationSpell.owner(), address(0));
 
         // TODO: Do some post-check
     }

@@ -107,7 +107,7 @@ struct FullReport {
 contract FullActionBatcher is CoreActionBatcher {
     constructor(address deployer_) CoreActionBatcher(deployer_) {}
 
-    function engageFull(FullReport memory report, ISafe adminSafe, ISafe opsSafe) public onlyDeployer {
+    function engageFull(FullReport memory report, ISafe adminSafe, ISafe opsSafe, bool newRoot) public onlyDeployer {
         // Rely Root
         report.tokenRecoverer.rely(address(report.root));
 
@@ -150,7 +150,7 @@ contract FullActionBatcher is CoreActionBatcher {
         report.core.gateway.rely(address(report.protocolGuardian));
         report.core.multiAdapter.rely(address(report.protocolGuardian));
         report.core.messageDispatcher.rely(address(report.protocolGuardian));
-        report.root.rely(address(report.protocolGuardian));
+        if (newRoot) report.root.rely(address(report.protocolGuardian));
         report.tokenRecoverer.rely(address(report.protocolGuardian));
         // Permanent ward for ongoing adapter maintenance
         if (address(report.wormholeAdapter) != address(0)) {
@@ -170,14 +170,14 @@ contract FullActionBatcher is CoreActionBatcher {
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.opsGuardian));
 
         // Rely tokenRecoverer
-        report.root.rely(address(report.tokenRecoverer));
+        if (newRoot) report.root.rely(address(report.tokenRecoverer));
 
         // Rely messageDispatcher
-        report.root.rely(address(report.core.messageDispatcher));
+        if (newRoot) report.root.rely(address(report.core.messageDispatcher));
         report.tokenRecoverer.rely(address(report.core.messageDispatcher));
 
         // Rely messageProcessor
-        report.root.rely(address(report.core.messageProcessor));
+        if (newRoot) report.root.rely(address(report.core.messageProcessor));
         report.tokenRecoverer.rely(address(report.core.messageProcessor));
 
         // Rely hub
@@ -227,14 +227,16 @@ contract FullActionBatcher is CoreActionBatcher {
         report.batchRequestManager.file("hub", address(report.core.hub));
 
         // Endorse methods
-        report.root.endorse(address(report.core.balanceSheet));
-        report.root.endorse(address(report.asyncRequestManager));
-        report.root.endorse(address(report.globalEscrow));
-        report.root.endorse(address(report.vaultRouter));
+        if (newRoot) {
+            report.root.endorse(address(report.core.balanceSheet));
+            report.root.endorse(address(report.asyncRequestManager));
+            report.root.endorse(address(report.globalEscrow));
+            report.root.endorse(address(report.vaultRouter));
+        }
     }
 
     function revokeFull(FullReport memory report) public onlyDeployer {
-        report.root.deny(address(this));
+        if (report.root.wards(address(this)) == 1) report.root.deny(address(this));
         report.tokenRecoverer.deny(address(this));
 
         report.routerEscrow.deny(address(this));
@@ -308,7 +310,8 @@ contract FullDeployer is CoreDeployer {
         adminSafe = input.adminSafe;
         opsSafe = input.opsSafe;
 
-        if (input.core.root == address(0)) {
+        bool newRoot = input.core.root == address(0);
+        if (newRoot) {
             root = Root(
                 create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher)))
             );
@@ -317,7 +320,7 @@ contract FullDeployer is CoreDeployer {
             root = Root(input.core.root);
         }
 
-        deployCore(input.core, batcher);
+        deployCore(input.core, batcher, newRoot);
 
         tokenRecoverer = TokenRecoverer(
             create3(
@@ -620,7 +623,7 @@ contract FullDeployer is CoreDeployer {
         if (input.adapters.axelar.shouldDeploy) register("axelarAdapter", address(axelarAdapter));
         if (input.adapters.layerZero.shouldDeploy) register("layerZeroAdapter", address(layerZeroAdapter));
 
-        batcher.engageFull(_fullReport(), input.adminSafe, input.opsSafe);
+        batcher.engageFull(_fullReport(), input.adminSafe, input.opsSafe, newRoot);
     }
 
     function _fullReport() internal view returns (FullReport memory) {
