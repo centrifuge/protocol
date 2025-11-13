@@ -75,7 +75,7 @@ contract CoreActionBatcher is Constants {
         deployer = address(0);
     }
 
-    function engageCore(CoreReport memory report, address root) public onlyDeployer {
+    function engageCore(CoreReport memory report, address root, bool newRoot) public onlyDeployer {
         // Rely root
         report.gateway.rely(root);
         report.multiAdapter.rely(root);
@@ -174,7 +174,7 @@ contract CoreActionBatcher is Constants {
 
         report.spoke.file("gateway", address(report.gateway));
         report.spoke.file("poolEscrowFactory", address(report.poolEscrowFactory));
-        report.spoke.file("sender", address(report.messageDispatcher));
+        if (newRoot) report.spoke.file("sender", address(report.messageDispatcher));
 
         report.balanceSheet.file("spoke", address(report.spoke));
         report.balanceSheet.file("gateway", address(report.gateway));
@@ -265,7 +265,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
         return makeSalt(contractName, version, deployer);
     }
 
-    function deployCore(CoreInput memory input, CoreActionBatcher batcher) public {
+    function deployCore(CoreInput memory input, CoreActionBatcher batcher, bool newRoot) public {
         _init(input.version, batcher.deployer());
 
         // Core
@@ -387,7 +387,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
             )
         );
 
-        batcher.engageCore(_coreReport(), input.root);
+        batcher.engageCore(_coreReport(), input.root, newRoot);
 
         // Core
         register("gateway", address(gateway));

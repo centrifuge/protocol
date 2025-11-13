@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {D18} from "../../misc/types/D18.sol";
+import {Escrow} from "../../misc/Escrow.sol";
 import {IERC20} from "../../misc/interfaces/IERC20.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {IERC7575Share, IERC165} from "../../misc/interfaces/IERC7575.sol";
@@ -13,16 +14,22 @@ import {AssetId} from "../../core/types/AssetId.sol";
 import {HubRegistry} from "../../core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../../core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {VaultKind} from "../../core/spoke/interfaces/IVault.sol";
+import {MultiAdapter} from "../../core/messaging/MultiAdapter.sol";
 import {ContractUpdater} from "../../core/utils/ContractUpdater.sol";
 import {ShareClassManager} from "../../core/hub/ShareClassManager.sol";
 import {IShareToken} from "../../core/spoke/interfaces/IShareToken.sol";
 import {PoolEscrow, IPoolEscrow} from "../../core/spoke/PoolEscrow.sol";
 import {IVault, VaultKind} from "../../core/spoke/interfaces/IVault.sol";
+import {MessageProcessor} from "../../core/messaging/MessageProcessor.sol";
+import {MessageDispatcher} from "../../core/messaging/MessageDispatcher.sol";
 import {VaultRegistry, VaultDetails} from "../../core/spoke/VaultRegistry.sol";
 import {PoolEscrowFactory} from "../../core/spoke/factories/PoolEscrowFactory.sol";
 import {IVaultFactory} from "../../core/spoke/factories/interfaces/IVaultFactory.sol";
 
 import {Root} from "../../admin/Root.sol";
+import {TokenRecoverer} from "../../admin/TokenRecoverer.sol";
+import {ProtocolGuardian} from "../../admin/ProtocolGuardian.sol";
 
 import {FreezeOnly} from "../../hooks/FreezeOnly.sol";
 import {FullRestrictions} from "../../hooks/FullRestrictions.sol";
@@ -31,9 +38,26 @@ import {RedemptionRestrictions} from "../../hooks/RedemptionRestrictions.sol";
 
 import {OnOfframpManagerFactory, OnOfframpManager, IOnOfframpManager} from "../../managers/spoke/OnOfframpManager.sol";
 
+import {BaseVault} from "../../vaults/BaseVaults.sol";
 import {SyncManager} from "../../vaults/SyncManager.sol";
+import {VaultRouter} from "../../vaults/VaultRouter.sol";
 import {AsyncRequestManager} from "../../vaults/AsyncRequestManager.sol";
 import {BatchRequestManager, EpochId} from "../../vaults/BatchRequestManager.sol";
+
+PoolId constant GLOBAL_POOL = PoolId.wrap(0);
+
+contract MessageDispatcherInfallibleMock {
+    uint16 _localCentrifugeId;
+
+    constructor(uint16 localCentrifugeId_) {
+        _localCentrifugeId = localCentrifugeId_;
+    }
+
+    function localCentrifugeId() external view returns (uint16) {
+        return _localCentrifugeId;
+    }
+    function sendRegisterAsset(uint16 centrifugeId, AssetId assetId, uint8 decimals, address refund) external payable {}
+}
 
 interface GatewayV3Like {
     function subsidy(PoolId) external view returns (uint96 value, IRecoverable refund);
@@ -50,7 +74,36 @@ interface ShareClassManagerV3Like {
         returns (uint32 deposit, uint32 redeem, uint32 issue, uint32 revoke);
 }
 
-struct OldContracts {
+struct GlobalMigrationOldContracts {
+    address gateway;
+    address spoke;
+    address hubRegistry;
+    address asyncRequestManager;
+    address syncManager;
+}
+
+struct GlobalParamsInput {
+    GlobalMigrationOldContracts v3;
+    Root root;
+    Spoke spoke;
+    BalanceSheet balanceSheet;
+    HubRegistry hubRegistry;
+    MultiAdapter multiAdapter;
+    MessageDispatcher messageDispatcher;
+    MessageProcessor messageProcessor;
+    AsyncRequestManager asyncRequestManager;
+    SyncManager syncManager;
+    ProtocolGuardian protocolGuardian;
+    TokenRecoverer tokenRecoverer;
+    Escrow globalEscrow;
+    VaultRouter vaultRouter;
+
+    AssetId[] spokeAssetIds;
+    AssetId[] hubAssetIds;
+    address[] vaults;
+}
+
+struct PoolMigrationOldContracts {
     address gateway;
     address poolEscrowFactory;
     address spoke;
@@ -68,7 +121,7 @@ struct OldContracts {
 }
 
 struct PoolParamsInput {
-    OldContracts v3;
+    PoolMigrationOldContracts v3;
 
     Root root;
     Spoke spoke;
@@ -99,14 +152,36 @@ struct PoolParamsInput {
     uint16[] chainsWherePoolIsNotified;
 }
 
-contract PoolMigrationSpell {
+contract MigrationSpell {
     using CastLib for *;
 
     address public owner;
-    string public constant description = "Pool migration from v3.0.1 to v3.1";
+    string public constant description = "Migration from v3.0.1 to v3.1";
 
     constructor(address owner_) {
         owner = owner_;
+    }
+
+    function castGlobal(GlobalParamsInput memory input) external {
+        require(owner == msg.sender, "not authorized");
+
+        address[] memory contracts = _authorizedContracts(input);
+        for (uint256 i; i < contracts.length; i++) {
+            input.root.relyContract(address(contracts[i]), address(this));
+        }
+
+        MessageDispatcherInfallibleMock messageDispatcherMock =
+            new MessageDispatcherInfallibleMock(input.multiAdapter.localCentrifugeId());
+        input.spoke.file("sender", address(messageDispatcherMock));
+
+        _missingRootWards(input);
+        _migrateGlobal(input);
+
+        input.spoke.file("sender", address(input.messageDispatcher));
+
+        for (uint256 i; i < contracts.length; i++) {
+            input.root.denyContract(address(contracts[i]), address(this));
+        }
     }
 
     function castPool(PoolId poolId, PoolParamsInput memory input) external {
@@ -125,9 +200,19 @@ contract PoolMigrationSpell {
     }
 
     /// @notice after migrate all pools, we need to lock the spell
-    function lock() external {
+    function lock(Root root) external {
         require(owner == msg.sender, "not authorized");
         owner = address(0);
+
+        root.deny(address(this));
+    }
+
+    function _authorizedContracts(GlobalParamsInput memory input) internal pure returns (address[] memory) {
+        address[] memory contracts = new address[](3);
+        contracts[0] = address(input.spoke);
+        contracts[1] = address(input.hubRegistry);
+        contracts[2] = address(input.v3.gateway);
+        return contracts;
     }
 
     function _authorizedContracts(PoolParamsInput memory input) internal pure returns (address[] memory) {
@@ -142,6 +227,67 @@ contract PoolMigrationSpell {
         contracts[7] = address(input.contractUpdater);
         contracts[8] = address(input.v3.gateway);
         return contracts;
+    }
+
+    /// @dev after deploying with an existing root, the following wards are missing and need to be fixed
+    function _missingRootWards(GlobalParamsInput memory input) internal {
+        input.root.rely(address(input.protocolGuardian));
+        input.root.rely(address(input.tokenRecoverer));
+        input.root.rely(address(input.messageDispatcher));
+        input.root.rely(address(input.messageProcessor));
+        input.root.endorse(address(input.balanceSheet));
+        input.root.endorse(address(input.asyncRequestManager));
+        input.root.endorse(address(input.globalEscrow));
+        input.root.endorse(address(input.vaultRouter));
+    }
+
+    function _migrateGlobal(GlobalParamsInput memory input) internal {
+        // ----- ASSETS -----
+        for (uint256 i; i < input.spokeAssetIds.length; i++) {
+            AssetId assetId = input.spokeAssetIds[i];
+            (address erc20,) = Spoke(input.v3.spoke).idToAsset(assetId);
+            input.spoke.registerAsset(assetId.centrifugeId(), erc20, 0, address(0));
+        }
+
+        for (uint256 i; i < input.hubAssetIds.length; i++) {
+            AssetId assetId = input.hubAssetIds[i];
+            if (assetId.centrifugeId() != 0) {
+                uint8 decimals = HubRegistry(input.v3.hubRegistry).decimals(assetId);
+                input.hubRegistry.registerAsset(assetId, decimals);
+            }
+        }
+
+        // ----- GATEWAY -----
+        // Transfer global pool funds from the gateway to msg.sender
+        (uint96 subsidizedFunds,) = GatewayV3Like(input.v3.gateway).subsidy(GLOBAL_POOL);
+        GatewayV3Like(input.v3.gateway).recoverTokens(ETH_ADDRESS, msg.sender, subsidizedFunds);
+
+        // ----- VAULTS -----
+        for (uint256 i; i < input.vaults.length; i++) {
+            BaseVault vault = BaseVault(input.vaults[i]);
+            input.root.relyContract(address(vault), address(this));
+
+            input.root.relyContract(address(vault), address(input.asyncRequestManager));
+            input.root.relyContract(address(input.asyncRequestManager), address(vault));
+
+            input.root.denyContract(address(vault), address(input.v3.asyncRequestManager));
+            input.root.denyContract(address(input.v3.asyncRequestManager), address(vault));
+
+            vault.file("manager", address(input.asyncRequestManager));
+            vault.file("asyncRedeemManager", address(input.asyncRequestManager));
+
+            if (vault.vaultKind() == VaultKind.SyncDepositAsyncRedeem) {
+                input.root.relyContract(address(vault), address(input.syncManager));
+                input.root.relyContract(address(input.syncManager), address(vault));
+
+                input.root.denyContract(address(vault), input.v3.syncManager);
+                input.root.denyContract(address(input.v3.syncManager), address(vault));
+
+                vault.file("syncDepositManager", address(input.syncManager));
+            }
+
+            input.root.denyContract(address(vault), address(this));
+        }
     }
 
     function _migratePool(PoolId poolId, PoolParamsInput memory input) internal {
