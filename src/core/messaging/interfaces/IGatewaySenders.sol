@@ -132,6 +132,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
 
     /// @notice Creates and send the message
     function sendExecuteTransferShares(
+        uint16 originCentrifugeId,
         uint16 targetCentrifugeId,
         PoolId poolId,
         ShareClassId scId,
@@ -166,6 +167,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
         AssetId assetId,
         bytes calldata payload,
         uint128 extraGasLimit,
+        bool unpaidMode,
         address refund
     ) external payable;
 
@@ -230,9 +232,14 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
     ) external payable;
 
     /// @notice Creates and send the message
-    function sendRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload, address refund)
-        external
-        payable;
+    function sendRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes calldata payload,
+        bool unpaidMode,
+        address refund
+    ) external payable;
 
     /// @notice Creates and sends an UntrustedContractUpdate message
     /// @param poolId The pool identifier

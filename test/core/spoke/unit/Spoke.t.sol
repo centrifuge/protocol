@@ -543,12 +543,11 @@ contract SpokeTestRequest is SpokeTest {
         vm.prank(AUTH);
         spoke.setRequestManager(POOL_A, requestManager);
 
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.setUnpaidMode.selector, false), abi.encode());
         vm.mockCall(
             address(sender),
             COST,
             abi.encodeWithSelector(
-                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND
+                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, false, REFUND
             ),
             abi.encode()
         );
@@ -563,13 +562,11 @@ contract SpokeTestRequest is SpokeTest {
         vm.prank(AUTH);
         spoke.setRequestManager(POOL_A, requestManager);
 
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.setUnpaidMode.selector, true), abi.encode());
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.setUnpaidMode.selector, false), abi.encode());
         vm.mockCall(
             address(sender),
             COST,
             abi.encodeWithSelector(
-                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND
+                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, true, REFUND
             ),
             abi.encode()
         );

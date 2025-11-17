@@ -47,7 +47,6 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     // Outbound & payments
     bool public transient isBatching;
-    bool public transient unpaidMode;
     address internal transient _batcher;
     mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Underpaid)) public underpaid;
@@ -138,7 +137,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IGateway
-    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit, address refund)
+    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit, bool unpaidMode, address refund)
         external
         payable
         pauseable
@@ -165,15 +164,19 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             TransientBytesLib.append(batchSlot, message);
         } else {
-            uint256 cost = _send(centrifugeId, message, gasLimit, refund, msg.value);
+            uint256 cost = _send(centrifugeId, message, gasLimit, refund, unpaidMode, msg.value);
             _refund(refund, msg.value - cost);
         }
     }
 
-    function _send(uint16 centrifugeId, bytes memory batch, uint128 batchGasLimit, address refund, uint256 fuel)
-        internal
-        returns (uint256 cost)
-    {
+    function _send(
+        uint16 centrifugeId,
+        bytes memory batch,
+        uint128 batchGasLimit,
+        address refund,
+        bool unpaidMode,
+        uint256 fuel
+    ) internal returns (uint256 cost) {
         PoolId adapterPoolId = processor.messagePoolId(batch);
         require(!isOutgoingBlocked[centrifugeId][adapterPoolId], OutgoingBlocked());
 
@@ -195,11 +198,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         }
     }
 
-    /// @inheritdoc IGateway
-    function setUnpaidMode(bool enabled) external auth {
-        unpaidMode = enabled;
-    }
-
     function _addUnpaidBatch(uint16 centrifugeId, bytes memory message, uint128 gasLimit) internal {
         bytes32 batchHash = keccak256(message);
 
@@ -218,7 +216,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         underpaid_.counter--;
 
-        uint256 cost = _send(centrifugeId, batch, underpaid_.gasLimit, refund, msg.value);
+        uint256 cost = _send(centrifugeId, batch, underpaid_.gasLimit, refund, false, msg.value);
         _refund(refund, msg.value - cost);
 
         if (underpaid_.counter == 0) delete underpaid[centrifugeId][batchHash];
@@ -264,10 +262,11 @@ contract Gateway is Auth, Recoverable, IGateway {
         for (uint256 i; i < locators.length; i++) {
             (uint16 centrifugeId, PoolId poolId) = _parseLocator(locators[i]);
             bytes32 outboundBatchSlot = _outboundBatchSlot(centrifugeId, poolId);
-            uint128 gasLimit = _gasLimitSlot(centrifugeId, poolId).tloadUint128();
             bytes memory batch = TransientBytesLib.get(outboundBatchSlot);
 
-            cost += _send(centrifugeId, batch, gasLimit, refund, fuel - cost);
+            cost += _send(
+                centrifugeId, batch, _gasLimitSlot(centrifugeId, poolId).tloadUint128(), refund, false, fuel - cost
+            );
 
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));

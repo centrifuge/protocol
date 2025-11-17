@@ -331,9 +331,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         require(address(manager) != address(0), InvalidRequestManager());
         require(msg.sender == address(manager), NotAuthorized());
 
-        gateway.setUnpaidMode(unpaid);
-        sender.sendRequest{value: msg.value}(poolId, scId, assetId, payload, refund);
-        gateway.setUnpaidMode(false);
+        sender.sendRequest{value: msg.value}(poolId, scId, assetId, payload, unpaid, refund);
     }
 
     /// @inheritdoc ISpokeGatewayHandler

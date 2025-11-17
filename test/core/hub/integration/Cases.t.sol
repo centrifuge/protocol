@@ -259,7 +259,8 @@ contract TestCases is BaseTest {
         vm.mockCall(
             address(hubHandler.sender()),
             abi.encodeWithSignature(
-                "sendExecuteTransferShares(uint16,uint64,bytes16,bytes32,uint128,uint128,address)",
+                "sendExecuteTransferShares(uint16,uint16,uint64,bytes16,bytes32,uint128,uint128,address)",
+                CHAIN_CV,
                 CHAIN_CP,
                 poolId.raw(),
                 scId.raw(),
