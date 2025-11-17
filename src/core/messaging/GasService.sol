@@ -64,9 +64,9 @@ contract GasService is IGasService {
         updateRestriction = _gasValue(108705);
         trustedContractUpdate = _gasValue(135222);
         requestCallback = _gasValue(255372); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2836645);
-        updateVaultLink = _gasValue(179584);
-        updateVaultUnlink = _gasValue(128302);
+        updateVaultDeployAndLink = _gasValue(2838608);
+        updateVaultLink = _gasValue(179596);
+        updateVaultUnlink = _gasValue(128314);
         setRequestManager = _gasValue(99663);
         updateBalanceSheetManager = _gasValue(98416);
         updateHoldingAmount = _gasValue(298548);
