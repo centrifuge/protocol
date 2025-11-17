@@ -92,10 +92,6 @@ contract VaultRegistryTest is Test {
         vm.stopPrank();
         vm.warp(MAX_AGE);
 
-        // Mock gateway calls
-        vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.setUnpaidMode.selector, true), abi.encode());
-        vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.setUnpaidMode.selector, false), abi.encode());
-
         // Mock sender calls
         vm.mockCall(
             address(sender),

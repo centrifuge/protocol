@@ -491,13 +491,14 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         AssetId assetId,
         bytes calldata payload,
         uint128 extraGasLimit,
+        bool unpaidMode,
         address refund
     ) external payable {
         IHubRequestManager manager = hubRegistry.hubRequestManager(poolId, assetId.centrifugeId());
         require(address(manager) != address(0), InvalidRequestManager());
         require(msg.sender == address(manager), NotAuthorized());
 
-        sender.sendRequestCallback{value: msgValue()}(poolId, scId, assetId, payload, extraGasLimit, refund);
+        sender.sendRequestCallback{value: msgValue()}(poolId, scId, assetId, payload, extraGasLimit, unpaidMode, refund);
     }
 
     //----------------------------------------------------------------------------------------------

@@ -126,6 +126,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
                     RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount)
                         .serialize(),
                     0,
+                    true,
                     address(0) // Refund is not used because we're in unpaid mode with no payment
                 );
             }
@@ -142,6 +143,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
                     RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount)
                         .serialize(),
                     0,
+                    true,
                     address(0) // Refund is not used because we're in unpaid mode with no payment
                 );
             }
@@ -247,7 +249,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
 
         bytes memory callback =
             RequestCallbackMessageLib.ApprovedDeposits(approvedAssetAmount, pricePoolPerAsset.raw()).serialize();
-        hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, 0, refund);
+        hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, 0, false, refund);
     }
 
     /// @inheritdoc IBatchRequestManager
@@ -329,7 +331,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
 
         bytes memory callback =
             RequestCallbackMessageLib.IssuedShares(issuedShareAmount, pricePoolPerShare.raw()).serialize();
-        hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, extraGasLimit, refund);
+        hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, extraGasLimit, false, refund);
     }
 
     /// @inheritdoc IBatchRequestManager
@@ -348,7 +350,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         bytes memory callback = RequestCallbackMessageLib.RevokedShares(
                 payoutAssetAmount, revokedShareAmount, pricePoolPerShare.raw()
             ).serialize();
-        hub.requestCallback{value: msgValue()}(poolId, scId_, payoutAssetId, callback, extraGasLimit, refund);
+        hub.requestCallback{value: msgValue()}(poolId, scId_, payoutAssetId, callback, extraGasLimit, false, refund);
     }
 
     function _revokeShares(
@@ -419,7 +421,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         if (cancelledAssetAmount > 0) {
             bytes memory callback =
                 RequestCallbackMessageLib.FulfilledDepositRequest(investor, 0, 0, cancelledAssetAmount).serialize();
-            hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, 0, refund);
+            hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, 0, false, refund);
         }
     }
 
@@ -441,7 +443,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         if (cancelledShareAmount > 0) {
             bytes memory callback =
                 RequestCallbackMessageLib.FulfilledRedeemRequest(investor, 0, 0, cancelledShareAmount).serialize();
-            hub.requestCallback{value: msgValue()}(poolId, scId_, payoutAssetId, callback, 0, refund);
+            hub.requestCallback{value: msgValue()}(poolId, scId_, payoutAssetId, callback, 0, false, refund);
         }
     }
 
@@ -492,6 +494,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
                         investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
                     ).serialize(),
                 0,
+                false,
                 refund
             );
         }
@@ -605,6 +608,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
                         investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
                     ).serialize(),
                 0,
+                false,
                 refund
             );
         }

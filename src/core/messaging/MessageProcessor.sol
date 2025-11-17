@@ -80,7 +80,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes calldata message) external auth {
         MessageType kind = message.messageType();
-        gateway.setUnpaidMode(true);
 
         uint16 sourceCentrifugeId = message.messageSourceCentrifugeId();
         require(sourceCentrifugeId == 0 || sourceCentrifugeId == centrifugeId, InvalidSourceChain());
@@ -234,8 +233,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else {
             revert InvalidMessage(uint8(kind));
         }
-
-        gateway.setUnpaidMode(false);
     }
 
     /// @inheritdoc IMessageProperties
