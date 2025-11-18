@@ -38,6 +38,7 @@ import {makeSalt} from "../CoreDeployer.s.sol";
 import {CreateXScript} from "../utils/CreateXScript.sol";
 import {GraphQLQuery} from "../utils/GraphQLQuery.s.sol";
 import {
+    AssetInfo,
     MigrationSpell,
     PoolParamsInput,
     PoolMigrationOldContracts,
@@ -151,16 +152,16 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
-            "  where: {"
-            "      centrifugeId: ", _jsonValue(centrifugeId),
-            "  }"
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId),
+            "}"
         );
 
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
             "deployments(", where, ") {",
             "  items {"
-            "      root"
+            "    root"
             "  }"
             "}"
         ));
@@ -175,20 +176,20 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
-            "  where: {"
-            "      centrifugeId: ", _jsonValue(centrifugeId),
-            "  }"
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId),
+            "}"
         );
 
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
             "deployments(", where, ") {",
             "  items {"
-            "      gateway"
-            "      spoke"
-            "      hubRegistry"
-            "      asyncRequestManager"
-            "      syncManager"
+            "    gateway"
+            "    spoke"
+            "    hubRegistry"
+            "    asyncRequestManager"
+            "    syncManager"
             "  }"
             "}"
         ));
@@ -207,29 +208,29 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
-            "  where: {"
-            "      centrifugeId: ", _jsonValue(centrifugeId),
-            "  }"
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId),
+            "}"
         );
 
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
             "deployments(", where, ") {",
             "  items {"
-            "      gateway"
-            "      poolEscrowFactory"
-            "      spoke"
-            "      balanceSheet"
-            "      hubRegistry"
-            "      shareClassManager"
-            "      asyncVaultFactory"
-            "      asyncRequestManager"
-            "      syncDepositVaultFactory"
-            "      syncManager"
-            "      freezeOnlyHook"
-            "      fullRestrictionsHook", (isProduction) ?
-            "      freelyTransferableHook" : "",
-            "      redemptionRestrictionsHook"
+            "    gateway"
+            "    poolEscrowFactory"
+            "    spoke"
+            "    balanceSheet"
+            "    hubRegistry"
+            "    shareClassManager"
+            "    asyncVaultFactory"
+            "    asyncRequestManager"
+            "    syncDepositVaultFactory"
+            "    syncManager"
+            "    freezeOnlyHook"
+            "    fullRestrictionsHook", (isProduction) ?
+            "    freelyTransferableHook" : "",
+            "    redemptionRestrictionsHook"
             "  }"
             "}"
         ));
@@ -261,9 +262,9 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
-            "  where: {"
-            "      centrifugeId: ", _jsonValue(centrifugeId),
-            "  }"
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId),
+            "}"
         );
 
         // forgefmt: disable-next-item
@@ -291,9 +292,9 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
-            "  where: {"
-            "      centrifugeId: ", _jsonValue(centrifugeId),
-            "  }"
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId),
+            "}"
         );
 
         // forgefmt: disable-next-item
@@ -322,9 +323,9 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
-            "  where: {"
-            "      centrifugeId: ", _jsonValue(centrifugeId),
-            "  }"
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId),
+            "}"
         );
 
         // forgefmt: disable-next-item
@@ -347,14 +348,14 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
     function _assets()
         internal
-        returns (address[] memory assets)
+        returns (AssetInfo[] memory assets)
     {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
-            "  where: {"
-            "      centrifugeId: ", _jsonValue(centrifugeId),
-            "  }"
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId),
+            "}"
         );
 
         // forgefmt: disable-next-item
@@ -363,15 +364,17 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
             "  totalCount"
             "  items {"
             "    address"
+            "    assetTokenId"
             "  }"
             "}"
         ));
 
         uint256 totalCount = json.readUint(".data.assets.totalCount");
 
-        assets = new address[](totalCount);
+        assets = new AssetInfo[](totalCount);
         for (uint256 i = 0; i < totalCount; i++) {
-            assets[i] = json.readAddress(_buildJsonPath(".data.assets.items", i, "address"));
+            assets[i].addr = json.readAddress(_buildJsonPath(".data.assets.items", i, "address"));
+            assets[i].tokenId = json.readUint(_buildJsonPath(".data.assets.items", i, "assetTokenId"));
         }
     }
 
@@ -382,11 +385,11 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
-            "  where: {"
-            "      centrifugeId: ", _jsonValue(centrifugeId),
-            "      poolId: ", _jsonValue(poolId.raw()),
-            "      isBalancesheetManager: true"
-            "  }"
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId),
+            "  poolId: ", _jsonValue(poolId.raw()),
+            "  isBalancesheetManager: true"
+            "}"
         );
 
         // forgefmt: disable-next-item
@@ -414,11 +417,11 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
-            "  where: {"
-            "      centrifugeId: ", _jsonValue(centrifugeId),
-            "      poolId: ", _jsonValue(poolId.raw()),
-            "      isHubManager: true"
-            "  }"
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId),
+            "  poolId: ", _jsonValue(poolId.raw()),
+            "  isHubManager: true"
+            "}"
         );
 
         // forgefmt: disable-next-item
@@ -446,10 +449,10 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
-            "  where: {"
-            "      centrifugeId: ", _jsonValue(centrifugeId),
-            "      poolId: ", _jsonValue(poolId.raw()),
-            "  }"
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId),
+            "  poolId: ", _jsonValue(poolId.raw()),
+            "}"
         );
 
         // forgefmt: disable-next-item
@@ -476,10 +479,10 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
-            "  where: {"
-            "      centrifugeId: ", _jsonValue(centrifugeId),
-            "      poolId: ", _jsonValue(poolId.raw()),
-            "  }"
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId),
+            "  poolId: ", _jsonValue(poolId.raw()),
+            "}"
         );
 
         // forgefmt: disable-next-item
@@ -507,10 +510,10 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
-            "  where: {"
-            "      centrifugeId: ", _jsonValue(centrifugeId),
-            "      poolId: ", _jsonValue(poolId.raw()),
-            "  }"
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId),
+            "  poolId: ", _jsonValue(poolId.raw()),
+            "}"
         );
 
         // forgefmt: disable-next-item
@@ -538,10 +541,10 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
-            "  where: {"
-            "      centrifugeId: ", _jsonValue(centrifugeId),
-            "      id: ", _jsonValue(poolId.raw()),
-            "  }"
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId),
+            "  id: ", _jsonValue(poolId.raw()),
+            "}"
         );
 
         // forgefmt: disable-next-item

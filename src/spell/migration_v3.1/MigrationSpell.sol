@@ -5,6 +5,7 @@ import {D18} from "../../misc/types/D18.sol";
 import {Escrow} from "../../misc/Escrow.sol";
 import {IERC20} from "../../misc/interfaces/IERC20.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {IERC6909} from "../../misc/interfaces/IERC6909.sol";
 import {IERC7575Share, IERC165} from "../../misc/interfaces/IERC7575.sol";
 import {ETH_ADDRESS, IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 
@@ -72,6 +73,11 @@ interface ShareClassManagerV3Like {
         external
         view
         returns (uint32 deposit, uint32 redeem, uint32 issue, uint32 revoke);
+}
+
+struct AssetInfo {
+    address addr;
+    uint256 tokenId;
 }
 
 struct GlobalMigrationOldContracts {
@@ -143,7 +149,7 @@ struct PoolParamsInput {
     AssetId[] hubAssetIds;
     address[] vaults;
     address[] bsManagers;
-    address[] assets;
+    AssetInfo[] assets;
     OnOfframpManager onOfframpManagerV3;
     address[] onOfframpReceivers;
     address[] onOfframpRelayers;
@@ -245,8 +251,8 @@ contract MigrationSpell {
         // ----- ASSETS -----
         for (uint256 i; i < input.spokeAssetIds.length; i++) {
             AssetId assetId = input.spokeAssetIds[i];
-            (address erc20,) = Spoke(input.v3.spoke).idToAsset(assetId);
-            input.spoke.registerAsset(assetId.centrifugeId(), erc20, 0, address(0));
+            (address addr, uint256 tokenId) = Spoke(input.v3.spoke).idToAsset(assetId);
+            input.spoke.registerAsset(assetId.centrifugeId(), addr, tokenId, address(0));
         }
 
         for (uint256 i; i < input.hubAssetIds.length; i++) {
@@ -426,36 +432,43 @@ contract MigrationSpell {
             input.root.relyContract(address(poolEscrow), address(this));
 
             for (uint256 i; i < input.assets.length; i++) {
-                address asset = input.assets[i];
+                AssetInfo memory assetInfo = input.assets[i];
 
-                uint256 balance = IERC20(asset).balanceOf(address(poolEscrowV3));
+                uint256 balance;
+                try IERC20(assetInfo.addr).balanceOf(address(poolEscrowV3)) returns (uint256 balance_) {
+                    balance = balance_;
+                } catch {
+                    IERC6909(assetInfo.addr).balanceOf(address(poolEscrowV3), assetInfo.tokenId);
+                }
+
                 if (balance > 0) {
                     bool isShare = false;
-                    try IERC165(asset).supportsInterface(type(IERC7575Share).interfaceId) returns (bool isShare_) {
-                        // NOTE: investment assets can be shares from other pools, special case for them:
-                        if (isShare_) {
-                            isShare = isShare_;
-
-                            address shareHook = IShareToken(asset).hook();
-                            input.root.relyContract(address(asset), address(this));
-                            IShareToken(asset).file("hook", address(0)); // we don't want any restrictions
-
-                            poolEscrowV3.authTransferTo(asset, 0, address(poolEscrow), balance);
-
-                            IShareToken(asset).file("hook", shareHook);
-                            input.root.denyContract(address(asset), address(this));
-                        }
+                    try IERC165(assetInfo.addr)
+                        .supportsInterface(type(IERC7575Share).interfaceId) returns (bool result) {
+                        isShare = result;
                     } catch {}
 
-                    if (!isShare) {
-                        poolEscrowV3.authTransferTo(asset, 0, address(poolEscrow), balance);
+                    if (isShare) {
+                        // NOTE: investment assets can be shares from other pools, special case for them:
+                        address shareHook = IShareToken(assetInfo.addr).hook();
+                        input.root.relyContract(address(assetInfo.addr), address(this));
+                        IShareToken(assetInfo.addr).file("hook", address(0)); // we don't want any restrictions
+
+                        poolEscrowV3.authTransferTo(assetInfo.addr, assetInfo.tokenId, address(poolEscrow), balance);
+
+                        IShareToken(assetInfo.addr).file("hook", shareHook);
+                        input.root.denyContract(address(assetInfo.addr), address(this));
+                    } else {
+                        poolEscrowV3.authTransferTo(assetInfo.addr, assetInfo.tokenId, address(poolEscrow), balance);
                     }
                 }
 
-                (uint128 total, uint128 reserved) = PoolEscrow(address(poolEscrowV3)).holding(scId, asset, 0);
+                (uint128 total, uint128 reserved) =
+                    PoolEscrow(address(poolEscrowV3)).holding(scId, assetInfo.addr, assetInfo.tokenId);
+
                 if (total > 0 || reserved > 0) {
-                    poolEscrow.deposit(scId, asset, 0, total);
-                    poolEscrow.reserve(scId, asset, 0, reserved);
+                    poolEscrow.deposit(scId, assetInfo.addr, assetInfo.tokenId, total);
+                    poolEscrow.reserve(scId, assetInfo.addr, assetInfo.tokenId, reserved);
                 }
             }
 
@@ -514,10 +527,11 @@ contract MigrationSpell {
             }
 
             for (uint256 i; i < input.assets.length; i++) {
-                address asset = input.assets[i];
-                uint128 maxReserve = SyncManager(input.v3.syncManager).maxReserve(poolId, scId, asset, 0);
+                AssetInfo memory assetInfo = input.assets[i];
+                uint128 maxReserve =
+                    SyncManager(input.v3.syncManager).maxReserve(poolId, scId, assetInfo.addr, assetInfo.tokenId);
                 if (maxReserve > 0) {
-                    input.syncManager.setMaxReserve(poolId, scId, asset, 0, maxReserve);
+                    input.syncManager.setMaxReserve(poolId, scId, assetInfo.addr, assetInfo.tokenId, maxReserve);
                 }
             }
         }
@@ -527,16 +541,16 @@ contract MigrationSpell {
             address onOfframpManager = address(input.onOfframpManagerFactory.newManager(poolId, scId));
 
             for (uint256 i; i < input.assets.length; i++) {
-                address asset = input.assets[i];
-                AssetId assetId = Spoke(input.v3.spoke).assetToId(asset, 0);
-                if (input.onOfframpManagerV3.onramp(asset)) {
+                AssetInfo memory assetInfo = input.assets[i];
+                AssetId assetId = Spoke(input.v3.spoke).assetToId(assetInfo.addr, assetInfo.tokenId);
+                if (input.onOfframpManagerV3.onramp(assetInfo.addr)) {
                     bytes memory message = abi.encode(IOnOfframpManager.TrustedCall.Onramp, assetId, true);
                     input.contractUpdater.trustedCall(poolId, scId, onOfframpManager, message);
                 }
 
                 for (uint256 j; j < input.onOfframpReceivers.length; j++) {
                     address receiver = input.onOfframpReceivers[j];
-                    if (input.onOfframpManagerV3.offramp(asset, receiver)) {
+                    if (input.onOfframpManagerV3.offramp(assetInfo.addr, receiver)) {
                         bytes memory message =
                             abi.encode(IOnOfframpManager.TrustedCall.Offramp, assetId, receiver.toBytes32(), true);
                         input.contractUpdater.trustedCall(poolId, scId, onOfframpManager, message);
