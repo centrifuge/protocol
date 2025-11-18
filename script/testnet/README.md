@@ -16,7 +16,7 @@ Standalone, local/testnet deployment and validation script for a single chain.
 ```bash
 export NETWORK=sepolia
 export PROTOCOL_ADMIN=0x... # your EOA
-forge script script/crosschain/TestData.s.sol:TestData \
+forge script script/testnet/TestData.s.sol:TestData \
   --rpc-url $RPC_URL \
   --broadcast \
   -vvvv
@@ -36,7 +36,7 @@ Configures the source network's adapters to communicate with destination network
 **Usage:**
 ```bash
 export NETWORK=sepolia
-forge script script/crosschain/WireAdapters.s.sol:WireAdapters \
+forge script script/testnet/WireAdapters.s.sol:WireAdapters \
   --rpc-url $RPC_URL \
   --broadcast \
   -vvvv
@@ -66,7 +66,7 @@ cd script/deploy && python deploy.py dump sepolia && cd ../..
 source env/latest/11155111-latest.json
 
 # First run (uses timestamp-based offset)
-forge script script/crosschain/TestCrossChainHub.s.sol:TestCrossChainHub \
+forge script script/testnet/TestCrossChainHub.s.sol:TestCrossChainHub \
   --rpc-url $RPC_URL \
   --broadcast \
   -vvvv
@@ -74,7 +74,7 @@ forge script script/crosschain/TestCrossChainHub.s.sol:TestCrossChainHub \
 # Subsequent runs with custom offset
 export POOL_INDEX_OFFSET=500
 export TEST_RUN_ID="adapter-test-1"
-forge script script/crosschain/TestCrossChainHub.s.sol:TestCrossChainHub \
+forge script script/testnet/TestCrossChainHub.s.sol:TestCrossChainHub \
   --rpc-url $RPC_URL \
   --broadcast \
   -vvvv
@@ -107,7 +107,7 @@ source env/latest/84532-latest.json
 export HUB_CENTRIFUGE_ID=1
 export POOL_INDEX_OFFSET=123  # Must match hub script
 export TEST_RUN_ID="adapter-test-1"  # Optional
-forge script script/crosschain/TestCrossChainSpoke.s.sol:TestCrossChainSpoke \
+forge script script/testnet/TestCrossChainSpoke.s.sol:TestCrossChainSpoke \
   --rpc-url $RPC_URL \
   --broadcast \
   -vvvv
@@ -118,17 +118,17 @@ forge script script/crosschain/TestCrossChainSpoke.s.sol:TestCrossChainSpoke \
 1. **Wire Adapters** (on each network):
    ```bash
    # On hub network
-   forge script script/crosschain/WireAdapters.s.sol:WireAdapters --rpc-url $HUB_RPC_URL --broadcast
+   forge script script/testnet/WireAdapters.s.sol:WireAdapters --rpc-url $HUB_RPC_URL --broadcast
 
    # On each spoke network
-   forge script script/crosschain/WireAdapters.s.sol:WireAdapters --rpc-url $SPOKE_RPC_URL --broadcast
+   forge script script/testnet/WireAdapters.s.sol:WireAdapters --rpc-url $SPOKE_RPC_URL --broadcast
    ```
 
 2. **Create Test Pools** (on hub network):
    ```bash
    export POOL_INDEX_OFFSET=100
    export TEST_RUN_ID="test-1"
-   forge script script/crosschain/TestCrossChainHub.s.sol:TestCrossChainHub --rpc-url $HUB_RPC_URL --broadcast
+   forge script script/testnet/TestCrossChainHub.s.sol:TestCrossChainHub --rpc-url $HUB_RPC_URL --broadcast
    ```
 
 3. **Wait for Message Relay** (10-20 minutes):
@@ -141,7 +141,7 @@ forge script script/crosschain/TestCrossChainSpoke.s.sol:TestCrossChainSpoke \
    export HUB_CENTRIFUGE_ID=1
    export POOL_INDEX_OFFSET=100  # Must match hub
    export TEST_RUN_ID="test-1"   # Must match hub
-   forge script script/crosschain/TestCrossChainSpoke.s.sol:TestCrossChainSpoke --rpc-url $SPOKE_RPC_URL --broadcast
+   forge script script/testnet/TestCrossChainSpoke.s.sol:TestCrossChainSpoke --rpc-url $SPOKE_RPC_URL --broadcast
    ```
 
 ## Additional Documentation

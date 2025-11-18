@@ -33,7 +33,7 @@ contract MigrationV3_1Test is Test {
     address constant TESTNET_MESSAGE_DISPATCHER_V3 = 0x332bE89CAB9FF501F5EBe3f6DC9487bfF50Bd0BF;
 
     ISafe immutable ADMIN = ISafe(makeAddr("ADMIN"));
-    bytes32 constant NEW_VERSION = "3.1";
+    bytes32 constant NEW_VERSION = "v3.1";
     PoolId[] poolsToMigrate;
 
     function _testCase(string memory rpcUrl, bool isProduction) public {
@@ -78,51 +78,22 @@ contract MigrationV3_1Test is Test {
 
         // ----- SPELL DEPLOYMENT -----
 
-        MigrationV3_1Executor migration = new MigrationV3_1Executor(address(deployer), isProduction);
+        MigrationV3_1Executor migration = new MigrationV3_1Executor(isProduction);
         MigrationSpell migrationSpell = new MigrationSpell(address(migration));
 
         // ----- LABELLING -----
 
-        vm.label(address(rootV3), "v3.root");
         vm.label(address(rootWard), "v3.messageDispatcher");
         vm.label(address(deployer), "deployer");
         vm.label(address(batcher), "batcher");
         vm.label(address(migration), "migration");
-        vm.label(address(migrationSpell), "migrationSpell");
-
-        {
-            GlobalMigrationOldContracts memory v3 = migration.generalMigrationOldContracts();
-            vm.label(address(v3.gateway), "v3.gateway");
-            vm.label(address(v3.spoke), "v3.spoke");
-            vm.label(address(v3.hubRegistry), "v3.hubRegistry");
-            vm.label(address(v3.asyncRequestManager), "v3.asyncRequestManager");
-            vm.label(address(v3.syncManager), "v3.syncManager");
-        }
-
-        {
-            PoolMigrationOldContracts memory v3 = migration.poolMigrationOldContracts();
-            vm.label(address(v3.gateway), "v3.gateway");
-            vm.label(address(v3.poolEscrowFactory), "v3.poolEscrowFactory");
-            vm.label(address(v3.spoke), "v3.spoke");
-            vm.label(address(v3.balanceSheet), "v3.balanceSheet");
-            vm.label(address(v3.hubRegistry), "v3.hubRegistry");
-            vm.label(address(v3.shareClassManager), "v3.shareClassManager");
-            vm.label(address(v3.asyncVaultFactory), "v3.asyncVaultFactory");
-            vm.label(address(v3.asyncRequestManager), "v3.asyncRequestManager");
-            vm.label(address(v3.syncDepositVaultFactory), "v3.syncDepositVaultFactory");
-            vm.label(address(v3.syncManager), "v3.syncManager");
-            vm.label(address(v3.freezeOnly), "v3.freezeOnly");
-            vm.label(address(v3.fullRestrictions), "v3.fullRestrictions");
-            vm.label(address(v3.freelyTransferable), "v3.freelyTransferable");
-            vm.label(address(v3.redemptionRestrictions), "v3.redemptionRestrictions");
-        }
 
         // ----- MIGRATION -----
 
         vm.prank(rootWard);
         rootV3.rely(address(migrationSpell)); // Ideally through guardian.scheduleRely()
 
-        migration.migrate(migrationSpell, poolsToMigrate);
+        migration.migrate(address(deployer), migrationSpell, poolsToMigrate);
 
         // ----- POST_CHECK -----
 
