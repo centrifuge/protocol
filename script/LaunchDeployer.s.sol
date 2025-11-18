@@ -37,6 +37,7 @@ contract LaunchDeployer is FullDeployer {
 
         uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
         string memory environment = vm.parseJsonString(config, "$.network.environment");
+        bool isTestnet = keccak256(bytes(environment)) == keccak256("testnet");
 
         console.log("Network:", network);
         console.log("Environment:", environment);
@@ -50,7 +51,7 @@ contract LaunchDeployer is FullDeployer {
         FullInput memory input = FullInput({
             adminSafe: ISafe(vm.envAddress("PROTOCOL_ADMIN")),
             opsSafe: ISafe(vm.envAddress("OPS_ADMIN")),
-            core: CoreInput({centrifugeId: centrifugeId, version: version, root: address(0)}),
+            core: CoreInput({centrifugeId: centrifugeId, version: version, root: vm.envOr("ROOT", address(0))}),
             adapters: AdaptersInput({
                 wormhole: WormholeInput({
                     shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.wormhole.deploy"),
@@ -73,7 +74,7 @@ contract LaunchDeployer is FullDeployer {
         FullActionBatcher batcher = new FullActionBatcher(msg.sender);
 
         // Cache version hash to avoid redundant hash recalculation
-        if (input.core.version == "3.1") _verifyAdmin(input.adminSafe);
+        if (input.core.version == "v3.1" && !isTestnet) _verifyMainnetAdmin(input.adminSafe);
 
         address protocolAdminEnv = vm.envAddress("PROTOCOL_ADMIN");
         require(protocolAdminEnv != address(0), "PROTOCOL_ADMIN not set");
@@ -84,7 +85,7 @@ contract LaunchDeployer is FullDeployer {
 
         batcher.lock();
 
-        if (input.core.version == "3.1") _verifyMainnetAddresses();
+        if (input.core.version == "v3.1" && !isTestnet) _verifyMainnetAddresses();
 
         saveDeploymentOutput();
 
@@ -115,7 +116,8 @@ contract LaunchDeployer is FullDeployer {
         }
     }
 
-    function _verifyAdmin(ISafe adminSafe) internal view {
+    function _verifyMainnetAdmin(ISafe adminSafe) internal view {
+        //TODO: update these
         require(
             _isSafeOwner(adminSafe, 0x4d47a7a89478745200Bd51c26bA87664538Df541), "Admin 0x4d47...f541 not a safe owner"
         );
@@ -147,6 +149,7 @@ contract LaunchDeployer is FullDeployer {
      * These addresses must align with official documentation and deployment records
      */
     function _verifyMainnetAddresses() internal view {
+        //TODO: update these
         require(address(root) == 0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f, "Root address mismatch with mainnet");
         require(
             address(protocolGuardian) == 0xFEE13c017693a4706391D516ACAbF6789D5c3157,

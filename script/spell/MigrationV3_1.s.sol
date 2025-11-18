@@ -59,31 +59,39 @@ contract MigrationV3_1Deployer is Script {
 contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
     using stdJson for string;
 
-    bytes32 constant NEW_VERSION = "3.1";
-    Root public immutable root;
-    uint16 public immutable centrifugeId;
+    bytes32 constant NEW_VERSION = "v3.1";
+    uint16 centrifugeId;
     address deployer;
 
-    constructor(address deployer_, bool isProduction) GraphQLQuery(isProduction) {
-        deployer = deployer_; // This must be set before _contractAddr
-        centrifugeId = MessageDispatcher(_contractAddr("messageDispatcher")).localCentrifugeId();
-        root = _root();
-    }
+    constructor(bool isProduction) GraphQLQuery(isProduction) {}
 
     receive() external payable {}
 
     function run(MigrationSpell migrationSpell, PoolId[] memory poolsToMigrate) external {
         vm.startBroadcast();
 
-        migrate(migrationSpell, poolsToMigrate);
+        migrate(msg.sender, migrationSpell, poolsToMigrate);
 
         vm.stopBroadcast();
     }
 
-    function migrate(MigrationSpell migrationSpell, PoolId[] memory poolsToMigrate) public {
+    function migrate(address deployer_, MigrationSpell migrationSpell, PoolId[] memory poolsToMigrate) public {
+        deployer = deployer_; // This must be set before _contractAddr
+        centrifugeId = MessageDispatcher(_contractAddr("messageDispatcher")).localCentrifugeId();
+        Root root = _root();
+        vm.label(address(root), "v3.root");
+        vm.label(address(migrationSpell), "migrationSpell");
+
+        GlobalMigrationOldContracts memory globalV3 = _globalMigrationOldContracts();
+        vm.label(address(globalV3.gateway), "v3.gateway");
+        vm.label(address(globalV3.spoke), "v3.spoke");
+        vm.label(address(globalV3.hubRegistry), "v3.hubRegistry");
+        vm.label(address(globalV3.asyncRequestManager), "v3.asyncRequestManager");
+        vm.label(address(globalV3.syncManager), "v3.syncManager");
+
         migrationSpell.castGlobal(
             GlobalParamsInput({
-                v3: generalMigrationOldContracts(),
+                v3: globalV3,
                 root: root,
                 spoke: Spoke(_contractAddr("spoke")),
                 balanceSheet: BalanceSheet(_contractAddr("balanceSheet")),
@@ -103,12 +111,29 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
             })
         );
 
+        PoolMigrationOldContracts memory poolV3 = _poolMigrationOldContracts();
+        vm.label(address(poolV3.gateway), "v3.gateway");
+        vm.label(address(poolV3.poolEscrowFactory), "v3.poolEscrowFactory");
+        vm.label(address(poolV3.spoke), "v3.spoke");
+        vm.label(address(poolV3.balanceSheet), "v3.balanceSheet");
+        vm.label(address(poolV3.hubRegistry), "v3.hubRegistry");
+        vm.label(address(poolV3.shareClassManager), "v3.shareClassManager");
+        vm.label(address(poolV3.asyncVaultFactory), "v3.asyncVaultFactory");
+        vm.label(address(poolV3.asyncRequestManager), "v3.asyncRequestManager");
+        vm.label(address(poolV3.syncDepositVaultFactory), "v3.syncDepositVaultFactory");
+        vm.label(address(poolV3.syncManager), "v3.syncManager");
+        vm.label(address(poolV3.freezeOnly), "v3.freezeOnly");
+        vm.label(address(poolV3.fullRestrictions), "v3.fullRestrictions");
+        vm.label(address(poolV3.freelyTransferable), "v3.freelyTransferable");
+        vm.label(address(poolV3.redemptionRestrictions), "v3.redemptionRestrictions");
+
         for (uint256 i; i < poolsToMigrate.length; i++) {
             PoolId poolId = poolsToMigrate[i];
+
             migrationSpell.castPool(
                 poolId,
                 PoolParamsInput({
-                    v3: poolMigrationOldContracts(),
+                    v3: poolV3,
                     root: root,
                     spoke: Spoke(_contractAddr("spoke")),
                     balanceSheet: BalanceSheet(_contractAddr("balanceSheet")),
@@ -141,8 +166,9 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
         migrationSpell.lock(root);
     }
 
-    function _contractAddr(string memory contractName) internal view returns (address) {
-        return computeCreate3Address(makeSalt(contractName, NEW_VERSION, deployer), deployer);
+    function _contractAddr(string memory contractName) internal returns (address addr) {
+        addr = computeCreate3Address(makeSalt(contractName, NEW_VERSION, deployer), deployer);
+        vm.label(addr, contractName);
     }
 
     function _root()
@@ -169,8 +195,8 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
         return Root(json.readAddress(".data.deployments.items[0].root"));
     }
 
-    function generalMigrationOldContracts()
-        public
+    function _globalMigrationOldContracts()
+        internal
         returns (GlobalMigrationOldContracts memory v3)
     {
 
@@ -201,8 +227,8 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
         v3.syncManager = json.readAddress(".data.deployments.items[0].syncManager");
     }
 
-    function poolMigrationOldContracts()
-        public
+    function _poolMigrationOldContracts()
+        internal
         returns (PoolMigrationOldContracts memory v3)
     {
 
@@ -574,4 +600,12 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
                 uint16(json.readUint(_buildJsonPath(".data.pools.items[0].spokeBlockchains.items", i, "centrifugeId")));
         }
     }
+}
+
+contract MigrationV3_1ExecutorMainnet is MigrationV3_1Executor {
+    constructor() MigrationV3_1Executor(true) {}
+}
+
+contract MigrationV3_1ExecutorTestnet is MigrationV3_1Executor {
+    constructor() MigrationV3_1Executor(false) {}
 }

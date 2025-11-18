@@ -82,13 +82,13 @@ python3 script/deploy/deploy.py sepolia wire:all
 # Run hub test (creates pools, sends cross-chain messages)
 python3 script/deploy/deploy.py arbitrum-sepolia crosschaintest:hub
 
-# Wait for message relay (2-5 minutes)
-# Monitor: https://testnet.axelarscan.io
-
 # Run spoke tests (interacts with cross-chain vaults)
 python3 script/deploy/deploy.py sepolia crosschaintest:spoke
 python3 script/deploy/deploy.py base-sepolia crosschaintest:spoke
 ```
+
+# Wait for message relay (2-5 minutes)
+# Monitor: https://testnet.axelarscan.io
 
 ## TestData
 
@@ -103,4 +103,3 @@ python3 script/deploy/deploy.py base-sepolia crosschaintest:spoke
 ## Additional Documentation
 
 See [CROSSCHAIN_TESTING.md](./CROSSCHAIN_TESTING.md) for more detailed testing instructions and scenarios.
-

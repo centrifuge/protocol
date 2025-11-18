@@ -64,8 +64,8 @@ class DeploymentRunner:
             if hidden_path.exists():
                 self.script_path = hidden_path
         # Fallback for test scripts moved to test/e2e_testnets/
-        if not self.script_path.exists():
-            test_path = self.env_loader.root_dir / "test" / "e2e_testnets" / f"{script_name}.s.sol"
+        if not self.script_path.exists() and script_name == "TestData":
+            test_path = self.env_loader.root_dir / "script" / "testnet" / f"{script_name}.s.sol"
             if test_path.exists():
                 self.script_path = test_path
             else:

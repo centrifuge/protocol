@@ -35,9 +35,9 @@ import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../../src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../../src/vaults/factories/SyncDepositVaultFactory.sol";
 
-import {LaunchDeployer} from "../../script/LaunchDeployer.s.sol";
-
 import "forge-std/Script.sol";
+
+import {LaunchDeployer} from "../LaunchDeployer.s.sol";
 
 /**
  * @title BaseTestData
