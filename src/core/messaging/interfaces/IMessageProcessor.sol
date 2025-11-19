@@ -15,13 +15,14 @@ interface IMessageProcessor is IMessageHandler, IMessageProperties {
     // Errors
     //----------------------------------------------------------------------------------------------
 
-    error InvalidSourceChain();
-
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
 
     /// @notice Dispatched when a message is tried to send from a different chain than mainnet
     error OnlyFromMainnet();
+
+    /// @notice Dispatched when a message is tried to send from a chain that is not the source
+    error OnlyFromSource();
 
     /// @notice Dispatched when an invalid message is trying to handle
     error InvalidMessage(uint8 code);

@@ -81,9 +81,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function handle(uint16 centrifugeId, bytes calldata message) external auth {
         MessageType kind = message.messageType();
 
-        uint16 sourceCentrifugeId = message.messageSourceCentrifugeId();
-        require(sourceCentrifugeId == 0 || sourceCentrifugeId == centrifugeId, InvalidSourceChain());
-
         if (kind == MessageType.ScheduleUpgrade) {
             require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
@@ -100,9 +97,11 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
+            require(centrifugeId == AssetId.wrap(m.assetId).centrifugeId(), OnlyFromSource());
             hubHandler.registerAsset(AssetId.wrap(m.assetId), m.decimals);
         } else if (kind == MessageType.SetPoolAdapters) {
             MessageLib.SetPoolAdapters memory m = message.deserializeSetPoolAdapters();
+            require(centrifugeId == PoolId.wrap(m.poolId).centrifugeId(), OnlyFromSource());
             IAdapter[] memory adapters = new IAdapter[](m.adapterList.length);
             for (uint256 i; i < adapters.length; i++) {
                 adapters[i] = IAdapter(m.adapterList[i].toAddress());

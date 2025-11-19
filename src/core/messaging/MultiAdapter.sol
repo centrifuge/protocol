@@ -31,7 +31,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     IMessageHandler public gateway;
     IMessageProperties public messageProperties;
 
-    uint64 globalSessionId;
+    uint128 lastSessionId;
 
     mapping(uint16 centrifugeId => mapping(PoolId => IAdapter[])) public adapters;
     mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => Inbound)) public inbound;
@@ -64,16 +64,13 @@ contract MultiAdapter is Auth, IMultiAdapter {
         uint8 recoveryIndex_
     ) external auth {
         uint8 quorum_ = addresses.length.toUint8();
-        require(quorum_ != 0, EmptyAdapterSet());
         require(quorum_ <= MAX_ADAPTER_COUNT, ExceedsMax());
         require(threshold_ <= quorum_, ThresholdHigherThanQuorum());
         require(recoveryIndex_ <= quorum_, RecoveryIndexHigherThanQuorum());
 
         // Increment session id to reset pending votes
         uint256 numAdapters = adapters[centrifugeId][poolId].length;
-        uint64 sessionId = numAdapters > 0
-            ? _adapterDetails[centrifugeId][poolId][adapters[centrifugeId][poolId][0]].activeSessionId + 1
-            : globalSessionId + 1;
+        uint128 sessionId = lastSessionId + 1;
 
         // Disable old adapters
         for (uint8 i; i < numAdapters; i++) {
@@ -90,7 +87,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         }
 
         adapters[centrifugeId][poolId] = addresses;
-        if (poolId == GLOBAL_POOL) globalSessionId = sessionId;
+        lastSessionId = sessionId;
 
         emit SetAdapters(centrifugeId, poolId, addresses, threshold_, recoveryIndex_);
     }
@@ -104,7 +101,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         PoolId poolId = messageProperties.messagePoolId(payload);
 
         IAdapter adapterAddr = IAdapter(msg.sender);
-        Adapter memory adapter = _poolAdapterDetails(centrifugeId, poolId, adapterAddr);
+        Adapter memory adapter = _adapterDetails[centrifugeId][poolId][adapterAddr];
         require(adapter.id != 0, InvalidAdapter());
 
         // Verify adapter and parse message hash
@@ -149,7 +146,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         returns (bytes32)
     {
         PoolId poolId = messageProperties.messagePoolId(payload);
-        IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
+        IAdapter[] memory adapters_ = adapters[centrifugeId][poolId];
         require(adapters_.length != 0, EmptyAdapterSet());
 
         bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, keccak256(payload)));
@@ -180,7 +177,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         returns (uint256 total)
     {
         PoolId poolId = messageProperties.messagePoolId(payload);
-        IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
+        IAdapter[] memory adapters_ = adapters[centrifugeId][poolId];
 
         for (uint256 i; i < adapters_.length; i++) {
             total += adapters_[i].estimate(centrifugeId, payload, gasLimit);
@@ -190,13 +187,6 @@ contract MultiAdapter is Auth, IMultiAdapter {
     //----------------------------------------------------------------------------------------------
     // Getters
     //----------------------------------------------------------------------------------------------
-
-    function poolAdapters(uint16 centrifugeId, PoolId poolId) public view returns (IAdapter[] memory adapters_) {
-        adapters_ = adapters[centrifugeId][poolId];
-
-        // If adapters not configured per pool, then use the global adapters
-        if (adapters_.length == 0) adapters_ = adapters[centrifugeId][GLOBAL_POOL];
-    }
 
     function _poolAdapterDetails(uint16 centrifugeId, PoolId poolId, IAdapter adapterAddr)
         internal
@@ -227,7 +217,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @inheritdoc IMultiAdapter
-    function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint64) {
+    function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint128) {
         return _getFirstAdapterDetails(centrifugeId, poolId).activeSessionId;
     }
 
@@ -238,8 +228,8 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     /// @dev Internal helper to get the first adapter's details for a pool, handling empty cases
     function _getFirstAdapterDetails(uint16 centrifugeId, PoolId poolId) internal view returns (Adapter memory) {
-        IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
+        IAdapter[] memory adapters_ = adapters[centrifugeId][poolId];
         if (adapters_.length == 0) return Adapter(0, 0, 0, 0, 0);
-        return _poolAdapterDetails(centrifugeId, poolId, adapters_[0]);
+        return _adapterDetails[centrifugeId][poolId][adapters_[0]];
     }
 }

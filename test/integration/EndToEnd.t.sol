@@ -179,8 +179,8 @@ contract EndToEndDeployment is Test {
     LocalAdapter adapterAToB;
     LocalAdapter adapterBToA;
 
-    LocalAdapter poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
-    LocalAdapter poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
+    LocalAdapter poolAdapterHToS;
+    LocalAdapter poolAdapterSToH;
 
     CHub h;
     CSpoke s;
@@ -289,8 +289,6 @@ contract EndToEndDeployment is Test {
     }
 
     function _setSpoke(FullDeployer deploy, uint16 centrifugeId, CSpoke storage s_) internal {
-        if (s_.centrifugeId != 0) return; // Already set
-
         s_.centrifugeId = centrifugeId;
         s_.root = deploy.root();
         s_.protocolGuardian = deploy.protocolGuardian();
@@ -428,12 +426,12 @@ contract EndToEndFlows is EndToEndUtils {
         s_.spoke.registerAsset{value: GAS}(h.centrifugeId, address(s_.usdc), 0, ANY);
     }
 
-    function _configurePool(CSpoke memory s_) internal {
-        _configureAsset(s_);
-
-        if (!h.hubRegistry.exists(POOL_A)) {
-            _createPool();
+    function _configurePoolInSpoke(CSpoke memory s_) internal {
+        if (h.centrifugeId != s_.centrifugeId) {
+            _configureBasePoolWithCustomAdapters(s_);
         }
+
+        _configureAsset(s_);
 
         vm.startPrank(FM);
         h.hub.notifyPool{value: GAS}(POOL_A, s_.centrifugeId, REFUND);
@@ -477,32 +475,30 @@ contract EndToEndFlows is EndToEndUtils {
         vm.stopPrank();
     }
 
-    function _configurePool(bool sameChain) internal {
-        _setSpoke(sameChain);
-        _configurePool(s);
-    }
-
-    function _configureBasePoolWithCustomAdapters() internal {
-        _setSpoke(IN_DIFFERENT_CHAINS);
-        _createPool();
-
+    function _configureBasePoolWithCustomAdapters(CSpoke memory s_) internal {
         // Wire pool adapters
-        poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
-        poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
+        poolAdapterHToS = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
+        poolAdapterSToH = new LocalAdapter(s_.centrifugeId, s_.multiAdapter, FM);
 
-        poolAdapterAToB.setEndpoint(poolAdapterBToA);
-        poolAdapterBToA.setEndpoint(poolAdapterAToB);
+        poolAdapterHToS.setEndpoint(poolAdapterSToH);
+        poolAdapterSToH.setEndpoint(poolAdapterHToS);
 
         IAdapter[] memory localAdapters = new IAdapter[](1);
-        localAdapters[0] = poolAdapterAToB;
+        localAdapters[0] = poolAdapterHToS;
 
         bytes32[] memory remoteAdapters = new bytes32[](1);
-        remoteAdapters[0] = address(poolAdapterBToA).toBytes32();
+        remoteAdapters[0] = address(poolAdapterSToH).toBytes32();
 
         vm.startPrank(FM);
-        h.hub.setAdapters{value: GAS}(POOL_A, s.centrifugeId, localAdapters, remoteAdapters, 1, 1, REFUND);
+        h.hub.setAdapters{value: GAS}(POOL_A, s_.centrifugeId, localAdapters, remoteAdapters, 1, 1, REFUND);
         h.hub.updateGatewayManager{value: GAS}(POOL_A, h.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
-        h.hub.updateGatewayManager{value: GAS}(POOL_A, s.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
+        h.hub.updateGatewayManager{value: GAS}(POOL_A, s_.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
+    }
+
+    function _configurePool(bool sameChain) internal {
+        _setSpoke(sameChain);
+        _createPool();
+        _configurePoolInSpoke(s);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -959,14 +955,16 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
     /// forge-config: default.isolate = true
     function testAdaptersPerPool() public {
-        _configureBasePoolWithCustomAdapters();
+        _setSpoke(IN_DIFFERENT_CHAINS);
+        _createPool();
+        _configureBasePoolWithCustomAdapters(s);
 
         vm.startPrank(FM);
         h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId, REFUND);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
 
         // Hub -> Spoke message went through the pool adapter
-        assertEq(uint8(poolAdapterAToB.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
+        assertEq(uint8(poolAdapterHToS.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
         assertEq(s.spoke.pool(POOL_A), block.timestamp); // Message received and processed
 
         h.hub.updateBalanceSheetManager{value: GAS}(POOL_A, s.centrifugeId, BSM.toBytes32(), true, REFUND);
@@ -975,7 +973,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         s.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
 
         // Spoke -> Hub message went through the pool adapter
-        assertEq(uint8(poolAdapterBToA.lastReceivedPayload().messageType()), uint8(MessageType.UpdateShares));
+        assertEq(uint8(poolAdapterSToH.lastReceivedPayload().messageType()), uint8(MessageType.UpdateShares));
 
         assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 1); // Message received and processed
     }
@@ -1025,8 +1023,8 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         _createPool();
 
         // Wire pool adapters
-        poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
-        poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
+        LocalAdapter poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
+        LocalAdapter poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
 
         poolAdapterAToB.setEndpoint(poolAdapterBToA);
         poolAdapterBToA.setEndpoint(poolAdapterAToB);
@@ -1087,7 +1085,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
     /// forge-config: default.isolate = true
     function testUntrustedContractUpdate(bool sameChain) public {
-        _setSpoke(sameChain);
+        _configurePool(sameChain);
 
         address hubContract = address(new IsContract());
         address spokeSender = makeAddr("SpokeSender");

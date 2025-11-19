@@ -59,6 +59,9 @@ contract NAVManagerIntegrationTest is BaseTest {
         vm.startPrank(FM);
         scId = hub.addShareClass(POOL_A, "Test Share Class", "TSC", bytes32("1"));
 
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = cv;
+        hub.setAdapters{value: GAS}(POOL_A, CHAIN_CV, adapters, new bytes32[](0), 1, 1, REFUND);
         hub.setSnapshotHook(POOL_A, ISnapshotHook(address(navManager)));
         hub.updateHubManager(POOL_A, address(navManager), true);
         hub.updateHubManager(POOL_A, address(simplePriceManager), true);

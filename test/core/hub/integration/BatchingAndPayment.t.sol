@@ -19,6 +19,10 @@ contract TestBatchingAndPayment is BaseTest {
 
         vm.startPrank(FM);
 
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = cv;
+        hub.setAdapters{value: GAS}(poolA, CHAIN_CV, adapters, new bytes32[](0), 1, 1, REFUND);
+
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
         cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, CHAIN_CV, REFUND);
         cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, CHAIN_CV, REFUND);
@@ -44,6 +48,11 @@ contract TestBatchingAndPayment is BaseTest {
         opsGuardian.createPool(poolB, FM, USD_ID);
 
         vm.startPrank(FM);
+
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = cv;
+        hub.setAdapters{value: GAS}(poolA, CHAIN_CV, adapters, new bytes32[](0), 1, 1, REFUND);
+        hub.setAdapters{value: GAS}(poolB, CHAIN_CV, adapters, new bytes32[](0), 1, 1, REFUND);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
         cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, CHAIN_CV, REFUND);

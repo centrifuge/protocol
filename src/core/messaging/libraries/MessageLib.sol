@@ -6,7 +6,6 @@ import {MathLib} from "../../../misc/libraries/MathLib.sol";
 import {BytesLib} from "../../../misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
-import {AssetId} from "../../types/AssetId.sol";
 
 enum MessageType {
     /// @dev Placeholder for null message type
@@ -127,28 +126,6 @@ library MessageLib {
         }
 
         return PoolId.wrap(0);
-    }
-
-    function messageSourceCentrifugeId(bytes memory message) internal pure returns (uint16) {
-        uint8 kind = message.toUint8(0);
-
-        if (kind <= uint8(MessageType.RecoverTokens)) {
-            return 0; // Non centrifugeId associated
-        } else if (kind == uint8(MessageType.SetPoolAdapters)) {
-            return PoolId.wrap(message.toUint64(1)).centrifugeId();
-        } else if (kind == uint8(MessageType.UpdateShares) || kind == uint8(MessageType.InitiateTransferShares)) {
-            return 0; // Non centrifugeId associated
-        } else if (kind == uint8(MessageType.UntrustedContractUpdate)) {
-            return 0; // Non centrifugeId associated
-        } else if (kind == uint8(MessageType.RegisterAsset)) {
-            return AssetId.wrap(message.toUint128(1)).centrifugeId();
-        } else if (kind == uint8(MessageType.UpdateHoldingAmount)) {
-            return AssetId.wrap(message.toUint128(25)).centrifugeId();
-        } else if (kind == uint8(MessageType.Request)) {
-            return AssetId.wrap(message.toUint128(25)).centrifugeId();
-        } else {
-            return message.messagePoolId().centrifugeId();
-        }
     }
 
     //---------------------------------------
