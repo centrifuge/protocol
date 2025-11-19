@@ -35,6 +35,9 @@ contract TestCases is BaseTest {
         scId = shareClassManager.previewNextShareClassId(poolId);
 
         vm.startPrank(FM);
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = cv;
+        hub.setAdapters{value: GAS}(poolId, CHAIN_CV, adapters, new bytes32[](0), 1, 1, REFUND);
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT);
         hub.notifyPool{value: GAS}(poolId, CHAIN_CV, REFUND);
@@ -67,6 +70,8 @@ contract TestCases is BaseTest {
             );
         }
         hub.updateVault{value: GAS}(poolId, scId, USDC_C2, bytes32("factory"), VaultUpdateKind.DeployAndLink, 0, REFUND);
+
+        cv.popMessage(); // For setAdapters
 
         MessageLib.NotifyPool memory m0 = MessageLib.deserializeNotifyPool(cv.popMessage());
         assertEq(m0.poolId, poolId.raw());

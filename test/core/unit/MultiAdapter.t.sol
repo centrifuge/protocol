@@ -90,6 +90,7 @@ contract MultiAdapterTest is Test {
     IAdapter adapter1 = IAdapter(makeAddr("Adapter1"));
     IAdapter adapter2 = IAdapter(makeAddr("Adapter2"));
     IAdapter adapter3 = IAdapter(makeAddr("Adapter3"));
+    IAdapter[] zeroAdapters = new IAdapter[](0);
     IAdapter[] oneAdapter;
     IAdapter[] threeAdapters;
 
@@ -172,11 +173,6 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, new IAdapter[](0), 0, 0);
     }
 
-    function testErrEmptyAdapterFile() public {
-        vm.expectRevert(IMultiAdapter.EmptyAdapterSet.selector);
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, new IAdapter[](0), 0, 0);
-    }
-
     function testErrExceedsMax() public {
         IAdapter[] memory tooMuchAdapters = new IAdapter[](MAX_ADAPTER_COUNT + 1);
         vm.expectRevert(IMultiAdapter.ExceedsMax.selector);
@@ -209,7 +205,6 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
         emit IMultiAdapter.SetAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 2);
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 2);
 
-        assertEq(multiAdapter.poolAdapters(REMOTE_CENT_ID, POOL_A).length, 3);
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 1);
         assertEq(multiAdapter.quorum(REMOTE_CENT_ID, POOL_A), threeAdapters.length);
         assertEq(multiAdapter.threshold(REMOTE_CENT_ID, POOL_A), 1);
@@ -229,38 +224,17 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 1);
 
-        // Using another chain uses a different active session counter
         multiAdapter.setAdapters(LOCAL_CENT_ID, POOL_A, threeAdapters, 3, 3);
-        assertEq(multiAdapter.activeSessionId(LOCAL_CENT_ID, POOL_A), 1);
+        assertEq(multiAdapter.activeSessionId(LOCAL_CENT_ID, POOL_A), 2);
 
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
-        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 2);
-    }
-
-    function testMultiAdapterSetPoolAdaptersAfterGlobalPool() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 1, 2);
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 2);
-
-        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 2);
-
-        for (uint256 i; i < threeAdapters.length; i++) {
-            IMultiAdapter.Adapter memory adapter = multiAdapter.adapterDetails(REMOTE_CENT_ID, POOL_A, threeAdapters[i]);
-
-            assertEq(adapter.activeSessionId, 2);
-        }
-    }
-
-    function testMultiAdapterSetPoolAdaptersAfterGlobalPoolOnceConfigured() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 1, 2);
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 2);
-
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 1, 2);
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 1, 2);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 3, 3);
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_0), 3);
-        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 2);
 
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 2);
-        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, zeroAdapters, 0, 0);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_0), 0);
+
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 3, 3);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_0), 5);
     }
 }
 
@@ -268,16 +242,6 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     function testErrInvalidAdapter() public {
         vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-    }
-
-    function testMessageWithOneAdapterButPoolANoConfigured() public {
-        // POOL_A is not configured, and MESSAGE_1 comes from POOL_A, but it works because POOL_0 is the default
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter, 1, 1);
-
-        vm.prank(address(adapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-
-        assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
     }
 
     function testMessageWithSeveralAdapters() public {
@@ -569,16 +533,6 @@ contract MultiAdapterTestSend is MultiAdapterTest {
         );
         multiAdapter.send{value: cost}(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
     }
-
-    function testSendMessageButPoolANotConfigured() public {
-        // POOL_A is not configured, and MESSAGE_1 is send from POOL_A, but it works because POOL_0 is the default
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter, 1, 1);
-
-        _mockAdapter(adapter1, MESSAGE_1, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
-
-        uint256 cost = GAS_LIMIT + ADAPTER_ESTIMATE_1;
-        multiAdapter.send{value: cost}(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
-    }
 }
 
 contract MultiAdapterTestEstimate is MultiAdapterTest {
@@ -588,19 +542,6 @@ contract MultiAdapterTestEstimate is MultiAdapterTest {
 
     function testEstimate() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
-
-        _mockAdapter(adapter1, MESSAGE_1, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
-        _mockAdapter(adapter2, MESSAGE_1, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);
-        _mockAdapter(adapter3, MESSAGE_1, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
-
-        uint256 estimation = GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
-
-        assertEq(multiAdapter.estimate(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT), estimation);
-    }
-
-    function testEstimateButPoolANotConfigured() public {
-        // POOL_A is not configured, and MESSAGE_1 is from POOL_A, but it works because POOL_0 is the default
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 3, 3);
 
         _mockAdapter(adapter1, MESSAGE_1, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
         _mockAdapter(adapter2, MESSAGE_1, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);

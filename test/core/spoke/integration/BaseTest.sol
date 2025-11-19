@@ -150,6 +150,10 @@ contract BaseTest is FullDeployer, Test {
             OTHER_CHAIN_ID, PoolId.wrap(0), testAdapters, uint8(testAdapters.length), uint8(testAdapters.length)
         );
 
+        multiAdapter.setAdapters(
+            OTHER_CHAIN_ID, POOL_A, testAdapters, uint8(testAdapters.length), uint8(testAdapters.length)
+        );
+
         asyncRequestManager.depositSubsidy{value: 0.5 ether}(POOL_A);
         balanceSheet.updateManager(POOL_A, address(this), true);
 
