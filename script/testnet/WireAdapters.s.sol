@@ -70,9 +70,6 @@ contract WireAdapters is Script {
             return address(0);
         }
 
-
-
-
         // parseJsonAddress may revert, so wrap in try-catch
         try vm.parseJsonAddress(config, contractJsonPath) returns (address parsedAddr) {
             if (parsedAddr != address(0)) {

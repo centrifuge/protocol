@@ -97,8 +97,8 @@ contract TestCrossChainSpoke is BaseTestData {
         uint64 asyncPoolIndex = uint64(spokeCentrifugeId) * 1000 + poolIndexOffset * 2 + 1;
         uint64 syncPoolIndex = uint64(spokeCentrifugeId) * 1000 + poolIndexOffset * 2 + 2;
 
-        PoolId asyncPoolId = hubRegistry.poolId(hubCentrifugeId, uint48(asyncPoolIndex));
-        PoolId syncPoolId = hubRegistry.poolId(hubCentrifugeId, uint48(syncPoolIndex));
+        PoolId asyncPoolId = hubRegistry.poolId(spokeCentrifugeId, uint48(asyncPoolIndex));
+        PoolId syncPoolId = hubRegistry.poolId(spokeCentrifugeId, uint48(syncPoolIndex));
 
         console.log("Looking for async pool, poolIndex:", asyncPoolIndex);
         console.log("  PoolId:", vm.toString(abi.encode(asyncPoolId)));
@@ -122,7 +122,7 @@ contract TestCrossChainSpoke is BaseTestData {
         if (asyncShareToken != address(0)) {
             console.log("\n[SUCCESS] Async pool found!");
             console.log("  ShareToken:", asyncShareToken);
-            _testAsyncVault(asyncShareToken, asyncPoolId);
+            _testAsyncVault(asyncShareToken);
         } else {
             console.log("\n[WAITING] Async pool not yet available");
             console.log("  Messages may still be in transit");
@@ -132,7 +132,7 @@ contract TestCrossChainSpoke is BaseTestData {
         if (syncShareToken != address(0)) {
             console.log("\n[SUCCESS] Sync pool found!");
             console.log("  ShareToken:", syncShareToken);
-            _testSyncVault(syncShareToken, syncPoolId);
+            _testSyncVault(syncShareToken);
         } else {
             console.log("\n[WAITING] Sync pool not yet available");
             console.log("  Messages may still be in transit");
@@ -142,7 +142,7 @@ contract TestCrossChainSpoke is BaseTestData {
         console.log("\n=== Spoke Test Complete ===");
     }
 
-    function _testAsyncVault(address shareTokenAddress, PoolId poolId) internal {
+    function _testAsyncVault(address shareTokenAddress) internal {
         console.log("\n--- Testing Async Vault ---");
 
         IShareToken shareToken = IShareToken(shareTokenAddress);
@@ -181,13 +181,6 @@ contract TestCrossChainSpoke is BaseTestData {
             return;
         }
 
-        // Fund RefundEscrow for cross-chain gas (if this is a cross-chain pool)
-        if (poolId.centrifugeId() != spokeCentrifugeId) {
-            console.log("  Funding RefundEscrow for cross-chain gas...");
-            asyncRequestManager.depositSubsidy{value: 0.1 ether}(poolId);
-            console.log("  [OK] RefundEscrow funded with 0.1 ETH");
-        }
-
         // Test deposit request
         console.log("  Testing deposit request...");
         uint256 depositAmount = 10_000e6;
@@ -199,7 +192,7 @@ contract TestCrossChainSpoke is BaseTestData {
         console.log("  To fulfill: Run hub operations to approve and issue shares");
     }
 
-    function _testSyncVault(address shareTokenAddress, PoolId poolId) internal {
+    function _testSyncVault(address shareTokenAddress) internal {
         console.log("\n--- Testing Sync Vault ---");
 
         IShareToken shareToken = IShareToken(shareTokenAddress);
@@ -236,13 +229,6 @@ contract TestCrossChainSpoke is BaseTestData {
             console.log("[WARNING] Insufficient USDC balance for testing");
             console.log("  Skipping vault interactions");
             return;
-        }
-
-        // Fund RefundEscrow for cross-chain gas (if this is a cross-chain pool)
-        if (poolId.centrifugeId() != spokeCentrifugeId) {
-            console.log("  Funding RefundEscrow for cross-chain gas...");
-            asyncRequestManager.depositSubsidy{value: 0.1 ether}(poolId);
-            console.log("  [OK] RefundEscrow funded with 0.1 ETH");
         }
 
         // Test deposit (sync vaults allow immediate deposits if configured)
