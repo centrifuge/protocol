@@ -94,7 +94,7 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
         opsGuardian.createPool(POOL_A, FM, USD_ID);
 
         vm.prank(FM);
-        hub.addShareClass(POOL_A, "ShareClass1", "sc1", bytes32("salt"));
+        hub.addShareClass(POOL_A, "ShareClass1", "sc1", bytes32(bytes8(POOL_A.raw())));
     }
 
     function _updateContractSyncDepositMaxReserveMsg(AssetId assetId, uint128 maxReserve)

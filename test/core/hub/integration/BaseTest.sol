@@ -31,7 +31,6 @@ contract BaseTest is FullDeployer, Test {
 
     string constant SC_NAME = "ExampleName";
     string constant SC_SYMBOL = "ExampleSymbol";
-    bytes32 constant SC_SALT = bytes32("ExampleSalt");
     bytes32 constant SC_HOOK = bytes32("ExampleHookData");
     bool constant IS_SNAPSHOT = true;
 

@@ -57,7 +57,7 @@ contract NAVManagerIntegrationTest is BaseTest {
         hubRegistry.registerPool(POOL_A, FM, USD_ID);
 
         vm.startPrank(FM);
-        scId = hub.addShareClass(POOL_A, "Test Share Class", "TSC", bytes32("1"));
+        scId = hub.addShareClass(POOL_A, "Test Share Class", "TSC", bytes32(bytes8(POOL_A.raw())));
 
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = cv;

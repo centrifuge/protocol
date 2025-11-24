@@ -7,8 +7,8 @@ import {ERC20} from "../../src/misc/ERC20.sol";
 import {d18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AccountId} from "../../src/core/types/AccountId.sol";
+import {PoolId, newPoolId} from "../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
 
@@ -54,7 +54,7 @@ contract TestData is BaseTestData {
                 poolMetadata: "Testing pool",
                 shareClassName: "Tokenized MMF",
                 shareClassSymbol: "MMF",
-                shareClassMeta: bytes32(bytes("1"))
+                shareClassMeta: bytes32(bytes8(newPoolId(centrifugeId, 1).raw()))
             })
         );
 
@@ -105,7 +105,7 @@ contract TestData is BaseTestData {
                 poolMetadata: "Testing pool",
                 shareClassName: "RWA Portfolio",
                 shareClassSymbol: "RWA",
-                shareClassMeta: bytes32(bytes("2"))
+                shareClassMeta: bytes32(bytes8(newPoolId(centrifugeId, 2).raw()))
             })
         );
 

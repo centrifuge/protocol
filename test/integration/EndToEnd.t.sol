@@ -413,7 +413,7 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         h.hub.setPoolMetadata(POOL_A, bytes("Testing pool"));
-        h.hub.addShareClass(POOL_A, "Tokenized MMF", "MMF", bytes32("salt"));
+        h.hub.addShareClass(POOL_A, "Tokenized MMF", "MMF", bytes32(bytes8(POOL_A.raw())));
 
         _createPoolAccounts();
     }

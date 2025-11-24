@@ -50,12 +50,10 @@ interface IShareClassManager {
     // Errors
     //----------------------------------------------------------------------------------------------
 
-    error InvalidMetadataSize();
     error InvalidMetadataName();
     error InvalidMetadataSymbol();
     error InvalidSalt();
     error AlreadyUsedSalt();
-    error PoolMissing();
     error ShareClassNotFound();
     error NegativeIssuance();
     error CannotSetFuturePrice();

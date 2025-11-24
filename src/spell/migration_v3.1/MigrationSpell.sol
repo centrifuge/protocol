@@ -357,7 +357,10 @@ contract MigrationSpell {
             (string memory scName, string memory scSymbol, bytes32 scSalt) =
                 ShareClassManagerV3Like(input.v3.shareClassManager).metadata(scId);
             if (bytes(scName).length > 0) {
-                input.shareClassManager.addShareClass(poolId, scName, scSymbol, scSalt);
+                input.shareClassManager
+                    .addShareClass(
+                        poolId, scName, scSymbol, bytes32(abi.encodePacked(bytes8(poolId.raw()), bytes24(scSalt)))
+                    );
 
                 (, D18 navPerShare) = ShareClassManagerV3Like(input.v3.shareClassManager).metrics(scId);
                 input.shareClassManager.updateSharePrice(poolId, scId, navPerShare, uint64(block.timestamp));

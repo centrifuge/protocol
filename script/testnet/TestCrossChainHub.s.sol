@@ -5,7 +5,7 @@ import {BaseTestData} from "./BaseTestData.s.sol";
 
 import {ERC20} from "../../src/misc/ERC20.sol";
 
-import {PoolId} from "../../src/core/types/PoolId.sol";
+import {PoolId, newPoolId} from "../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
 
@@ -219,7 +219,12 @@ contract TestCrossChainHub is BaseTestData {
                 shareClassName: shareName,
                 shareClassSymbol: shareSymbol,
                 // Unique salt per run to avoid collisions across repeated tests
-                shareClassMeta: keccak256(abi.encodePacked("XC-ASYNC", spokeCentrifugeId, poolIndexOffset, testRunId))
+                shareClassMeta: bytes32(
+                    abi.encodePacked(
+                        bytes8(newPoolId(hubCentrifugeId, asyncPoolIndex).raw()),
+                        bytes24(keccak256(abi.encodePacked("XC-ASYNC", spokeCentrifugeId, poolIndexOffset, testRunId)))
+                    )
+                )
             })
         );
 
@@ -255,7 +260,12 @@ contract TestCrossChainHub is BaseTestData {
                 poolMetadata: poolMeta,
                 shareClassName: shareName,
                 shareClassSymbol: shareSymbol,
-                shareClassMeta: keccak256(abi.encodePacked("XC-SYNC", spokeCentrifugeId, poolIndexOffset, testRunId))
+                shareClassMeta: bytes32(
+                    abi.encodePacked(
+                        bytes8(newPoolId(hubCentrifugeId, syncPoolIndex).raw()),
+                        bytes24(keccak256(abi.encodePacked("XC-SYNC", spokeCentrifugeId, poolIndexOffset, testRunId)))
+                    )
+                )
             })
         );
 
