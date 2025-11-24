@@ -181,7 +181,7 @@ class EnvironmentLoader:
             return protocol_admin_address
 
         if self.is_testnet:
-            protocol_admin_address = "0x423420Ae467df6e90291fd0252c0A8a637C1e03f"
+            protocol_admin_address = "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb"
         else:
             if "protocolAdmin" in self.config["network"]:
                 protocol_admin_address = self.config["network"]["protocolAdmin"]
