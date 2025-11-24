@@ -23,17 +23,17 @@ import {IBatchedMulticall} from "../../utils/interfaces/IBatchedMulticall.sol";
 
 /// @notice Account types used by Hub
 enum AccountType {
-    /// @notice Debit normal account for tracking assets
+    /// @notice Account for tracking assets
     Asset,
-    /// @notice Credit normal account for tracking equities
+    /// @notice Account for tracking equities
     Equity,
-    /// @notice Credit normal account for tracking losses
+    /// @notice Account for tracking losses
     Loss,
-    /// @notice Credit normal account for tracking profits
+    /// @notice Account for tracking profits
     Gain,
-    /// @notice Debit normal account for tracking expenses
+    /// @notice Account for tracking expenses
     Expense,
-    /// @notice Credit normal account for tracking liabilities
+    /// @notice Account for tracking liabilities
     Liability
 }
 
