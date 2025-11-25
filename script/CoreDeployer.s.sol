@@ -271,8 +271,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
         // Core
         gateway = Gateway(
             create3(
-                generateSalt("gateway"),
-                abi.encodePacked(type(Gateway).creationCode, abi.encode(input.centrifugeId, input.root, batcher))
+                generateSalt("gateway"), abi.encodePacked(type(Gateway).creationCode, abi.encode(input.root, batcher))
             )
         );
 

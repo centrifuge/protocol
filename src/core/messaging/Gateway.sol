@@ -34,8 +34,6 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     bytes32 public constant BATCH_LOCATORS_SLOT = bytes32(uint256(keccak256("Centrifuge/batch-locators")) - 1);
 
-    uint16 public immutable localCentrifugeId;
-
     // Dependencies
     IAdapter public adapter;
     IGatewayProcessor public processor;
@@ -54,8 +52,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Inbound
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
 
-    constructor(uint16 localCentrifugeId_, IProtocolPauser pauser_, address deployer) Auth(deployer) {
-        localCentrifugeId = localCentrifugeId_;
+    constructor(IProtocolPauser pauser_, address deployer) Auth(deployer) {
         pauser = pauser_;
     }
 

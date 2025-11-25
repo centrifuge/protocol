@@ -113,7 +113,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(address(gateway.processor()), address(messageProcessor));
         assertEq(address(gateway.adapter()), address(multiAdapter));
         assertEq(address(gateway.messageLimits()), address(gasService));
-        assertEq(gateway.localCentrifugeId(), CENTRIFUGE_ID);
     }
 
     function testMultiAdapter(address nonWard) public view {

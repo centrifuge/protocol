@@ -96,7 +96,7 @@ contract NoPayableDestination {}
 // -----------------------------------------
 
 contract GatewayExt is Gateway {
-    constructor(uint16 localCentrifugeId, IRoot root_, address deployer) Gateway(localCentrifugeId, root_, deployer) {}
+    constructor(IRoot root_, address deployer) Gateway(root_, deployer) {}
 
     function batchLocatorsLength() public view returns (uint256) {
         return TransientArrayLib.length(BATCH_LOCATORS_SLOT);
@@ -132,7 +132,6 @@ contract GatewayExt is Gateway {
 // -----------------------------------------
 
 contract GatewayTest is Test {
-    uint16 constant LOCAL_CENT_ID = 23;
     uint16 constant REMOTE_CENT_ID = 24;
 
     uint256 constant ADAPTER_ESTIMATE = 1;
@@ -148,7 +147,7 @@ contract GatewayTest is Test {
     IAdapter adapter = IAdapter(makeAddr("Adapter"));
 
     MockProcessor processor = new MockProcessor();
-    GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), address(this));
+    GatewayExt gateway = new GatewayExt(IRoot(address(root)), address(this));
 
     address immutable ANY = makeAddr("ANY");
     address immutable MANAGER = makeAddr("MANAGER");

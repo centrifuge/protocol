@@ -157,10 +157,9 @@ contract VaultRegistryTest is Test {
     }
 
     function _mockVaultFactory(address asset, uint256 tokenId) internal {
-        address[] memory emptyArray = new address[](0);
         vm.mockCall(
             address(vaultFactory),
-            abi.encodeWithSelector(IVaultFactory.newVault.selector, POOL_A, SC_1, asset, tokenId, share, emptyArray),
+            abi.encodeWithSelector(IVaultFactory.newVault.selector, POOL_A, SC_1, asset, tokenId, share),
             abi.encode(vault)
         );
 

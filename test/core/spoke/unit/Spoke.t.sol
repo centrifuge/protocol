@@ -175,16 +175,6 @@ contract SpokeTest is Test {
         );
     }
 
-    function _mockVaultFactory(address asset, uint256 tokenId) internal {
-        vm.mockCall(
-            address(vaultFactory),
-            abi.encodeWithSelector(
-                vaultFactory.newVault.selector, POOL_A, SC_1, asset, tokenId, share, new address[](0)
-            ),
-            abi.encode(vault)
-        );
-    }
-
     function _utilRegisterAsset(address asset) internal {
         if (asset == erc20) _mockERC20(DECIMALS);
         if (asset == erc20) _mockSendRegisterAsset(ASSET_ID_20);
