@@ -178,6 +178,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
             require(token != address(0), ShareTokenDoesNotExist());
 
             manager[token][manager_.toAddress()] = canManage;
+            emit UpdateHookManager(manager_.toAddress(), canManage);
         }
     }
 
