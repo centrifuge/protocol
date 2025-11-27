@@ -132,7 +132,12 @@ contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
         lockedRequests[controller][vault] += amount;
 
         VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
-        SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(escrow), amount);
+
+        if (address(this) != owner) {
+            SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(escrow), amount);
+        } else {
+            SafeTransferLib.safeTransfer(vaultDetails.asset, address(escrow), amount);
+        }
 
         emit LockDepositRequest(vault, controller, owner, msgSender(), amount);
     }
