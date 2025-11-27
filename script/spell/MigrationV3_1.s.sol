@@ -178,6 +178,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
+            "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
@@ -202,6 +203,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
+            "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
@@ -234,6 +236,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
+            "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
@@ -288,6 +291,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
+            "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
@@ -318,6 +322,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
+            "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
@@ -349,6 +354,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
+            "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
@@ -379,6 +385,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
+            "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
@@ -411,6 +418,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
+            "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(centrifugeId),
             "  poolId: ", _jsonValue(poolId.raw()),
@@ -443,6 +451,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
+            "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(centrifugeId),
             "  poolId: ", _jsonValue(poolId.raw()),
@@ -475,6 +484,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
+            "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(centrifugeId),
             "  poolId: ", _jsonValue(poolId.raw()),
@@ -505,6 +515,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
+            "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(centrifugeId),
             "  poolId: ", _jsonValue(poolId.raw()),
@@ -536,6 +547,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
+            "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(centrifugeId),
             "  poolId: ", _jsonValue(poolId.raw()),
@@ -567,6 +579,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory where = string.concat(
+            "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(centrifugeId),
             "  id: ", _jsonValue(poolId.raw()),
