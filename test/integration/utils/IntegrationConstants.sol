@@ -35,10 +35,11 @@ library IntegrationConstants {
     uint128 constant HOOK_GAS = 0 ether;
     uint128 constant EXTRA_GAS = 0;
 
-    // ======== Protocol Addresses ========
+    // ======== Protocol Addresses (v3.0.1) ========
+
     // Core system contracts
     address constant ROOT = 0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f;
-    address constant GUARDIAN = 0xFEE13c017693a4706391D516ACAbF6789D5c3157;
+    address constant GUARDIAN = 0xFEE13c017693a4706391D516ACAbF6789D5c3157; // v3.1: Will split into PROTOCOL_GUARDIAN + OPS_GUARDIAN
     address constant GATEWAY = 0x51eA340B3fe9059B48f935D5A80e127d587B6f89;
     address constant GAS_SERVICE = 0x295262f96186505Ce67c67B9d29e36ad1f9EAe88;
     address constant TOKEN_RECOVERER = 0x94269dBaBA605b63321221679df1356be0c00E63;
@@ -47,7 +48,7 @@ library IntegrationConstants {
     address constant HOLDINGS = 0x0261FA29b3F2784AF17874428b58d971b6652C47;
     address constant SHARE_CLASS_MANAGER = 0xe88e712d60bfd23048Dbc677FEb44E2145F2cDf4;
     address constant HUB = 0x9c8454A506263549f07c80698E276e3622077098;
-    address constant HUB_HELPERS = 0xA30D9E76a80675A719d835a74d09683AD2CB71EE;
+    address constant HUB_HELPERS = 0xA30D9E76a80675A719d835a74d09683AD2CB71EE; // v3.1: REMOVED (functionality moved to Hub)
     address constant IDENTITY_VALUATION = 0x3b8FaE903a6511f9707A2f45747a0de3B747711f;
     address constant TOKEN_FACTORY = 0xC8eDca090b772C48BcE5Ae14Eb7dd517cd70A32C;
     address constant BALANCE_SHEET = 0xBcC8D02d409e439D98453C0b1ffa398dFFb31fda;
@@ -70,6 +71,21 @@ library IntegrationConstants {
     address constant MESSAGE_DISPATCHER = 0x21AF0C29611CFAaFf9271C8a3F84F2bC31d59132;
     address constant MULTI_ADAPTER = 0x457C91384C984b1659157160e8543adb12BC5317;
     address constant POOL_ESCROW_FACTORY = 0xD166B3210edBeEdEa73c7b2e8aB64BDd30c980E9;
+
+    // V3.1 new contracts (placeholders - set via _loadContracts in ForkTestBase)
+    address constant HUB_HANDLER = address(0);
+    address constant VAULT_REGISTRY = address(0);
+    address constant BATCH_REQUEST_MANAGER = address(0);
+    address constant REFUND_ESCROW_FACTORY = address(0);
+    address constant PROTOCOL_GUARDIAN = address(0);
+    address constant OPS_GUARDIAN = address(0);
+    address constant QUEUE_MANAGER = address(0);
+    address constant ORACLE_VALUATION = address(0);
+    address constant NAV_MANAGER = address(0);
+    address constant SIMPLE_PRICE_MANAGER = address(0);
+    address constant LAYER_ZERO_ADAPTER = address(0);
+
+    // Admin safes (per chain)
     address constant ETH_ADMIN_SAFE = 0xD9D30ab47c0f096b0AA67e9B8B1624504a63e7FD;
     address constant BASE_ADMIN_SAFE = 0x8b83962fB9dB346a20c95D98d4E312f17f4C0d9b;
     address constant ARBITRUM_ADMIN_SAFE = 0xa36caE0ACd40C6BbA61014282f6AE51c7807A433;
@@ -83,6 +99,7 @@ library IntegrationConstants {
     address constant ARBITRUM_USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
     address constant AVAX_USDC = 0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E;
     address constant BNB_USDC = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
+    address constant PLUME_USDC = 0x222365EF19F7947e5484218551B56bb3965Aa7aF;
     address constant PLUME_PUSD = 0xdddD73F5Df1F0DC31373357beAC77545dC5A6f3F;
 
     // Pool admins
@@ -98,39 +115,98 @@ library IntegrationConstants {
     uint64 constant JAAA_POOL_ID = 281474976710663;
     uint64 constant DEJTRSY_POOL_ID = 281474976710660;
     uint64 constant DEJAAA_POOL_ID = 281474976710659;
+    uint64 constant DISTRICT_POOL_ID = 281474976710661;
+    uint64 constant ACRDX_POOL_ID = 281474976710664;
+    uint64 constant SPXA_POOL_ID = 281474976710665;
     uint64 constant PLUME_TEST_POOL_ID = 1125899906842625;
 
-    // Asset IDs
     uint128 constant JTRSY_SC_ID = 0x00010000000000060000000000000001;
     uint128 constant JAAA_SC_ID = 0x00010000000000070000000000000001;
     uint128 constant DEJTRSY_SC_ID = 0x00010000000000040000000000000001;
     uint128 constant DEJAAA_SC_ID = 0x00010000000000030000000000000001;
+    uint128 constant DISTRICT_SC_ID = 0x00010000000000050000000000000001;
+    uint128 constant ACRDX_SC_ID = 0x00010000000000080000000000000001;
+    uint128 constant SPXA_SC_ID = 0x00010000000000090000000000000001;
     uint128 constant PLUME_TEST_SC_ID = 0x00040000000000010000000000000001;
 
-    // Vault addresses
+    // ======== Vault Addresses (Organized by Chain) ========
+
+    // Ethereum (centrifugeId: 1)
     address constant ETH_JTRSY_VAULT = 0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A;
     address constant ETH_JAAA_VAULT = 0x4880799eE5200fC58DA299e965df644fBf46780B;
-    address constant AVAX_JAAA_VAULT = 0x1121F4e21eD8B9BC1BB9A2952cDD8639aC897784;
-
     address constant ETH_DEJTRSY_USDC_VAULT = 0x18Ab9fC0B2e4Fef9e0e03c8EC63BA287a3238257;
-    address constant ETH_DEJTRSY_JTRSY_VAULT = 0x1AD3644A0834e7c9eD4aEc2660b0Ee2eA18A1f36;
-    address constant AVAX_DEJTRSY_USDC_VAULT = 0x5b9b6070C517bE849ad79FC49d95e02084826F77;
-
+    address constant ETH_DEJTRSY_JTRSY_VAULT_A = 0x1AD3644A0834e7c9eD4aEc2660b0Ee2eA18A1f36;
+    address constant ETH_DEJTRSY_VAULT = 0xCF4C60066aAB54b3f750F94c2a06046d5466Ccf9;
     address constant ETH_DEJAA_USDC_VAULT = 0x4865BC9701fBD1207A7B50e2aF442C7DAf154c9c;
-    address constant ETH_DEJAA_JAAA_VAULT = 0x559907981ed375b2D7eEa6108273D181216A10CC;
+    address constant ETH_DEJAA_JAAA_VAULT_A = 0x559907981ed375b2D7eEa6108273D181216A10CC;
+    address constant ETH_DISTRICT_USDC_VAULT = 0x314d8AEb02bB5f6b86D2Ac1feF4c5Fc1771e6817;
+
+    // Base (centrifugeId: 2)
     address constant BASE_DEJAAA_USDC_VAULT = 0x9183DBE074a61cEBf82525C907458CabB984F9DA;
-    address constant AVAX_DEJAAA_USDC_VAULT = 0x498B6394b778A75eD9b0148e379778070B4621d2;
+    address constant BASE_DEJAAA_JAAA_VAULT = 0x2D38c58Cc7d4DdD6B4DaF7b3539902a7667F4519;
+    address constant BASE_JAAA_USDC_VAULT = 0x2AEf271F00A9d1b0DA8065D396f4E601dBD0Ef0b;
+    address constant BASE_SPXA_USDC_VAULT = 0x99E9092baE6D4394E54034Ecb1E45441678323B9;
 
+    // Arbitrum (centrifugeId: 3)
+    address constant ARBITRUM_JTRSY_USDC_VAULT = 0x04FFdBd63626942D5CaBf12120805465B7A17547;
+    address constant ARBITRUM_DEJAAA_USDC_VAULT = 0xe897E7F16e8F4ed568A62955b17744bCB3207d6E;
+
+    // Plume (centrifugeId: 4)
     address constant PLUME_SYNC_DEPOSIT_VAULT = 0x374Bc3D556fBc9feC0b9537c259DCB7935f7E5bf;
-    address constant AVAX_JAAA_USDC_VAULT = 0x1121F4e21eD8B9BC1BB9A2952cDD8639aC897784;
+    address constant PLUME_ACRDX_USDC_VAULT = 0x354a9222571259457B2e98b2285B62e6a9bf4eD3;
+    address constant PLUME_JTRSY_USDC_VAULT = 0x818A3593340622c1D6A51B039e191F2f8C99A1F2; // listed as Linked in GraphQL on Plume
 
-    // Share token addresses
+    // Avalanche (centrifugeId: 5)
+    address constant AVAX_JAAA_USDC_VAULT = 0x1121F4e21eD8B9BC1BB9A2952cDD8639aC897784;
+    address constant AVAX_DEJTRSY_USDC_VAULT = 0x5b9b6070C517bE849ad79FC49d95e02084826F77;
+    address constant AVAX_DEJTRSY_JTRSY_VAULT = 0x04157759a9fe406d82a16BdEB20F9BeB9bBEb958;
+    address constant AVAX_JTRSY_USDC_VAULT = 0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A;
+    address constant AVAX_DEJAAA_USDC_VAULT = 0x498B6394b778A75eD9b0148e379778070B4621d2;
+    address constant AVAX_DEJAAA_VAULT = 0xCF4C60066aAB54b3f750F94c2a06046d5466Ccf9;
+
+    // BNB Chain (centrifugeId: 6)
+    address constant BNB_JTRSY_USDC_VAULT = 0x5aa84705a2CB2054ed303565336F188e6bfFbAF5;
+    address constant BNB_JAAA_USDC_VAULT = 0x9effaa5614c689fA12892379e097b3ACaD239961;
+
+    // ======== Share Token Addresses (Organized by Vault) ========
+
+    // JAAA
     address constant ETH_JAAA_SHARE_TOKEN = 0x5a0F93D040De44e78F251b03c43be9CF317Dcf64;
-    address constant ETH_JTRSY_SHARE_TOKEN = 0x8c213ee79581Ff4984583C6a801e5263418C4b86;
-    address constant ETH_DEJTRSY_SHARE_TOKEN = 0xA6233014B9b7aaa74f38fa1977ffC7A89642dC72;
-    address constant ETH_DEJAAA_SHARE_TOKEN = 0xAAA0008C8CF3A7Dca931adaF04336A5D808C82Cc;
-    address constant AVAX_JTRSY_SHARE_TOKEN = 0xa5d465251fBCc907f5Dd6bB2145488DFC6a2627b;
+    address constant BASE_JAAA_SHARE_TOKEN = 0x5a0F93D040De44e78F251b03c43be9CF317Dcf64;
     address constant AVAX_JAAA_SHARE_TOKEN = 0x58F93d6b1EF2F44eC379Cb975657C132CBeD3B6b;
+    address constant BNB_JAAA_SHARE_TOKEN = 0x58F93d6b1EF2F44eC379Cb975657C132CBeD3B6b;
+
+    // JTRSY
+    address constant ETH_JTRSY_SHARE_TOKEN = 0x8c213ee79581Ff4984583C6a801e5263418C4b86;
+    address constant BASE_JTRSY_SHARE_TOKEN = 0x8c213ee79581Ff4984583C6a801e5263418C4b86;
+    address constant ARBITRUM_JTRSY_SHARE_TOKEN = 0x8c213ee79581Ff4984583C6a801e5263418C4b86;
+    address constant AVAX_JTRSY_SHARE_TOKEN = 0xa5d465251fBCc907f5Dd6bB2145488DFC6a2627b;
+    address constant BNB_JTRSY_SHARE_TOKEN = 0xa5d465251fBCc907f5Dd6bB2145488DFC6a2627b;
+    address constant PLUME_JTRSY_SHARE_TOKEN = 0xa5d465251fBCc907f5Dd6bB2145488DFC6a2627b;
+
+    // deJAAA
+    address constant ETH_DEJAAA_SHARE_TOKEN = 0xAAA0008C8CF3A7Dca931adaF04336A5D808C82Cc;
+    address constant BASE_DEJAAA_SHARE_TOKEN = 0xAAA0008C8CF3A7Dca931adaF04336A5D808C82Cc;
+    address constant ARBITRUM_DEJAAA_SHARE_TOKEN = 0xAAA0008C8CF3A7Dca931adaF04336A5D808C82Cc;
+    address constant AVAX_DEJAAA_SHARE_TOKEN = 0xAAA0008C8CF3A7Dca931adaF04336A5D808C82Cc;
+
+    // deJTRSY
+    address constant ETH_DEJTRSY_SHARE_TOKEN = 0xA6233014B9b7aaa74f38fa1977ffC7A89642dC72;
+    address constant BASE_DEJTRSY_SHARE_TOKEN = 0xA6233014B9b7aaa74f38fa1977ffC7A89642dC72;
+    address constant ARBITRUM_DEJTRSY_SHARE_TOKEN = 0xA6233014B9b7aaa74f38fa1977ffC7A89642dC72;
+    address constant AVAX_DEJTRSY_SHARE_TOKEN = 0xA6233014B9b7aaa74f38fa1977ffC7A89642dC72;
+
+    // DISTRICT
+    address constant ETH_DISTRICT_SHARE_TOKEN = 0x623587E3b66969D455c5A974Ca9596d66cb60034;
+
+    // ACRDX
+    address constant PLUME_ACRDX_SHARE_TOKEN = 0x9477724Bb54AD5417de8Baff29e59DF3fB4DA74f;
+
+    // SPXA
+    address constant BASE_SPXA_SHARE_TOKEN = 0x09B61343097c1f9b159a3ae7151298eFD10F0dB2;
+
+    // Plume Test Pool
+    address constant PLUME_TEST_SHARE_TOKEN = 0x888888A0FbbEAb50f830f7c3Cf3BE52923cddd4C;
 
     // ======== CFG Token Contracts ========
     address constant CFG = 0xcccCCCcCCC33D538DBC2EE4fEab0a7A1FF4e8A94;
@@ -181,6 +257,14 @@ library IntegrationConstants {
     string constant ARBITRUM_AXELAR_ID = "arbitrum";
     string constant AVAX_AXELAR_ID = "Avalanche";
     string constant BNB_AXELAR_ID = "binance";
+
+    // LayerZero Endpoint IDs (EIDs)
+    uint32 constant ETH_LAYERZERO_EID = 30101;
+    uint32 constant BASE_LAYERZERO_EID = 30184;
+    uint32 constant ARBITRUM_LAYERZERO_EID = 30110;
+    uint32 constant AVAX_LAYERZERO_EID = 30106;
+    uint32 constant BNB_LAYERZERO_EID = 30102;
+    // NOTE: Plume doesn't support LayerZero
 
     // ======== RPC Endpoints (may have rate limits, no archive nodes, use for testing only) ========
     string constant RPC_ETHEREUM = "https://ethereum-rpc.publicnode.com";

@@ -19,6 +19,7 @@ import {
 
 import "forge-std/Test.sol";
 
+import {ForkTestLiveValidation} from "../../integration/fork/ForkTestLiveValidation.sol";
 import {
     MigrationSpell,
     PoolMigrationOldContracts,
@@ -94,6 +95,10 @@ contract MigrationV3_1Test is Test {
         vm.label(address(batcher), "batcher");
         vm.label(address(migration), "migration");
 
+        // ----- PRE_CHECK -----
+
+        _validateV3_1Deployment(deployer, true, isProduction);
+
         // ----- MIGRATION -----
 
         vm.prank(rootWard);
@@ -105,7 +110,21 @@ contract MigrationV3_1Test is Test {
 
         assertEq(migrationSpell.owner(), address(0));
 
-        // TODO: Do some post-check
+        _validateV3_1Deployment(deployer, false, isProduction);
+
+        // TODO: Complete post checks
+    }
+
+    /// @notice Validate v3.1 deployment permissions and configuration
+    /// @param preMigration If true, skips validations that only apply post-migration
+    /// @param isProduction If true, validates production vaults. Set to false for testnets.
+    function _validateV3_1Deployment(FullDeployer deployer, bool preMigration, bool isProduction) internal {
+        console.log(
+            "[DEBUG] Starting deployment validation: preMigration=%s, isProduction=%s", preMigration, isProduction
+        );
+        ForkTestLiveValidation validator = new ForkTestLiveValidation();
+        validator._loadContractsFromDeployer(deployer);
+        validator.validateDeployment(preMigration, isProduction);
     }
 
     function testMigrationEthereumMainnet() external {
