@@ -576,6 +576,8 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
             abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true);
 
         vm.prank(deployer);
+        vm.expectEmit();
+        emit IBaseTransferHook.UpdateHookManager(address(mockShareToken), managerAddress, true);
         hook.trustedCall(POOL_A, SC_1, payload);
 
         assertTrue(hook.manager(address(mockShareToken), managerAddress));
@@ -595,6 +597,8 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
         bytes memory enablePayload =
             abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true);
         vm.prank(deployer);
+        vm.expectEmit();
+        emit IBaseTransferHook.UpdateHookManager(address(mockShareToken), managerAddress, true);
         hook.trustedCall(POOL_A, SC_1, enablePayload);
         assertTrue(hook.manager(address(mockShareToken), managerAddress));
 
@@ -602,6 +606,8 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
         bytes memory disablePayload =
             abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), false);
         vm.prank(deployer);
+        vm.expectEmit();
+        emit IBaseTransferHook.UpdateHookManager(address(mockShareToken), managerAddress, false);
         hook.trustedCall(POOL_A, SC_1, disablePayload);
         assertFalse(hook.manager(address(mockShareToken), managerAddress));
     }
