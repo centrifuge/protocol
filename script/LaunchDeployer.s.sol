@@ -13,6 +13,7 @@ import {
 } from "./FullDeployer.s.sol";
 
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
+import {MathLib} from "../src/misc/libraries/MathLib.sol";
 
 import {ISafe} from "../src/admin/interfaces/ISafe.sol";
 
@@ -20,6 +21,7 @@ import "forge-std/Script.sol";
 
 contract LaunchDeployer is FullDeployer {
     using CastLib for *;
+    using MathLib for *;
 
     function run() public virtual {
         vm.startBroadcast();
@@ -48,10 +50,23 @@ contract LaunchDeployer is FullDeployer {
 
         startDeploymentOutput();
 
+        uint8[32] memory blockLimits;
+        try vm.envUint("BLOCK_LIMITS", ",") returns (uint256[] memory blockLimitsRaw) {
+            require(blockLimitsRaw.length < 32, "only 32 block limits supported");
+            for (uint256 i; i < blockLimitsRaw.length; i++) {
+                blockLimits[i] = blockLimitsRaw[i].toUint8();
+            }
+        } catch {}
+
         FullInput memory input = FullInput({
             adminSafe: ISafe(vm.envAddress("PROTOCOL_ADMIN")),
             opsSafe: ISafe(vm.envAddress("OPS_ADMIN")),
-            core: CoreInput({centrifugeId: centrifugeId, version: version, root: vm.envOr("ROOT", address(0))}),
+            core: CoreInput({
+                centrifugeId: centrifugeId,
+                version: version,
+                root: vm.envOr("ROOT", address(0)),
+                blockLimits: blockLimits
+            }),
             adapters: AdaptersInput({
                 wormhole: WormholeInput({
                     shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.wormhole.deploy"),

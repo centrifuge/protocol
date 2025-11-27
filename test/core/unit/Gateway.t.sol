@@ -29,11 +29,10 @@ PoolId constant POOL_0 = PoolId.wrap(0);
 enum MessageKind {
     _Invalid,
     _MessageProof,
-    Recovery,
     WithPool0,
     WithPoolA1,
     WithPoolA2,
-    WithPoolAFail
+    WithPoolAFail // Use this will fail
 }
 
 function length(MessageKind kind) pure returns (uint16) {
@@ -137,8 +136,8 @@ contract GatewayTest is Test {
     uint256 constant ADAPTER_ESTIMATE = 1;
     bytes32 constant ADAPTER_DATA = bytes32("adapter data");
 
-    uint256 constant MESSAGE_GAS_LIMIT = 100_000;
-    uint256 constant MAX_BATCH_GAS_LIMIT = 500_000;
+    uint128 constant MESSAGE_GAS_LIMIT = 100_000;
+    uint128 constant MAX_BATCH_GAS_LIMIT = 500_000;
     uint128 constant EXTRA_GAS_LIMIT = 10;
     bool constant NO_SUBSIDIZED = false;
 
@@ -176,6 +175,12 @@ contract GatewayTest is Test {
             address(messageLimits),
             abi.encodeWithSelector(IMessageLimits.messageGasLimit.selector),
             abi.encode(MESSAGE_GAS_LIMIT)
+        );
+
+        vm.mockCall(
+            address(messageLimits),
+            abi.encodeWithSelector(IMessageLimits.maxBatchGasLimit.selector),
+            abi.encode(MAX_BATCH_GAS_LIMIT)
         );
     }
 
@@ -452,6 +457,15 @@ contract GatewayTestSend is GatewayTest {
 
         vm.expectRevert(IGateway.NotEnoughGas.selector);
         gateway.send{value: cost - 1}(REMOTE_CENT_ID, message, 0, false, REFUND);
+    }
+
+    function testErrBatchTooExpensive() public {
+        bytes memory message = MessageKind.WithPoolA1.asBytes();
+
+        gateway.startBatching();
+
+        vm.expectRevert(IGateway.BatchTooExpensive.selector);
+        gateway.send(REMOTE_CENT_ID, message, uint128(MAX_BATCH_GAS_LIMIT), false, REFUND);
     }
 
     function testMessageWasBatched() public {

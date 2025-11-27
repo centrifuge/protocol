@@ -11,4 +11,8 @@ interface IMessageLimits {
     /// @param message Individual message
     /// @return Estimated cost in WEI units
     function messageGasLimit(uint16 centrifugeId, bytes calldata message) external view returns (uint128);
+
+    /// @notice Maximum Gas limit for a batch, determined how much the destination chain can process
+    /// @param centrifugeId Destination where to the maximum cost is defined
+    function maxBatchGasLimit(uint16 centrifugeId) external view returns (uint128);
 }

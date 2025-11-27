@@ -11,7 +11,8 @@ import {
     AdaptersInput,
     WormholeInput,
     AxelarInput,
-    LayerZeroInput
+    LayerZeroInput,
+    defaultBlockLimits
 } from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
@@ -73,7 +74,12 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
         _mockBridgeContracts();
         deployFull(
             FullInput({
-                core: CoreInput({centrifugeId: CENTRIFUGE_ID, version: bytes32(0), root: address(0)}),
+                core: CoreInput({
+                    centrifugeId: CENTRIFUGE_ID,
+                    version: bytes32(0),
+                    root: address(0),
+                    blockLimits: defaultBlockLimits()
+                }),
                 adminSafe: ADMIN_SAFE,
                 opsSafe: OPS_SAFE,
                 adapters: AdaptersInput({

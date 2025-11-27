@@ -674,3 +674,5 @@ function noAdaptersInput() pure returns (AdaptersInput memory) {
         layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
     });
 }
+
+function defaultBlockLimits() pure returns (uint8[32] memory) {}

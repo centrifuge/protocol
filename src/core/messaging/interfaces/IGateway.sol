@@ -73,6 +73,9 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when there is not enough gas to send the message
     error NotEnoughGas();
 
+    /// @notice Dispatched when the batch requires more gas than the destination chain can execute in a single transaction
+    error BatchTooExpensive();
+
     /// @notice Dispatched when a message was batched but there was a payment for it
     error NotPayable();
 

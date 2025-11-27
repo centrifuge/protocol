@@ -10,6 +10,7 @@ import {
     FullDeployer,
     FullInput,
     noAdaptersInput,
+    defaultBlockLimits,
     CoreInput
 } from "../../../script/FullDeployer.s.sol";
 
@@ -30,7 +31,12 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         super.labelAddresses("");
         super.deployFull(
             FullInput({
-                core: CoreInput({centrifugeId: LOCAL_CENTRIFUGE_ID, version: bytes32(0), root: address(0)}),
+                core: CoreInput({
+                    centrifugeId: LOCAL_CENTRIFUGE_ID,
+                    version: bytes32(0),
+                    root: address(0),
+                    blockLimits: defaultBlockLimits()
+                }),
                 adminSafe: adminSafe,
                 opsSafe: adminSafe,
                 adapters: noAdaptersInput()

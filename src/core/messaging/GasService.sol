@@ -16,6 +16,12 @@ contract GasService is IGasService {
     /// @dev Takes into account diverge computation from the base benchmarked value.
     uint128 public constant BASE_COST = 100_000;
 
+    uint128 public constant MIN_SUPPORTED_BLOCK_LIMIT = 24; // In millions of gas units
+
+    /// @dev An encoded array of the block limits of the first 32 centrifugeId.
+    ///      Measured in millions of gas units
+    uint256 public immutable blockLimitsPerCentrifugeId;
+
     uint128 public immutable scheduleUpgrade;
     uint128 public immutable cancelUpgrade;
     uint128 public immutable recoverTokens;
@@ -45,14 +51,19 @@ contract GasService is IGasService {
     uint128 public immutable updateGatewayManager;
     uint128 public immutable untrustedContractUpdate;
 
-    constructor() {
+    constructor(uint8[32] memory blockLimits) {
+        for (uint256 i; i < blockLimits.length; i++) {
+            uint256 value = blockLimits[i] > 0 ? blockLimits[i] : MIN_SUPPORTED_BLOCK_LIMIT;
+            blockLimitsPerCentrifugeId += value << (31 - i) * 8;
+        }
+
         // NOTE: Below values should be updated using script/utils/benchmark.sh
         scheduleUpgrade = _gasValue(95182);
         cancelUpgrade = _gasValue(75589);
         recoverTokens = _gasValue(152238);
         registerAsset = _gasValue(104983);
         setPoolAdapters = _gasValue(488111); // using MAX_ADAPTER_COUNT
-        request = _gasValue(221695);
+        request = _gasValue(221731);
         notifyPool = _gasValue(1156436); // create escrow case
         notifyShareClass = _gasValue(1838474);
         notifyPricePoolPerShare = _gasValue(103092);
@@ -114,6 +125,15 @@ contract GasService is IGasService {
         if (kind == MessageType.UpdateGatewayManager) return updateGatewayManager;
         if (kind == MessageType.UntrustedContractUpdate) return untrustedContractUpdate;
         revert InvalidMessageType(); // Unreachable
+    }
+
+    /// @inheritdoc IMessageLimits
+    function maxBatchGasLimit(uint16 centrifugeId) external view returns (uint128) {
+        // blockLimitsPerCentrifugeId counts millions of gas units, then we need to multiply by 1_000_000
+        // The final result is multiplied by 0.75 to avoid having a transaction that can occupy the entire block
+        return (centrifugeId < 32
+                    ? uint8(bytes32(blockLimitsPerCentrifugeId)[centrifugeId])
+                    : MIN_SUPPORTED_BLOCK_LIMIT) * 1_000_000 * 3 / 4;
     }
 
     /// @dev - BASE_COST adds some offset to the benchmarked message

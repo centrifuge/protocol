@@ -17,6 +17,7 @@ import {
     FullDeployer,
     FullInput,
     noAdaptersInput,
+    defaultBlockLimits,
     CoreInput
 } from "../../../../script/FullDeployer.s.sol";
 
@@ -84,10 +85,13 @@ contract BaseTest is FullDeployer, Test {
     function setUp() public virtual {
         // Deployment
         FullActionBatcher batcher = new FullActionBatcher(address(this));
+
         labelAddresses("");
         deployFull(
             FullInput({
-                core: CoreInput({centrifugeId: CHAIN_CP, version: bytes32(0), root: address(0)}),
+                core: CoreInput({
+                    centrifugeId: CHAIN_CP, version: bytes32(0), root: address(0), blockLimits: defaultBlockLimits()
+                }),
                 adminSafe: adminSafe,
                 opsSafe: opsSafe,
                 adapters: noAdaptersInput()

@@ -13,6 +13,7 @@ import {
     FullDeployer,
     FullInput,
     noAdaptersInput,
+    defaultBlockLimits,
     CoreInput
 } from "../../../script/FullDeployer.s.sol";
 
@@ -68,7 +69,12 @@ contract MigrationV3_1Test is Test {
         deployer.labelAddresses("");
         deployer.deployFull(
             FullInput({
-                core: CoreInput({centrifugeId: localCentrifugeId, version: NEW_VERSION, root: address(rootV3)}),
+                core: CoreInput({
+                    centrifugeId: localCentrifugeId,
+                    version: NEW_VERSION,
+                    root: address(rootV3),
+                    blockLimits: defaultBlockLimits()
+                }),
                 adminSafe: ADMIN,
                 opsSafe: ADMIN,
                 adapters: noAdaptersInput()

@@ -29,6 +29,7 @@ struct CoreInput {
     uint16 centrifugeId;
     bytes32 version;
     address root;
+    uint8[32] blockLimits;
 }
 
 struct CoreReport {
@@ -291,7 +292,10 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
 
         // Messaging
         gasService = GasService(
-            create3(generateSalt("gasService"), abi.encodePacked(type(GasService).creationCode, abi.encode()))
+            create3(
+                generateSalt("gasService"),
+                abi.encodePacked(type(GasService).creationCode, abi.encode(input.blockLimits))
+            )
         );
 
         messageProcessor = MessageProcessor(

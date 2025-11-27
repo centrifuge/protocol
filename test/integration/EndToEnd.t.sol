@@ -62,7 +62,14 @@ import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {RefundEscrowFactory} from "../../src/vaults/factories/RefundEscrowFactory.sol";
 
-import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} from "../../script/FullDeployer.s.sol";
+import {
+    FullActionBatcher,
+    FullDeployer,
+    FullInput,
+    noAdaptersInput,
+    CoreInput,
+    defaultBlockLimits
+} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -273,7 +280,8 @@ contract EndToEndDeployment is Test {
                 core: CoreInput({
                     centrifugeId: localCentrifugeId,
                     version: bytes32(abi.encodePacked(localCentrifugeId)),
-                    root: address(0)
+                    root: address(0),
+                    blockLimits: defaultBlockLimits()
                 }),
                 adminSafe: adminSafe,
                 opsSafe: adminSafe,
