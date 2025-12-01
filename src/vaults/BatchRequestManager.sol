@@ -932,7 +932,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         QueuedOrder memory queued
     ) internal {
         uint128 pendingTotal = pendingDeposit[poolId][scId_][assetId];
-        pendingTotal = isIncrement ? pendingTotal + amount : pendingTotal - amount;
+        pendingTotal = isIncrement ? pendingTotal + amount : amount > pendingTotal ? 0 : pendingTotal - amount;
         pendingDeposit[poolId][scId_][assetId] = pendingTotal;
 
         emit UpdateDepositRequest(
@@ -959,7 +959,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         QueuedOrder memory queued
     ) internal {
         uint128 pendingTotal = pendingRedeem[poolId][scId_][assetId];
-        pendingTotal = isIncrement ? pendingTotal + amount : pendingTotal - amount;
+        pendingTotal = isIncrement ? pendingTotal + amount : amount > pendingTotal ? 0 : pendingTotal - amount;
         pendingRedeem[poolId][scId_][assetId] = pendingTotal;
 
         emit UpdateRedeemRequest(

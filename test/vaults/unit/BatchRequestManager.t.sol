@@ -2831,6 +2831,125 @@ contract BatchRequestManagerRoundingEdgeCasesDeposit is BatchRequestManagerBaseT
     }
 }
 
+/// @dev Contains all tests related to total pending underflow protection
+contract BatchRequestManagerTotalPendingUnderflowProtection is BatchRequestManagerBaseTest {
+    using MathLib for *;
+
+    /// @notice Helper to calculate sum of all user pending deposits
+    function _sumUserPendingDeposit(bytes32[] memory investors, AssetId assetId) internal view returns (uint128 sum) {
+        for (uint256 i = 0; i < investors.length; i++) {
+            (uint128 pending,) = batchRequestManager.depositRequest(poolId, scId, assetId, investors[i]);
+            sum += pending;
+        }
+    }
+
+    /// @notice Helper to calculate sum of all user pending redeems
+    function _sumUserPendingRedeem(bytes32[] memory investors, AssetId assetId) internal view returns (uint128 sum) {
+        for (uint256 i = 0; i < investors.length; i++) {
+            (uint128 pending,) = batchRequestManager.redeemRequest(poolId, scId, assetId, investors[i]);
+            sum += pending;
+        }
+    }
+
+    /// @dev Validates that maximum accounting drift = N-1 after all users claim
+    function testTotalPendingUnderflowProtection(uint8 numUsers) public {
+        vm.assume(numUsers > 1);
+        uint128 depositPerUser = 1;
+        uint128 totalDeposit = uint128(numUsers);
+        uint128 approvedAmount = totalDeposit - 1;
+
+        bytes32[] memory invs = new bytes32[](numUsers);
+
+        for (uint8 i = 0; i < numUsers; i++) {
+            invs[i] = bytes32(uint256(8000 + i));
+            batchRequestManager.requestDeposit(poolId, scId, depositPerUser, invs[i], USDC);
+        }
+
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), totalDeposit);
+
+        vm.startPrank(MANAGER);
+        batchRequestManager.approveDeposits{
+            value: COST
+        }(poolId, scId, USDC, _nowDeposit(USDC), approvedAmount, _pricePoolPerAsset(USDC), REFUND);
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), 1, "Total pending should be 1 after approval");
+        batchRequestManager.issueShares{
+            value: COST
+        }(poolId, scId, USDC, _nowIssue(USDC), d18(1e18), SHARE_HOOK_GAS, REFUND);
+        vm.stopPrank();
+
+        // All users queue cancellations such that after notify*, userOrder.pending > 0 but pendingTotal == 0
+        for (uint8 i = 0; i < numUsers; i++) {
+            batchRequestManager.cancelDepositRequest(poolId, scId, invs[i], USDC);
+        }
+
+        batchRequestManager.notifyDeposit{value: COST}(poolId, scId, USDC, invs[0], 10, REFUND);
+        assertEq(
+            batchRequestManager.pendingDeposit(poolId, scId, USDC), 0, "Total pending should be 0 after first user"
+        );
+
+        uint128 sumUserPending = _sumUserPendingDeposit(invs, USDC);
+        uint128 totalPending = batchRequestManager.pendingDeposit(poolId, scId, USDC);
+        uint128 maxDrift = sumUserPending - totalPending;
+        assertEq(sumUserPending, uint128(numUsers - 1), "All but one users should have 1 wei each before claiming");
+        assertEq(totalPending, 0, "Total pending should be 0");
+        assertLe(maxDrift, uint128(numUsers - 1), "Drift should be N-1");
+
+        // Claiming for all queued cancellations clears userOrder.pending and doesn't revert reducing totalPending
+        for (uint8 i = 1; i < numUsers; i++) {
+            batchRequestManager.notifyDeposit{value: COST}(poolId, scId, USDC, invs[i], 10, REFUND);
+        }
+        assertEq(_sumUserPendingDeposit(invs, USDC), 0, "All users cleared by mitigation");
+        assertEq(batchRequestManager.pendingDeposit(poolId, scId, USDC), 0, "Total pending remains 0");
+    }
+
+    /// @dev Validates that maximum accounting drift = N-1 after all users claim (redeem flow)
+    function testTotalPendingUnderflowProtectionRedeem(uint8 numUsers) public {
+        vm.assume(numUsers > 1);
+        uint128 redeemPerUser = 1;
+        uint128 totalRedeem = uint128(numUsers);
+        uint128 approvedAmount = totalRedeem - 1;
+
+        bytes32[] memory invs = new bytes32[](numUsers);
+
+        for (uint8 i = 0; i < numUsers; i++) {
+            invs[i] = bytes32(uint256(9000 + i));
+            batchRequestManager.requestRedeem(poolId, scId, redeemPerUser, invs[i], USDC);
+        }
+
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), totalRedeem);
+
+        vm.startPrank(MANAGER);
+        batchRequestManager.approveRedeems(
+            poolId, scId, USDC, _nowRedeem(USDC), approvedAmount, _pricePoolPerAsset(USDC)
+        );
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), 1, "Total pending should be 1 after approval");
+        batchRequestManager.revokeShares{
+            value: COST
+        }(poolId, scId, USDC, _nowRevoke(USDC), d18(1e18), SHARE_HOOK_GAS, REFUND);
+        vm.stopPrank();
+
+        for (uint8 i = 0; i < numUsers; i++) {
+            batchRequestManager.cancelRedeemRequest(poolId, scId, invs[i], USDC);
+        }
+
+        batchRequestManager.notifyRedeem{value: COST}(poolId, scId, USDC, invs[0], 10, REFUND);
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), 0, "Total pending should be 0 after first user");
+
+        uint128 sumUserPending = _sumUserPendingRedeem(invs, USDC);
+        uint128 totalPending = batchRequestManager.pendingRedeem(poolId, scId, USDC);
+        uint128 maxDrift = sumUserPending - totalPending;
+        assertEq(sumUserPending, uint128(numUsers - 1), "All but one users should have 1 wei each before claiming");
+        assertEq(totalPending, 0, "Total pending should be 0");
+        assertLe(maxDrift, uint128(numUsers - 1), "Drift should be N-1");
+
+        for (uint8 i = 1; i < numUsers; i++) {
+            batchRequestManager.notifyRedeem{value: COST}(poolId, scId, USDC, invs[i], 10, REFUND);
+        }
+        assertEq(_sumUserPendingRedeem(invs, USDC), 0, "All users cleared by mitigation");
+        assertEq(batchRequestManager.pendingRedeem(poolId, scId, USDC), 0, "Total pending remains 0");
+    }
+}
+
 contract BatchRequestManagerRoundingEdgeCasesRedeem is BatchRequestManagerBaseTest {
     using MathLib for *;
 
