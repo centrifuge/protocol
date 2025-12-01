@@ -12,6 +12,7 @@ import {
     WormholeInput,
     AxelarInput,
     LayerZeroInput,
+    ChainlinkInput,
     defaultBlockLimits
 } from "../../script/FullDeployer.s.sol";
 
@@ -34,6 +35,8 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
 
     address immutable LAYERZERO_ENDPOINT = makeAddr("LayerZeroEndpoint");
     address immutable LAYERZERO_DELEGATE = makeAddr("LayerZeroDelegate");
+
+    address immutable CHAINLINK_CCIP_ROUTER = makeAddr("ChainlinkCCIPRouter");
 
     bytes constant SIMPLE_CONTRACT = hex"6001600160005260206000f3";
 
@@ -64,6 +67,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
         vm.etch(WORMHOLE_RELAYER, SIMPLE_CONTRACT);
         vm.etch(AXELAR_GATEWAY, SIMPLE_CONTRACT);
         vm.etch(AXELAR_GAS_SERVICE, SIMPLE_CONTRACT);
+        vm.etch(CHAINLINK_CCIP_ROUTER, SIMPLE_CONTRACT);
     }
 
     function setUp() public virtual {
@@ -87,7 +91,8 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
                     axelar: AxelarInput({shouldDeploy: true, gateway: AXELAR_GATEWAY, gasService: AXELAR_GAS_SERVICE}),
                     layerZero: LayerZeroInput({
                         shouldDeploy: true, endpoint: LAYERZERO_ENDPOINT, delegate: LAYERZERO_DELEGATE
-                    })
+                    }),
+                    chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: CHAINLINK_CCIP_ROUTER})
                 })
             }),
             batcher
@@ -725,6 +730,21 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         assertEq(address(layerZeroAdapter.entrypoint()), address(multiAdapter));
         assertEq(address(layerZeroAdapter.endpoint()), LAYERZERO_ENDPOINT);
     }
+
+    function testChainlinkAdapter(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(opsGuardian));
+        vm.assume(nonWard != address(protocolGuardian));
+
+        assertEq(chainlinkAdapter.wards(address(root)), 1);
+        assertEq(chainlinkAdapter.wards(address(opsGuardian)), 1);
+        assertEq(chainlinkAdapter.wards(address(protocolGuardian)), 1);
+        assertEq(chainlinkAdapter.wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(address(chainlinkAdapter.ccipRouter()), CHAINLINK_CCIP_ROUTER);
+    }
 }
 
 contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
@@ -756,11 +776,21 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         }
     }
 
+    function _validateChainlinkInput(AdaptersInput memory adaptersInput) private view {
+        if (adaptersInput.chainlink.shouldDeploy) {
+            require(adaptersInput.chainlink.ccipRouter != address(0), "Chainlink ccipRouter address cannot be zero");
+            require(
+                adaptersInput.chainlink.ccipRouter.code.length > 0, "Chainlink ccipRouter must be a deployed contract"
+            );
+        }
+    }
+
     function testWormholeRelayerZeroAddressFails() public {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: true, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
+            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)})
         });
 
         vm.expectRevert("Wormhole relayer address cannot be zero");
@@ -772,7 +802,8 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: true, relayer: mockRelayer}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
+            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)})
         });
 
         vm.expectRevert("Wormhole relayer must be a deployed contract");
@@ -786,7 +817,8 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: true, gateway: address(0), gasService: validGasService}),
-            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
+            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)})
         });
 
         vm.expectRevert("Axelar gateway address cannot be zero");
@@ -800,7 +832,8 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: true, gateway: validGateway, gasService: address(0)}),
-            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
+            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)})
         });
 
         vm.expectRevert("Axelar gas service address cannot be zero");
@@ -817,7 +850,8 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: true, gateway: mockGateway, gasService: mockGasService}),
-            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
+            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)})
         });
 
         vm.expectRevert("Axelar gateway must be a deployed contract");
@@ -834,7 +868,8 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: true, gateway: mockGateway, gasService: mockGasService}),
-            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
+            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)})
         });
 
         vm.expectRevert("Axelar gas service must be a deployed contract");
@@ -845,7 +880,8 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-            layerZero: LayerZeroInput({shouldDeploy: true, endpoint: address(0), delegate: address(0)})
+            layerZero: LayerZeroInput({shouldDeploy: true, endpoint: address(0), delegate: address(0)}),
+            chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)})
         });
 
         vm.expectRevert("LayerZero endpoint address cannot be zero");
@@ -857,7 +893,8 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-            layerZero: LayerZeroInput({shouldDeploy: true, endpoint: mockEndpoint, delegate: address(0)})
+            layerZero: LayerZeroInput({shouldDeploy: true, endpoint: mockEndpoint, delegate: address(0)}),
+            chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)})
         });
 
         vm.expectRevert("LayerZero endpoint must be a deployed contract");
@@ -871,11 +908,37 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-            layerZero: LayerZeroInput({shouldDeploy: true, endpoint: LAYERZERO_ENDPOINT, delegate: address(0)})
+            layerZero: LayerZeroInput({shouldDeploy: true, endpoint: LAYERZERO_ENDPOINT, delegate: address(0)}),
+            chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)})
         });
 
         vm.expectRevert("LayerZero delegate address cannot be zero");
         this._validateLayerZeroInputExternal(invalidInput);
+    }
+
+    function testChainlinkZeroAddressFails() public {
+        AdaptersInput memory invalidInput = AdaptersInput({
+            wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
+            axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
+            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: address(0)})
+        });
+
+        vm.expectRevert("Chainlink ccipRouter address cannot be zero");
+        this._validateChainlinkInputExternal(invalidInput);
+    }
+
+    function testChainlinkNoCodeFails() public {
+        address mockCCIPRouter = makeAddr("MockCCIPRouterNoCode");
+        AdaptersInput memory invalidInput = AdaptersInput({
+            wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
+            axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
+            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: mockCCIPRouter})
+        });
+
+        vm.expectRevert("Chainlink ccipRouter must be a deployed contract");
+        this._validateChainlinkInputExternal(invalidInput);
     }
 
     // External wrapper functions to allow expectRevert to work properly (must be external)
@@ -889,5 +952,9 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
 
     function _validateLayerZeroInputExternal(AdaptersInput memory adaptersInput) external view {
         _validateLayerZeroInput(adaptersInput);
+    }
+
+    function _validateChainlinkInputExternal(AdaptersInput memory adaptersInput) external view {
+        _validateChainlinkInput(adaptersInput);
     }
 }

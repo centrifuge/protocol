@@ -9,7 +9,8 @@ import {
     AdaptersInput,
     WormholeInput,
     AxelarInput,
-    LayerZeroInput
+    LayerZeroInput,
+    ChainlinkInput
 } from "./FullDeployer.s.sol";
 
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
@@ -81,6 +82,10 @@ contract LaunchDeployer is FullDeployer {
                     shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.layerZero.deploy"),
                     endpoint: _parseJsonAddressOrDefault(config, "$.adapters.layerZero.endpoint"),
                     delegate: vm.envAddress("PROTOCOL_ADMIN")
+                }),
+                chainlink: ChainlinkInput({
+                    shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.chainlink.deploy"),
+                    ccipRouter: _parseJsonAddressOrDefault(config, "$.adapters.chainlink.ccipRouter")
                 })
             })
         });

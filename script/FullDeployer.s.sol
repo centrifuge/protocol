@@ -39,6 +39,7 @@ import "forge-std/Script.sol";
 
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
+import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 
 struct WormholeInput {
@@ -58,10 +59,16 @@ struct LayerZeroInput {
     address delegate;
 }
 
+struct ChainlinkInput {
+    bool shouldDeploy;
+    address ccipRouter;
+}
+
 struct AdaptersInput {
     WormholeInput wormhole;
     AxelarInput axelar;
     LayerZeroInput layerZero;
+    ChainlinkInput chainlink;
 }
 
 struct FullInput {
@@ -102,6 +109,7 @@ struct FullReport {
     WormholeAdapter wormholeAdapter;
     AxelarAdapter axelarAdapter;
     LayerZeroAdapter layerZeroAdapter;
+    ChainlinkAdapter chainlinkAdapter;
 }
 
 contract FullActionBatcher is CoreActionBatcher {
@@ -130,6 +138,7 @@ contract FullActionBatcher is CoreActionBatcher {
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(address(report.root));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.root));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.root));
+        if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(address(report.root));
 
         // Rely spoke
         report.asyncRequestManager.rely(address(report.core.spoke));
@@ -160,6 +169,9 @@ contract FullActionBatcher is CoreActionBatcher {
         if (address(report.layerZeroAdapter) != address(0)) {
             report.layerZeroAdapter.rely(address(report.protocolGuardian));
         }
+        if (address(report.chainlinkAdapter) != address(0)) {
+            report.chainlinkAdapter.rely(address(report.protocolGuardian));
+        }
 
         // Rely opsGuardian
         report.core.multiAdapter.rely(address(report.opsGuardian));
@@ -168,6 +180,7 @@ contract FullActionBatcher is CoreActionBatcher {
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(address(report.opsGuardian));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.opsGuardian));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.opsGuardian));
+        if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(address(report.opsGuardian));
 
         // Rely tokenRecoverer
         if (newRoot) report.root.rely(address(report.tokenRecoverer));
@@ -258,6 +271,7 @@ contract FullActionBatcher is CoreActionBatcher {
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.deny(address(this));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
+        if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
     }
 }
 
@@ -300,8 +314,9 @@ contract FullDeployer is CoreDeployer {
     NAVManager public navManager;
     SimplePriceManager public simplePriceManager;
 
-    WormholeAdapter wormholeAdapter;
+    ChainlinkAdapter chainlinkAdapter;
     AxelarAdapter axelarAdapter;
+    WormholeAdapter wormholeAdapter;
     LayerZeroAdapter layerZeroAdapter;
 
     function deployFull(FullInput memory input, FullActionBatcher batcher) public {
@@ -586,6 +601,23 @@ contract FullDeployer is CoreDeployer {
             );
         }
 
+        if (input.adapters.chainlink.shouldDeploy) {
+            require(input.adapters.chainlink.ccipRouter != address(0), "Chainlink ccipRouter address cannot be zero");
+            require(
+                input.adapters.chainlink.ccipRouter.code.length > 0, "Chainlink ccipRouter must be a deployed contract"
+            );
+
+            chainlinkAdapter = ChainlinkAdapter(
+                create3(
+                    generateSalt("chainlinkAdapter"),
+                    abi.encodePacked(
+                        type(ChainlinkAdapter).creationCode,
+                        abi.encode(multiAdapter, input.adapters.chainlink.ccipRouter, batcher)
+                    )
+                )
+            );
+        }
+
         register("root", address(root));
         register("tokenRecoverer", address(tokenRecoverer));
         register("protocolGuardian", address(protocolGuardian));
@@ -622,6 +654,7 @@ contract FullDeployer is CoreDeployer {
         if (input.adapters.wormhole.shouldDeploy) register("wormholeAdapter", address(wormholeAdapter));
         if (input.adapters.axelar.shouldDeploy) register("axelarAdapter", address(axelarAdapter));
         if (input.adapters.layerZero.shouldDeploy) register("layerZeroAdapter", address(layerZeroAdapter));
+        if (input.adapters.chainlink.shouldDeploy) register("chainlinkAdapter", address(chainlinkAdapter));
 
         batcher.engageFull(_fullReport(), input.adminSafe, input.opsSafe, newRoot);
     }
@@ -657,7 +690,8 @@ contract FullDeployer is CoreDeployer {
             simplePriceManager,
             wormholeAdapter,
             axelarAdapter,
-            layerZeroAdapter
+            layerZeroAdapter,
+            chainlinkAdapter
         );
     }
 
@@ -671,7 +705,8 @@ function noAdaptersInput() pure returns (AdaptersInput memory) {
     return AdaptersInput({
         wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
         axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-        layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
+        layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+        chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)})
     });
 }
 
