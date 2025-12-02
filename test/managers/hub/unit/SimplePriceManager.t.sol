@@ -8,7 +8,6 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
-import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {ShareClassId, newShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IBatchedMulticall} from "../../../../src/core/utils/interfaces/IBatchedMulticall.sol";
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
@@ -53,7 +52,6 @@ contract SimplePriceManagerTest is Test {
 
     address hub = address(new MockHub());
     address gateway = address(new MockGateway());
-    address hubRegistry = address(new IsContract());
     address shareClassManager = address(new IsContract());
     address hubHelpers = address(new IsContract());
 
@@ -72,15 +70,9 @@ contract SimplePriceManagerTest is Test {
 
     function _setupMocks() internal {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.shareClassManager.selector), abi.encode(shareClassManager));
-        vm.mockCall(hub, abi.encodeWithSelector(IHub.hubRegistry.selector), abi.encode(hubRegistry));
         vm.mockCall(hub, abi.encodeWithSelector(IBatchedMulticall.gateway.selector), abi.encode(gateway));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateSharePrice.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.notifySharePrice.selector), abi.encode(uint256(0)));
-
-        vm.mockCall(hubRegistry, abi.encodeWithSelector(IHubRegistry.manager.selector), abi.encode(false));
-        vm.mockCall(
-            hubRegistry, abi.encodeWithSelector(IHubRegistry.manager.selector, POOL_A, hubManager), abi.encode(true)
-        );
 
         vm.mockCall(
             shareClassManager,
@@ -123,119 +115,13 @@ contract SimplePriceManagerConstructorTest is SimplePriceManagerTest {
     }
 }
 
-contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
-    function testAddNetworkSuccess() public {
-        uint16[] memory networks = new uint16[](1);
-        networks[0] = CENTRIFUGE_ID_1;
-
-        vm.expectEmit(true, true, true, true);
-        emit ISimplePriceManager.UpdateNetworks(POOL_A, networks);
-
-        vm.prank(hubManager);
-        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
-
-        uint16[] memory storedNetworks = priceManager.notifiedNetworks(POOL_A);
-        assertEq(storedNetworks.length, 1);
-        assertEq(storedNetworks[0], CENTRIFUGE_ID_1);
-
-        uint16[] memory networks2 = new uint16[](2);
-        networks2[0] = CENTRIFUGE_ID_1;
-        networks2[1] = CENTRIFUGE_ID_2;
-
-        vm.expectEmit(true, true, true, true);
-        emit ISimplePriceManager.UpdateNetworks(POOL_A, networks2);
-
-        vm.prank(hubManager);
-        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
-
-        storedNetworks = priceManager.notifiedNetworks(POOL_A);
-        assertEq(storedNetworks.length, 2);
-        assertEq(storedNetworks[0], CENTRIFUGE_ID_1);
-        assertEq(storedNetworks[1], CENTRIFUGE_ID_2);
-    }
-
-    function testAddNetworkUnauthorized() public {
-        vm.expectRevert(ISimplePriceManager.NotAuthorized.selector);
-        vm.prank(unauthorized);
-        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
-    }
-
-    function testAddNetworkInvalidShareClassCount() public {
-        vm.mockCall(
-            shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.shareClassCount.selector, POOL_B),
-            abi.encode(2)
-        );
-        vm.mockCall(
-            hubRegistry, abi.encodeWithSelector(IHubRegistry.manager.selector, POOL_B, hubManager), abi.encode(true)
-        );
-
-        vm.expectRevert(ISimplePriceManager.InvalidShareClassCount.selector);
-        vm.prank(hubManager);
-        priceManager.addNotifiedNetwork(POOL_B, CENTRIFUGE_ID_1);
-    }
-
-    function testRemoveNetworkSuccess() public {
-        vm.prank(hubManager);
-        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
-        vm.prank(hubManager);
-        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
-        vm.prank(hubManager);
-        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_3);
-
-        uint16[] memory storedNetworks = priceManager.notifiedNetworks(POOL_A);
-        assertEq(storedNetworks.length, 3);
-
-        vm.prank(hubManager);
-        priceManager.removeNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
-
-        storedNetworks = priceManager.notifiedNetworks(POOL_A);
-        assertEq(storedNetworks.length, 2);
-        assertEq(storedNetworks[0], CENTRIFUGE_ID_1);
-        assertEq(storedNetworks[1], CENTRIFUGE_ID_3);
-    }
-
-    function testRemoveNetworkUnauthorized() public {
-        vm.prank(hubManager);
-        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
-
-        vm.expectRevert(ISimplePriceManager.NotAuthorized.selector);
-        vm.prank(unauthorized);
-        priceManager.removeNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
-    }
-
-    function testRemoveNetworkNotFound() public {
-        vm.prank(hubManager);
-        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
-
-        vm.expectRevert(ISimplePriceManager.NetworkNotFound.selector);
-        vm.prank(hubManager);
-        priceManager.removeNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
-    }
-}
-
 contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
-    function setUp() public override {
-        super.setUp();
-
-        vm.prank(hubManager);
-        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_1);
-        vm.prank(hubManager);
-        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
-    }
-
     function testOnUpdateFirstUpdate() public {
         uint128 netAssetValue = 1000;
 
         vm.expectCall(
             address(hub),
             abi.encodeWithSelector(IHub.updateSharePrice.selector, POOL_A, SC_1, d18(10, 1)) // 1000/100 = 10
-        );
-        vm.expectCall(
-            address(hub), abi.encodeWithSelector(IHub.notifySharePrice.selector, POOL_A, SC_1, CENTRIFUGE_ID_1)
-        );
-        vm.expectCall(
-            address(hub), abi.encodeWithSelector(IHub.notifySharePrice.selector, POOL_A, SC_1, CENTRIFUGE_ID_2)
         );
 
         vm.expectEmit(true, true, true, true);
@@ -341,9 +227,6 @@ contract SimplePriceManagerPricePoolPerShareTest is SimplePriceManagerTest {
     }
 
     function testPricePoolPerShareMultipleNetworks() public {
-        vm.prank(hubManager);
-        priceManager.addNotifiedNetwork(POOL_A, CENTRIFUGE_ID_2);
-
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000); // NAV=1000, issuance=100
 

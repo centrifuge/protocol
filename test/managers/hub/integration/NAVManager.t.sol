@@ -69,9 +69,6 @@ contract NAVManagerIntegrationTest is BaseTest {
 
         navManager.setNAVHook(POOL_A, INAVHook(address(simplePriceManager)));
 
-        simplePriceManager.addNotifiedNetwork(POOL_A, CHAIN_CP);
-        simplePriceManager.addNotifiedNetwork(POOL_A, CHAIN_CV);
-
         vm.stopPrank();
 
         valuation.setPrice(POOL_A, scId, asset1, d18(1, 1));
@@ -94,8 +91,6 @@ contract NAVManagerIntegrationTest is BaseTest {
         cv.updateHoldingAmount(POOL_A, scId, asset2, uint128(2300 * 10 ** asset2Decimals), d18(1, 1), true, false, 1);
 
         vm.expectCall(address(hub), abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(1, 1)));
-        vm.expectCall(address(hub), abi.encodeWithSelector(hub.notifySharePrice.selector, POOL_A, scId, CHAIN_CP));
-        vm.expectCall(address(hub), abi.encodeWithSelector(hub.notifySharePrice.selector, POOL_A, scId, CHAIN_CV));
         cv.updateShares(POOL_A, scId, 3300e18, true, true, 2);
 
         vm.stopPrank();
@@ -106,8 +101,6 @@ contract NAVManagerIntegrationTest is BaseTest {
         );
 
         vm.expectCall(address(hub), abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(1, 1)));
-        vm.expectCall(address(hub), abi.encodeWithSelector(hub.notifySharePrice.selector, POOL_A, scId, CHAIN_CP));
-        vm.expectCall(address(hub), abi.encodeWithSelector(hub.notifySharePrice.selector, POOL_A, scId, CHAIN_CV));
 
         vm.prank(address(messageDispatcher));
         hubHandler.updateShares(CHAIN_CP, POOL_A, scId, 500e18, true, true, 1);
