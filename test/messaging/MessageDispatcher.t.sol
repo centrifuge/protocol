@@ -108,7 +108,7 @@ contract TestAuthChecks is TestCommon {
         dispatcher.sendRegisterAsset(REMOTE_CHAIN, ASSET_A, 18, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendRequest(POOL_A, SC_A, ASSET_A, EMPTY_BYTES, false, REFUND);
+        dispatcher.sendRequest(POOL_A, SC_A, ASSET_A, EMPTY_BYTES, 0, false, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendUntrustedContractUpdate(POOL_A, SC_A, bytes32(0), EMPTY_BYTES, bytes32(0), 0, REFUND);

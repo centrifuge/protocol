@@ -602,6 +602,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         ShareClassId scId,
         AssetId assetId,
         bytes calldata payload,
+        uint128 extraGasLimit,
         bool unpaidMode,
         address refund
     ) external payable auth {
@@ -613,7 +614,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 poolId.centrifugeId(),
                 MessageLib.Request({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw(), payload: payload})
                     .serialize(),
-                0,
+                extraGasLimit,
                 unpaidMode,
                 refund
             );

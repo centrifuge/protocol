@@ -239,8 +239,9 @@ interface ISpoke {
         ShareClassId scId,
         AssetId assetId,
         bytes memory payload,
-        address refund,
-        bool unpaid
+        uint128 extraGasLimit,
+        bool unpaid,
+        address refund
     ) external payable;
 
     //----------------------------------------------------------------------------------------------

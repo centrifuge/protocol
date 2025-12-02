@@ -198,7 +198,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
         }
 
         // It use all funds for the message, and the rest is refunded again to the RefundEscrow
-        spoke.request{value: payment}(poolId, vault_.scId(), assetId, payload, address(refund), true);
+        spoke.request{value: payment}(poolId, vault_.scId(), assetId, payload, 0, true, address(refund));
     }
 
     //----------------------------------------------------------------------------------------------

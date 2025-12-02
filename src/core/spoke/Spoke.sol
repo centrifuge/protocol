@@ -324,14 +324,15 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         ShareClassId scId,
         AssetId assetId,
         bytes memory payload,
-        address refund,
-        bool unpaid
+        uint128 extraGasLimit,
+        bool unpaid,
+        address refund
     ) external payable {
         IRequestManager manager = requestManager[poolId];
         require(address(manager) != address(0), InvalidRequestManager());
         require(msg.sender == address(manager), NotAuthorized());
 
-        sender.sendRequest{value: msg.value}(poolId, scId, assetId, payload, unpaid, refund);
+        sender.sendRequest{value: msg.value}(poolId, scId, assetId, payload, extraGasLimit, unpaid, refund);
     }
 
     /// @inheritdoc ISpokeGatewayHandler

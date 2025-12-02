@@ -81,6 +81,7 @@ contract SpokeTest is Test {
     uint64 immutable FUTURE = MAX_AGE + 1;
 
     uint256 constant COST = 123;
+    uint128 constant EXTRA = 456;
 
     SpokeExt spoke = new SpokeExt(tokenFactory, AUTH);
     VaultRegistry vaultRegistry = new VaultRegistry(AUTH);
@@ -513,7 +514,7 @@ contract SpokeTestRequest is SpokeTest {
     function testErrInvalidRequestManager() public {
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.InvalidRequestManager.selector);
-        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND, false);
+        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, EXTRA, false, REFUND);
     }
 
     function testErrNotAuthorized() public {
@@ -524,7 +525,7 @@ contract SpokeTestRequest is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND, false);
+        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, EXTRA, false, REFUND);
     }
 
     function testRequestPaid() public {
@@ -537,13 +538,13 @@ contract SpokeTestRequest is SpokeTest {
             address(sender),
             COST,
             abi.encodeWithSelector(
-                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, false, REFUND
+                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, EXTRA, false, REFUND
             ),
             abi.encode()
         );
 
         vm.prank(address(requestManager));
-        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND, false);
+        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, EXTRA, false, REFUND);
     }
 
     function testRequestUnpaid() public {
@@ -556,13 +557,13 @@ contract SpokeTestRequest is SpokeTest {
             address(sender),
             COST,
             abi.encodeWithSelector(
-                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, true, REFUND
+                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, EXTRA, true, REFUND
             ),
             abi.encode()
         );
 
         vm.prank(address(requestManager));
-        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND, true);
+        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, EXTRA, true, REFUND);
     }
 }
 

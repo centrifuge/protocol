@@ -16,6 +16,9 @@ contract GasService is IGasService {
     /// @dev Takes into account diverge computation from the base benchmarked value.
     uint128 public constant BASE_COST = 100_000;
 
+    /// @dev Adds an extra cost to recover token admin message to ensure different assets can transfer successfully
+    uint128 public constant RECOVERY_TOKEN_EXTRA_COST = 100_000;
+
     uint128 public constant MIN_SUPPORTED_BLOCK_LIMIT = 24; // In millions of gas units
 
     /// @dev An encoded array of the block limits of the first 32 centrifugeId.
@@ -60,25 +63,25 @@ contract GasService is IGasService {
         // NOTE: Below values should be updated using script/utils/benchmark.sh
         scheduleUpgrade = _gasValue(95182);
         cancelUpgrade = _gasValue(75589);
-        recoverTokens = _gasValue(152238);
+        recoverTokens = RECOVERY_TOKEN_EXTRA_COST + _gasValue(152238);
         registerAsset = _gasValue(104983);
         setPoolAdapters = _gasValue(488111); // using MAX_ADAPTER_COUNT
-        request = _gasValue(221789);
-        notifyPool = _gasValue(1156436); // create escrow case
-        notifyShareClass = _gasValue(1838474);
-        notifyPricePoolPerShare = _gasValue(103092);
-        notifyPricePoolPerAsset = _gasValue(107110);
-        notifyShareMetadata = _gasValue(117547);
+        request = _gasValue(221767);
+        notifyPool = _gasValue(1156414); // create escrow case
+        notifyShareClass = _gasValue(1838452);
+        notifyPricePoolPerShare = _gasValue(103070);
+        notifyPricePoolPerAsset = _gasValue(107088);
+        notifyShareMetadata = _gasValue(117525);
         updateShareHook = _gasValue(92428);
-        initiateTransferShares = _gasValue(282402);
-        executeTransferShares = _gasValue(173529);
-        updateRestriction = _gasValue(110702);
+        initiateTransferShares = _gasValue(282358);
+        executeTransferShares = _gasValue(173507);
+        updateRestriction = _gasValue(110680);
         trustedContractUpdate = _gasValue(137255);
-        requestCallback = _gasValue(257497); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2839873);
-        updateVaultLink = _gasValue(181401);
-        updateVaultUnlink = _gasValue(130119);
-        setRequestManager = _gasValue(101466);
+        requestCallback = _gasValue(257475); // approve deposit case
+        updateVaultDeployAndLink = _gasValue(2839785);
+        updateVaultLink = _gasValue(181357);
+        updateVaultUnlink = _gasValue(130075);
+        setRequestManager = _gasValue(101444);
         updateBalanceSheetManager = _gasValue(100218);
         updateHoldingAmount = _gasValue(300614);
         updateShares = _gasValue(197700);
