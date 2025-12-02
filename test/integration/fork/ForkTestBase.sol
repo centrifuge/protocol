@@ -40,11 +40,11 @@ import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
-import {RefundEscrowFactory} from "../../../src/vaults/factories/RefundEscrowFactory.sol";
 
 import "forge-std/Test.sol";
 
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
+import {RefundEscrowFactory} from "../../../src/utils/RefundEscrowFactory.sol";
 
 /// @title CHub
 /// @notice Struct containing all hub-side contract references for fork tests

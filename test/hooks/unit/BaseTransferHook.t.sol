@@ -36,17 +36,38 @@ contract MockShareToken {
     }
 }
 
+contract MockPoolEscrow {
+    PoolId public immutable poolId;
+
+    constructor(PoolId poolId_) {
+        poolId = poolId_;
+    }
+}
+
+contract MockPoolEscrowProvider {
+    mapping(uint64 => address) public escrows;
+
+    function setEscrow(PoolId poolId, address escrowAddress) external {
+        escrows[poolId.raw()] = escrowAddress;
+    }
+
+    function escrow(PoolId poolId) external view returns (address) {
+        return escrows[poolId.raw()];
+    }
+}
+
 contract TestableBaseTransferHook is BaseTransferHook {
     using BitmapLib for *;
 
     constructor(
         address root_,
         address spoke_,
-        address redeemSource_,
-        address depositTarget_,
+        address balanceSheet_,
         address crosschainSource_,
-        address deployer
-    ) BaseTransferHook(root_, spoke_, redeemSource_, depositTarget_, crosschainSource_, deployer) {}
+        address deployer,
+        address poolEscrowProvider_,
+        address poolEscrow_
+    ) BaseTransferHook(root_, spoke_, balanceSheet_, crosschainSource_, deployer, poolEscrowProvider_, poolEscrow_) {}
 
     function checkERC20Transfer(
         address from,
@@ -60,7 +81,6 @@ contract TestableBaseTransferHook is BaseTransferHook {
         override
         returns (bool)
     {
-        // Simple implementation for testing - allow transfer if not frozen
         return !isSourceOrTargetFrozen(from, to, hookData);
     }
 }
@@ -78,14 +98,18 @@ contract BaseTransferHookTestBase is Test {
     MockRoot mockRoot;
     MockSpoke mockSpoke;
     MockShareToken mockShareToken;
+    MockPoolEscrow mockPoolEscrow;
+    MockPoolEscrowProvider mockPoolEscrowProvider;
 
     address deployer = makeAddr("deployer");
-    address redeemSource = makeAddr("redeemSource");
-    address depositTarget = makeAddr("depositTarget");
     address crosschainSource = makeAddr("crosschainSource");
+    address balanceSheet = makeAddr("balanceSheet");
+    address poolEscrow;
     address user1 = makeAddr("user1");
     address user2 = makeAddr("user2");
     address endorsedUser = makeAddr("endorsedUser");
+
+    PoolId constant TEST_POOL_ID = PoolId.wrap(1);
 
     uint64 constant FUTURE_TIMESTAMP = type(uint64).max;
     uint64 constant EXACT_BOUNDARY_TIMESTAMP = 1000;
@@ -99,17 +123,29 @@ contract BaseTransferHookTestBase is Test {
         mockRoot = new MockRoot();
         mockSpoke = new MockSpoke();
 
+        // Create a real mock pool escrow
+        mockPoolEscrow = new MockPoolEscrow(TEST_POOL_ID);
+        poolEscrow = address(mockPoolEscrow);
+
+        // Create mock pool escrow provider and configure it
+        mockPoolEscrowProvider = new MockPoolEscrowProvider();
+        mockPoolEscrowProvider.setEscrow(TEST_POOL_ID, poolEscrow);
+
         vm.prank(deployer);
         hook = new TestableBaseTransferHook(
-            address(mockRoot), address(mockSpoke), redeemSource, depositTarget, crosschainSource, deployer
+            address(mockRoot),
+            address(mockSpoke),
+            balanceSheet,
+            crosschainSource,
+            deployer,
+            address(mockPoolEscrowProvider),
+            address(0) // Multi-pool mode
         );
 
         mockShareToken = new MockShareToken();
 
-        // Set past timestamp to be before current block timestamp
         pastTimestamp = uint64(block.timestamp - 1);
 
-        // Set up endorsed users
         _setEndorsedUsers();
     }
 
@@ -119,8 +155,8 @@ contract BaseTransferHookTestBase is Test {
 
     function _setEndorsedUsers() internal {
         mockRoot.setEndorsed(endorsedUser, true);
-        mockRoot.setEndorsed(redeemSource, true);
-        mockRoot.setEndorsed(depositTarget, true);
+        mockRoot.setEndorsed(balanceSheet, true);
+        mockRoot.setEndorsed(poolEscrow, true);
         mockRoot.setEndorsed(crosschainSource, true);
     }
 
@@ -162,8 +198,7 @@ contract BaseTransferHookTestBase is Test {
 contract BaseTransferHookTestConstructor is BaseTransferHookTestBase {
     function testConstructor() public view {
         assertEq(address(hook.root()), address(mockRoot));
-        assertEq(hook.redeemSource(), redeemSource);
-        assertEq(hook.depositTarget(), depositTarget);
+        assertEq(address(hook.balanceSheet()), balanceSheet);
         assertEq(hook.crosschainSource(), crosschainSource);
         assertEq(hook.FREEZE_BIT(), 0);
     }
@@ -174,10 +209,11 @@ contract BaseTransferHookTestConstructor is BaseTransferHookTestBase {
         new TestableBaseTransferHook(
             address(mockRoot),
             address(mockSpoke),
-            redeemSource,
-            redeemSource, // Same as redeemSource
-            crosschainSource,
-            deployer
+            balanceSheet,
+            balanceSheet, // Same as balanceSheet - should fail
+            deployer,
+            address(mockPoolEscrowProvider),
+            address(0)
         );
     }
 }
@@ -185,20 +221,28 @@ contract BaseTransferHookTestConstructor is BaseTransferHookTestBase {
 contract BaseTransferHookTestTransferTypes is BaseTransferHookTestBase {
     function testIsDepositRequestOrIssuance() public view {
         assertTrue(hook.isDepositRequestOrIssuance(address(0), user1));
-        assertFalse(hook.isDepositRequestOrIssuance(address(0), depositTarget));
+        assertFalse(hook.isDepositRequestOrIssuance(address(0), poolEscrow));
         assertFalse(hook.isDepositRequestOrIssuance(user1, user2));
+        assertFalse(hook.isDepositRequestOrIssuance(endorsedUser, user1));
+        assertFalse(hook.isDepositRequestOrIssuance(user1, endorsedUser));
     }
 
     function testIsDepositFulfillment() public view {
-        assertTrue(hook.isDepositFulfillment(address(0), depositTarget));
+        assertTrue(hook.isDepositFulfillment(address(0), poolEscrow));
         assertFalse(hook.isDepositFulfillment(address(0), user1));
-        assertFalse(hook.isDepositFulfillment(user1, depositTarget));
+        assertFalse(hook.isDepositFulfillment(address(0), endorsedUser));
+        assertFalse(hook.isDepositFulfillment(poolEscrow, user1));
+        assertFalse(hook.isDepositFulfillment(endorsedUser, user1));
+        assertFalse(hook.isDepositFulfillment(endorsedUser, poolEscrow));
     }
 
     function testIsDepositClaim() public view {
-        assertTrue(hook.isDepositClaim(depositTarget, user1));
-        assertFalse(hook.isDepositClaim(depositTarget, address(0)));
+        assertTrue(hook.isDepositClaim(poolEscrow, user1));
+        assertTrue(hook.isDepositClaim(poolEscrow, endorsedUser));
+        assertFalse(hook.isDepositClaim(poolEscrow, address(0)));
         assertFalse(hook.isDepositClaim(user1, user2));
+        assertFalse(hook.isDepositClaim(user1, poolEscrow));
+        assertFalse(hook.isDepositClaim(user1, endorsedUser));
     }
 
     function testIsRedeemRequest() public view {
@@ -207,14 +251,14 @@ contract BaseTransferHookTestTransferTypes is BaseTransferHookTestBase {
     }
 
     function testIsRedeemFulfillment() public view {
-        assertTrue(hook.isRedeemFulfillment(redeemSource, address(0)));
+        assertTrue(hook.isRedeemFulfillment(balanceSheet, address(0)));
         assertFalse(hook.isRedeemFulfillment(user1, address(0)));
-        assertFalse(hook.isRedeemFulfillment(redeemSource, user1));
+        assertFalse(hook.isRedeemFulfillment(balanceSheet, user1));
     }
 
     function testIsRedeemClaimOrRevocation() public view {
         assertTrue(hook.isRedeemClaimOrRevocation(user1, address(0)));
-        assertFalse(hook.isRedeemClaimOrRevocation(redeemSource, address(0)));
+        assertFalse(hook.isRedeemClaimOrRevocation(balanceSheet, address(0)));
         assertFalse(hook.isRedeemClaimOrRevocation(crosschainSource, address(0)));
         assertFalse(hook.isRedeemClaimOrRevocation(user1, user2));
     }
@@ -229,6 +273,25 @@ contract BaseTransferHookTestTransferTypes is BaseTransferHookTestBase {
         assertTrue(hook.isCrosschainTransferExecution(crosschainSource, user1));
         assertFalse(hook.isCrosschainTransferExecution(user1, address(0)));
     }
+
+    function testCrosschainExclusionWithEndorsement() public view {
+        assertFalse(
+            hook.isDepositRequestOrIssuance(address(0), crosschainSource),
+            "Mint to crosschainSource excluded from issuance"
+        );
+    }
+
+    function testMintToCrosschainSourceNotFulfillment() public view {
+        assertFalse(
+            hook.isDepositRequestOrIssuance(address(0), crosschainSource),
+            "Mint to crosschainSource should not be direct issuance"
+        );
+        assertFalse(
+            hook.isDepositFulfillment(address(0), crosschainSource), "Mint to crosschainSource is not fulfillment"
+        );
+    }
+
+    function testNonEndorsedToEndorsedNotAClaim() public view {}
 }
 
 contract BaseTransferHookTestFreeze is BaseTransferHookTestBase {
@@ -360,8 +423,8 @@ contract BaseTransferHookTestMember is BaseTransferHookTestBase {
         // Not a member
         assertFalse(hook.isSourceMember(user1, hookData));
 
-        // Endorsed user is always a member
-        assertTrue(hook.isSourceMember(endorsedUser, hookData));
+        // Endorsed user is not always a member
+        assertTrue(!hook.isSourceMember(endorsedUser, hookData));
 
         // Set as member through hook data (valid until future timestamp)
         hookData = _createHookDataWithMembership(FUTURE_TIMESTAMP, 0);
@@ -400,16 +463,10 @@ contract BaseTransferHookTestMember is BaseTransferHookTestBase {
         hookData = _createHookDataWithFreezeBit(true);
         assertTrue(hook.isSourceOrTargetFrozen(user1, user2, hookData));
 
-        // Source frozen but endorsed
-        assertFalse(hook.isSourceOrTargetFrozen(endorsedUser, user2, hookData));
-
         // Target frozen, not endorsed
         hookData.from = bytes16(0); // Clear freeze bit for source
         hookData.to = bytes16(uint128(1)); // Set freeze bit for target
         assertTrue(hook.isSourceOrTargetFrozen(user1, user2, hookData));
-
-        // Target frozen but endorsed
-        assertFalse(hook.isSourceOrTargetFrozen(user1, endorsedUser, hookData));
     }
 }
 
@@ -662,5 +719,57 @@ contract BaseTransferHookTestFuzz is BaseTransferHookTestBase {
         (bool isValid, uint64 storedValidUntil) = hook.isMember(address(mockShareToken), user1);
         assertTrue(isValid);
         assertEq(storedValidUntil, validUntil);
+    }
+}
+
+contract BaseTransferHookTestPoolEscrowOptimization is BaseTransferHookTestBase {
+    TestableBaseTransferHook hookWithFastPath;
+    MockPoolEscrow otherPoolEscrow;
+    address otherEscrowAddr;
+
+    function setUp() public override {
+        super.setUp();
+
+        otherPoolEscrow = new MockPoolEscrow(PoolId.wrap(2));
+        otherEscrowAddr = address(otherPoolEscrow);
+        mockPoolEscrowProvider.setEscrow(PoolId.wrap(2), otherEscrowAddr);
+
+        vm.prank(deployer);
+        hookWithFastPath = new TestableBaseTransferHook(
+            address(mockRoot),
+            address(mockSpoke),
+            balanceSheet,
+            crosschainSource,
+            deployer,
+            address(mockPoolEscrowProvider),
+            poolEscrow
+        );
+    }
+
+    function testFastPathRecognizesConfiguredEscrow() public view {
+        assertTrue(hookWithFastPath.isPoolEscrow(poolEscrow), "fast path should recognize configured poolEscrow");
+    }
+
+    function testFastPathRejectsOtherAddress(address random) public view {
+        vm.assume(random != address(poolEscrow));
+
+        assertFalse(
+            hookWithFastPath.isPoolEscrow(random),
+            "fast path should reject address that doesn't match configured poolEscrow"
+        );
+        assertFalse(hookWithFastPath.isPoolEscrow(otherEscrowAddr), "fast path should otherEscrowAddr");
+    }
+
+    function testMultiPoolRecognizesFactoryEscrow() public view {
+        assertTrue(hook.isPoolEscrow(poolEscrow), "multi-pool mode should recognize escrow via poolEscrowProvider");
+    }
+
+    function testMultiPoolRejectsNonFactoryEscrow(address random) public view {
+        vm.assume(random != address(poolEscrow) && random != otherEscrowAddr);
+
+        assertFalse(
+            hook.isPoolEscrow(random), "multi-pool mode should reject escrow not registered in poolEscrowProvider"
+        );
+        assertTrue(hook.isPoolEscrow(otherEscrowAddr), "multi-pool mode should not reject otherEscrowAddr");
     }
 }

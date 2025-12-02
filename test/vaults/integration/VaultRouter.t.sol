@@ -87,7 +87,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault.maxMint(self), sharePayout);
         assertEq(vault.maxDeposit(self), amount);
         IShareToken shareToken = IShareToken(address(vault.share()));
-        assertEq(shareToken.balanceOf(address(globalEscrow)), sharePayout);
+        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), sharePayout);
 
         if (snap) {
             vm.startSnapshotGas("VaultRouter", "claimDeposit");
@@ -98,7 +98,7 @@ contract VaultRouterTest is BaseTest {
         }
         assertApproxEqAbs(shareToken.balanceOf(self), sharePayout, 1);
         assertApproxEqAbs(shareToken.balanceOf(self), sharePayout, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(globalEscrow)), 0, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount, 1);
     }
 
@@ -156,13 +156,13 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault.maxMint(self), sharePayout);
         assertEq(vault.maxDeposit(self), amount);
         IShareToken shareToken = IShareToken(address(vault.share()));
-        assertEq(shareToken.balanceOf(address(globalEscrow)), sharePayout);
+        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), sharePayout);
 
         // Any address should be able to call claimDeposit for an investor
         vm.prank(randomUser);
         vaultRouter.claimDeposit(vault, self, self);
         assertApproxEqAbs(shareToken.balanceOf(self), sharePayout, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(globalEscrow)), 0, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount, 1);
     }
 
@@ -218,7 +218,7 @@ contract VaultRouterTest is BaseTest {
         }
         (uint128 assetPayout) = fulfillRedeemRequest(vault, assetId, sharePayout, self);
         assertApproxEqAbs(shareToken.balanceOf(self), 0, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(globalEscrow)), 0, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assetPayout, 1);
         assertApproxEqAbs(erc20.balanceOf(self), 0, 1);
         vaultRouter.claimRedeem(vault, self, self);
@@ -252,15 +252,15 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault2.maxDeposit(self), amount2);
         IShareToken shareToken1 = IShareToken(address(vault1.share()));
         IShareToken shareToken2 = IShareToken(address(vault2.share()));
-        assertEq(shareToken1.balanceOf(address(globalEscrow)), sharePayout1);
-        assertEq(shareToken2.balanceOf(address(globalEscrow)), sharePayout2);
+        assertEq(shareToken1.balanceOf(address(balanceSheet.escrow(vault1.poolId()))), sharePayout1);
+        assertEq(shareToken2.balanceOf(address(balanceSheet.escrow(vault2.poolId()))), sharePayout2);
 
         vaultRouter.claimDeposit(vault1, self, self);
         vaultRouter.claimDeposit(vault2, self, self);
         assertApproxEqAbs(shareToken1.balanceOf(self), sharePayout1, 1);
         assertApproxEqAbs(shareToken2.balanceOf(self), sharePayout2, 1);
-        assertApproxEqAbs(shareToken1.balanceOf(address(globalEscrow)), 0, 1);
-        assertApproxEqAbs(shareToken2.balanceOf(address(globalEscrow)), 0, 1);
+        assertApproxEqAbs(shareToken1.balanceOf(address(balanceSheet.escrow(vault1.poolId()))), 0, 1);
+        assertApproxEqAbs(shareToken2.balanceOf(address(balanceSheet.escrow(vault2.poolId()))), 0, 1);
         assertApproxEqAbs(erc20X.balanceOf(address(poolEscrowFactory.escrow(vault1.poolId()))), amount1, 1);
         assertApproxEqAbs(erc20Y.balanceOf(address(poolEscrowFactory.escrow(vault2.poolId()))), amount2, 1);
     }
@@ -355,7 +355,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault.maxMint(self), sharePayout);
         assertEq(vault.maxDeposit(self), amount);
         IShareToken shareToken = IShareToken(address(vault.share()));
-        assertEq(shareToken.balanceOf(address(globalEscrow)), sharePayout);
+        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), sharePayout);
     }
 
     function testMulticallingDepositClaimAndRequestRedeem(uint256 amount) public {
@@ -386,7 +386,7 @@ contract VaultRouterTest is BaseTest {
 
         (uint128 assetPayout) = fulfillRedeemRequest(vault, assetId, sharePayout, self);
         assertApproxEqAbs(shareToken.balanceOf(self), 0, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(globalEscrow)), 0, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assetPayout, 1);
         assertApproxEqAbs(erc20.balanceOf(self), 0, 1);
     }
@@ -419,8 +419,8 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault2.maxDeposit(self), amount2);
         IShareToken shareToken1 = IShareToken(address(vault1.share()));
         IShareToken shareToken2 = IShareToken(address(vault2.share()));
-        assertEq(shareToken1.balanceOf(address(globalEscrow)), sharePayout1);
-        assertEq(shareToken2.balanceOf(address(globalEscrow)), sharePayout2);
+        assertEq(shareToken1.balanceOf(address(balanceSheet.escrow(vault1.poolId()))), sharePayout1);
+        assertEq(shareToken2.balanceOf(address(balanceSheet.escrow(vault2.poolId()))), sharePayout2);
     }
 
     function testLockAndExecuteDepositRequest(uint256 amount) public {
@@ -451,7 +451,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault.maxMint(investor), sharePayout);
         assertEq(vault.maxDeposit(investor), amount);
         IShareToken shareToken = IShareToken(address(vault.share()));
-        assertEq(shareToken.balanceOf(address(globalEscrow)), sharePayout);
+        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), sharePayout);
     }
 
     function testMultipleTopUpScenarios(uint256 amount) public {
@@ -607,7 +607,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
         vaultRouter.enable(vault);
 
         vaultRouter.requestDeposit(vault, amount, self, self);
-        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
+        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
     }
 
     function testRouterSyncDeposit() public {
@@ -746,11 +746,11 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
         vaultRouter.enable(vault);
         vaultRouter.requestDeposit(vault, amount, self, self);
-        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
+        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
 
         vaultRouter.cancelDepositRequest(vault);
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
-        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
+        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, 0, 0, uint128(amount)
         );
@@ -765,7 +765,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
         vaultRouter.claimCancelDepositRequest(vault, nonMember, self);
 
         vaultRouter.claimCancelDepositRequest(vault, self, self);
-        assertEq(erc20.balanceOf(address(globalEscrow)), 0);
+        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0);
         assertEq(erc20.balanceOf(self), amount);
     }
 
@@ -950,6 +950,6 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
         vaultRouter.executeLockedDepositRequest(vault, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), 0);
-        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
+        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
     }
 }

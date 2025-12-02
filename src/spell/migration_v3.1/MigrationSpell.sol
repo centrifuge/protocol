@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {D18} from "../../misc/types/D18.sol";
-import {Escrow} from "../../misc/Escrow.sol";
 import {IERC20} from "../../misc/interfaces/IERC20.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {IERC6909} from "../../misc/interfaces/IERC6909.sol";
@@ -43,6 +42,7 @@ import {BaseVault} from "../../vaults/BaseVaults.sol";
 import {SyncManager} from "../../vaults/SyncManager.sol";
 import {VaultRouter} from "../../vaults/VaultRouter.sol";
 import {AsyncRequestManager} from "../../vaults/AsyncRequestManager.sol";
+import {REASON_REDEEM} from "../../vaults/interfaces/IVaultManagers.sol";
 import {BatchRequestManager, EpochId} from "../../vaults/BatchRequestManager.sol";
 
 PoolId constant GLOBAL_POOL = PoolId.wrap(0);
@@ -101,7 +101,6 @@ struct GlobalParamsInput {
     SyncManager syncManager;
     ProtocolGuardian protocolGuardian;
     TokenRecoverer tokenRecoverer;
-    Escrow globalEscrow;
     VaultRouter vaultRouter;
 
     AssetId[] spokeAssetIds;
@@ -243,7 +242,6 @@ contract MigrationSpell {
         input.root.rely(address(input.messageProcessor));
         input.root.endorse(address(input.balanceSheet));
         input.root.endorse(address(input.asyncRequestManager));
-        input.root.endorse(address(input.globalEscrow));
         input.root.endorse(address(input.vaultRouter));
     }
 
@@ -471,7 +469,15 @@ contract MigrationSpell {
 
                 if (total > 0 || reserved > 0) {
                     poolEscrow.deposit(scId, assetInfo.addr, assetInfo.tokenId, total);
-                    poolEscrow.reserve(scId, assetInfo.addr, assetInfo.tokenId, reserved);
+                    // Migrate old reserved to new REDEEM bucket (all v3.0.1 reservations are from ARM revokedShares)
+                    poolEscrow.reserve(
+                        scId,
+                        assetInfo.addr,
+                        assetInfo.tokenId,
+                        reserved,
+                        address(input.asyncRequestManager),
+                        REASON_REDEEM
+                    );
                 }
             }
 

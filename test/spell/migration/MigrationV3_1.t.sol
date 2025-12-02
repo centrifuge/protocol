@@ -19,12 +19,8 @@ import {
 
 import "forge-std/Test.sol";
 
+import {MigrationSpell} from "../../../src/spell/migration_v3.1/MigrationSpell.sol";
 import {ForkTestLiveValidation} from "../../integration/fork/ForkTestLiveValidation.sol";
-import {
-    MigrationSpell,
-    PoolMigrationOldContracts,
-    GlobalMigrationOldContracts
-} from "../../../src/spell/migration_v3.1/MigrationSpell.sol";
 
 interface MessageDispatcherV3Like {
     function root() external view returns (Root root);

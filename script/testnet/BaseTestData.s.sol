@@ -38,6 +38,7 @@ import {SyncDepositVaultFactory} from "../../src/vaults/factories/SyncDepositVau
 import "forge-std/Script.sol";
 
 import {LaunchDeployer} from "../LaunchDeployer.s.sol";
+import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
 
 /**
  * @title BaseTestData
@@ -76,6 +77,7 @@ abstract contract BaseTestData is LaunchDeployer {
         syncManager = SyncManager(vm.parseJsonAddress(config, "$.contracts.syncManager"));
         protocolGuardian = ProtocolGuardian(vm.parseJsonAddress(config, "$.contracts.protocolGuardian"));
         opsGuardian = OpsGuardian(vm.parseJsonAddress(config, "$.contracts.opsGuardian"));
+        subsidyManager = SubsidyManager(vm.parseJsonAddress(config, "$.contracts.subsidyManager"));
     }
 
     struct AsyncVaultParams {
@@ -137,7 +139,7 @@ abstract contract BaseTestData is LaunchDeployer {
      */
     function deployAsyncVault(AsyncVaultParams memory params) internal returns (PoolId poolId, ShareClassId scId) {
         poolId = hubRegistry.poolId(params.targetCentrifugeId, params.poolIndex);
-        asyncRequestManager.depositSubsidy{value: 0.5 ether}(poolId);
+        subsidyManager.deposit{value: 0.5 ether}(poolId);
 
         // Create pool on hub
         opsGuardian.createPool(poolId, msg.sender, USD_ID);
@@ -217,7 +219,7 @@ abstract contract BaseTestData is LaunchDeployer {
      */
     function deploySyncDepositVault(SyncVaultParams memory params) internal returns (PoolId poolId, ShareClassId scId) {
         poolId = hubRegistry.poolId(params.targetCentrifugeId, params.poolIndex);
-        asyncRequestManager.depositSubsidy(poolId);
+        subsidyManager.deposit(poolId);
 
         // Create pool on hub
         opsGuardian.createPool(poolId, msg.sender, USD_ID);
@@ -349,7 +351,7 @@ abstract contract BaseTestData is LaunchDeployer {
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
 
         // Withdraw principal
-        balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6);
+        balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6, true);
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
 
         // Issue and claim
@@ -423,7 +425,7 @@ abstract contract BaseTestData is LaunchDeployer {
             xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
         }
         poolId = hubRegistry.poolId(params.hubCentrifugeId, params.poolIndex);
-        asyncRequestManager.depositSubsidy{value: 0.5 ether}(poolId);
+        subsidyManager.deposit{value: 0.5 ether}(poolId);
 
         opsGuardian.createPool(poolId, msg.sender, USD_ID);
         hub.updateHubManager(poolId, params.admin, true);
@@ -491,7 +493,7 @@ abstract contract BaseTestData is LaunchDeployer {
             xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
         }
         poolId = hubRegistry.poolId(params.hubCentrifugeId, params.poolIndex);
-        asyncRequestManager.depositSubsidy(poolId);
+        subsidyManager.deposit(poolId);
 
         opsGuardian.createPool(poolId, msg.sender, USD_ID);
         hub.updateHubManager(poolId, params.admin, true);

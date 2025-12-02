@@ -242,9 +242,9 @@ contract VaultDecoderInheritedFunctionsTest is VaultDecoderTest {
         address receiver = makeAddr("receiver");
         uint128 shares = 1000e18;
 
-        bytes memory addressesFound = decoder.withdraw(poolId, scId, asset, tokenId, receiver, shares);
+        bytes memory addressesFound = decoder.withdraw(poolId, scId, asset, tokenId, receiver, shares, true);
 
-        bytes memory expected = abi.encodePacked(poolId, scId, asset, tokenId, receiver);
+        bytes memory expected = abi.encodePacked(poolId, scId, asset, tokenId, receiver, true);
         assertEq(addressesFound, expected);
     }
 

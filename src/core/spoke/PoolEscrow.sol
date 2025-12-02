@@ -17,6 +17,12 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     PoolId public immutable poolId;
 
     mapping(ShareClassId => mapping(address asset => mapping(uint256 tokenId => Holding))) public holding;
+    mapping(
+        ShareClassId
+            => mapping(
+            address reserver => mapping(uint32 reason => mapping(address asset => mapping(uint256 tokenId => uint128)))
+        )
+    ) public reservedBy;
 
     constructor(PoolId poolId_, address deployer) Escrow(deployer) {
         poolId = poolId_;
@@ -30,7 +36,10 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     }
 
     /// @inheritdoc IPoolEscrow
-    function withdraw(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external auth {
+    function withdraw(ShareClassId scId, address asset, uint256 tokenId, address receiver, uint128 value)
+        external
+        auth
+    {
         Holding storage holding_ = holding[scId][asset][tokenId];
         require(holding_.total >= holding_.reserved, InsufficientBalance(asset, tokenId, value, 0));
 
@@ -38,28 +47,37 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
         require(balance >= value, InsufficientBalance(asset, tokenId, value, balance));
 
         holding_.total -= value;
-
-        emit Withdraw(asset, tokenId, poolId, scId, value);
+        emit Withdraw(asset, tokenId, poolId, scId, receiver, value);
     }
 
     /// @inheritdoc IPoolEscrow
-    function reserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external auth {
-        uint128 newValue = holding[scId][asset][tokenId].reserved + value;
-        holding[scId][asset][tokenId].reserved = newValue;
+    function reserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value, address caller, uint32 reason)
+        external
+        auth
+    {
+        Holding storage holding_ = holding[scId][asset][tokenId];
 
-        emit IncreaseReserve(asset, tokenId, poolId, scId, value, newValue);
+        reservedBy[scId][caller][reason][asset][tokenId] += value;
+        holding_.reserved += value;
+
+        uint128 newReservedAmount = reservedBy[scId][caller][reason][asset][tokenId];
+        emit IncreaseReserve(asset, tokenId, poolId, scId, caller, reason, value, newReservedAmount);
     }
 
     /// @inheritdoc IPoolEscrow
-    function unreserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external auth {
-        uint128 prevValue = holding[scId][asset][tokenId].reserved;
-        uint128 value_ = value;
-        require(prevValue >= value_, InsufficientReservedAmount());
+    function unreserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value, address caller, uint32 reason)
+        external
+        auth
+    {
+        Holding storage holding_ = holding[scId][asset][tokenId];
 
-        uint128 newValue = prevValue - value_;
-        holding[scId][asset][tokenId].reserved = newValue;
+        require(reservedBy[scId][caller][reason][asset][tokenId] >= value, InsufficientReserve());
 
-        emit DecreaseReserve(asset, tokenId, poolId, scId, value, newValue);
+        reservedBy[scId][caller][reason][asset][tokenId] -= value;
+        holding_.reserved -= value;
+
+        uint128 newReservedAmount = reservedBy[scId][caller][reason][asset][tokenId];
+        emit DecreaseReserve(asset, tokenId, poolId, scId, caller, reason, value, newReservedAmount);
     }
 
     /// @inheritdoc IPoolEscrow

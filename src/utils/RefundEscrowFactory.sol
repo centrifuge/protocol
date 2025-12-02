@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {RefundEscrow, IRefundEscrow} from "./RefundEscrow.sol";
 import {IRefundEscrowFactory} from "./interfaces/IRefundEscrowFactory.sol";
 
-import {Auth} from "../../misc/Auth.sol";
-import {IAuth} from "../../misc/interfaces/IAuth.sol";
+import {Auth} from "../misc/Auth.sol";
+import {IAuth} from "../misc/interfaces/IAuth.sol";
 
-import {PoolId} from "../../core/types/PoolId.sol";
-
-import {RefundEscrow, IRefundEscrow} from "../RefundEscrow.sol";
+import {PoolId} from "../core/types/PoolId.sol";
 
 contract RefundEscrowFactory is Auth, IRefundEscrowFactory {
     address public controller;

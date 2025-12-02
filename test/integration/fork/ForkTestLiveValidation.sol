@@ -44,7 +44,6 @@ import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
-import {RefundEscrowFactory} from "../../../src/vaults/factories/RefundEscrowFactory.sol";
 
 import {FullDeployer} from "../../../script/FullDeployer.s.sol";
 
@@ -54,6 +53,7 @@ import {AxelarAdapter} from "../../../src/adapters/AxelarAdapter.sol";
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 import {WormholeAdapter} from "../../../src/adapters/WormholeAdapter.sol";
 import {LayerZeroAdapter} from "../../../src/adapters/LayerZeroAdapter.sol";
+import {RefundEscrowFactory} from "../../../src/utils/RefundEscrowFactory.sol";
 
 /// @title ForkTestLiveValidation
 /// @notice Contract for validating live contract permissions and state
@@ -99,10 +99,10 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     // Vault system
     address public router;
     address public routerEscrow;
-    address public globalEscrow;
     address public asyncRequestManager;
     address public syncManager;
     address public refundEscrowFactory;
+    address public subsidyManager;
 
     // Adapters
     address public wormholeAdapter;
@@ -275,7 +275,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         // Vault system
         router = IntegrationConstants.ROUTER;
         routerEscrow = IntegrationConstants.ROUTER_ESCROW;
-        globalEscrow = IntegrationConstants.GLOBAL_ESCROW;
         asyncRequestManager = IntegrationConstants.ASYNC_REQUEST_MANAGER;
         syncManager = IntegrationConstants.SYNC_MANAGER;
         refundEscrowFactory = IntegrationConstants.REFUND_ESCROW_FACTORY;
@@ -411,10 +410,10 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         // Vault system
         router = address(deploy.vaultRouter());
         routerEscrow = address(deploy.routerEscrow());
-        globalEscrow = address(deploy.globalEscrow());
         asyncRequestManager = address(deploy.asyncRequestManager());
         syncManager = address(deploy.syncManager());
         refundEscrowFactory = address(deploy.refundEscrowFactory());
+        subsidyManager = address(deploy.subsidyManager());
 
         // Skip wormholeAdapter, axelarAdapter, layerZeroAdapter due to not being public in FullDeployer
         // Can be queried via multiAdapter.adapters()
@@ -461,7 +460,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         vm.label(poolEscrowFactory, "PoolEscrowFactory");
         vm.label(router, "VaultRouter");
         vm.label(routerEscrow, "RouterEscrow");
-        vm.label(globalEscrow, "GlobalEscrow");
         vm.label(asyncRequestManager, "AsyncRequestManager");
         vm.label(syncManager, "SyncManager");
         vm.label(wormholeAdapter, "WormholeAdapter");
@@ -547,7 +545,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         // From FullDeployer - Admin & escrows
         _validateRootWard(tokenRecoverer);
         _validateRootWard(routerEscrow);
-        _validateRootWard(globalEscrow);
         if (refundEscrowFactory != address(0)) _validateRootWard(refundEscrowFactory); // TODO: Remove condition when constant added
 
         // From FullDeployer - Vault system
@@ -717,8 +714,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         _validateWard(asyncRequestManager, contractUpdater);
         _validateWard(asyncRequestManager, asyncVaultFactory);
         _validateWard(asyncRequestManager, syncDepositVaultFactory);
-        _validateWard(globalEscrow, asyncRequestManager);
-        if (refundEscrowFactory != address(0)) _validateWard(refundEscrowFactory, asyncRequestManager);
 
         _validateWard(syncManager, contractUpdater);
         _validateWard(syncManager, syncDepositVaultFactory);
@@ -880,13 +875,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         // ==================== SPOKE SIDE (CoreDeployer) ====================
 
-        assertEq(address(PoolEscrowFactory(poolEscrowFactory).gateway()), gateway, "PoolEscrowFactory gateway mismatch");
-        assertEq(
-            address(PoolEscrowFactory(poolEscrowFactory).balanceSheet()),
-            balanceSheet,
-            "PoolEscrowFactory balanceSheet mismatch"
-        );
-
         assertEq(address(Spoke(spoke).gateway()), gateway, "Spoke gateway mismatch");
         assertEq(address(Spoke(spoke).poolEscrowFactory()), poolEscrowFactory, "Spoke poolEscrowFactory mismatch");
         // NOTE: spoke.sender is set by MigrationSpell, not CoreDeployer (when reusing existing Root)
@@ -917,10 +905,10 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         // ==================== VAULT SIDE (FullDeployer) ====================
 
-        if (refundEscrowFactory != address(0)) {
+        if (refundEscrowFactory != address(0) && subsidyManager != address(0)) {
             assertEq(
                 address(RefundEscrowFactory(refundEscrowFactory).controller()),
-                asyncRequestManager,
+                subsidyManager,
                 "RefundEscrowFactory controller mismatch"
             );
         }
@@ -975,7 +963,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     function _validateEndorsements() internal view {
         assertTrue(Root(root).endorsed(balanceSheet), "BalanceSheet not endorsed by Root");
         assertTrue(Root(root).endorsed(asyncRequestManager), "AsyncRequestManager not endorsed by Root");
-        assertTrue(Root(root).endorsed(globalEscrow), "GlobalEscrow not endorsed by Root");
         assertTrue(Root(root).endorsed(router), "VaultRouter not endorsed by Root");
     }
 

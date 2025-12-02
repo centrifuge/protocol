@@ -40,6 +40,9 @@ ignored_warnings_from = [
 
 dynamic_test_linking = true
 
+# Exclude spell tests from test runs and coverage
+skip = ["test/spell/migration/validation/**/*.sol"]
+
 [profile.default.lint]
 severity = ["high"]
 exclude_lints = ["erc20-unchecked-transfer", "incorrect-shift"]

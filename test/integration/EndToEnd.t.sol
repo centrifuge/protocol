@@ -60,7 +60,6 @@ import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
-import {RefundEscrowFactory} from "../../src/vaults/factories/RefundEscrowFactory.sol";
 
 import {
     FullActionBatcher,
@@ -73,7 +72,9 @@ import {
 
 import "forge-std/Test.sol";
 
+import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
 import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
+import {RefundEscrowFactory} from "../../src/utils/RefundEscrowFactory.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///
@@ -135,6 +136,7 @@ contract EndToEndDeployment is Test {
         VaultRegistry vaultRegistry;
         // Vaults
         VaultRouter router;
+        SubsidyManager subsidyManager;
         bytes32 asyncVaultFactory;
         bytes32 syncDepositVaultFactory;
         AsyncRequestManager asyncRequestManager;
@@ -310,6 +312,7 @@ contract EndToEndDeployment is Test {
         s_.freezeOnlyHook = deploy.freezeOnlyHook();
         s_.fullRestrictionsHook = deploy.fullRestrictionsHook();
         s_.redemptionRestrictionsHook = deploy.redemptionRestrictionsHook();
+        s_.subsidyManager = deploy.subsidyManager();
         s_.asyncVaultFactory = address(deploy.asyncVaultFactory()).toBytes32();
         s_.syncDepositVaultFactory = address(deploy.syncDepositVaultFactory()).toBytes32();
         s_.asyncRequestManager = deploy.asyncRequestManager();
@@ -322,7 +325,7 @@ contract EndToEndDeployment is Test {
         s_.usdc.file("name", "USD Coin");
         s_.usdc.file("symbol", "USDC");
 
-        s_.asyncRequestManager.depositSubsidy{value: 0.5 ether}(POOL_A);
+        s_.subsidyManager.deposit{value: 0.5 ether}(POOL_A);
     }
 
     function _setSpoke(bool sameChain) internal {
@@ -845,7 +848,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.startPrank(BSM);
         s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
         s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
-        s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5);
+        s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5, true);
         s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
 
         // CHECKS

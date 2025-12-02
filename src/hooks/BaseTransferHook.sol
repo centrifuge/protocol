@@ -17,7 +17,9 @@ import {PoolId} from "../core/types/PoolId.sol";
 import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
+import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
 import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
+import {IPoolEscrowProvider} from "../core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
 
 import {IRoot} from "../admin/interfaces/IRoot.sol";
@@ -42,31 +44,30 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
 
     IRoot public immutable root;
     ISpoke public immutable spoke;
-    address public immutable redeemSource;
-    address public immutable depositTarget;
+    address public immutable poolEscrow;
     address public immutable crosschainSource;
+    IBalanceSheet public immutable balanceSheet;
+    IPoolEscrowProvider public immutable poolEscrowProvider;
 
     mapping(address token => mapping(address => bool)) public manager;
 
     constructor(
         address root_,
         address spoke_,
-        address redeemSource_,
-        address depositTarget_,
+        address balanceSheet_,
         address crosschainSource_,
-        address deployer
+        address deployer,
+        address poolEscrowProvider_,
+        address poolEscrow_
     ) Auth(deployer) {
-        require(
-            redeemSource_ != depositTarget_ && depositTarget_ != crosschainSource_
-                && redeemSource_ != crosschainSource_,
-            InvalidInputs()
-        );
+        require(balanceSheet_ != crosschainSource_, InvalidInputs());
 
         root = IRoot(root_);
         spoke = ISpoke(spoke_);
-        redeemSource = redeemSource_;
-        depositTarget = depositTarget_;
+        balanceSheet = IBalanceSheet(balanceSheet_);
         crosschainSource = crosschainSource_;
+        poolEscrowProvider = IPoolEscrowProvider(poolEscrowProvider_);
+        poolEscrow = poolEscrow_;
     }
 
     /// @dev Check if the msg.sender is ward or a manager
@@ -117,16 +118,30 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
         virtual
         returns (bool);
 
+    function isPoolEscrow(address addr) public view returns (bool) {
+        // Fast path: single-pool optimization
+        if (poolEscrow != address(0)) return addr == poolEscrow;
+
+        // Multi-pool path: dynamic verification
+        if (addr.code.length == 0) return false;
+
+        (bool success, bytes memory data) = addr.staticcall(abi.encodeWithSignature("poolId()"));
+        if (!success || data.length != 32) return false;
+
+        PoolId poolId = abi.decode(data, (PoolId));
+        return address(poolEscrowProvider.escrow(poolId)) == addr;
+    }
+
     function isDepositRequestOrIssuance(address from, address to) public view returns (bool) {
-        return from == address(0) && to != depositTarget && to != crosschainSource;
+        return from == address(0) && !isPoolEscrow(to) && to != crosschainSource;
     }
 
     function isDepositFulfillment(address from, address to) public view returns (bool) {
-        return from == address(0) && to == depositTarget;
+        return from == address(0) && isPoolEscrow(to);
     }
 
     function isDepositClaim(address from, address to) public view returns (bool) {
-        return from == depositTarget && to != address(0);
+        return isPoolEscrow(from) && to != address(0);
     }
 
     function isRedeemRequest(address, address to) public pure returns (bool) {
@@ -134,11 +149,11 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
     }
 
     function isRedeemFulfillment(address from, address to) public view returns (bool) {
-        return from == redeemSource && to == address(0);
+        return from == address(balanceSheet) && to == address(0);
     }
 
     function isRedeemClaimOrRevocation(address from, address to) public view returns (bool) {
-        return (from != redeemSource && from != crosschainSource) && to == address(0);
+        return (from != address(balanceSheet) && from != crosschainSource) && to == address(0);
     }
 
     function isCrosschainTransfer(address from, address to) public view returns (bool) {
@@ -150,16 +165,16 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
     }
 
     function isSourceOrTargetFrozen(address from, address to, HookData calldata hookData) public view returns (bool) {
-        return (uint128(hookData.from).getBit(FREEZE_BIT) == true && !root.endorsed(from))
-            || (uint128(hookData.to).getBit(FREEZE_BIT) == true && !root.endorsed(to));
+        return (uint128(hookData.from).getBit(FREEZE_BIT) == true && !isPoolEscrow(from))
+            || (uint128(hookData.to).getBit(FREEZE_BIT) == true && !isPoolEscrow(to));
     }
 
     function isSourceMember(address from, HookData calldata hookData) public view returns (bool) {
-        return uint128(hookData.from) >> 64 >= block.timestamp || root.endorsed(from);
+        return uint128(hookData.from) >> 64 >= block.timestamp || isPoolEscrow(from);
     }
 
     function isTargetMember(address to, HookData calldata hookData) public view returns (bool) {
-        return uint128(hookData.to) >> 64 >= block.timestamp || root.endorsed(to);
+        return uint128(hookData.to) >> 64 >= block.timestamp || root.endorsed(to) || isPoolEscrow(to);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -208,7 +223,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
     /// @inheritdoc IFreezable
     function freeze(address token, address user) public authOrManager(token) {
         require(user != address(0), CannotFreezeZeroAddress());
-        require(!root.endorsed(user), EndorsedUserCannotBeFrozen());
+        require(!root.endorsed(user) && !isPoolEscrow(user), EndorsedUserCannotBeFrozen());
 
         uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
         IShareToken(token).setHookData(user, bytes16(uint128(hookData.withBit(FREEZE_BIT, true))));
@@ -232,7 +247,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
     /// @inheritdoc IMemberlist
     function updateMember(address token, address user, uint64 validUntil) public authOrManager(token) {
         require(block.timestamp <= validUntil, InvalidValidUntil());
-        require(!root.endorsed(user), EndorsedUserCannotBeUpdated());
+        require(!root.endorsed(user) && !isPoolEscrow(user), EndorsedUserCannotBeUpdated());
 
         uint128 hookData = uint128(validUntil) << 64;
         hookData = uint128(uint256(hookData).withBit(FREEZE_BIT, isFrozen(token, user)));

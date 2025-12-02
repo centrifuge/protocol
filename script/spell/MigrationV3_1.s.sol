@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Escrow} from "../../src/misc/Escrow.sol";
-
 import {Spoke} from "../../src/core/spoke/Spoke.sol";
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
@@ -103,7 +101,6 @@ contract MigrationV3_1Executor is Script, CreateXScript, GraphQLQuery {
                 syncManager: SyncManager(_contractAddr("syncManager")),
                 protocolGuardian: ProtocolGuardian(_contractAddr("protocolGuardian")),
                 tokenRecoverer: TokenRecoverer(_contractAddr("tokenRecoverer")),
-                globalEscrow: Escrow(_contractAddr("globalEscrow")),
                 vaultRouter: VaultRouter(_contractAddr("vaultRouter")),
                 spokeAssetIds: _spokeAssetIds(),
                 hubAssetIds: _hubAssetIds(),

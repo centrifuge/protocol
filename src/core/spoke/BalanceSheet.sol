@@ -116,36 +116,47 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         address asset,
         uint256 tokenId,
         address receiver,
-        uint128 amount
+        uint128 amount,
+        bool wasNoted
     ) external payable isManager(poolId) {
-        AssetId assetId = spoke.assetToId(asset, tokenId);
         IPoolEscrow escrow_ = escrow(poolId);
-        escrow_.withdraw(scId, asset, tokenId, amount);
 
-        D18 pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId, assetId);
-        emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset_);
+        if (wasNoted) {
+            escrow_.withdraw(scId, asset, tokenId, receiver, amount);
 
-        _updateAssets(poolId, scId, assetId, amount, false);
+            AssetId assetId = spoke.assetToId(asset, tokenId);
+            D18 pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId, assetId);
+            emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset_);
+            _updateAssets(poolId, scId, assetId, amount, false);
+        }
 
         escrow_.authTransferTo(asset, tokenId, receiver, amount);
     }
 
     /// @inheritdoc IBalanceSheet
-    function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
-        public
-        payable
-        isManager(poolId)
-    {
-        escrow(poolId).reserve(scId, asset, tokenId, amount);
+    function reserve(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        uint128 amount,
+        address reserver,
+        uint32 reason
+    ) public payable isManager(poolId) {
+        escrow(poolId).reserve(scId, asset, tokenId, amount, reserver, reason);
     }
 
     /// @inheritdoc IBalanceSheet
-    function unreserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
-        public
-        payable
-        isManager(poolId)
-    {
-        escrow(poolId).unreserve(scId, asset, tokenId, amount);
+    function unreserve(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        uint128 amount,
+        address reserver,
+        uint32 reason
+    ) public payable isManager(poolId) {
+        escrow(poolId).unreserve(scId, asset, tokenId, amount, reserver, reason);
     }
 
     /// @inheritdoc IBalanceSheet

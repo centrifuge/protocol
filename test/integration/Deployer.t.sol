@@ -159,7 +159,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         vm.assume(nonWard != address(protocolGuardian));
         vm.assume(nonWard != address(spoke));
         vm.assume(nonWard != address(balanceSheet));
-        vm.assume(nonWard != address(contractUpdater));
         vm.assume(nonWard != address(hub));
         vm.assume(nonWard != address(hubHandler));
 
@@ -267,7 +266,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(poolEscrowFactory.root()), address(root));
-        assertEq(address(poolEscrowFactory.gateway()), address(gateway));
         assertEq(address(poolEscrowFactory.balanceSheet()), address(balanceSheet));
     }
 
@@ -457,17 +455,17 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         assertEq(routerEscrow.wards(nonWard), 0);
     }
 
-    function testGlobalEscrow(address nonWard) public view {
+    function testSubsidyManager(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(asyncRequestManager));
 
-        assertEq(globalEscrow.wards(address(root)), 1);
-        assertEq(globalEscrow.wards(address(asyncRequestManager)), 1);
-        assertEq(globalEscrow.wards(nonWard), 0);
+        assertEq(subsidyManager.wards(address(root)), 1);
+        assertEq(subsidyManager.wards(address(asyncRequestManager)), 1);
+        assertEq(subsidyManager.wards(nonWard), 0);
 
-        // root endorsements
-        assertEq(root.endorsed(address(globalEscrow)), true);
+        // dependencies set correctly
+        assertEq(address(subsidyManager.refundEscrowFactory()), address(refundEscrowFactory));
     }
 
     function testAsyncRequestManager(address nonWard) public view {
@@ -488,8 +486,7 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(asyncRequestManager.spoke()), address(spoke));
         assertEq(address(asyncRequestManager.balanceSheet()), address(balanceSheet));
-        assertEq(address(asyncRequestManager.globalEscrow()), address(globalEscrow));
-        assertEq(address(asyncRequestManager.refundEscrowFactory()), address(refundEscrowFactory));
+        assertEq(address(asyncRequestManager.subsidyManager()), address(subsidyManager));
 
         // root endorsements
         assertEq(root.endorsed(address(balanceSheet)), true);
@@ -559,14 +556,14 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
     function testRefundEscrowFactory(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(asyncRequestManager));
+        vm.assume(nonWard != address(subsidyManager));
 
         assertEq(refundEscrowFactory.wards(address(root)), 1);
-        assertEq(refundEscrowFactory.wards(address(asyncRequestManager)), 1);
+        assertEq(refundEscrowFactory.wards(address(subsidyManager)), 1);
         assertEq(refundEscrowFactory.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(refundEscrowFactory.controller()), address(asyncRequestManager));
+        assertEq(address(refundEscrowFactory.controller()), address(subsidyManager));
     }
 
     function testFreezeOnly(address nonWard) public view {

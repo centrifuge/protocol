@@ -87,7 +87,7 @@ contract OnOfframpManager is IOnOfframpManager {
             address receiver = receiverAddress.toAddress();
 
             require(offramp[asset][receiver], InvalidOfframpDestination());
-            balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount);
+            balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount, true);
             emit TrustedWithdraw(asset, amount, receiver);
         }
     }
@@ -124,7 +124,7 @@ contract OnOfframpManager is IOnOfframpManager {
         require(relayer[msg.sender], NotRelayer());
         require(receiver != address(0) && offramp[asset][receiver], InvalidOfframpDestination());
 
-        balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount);
+        balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount, true);
     }
 
     //----------------------------------------------------------------------------------------------

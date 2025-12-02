@@ -170,7 +170,6 @@ contract CoreActionBatcher is Constants {
         report.messageProcessor.file("vaultRegistry", address(report.vaultRegistry));
         report.messageProcessor.file("hubHandler", address(report.hubHandler));
 
-        report.poolEscrowFactory.file("gateway", address(report.gateway));
         report.poolEscrowFactory.file("balanceSheet", address(report.balanceSheet));
 
         report.spoke.file("gateway", address(report.gateway));

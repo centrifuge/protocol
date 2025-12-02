@@ -117,7 +117,6 @@ contract BaseTest is FullDeployer, Test {
         vaultRegistry.rely(address(this));
         tokenRecoverer.rely(address(this));
         routerEscrow.rely(address(this));
-        globalEscrow.rely(address(this));
         refundEscrowFactory.rely(address(this));
         asyncVaultFactory.rely(address(this));
         asyncRequestManager.rely(address(this));
@@ -160,7 +159,7 @@ contract BaseTest is FullDeployer, Test {
             OTHER_CHAIN_ID, POOL_A, testAdapters, uint8(testAdapters.length), uint8(testAdapters.length)
         );
 
-        asyncRequestManager.depositSubsidy{value: 0.5 ether}(POOL_A);
+        subsidyManager.deposit{value: 0.5 ether}(POOL_A);
         balanceSheet.updateManager(POOL_A, address(this), true);
 
         // We should not use the block ChainID
