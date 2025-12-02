@@ -6,7 +6,7 @@ import {IMessageLimits} from "./interfaces/IMessageLimits.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IProtocolPauser} from "./interfaces/IProtocolPauser.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
-import {IGateway, PROCESS_FAIL_MESSAGE_GAS} from "./interfaces/IGateway.sol";
+import {IGateway, GAS_FAIL_MESSAGE_STORAGE} from "./interfaces/IGateway.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
@@ -93,18 +93,8 @@ contract Gateway is Auth, Recoverable, IGateway {
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes memory batch) public pauseable auth {
         PoolId batchPoolId = processor.messagePoolId(batch);
-
-        uint256 remainingMessages;
         bytes memory remaining = batch;
-        while (remaining.length > 0) {
-            uint256 length = processor.messageLength(remaining);
-            remaining = remaining.slice(length, remaining.length - length);
-            remainingMessages++;
-        }
 
-        require(gasleft() > PROCESS_FAIL_MESSAGE_GAS * remainingMessages, NotEnoughGasToProcess());
-
-        remaining = batch;
         while (remaining.length > 0) {
             uint256 length = processor.messageLength(remaining);
             bytes memory message = remaining.slice(0, length);
@@ -117,9 +107,9 @@ contract Gateway is Auth, Recoverable, IGateway {
             remaining = remaining.slice(length, remaining.length - length);
             bytes32 messageHash = keccak256(message);
 
-            try processor.handle{
-                gas: gasleft() - PROCESS_FAIL_MESSAGE_GAS * remainingMessages--
-            }(centrifugeId, message) {
+            require(gasleft() > GAS_FAIL_MESSAGE_STORAGE, NotEnoughGasToProcess());
+
+            try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
                 emit ExecuteMessage(centrifugeId, message, messageHash);
             } catch (bytes memory err) {
                 failedMessages[centrifugeId][messageHash]++;

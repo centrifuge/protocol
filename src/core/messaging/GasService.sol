@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {IGasService} from "./interfaces/IGasService.sol";
 import {IMessageLimits} from "./interfaces/IMessageLimits.sol";
-import {PROCESS_FAIL_MESSAGE_GAS} from "./interfaces/IGateway.sol";
+import {GAS_FAIL_MESSAGE_STORAGE} from "./interfaces/IGateway.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
 /// @title  GasService
@@ -61,34 +61,34 @@ contract GasService is IGasService {
         }
 
         // NOTE: Below values should be updated using script/utils/benchmark.sh
-        scheduleUpgrade = _gasValue(95182);
-        cancelUpgrade = _gasValue(75589);
-        recoverTokens = RECOVERY_TOKEN_EXTRA_COST + _gasValue(152238);
-        registerAsset = _gasValue(104983);
-        setPoolAdapters = _gasValue(488111); // using MAX_ADAPTER_COUNT
-        request = _gasValue(221767);
-        notifyPool = _gasValue(1304522); // create escrow case
-        notifyShareClass = _gasValue(1860792);
-        notifyPricePoolPerShare = _gasValue(103070);
-        notifyPricePoolPerAsset = _gasValue(107088);
-        notifyShareMetadata = _gasValue(117547);
-        updateShareHook = _gasValue(92450);
-        initiateTransferShares = _gasValue(282468);
-        executeTransferShares = _gasValue(173617);
-        updateRestriction = _gasValue(113534);
-        trustedContractUpdate = _gasValue(144726);
-        requestCallback = _gasValue(309202); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2839807);
-        updateVaultLink = _gasValue(181401);
-        updateVaultUnlink = _gasValue(130119);
-        setRequestManager = _gasValue(101444);
-        updateBalanceSheetManager = _gasValue(100174);
-        updateHoldingAmount = _gasValue(300614);
-        updateShares = _gasValue(197700);
-        maxAssetPriceAge = _gasValue(106282);
-        maxSharePriceAge = _gasValue(103167);
-        updateGatewayManager = _gasValue(97719);
-        untrustedContractUpdate = _gasValue(84977);
+        scheduleUpgrade = _gasValue(87174);
+        cancelUpgrade = _gasValue(67581);
+        recoverTokens = _gasValue(144194);
+        registerAsset = _gasValue(96984);
+        setPoolAdapters = _gasValue(479696); // using MAX_ADAPTER_COUNT
+        request = _gasValue(213462);
+        notifyPool = _gasValue(1296523); // create escrow case
+        notifyShareClass = _gasValue(1852729);
+        notifyPricePoolPerShare = _gasValue(95062);
+        notifyPricePoolPerAsset = _gasValue(99071);
+        notifyShareMetadata = _gasValue(109503);
+        updateShareHook = _gasValue(84442);
+        initiateTransferShares = _gasValue(274451);
+        executeTransferShares = _gasValue(165600);
+        updateRestriction = _gasValue(105325);
+        trustedContractUpdate = _gasValue(136476);
+        requestCallback = _gasValue(300865); // approve deposit case
+        updateVaultDeployAndLink = _gasValue(2831790);
+        updateVaultLink = _gasValue(173384);
+        updateVaultUnlink = _gasValue(122102);
+        setRequestManager = _gasValue(93436);
+        updateBalanceSheetManager = _gasValue(92166);
+        updateHoldingAmount = _gasValue(292597);
+        updateShares = _gasValue(189692);
+        maxAssetPriceAge = _gasValue(98274);
+        maxSharePriceAge = _gasValue(95159);
+        updateGatewayManager = _gasValue(89711);
+        untrustedContractUpdate = _gasValue(76704);
     }
 
     /// @inheritdoc IMessageLimits
@@ -140,10 +140,10 @@ contract GasService is IGasService {
     }
 
     /// @dev - BASE_COST adds some offset to the benchmarked message
-    ///      - PROCESS_FAIL_MESSAGE_GAS is an extra required to process a possible message failure
+    ///      - GAS_FAIL_MESSAGE_STORAGE is an extra required to process a possible message failure
     ///      - Multiply by 64/63 is because EIP-150 pass 63/64 gas to each method call,
     ///        so we add here the adapter call required gas.
     function _gasValue(uint128 value) internal pure returns (uint128) {
-        return BASE_COST + uint128(PROCESS_FAIL_MESSAGE_GAS) + 64 * value / 63;
+        return BASE_COST + uint128(GAS_FAIL_MESSAGE_STORAGE) + 64 * value / 63;
     }
 }

@@ -13,7 +13,7 @@ import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IMessageLimits} from "../../../src/core/messaging/interfaces/IMessageLimits.sol";
 import {IProtocolPauser} from "../../../src/core/messaging/interfaces/IProtocolPauser.sol";
 import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
-import {IGateway, PROCESS_FAIL_MESSAGE_GAS} from "../../../src/core/messaging/interfaces/IGateway.sol";
+import {IGateway, GAS_FAIL_MESSAGE_STORAGE} from "../../../src/core/messaging/interfaces/IGateway.sol";
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 
@@ -111,6 +111,16 @@ contract GatewayExt is Gateway {
 
     function outboundBatch(uint16 centrifugeId, PoolId poolId) public view returns (bytes memory) {
         return TransientBytesLib.get(_outboundBatchSlot(centrifugeId, poolId));
+    }
+
+    function process(uint16 centrifugeId, bytes memory message, bytes32 messageHash) public {
+        // Copied only the try catch from `handle`, to be able to measure the gas cost
+        try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
+            emit ExecuteMessage(centrifugeId, message, messageHash);
+        } catch (bytes memory err) {
+            failedMessages[centrifugeId][messageHash]++;
+            emit FailMessage(centrifugeId, message, messageHash, err);
+        }
     }
 
     function startBatching() public {
@@ -255,17 +265,7 @@ contract GatewayTestHandle is GatewayTest {
 
     function testErrNotEnoughGasToProcess() public {
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        uint256 notEnough = PROCESS_FAIL_MESSAGE_GAS;
-
-        vm.expectRevert(IGateway.NotEnoughGasToProcess.selector);
-        gateway.handle{gas: notEnough - 1}(REMOTE_CENT_ID, batch);
-    }
-
-    function testErrNotEnoughGasToProcessWithBatch() public {
-        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
-        bytes memory message2 = MessageKind.WithPoolA2.asBytes();
-        bytes memory batch = abi.encodePacked(message1, message2);
-        uint256 notEnough = PROCESS_FAIL_MESSAGE_GAS * 2;
+        uint256 notEnough = GAS_FAIL_MESSAGE_STORAGE;
 
         vm.expectRevert(IGateway.NotEnoughGasToProcess.selector);
 
@@ -350,8 +350,9 @@ contract GatewayTestHandle is GatewayTest {
 
     function testMessageFailBenchmark() public {
         bytes memory message = MessageKind.WithPoolAFail.asBytes();
+        bytes32 messageHash = keccak256(message);
 
-        gateway.handle(REMOTE_CENT_ID, message);
+        gateway.process(REMOTE_CENT_ID, message, messageHash);
     }
 }
 
