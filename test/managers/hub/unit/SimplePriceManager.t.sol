@@ -7,9 +7,7 @@ import {Multicall} from "../../../../src/misc/Multicall.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
-import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {ShareClassId, newShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IBatchedMulticall} from "../../../../src/core/utils/interfaces/IBatchedMulticall.sol";
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
 
 import {SimplePriceManager} from "../../../../src/managers/hub/SimplePriceManager.sol";
@@ -19,24 +17,7 @@ import "forge-std/Test.sol";
 
 contract IsContract {}
 
-contract MockGateway {
-    function withBatch(bytes memory data, address) external payable returns (uint256 cost) {
-        (bool success, bytes memory returnData) = msg.sender.call{value: msg.value}(data);
-        if (!success) {
-            uint256 length = returnData.length;
-            require(length != 0, "Empty revert");
-
-            assembly ("memory-safe") {
-                revert(add(32, returnData), length)
-            }
-        }
-        return 0;
-    }
-}
-
-contract MockHub is Multicall {
-    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external payable {}
-}
+contract MockHub is Multicall {}
 
 contract SimplePriceManagerTest is Test {
     PoolId constant POOL_A = PoolId.wrap(1);
@@ -51,7 +32,6 @@ contract SimplePriceManagerTest is Test {
     AssetId asset2 = newAssetId(2, 1);
 
     address hub = address(new MockHub());
-    address gateway = address(new MockGateway());
     address shareClassManager = address(new IsContract());
     address hubHelpers = address(new IsContract());
 
@@ -70,9 +50,7 @@ contract SimplePriceManagerTest is Test {
 
     function _setupMocks() internal {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.shareClassManager.selector), abi.encode(shareClassManager));
-        vm.mockCall(hub, abi.encodeWithSelector(IBatchedMulticall.gateway.selector), abi.encode(gateway));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateSharePrice.selector), abi.encode());
-        vm.mockCall(hub, abi.encodeWithSelector(IHub.notifySharePrice.selector), abi.encode(uint256(0)));
 
         vm.mockCall(
             shareClassManager,
@@ -94,7 +72,6 @@ contract SimplePriceManagerTest is Test {
             abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_2),
             abi.encode(200)
         );
-        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.lockCallback.selector), abi.encode(address(this)));
     }
 
     function _deployManager() internal {

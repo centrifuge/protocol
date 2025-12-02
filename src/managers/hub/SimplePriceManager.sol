@@ -9,13 +9,11 @@ import {D18, d18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {IHub} from "../../core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
 import {IShareClassManager} from "../../core/hub/interfaces/IShareClassManager.sol";
 
 /// @notice Base share price calculation manager for single share class pools.
 contract SimplePriceManager is ISimplePriceManager {
     IHub public immutable hub;
-    IGateway public immutable gateway;
     address public immutable navUpdater;
     IShareClassManager public immutable shareClassManager;
 
@@ -24,7 +22,6 @@ contract SimplePriceManager is ISimplePriceManager {
 
     constructor(IHub hub_, address navUpdater_) {
         hub = hub_;
-        gateway = hub_.gateway();
         shareClassManager = hub_.shareClassManager();
         navUpdater = navUpdater_;
     }
@@ -37,17 +34,6 @@ contract SimplePriceManager is ISimplePriceManager {
     function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) public virtual {
         require(msg.sender == navUpdater, NotAuthorized());
         require(scId.index() == 1, InvalidShareClass());
-
-        gateway.withBatch(
-            abi.encodeWithSelector(
-                SimplePriceManager.onUpdateCallback.selector, poolId, scId, centrifugeId, netAssetValue
-            ),
-            address(0)
-        );
-    }
-
-    function onUpdateCallback(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) external {
-        gateway.lockCallback();
 
         NetworkMetrics storage networkMetrics_ = networkMetrics[poolId][centrifugeId];
         Metrics storage metrics_ = metrics[poolId];
