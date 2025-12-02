@@ -674,6 +674,11 @@ contract SpokeTestLinkToken is SpokeTest {
         spoke.linkToken(POOL_A, SC_1, share);
 
         assertEq(address(spoke.shareToken(POOL_A, SC_1)), address(share));
+
+        (PoolId returnedPoolId, ShareClassId returnedScId) = spoke.shareTokenDetails(address(share));
+
+        assertEq(returnedPoolId.raw(), POOL_A.raw());
+        assertEq(returnedScId.raw(), SC_1.raw());
     }
 }
 
@@ -1124,5 +1129,14 @@ contract SpokeTestPricesPoolPer is SpokeTest {
 
         assertEq(assetPrice.raw(), PRICE.raw());
         assertEq(sharePrice.raw(), (PRICE + d18(1)).raw());
+    }
+}
+
+contract SpokeTestshareTokenDetails is SpokeTest {
+    function testErrShareTokenDoesNotExist() public {
+        address nonExistentToken = makeAddr("nonExistentToken");
+
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.shareTokenDetails(nonExistentToken);
     }
 }

@@ -6,7 +6,7 @@ import {IShareToken} from "./interfaces/IShareToken.sol";
 import {ITransferHook} from "./interfaces/ITransferHook.sol";
 import {ITokenFactory} from "./factories/interfaces/ITokenFactory.sol";
 import {IPoolEscrowFactory} from "./factories/interfaces/IPoolEscrowFactory.sol";
-import {AssetIdKey, Pool, ShareClassDetails, ISpoke} from "./interfaces/ISpoke.sol";
+import {AssetIdKey, Pool, ShareClassDetails, TokenDetails, ISpoke} from "./interfaces/ISpoke.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
@@ -51,6 +51,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     uint64 internal _assetCounter;
     mapping(AssetId => AssetIdKey) internal _idToAsset;
+    mapping(address token => TokenDetails) internal _tokenDetails;
     mapping(address asset => mapping(uint256 tokenId => AssetId)) internal _assetToId;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => Price))) internal _pricePoolPerAsset;
 
@@ -208,6 +209,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     /// @inheritdoc ISpoke
     function linkToken(PoolId poolId, ShareClassId scId, IShareToken shareToken_) public auth {
         shareClass[poolId][scId].shareToken = shareToken_;
+        _tokenDetails[address(shareToken_)] = TokenDetails(poolId, scId);
         emit AddShareClass(poolId, scId, shareToken_);
     }
 
@@ -368,6 +370,14 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     function assetToId(address asset, uint256 tokenId) public view returns (AssetId assetId) {
         assetId = _assetToId[asset][tokenId];
         require(assetId.raw() != 0, UnknownAsset());
+    }
+
+    /// @inheritdoc ISpoke
+    function shareTokenDetails(address shareToken_) public view returns (PoolId poolId, ShareClassId scId) {
+        TokenDetails storage details = _tokenDetails[shareToken_];
+        poolId = details.poolId;
+        scId = details.scId;
+        require(!poolId.isNull() && !scId.isNull(), ShareTokenDoesNotExist());
     }
 
     /// @inheritdoc ISpoke

@@ -26,6 +26,12 @@ struct ShareClassDetails {
     Price pricePoolPerShare;
 }
 
+/// @dev Eech share token maps to a pool and share class
+struct TokenDetails {
+    PoolId poolId;
+    ShareClassId scId;
+}
+
 struct AssetIdKey {
     /// @dev The address of the asset
     address asset;
@@ -263,6 +269,14 @@ interface ISpoke {
     /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
     /// @return assetId The underlying internal uint128 assetId.
     function assetToId(address asset, uint256 tokenId) external view returns (AssetId assetId);
+
+    /// @notice Returns poolId and shareClassId given a share token address
+    /// @dev Reverts if share token does not exist
+    ///
+    /// @param shareToken_ The address of the share token
+    /// @return poolId The pool id associated with the share token
+    /// @return scId The share class id associated with the share token
+    function shareTokenDetails(address shareToken_) external view returns (PoolId poolId, ShareClassId scId);
 
     /// @notice Returns whether the given pool id is active
     /// @param poolId The pool id
