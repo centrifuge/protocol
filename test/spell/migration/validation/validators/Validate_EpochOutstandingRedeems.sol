@@ -7,49 +7,38 @@ import {BaseValidator} from "../BaseValidator.sol";
 
 /// @title Validate_EpochOutstandingRedeems
 /// @notice Validates that no pools have pending batch redeem requests
-/// @dev Queries epochOutstandingRedeems from Centrifuge indexer
+/// @dev
 contract Validate_EpochOutstandingRedeems is BaseValidator {
     using stdJson for string;
 
-    struct EpochRedeem {
-        uint256 assetId;
-        uint256 pendingSharesAmount;
-        uint256 poolId;
-        string tokenId;
+    string constant QUERY =
+        "epochOutstandingRedeems(limit: 1000) { items { poolId tokenId assetId pendingSharesAmount } totalCount }";
+
+    function supportedPhases() public pure override returns (Phase) {
+        return Phase.PRE;
     }
 
-    function validate() public override returns (ValidationResult memory) {
-        string memory json = _queryGraphQL(
-            '{"query": "{ epochOutstandingRedeems(limit: 1000) { items { poolId tokenId assetId pendingSharesAmount } totalCount } }"}'
-        );
+    function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
+        string memory json = ctx.store.query(QUERY);
 
         uint256 totalCount = json.readUint(".data.epochOutstandingRedeems.totalCount");
 
-        // Parse using stdJson helpers (see BaseValidator for why we don't use abi.decode)
-        EpochRedeem[] memory redeems = new EpochRedeem[](totalCount);
-        string memory basePath = ".data.epochOutstandingRedeems.items";
-        for (uint256 i = 0; i < totalCount; i++) {
-            redeems[i].assetId = json.readUint(_buildJsonPath(basePath, i, "assetId"));
-            redeems[i].pendingSharesAmount = json.readUint(_buildJsonPath(basePath, i, "pendingSharesAmount"));
-            redeems[i].poolId = json.readUint(_buildJsonPath(basePath, i, "poolId"));
-            redeems[i].tokenId = json.readString(_buildJsonPath(basePath, i, "tokenId"));
-        }
-
-        ValidationError[] memory errors = new ValidationError[](redeems.length);
+        ValidationError[] memory errors = new ValidationError[](totalCount);
         uint256 errorCount = 0;
 
-        for (uint256 i = 0; i < redeems.length; i++) {
-            if (redeems[i].pendingSharesAmount > 0) {
+        string memory basePath = ".data.epochOutstandingRedeems.items";
+        for (uint256 i = 0; i < totalCount; i++) {
+            uint256 pendingAmount = json.readUint(_buildJsonPath(basePath, i, "pendingSharesAmount"));
+
+            if (pendingAmount > 0) {
+                uint256 poolId = json.readUint(_buildJsonPath(basePath, i, "poolId"));
                 errors[errorCount++] = _buildError({
                     field: "pendingSharesAmount",
-                    value: string.concat("Pool ", _toString(redeems[i].poolId)),
+                    value: string.concat("Pool ", _toString(poolId)),
                     expected: "0",
-                    actual: _toString(redeems[i].pendingSharesAmount),
+                    actual: _toString(pendingAmount),
                     message: string.concat(
-                        _toString(redeems[i].poolId),
-                        " has ",
-                        _toString(redeems[i].pendingSharesAmount / 1e18),
-                        " shares pending redeem in batch"
+                        _toString(poolId), " has ", _toString(pendingAmount / 1e18), " shares pending redeem"
                     )
                 });
             }

@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
+import {GraphQLStore} from "./GraphQLStore.sol";
+import {PoolMigrationOldContractsExt} from "./ValidationTypes.sol";
+
+import {PoolId} from "../../../../src/core/types/PoolId.sol";
+
+import {FullDeployer} from "../../../../script/FullDeployer.s.sol";
+
 import {Test} from "forge-std/Test.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 
 /// @title BaseValidator
-/// @notice Abstract base class for all pre-migration validators
-/// @dev Each validator must implement validate() function
+/// @notice Abstract base class for all migration validators (pre and post)
+/// @dev Each validator must implement validate(ValidationContext) and supportedPhases()
 /// @dev Run validators with: forge test --match-contract Validate_ --ffi -vv
 ///
 /// @dev JSON Parsing Note:
@@ -17,14 +24,28 @@ import {stdJson} from "forge-std/StdJson.sol";
 abstract contract BaseValidator is Test {
     using stdJson for string;
 
-    // Centrifuge GraphQL API endpoint
-    string constant GRAPHQL_API = "https://api.centrifuge.io/graphql";
-
     // ============================================
     // TYPES
     // ============================================
 
-    /// @notice Detailed validation error with full context
+    /// @notice Validation phase
+    enum Phase {
+        PRE,
+        POST,
+        BOTH
+    }
+
+    struct ValidationContext {
+        Phase phase; // Current validation phase
+        PoolMigrationOldContractsExt old; // v3.0.1 contracts (wrapped with test-only fields)
+        FullDeployer deployer; // v3.1 contracts (address(0) for PRE)
+        PoolId[] pools; // All pools to migrate
+        PoolId[] hubPools; // Pools where this chain is the hub
+        uint16 localCentrifugeId; // Current chain's centrifugeId
+        GraphQLStore store; // GraphQL query storage (PRE: query+store, POST: retrieve)
+        bool isMainnet;
+    }
+
     struct ValidationError {
         string field; // Field that failed (e.g., "pendingAssetsAmount")
         string value; // Identifier (e.g., "Pool 281474976710659")
@@ -44,36 +65,22 @@ abstract contract BaseValidator is Test {
     // ABSTRACT INTERFACE
     // ============================================
 
+    /// @notice Declare which phases this validator supports
+    /// @dev Must be implemented by each validator
+    /// @return Phase enum value (PRE, POST, or BOTH)
+    function supportedPhases() public view virtual returns (Phase);
+
     /// @notice Execute validation checks
     /// @dev Must be implemented by each validator
+    /// @param ctx ValidationContext with phase, contracts, pools, and cache
     /// @return ValidationResult with pass/fail status and errors
-    function validate() public virtual returns (ValidationResult memory);
+    function validate(ValidationContext memory ctx) public virtual returns (ValidationResult memory);
 
     // ============================================
     // SHARED HELPERS
     // ============================================
 
-    /// @notice Query Centrifuge GraphQL API via curl
-    /// @param query GraphQL query string (JSON format)
-    /// @return JSON response as string
-    function _queryGraphQL(string memory query) internal returns (string memory) {
-        string[] memory cmd = new string[](3);
-        cmd[0] = "bash";
-        cmd[1] = "-c";
-        cmd[2] =
-            string.concat("curl -s -X POST ", "-H 'Content-Type: application/json' ", "-d '", query, "' ", GRAPHQL_API);
-
-        bytes memory result = vm.ffi(cmd);
-        return string(result);
-    }
-
     /// @notice Build a detailed validation error
-    /// @param field The field that failed validation
-    /// @param value The identifier/context for the error
-    /// @param expected The expected value
-    /// @param actual The actual value found
-    /// @param message Human-readable error message
-    /// @return ValidationError struct
     function _buildError(
         string memory field,
         string memory value,
@@ -85,16 +92,11 @@ abstract contract BaseValidator is Test {
     }
 
     /// @notice Convert uint256 to string
-    /// @dev Wrapper around vm.toString for convenience
     function _toString(uint256 value) internal pure returns (string memory) {
         return vm.toString(value);
     }
 
     /// @notice Trim ValidationError array to actual error count
-    /// @dev Removes empty slots from pre-allocated error arrays
-    /// @param errors The pre-allocated error array
-    /// @param errorCount The actual number of errors
-    /// @return Trimmed array with only valid errors
     function _trimErrors(ValidationError[] memory errors, uint256 errorCount)
         internal
         pure
@@ -108,7 +110,6 @@ abstract contract BaseValidator is Test {
     }
 
     /// @notice Build JSON path for array element field
-    /// @dev Helper to construct paths like ".data.items[0].fieldName"
     /// @param basePath Base path to the array (e.g., ".data.items")
     /// @param index Array index
     /// @param fieldName Field name to access

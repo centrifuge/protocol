@@ -492,8 +492,8 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
     /// @notice Validates wards, file() configurations, endorsements, adapter configs, vaults & share tokens
     /// @param preMigration If true, skips validations that only apply post-migration (root wards, endorsements, vaults, sender configs)
-    /// @param isProduction If true, validates production vaults. Set to false for testnets which have different assets/vaults.
-    function validateDeployment(bool preMigration, bool isProduction) public view virtual {
+    /// @param isMainnet If true, validates production vaults. Set to false for testnets which have different assets/vaults.
+    function validateDeployment(bool preMigration, bool isMainnet) public view virtual {
         _validateV3RootPermissions();
         _validateContractWardRelationships(preMigration);
         _validateFileConfigurations(preMigration);
@@ -508,7 +508,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         // Endorsements and vaults are only validated post v3.1 migration
         if (!preMigration) {
             _validateEndorsements();
-            if (isProduction) {
+            if (isMainnet) {
                 _validateVaults();
             }
         }

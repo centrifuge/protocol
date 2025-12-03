@@ -20,3 +20,6 @@ lcov.info
 ## Recon Separate Configs
 /medusa-core
 /medusa-aggregator
+
+## Spell validation cache
+spell-cache/

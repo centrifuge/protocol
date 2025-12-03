@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.sol";
+import {ValidationOrchestrator} from "./validation/ValidationOrchestrator.sol";
 
-import {Root} from "../../../src/admin/Root.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 
+import {MigrationQueries} from "../../../script/spell/MigrationQueries.sol";
 import {MigrationV3_1Executor} from "../../../script/spell/MigrationV3_1.s.sol";
 import {
     FullActionBatcher,
@@ -22,26 +23,18 @@ import "forge-std/Test.sol";
 import {MigrationSpell} from "../../../src/spell/migration_v3.1/MigrationSpell.sol";
 import {ForkTestLiveValidation} from "../../integration/fork/ForkTestLiveValidation.sol";
 
-interface MessageDispatcherV3Like {
-    function root() external view returns (Root root);
-}
-
 contract MigrationV3_1Test is Test {
-    address constant PRODUCTION_MESSAGE_DISPATCHER_V3 = 0x21AF0C29611CFAaFf9271C8a3F84F2bC31d59132;
-    address constant TESTNET_MESSAGE_DISPATCHER_V3 = 0x332bE89CAB9FF501F5EBe3f6DC9487bfF50Bd0BF;
-
     ISafe immutable ADMIN = ISafe(makeAddr("ADMIN"));
     bytes32 constant NEW_VERSION = "v3.1";
     PoolId[] poolsToMigrate;
 
-    function _testCase(string memory rpcUrl, bool isProduction) public {
+    function _testCase(string memory rpcUrl, bool isMainnet) public {
         vm.createSelectFork(rpcUrl);
 
-        address rootWard = isProduction ? PRODUCTION_MESSAGE_DISPATCHER_V3 : TESTNET_MESSAGE_DISPATCHER_V3;
-        uint16 localCentrifugeId = MessageDispatcher(rootWard).localCentrifugeId();
-        Root rootV3 = MessageDispatcherV3Like(rootWard).root();
+        ValidationOrchestrator.ChainContext memory chain = ValidationOrchestrator.resolveChainContext(isMainnet);
+        MigrationQueries queryService = new MigrationQueries(chain.graphQLApi, chain.localCentrifugeId, isMainnet);
 
-        if (isProduction) {
+        if (isMainnet) {
             poolsToMigrate = [
                 PoolId.wrap(281474976710657),
                 PoolId.wrap(281474976710658),
@@ -67,9 +60,9 @@ contract MigrationV3_1Test is Test {
         deployer.deployFull(
             FullInput({
                 core: CoreInput({
-                    centrifugeId: localCentrifugeId,
+                    centrifugeId: chain.localCentrifugeId,
                     version: NEW_VERSION,
-                    root: address(rootV3),
+                    root: address(chain.rootV3),
                     blockLimits: defaultBlockLimits()
                 }),
                 adminSafe: ADMIN,
@@ -81,46 +74,53 @@ contract MigrationV3_1Test is Test {
 
         // ----- SPELL DEPLOYMENT -----
 
-        MigrationV3_1Executor migration = new MigrationV3_1Executor(isProduction);
+        MigrationV3_1Executor migration = new MigrationV3_1Executor(isMainnet);
         MigrationSpell migrationSpell = new MigrationSpell(address(migration));
 
         // ----- LABELLING -----
 
-        vm.label(address(rootWard), "v3.messageDispatcher");
+        vm.label(chain.rootWard, "v3.messageDispatcher");
         vm.label(address(deployer), "deployer");
         vm.label(address(batcher), "batcher");
         vm.label(address(migration), "migration");
 
-        // ----- PRE_CHECK -----
+        // ----- BUILD SHARED CONTEXT -----
 
-        _validateV3_1Deployment(deployer, true, isProduction);
+        ValidationOrchestrator.SharedContext memory shared =
+            ValidationOrchestrator.buildSharedContext(queryService, poolsToMigrate, chain, "");
 
-        // ----- MIGRATION -----
+        // ----- PRE-MIGRATION VALIDATION -----
 
-        vm.prank(rootWard);
-        rootV3.rely(address(migrationSpell)); // Ideally through guardian.scheduleRely()
+        ValidationOrchestrator.runPreValidation(shared, false); // shouldRevert = false (show warnings)
+
+        // Also run existing deployment validation
+        _validateV3_1Deployment(deployer, true, isMainnet);
+
+        // ----- EXECUTE MIGRATION -----
+
+        vm.prank(chain.rootWard);
+        chain.rootV3.rely(address(migrationSpell)); // Ideally through guardian.scheduleRely()
 
         migration.migrate(address(deployer), migrationSpell, poolsToMigrate);
 
-        // ----- POST_CHECK -----
+        // ----- STEP 3: POST-MIGRATION VALIDATION -----
 
         assertEq(migrationSpell.owner(), address(0));
 
-        _validateV3_1Deployment(deployer, false, isProduction);
+        ValidationOrchestrator.runPostValidation(shared, deployer);
 
-        // TODO: Complete post checks
+        // Also run existing deployment validation
+        _validateV3_1Deployment(deployer, false, isMainnet);
     }
 
     /// @notice Validate v3.1 deployment permissions and configuration
     /// @param preMigration If true, skips validations that only apply post-migration
-    /// @param isProduction If true, validates production vaults. Set to false for testnets.
-    function _validateV3_1Deployment(FullDeployer deployer, bool preMigration, bool isProduction) internal {
-        console.log(
-            "[DEBUG] Starting deployment validation: preMigration=%s, isProduction=%s", preMigration, isProduction
-        );
+    /// @param isMainnet If true, validates production vaults. Set to false for testnets.
+    function _validateV3_1Deployment(FullDeployer deployer, bool preMigration, bool isMainnet) internal {
+        console.log("[DEBUG] Starting deployment validation: preMigration=%s, isMainnet=%s", preMigration, isMainnet);
         ForkTestLiveValidation validator = new ForkTestLiveValidation();
         validator._loadContractsFromDeployer(deployer);
-        validator.validateDeployment(preMigration, isProduction);
+        validator.validateDeployment(preMigration, isMainnet);
     }
 
     function testMigrationEthereumMainnet() external {
