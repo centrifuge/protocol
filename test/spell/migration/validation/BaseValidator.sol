@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {GraphQLStore} from "./GraphQLStore.sol";
-import {PoolMigrationOldContractsExt} from "./ValidationTypes.sol";
+import {V3ContractsExt} from "./ValidationTypes.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 
@@ -37,7 +37,7 @@ abstract contract BaseValidator is Test {
 
     struct ValidationContext {
         Phase phase; // Current validation phase
-        PoolMigrationOldContractsExt old; // v3.0.1 contracts (wrapped with test-only fields)
+        V3ContractsExt old; // v3.0.1 contracts (wrapped with test-only fields)
         FullDeployer deployer; // v3.1 contracts (address(0) for PRE)
         PoolId[] pools; // All pools to migrate
         PoolId[] hubPools; // Pools where this chain is the hub

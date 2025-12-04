@@ -14,7 +14,6 @@ import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {MessageProcessor} from "../../src/core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../../src/core/messaging/MessageDispatcher.sol";
 
-import {Root} from "../../src/admin/Root.sol";
 import {TokenRecoverer} from "../../src/admin/TokenRecoverer.sol";
 import {ProtocolGuardian} from "../../src/admin/ProtocolGuardian.sol";
 
@@ -39,8 +38,7 @@ import {
     MigrationSpell,
     PoolParamsInput,
     GlobalParamsInput,
-    PoolMigrationOldContracts,
-    GlobalMigrationOldContracts
+    V3Contracts
 } from "../../src/spell/migration_v3.1/MigrationSpell.sol";
 
 contract MigrationV3_1Deployer is Script {
@@ -75,21 +73,28 @@ contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
         string memory graphQLApi = isMainnet ? GraphQLConstants.PRODUCTION_API : GraphQLConstants.TESTNET_API;
         configureGraphQl(graphQLApi, MessageDispatcher(_contractAddr("messageDispatcher")).localCentrifugeId());
 
-        Root root = root();
-        vm.label(address(root), "v3.root");
         vm.label(address(migrationSpell), "migrationSpell");
 
-        GlobalMigrationOldContracts memory globalV3 = globalMigrationOldContracts();
-        vm.label(address(globalV3.gateway), "v3.gateway");
-        vm.label(address(globalV3.spoke), "v3.spoke");
-        vm.label(address(globalV3.hubRegistry), "v3.hubRegistry");
-        vm.label(address(globalV3.asyncRequestManager), "v3.asyncRequestManager");
-        vm.label(address(globalV3.syncManager), "v3.syncManager");
+        V3Contracts memory v3 = v3Contracts();
+        vm.label(address(v3.root), "v3.root");
+        vm.label(address(v3.gateway), "v3.gateway");
+        vm.label(address(v3.poolEscrowFactory), "v3.poolEscrowFactory");
+        vm.label(address(v3.spoke), "v3.spoke");
+        vm.label(address(v3.balanceSheet), "v3.balanceSheet");
+        vm.label(address(v3.hubRegistry), "v3.hubRegistry");
+        vm.label(address(v3.shareClassManager), "v3.shareClassManager");
+        vm.label(address(v3.asyncVaultFactory), "v3.asyncVaultFactory");
+        vm.label(address(v3.asyncRequestManager), "v3.asyncRequestManager");
+        vm.label(address(v3.syncDepositVaultFactory), "v3.syncDepositVaultFactory");
+        vm.label(address(v3.syncManager), "v3.syncManager");
+        vm.label(address(v3.freezeOnly), "v3.freezeOnly");
+        vm.label(address(v3.fullRestrictions), "v3.fullRestrictions");
+        vm.label(address(v3.freelyTransferable), "v3.freelyTransferable");
+        vm.label(address(v3.redemptionRestrictions), "v3.redemptionRestrictions");
 
         migrationSpell.castGlobal(
             GlobalParamsInput({
-                v3: globalV3,
-                root: root,
+                v3: v3,
                 spoke: Spoke(_contractAddr("spoke")),
                 balanceSheet: BalanceSheet(_contractAddr("balanceSheet")),
                 hubRegistry: HubRegistry(_contractAddr("hubRegistry")),
@@ -107,30 +112,13 @@ contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
             })
         );
 
-        PoolMigrationOldContracts memory poolV3 = poolMigrationOldContracts();
-        vm.label(address(poolV3.gateway), "v3.gateway");
-        vm.label(address(poolV3.poolEscrowFactory), "v3.poolEscrowFactory");
-        vm.label(address(poolV3.spoke), "v3.spoke");
-        vm.label(address(poolV3.balanceSheet), "v3.balanceSheet");
-        vm.label(address(poolV3.hubRegistry), "v3.hubRegistry");
-        vm.label(address(poolV3.shareClassManager), "v3.shareClassManager");
-        vm.label(address(poolV3.asyncVaultFactory), "v3.asyncVaultFactory");
-        vm.label(address(poolV3.asyncRequestManager), "v3.asyncRequestManager");
-        vm.label(address(poolV3.syncDepositVaultFactory), "v3.syncDepositVaultFactory");
-        vm.label(address(poolV3.syncManager), "v3.syncManager");
-        vm.label(address(poolV3.freezeOnly), "v3.freezeOnly");
-        vm.label(address(poolV3.fullRestrictions), "v3.fullRestrictions");
-        vm.label(address(poolV3.freelyTransferable), "v3.freelyTransferable");
-        vm.label(address(poolV3.redemptionRestrictions), "v3.redemptionRestrictions");
-
         for (uint256 i; i < poolsToMigrate.length; i++) {
             PoolId poolId = poolsToMigrate[i];
 
             migrationSpell.castPool(
                 poolId,
                 PoolParamsInput({
-                    v3: poolV3,
-                    root: root,
+                    v3: v3,
                     spoke: Spoke(_contractAddr("spoke")),
                     balanceSheet: BalanceSheet(_contractAddr("balanceSheet")),
                     vaultRegistry: VaultRegistry(_contractAddr("vaultRegistry")),
@@ -159,7 +147,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
             );
         }
 
-        migrationSpell.lock(root);
+        migrationSpell.lock(v3.root);
     }
 
     function _contractAddr(string memory contractName) internal returns (address addr) {

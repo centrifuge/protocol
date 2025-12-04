@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ChainResolver} from "./ChainResolver.sol";
 import {ValidationOrchestrator} from "./validation/ValidationOrchestrator.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
@@ -31,7 +32,7 @@ contract MigrationV3_1Test is Test {
     function _testCase(string memory rpcUrl, bool isMainnet) public {
         vm.createSelectFork(rpcUrl);
 
-        ValidationOrchestrator.ChainContext memory chain = ValidationOrchestrator.resolveChainContext(isMainnet);
+        ChainResolver.ChainContext memory chain = ChainResolver.resolveChainContext(isMainnet);
         MigrationQueries queryService = new MigrationQueries(isMainnet);
         queryService.configureGraphQl(chain.graphQLApi, chain.localCentrifugeId);
 

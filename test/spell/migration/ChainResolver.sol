@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity 0.8.28;
+
+import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.sol";
+
+import {Root} from "../../../src/admin/Root.sol";
+
+import {GraphQLConstants} from "../../../script/utils/GraphQLConstants.sol";
+
+interface MessageDispatcherV3Like {
+    function root() external view returns (Root root);
+}
+
+/// @title ChainResolver
+/// @notice Initialize the context for a chain.
+library ChainResolver {
+    address constant PRODUCTION_MESSAGE_DISPATCHER_V3 = 0x21AF0C29611CFAaFf9271C8a3F84F2bC31d59132;
+    address constant TESTNET_MESSAGE_DISPATCHER_V3 = 0x332bE89CAB9FF501F5EBe3f6DC9487bfF50Bd0BF;
+
+    /// @notice Chain context resolved from isMainnet flag
+    struct ChainContext {
+        address rootWard;
+        uint16 localCentrifugeId;
+        Root rootV3;
+        string graphQLApi;
+        bool isMainnet;
+    }
+
+    /// @notice Resolve chain context from isMainnet flag
+    /// @dev Centralizes address resolution logic for v3.0.1 contracts
+    /// @param isMainnet Whether this is production (mainnet) or testnet
+    /// @return ctx ChainContext with resolved addresses and API endpoint
+    function resolveChainContext(bool isMainnet) internal view returns (ChainContext memory ctx) {
+        address rootWard = isMainnet ? PRODUCTION_MESSAGE_DISPATCHER_V3 : TESTNET_MESSAGE_DISPATCHER_V3;
+        uint16 localCentrifugeId = MessageDispatcher(rootWard).localCentrifugeId();
+        Root rootV3 = MessageDispatcherV3Like(rootWard).root();
+        string memory graphQLApi = isMainnet ? GraphQLConstants.PRODUCTION_API : GraphQLConstants.TESTNET_API;
+
+        ctx = ChainContext({
+            rootWard: rootWard,
+            localCentrifugeId: localCentrifugeId,
+            rootV3: rootV3,
+            graphQLApi: graphQLApi,
+            isMainnet: isMainnet
+        });
+    }
+}

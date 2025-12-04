@@ -80,17 +80,26 @@ struct AssetInfo {
     uint256 tokenId;
 }
 
-struct GlobalMigrationOldContracts {
+struct V3Contracts {
+    Root root;
     address gateway;
+    address poolEscrowFactory;
     address spoke;
+    address balanceSheet;
     address hubRegistry;
+    address shareClassManager;
+    address asyncVaultFactory;
     address asyncRequestManager;
+    address syncDepositVaultFactory;
     address syncManager;
+    address freezeOnly;
+    address fullRestrictions;
+    address freelyTransferable;
+    address redemptionRestrictions;
 }
 
 struct GlobalParamsInput {
-    GlobalMigrationOldContracts v3;
-    Root root;
+    V3Contracts v3;
     Spoke spoke;
     BalanceSheet balanceSheet;
     HubRegistry hubRegistry;
@@ -108,27 +117,9 @@ struct GlobalParamsInput {
     address[] vaults;
 }
 
-struct PoolMigrationOldContracts {
-    address gateway;
-    address poolEscrowFactory;
-    address spoke;
-    address balanceSheet;
-    address hubRegistry;
-    address shareClassManager;
-    address asyncVaultFactory;
-    address asyncRequestManager;
-    address syncDepositVaultFactory;
-    address syncManager;
-    address freezeOnly;
-    address fullRestrictions;
-    address freelyTransferable;
-    address redemptionRestrictions;
-}
-
 struct PoolParamsInput {
-    PoolMigrationOldContracts v3;
+    V3Contracts v3;
 
-    Root root;
     Spoke spoke;
     BalanceSheet balanceSheet;
     VaultRegistry vaultRegistry;
@@ -172,7 +163,7 @@ contract MigrationSpell {
 
         address[] memory contracts = _authorizedContracts(input);
         for (uint256 i; i < contracts.length; i++) {
-            input.root.relyContract(address(contracts[i]), address(this));
+            input.v3.root.relyContract(address(contracts[i]), address(this));
         }
 
         MessageDispatcherInfallibleMock messageDispatcherMock =
@@ -185,7 +176,7 @@ contract MigrationSpell {
         input.spoke.file("sender", address(input.messageDispatcher));
 
         for (uint256 i; i < contracts.length; i++) {
-            input.root.denyContract(address(contracts[i]), address(this));
+            input.v3.root.denyContract(address(contracts[i]), address(this));
         }
     }
 
@@ -194,22 +185,22 @@ contract MigrationSpell {
 
         address[] memory contracts = _authorizedContracts(input);
         for (uint256 i; i < contracts.length; i++) {
-            input.root.relyContract(address(contracts[i]), address(this));
+            input.v3.root.relyContract(address(contracts[i]), address(this));
         }
 
         _migratePool(poolId, input);
 
         for (uint256 i; i < contracts.length; i++) {
-            input.root.denyContract(address(contracts[i]), address(this));
+            input.v3.root.denyContract(address(contracts[i]), address(this));
         }
     }
 
     /// @notice after migrate all pools, we need to lock the spell
-    function lock(Root root) external {
+    function lock(Root rootV3) external {
         require(owner == msg.sender, "not authorized");
         owner = address(0);
 
-        root.deny(address(this));
+        rootV3.deny(address(this));
     }
 
     function _authorizedContracts(GlobalParamsInput memory input) internal pure returns (address[] memory) {
@@ -236,13 +227,13 @@ contract MigrationSpell {
 
     /// @dev after deploying with an existing root, the following wards are missing and need to be fixed
     function _missingRootWards(GlobalParamsInput memory input) internal {
-        input.root.rely(address(input.protocolGuardian));
-        input.root.rely(address(input.tokenRecoverer));
-        input.root.rely(address(input.messageDispatcher));
-        input.root.rely(address(input.messageProcessor));
-        input.root.endorse(address(input.balanceSheet));
-        input.root.endorse(address(input.asyncRequestManager));
-        input.root.endorse(address(input.vaultRouter));
+        input.v3.root.rely(address(input.protocolGuardian));
+        input.v3.root.rely(address(input.tokenRecoverer));
+        input.v3.root.rely(address(input.messageDispatcher));
+        input.v3.root.rely(address(input.messageProcessor));
+        input.v3.root.endorse(address(input.balanceSheet));
+        input.v3.root.endorse(address(input.asyncRequestManager));
+        input.v3.root.endorse(address(input.vaultRouter));
     }
 
     function _migrateGlobal(GlobalParamsInput memory input) internal {
@@ -269,28 +260,28 @@ contract MigrationSpell {
         // ----- VAULTS -----
         for (uint256 i; i < input.vaults.length; i++) {
             BaseVault vault = BaseVault(input.vaults[i]);
-            input.root.relyContract(address(vault), address(this));
+            input.v3.root.relyContract(address(vault), address(this));
 
-            input.root.relyContract(address(vault), address(input.asyncRequestManager));
-            input.root.relyContract(address(input.asyncRequestManager), address(vault));
+            input.v3.root.relyContract(address(vault), address(input.asyncRequestManager));
+            input.v3.root.relyContract(address(input.asyncRequestManager), address(vault));
 
-            input.root.denyContract(address(vault), address(input.v3.asyncRequestManager));
-            input.root.denyContract(address(input.v3.asyncRequestManager), address(vault));
+            input.v3.root.denyContract(address(vault), address(input.v3.asyncRequestManager));
+            input.v3.root.denyContract(address(input.v3.asyncRequestManager), address(vault));
 
             vault.file("manager", address(input.asyncRequestManager));
             vault.file("asyncRedeemManager", address(input.asyncRequestManager));
 
             if (vault.vaultKind() == VaultKind.SyncDepositAsyncRedeem) {
-                input.root.relyContract(address(vault), address(input.syncManager));
-                input.root.relyContract(address(input.syncManager), address(vault));
+                input.v3.root.relyContract(address(vault), address(input.syncManager));
+                input.v3.root.relyContract(address(input.syncManager), address(vault));
 
-                input.root.denyContract(address(vault), input.v3.syncManager);
-                input.root.denyContract(address(input.v3.syncManager), address(vault));
+                input.v3.root.denyContract(address(vault), input.v3.syncManager);
+                input.v3.root.denyContract(address(input.v3.syncManager), address(vault));
 
                 vault.file("syncDepositManager", address(input.syncManager));
             }
 
-            input.root.denyContract(address(vault), address(this));
+            input.v3.root.denyContract(address(vault), address(this));
         }
     }
 
@@ -320,9 +311,9 @@ contract MigrationSpell {
 
             IPoolEscrow poolEscrowV3 = PoolEscrowFactory(input.v3.poolEscrowFactory).escrow(poolId);
             if (address(poolEscrowV3).balance > 0) {
-                input.root.relyContract(address(poolEscrowV3), address(this));
+                input.v3.root.relyContract(address(poolEscrowV3), address(this));
                 poolEscrowV3.recoverTokens(ETH_ADDRESS, address(refund), address(poolEscrowV3).balance);
-                input.root.denyContract(address(poolEscrowV3), address(this));
+                input.v3.root.denyContract(address(poolEscrowV3), address(this));
             }
         }
     }
@@ -429,8 +420,8 @@ contract MigrationSpell {
         {
             IPoolEscrow poolEscrowV3 = BalanceSheet(input.v3.balanceSheet).escrow(poolId);
             IPoolEscrow poolEscrow = input.balanceSheet.escrow(poolId);
-            input.root.relyContract(address(poolEscrowV3), address(this));
-            input.root.relyContract(address(poolEscrow), address(this));
+            input.v3.root.relyContract(address(poolEscrowV3), address(this));
+            input.v3.root.relyContract(address(poolEscrow), address(this));
 
             for (uint256 i; i < input.assets.length; i++) {
                 AssetInfo memory assetInfo = input.assets[i];
@@ -452,13 +443,13 @@ contract MigrationSpell {
                     if (isShare) {
                         // NOTE: investment assets can be shares from other pools, special case for them:
                         address shareHook = IShareToken(assetInfo.addr).hook();
-                        input.root.relyContract(address(assetInfo.addr), address(this));
+                        input.v3.root.relyContract(address(assetInfo.addr), address(this));
                         IShareToken(assetInfo.addr).file("hook", address(0)); // we don't want any restrictions
 
                         poolEscrowV3.authTransferTo(assetInfo.addr, assetInfo.tokenId, address(poolEscrow), balance);
 
                         IShareToken(assetInfo.addr).file("hook", shareHook);
-                        input.root.denyContract(address(assetInfo.addr), address(this));
+                        input.v3.root.denyContract(address(assetInfo.addr), address(this));
                     } else {
                         poolEscrowV3.authTransferTo(assetInfo.addr, assetInfo.tokenId, address(poolEscrow), balance);
                     }
@@ -481,20 +472,20 @@ contract MigrationSpell {
                 }
             }
 
-            input.root.denyContract(address(poolEscrow), address(this));
-            input.root.denyContract(address(poolEscrowV3), address(this));
+            input.v3.root.denyContract(address(poolEscrow), address(this));
+            input.v3.root.denyContract(address(poolEscrowV3), address(this));
         }
 
         // ----- SHARE_TOKEN -----
         if (address(shareToken) != address(0)) {
-            input.root.relyContract(address(shareToken), address(input.spoke));
-            input.root.relyContract(address(shareToken), address(input.balanceSheet));
-            input.root.denyContract(address(shareToken), address(input.v3.spoke));
-            input.root.denyContract(address(shareToken), address(input.v3.balanceSheet));
+            input.v3.root.relyContract(address(shareToken), address(input.spoke));
+            input.v3.root.relyContract(address(shareToken), address(input.balanceSheet));
+            input.v3.root.denyContract(address(shareToken), address(input.v3.spoke));
+            input.v3.root.denyContract(address(shareToken), address(input.v3.balanceSheet));
 
             address hookV3 = shareToken.hook();
             if (hookV3 != address(0)) {
-                input.root.relyContract(address(shareToken), address(this));
+                input.v3.root.relyContract(address(shareToken), address(this));
                 if (hookV3 == input.v3.freezeOnly) {
                     shareToken.file("hook", address(input.freezeOnly));
                 } else if (hookV3 == input.v3.fullRestrictions) {
@@ -504,7 +495,7 @@ contract MigrationSpell {
                 } else if (hookV3 == input.v3.redemptionRestrictions) {
                     shareToken.file("hook", address(input.redemptionRestrictions));
                 }
-                input.root.denyContract(address(shareToken), address(this));
+                input.v3.root.denyContract(address(shareToken), address(this));
             }
         }
 

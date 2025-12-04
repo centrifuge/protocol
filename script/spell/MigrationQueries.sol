@@ -11,11 +11,7 @@ import {OnOfframpManager} from "../../src/managers/spoke/OnOfframpManager.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 
 import {GraphQLQuery} from "../utils/GraphQLQuery.s.sol";
-import {
-    AssetInfo,
-    PoolMigrationOldContracts,
-    GlobalMigrationOldContracts
-} from "../../src/spell/migration_v3.1/MigrationSpell.sol";
+import {AssetInfo, V3Contracts} from "../../src/spell/migration_v3.1/MigrationSpell.sol";
 
 /// @title MigrationQueries
 /// @notice Centralized GraphQL queries for migration scripts
@@ -47,10 +43,11 @@ contract MigrationQueries is GraphQLQuery {
     // Global Queries
     // ============================================
 
-    /// @notice Get Root contract address from GraphQL
-    function root()
+    /// @notice Get v3.0.1 pool-level contract addresses for migration
+    /// @dev Public so tests can reuse this instead of duplicating addresses
+    function v3Contracts()
         public
-        returns (Root)
+        returns (V3Contracts memory v3)
     {
 
         // forgefmt: disable-next-item
@@ -66,66 +63,6 @@ contract MigrationQueries is GraphQLQuery {
             "deployments(", where, ") {",
             "  items {"
             "    root"
-            "  }"
-            "}"
-        ));
-
-        return Root(json.readAddress(".data.deployments.items[0].root"));
-    }
-
-    /// @notice Get v3.0.1 global contract addresses for migration
-    function globalMigrationOldContracts()
-        public
-        returns (GlobalMigrationOldContracts memory v3)
-    {
-
-        // forgefmt: disable-next-item
-        string memory where = string.concat(
-            "limit: 1000,"
-            "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
-            "}"
-        );
-
-        // forgefmt: disable-next-item
-        string memory json = _queryGraphQL(string.concat(
-            "deployments(", where, ") {",
-            "  items {"
-            "    gateway"
-            "    spoke"
-            "    hubRegistry"
-            "    asyncRequestManager"
-            "    syncManager"
-            "  }"
-            "}"
-        ));
-
-        v3.gateway = json.readAddress(".data.deployments.items[0].gateway");
-        v3.spoke = json.readAddress(".data.deployments.items[0].spoke");
-        v3.hubRegistry = json.readAddress(".data.deployments.items[0].hubRegistry");
-        v3.asyncRequestManager = json.readAddress(".data.deployments.items[0].asyncRequestManager");
-        v3.syncManager = json.readAddress(".data.deployments.items[0].syncManager");
-    }
-
-    /// @notice Get v3.0.1 pool-level contract addresses for migration
-    /// @dev Public so tests can reuse this instead of duplicating addresses
-    function poolMigrationOldContracts()
-        public
-        returns (PoolMigrationOldContracts memory v3)
-    {
-
-        // forgefmt: disable-next-item
-        string memory where = string.concat(
-            "limit: 1000,"
-            "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
-            "}"
-        );
-
-        // forgefmt: disable-next-item
-        string memory json = _queryGraphQL(string.concat(
-            "deployments(", where, ") {",
-            "  items {"
             "    gateway"
             "    poolEscrowFactory"
             "    spoke"
@@ -144,6 +81,7 @@ contract MigrationQueries is GraphQLQuery {
             "}"
         ));
 
+        v3.root = Root(json.readAddress(".data.deployments.items[0].root"));
         v3.gateway = json.readAddress(".data.deployments.items[0].gateway");
         v3.poolEscrowFactory = json.readAddress(".data.deployments.items[0].poolEscrowFactory");
         v3.spoke = json.readAddress(".data.deployments.items[0].spoke");

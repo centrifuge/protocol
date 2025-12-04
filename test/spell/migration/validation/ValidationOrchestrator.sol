@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {GraphQLStore} from "./GraphQLStore.sol";
 import {BaseValidator} from "./BaseValidator.sol";
-import {PoolMigrationOldContractsExt} from "./ValidationTypes.sol";
+import {V3ContractsExt} from "./ValidationTypes.sol";
 import {Validate_ShareClassManager} from "./validators/Validate_ShareClassManager.sol";
 import {Validate_CrossChainMessages} from "./validators/Validate_CrossChainMessages.sol";
 import {Validate_OutstandingInvests} from "./validators/Validate_OutstandingInvests.sol";
@@ -12,19 +12,13 @@ import {Validate_EpochOutstandingInvests} from "./validators/Validate_EpochOutst
 import {Validate_EpochOutstandingRedeems} from "./validators/Validate_EpochOutstandingRedeems.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
-import {MessageDispatcher} from "../../../../src/core/messaging/MessageDispatcher.sol";
-
-import {Root} from "../../../../src/admin/Root.sol";
 
 import {FullDeployer} from "../../../../script/FullDeployer.s.sol";
-import {GraphQLConstants} from "../../../../script/utils/GraphQLConstants.sol";
 import {MigrationQueries} from "../../../../script/spell/MigrationQueries.sol";
 
 import {Vm} from "forge-std/Vm.sol";
 
-interface MessageDispatcherV3Like {
-    function root() external view returns (Root root);
-}
+import {ChainResolver} from "../ChainResolver.sol";
 
 /// @title ValidationOrchestrator
 /// @notice Orchestrates pre and post-migration validation
@@ -32,22 +26,10 @@ interface MessageDispatcherV3Like {
 library ValidationOrchestrator {
     Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
-    address constant PRODUCTION_MESSAGE_DISPATCHER_V3 = 0x21AF0C29611CFAaFf9271C8a3F84F2bC31d59132;
-    address constant TESTNET_MESSAGE_DISPATCHER_V3 = 0x332bE89CAB9FF501F5EBe3f6DC9487bfF50Bd0BF;
-
     event log_string(string);
 
     struct ValidationSuite {
         BaseValidator[] validators;
-    }
-
-    /// @notice Chain context resolved from isMainnet flag
-    struct ChainContext {
-        address rootWard;
-        uint16 localCentrifugeId;
-        Root rootV3;
-        string graphQLApi;
-        bool isMainnet;
     }
 
     /// @notice Shared context built once and reused for PRE and POST validation
@@ -55,30 +37,11 @@ library ValidationOrchestrator {
     struct SharedContext {
         uint16 localCentrifugeId;
         bool isMainnet;
-        PoolMigrationOldContractsExt old;
+        V3ContractsExt old;
         PoolId[] pools;
         PoolId[] hubPools;
         GraphQLStore store;
         MigrationQueries queryService;
-    }
-
-    /// @notice Resolve chain context from isMainnet flag
-    /// @dev Centralizes address resolution logic for v3.0.1 contracts
-    /// @param isMainnet Whether this is production (mainnet) or testnet
-    /// @return ctx ChainContext with resolved addresses and API endpoint
-    function resolveChainContext(bool isMainnet) internal view returns (ChainContext memory ctx) {
-        address rootWard = isMainnet ? PRODUCTION_MESSAGE_DISPATCHER_V3 : TESTNET_MESSAGE_DISPATCHER_V3;
-        uint16 localCentrifugeId = MessageDispatcher(rootWard).localCentrifugeId();
-        Root rootV3 = MessageDispatcherV3Like(rootWard).root();
-        string memory graphQLApi = isMainnet ? GraphQLConstants.PRODUCTION_API : GraphQLConstants.TESTNET_API;
-
-        ctx = ChainContext({
-            rootWard: rootWard,
-            localCentrifugeId: localCentrifugeId,
-            rootV3: rootV3,
-            graphQLApi: graphQLApi,
-            isMainnet: isMainnet
-        });
     }
 
     /// @notice Build shared context for validation
@@ -91,16 +54,13 @@ library ValidationOrchestrator {
     function buildSharedContext(
         MigrationQueries queryService,
         PoolId[] memory pools,
-        ChainContext memory chain,
+        ChainResolver.ChainContext memory chain,
         string memory cacheDir
     ) internal returns (SharedContext memory shared) {
         emit log_string("[CONTEXT] Building shared validation context...");
 
-        PoolMigrationOldContractsExt memory old = PoolMigrationOldContractsExt({
-            inner: queryService.poolMigrationOldContracts(),
-            root: address(chain.rootV3),
-            messageDispatcher: chain.rootWard
-        });
+        V3ContractsExt memory old =
+            V3ContractsExt({inner: queryService.v3Contracts(), messageDispatcher: chain.rootWard});
 
         PoolId[] memory hubPools = queryService.hubPools(pools);
 
