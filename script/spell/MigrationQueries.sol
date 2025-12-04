@@ -25,15 +25,18 @@ contract MigrationQueries is GraphQLQuery {
 
     string internal _api;
     uint16 internal _centrifugeId;
-    bool internal _isMainnet;
+    bool public isMainnet;
+
+    /// @param isMainnet_ True for mainnet, false for testnets (affects freelyTransferableHook handling)
+    constructor(bool isMainnet_) {
+        isMainnet = isMainnet_;
+    }
 
     /// @param api_ GraphQL API endpoint (PRODUCTION_API or TESTNET_API)
     /// @param centrifugeId_ The centrifugeId to query for (from MessageDispatcher.localCentrifugeId())
-    /// @param isMainnet_ True for mainnet, false for testnets (affects freelyTransferableHook handling)
-    constructor(string memory api_, uint16 centrifugeId_, bool isMainnet_) {
+    function configureGraphQl(string memory api_, uint16 centrifugeId_) public {
         _api = api_;
         _centrifugeId = centrifugeId_;
-        _isMainnet = isMainnet_;
     }
 
     function _graphQLApi() internal view override returns (string memory) {
@@ -46,7 +49,7 @@ contract MigrationQueries is GraphQLQuery {
 
     /// @notice Get Root contract address from GraphQL
     function root()
-        external
+        public
         returns (Root)
     {
 
@@ -72,7 +75,7 @@ contract MigrationQueries is GraphQLQuery {
 
     /// @notice Get v3.0.1 global contract addresses for migration
     function globalMigrationOldContracts()
-        external
+        public
         returns (GlobalMigrationOldContracts memory v3)
     {
 
@@ -107,7 +110,7 @@ contract MigrationQueries is GraphQLQuery {
     /// @notice Get v3.0.1 pool-level contract addresses for migration
     /// @dev Public so tests can reuse this instead of duplicating addresses
     function poolMigrationOldContracts()
-        external
+        public
         returns (PoolMigrationOldContracts memory v3)
     {
 
@@ -134,7 +137,7 @@ contract MigrationQueries is GraphQLQuery {
             "    syncDepositVaultFactory"
             "    syncManager"
             "    freezeOnlyHook"
-            "    fullRestrictionsHook", (_isMainnet) ?
+            "    fullRestrictionsHook", (isMainnet) ?
             "    freelyTransferableHook" : "",
             "    redemptionRestrictionsHook"
             "  }"
@@ -153,7 +156,7 @@ contract MigrationQueries is GraphQLQuery {
         v3.syncManager = json.readAddress(".data.deployments.items[0].syncManager");
         v3.freezeOnly = json.readAddress(".data.deployments.items[0].freezeOnlyHook");
         v3.fullRestrictions = json.readAddress(".data.deployments.items[0].fullRestrictionsHook");
-        if (_isMainnet) {
+        if (isMainnet) {
             v3.freelyTransferable = json.readAddress(".data.deployments.items[0].freelyTransferableHook");
         } else {
             v3.freelyTransferable = address(0xDEAD); // Not deployed in testnets
@@ -163,7 +166,7 @@ contract MigrationQueries is GraphQLQuery {
 
     /// @notice Get all spoke asset IDs for this chain
     function spokeAssetIds()
-        external
+        public
         returns (AssetId[] memory assetIds)
     {
 
@@ -195,7 +198,7 @@ contract MigrationQueries is GraphQLQuery {
 
     /// @notice Get all hub asset IDs (registered assets) for this chain
     function hubAssetIds()
-        external
+        public
         returns (AssetId[] memory assetIds)
     {
 
@@ -228,7 +231,7 @@ contract MigrationQueries is GraphQLQuery {
 
     /// @notice Get all vault addresses for this chain
     function vaults()
-        external
+        public
         returns (address[] memory vaultAddrs)
     {
 
@@ -260,7 +263,7 @@ contract MigrationQueries is GraphQLQuery {
 
     /// @notice Get all asset info (address + tokenId) for this chain
     function assets()
-        external
+        public
         returns (AssetInfo[] memory assetInfos)
     {
 
@@ -298,7 +301,7 @@ contract MigrationQueries is GraphQLQuery {
 
     /// @notice Get balance sheet managers for a pool
     function bsManagers(PoolId poolId)
-        external
+        public
         returns (address[] memory managers)
     {
 
@@ -332,7 +335,7 @@ contract MigrationQueries is GraphQLQuery {
 
     /// @notice Get hub managers for a pool
     function hubManagers(PoolId poolId)
-        external
+        public
         returns (address[] memory managers)
     {
 
@@ -366,7 +369,7 @@ contract MigrationQueries is GraphQLQuery {
 
     /// @notice Get v3 OnOfframpManager for a pool (if exists)
     function onOfframpManagerV3(PoolId poolId)
-        external
+        public
         returns (OnOfframpManager manager)
     {
 
@@ -398,7 +401,7 @@ contract MigrationQueries is GraphQLQuery {
 
     /// @notice Get offramp receiver addresses for a pool
     function onOfframpReceivers(PoolId poolId)
-        external
+        public
         returns (address[] memory receivers)
     {
 
@@ -431,7 +434,7 @@ contract MigrationQueries is GraphQLQuery {
 
     /// @notice Get offramp relayer addresses for a pool
     function onOfframpRelayers(PoolId poolId)
-        external
+        public
         returns (address[] memory relayers)
     {
 
@@ -464,7 +467,7 @@ contract MigrationQueries is GraphQLQuery {
 
     /// @notice Get chains where a pool has been notified (spoke blockchains)
     function chainsWherePoolIsNotified(PoolId poolId)
-        external
+        public
         returns (uint16[] memory centrifugeIds)
     {
 
@@ -512,7 +515,7 @@ contract MigrationQueries is GraphQLQuery {
     /// @notice Get hub pools from all pools (pools where this chain is the hub)
     /// @param allPools All pools to filter
     /// @return result Pools where this chain is the hub
-    function hubPools(PoolId[] memory allPools) external returns (PoolId[] memory result) {
+    function hubPools(PoolId[] memory allPools) public returns (PoolId[] memory result) {
         string memory json = _queryGraphQL(
             string.concat("pools(where: {centrifugeId: ", _jsonValue(_centrifugeId), "}) { items { id } totalCount }")
         );
@@ -550,17 +553,12 @@ contract MigrationQueries is GraphQLQuery {
     // ============================================
 
     /// @notice Get the GraphQL API endpoint
-    function graphQLApi() external view returns (string memory) {
+    function graphQLApi() public view returns (string memory) {
         return _api;
     }
 
     /// @notice Get the stored centrifugeId
-    function centrifugeId() external view returns (uint16) {
+    function centrifugeId() public view returns (uint16) {
         return _centrifugeId;
-    }
-
-    /// @notice Check if configured for production
-    function isMainnet() external view returns (bool) {
-        return _isMainnet;
     }
 }

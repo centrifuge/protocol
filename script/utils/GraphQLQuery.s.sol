@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {GraphQLConstants} from "./GraphQLConstants.sol";
-
 import {Vm} from "forge-std/Vm.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 
@@ -15,9 +13,6 @@ import {stdJson} from "forge-std/StdJson.sol";
 ///      This allows it to be used by either without diamond inheritance issues
 abstract contract GraphQLQuery {
     using stdJson for string;
-
-    string constant PRODUCTION_API = GraphQLConstants.PRODUCTION_API;
-    string constant TESTNET_API = GraphQLConstants.TESTNET_API;
 
     /// @notice Get the GraphQL API endpoint
     /// @dev Must be implemented by subclasses

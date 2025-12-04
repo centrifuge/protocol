@@ -32,7 +32,8 @@ contract MigrationV3_1Test is Test {
         vm.createSelectFork(rpcUrl);
 
         ValidationOrchestrator.ChainContext memory chain = ValidationOrchestrator.resolveChainContext(isMainnet);
-        MigrationQueries queryService = new MigrationQueries(chain.graphQLApi, chain.localCentrifugeId, isMainnet);
+        MigrationQueries queryService = new MigrationQueries(isMainnet);
+        queryService.configureGraphQl(chain.graphQLApi, chain.localCentrifugeId);
 
         if (isMainnet) {
             poolsToMigrate = [

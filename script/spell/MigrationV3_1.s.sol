@@ -53,20 +53,12 @@ contract MigrationV3_1Deployer is Script {
     }
 }
 
-contract MigrationV3_1Executor is Script, CreateXScript {
+contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
     bytes32 constant NEW_VERSION = "v3.1";
 
     address deployer;
 
-    bool public immutable isMainnet;
-    string public graphQLApi;
-
-    MigrationQueries public queryService;
-
-    constructor(bool isMainnet_) {
-        isMainnet = isMainnet_;
-        graphQLApi = isMainnet_ ? GraphQLConstants.PRODUCTION_API : GraphQLConstants.TESTNET_API;
-    }
+    constructor(bool isMainnet_) MigrationQueries(isMainnet_) {}
 
     receive() external payable {}
 
@@ -80,16 +72,14 @@ contract MigrationV3_1Executor is Script, CreateXScript {
 
     function migrate(address deployer_, MigrationSpell migrationSpell, PoolId[] memory poolsToMigrate) public {
         deployer = deployer_; // This must be set before _contractAddr
-        uint16 centrifugeId = MessageDispatcher(_contractAddr("messageDispatcher")).localCentrifugeId();
+        string memory graphQLApi = isMainnet ? GraphQLConstants.PRODUCTION_API : GraphQLConstants.TESTNET_API;
+        configureGraphQl(graphQLApi, MessageDispatcher(_contractAddr("messageDispatcher")).localCentrifugeId());
 
-        // Create query service
-        queryService = new MigrationQueries(graphQLApi, centrifugeId, isMainnet);
-
-        Root root = queryService.root();
+        Root root = root();
         vm.label(address(root), "v3.root");
         vm.label(address(migrationSpell), "migrationSpell");
 
-        GlobalMigrationOldContracts memory globalV3 = queryService.globalMigrationOldContracts();
+        GlobalMigrationOldContracts memory globalV3 = globalMigrationOldContracts();
         vm.label(address(globalV3.gateway), "v3.gateway");
         vm.label(address(globalV3.spoke), "v3.spoke");
         vm.label(address(globalV3.hubRegistry), "v3.hubRegistry");
@@ -111,13 +101,13 @@ contract MigrationV3_1Executor is Script, CreateXScript {
                 protocolGuardian: ProtocolGuardian(_contractAddr("protocolGuardian")),
                 tokenRecoverer: TokenRecoverer(_contractAddr("tokenRecoverer")),
                 vaultRouter: VaultRouter(_contractAddr("vaultRouter")),
-                spokeAssetIds: queryService.spokeAssetIds(),
-                hubAssetIds: queryService.hubAssetIds(),
-                vaults: queryService.vaults()
+                spokeAssetIds: spokeAssetIds(),
+                hubAssetIds: hubAssetIds(),
+                vaults: vaults()
             })
         );
 
-        PoolMigrationOldContracts memory poolV3 = queryService.poolMigrationOldContracts();
+        PoolMigrationOldContracts memory poolV3 = poolMigrationOldContracts();
         vm.label(address(poolV3.gateway), "v3.gateway");
         vm.label(address(poolV3.poolEscrowFactory), "v3.poolEscrowFactory");
         vm.label(address(poolV3.spoke), "v3.spoke");
@@ -155,16 +145,16 @@ contract MigrationV3_1Executor is Script, CreateXScript {
                     onOfframpManagerFactory: OnOfframpManagerFactory(_contractAddr("onOfframpManagerFactory")),
                     batchRequestManager: BatchRequestManager(_contractAddr("batchRequestManager")),
                     contractUpdater: ContractUpdater(_contractAddr("contractUpdater")),
-                    spokeAssetIds: queryService.spokeAssetIds(),
-                    hubAssetIds: queryService.hubAssetIds(),
-                    vaults: queryService.vaults(),
-                    assets: queryService.assets(),
-                    hubManagers: queryService.hubManagers(poolId),
-                    bsManagers: queryService.bsManagers(poolId),
-                    onOfframpManagerV3: queryService.onOfframpManagerV3(poolId),
-                    onOfframpReceivers: queryService.onOfframpReceivers(poolId),
-                    onOfframpRelayers: queryService.onOfframpRelayers(poolId),
-                    chainsWherePoolIsNotified: queryService.chainsWherePoolIsNotified(poolId)
+                    spokeAssetIds: spokeAssetIds(),
+                    hubAssetIds: hubAssetIds(),
+                    vaults: vaults(),
+                    assets: assets(),
+                    hubManagers: hubManagers(poolId),
+                    bsManagers: bsManagers(poolId),
+                    onOfframpManagerV3: onOfframpManagerV3(poolId),
+                    onOfframpReceivers: onOfframpReceivers(poolId),
+                    onOfframpRelayers: onOfframpRelayers(poolId),
+                    chainsWherePoolIsNotified: chainsWherePoolIsNotified(poolId)
                 })
             );
         }
