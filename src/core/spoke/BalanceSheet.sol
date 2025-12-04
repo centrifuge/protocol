@@ -91,7 +91,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         } else {
             IERC6909(asset).transferFrom(msgSender(), escrow_, tokenId, amount);
         }
-        emit Deposit(poolId, scId, asset, tokenId, amount);
+        emit Deposit(poolId, scId, msgSender(), asset, tokenId, amount);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -104,7 +104,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         escrow(poolId).deposit(scId, asset, tokenId, amount);
 
         D18 pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId, assetId);
-        emit NoteDeposit(poolId, scId, asset, tokenId, amount, pricePoolPerAsset_);
+        emit NoteDeposit(poolId, scId, msgSender(), asset, tokenId, amount, pricePoolPerAsset_);
 
         _updateAssets(poolId, scId, assetId, amount, true);
     }
@@ -161,7 +161,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
 
     /// @inheritdoc IBalanceSheet
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external payable isManager(poolId) {
-        emit Issue(poolId, scId, to, _pricePoolPerShare(poolId, scId), shares);
+        emit Issue(poolId, scId, msgSender(), to, _pricePoolPerShare(poolId, scId), shares);
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         if (shareQueue.isPositive || shareQueue.delta == 0) {
@@ -181,7 +181,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
 
     /// @inheritdoc IBalanceSheet
     function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external payable isManager(poolId) {
-        emit Revoke(poolId, scId, msgSender(), _pricePoolPerShare(poolId, scId), shares);
+        emit Revoke(poolId, scId, msgSender(), msgSender(), _pricePoolPerShare(poolId, scId), shares);
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         if (!shareQueue.isPositive) {

@@ -47,17 +47,34 @@ interface IBalanceSheet is IBatchedMulticall {
         uint128 amount,
         D18 pricePoolPerAsset
     );
-    event Deposit(PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 amount);
+    event Deposit(
+        PoolId indexed poolId, ShareClassId indexed scId, address sender, address asset, uint256 tokenId, uint128 amount
+    );
     event NoteDeposit(
         PoolId indexed poolId,
         ShareClassId indexed scId,
+        address sender,
         address asset,
         uint256 tokenId,
         uint128 amount,
         D18 pricePoolPerAsset
     );
-    event Issue(PoolId indexed poolId, ShareClassId indexed scId, address to, D18 pricePoolPerShare, uint128 shares);
-    event Revoke(PoolId indexed poolId, ShareClassId indexed scId, address from, D18 pricePoolPerShare, uint128 shares);
+    event Issue(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        address sender,
+        address to,
+        D18 pricePoolPerShare,
+        uint128 shares
+    );
+    event Revoke(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        address sender,
+        address from,
+        D18 pricePoolPerShare,
+        uint128 shares
+    );
     event TransferSharesFrom(
         PoolId indexed poolId,
         ShareClassId indexed scId,

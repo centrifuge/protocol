@@ -250,7 +250,7 @@ contract BalanceSheetTestNoteDeposit is BalanceSheetTest {
 
         vm.prank(MANAGER);
         vm.expectEmit();
-        emit IBalanceSheet.NoteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT, ASSET_PRICE);
+        emit IBalanceSheet.NoteDeposit(POOL_A, SC_1, MANAGER, erc20, 0, AMOUNT, ASSET_PRICE);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
 
         (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
@@ -291,7 +291,7 @@ contract BalanceSheetTestNoteDeposit is BalanceSheetTest {
         balanceSheet.overridePricePoolPerAsset(POOL_A, SC_1, ASSET_20, IDENTITY_PRICE);
 
         vm.expectEmit();
-        emit IBalanceSheet.NoteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT, IDENTITY_PRICE); // <- override
+        emit IBalanceSheet.NoteDeposit(POOL_A, SC_1, MANAGER, erc20, 0, AMOUNT, IDENTITY_PRICE); // <- override
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
     }
 }
@@ -312,9 +312,9 @@ contract BalanceSheetTestDeposit is BalanceSheetTest {
 
         vm.prank(MANAGER);
         vm.expectEmit();
-        emit IBalanceSheet.NoteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT, ASSET_PRICE);
+        emit IBalanceSheet.NoteDeposit(POOL_A, SC_1, MANAGER, erc20, 0, AMOUNT, ASSET_PRICE);
         vm.expectEmit();
-        emit IBalanceSheet.Deposit(POOL_A, SC_1, erc20, 0, AMOUNT);
+        emit IBalanceSheet.Deposit(POOL_A, SC_1, MANAGER, erc20, 0, AMOUNT);
         balanceSheet.deposit(POOL_A, SC_1, erc20, 0, AMOUNT);
     }
 
@@ -440,7 +440,7 @@ contract BalanceSheetTestIssue is BalanceSheetTest {
 
         vm.prank(MANAGER);
         vm.expectEmit();
-        emit IBalanceSheet.Issue(POOL_A, SC_1, TO, SHARE_PRICE, AMOUNT);
+        emit IBalanceSheet.Issue(POOL_A, SC_1, MANAGER, TO, SHARE_PRICE, AMOUNT);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
 
         (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, SC_1);
@@ -467,7 +467,7 @@ contract BalanceSheetTestIssue is BalanceSheetTest {
         balanceSheet.overridePricePoolPerShare(POOL_A, SC_1, IDENTITY_PRICE);
 
         vm.expectEmit();
-        emit IBalanceSheet.Issue(POOL_A, SC_1, TO, IDENTITY_PRICE, AMOUNT);
+        emit IBalanceSheet.Issue(POOL_A, SC_1, MANAGER, TO, IDENTITY_PRICE, AMOUNT);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
     }
 }
@@ -485,7 +485,7 @@ contract BalanceSheetTestRevoke is BalanceSheetTest {
 
         vm.prank(MANAGER);
         vm.expectEmit();
-        emit IBalanceSheet.Revoke(POOL_A, SC_1, MANAGER, SHARE_PRICE, AMOUNT);
+        emit IBalanceSheet.Revoke(POOL_A, SC_1, MANAGER, MANAGER, SHARE_PRICE, AMOUNT);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
 
         (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, SC_1);
@@ -514,7 +514,7 @@ contract BalanceSheetTestRevoke is BalanceSheetTest {
         balanceSheet.overridePricePoolPerShare(POOL_A, SC_1, IDENTITY_PRICE);
 
         vm.expectEmit();
-        emit IBalanceSheet.Revoke(POOL_A, SC_1, MANAGER, IDENTITY_PRICE, AMOUNT);
+        emit IBalanceSheet.Revoke(POOL_A, SC_1, MANAGER, MANAGER, IDENTITY_PRICE, AMOUNT);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
     }
 }
