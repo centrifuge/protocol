@@ -13,7 +13,7 @@ import {
     AxelarInput,
     LayerZeroInput,
     ChainlinkInput,
-    defaultBlockLimits
+    defaultTxLimits
 } from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
@@ -79,10 +79,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
         deployFull(
             FullInput({
                 core: CoreInput({
-                    centrifugeId: CENTRIFUGE_ID,
-                    version: bytes32(0),
-                    root: address(0),
-                    blockLimits: defaultBlockLimits()
+                    centrifugeId: CENTRIFUGE_ID, version: bytes32(0), root: address(0), txLimits: defaultTxLimits()
                 }),
                 adminSafe: ADMIN_SAFE,
                 opsSafe: OPS_SAFE,

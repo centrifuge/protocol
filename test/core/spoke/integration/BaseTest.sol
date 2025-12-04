@@ -28,7 +28,7 @@ import {
     FullDeployer,
     FullInput,
     noAdaptersInput,
-    defaultBlockLimits,
+    defaultTxLimits,
     CoreInput
 } from "../../../../script/FullDeployer.s.sol";
 
@@ -89,10 +89,7 @@ contract BaseTest is FullDeployer, Test {
         deployFull(
             FullInput({
                 core: CoreInput({
-                    centrifugeId: THIS_CHAIN_ID,
-                    version: bytes32(0),
-                    root: address(0),
-                    blockLimits: defaultBlockLimits()
+                    centrifugeId: THIS_CHAIN_ID, version: bytes32(0), root: address(0), txLimits: defaultTxLimits()
                 }),
                 adminSafe: ISafe(ADMIN),
                 opsSafe: ISafe(ADMIN),

@@ -188,19 +188,6 @@ contract MultiAdapter is Auth, IMultiAdapter {
     // Getters
     //----------------------------------------------------------------------------------------------
 
-    function _poolAdapterDetails(uint16 centrifugeId, PoolId poolId, IAdapter adapterAddr)
-        internal
-        view
-        returns (Adapter memory adapter)
-    {
-        adapter = _adapterDetails[centrifugeId][poolId][adapterAddr];
-
-        // If adapters not configured per pool, then assume it's received by a global adapters
-        if (adapter.id == 0 && adapters[centrifugeId][poolId].length == 0) {
-            adapter = _adapterDetails[centrifugeId][GLOBAL_POOL][adapterAddr];
-        }
-    }
-
     /// @inheritdoc IMultiAdapter
     function quorum(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {
         return _getFirstAdapterDetails(centrifugeId, poolId).quorum;

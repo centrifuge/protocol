@@ -20,7 +20,7 @@ import {
     FullInput,
     noAdaptersInput,
     CoreInput,
-    defaultBlockLimits
+    defaultTxLimits
 } from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
@@ -46,7 +46,7 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
                     centrifugeId: LOCAL_CENTRIFUGE_ID,
                     version: bytes32(0),
                     root: address(0),
-                    blockLimits: defaultBlockLimits()
+                    txLimits: defaultTxLimits()
                 }),
                 adminSafe: adminSafe,
                 opsSafe: adminSafe,

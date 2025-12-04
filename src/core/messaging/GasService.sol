@@ -19,11 +19,11 @@ contract GasService is IGasService {
     /// @dev Adds an extra cost to recover token admin message to ensure different assets can transfer successfully
     uint128 public constant RECOVERY_TOKEN_EXTRA_COST = 100_000;
 
-    uint128 public constant MIN_SUPPORTED_BLOCK_LIMIT = 24; // In millions of gas units
+    uint128 public constant DEFAULT_SUPPORTED_TX_LIMIT = 10; // In millions of gas units
 
     /// @dev An encoded array of the block limits of the first 32 centrifugeId.
     ///      Measured in millions of gas units
-    uint256 public immutable blockLimitsPerCentrifugeId;
+    uint256 public immutable txLimitsPerCentrifugeId;
 
     uint128 public immutable scheduleUpgrade;
     uint128 public immutable cancelUpgrade;
@@ -54,10 +54,10 @@ contract GasService is IGasService {
     uint128 public immutable updateGatewayManager;
     uint128 public immutable untrustedContractUpdate;
 
-    constructor(uint8[32] memory blockLimits) {
-        for (uint256 i; i < blockLimits.length; i++) {
-            uint256 value = blockLimits[i] > 0 ? blockLimits[i] : MIN_SUPPORTED_BLOCK_LIMIT;
-            blockLimitsPerCentrifugeId += value << (31 - i) * 8;
+    constructor(uint8[32] memory txLimits) {
+        for (uint256 i; i < txLimits.length; i++) {
+            uint256 value = txLimits[i] > 0 ? txLimits[i] : DEFAULT_SUPPORTED_TX_LIMIT;
+            txLimitsPerCentrifugeId += value << (31 - i) * 8;
         }
 
         // NOTE: Below values should be updated using script/utils/benchmark.sh
@@ -132,11 +132,9 @@ contract GasService is IGasService {
 
     /// @inheritdoc IMessageLimits
     function maxBatchGasLimit(uint16 centrifugeId) external view returns (uint128) {
-        // blockLimitsPerCentrifugeId counts millions of gas units, then we need to multiply by 1_000_000
-        // The final result is multiplied by 0.75 to avoid having a transaction that can occupy the entire block
-        return (centrifugeId < 32
-                    ? uint8(bytes32(blockLimitsPerCentrifugeId)[centrifugeId])
-                    : MIN_SUPPORTED_BLOCK_LIMIT) * 1_000_000 * 3 / 4;
+        // txLimitsPerCentrifugeId counts millions of gas units, then we need to multiply by 1_000_000
+        return (centrifugeId < 32 ? uint8(bytes32(txLimitsPerCentrifugeId)[centrifugeId]) : DEFAULT_SUPPORTED_TX_LIMIT)
+            * 1_000_000;
     }
 
     /// @dev - BASE_COST adds some offset to the benchmarked message

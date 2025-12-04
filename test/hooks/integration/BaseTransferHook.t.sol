@@ -11,7 +11,7 @@ import {
     FullDeployer,
     FullInput,
     noAdaptersInput,
-    defaultBlockLimits,
+    defaultTxLimits,
     CoreInput
 } from "../../../script/FullDeployer.s.sol";
 
@@ -46,7 +46,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
                     centrifugeId: LOCAL_CENTRIFUGE_ID,
                     version: bytes32(0),
                     root: address(0),
-                    blockLimits: defaultBlockLimits()
+                    txLimits: defaultTxLimits()
                 }),
                 adminSafe: adminSafe,
                 opsSafe: adminSafe,

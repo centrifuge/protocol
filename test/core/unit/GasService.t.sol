@@ -17,11 +17,11 @@ contract GasServiceTest is Test {
     GasService service;
 
     function setUp() public {
-        uint8[32] memory blockLimits;
-        blockLimits[0] = 30; // Millions
-        blockLimits[1] = 150; // Millions
+        uint8[32] memory txLimits;
+        txLimits[0] = 30; // Millions
+        txLimits[1] = 150; // Millions
 
-        service = new GasService(blockLimits);
+        service = new GasService(txLimits);
     }
 
     function testGasLimit(bytes calldata message) public view {
@@ -46,10 +46,10 @@ contract GasServiceTest is Test {
     }
 
     function testMaxBatchGasLimit(uint16 centrifugeId) public view {
-        uint256 expectedGasLimit = service.MIN_SUPPORTED_BLOCK_LIMIT();
+        uint256 expectedGasLimit = service.DEFAULT_SUPPORTED_TX_LIMIT();
         if (centrifugeId == 0) expectedGasLimit = 30;
         if (centrifugeId == 1) expectedGasLimit = 150;
-        expectedGasLimit = expectedGasLimit * 1_000_000 * 3 / 4;
+        expectedGasLimit = expectedGasLimit * 1_000_000;
 
         uint256 maxBatchGasLimit = service.maxBatchGasLimit(centrifugeId);
         assertEq(maxBatchGasLimit, expectedGasLimit);

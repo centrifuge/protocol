@@ -716,4 +716,4 @@ function noAdaptersInput() pure returns (AdaptersInput memory) {
     });
 }
 
-function defaultBlockLimits() pure returns (uint8[32] memory) {}
+function defaultTxLimits() pure returns (uint8[32] memory) {}

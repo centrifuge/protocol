@@ -51,11 +51,11 @@ contract LaunchDeployer is FullDeployer {
 
         startDeploymentOutput();
 
-        uint8[32] memory blockLimits;
-        try vm.envUint("BLOCK_LIMITS", ",") returns (uint256[] memory blockLimitsRaw) {
-            require(blockLimitsRaw.length < 32, "only 32 block limits supported");
-            for (uint256 i; i < blockLimitsRaw.length; i++) {
-                blockLimits[i] = blockLimitsRaw[i].toUint8();
+        uint8[32] memory txLimits;
+        try vm.envUint("TX_LIMITS", ",") returns (uint256[] memory txLimitsRaw) {
+            require(txLimitsRaw.length < 32, "only 32 tx limits supported");
+            for (uint256 i; i < txLimitsRaw.length; i++) {
+                txLimits[i] = txLimitsRaw[i].toUint8();
             }
         } catch {}
 
@@ -63,10 +63,7 @@ contract LaunchDeployer is FullDeployer {
             adminSafe: ISafe(vm.envAddress("PROTOCOL_ADMIN")),
             opsSafe: ISafe(vm.envAddress("OPS_ADMIN")),
             core: CoreInput({
-                centrifugeId: centrifugeId,
-                version: version,
-                root: vm.envOr("ROOT", address(0)),
-                blockLimits: blockLimits
+                centrifugeId: centrifugeId, version: version, root: vm.envOr("ROOT", address(0)), txLimits: txLimits
             }),
             adapters: AdaptersInput({
                 wormhole: WormholeInput({

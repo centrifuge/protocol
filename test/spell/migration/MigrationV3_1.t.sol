@@ -14,7 +14,7 @@ import {
     FullDeployer,
     FullInput,
     noAdaptersInput,
-    defaultBlockLimits,
+    defaultTxLimits,
     CoreInput
 } from "../../../script/FullDeployer.s.sol";
 
@@ -64,7 +64,7 @@ contract MigrationV3_1Test is Test {
                     centrifugeId: chain.localCentrifugeId,
                     version: NEW_VERSION,
                     root: address(chain.rootV3),
-                    blockLimits: defaultBlockLimits()
+                    txLimits: defaultTxLimits()
                 }),
                 adminSafe: ADMIN,
                 opsSafe: ADMIN,

@@ -67,7 +67,7 @@ import {
     FullInput,
     noAdaptersInput,
     CoreInput,
-    defaultBlockLimits
+    defaultTxLimits
 } from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
@@ -283,7 +283,7 @@ contract EndToEndDeployment is Test {
                     centrifugeId: localCentrifugeId,
                     version: bytes32(abi.encodePacked(localCentrifugeId)),
                     root: address(0),
-                    blockLimits: defaultBlockLimits()
+                    txLimits: defaultTxLimits()
                 }),
                 adminSafe: adminSafe,
                 opsSafe: adminSafe,
