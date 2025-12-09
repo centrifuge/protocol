@@ -45,6 +45,8 @@ import {AsyncRequestManager} from "../../vaults/AsyncRequestManager.sol";
 import {REASON_REDEEM} from "../../vaults/interfaces/IVaultManagers.sol";
 import {BatchRequestManager, EpochId} from "../../vaults/BatchRequestManager.sol";
 
+import {RefundEscrowFactory} from "../../utils/RefundEscrowFactory.sol";
+
 PoolId constant GLOBAL_POOL = PoolId.wrap(0);
 
 contract MessageDispatcherInfallibleMock {
@@ -134,6 +136,7 @@ struct PoolParamsInput {
     OnOfframpManagerFactory onOfframpManagerFactory;
     BatchRequestManager batchRequestManager;
     ContractUpdater contractUpdater;
+    RefundEscrowFactory refundEscrowFactory;
 
     AssetId[] spokeAssetIds;
     AssetId[] hubAssetIds;
@@ -299,11 +302,10 @@ contract MigrationSpell {
         }
 
         if (inHub || inSpoke) {
-            // ----- REFUND -----
-            address refund = input.hubManagers.length > 0
-                ? input.hubManagers[0]
-                : input.bsManagers.length > 0 ? input.bsManagers[0] : msg.sender;
+            address refund =
+                input.hubManagers.length > 0 ? input.hubManagers[0] : address(input.refundEscrowFactory.get(poolId));
 
+            // ----- REFUND -----
             (uint96 subsidizedFunds,) = GatewayV3Like(input.v3.gateway).subsidy(poolId);
             if (subsidizedFunds > 0) {
                 GatewayV3Like(input.v3.gateway).recoverTokens(ETH_ADDRESS, address(refund), subsidizedFunds);

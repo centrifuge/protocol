@@ -34,6 +34,7 @@ import "forge-std/Script.sol";
 import {makeSalt} from "../CoreDeployer.s.sol";
 import {CreateXScript} from "../utils/CreateXScript.sol";
 import {GraphQLConstants} from "../utils/GraphQLConstants.sol";
+import {RefundEscrowFactory} from "../../src/utils/RefundEscrowFactory.sol";
 import {
     MigrationSpell,
     PoolParamsInput,
@@ -42,10 +43,10 @@ import {
 } from "../../src/spell/migration_v3.1/MigrationSpell.sol";
 
 contract MigrationV3_1Deployer is Script {
-    function run() external {
+    function run(address owner) external {
         vm.startBroadcast();
 
-        new MigrationSpell(msg.sender);
+        new MigrationSpell(owner);
 
         vm.stopBroadcast();
     }
@@ -115,36 +116,42 @@ contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
         for (uint256 i; i < poolsToMigrate.length; i++) {
             PoolId poolId = poolsToMigrate[i];
 
-            migrationSpell.castPool(
-                poolId,
-                PoolParamsInput({
-                    v3: v3,
-                    spoke: Spoke(_contractAddr("spoke")),
-                    balanceSheet: BalanceSheet(_contractAddr("balanceSheet")),
-                    vaultRegistry: VaultRegistry(_contractAddr("vaultRegistry")),
-                    hubRegistry: HubRegistry(_contractAddr("hubRegistry")),
-                    shareClassManager: ShareClassManager(_contractAddr("shareClassManager")),
-                    asyncRequestManager: AsyncRequestManager(payable(_contractAddr("asyncRequestManager"))),
-                    syncManager: SyncManager(_contractAddr("syncManager")),
-                    freezeOnly: FreezeOnly(_contractAddr("freezeOnlyHook")),
-                    fullRestrictions: FullRestrictions(_contractAddr("fullRestrictionsHook")),
-                    freelyTransferable: FreelyTransferable(_contractAddr("freelyTransferableHook")),
-                    redemptionRestrictions: RedemptionRestrictions(_contractAddr("redemptionRestrictionsHook")),
-                    onOfframpManagerFactory: OnOfframpManagerFactory(_contractAddr("onOfframpManagerFactory")),
-                    batchRequestManager: BatchRequestManager(_contractAddr("batchRequestManager")),
-                    contractUpdater: ContractUpdater(_contractAddr("contractUpdater")),
-                    spokeAssetIds: spokeAssetIds(),
-                    hubAssetIds: hubAssetIds(),
-                    vaults: vaults(),
-                    assets: assets(),
-                    hubManagers: hubManagers(poolId),
-                    bsManagers: bsManagers(poolId),
-                    onOfframpManagerV3: onOfframpManagerV3(poolId),
-                    onOfframpReceivers: onOfframpReceivers(poolId),
-                    onOfframpRelayers: onOfframpRelayers(poolId),
-                    chainsWherePoolIsNotified: chainsWherePoolIsNotified(poolId)
-                })
-            );
+            bool inHub = HubRegistry(v3.hubRegistry).exists(poolId);
+            bool inSpoke = Spoke(v3.spoke).isPoolActive(poolId);
+
+            if (inHub || inSpoke) {
+                migrationSpell.castPool(
+                    poolId,
+                    PoolParamsInput({
+                        v3: v3,
+                        spoke: Spoke(_contractAddr("spoke")),
+                        balanceSheet: BalanceSheet(_contractAddr("balanceSheet")),
+                        vaultRegistry: VaultRegistry(_contractAddr("vaultRegistry")),
+                        hubRegistry: HubRegistry(_contractAddr("hubRegistry")),
+                        shareClassManager: ShareClassManager(_contractAddr("shareClassManager")),
+                        asyncRequestManager: AsyncRequestManager(payable(_contractAddr("asyncRequestManager"))),
+                        syncManager: SyncManager(_contractAddr("syncManager")),
+                        freezeOnly: FreezeOnly(_contractAddr("freezeOnlyHook")),
+                        fullRestrictions: FullRestrictions(_contractAddr("fullRestrictionsHook")),
+                        freelyTransferable: FreelyTransferable(_contractAddr("freelyTransferableHook")),
+                        redemptionRestrictions: RedemptionRestrictions(_contractAddr("redemptionRestrictionsHook")),
+                        onOfframpManagerFactory: OnOfframpManagerFactory(_contractAddr("onOfframpManagerFactory")),
+                        batchRequestManager: BatchRequestManager(_contractAddr("batchRequestManager")),
+                        contractUpdater: ContractUpdater(_contractAddr("contractUpdater")),
+                        refundEscrowFactory: RefundEscrowFactory(_contractAddr("refundEscrowFactory")),
+                        spokeAssetIds: spokeAssetIds(),
+                        hubAssetIds: hubAssetIds(),
+                        vaults: vaults(),
+                        assets: assets(),
+                        hubManagers: hubManagers(poolId),
+                        bsManagers: bsManagers(poolId),
+                        onOfframpManagerV3: onOfframpManagerV3(poolId),
+                        onOfframpReceivers: onOfframpReceivers(poolId),
+                        onOfframpRelayers: onOfframpRelayers(poolId),
+                        chainsWherePoolIsNotified: chainsWherePoolIsNotified(poolId)
+                    })
+                );
+            }
         }
 
         migrationSpell.lock(v3.root);

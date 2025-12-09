@@ -52,6 +52,7 @@ deploy() {
     echo ""
 
     forge script script/spell/MigrationV3_1.s.sol:MigrationV3_1Deployer \
+        --sig "run(address)" $ADMIN \
         --optimize \
         --rpc-url $RPC_URL \
         --private-key $PRIVATE_KEY \
