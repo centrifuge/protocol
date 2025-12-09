@@ -118,9 +118,10 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(gateway.wards(nonWard), 0);
 
         // dependencies set correctly
+        assertEq(gateway.localCentrifugeId(), CENTRIFUGE_ID);
         assertEq(address(gateway.processor()), address(messageProcessor));
         assertEq(address(gateway.adapter()), address(multiAdapter));
-        assertEq(address(gateway.messageLimits()), address(gasService));
+        assertEq(address(gateway.messageProperties()), address(gasService));
     }
 
     function testMultiAdapter(address nonWard) public view {
@@ -142,7 +143,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(multiAdapter.gateway()), address(gateway));
-        assertEq(address(multiAdapter.messageProperties()), address(messageProcessor));
+        assertEq(address(multiAdapter.messageProperties()), address(gasService));
         assertEq(multiAdapter.localCentrifugeId(), CENTRIFUGE_ID);
     }
 

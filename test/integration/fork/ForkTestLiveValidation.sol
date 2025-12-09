@@ -796,7 +796,9 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         // ==================== CORE MESSAGING (CoreDeployer) ====================
 
         assertEq(address(Gateway(payable(gateway)).adapter()), multiAdapter, "Gateway adapter mismatch");
-        assertEq(address(Gateway(payable(gateway)).messageLimits()), gasService, "Gateway messageLimits mismatch");
+        assertEq(
+            address(Gateway(payable(gateway)).messageProperties()), gasService, "Gateway messageProperties mismatch"
+        );
         assertEq(address(Gateway(payable(gateway)).processor()), messageProcessor, "Gateway processor mismatch");
 
         assertEq(

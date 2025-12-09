@@ -71,21 +71,21 @@ library MessageLib {
         (65  << uint8(MessageType.NotifyPricePoolPerAsset) * 8) +
         (185 << uint8(MessageType.NotifyShareMetadata) * 8) +
         (57  << uint8(MessageType.UpdateShareHook) * 8) +
-        (91  << uint8(MessageType.InitiateTransferShares) * 8) +
-        (73  << uint8(MessageType.ExecuteTransferShares) * 8) +
-        (25  << uint8(MessageType.UpdateRestriction) * 8) +
-        (74  << uint8(MessageType.UpdateVault) * 8) +
+        (107  << uint8(MessageType.InitiateTransferShares) * 8) +
+        (89  << uint8(MessageType.ExecuteTransferShares) * 8) +
+        (41  << uint8(MessageType.UpdateRestriction) * 8) +
+        (90  << uint8(MessageType.UpdateVault) * 8) +
         (42  << uint8(MessageType.UpdateBalanceSheetManager) * 8) +
         (42  << uint8(MessageType.UpdateGatewayManager) * 8) +
-        (91  << uint8(MessageType.UpdateHoldingAmount) * 8) +
-        (59  << uint8(MessageType.UpdateShares) * 8) +
+        (107  << uint8(MessageType.UpdateHoldingAmount) * 8) +
+        (75  << uint8(MessageType.UpdateShares) * 8) +
         (49  << uint8(MessageType.SetMaxAssetPriceAge) * 8) +
         (33  << uint8(MessageType.SetMaxSharePriceAge) * 8) +
-        (41  << uint8(MessageType.Request) * 8) +
-        (41  << uint8(MessageType.RequestCallback) * 8) +
+        (57  << uint8(MessageType.Request) * 8) +
+        (57  << uint8(MessageType.RequestCallback) * 8) +
         (41  << uint8(MessageType.SetRequestManager) * 8) +
-        (57  << uint8(MessageType.TrustedContractUpdate) * 8) +
-        (89  << uint8(MessageType.UntrustedContractUpdate) * 8);
+        (73  << uint8(MessageType.TrustedContractUpdate) * 8) +
+        (105  << uint8(MessageType.UntrustedContractUpdate) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -126,6 +126,34 @@ library MessageLib {
         }
 
         return PoolId.wrap(0);
+    }
+
+    function messageExtraGasLimit(bytes memory message) internal pure returns (uint128) {
+        uint8 kind = message.toUint8(0);
+
+        if (kind == uint8(MessageType.InitiateTransferShares)) {
+            return message.toUint128(91);
+        } else if (kind == uint8(MessageType.ExecuteTransferShares)) {
+            return message.toUint128(73);
+        } else if (kind == uint8(MessageType.UpdateRestriction)) {
+            return message.toUint128(25);
+        } else if (kind == uint8(MessageType.TrustedContractUpdate)) {
+            return message.toUint128(57);
+        } else if (kind == uint8(MessageType.UntrustedContractUpdate)) {
+            return message.toUint128(89);
+        } else if (kind == uint8(MessageType.Request)) {
+            return message.toUint128(41);
+        } else if (kind == uint8(MessageType.RequestCallback)) {
+            return message.toUint128(41);
+        } else if (kind == uint8(MessageType.UpdateVault)) {
+            return message.toUint128(74);
+        } else if (kind == uint8(MessageType.UpdateHoldingAmount)) {
+            return message.toUint128(91);
+        } else if (kind == uint8(MessageType.UpdateShares)) {
+            return message.toUint128(59);
+        }
+
+        return 0;
     }
 
     //---------------------------------------
@@ -416,6 +444,7 @@ library MessageLib {
         uint16 centrifugeId;
         bytes32 receiver;
         uint128 amount;
+        uint128 remoteExtraGasLimit;
         uint128 extraGasLimit;
     }
 
@@ -431,13 +460,21 @@ library MessageLib {
             centrifugeId: data.toUint16(25),
             receiver: data.toBytes32(27),
             amount: data.toUint128(59),
-            extraGasLimit: data.toUint128(75)
+            remoteExtraGasLimit: data.toUint128(75),
+            extraGasLimit: data.toUint128(91)
         });
     }
 
     function serialize(InitiateTransferShares memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.InitiateTransferShares, t.poolId, t.scId, t.centrifugeId, t.receiver, t.amount, t.extraGasLimit
+            MessageType.InitiateTransferShares,
+            t.poolId,
+            t.scId,
+            t.centrifugeId,
+            t.receiver,
+            t.amount,
+            t.remoteExtraGasLimit,
+            t.extraGasLimit
         );
     }
 
@@ -450,17 +487,23 @@ library MessageLib {
         bytes16 scId;
         bytes32 receiver;
         uint128 amount;
+        uint128 extraGasLimit;
     }
 
     function deserializeExecuteTransferShares(bytes memory data) internal pure returns (ExecuteTransferShares memory) {
         require(messageType(data) == MessageType.ExecuteTransferShares, UnknownMessageType());
         return ExecuteTransferShares({
-            poolId: data.toUint64(1), scId: data.toBytes16(9), receiver: data.toBytes32(25), amount: data.toUint128(57)
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            receiver: data.toBytes32(25),
+            amount: data.toUint128(57),
+            extraGasLimit: data.toUint128(73)
         });
     }
 
     function serialize(ExecuteTransferShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.ExecuteTransferShares, t.poolId, t.scId, t.receiver, t.amount);
+        return
+            abi.encodePacked(MessageType.ExecuteTransferShares, t.poolId, t.scId, t.receiver, t.amount, t.extraGasLimit);
     }
 
     //---------------------------------------
@@ -470,21 +513,26 @@ library MessageLib {
     struct UpdateRestriction {
         uint64 poolId;
         bytes16 scId;
+        uint128 extraGasLimit;
         bytes payload; // As sequence of bytes
     }
 
     function deserializeUpdateRestriction(bytes memory data) internal pure returns (UpdateRestriction memory) {
         require(messageType(data) == MessageType.UpdateRestriction, UnknownMessageType());
 
-        uint16 payloadLength = data.toUint16(25);
-        return
-            UpdateRestriction({
-                poolId: data.toUint64(1), scId: data.toBytes16(9), payload: data.slice(27, payloadLength)
-            });
+        uint16 payloadLength = data.toUint16(41);
+        return UpdateRestriction({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            extraGasLimit: data.toUint128(25),
+            payload: data.slice(43, payloadLength)
+        });
     }
 
     function serialize(UpdateRestriction memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateRestriction, t.poolId, t.scId, t.payload.length.toUint16(), t.payload);
+        return abi.encodePacked(
+            MessageType.UpdateRestriction, t.poolId, t.scId, t.extraGasLimit, t.payload.length.toUint16(), t.payload
+        );
     }
 
     //---------------------------------------
@@ -495,23 +543,31 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         bytes32 target;
+        uint128 extraGasLimit;
         bytes payload; // As sequence of bytes
     }
 
     function deserializeTrustedContractUpdate(bytes memory data) internal pure returns (TrustedContractUpdate memory) {
         require(messageType(data) == MessageType.TrustedContractUpdate, UnknownMessageType());
-        uint16 payloadLength = data.toUint16(57);
+        uint16 payloadLength = data.toUint16(73);
         return TrustedContractUpdate({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             target: data.toBytes32(25),
-            payload: data.slice(59, payloadLength)
+            extraGasLimit: data.toUint128(57),
+            payload: data.slice(75, payloadLength)
         });
     }
 
     function serialize(TrustedContractUpdate memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.TrustedContractUpdate, t.poolId, t.scId, t.target, t.payload.length.toUint16(), t.payload
+            MessageType.TrustedContractUpdate,
+            t.poolId,
+            t.scId,
+            t.target,
+            t.extraGasLimit,
+            t.payload.length.toUint16(),
+            t.payload
         );
     }
 
@@ -524,6 +580,7 @@ library MessageLib {
         bytes16 scId;
         bytes32 target;
         bytes32 sender;
+        uint128 extraGasLimit;
         bytes payload; // As sequence of bytes
     }
 
@@ -533,13 +590,14 @@ library MessageLib {
         returns (UntrustedContractUpdate memory)
     {
         require(messageType(data) == MessageType.UntrustedContractUpdate, UnknownMessageType());
-        uint16 payloadLength = data.toUint16(89);
+        uint16 payloadLength = data.toUint16(105);
         return UntrustedContractUpdate({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             target: data.toBytes32(25),
             sender: data.toBytes32(57),
-            payload: data.slice(91, payloadLength)
+            extraGasLimit: data.toUint128(89),
+            payload: data.slice(107, payloadLength)
         });
     }
 
@@ -550,6 +608,7 @@ library MessageLib {
             t.scId,
             t.target,
             t.sender,
+            t.extraGasLimit,
             t.payload.length.toUint16(),
             t.payload
         );
@@ -563,23 +622,26 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
+        uint128 extraGasLimit;
         bytes payload; // As sequence of bytes
     }
 
     function deserializeRequest(bytes memory data) internal pure returns (Request memory) {
         require(messageType(data) == MessageType.Request, UnknownMessageType());
-        uint16 payloadLength = data.toUint16(41);
+        uint16 payloadLength = data.toUint16(57);
         return Request({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
-            payload: data.slice(43, payloadLength)
+            extraGasLimit: data.toUint128(41),
+            payload: data.slice(59, payloadLength)
         });
     }
 
     function serialize(Request memory t) internal pure returns (bytes memory) {
-        return
-            abi.encodePacked(MessageType.Request, t.poolId, t.scId, t.assetId, t.payload.length.toUint16(), t.payload);
+        return abi.encodePacked(
+            MessageType.Request, t.poolId, t.scId, t.assetId, t.extraGasLimit, t.payload.length.toUint16(), t.payload
+        );
     }
 
     //---------------------------------------
@@ -590,23 +652,31 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
+        uint128 extraGasLimit;
         bytes payload; // As sequence of bytes
     }
 
     function deserializeRequestCallback(bytes memory data) internal pure returns (RequestCallback memory) {
         require(messageType(data) == MessageType.RequestCallback, UnknownMessageType());
-        uint16 payloadLength = data.toUint16(41);
+        uint16 payloadLength = data.toUint16(57);
         return RequestCallback({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
-            payload: data.slice(43, payloadLength)
+            extraGasLimit: data.toUint128(41),
+            payload: data.slice(59, payloadLength)
         });
     }
 
     function serialize(RequestCallback memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.RequestCallback, t.poolId, t.scId, t.assetId, t.payload.length.toUint16(), t.payload
+            MessageType.RequestCallback,
+            t.poolId,
+            t.scId,
+            t.assetId,
+            t.extraGasLimit,
+            t.payload.length.toUint16(),
+            t.payload
         );
     }
 
@@ -620,6 +690,7 @@ library MessageLib {
         uint128 assetId;
         bytes32 vaultOrFactory;
         uint8 kind; // VaultUpdateKind
+        uint128 extraGasLimit;
     }
 
     function deserializeUpdateVault(bytes memory data) internal pure returns (UpdateVault memory) {
@@ -629,12 +700,15 @@ library MessageLib {
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
             vaultOrFactory: data.toBytes32(41),
-            kind: data.toUint8(73)
+            kind: data.toUint8(73),
+            extraGasLimit: data.toUint128(74)
         });
     }
 
     function serialize(UpdateVault memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateVault, t.poolId, t.scId, t.assetId, t.vaultOrFactory, t.kind);
+        return abi.encodePacked(
+            MessageType.UpdateVault, t.poolId, t.scId, t.assetId, t.vaultOrFactory, t.kind, t.extraGasLimit
+        );
     }
 
     //---------------------------------------
@@ -692,6 +766,7 @@ library MessageLib {
         bool isIncrease;
         bool isSnapshot;
         uint64 nonce;
+        uint128 extraGasLimit;
     }
 
     function deserializeUpdateHoldingAmount(bytes memory data) internal pure returns (UpdateHoldingAmount memory h) {
@@ -706,7 +781,8 @@ library MessageLib {
             timestamp: data.toUint64(73),
             isIncrease: data.toBool(81),
             isSnapshot: data.toBool(82),
-            nonce: data.toUint64(83)
+            nonce: data.toUint64(83),
+            extraGasLimit: data.toUint128(91)
         });
     }
 
@@ -721,7 +797,8 @@ library MessageLib {
             t.timestamp,
             t.isIncrease,
             t.isSnapshot,
-            t.nonce
+            t.nonce,
+            t.extraGasLimit
         );
     }
 
@@ -737,6 +814,7 @@ library MessageLib {
         bool isIssuance;
         bool isSnapshot;
         uint64 nonce;
+        uint128 extraGasLimit;
     }
 
     function deserializeUpdateShares(bytes memory data) internal pure returns (UpdateShares memory) {
@@ -749,13 +827,22 @@ library MessageLib {
             timestamp: data.toUint64(41),
             isIssuance: data.toBool(49),
             isSnapshot: data.toBool(50),
-            nonce: data.toUint64(51)
+            nonce: data.toUint64(51),
+            extraGasLimit: data.toUint128(59)
         });
     }
 
     function serialize(UpdateShares memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.UpdateShares, t.poolId, t.scId, t.shares, t.timestamp, t.isIssuance, t.isSnapshot, t.nonce
+            MessageType.UpdateShares,
+            t.poolId,
+            t.scId,
+            t.shares,
+            t.timestamp,
+            t.isIssuance,
+            t.isSnapshot,
+            t.nonce,
+            t.extraGasLimit
         );
     }
 

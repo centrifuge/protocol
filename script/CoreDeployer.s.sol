@@ -151,10 +151,10 @@ contract CoreActionBatcher is Constants {
 
         // File
         report.gateway.file("adapter", address(report.multiAdapter));
-        report.gateway.file("messageLimits", address(report.gasService));
+        report.gateway.file("messageProperties", address(report.gasService));
         report.gateway.file("processor", address(report.messageProcessor));
 
-        report.multiAdapter.file("messageProperties", address(report.messageProcessor));
+        report.multiAdapter.file("messageProperties", address(report.gasService));
 
         report.messageDispatcher.file("spoke", address(report.spoke));
         report.messageDispatcher.file("balanceSheet", address(report.balanceSheet));
@@ -271,7 +271,8 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
         // Core
         gateway = Gateway(
             create3(
-                generateSalt("gateway"), abi.encodePacked(type(Gateway).creationCode, abi.encode(input.root, batcher))
+                generateSalt("gateway"),
+                abi.encodePacked(type(Gateway).creationCode, abi.encode(input.centrifugeId, input.root, batcher))
             )
         );
 
