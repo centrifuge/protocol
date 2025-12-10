@@ -29,6 +29,8 @@ import "forge-std/Test.sol";
 
 PoolId constant POOL_A = PoolId.wrap(23);
 PoolId constant POOL_0 = PoolId.wrap(0);
+uint16 constant REMOTE_CENT_ID = 24;
+uint16 constant LOCAL_CENT_ID = 23;
 
 uint128 constant MAX_BATCH_GAS_LIMIT = 1_000_000;
 uint128 constant BASE_COST = 50_000;
@@ -210,9 +212,6 @@ contract GatewayExt is Gateway, Test {
 // -----------------------------------------
 
 contract GatewayTest is Test {
-    uint16 constant LOCAL_CENT_ID = 23;
-    uint16 constant REMOTE_CENT_ID = 24;
-
     uint256 constant ADAPTER_ESTIMATE = 1;
     bytes32 constant ADAPTER_DATA = bytes32("adapter data");
 
@@ -983,5 +982,71 @@ contract GatewayTestLockCallback is GatewayTest {
     function testErrCallbackIsLocked() public {
         vm.expectRevert(IGateway.CallbackIsLocked.selector);
         gateway.lockCallback();
+    }
+}
+
+contract ReentrantWithBatchAdapter is IAdapter {
+    IGateway public gateway;
+
+    constructor(IGateway gateway_) {
+        gateway = gateway_;
+    }
+
+    function estimate(uint16, bytes calldata, uint256) external pure override returns (uint256) {
+        return 1;
+    }
+
+    function send(uint16, bytes calldata, uint256, address refund) external payable override returns (bytes32) {
+        // Attempt to reenter via withBatch during the send loop
+        gateway.withBatch(abi.encodeWithSelector(this.callback.selector), refund);
+        return bytes32(0);
+    }
+
+    function callback() external {
+        gateway.lockCallback();
+    }
+}
+
+contract ReentrantSendAdapter is IAdapter, Test {
+    IGateway public gateway;
+    address public sender;
+
+    constructor(address sender_, IGateway gateway_) {
+        gateway = gateway_;
+        sender = sender_;
+    }
+
+    function estimate(uint16, bytes calldata, uint256) external pure override returns (uint256) {
+        return 1;
+    }
+
+    function send(uint16, bytes calldata, uint256, address refund) external payable override returns (bytes32) {
+        // Attempt to reenter via send during the send loop
+        bytes memory message = MessageKind.WithPoolA1.asBytes();
+        vm.prank(sender);
+        gateway.send(REMOTE_CENT_ID, message, false, refund);
+        return bytes32(0);
+    }
+}
+
+contract GatewayTestReentrancyProtection is GatewayTest {
+    function _testBase(IAdapter adapter) internal {
+        gateway.file("adapter", address(adapter));
+
+        bytes memory message = MessageKind.WithPoolA1.asBytes();
+
+        gateway.startBatching();
+        gateway.send(REMOTE_CENT_ID, message, false, address(0));
+
+        vm.expectRevert(IGateway.ReentrantBatchCreation.selector);
+        gateway.endBatching{value: MESSAGE_OVERALL_GAS_LIMIT}(REFUND);
+    }
+
+    function testErrReentrantBatchCreationWithBatch() public {
+        _testBase(new ReentrantWithBatchAdapter(gateway));
+    }
+
+    function testErrReentrantBatchCreationSend() public {
+        _testBase(new ReentrantSendAdapter(address(this), gateway));
     }
 }

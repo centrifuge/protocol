@@ -101,6 +101,9 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when there is not enough msg.value to send to the callback
     error NotEnoughValueForCallback();
 
+    /// @notice Dispatched when trying to create a batch during the send loop
+    error ReentrantBatchCreation();
+
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------

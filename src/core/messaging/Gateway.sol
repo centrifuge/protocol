@@ -46,6 +46,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     // Outbound & payments
     bool public transient isBatching;
+    bool internal transient _isSendingBatch;
     address internal transient _batcher;
     mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Underpaid)) public underpaid;
@@ -158,6 +159,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     {
         require(message.length > 0, EmptyMessage());
         require(message.length <= MESSAGE_MAX_LENGTH, TooLongMessage());
+        require(!_isSendingBatch, ReentrantBatchCreation());
 
         PoolId poolId = messageProperties.messagePoolId(message);
         emit PrepareMessage(centrifugeId, poolId, message);
@@ -165,6 +167,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         uint128 gasLimit = messageProperties.messageOverallGasLimit(centrifugeId, message);
         if (isBatching) {
             require(msg.value == 0, NotPayable());
+
             bytes32 batchSlot = _outboundBatchSlot(centrifugeId, poolId);
             bytes memory previousMessage = TransientBytesLib.get(batchSlot);
 
@@ -242,6 +245,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     /// @inheritdoc IGateway
     function withBatch(bytes memory data, uint256 callbackValue, address refund) public payable {
         require(callbackValue <= msg.value, NotEnoughValueForCallback());
+        require(!_isSendingBatch, ReentrantBatchCreation());
 
         bool isNested = isBatching;
         isBatching = true;
@@ -274,6 +278,8 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
 
+        _isSendingBatch = true;
+
         for (uint256 i; i < locators.length; i++) {
             (uint16 centrifugeId, PoolId poolId) = _parseLocator(locators[i]);
             bytes32 outboundBatchSlot = _outboundBatchSlot(centrifugeId, poolId);
@@ -287,6 +293,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
         }
 
+        _isSendingBatch = false;
         isBatching = false;
     }
 
