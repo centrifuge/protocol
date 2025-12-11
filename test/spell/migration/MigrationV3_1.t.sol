@@ -14,6 +14,7 @@ import {
     FullActionBatcher,
     FullDeployer,
     FullInput,
+    FullReport,
     noAdaptersInput,
     defaultTxLimits,
     CoreInput
@@ -96,7 +97,7 @@ contract MigrationV3_1Test is Test {
         ValidationOrchestrator.runPreValidation(shared, false); // shouldRevert = false (show warnings)
 
         // Also run existing deployment validation
-        _validateV3_1Deployment(deployer, true, isMainnet);
+        _validateV3_1Deployment(deployer.fullReport(), address(deployer.adminSafe()), true, isMainnet);
 
         // ----- EXECUTE MIGRATION -----
 
@@ -109,19 +110,21 @@ contract MigrationV3_1Test is Test {
 
         assertEq(migrationSpell.owner(), address(0));
 
-        ValidationOrchestrator.runPostValidation(shared, deployer);
+        ValidationOrchestrator.runPostValidation(shared, deployer.fullReport());
 
         // Also run existing deployment validation
-        _validateV3_1Deployment(deployer, false, isMainnet);
+        _validateV3_1Deployment(deployer.fullReport(), address(deployer.adminSafe()), false, isMainnet);
     }
 
     /// @notice Validate v3.1 deployment permissions and configuration
     /// @param preMigration If true, skips validations that only apply post-migration
     /// @param isMainnet If true, validates production vaults. Set to false for testnets.
-    function _validateV3_1Deployment(FullDeployer deployer, bool preMigration, bool isMainnet) internal {
+    function _validateV3_1Deployment(FullReport memory latest, address safeAdmin, bool preMigration, bool isMainnet)
+        internal
+    {
         console.log("[DEBUG] Starting deployment validation: preMigration=%s, isMainnet=%s", preMigration, isMainnet);
         ForkTestLiveValidation validator = new ForkTestLiveValidation();
-        validator._loadContractsFromDeployer(deployer);
+        validator.loadContractsFromDeployer(latest, safeAdmin);
         validator.validateDeployment(preMigration, isMainnet);
     }
 

@@ -13,7 +13,7 @@ import {Validate_EpochOutstandingRedeems} from "./validators/Validate_EpochOutst
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 
-import {FullDeployer} from "../../../../script/FullDeployer.s.sol";
+import {FullReport} from "../../../../script/FullDeployer.s.sol";
 import {MigrationQueries} from "../../../../script/spell/MigrationQueries.sol";
 
 import {Vm} from "forge-std/Vm.sol";
@@ -86,10 +86,11 @@ library ValidationOrchestrator {
     /// @param shouldRevert If false, displays [WARNING]; if true, reverts on errors
     /// @return true if all validations passed
     function runPreValidation(SharedContext memory shared, bool shouldRevert) internal returns (bool) {
+        FullReport memory emptyReport;
         BaseValidator.ValidationContext memory ctx = BaseValidator.ValidationContext({
             phase: BaseValidator.Phase.PRE,
             old: shared.old,
-            deployer: FullDeployer(address(0)),
+            latest: emptyReport,
             pools: shared.pools,
             hubPools: shared.hubPools,
             localCentrifugeId: shared.localCentrifugeId,
@@ -103,13 +104,13 @@ library ValidationOrchestrator {
 
     /// @notice Run post-migration validation
     /// @param shared SharedContext built by buildSharedContext()
-    /// @param deployer The deployed v3.1 contracts
+    /// @param latest The deployed v3.1 contracts
     /// @return true if all validations passed
-    function runPostValidation(SharedContext memory shared, FullDeployer deployer) internal returns (bool) {
+    function runPostValidation(SharedContext memory shared, FullReport memory latest) internal returns (bool) {
         BaseValidator.ValidationContext memory ctx = BaseValidator.ValidationContext({
             phase: BaseValidator.Phase.POST,
             old: shared.old,
-            deployer: deployer,
+            latest: latest,
             pools: shared.pools,
             hubPools: shared.hubPools,
             localCentrifugeId: shared.localCentrifugeId,

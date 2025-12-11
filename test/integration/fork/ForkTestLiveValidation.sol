@@ -45,7 +45,7 @@ import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
 
-import {FullDeployer} from "../../../script/FullDeployer.s.sol";
+import {FullReport} from "../../../script/FullDeployer.s.sol";
 
 import {VMLabeling} from "../utils/VMLabeling.sol";
 import {ChainConfigs} from "../utils/ChainConfigs.sol";
@@ -376,61 +376,61 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     /// @dev Alternative to _initializeContractAddresses() when testing fresh deployments
     ///      Use this when validating a freshly deployed v3.1 system in fork (e.g., MigrationV3_1Test)
     ///      Use _initializeContractAddresses() when validating live on-chain state (post-migration)
-    /// @param deploy The FullDeployer instance that deployed the v3.1 contracts
-    function _loadContractsFromDeployer(FullDeployer deploy) public virtual {
+    /// @param report The FullReport instance that comes from the deployed v3.1 contracts
+    function loadContractsFromDeployer(FullReport memory report, address adminSafe_) public virtual {
         // Core system contracts
-        root = address(deploy.root());
-        protocolGuardian = address(deploy.protocolGuardian());
-        opsGuardian = address(deploy.opsGuardian());
-        gateway = address(deploy.gateway());
-        gasService = address(deploy.gasService());
-        tokenRecoverer = address(deploy.tokenRecoverer());
-        messageProcessor = address(deploy.messageProcessor());
-        messageDispatcher = address(deploy.messageDispatcher());
-        multiAdapter = address(deploy.multiAdapter());
+        root = address(report.root);
+        protocolGuardian = address(report.protocolGuardian);
+        opsGuardian = address(report.opsGuardian);
+        gateway = address(report.core.gateway);
+        gasService = address(report.core.gasService);
+        tokenRecoverer = address(report.tokenRecoverer);
+        messageProcessor = address(report.core.messageProcessor);
+        messageDispatcher = address(report.core.messageDispatcher);
+        multiAdapter = address(report.core.multiAdapter);
 
         // Hub contracts
-        hubRegistry = address(deploy.hubRegistry());
-        accounting = address(deploy.accounting());
-        holdings = address(deploy.holdings());
-        shareClassManager = address(deploy.shareClassManager());
-        hub = address(deploy.hub());
-        hubHandler = address(deploy.hubHandler());
-        batchRequestManager = address(deploy.batchRequestManager());
-        identityValuation = address(deploy.identityValuation());
+        hubRegistry = address(report.core.hubRegistry);
+        accounting = address(report.core.accounting);
+        holdings = address(report.core.holdings);
+        shareClassManager = address(report.core.shareClassManager);
+        hub = address(report.core.hub);
+        hubHandler = address(report.core.hubHandler);
+        batchRequestManager = address(report.batchRequestManager);
+        identityValuation = address(report.identityValuation);
 
         // Spoke contracts
-        tokenFactory = address(deploy.tokenFactory());
-        balanceSheet = address(deploy.balanceSheet());
-        spoke = address(deploy.spoke());
-        vaultRegistry = address(deploy.vaultRegistry());
-        contractUpdater = address(deploy.contractUpdater());
-        poolEscrowFactory = address(deploy.poolEscrowFactory());
+        tokenFactory = address(report.core.tokenFactory);
+        balanceSheet = address(report.core.balanceSheet);
+        spoke = address(report.core.spoke);
+        vaultRegistry = address(report.core.vaultRegistry);
+        contractUpdater = address(report.core.contractUpdater);
+        poolEscrowFactory = address(report.core.poolEscrowFactory);
 
         // Vault system
-        router = address(deploy.vaultRouter());
-        routerEscrow = address(deploy.routerEscrow());
-        asyncRequestManager = address(deploy.asyncRequestManager());
-        syncManager = address(deploy.syncManager());
-        refundEscrowFactory = address(deploy.refundEscrowFactory());
-        subsidyManager = address(deploy.subsidyManager());
+        router = address(report.vaultRouter);
+        routerEscrow = address(report.routerEscrow);
+        asyncRequestManager = address(report.asyncRequestManager);
+        syncManager = address(report.syncManager);
+        refundEscrowFactory = address(report.refundEscrowFactory);
+        subsidyManager = address(report.subsidyManager);
 
         // Skip wormholeAdapter, axelarAdapter, layerZeroAdapter due to not being public in FullDeployer
         // Can be queried via multiAdapter.adapters()
 
         // Factory contracts
-        asyncVaultFactory = address(deploy.asyncVaultFactory());
-        syncDepositVaultFactory = address(deploy.syncDepositVaultFactory());
+        asyncVaultFactory = address(report.asyncVaultFactory);
+        syncDepositVaultFactory = address(report.syncDepositVaultFactory);
 
         // Hook contracts
-        freezeOnlyHook = address(deploy.freezeOnlyHook());
-        fullRestrictionsHook = address(deploy.fullRestrictionsHook());
-        freelyTransferableHook = address(deploy.freelyTransferableHook());
-        redemptionRestrictionsHook = address(deploy.redemptionRestrictionsHook());
+        freezeOnlyHook = address(report.freezeOnlyHook);
+        fullRestrictionsHook = address(report.fullRestrictionsHook);
+        freelyTransferableHook = address(report.freelyTransferableHook);
+        redemptionRestrictionsHook = address(report.redemptionRestrictionsHook);
 
         // Multichain config - from deployed contracts
-        localCentrifugeId = deploy.messageDispatcher().localCentrifugeId();
-        adminSafe = address(deploy.adminSafe());
+        localCentrifugeId = report.core.messageDispatcher.localCentrifugeId();
+        adminSafe = adminSafe_;
     }
 
     /// @notice Setup VM labels for debugging
@@ -803,7 +803,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         assertEq(
             address(MultiAdapter(multiAdapter).messageProperties()),
-            messageProcessor,
+            gasService,
             "MultiAdapter messageProperties mismatch"
         );
 

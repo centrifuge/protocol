@@ -70,7 +70,7 @@ contract Validate_ShareClassManager is BaseValidator {
         uint256 errorCount = 0;
 
         IShareClassManager oldScm = IShareClassManager(ctx.old.inner.shareClassManager);
-        IShareClassManager newScm = ctx.deployer.shareClassManager();
+        IShareClassManager newScm = ctx.latest.core.shareClassManager;
 
         for (uint256 i = 0; i < ctx.hubPools.length; i++) {
             PoolId poolId = ctx.hubPools[i];

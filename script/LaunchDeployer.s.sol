@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CoreInput} from "./CoreDeployer.s.sol";
+import {CoreInput, makeSalt} from "./CoreDeployer.s.sol";
 import {
     FullInput,
     FullActionBatcher,
@@ -87,14 +87,15 @@ contract LaunchDeployer is FullDeployer {
             })
         });
 
-        // TODO: The batcher needs to be deployed in a previous stage or using create3 to be able Root to rely on it.
-        FullActionBatcher batcher = new FullActionBatcher(msg.sender);
-
         // Cache version hash to avoid redundant hash recalculation
         if (input.core.version == "v3.1" && !isTestnet) _verifyMainnetAdmin(input.adminSafe);
 
-        address protocolAdminEnv = vm.envAddress("PROTOCOL_ADMIN");
-        require(protocolAdminEnv != address(0), "PROTOCOL_ADMIN not set");
+        FullActionBatcher batcher = FullActionBatcher(
+            create3(
+                makeSalt("fullActionBatcher", input.core.version, msg.sender),
+                abi.encodePacked(type(FullActionBatcher).creationCode, abi.encode(msg.sender))
+            )
+        );
 
         deployFull(input, batcher);
 

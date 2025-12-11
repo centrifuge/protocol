@@ -1,6 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
+# Example of different runs:
+# ./script/spell/migrate-testnet.sh fork eth-sepolia sepolia
+# ./script/spell/migrate-testnet.sh fork base-sepolia base-sepolia
+# ./script/spell/migrate-testnet.sh fork arb-sepolia arbitrum-sepolia
+#
+# ./script/spell/migrate-testnet.sh deploy eth-sepolia sepolia
+# ./script/spell/migrate-testnet.sh deploy base-sepolia base-sepolia
+# ./script/spell/migrate-testnet.sh deploy arb-sepolia arbitrum-sepolia
+#
+# ./script/spell/migrate-testnet.sh execute eth-sepolia sepolia
+# ./script/spell/migrate-testnet.sh execute base-sepolia base-sepolia
+# ./script/spell/migrate-testnet.sh execute arb-sepolia arbitrum-sepolia
+
 # Only PRIVATE_KEY and ALCHEMY_API_KEY are used from .env file
 set -a; source .env; set +a # auto-export all sourced vars
 
@@ -11,6 +24,8 @@ REMOTE_RPC_URL="https://$ALCHEMY_NAME.g.alchemy.com/v2/$ALCHEMY_API_KEY"
 GUARDIAN_V3="0xa5ac766b22d9966c3e64cc44923a48cb8b052eda"
 POOLS_TO_MIGRATE="[281474976710662,281474976710668]"
 ADMIN="0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb" # The account of PRIVATE_KEY
+PRE_VALIDATION=true
+POST_VALIDATION=false
 
 deploy() {
     RPC_URL=$1
@@ -102,7 +117,14 @@ execute() {
     echo "##########################################################################"
     echo ""
 
-    # TODO
+    forge script test/spell/migration/ValidationRunner.sol:ValidationRunner \
+        --rpc-url $RPC_URL \
+        --sig "validate(string,string,address,uint64[],bool)" \
+        $NETWORK \
+        $RPC_URL \
+        $ADMIN \
+        $POOLS_TO_MIGRATE \
+        $PRE_VALIDATION
 
     echo ""
     echo "##########################################################################"
@@ -123,7 +145,14 @@ execute() {
     echo "##########################################################################"
     echo ""
 
-    # TODO
+    forge script test/spell/migration/ValidationRunner.sol:ValidationRunner \
+        --rpc-url $RPC_URL \
+        --sig "validate(string,string,address,uint64[],bool)" \
+        $NETWORK \
+        $RPC_URL \
+        $ADMIN \
+        $POOLS_TO_MIGRATE \
+        $POST_VALIDATION
 
     echo ""
     echo "##########################################################################"

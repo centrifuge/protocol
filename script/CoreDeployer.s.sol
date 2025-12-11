@@ -389,7 +389,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
             )
         );
 
-        batcher.engageCore(_coreReport(), input.root, newRoot);
+        batcher.engageCore(coreReport(), input.root, newRoot);
 
         // Core
         register("gateway", address(gateway));
@@ -418,10 +418,10 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
     }
 
     function removeCoreDeployerAccess(CoreActionBatcher batcher) public {
-        batcher.revokeCore(_coreReport());
+        batcher.revokeCore(coreReport());
     }
 
-    function _coreReport() internal view returns (CoreReport memory) {
+    function coreReport() public view returns (CoreReport memory) {
         return CoreReport(
             gateway,
             multiAdapter,

@@ -662,12 +662,12 @@ contract FullDeployer is CoreDeployer {
         if (input.adapters.layerZero.shouldDeploy) register("layerZeroAdapter", address(layerZeroAdapter));
         if (input.adapters.chainlink.shouldDeploy) register("chainlinkAdapter", address(chainlinkAdapter));
 
-        batcher.engageFull(_fullReport(), input.adminSafe, input.opsSafe, newRoot);
+        batcher.engageFull(fullReport(), input.adminSafe, input.opsSafe, newRoot);
     }
 
-    function _fullReport() internal view returns (FullReport memory) {
+    function fullReport() public view returns (FullReport memory) {
         return FullReport(
-            _coreReport(),
+            coreReport(),
             root,
             tokenRecoverer,
             protocolGuardian,
@@ -703,7 +703,7 @@ contract FullDeployer is CoreDeployer {
 
     function removeFullDeployerAccess(FullActionBatcher batcher) public {
         removeCoreDeployerAccess(batcher);
-        batcher.revokeFull(_fullReport());
+        batcher.revokeFull(fullReport());
     }
 }
 

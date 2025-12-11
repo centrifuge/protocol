@@ -6,7 +6,7 @@ import {V3ContractsExt} from "./ValidationTypes.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 
-import {FullDeployer} from "../../../../script/FullDeployer.s.sol";
+import {FullReport} from "../../../../script/FullDeployer.s.sol";
 
 import {Test} from "forge-std/Test.sol";
 import {stdJson} from "forge-std/StdJson.sol";
@@ -38,7 +38,7 @@ abstract contract BaseValidator is Test {
     struct ValidationContext {
         Phase phase; // Current validation phase
         V3ContractsExt old; // v3.0.1 contracts (wrapped with test-only fields)
-        FullDeployer deployer; // v3.1 contracts (address(0) for PRE)
+        FullReport latest; // v3.1 contracts (address(0) for PRE)
         PoolId[] pools; // All pools to migrate
         PoolId[] hubPools; // Pools where this chain is the hub
         uint16 localCentrifugeId; // Current chain's centrifugeId
