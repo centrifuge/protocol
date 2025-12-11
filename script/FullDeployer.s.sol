@@ -350,7 +350,7 @@ contract FullDeployer is CoreDeployer {
                 generateSalt("protocolGuardian"),
                 abi.encodePacked(
                     type(ProtocolGuardian).creationCode,
-                    abi.encode(ISafe(address(batcher)), root, gateway, multiAdapter, messageDispatcher)
+                    abi.encode(ISafe(address(batcher)), root, gateway, messageDispatcher)
                 )
             )
         );

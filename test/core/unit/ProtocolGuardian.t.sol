@@ -6,14 +6,11 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
-import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {IScheduleAuthMessageSender} from "../../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 import {ProtocolGuardian} from "../../../src/admin/ProtocolGuardian.sol";
-import {IBaseGuardian} from "../../../src/admin/interfaces/IBaseGuardian.sol";
-import {IAdapterWiring} from "../../../src/admin/interfaces/IAdapterWiring.sol";
 import {IProtocolGuardian} from "../../../src/admin/interfaces/IProtocolGuardian.sol";
 
 import "forge-std/Test.sol";
@@ -26,7 +23,6 @@ contract ProtocolGuardianTest is Test {
     IRoot immutable root = IRoot(address(new IsContract()));
     ISafe immutable SAFE = ISafe(address(new IsContract()));
     IGateway immutable gateway = IGateway(address(new IsContract()));
-    IMultiAdapter immutable multiAdapter = IMultiAdapter(address(new IsContract()));
     IScheduleAuthMessageSender immutable sender = IScheduleAuthMessageSender(address(new IsContract()));
 
     address immutable OWNER = makeAddr("owner");
@@ -46,7 +42,7 @@ contract ProtocolGuardianTest is Test {
     ProtocolGuardian protocolGuardian;
 
     function setUp() public {
-        protocolGuardian = new ProtocolGuardian(SAFE, root, gateway, multiAdapter, sender);
+        protocolGuardian = new ProtocolGuardian(SAFE, root, gateway, sender);
         vm.deal(address(SAFE), 1 ether);
     }
 
@@ -54,7 +50,6 @@ contract ProtocolGuardianTest is Test {
         assertEq(address(protocolGuardian.safe()), address(SAFE));
         assertEq(address(protocolGuardian.root()), address(root));
         assertEq(address(protocolGuardian.gateway()), address(gateway));
-        assertEq(address(protocolGuardian.multiAdapter()), address(multiAdapter));
         assertEq(address(protocolGuardian.sender()), address(sender));
     }
 }
@@ -104,13 +99,13 @@ contract ProtocolGuardianTestUnpause is ProtocolGuardianTest {
 
     function testUnpauseRevertWhenNotSafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
+        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
         protocolGuardian.unpause();
     }
 
     function testUnpauseRevertWhenOwner() public {
         vm.prank(OWNER);
-        vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
+        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
         protocolGuardian.unpause();
     }
 }
@@ -126,7 +121,7 @@ contract ProtocolGuardianTestScheduleRely is ProtocolGuardianTest {
 
     function testScheduleRelyRevertWhenNotSafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
+        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
         protocolGuardian.scheduleRely(TARGET);
     }
 }
@@ -142,7 +137,7 @@ contract ProtocolGuardianTestCancelRely is ProtocolGuardianTest {
 
     function testCancelRelyRevertWhenNotSafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
+        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
         protocolGuardian.cancelRely(TARGET);
     }
 }
@@ -168,7 +163,7 @@ contract ProtocolGuardianTestScheduleUpgrade is ProtocolGuardianTest {
 
     function testScheduleUpgradeRevertWhenNotSafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
+        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
         protocolGuardian.scheduleUpgrade(CENTRIFUGE_ID, TARGET, REFUND);
     }
 }
@@ -194,7 +189,7 @@ contract ProtocolGuardianTestCancelUpgrade is ProtocolGuardianTest {
 
     function testCancelUpgradeRevertWhenNotSafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
+        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
         protocolGuardian.cancelUpgrade(CENTRIFUGE_ID, TARGET, REFUND);
     }
 }
@@ -225,44 +220,8 @@ contract ProtocolGuardianTestRecoverTokens is ProtocolGuardianTest {
 
     function testRecoverTokensRevertWhenNotSafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
+        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
         protocolGuardian.recoverTokens(CENTRIFUGE_ID, TARGET, TOKEN, TOKEN_ID, TO, AMOUNT, REFUND);
-    }
-}
-
-contract ProtocolGuardianTestSetAdapters is ProtocolGuardianTest {
-    function testSetAdaptersSuccess() public {
-        IAdapter[] memory adapters = new IAdapter[](1);
-        adapters[0] = ADAPTER;
-        uint8 threshold = 1;
-        uint8 recoveryIndex = 2;
-
-        vm.mockCall(
-            address(multiAdapter),
-            abi.encodeWithSelector(
-                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold, recoveryIndex
-            ),
-            abi.encode()
-        );
-
-        vm.expectCall(
-            address(multiAdapter),
-            abi.encodeWithSelector(
-                IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold, recoveryIndex
-            )
-        );
-
-        vm.prank(address(SAFE));
-        protocolGuardian.setAdapters(CENTRIFUGE_ID, adapters, threshold, recoveryIndex);
-    }
-
-    function testSetAdaptersRevertWhenNotSafe() public {
-        IAdapter[] memory adapters = new IAdapter[](1);
-        adapters[0] = ADAPTER;
-
-        vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
-        protocolGuardian.setAdapters(CENTRIFUGE_ID, adapters, 1, 2);
     }
 }
 
@@ -297,7 +256,7 @@ contract ProtocolGuardianTestBlockOutgoing is ProtocolGuardianTest {
 
     function testBlockOutgoingRevertWhenNotSafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
+        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
         protocolGuardian.blockOutgoing(CENTRIFUGE_ID, true);
     }
 }
@@ -307,7 +266,7 @@ contract ProtocolGuardianTestFile is ProtocolGuardianTest {
         address newSafe = makeAddr("newSafe");
 
         vm.expectEmit();
-        emit IBaseGuardian.File("safe", newSafe);
+        emit IProtocolGuardian.File("safe", newSafe);
 
         vm.prank(address(SAFE));
         protocolGuardian.file("safe", newSafe);
@@ -319,7 +278,7 @@ contract ProtocolGuardianTestFile is ProtocolGuardianTest {
         address newSender = makeAddr("newSender");
 
         vm.expectEmit();
-        emit IBaseGuardian.File("sender", newSender);
+        emit IProtocolGuardian.File("sender", newSender);
 
         vm.prank(address(SAFE));
         protocolGuardian.file("sender", newSender);
@@ -329,7 +288,7 @@ contract ProtocolGuardianTestFile is ProtocolGuardianTest {
 
     function testFileRevertWhenUnrecognizedParam() public {
         vm.prank(address(SAFE));
-        vm.expectRevert(IBaseGuardian.FileUnrecognizedParam.selector);
+        vm.expectRevert(IProtocolGuardian.FileUnrecognizedParam.selector);
         protocolGuardian.file("invalid", makeAddr("address"));
     }
 
@@ -337,7 +296,7 @@ contract ProtocolGuardianTestFile is ProtocolGuardianTest {
         address newGateway = makeAddr("newGateway");
 
         vm.expectEmit();
-        emit IBaseGuardian.File("gateway", newGateway);
+        emit IProtocolGuardian.File("gateway", newGateway);
 
         vm.prank(address(SAFE));
         protocolGuardian.file("gateway", newGateway);
@@ -345,44 +304,9 @@ contract ProtocolGuardianTestFile is ProtocolGuardianTest {
         assertEq(address(protocolGuardian.gateway()), newGateway);
     }
 
-    function testFileMultiAdapterSuccess() public {
-        address newMultiAdapter = makeAddr("newMultiAdapter");
-
-        vm.expectEmit();
-        emit IBaseGuardian.File("multiAdapter", newMultiAdapter);
-
-        vm.prank(address(SAFE));
-        protocolGuardian.file("multiAdapter", newMultiAdapter);
-
-        assertEq(address(protocolGuardian.multiAdapter()), newMultiAdapter);
-    }
-
     function testFileRevertWhenNotSafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
+        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
         protocolGuardian.file("safe", makeAddr("address"));
-    }
-}
-
-contract ProtocolGuardianTestWire is ProtocolGuardianTest {
-    function testWireSuccess() public {
-        bytes memory data = abi.encode("some", "data");
-
-        vm.mockCall(
-            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data), abi.encode()
-        );
-
-        vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data));
-
-        vm.prank(address(SAFE));
-        protocolGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
-    }
-
-    function testWireRevertWhenNotSafe() public {
-        bytes memory data = abi.encode("some", "data");
-
-        vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
-        protocolGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
     }
 }

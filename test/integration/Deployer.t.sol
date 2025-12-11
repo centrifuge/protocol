@@ -432,7 +432,6 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         assertEq(address(protocolGuardian.root()), address(root));
         assertEq(address(protocolGuardian.safe()), address(ADMIN_SAFE));
         assertEq(address(protocolGuardian.gateway()), address(gateway));
-        assertEq(address(protocolGuardian.multiAdapter()), address(multiAdapter));
         assertEq(address(protocolGuardian.sender()), address(messageDispatcher));
     }
 
