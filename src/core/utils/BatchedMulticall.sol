@@ -40,7 +40,7 @@ abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
     /// @dev Integrators MUST use msgSender() instead of msg.sender, since this is replaced
     ///      by the gateway address inside the multicall.
     function msgSender() internal view virtual returns (address) {
-        return _sender != address(0) ? _sender : msg.sender;
+        return _sender != address(0) && msg.sender == address(gateway) ? _sender : msg.sender;
     }
 
     /// @dev Only the call to multicall should pass the msg.value, which is then passed

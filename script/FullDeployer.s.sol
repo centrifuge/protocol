@@ -261,6 +261,7 @@ contract FullActionBatcher is CoreActionBatcher {
         report.syncDepositVaultFactory.deny(address(this));
         report.syncManager.deny(address(this));
         report.vaultRouter.deny(address(this));
+        report.subsidyManager.deny(address(this));
 
         report.freezeOnlyHook.deny(address(this));
         report.fullRestrictionsHook.deny(address(this));
