@@ -55,12 +55,15 @@ library ValidationOrchestrator {
     /// @param pools All pools to migrate
     /// @param chain ChainContext with resolved addresses and API endpoint
     /// @param cacheDir Cache directory for file persistence (empty string = in-memory only)
+    /// For tests: cacheDir = "" (in-memory only)
+    /// For production, i.e.: cacheDir = "spell-cache/validation" (file persistence)
     /// @return shared SharedContext to pass to runPreValidation and runPostValidation
     function buildSharedContext(
         MigrationQueries queryService,
         PoolId[] memory pools,
         ChainResolver.ChainContext memory chain,
-        string memory cacheDir
+        string memory cacheDir,
+        bool cleanCache
     ) internal returns (SharedContext memory shared) {
         emit log_string("[CONTEXT] Building shared validation context...");
 
@@ -68,10 +71,6 @@ library ValidationOrchestrator {
             V3ContractsExt({inner: queryService.v3Contracts(), messageDispatcher: chain.rootWard});
 
         PoolId[] memory hubPools = queryService.hubPools(pools);
-
-        // For tests: cacheDir = "" (in-memory only)
-        // For production: cacheDir = "spell-cache/validation" (file persistence)
-        bool cleanCache = true; // PRE phase always cleans
 
         shared = SharedContext({
             localCentrifugeId: chain.localCentrifugeId,
@@ -136,18 +135,38 @@ library ValidationOrchestrator {
 
         // GraphQL-based pre-migration validators (use ctx.store.query())
         validators[0] = new Validate_EpochOutstandingInvests();
+        vm.label(address(validators[0]), "Validate_EpochOutstandingInvests");
+
         validators[1] = new Validate_EpochOutstandingRedeems();
+        vm.label(address(validators[1]), "Validate_EpochOutstandingRedeems");
+
         validators[2] = new Validate_OutstandingInvests();
+        vm.label(address(validators[2]), "Validate_OutstandingInvests");
+
         validators[3] = new Validate_OutstandingRedeems();
+        vm.label(address(validators[3]), "Validate_OutstandingRedeems");
+
         validators[4] = new Validate_CrossChainMessages();
+        vm.label(address(validators[4]), "Validate_CrossChainMessages");
+
         validators[5] = new Validate_Holdings();
+        vm.label(address(validators[5]), "Validate_Holdings");
 
         // On-chain validators (BOTH phase)
         validators[6] = new Validate_ShareClassManager();
+        vm.label(address(validators[6]), "Validate_ShareClassManager");
+
         validators[7] = new Validate_BalanceSheet();
+        vm.label(address(validators[7]), "Validate_BalanceSheet");
+
         validators[8] = new Validate_HubRegistry();
+        vm.label(address(validators[8]), "Validate_HubRegistry");
+
         validators[9] = new Validate_OnOfframpManager();
+        vm.label(address(validators[9]), "Validate_OnOfframpManager");
+
         validators[10] = new Validate_Spoke();
+        vm.label(address(validators[10]), "Validate_Spoke");
 
         return ValidationSuite({validators: validators});
     }
@@ -157,10 +176,19 @@ library ValidationOrchestrator {
 
         // On-chain validators (BOTH phase) - compares old vs new state
         validators[0] = new Validate_ShareClassManager();
+        vm.label(address(validators[0]), "Validate_ShareClassManager");
+
         validators[1] = new Validate_BalanceSheet();
+        vm.label(address(validators[1]), "Validate_BalanceSheet");
+
         validators[2] = new Validate_HubRegistry();
+        vm.label(address(validators[2]), "Validate_HubRegistry");
+
         validators[3] = new Validate_OnOfframpManager();
+        vm.label(address(validators[3]), "Validate_OnOfframpManager");
+
         validators[4] = new Validate_Spoke();
+        vm.label(address(validators[4]), "Validate_Spoke");
 
         return ValidationSuite({validators: validators});
     }
