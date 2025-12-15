@@ -125,6 +125,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
                     poolId,
                     PoolParamsInput({
                         v3: v3,
+                        multiAdapter: MultiAdapter(_contractAddr("multiAdapter")),
                         spoke: Spoke(_contractAddr("spoke")),
                         balanceSheet: BalanceSheet(_contractAddr("balanceSheet")),
                         vaultRegistry: VaultRegistry(_contractAddr("vaultRegistry")),

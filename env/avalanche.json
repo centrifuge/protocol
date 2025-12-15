@@ -13,7 +13,7 @@
   },
   "adapters": {
     "wormhole": {
-      "wormholeId": "6",
+      "wormholeId": 6,
       "relayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
       "deploy": true
     },
@@ -26,6 +26,11 @@
     "layerZero": {
       "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
       "layerZeroEid": 30106,
+      "deploy": true
+    },
+    "chainlink": {
+      "chainSelector": 6433500567565415381,
+      "ccipRouter": "0xF4c7E640EdA248ef95972845a62bdC74237805dB",
       "deploy": true
     }
   },

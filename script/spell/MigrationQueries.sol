@@ -51,7 +51,7 @@ contract MigrationQueries is GraphQLQuery {
     {
 
         // forgefmt: disable-next-item
-        string memory where = string.concat(
+        string memory params = string.concat(
             "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(_centrifugeId),
@@ -60,7 +60,7 @@ contract MigrationQueries is GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
-            "deployments(", where, ") {",
+            "deployments(", params, ") {",
             "  items {"
             "    root"
             "    gateway"
@@ -109,7 +109,7 @@ contract MigrationQueries is GraphQLQuery {
     {
 
         // forgefmt: disable-next-item
-        string memory where = string.concat(
+        string memory params = string.concat(
             "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(_centrifugeId),
@@ -118,7 +118,7 @@ contract MigrationQueries is GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
-            "assets(", where, ") {",
+            "assets(", params, ") {",
             "  totalCount"
             "  items {"
             "    id"
@@ -141,7 +141,7 @@ contract MigrationQueries is GraphQLQuery {
     {
 
         // forgefmt: disable-next-item
-        string memory where = string.concat(
+        string memory params = string.concat(
             "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(_centrifugeId),
@@ -150,7 +150,7 @@ contract MigrationQueries is GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
-            "assetRegistrations(", where, ") {",
+            "assetRegistrations(", params, ") {",
             "  totalCount"
             "  items {"
             "    assetId"
@@ -174,7 +174,7 @@ contract MigrationQueries is GraphQLQuery {
     {
 
         // forgefmt: disable-next-item
-        string memory where = string.concat(
+        string memory params = string.concat(
             "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(_centrifugeId),
@@ -183,7 +183,7 @@ contract MigrationQueries is GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
-            "vaults(", where, ") {",
+            "vaults(", params, ") {",
             "  totalCount"
             "  items {"
             "    id"
@@ -206,7 +206,7 @@ contract MigrationQueries is GraphQLQuery {
     {
 
         // forgefmt: disable-next-item
-        string memory where = string.concat(
+        string memory params = string.concat(
             "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(_centrifugeId),
@@ -215,7 +215,7 @@ contract MigrationQueries is GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
-            "assets(", where, ") {",
+            "assets(", params, ") {",
             "  totalCount"
             "  items {"
             "    address"
@@ -244,7 +244,7 @@ contract MigrationQueries is GraphQLQuery {
     {
 
         // forgefmt: disable-next-item
-        string memory where = string.concat(
+        string memory params = string.concat(
             "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(_centrifugeId),
@@ -255,7 +255,7 @@ contract MigrationQueries is GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
-            "poolManagers(", where, ") {",
+            "poolManagers(", params, ") {",
             "  totalCount"
             "  items {"
             "    address"
@@ -278,7 +278,7 @@ contract MigrationQueries is GraphQLQuery {
     {
 
         // forgefmt: disable-next-item
-        string memory where = string.concat(
+        string memory params = string.concat(
             "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(_centrifugeId),
@@ -289,7 +289,7 @@ contract MigrationQueries is GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
-            "poolManagers(", where, ") {",
+            "poolManagers(", params, ") {",
             "  totalCount"
             "  items {"
             "    address"
@@ -312,7 +312,7 @@ contract MigrationQueries is GraphQLQuery {
     {
 
         // forgefmt: disable-next-item
-        string memory where = string.concat(
+        string memory params = string.concat(
             "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(_centrifugeId),
@@ -322,7 +322,7 @@ contract MigrationQueries is GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
-            "onOffRampManagers(", where, ") {",
+            "onOffRampManagers(", params, ") {",
             "  totalCount"
             "  items {"
             "    address"
@@ -344,7 +344,7 @@ contract MigrationQueries is GraphQLQuery {
     {
 
         // forgefmt: disable-next-item
-        string memory where = string.concat(
+        string memory params = string.concat(
             "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(_centrifugeId),
@@ -354,7 +354,7 @@ contract MigrationQueries is GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
-            "offRampAddresss(", where, ") {",
+            "offRampAddresss(", params, ") {",
             "  totalCount"
             "  items {"
             "    receiverAddress"
@@ -377,7 +377,7 @@ contract MigrationQueries is GraphQLQuery {
     {
 
         // forgefmt: disable-next-item
-        string memory where = string.concat(
+        string memory params = string.concat(
             "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(_centrifugeId),
@@ -387,7 +387,7 @@ contract MigrationQueries is GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
-            "offrampRelayers(", where, ") {",
+            "offrampRelayers(", params, ") {",
             "  totalCount"
             "  items {"
             "    address"
@@ -410,7 +410,7 @@ contract MigrationQueries is GraphQLQuery {
     {
 
         // forgefmt: disable-next-item
-        string memory where = string.concat(
+        string memory params = string.concat(
             "limit: 1000,"
             "where: {"
             "  centrifugeId: ", _jsonValue(_centrifugeId),
@@ -420,7 +420,7 @@ contract MigrationQueries is GraphQLQuery {
 
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
-            "pools(", where, ") {",
+            "pools(", params, ") {",
             "  totalCount"
             "  items {"
             "    spokeBlockchains {"

@@ -50,19 +50,7 @@ deploy() {
 
     echo ""
     echo "##########################################################################"
-    echo "#                        STEP 2: Wire adapters"
-    echo "##########################################################################"
-    echo ""
-
-    forge script script/testnet/WireAdapters.s.sol \
-        --optimize \
-        --rpc-url "$RPC_URL" \
-        --private-key "$PRIVATE_KEY" \
-        --broadcast
-
-    echo ""
-    echo "##########################################################################"
-    echo "#                    STEP 3: Deploy migration spell"
+    echo "#                    STEP 2: Deploy migration spell"
     echo "##########################################################################"
     echo ""
 
@@ -79,7 +67,7 @@ deploy() {
 
     echo ""
     echo "##########################################################################"
-    echo "#              STEP 4: Request root permissions to the spell"
+    echo "#              STEP 3: Request root permissions to the spell"
     echo "##########################################################################"
     echo ""
 
@@ -93,7 +81,7 @@ execute() {
 
     echo ""
     echo "##########################################################################"
-    echo "#              STEP 5: Get root permissions to the spell"
+    echo "#              STEP 4: Get root permissions to the spell"
     echo "##########################################################################"
     echo ""
 

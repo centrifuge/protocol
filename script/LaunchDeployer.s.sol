@@ -10,7 +10,9 @@ import {
     WormholeInput,
     AxelarInput,
     LayerZeroInput,
-    ChainlinkInput
+    ChainlinkInput,
+    AdapterConnections,
+    MAX_ADAPTER_COUNT
 } from "./FullDeployer.s.sol";
 
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
@@ -83,7 +85,8 @@ contract LaunchDeployer is FullDeployer {
                 chainlink: ChainlinkInput({
                     shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.chainlink.deploy"),
                     ccipRouter: _parseJsonAddressOrDefault(config, "$.adapters.chainlink.ccipRouter")
-                })
+                }),
+                connections: _parseConnections(config)
             })
         });
 
@@ -123,6 +126,43 @@ contract LaunchDeployer is FullDeployer {
             return value;
         } catch {
             return address(0);
+        }
+    }
+
+    function _parseJsonUintOrDefault(string memory config, string memory path) private pure returns (uint256) {
+        try vm.parseJsonUint(config, path) returns (uint256 value) {
+            return value;
+        } catch {
+            return 0;
+        }
+    }
+
+    function _parseJsonStringOrDefault(string memory config, string memory path) private pure returns (string memory) {
+        try vm.parseJsonString(config, path) returns (string memory value) {
+            return value;
+        } catch {
+            return "";
+        }
+    }
+
+    function _parseConnections(string memory config) private view returns (AdapterConnections[] memory connections) {
+        try vm.parseJsonStringArray(config, "$.network.connectsTo") returns (string[] memory connectsTo) {
+            connections = new AdapterConnections[](connectsTo.length);
+
+            for (uint256 i; i < connectsTo.length; i++) {
+                string memory remoteConfigFile = string.concat("env/", connectsTo[i], ".json");
+                string memory remoteConfig = vm.readFile(remoteConfigFile);
+
+                connections[i] = AdapterConnections({
+                    centrifugeId: uint16(_parseJsonUintOrDefault(remoteConfig, "$.network.centrifugeId")),
+                    layerZeroId: uint32(_parseJsonUintOrDefault(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
+                    wormholeId: uint16(_parseJsonUintOrDefault(remoteConfig, "$.adapters.wormhole.wormholeId")),
+                    axelarId: _parseJsonStringOrDefault(remoteConfig, "$.adapters.axelar.axelarId"),
+                    chainlinkId: uint64(_parseJsonUintOrDefault(remoteConfig, "$.adapters.chainlink.chainSelector"))
+                });
+            }
+        } catch {
+            return new AdapterConnections[](0);
         }
     }
 

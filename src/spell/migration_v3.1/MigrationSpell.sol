@@ -17,6 +17,7 @@ import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {VaultKind} from "../../core/spoke/interfaces/IVault.sol";
 import {MultiAdapter} from "../../core/messaging/MultiAdapter.sol";
 import {ContractUpdater} from "../../core/utils/ContractUpdater.sol";
+import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
 import {ShareClassManager} from "../../core/hub/ShareClassManager.sol";
 import {IShareToken} from "../../core/spoke/interfaces/IShareToken.sol";
 import {PoolEscrow, IPoolEscrow} from "../../core/spoke/PoolEscrow.sol";
@@ -130,6 +131,7 @@ struct GlobalParamsInput {
 struct PoolParamsInput {
     V3Contracts v3;
 
+    MultiAdapter multiAdapter;
     Spoke spoke;
     BalanceSheet balanceSheet;
     VaultRegistry vaultRegistry;
@@ -239,7 +241,7 @@ contract MigrationSpell {
     }
 
     function _authorizedContracts(PoolParamsInput memory input) internal pure returns (address[] memory) {
-        address[] memory contracts = new address[](9);
+        address[] memory contracts = new address[](10);
         contracts[0] = address(input.spoke);
         contracts[1] = address(input.balanceSheet);
         contracts[2] = address(input.vaultRegistry);
@@ -248,7 +250,8 @@ contract MigrationSpell {
         contracts[5] = address(input.syncManager);
         contracts[6] = address(input.batchRequestManager);
         contracts[7] = address(input.contractUpdater);
-        contracts[8] = address(input.v3.gateway);
+        contracts[8] = address(input.multiAdapter);
+        contracts[9] = address(input.v3.gateway);
         return contracts;
     }
 
@@ -374,6 +377,16 @@ contract MigrationSpell {
     }
 
     function _migratePoolInHub(PoolId poolId, ShareClassId scId, PoolParamsInput memory input) internal {
+        // ----- MULTIADAPTER -----
+        for (uint256 i; i < input.chainsWherePoolIsNotified.length; i++) {
+            uint16 centrifugeId = input.chainsWherePoolIsNotified[i];
+            if (poolId.centrifugeId() != centrifugeId) {
+                IAdapter[] memory adapters = _getAdapters(input.multiAdapter, centrifugeId, poolId);
+                input.multiAdapter
+                    .setAdapters(centrifugeId, poolId, adapters, uint8(adapters.length), uint8(adapters.length));
+            }
+        }
+
         // ---- HUB_REGISTRY -----
         AssetId currency = HubRegistry(input.v3.hubRegistry).currency(poolId);
         if (input.hubManagers.length > 0) {
@@ -433,6 +446,13 @@ contract MigrationSpell {
 
     function _migratePoolInSpoke(PoolId poolId, ShareClassId scId, PoolParamsInput memory input) internal {
         IShareToken shareToken;
+
+        // ----- MULTIADAPTER -----
+        if (input.multiAdapter.localCentrifugeId() != poolId.centrifugeId()) {
+            IAdapter[] memory adapters = _getAdapters(input.multiAdapter, poolId.centrifugeId(), poolId);
+            input.multiAdapter
+                .setAdapters(poolId.centrifugeId(), poolId, adapters, uint8(adapters.length), uint8(adapters.length));
+        }
 
         // ----- SPOKE -----
         input.spoke.addPool(poolId);
@@ -620,6 +640,18 @@ contract MigrationSpell {
                     input.contractUpdater.trustedCall(poolId, scId, onOfframpManager, message);
                 }
             }
+        }
+    }
+
+    function _getAdapters(MultiAdapter multiAdapter, uint16 centrifugeId, PoolId poolId)
+        private
+        view
+        returns (IAdapter[] memory adapters)
+    {
+        uint8 adapterCount = multiAdapter.quorum(centrifugeId, poolId);
+        adapters = new IAdapter[](adapterCount);
+        for (uint8 j; j < adapterCount; j++) {
+            adapters[j] = multiAdapter.adapters(centrifugeId, poolId, j);
         }
     }
 }

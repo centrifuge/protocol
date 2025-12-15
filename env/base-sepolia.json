@@ -6,12 +6,13 @@
     "catapultaNetwork": "baseSepolia",
     "etherscanUrl": "https://api-sepolia.basescan.org/api",
     "connectsTo": [
-      "sepolia"
+      "sepolia",
+      "arbitrum-sepolia"
     ]
   },
   "adapters": {
     "wormhole": {
-      "wormholeId": "10004",
+      "wormholeId": 10004,
       "relayer": "0x93BAD53DDfB6132b0aC8E37f6029163E63372cEE",
       "deploy": true
     },
@@ -24,6 +25,11 @@
     "layerZero": {
       "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
       "layerZeroEid": 40245,
+      "deploy": true
+    },
+    "chainlink": {
+      "chainSelector": 10344971235874465080,
+      "ccipRouter": "0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93",
       "deploy": true
     }
   },

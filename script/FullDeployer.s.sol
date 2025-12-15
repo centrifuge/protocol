@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {AxelarAddressToString} from "./utils/AxelarAddressToString.sol";
 import {CoreInput, CoreReport, CoreDeployer, CoreActionBatcher} from "./CoreDeployer.s.sol";
 
 import {Escrow} from "../src/misc/Escrow.sol";
+
+import {PoolId} from "../src/core/types/PoolId.sol";
+import {IAdapter} from "../src/core/messaging/interfaces/IAdapter.sol";
+import {MAX_ADAPTER_COUNT} from "../src/core/messaging/interfaces/IMultiAdapter.sol";
 
 import {Root} from "../src/admin/Root.sol";
 import {ISafe} from "../src/admin/interfaces/ISafe.sol";
@@ -65,11 +70,20 @@ struct ChainlinkInput {
     address ccipRouter;
 }
 
+struct AdapterConnections {
+    uint16 centrifugeId;
+    uint32 layerZeroId;
+    uint16 wormholeId;
+    string axelarId;
+    uint64 chainlinkId;
+}
+
 struct AdaptersInput {
     WormholeInput wormhole;
     AxelarInput axelar;
     LayerZeroInput layerZero;
     ChainlinkInput chainlink;
+    AdapterConnections[] connections;
 }
 
 struct FullInput {
@@ -114,9 +128,17 @@ struct FullReport {
 }
 
 contract FullActionBatcher is CoreActionBatcher {
+    using AxelarAddressToString for address;
+
     constructor(address deployer_) CoreActionBatcher(deployer_) {}
 
-    function engageFull(FullReport memory report, ISafe adminSafe, ISafe opsSafe, bool newRoot) public onlyDeployer {
+    function engageFull(
+        FullReport memory report,
+        ISafe adminSafe,
+        ISafe opsSafe,
+        bool newRoot,
+        AdapterConnections[] memory connectionList
+    ) public onlyDeployer {
         // Rely Root
         report.tokenRecoverer.rely(address(report.root));
 
@@ -247,6 +269,54 @@ contract FullActionBatcher is CoreActionBatcher {
             report.root.endorse(address(report.core.balanceSheet));
             report.root.endorse(address(report.asyncRequestManager));
             report.root.endorse(address(report.vaultRouter));
+        }
+
+        // Connect adapters
+        for (uint256 i; i < connectionList.length; i++) {
+            AdapterConnections memory connections = connectionList[i];
+
+            uint256 n;
+            IAdapter[] memory adapters = new IAdapter[](MAX_ADAPTER_COUNT);
+
+            if (address(report.layerZeroAdapter) != address(0) && connections.layerZeroId != 0) {
+                report.layerZeroAdapter
+                    .wire(connections.centrifugeId, abi.encode(connections.layerZeroId, report.layerZeroAdapter));
+                adapters[n++] = report.layerZeroAdapter;
+            }
+
+            if (address(report.wormholeAdapter) != address(0) && connections.wormholeId != 0) {
+                report.wormholeAdapter
+                    .wire(connections.centrifugeId, abi.encode(connections.wormholeId, report.wormholeAdapter));
+                adapters[n++] = report.wormholeAdapter;
+            }
+
+            if (address(report.axelarAdapter) != address(0) && bytes(connections.axelarId).length != 0) {
+                report.axelarAdapter
+                    .wire(
+                        connections.centrifugeId,
+                        abi.encode(connections.axelarId, address(report.axelarAdapter).toAxelarString())
+                    );
+                adapters[n++] = report.axelarAdapter;
+            }
+
+            if (address(report.chainlinkAdapter) != address(0) && connections.chainlinkId != 0) {
+                report.chainlinkAdapter
+                    .wire(connections.centrifugeId, abi.encode(connections.chainlinkId, report.chainlinkAdapter));
+
+                adapters[n++] = report.chainlinkAdapter;
+            }
+
+            if (n > 0) {
+                assembly { mstore(adapters, n) }
+                report.core.multiAdapter
+                    .setAdapters(
+                        connections.centrifugeId,
+                        PoolId.wrap(0),
+                        adapters,
+                        uint8(adapters.length),
+                        uint8(adapters.length)
+                    );
+            }
         }
     }
 
@@ -663,7 +733,7 @@ contract FullDeployer is CoreDeployer {
         if (input.adapters.layerZero.shouldDeploy) register("layerZeroAdapter", address(layerZeroAdapter));
         if (input.adapters.chainlink.shouldDeploy) register("chainlinkAdapter", address(chainlinkAdapter));
 
-        batcher.engageFull(fullReport(), input.adminSafe, input.opsSafe, newRoot);
+        batcher.engageFull(fullReport(), input.adminSafe, input.opsSafe, newRoot, input.adapters.connections);
     }
 
     function fullReport() public view returns (FullReport memory) {
@@ -713,7 +783,8 @@ function noAdaptersInput() pure returns (AdaptersInput memory) {
         wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
         axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
         layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
-        chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)})
+        chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
+        connections: new AdapterConnections[](0)
     });
 }
 
