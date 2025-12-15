@@ -117,63 +117,61 @@ contract ValidationRunner is Test {
     function _reportFromJson(string memory config) private pure returns (FullReport memory report) {
         // Build CoreReport
         CoreReport memory core = CoreReport({
-            gateway: Gateway(vm.parseJsonAddress(config, "$.contracts.gateway")),
-            multiAdapter: MultiAdapter(vm.parseJsonAddress(config, "$.contracts.multiAdapter")),
-            gasService: GasService(vm.parseJsonAddress(config, "$.contracts.gasService")),
-            messageProcessor: MessageProcessor(vm.parseJsonAddress(config, "$.contracts.messageProcessor")),
-            messageDispatcher: MessageDispatcher(vm.parseJsonAddress(config, "$.contracts.messageDispatcher")),
-            poolEscrowFactory: PoolEscrowFactory(vm.parseJsonAddress(config, "$.contracts.poolEscrowFactory")),
-            spoke: Spoke(vm.parseJsonAddress(config, "$.contracts.spoke")),
-            balanceSheet: BalanceSheet(vm.parseJsonAddress(config, "$.contracts.balanceSheet")),
-            tokenFactory: TokenFactory(vm.parseJsonAddress(config, "$.contracts.tokenFactory")),
-            contractUpdater: ContractUpdater(vm.parseJsonAddress(config, "$.contracts.contractUpdater")),
+            gateway: Gateway(_tryParseAddress(config, "$.contracts.gateway")),
+            multiAdapter: MultiAdapter(_tryParseAddress(config, "$.contracts.multiAdapter")),
+            gasService: GasService(_tryParseAddress(config, "$.contracts.gasService")),
+            messageProcessor: MessageProcessor(_tryParseAddress(config, "$.contracts.messageProcessor")),
+            messageDispatcher: MessageDispatcher(_tryParseAddress(config, "$.contracts.messageDispatcher")),
+            poolEscrowFactory: PoolEscrowFactory(_tryParseAddress(config, "$.contracts.poolEscrowFactory")),
+            spoke: Spoke(_tryParseAddress(config, "$.contracts.spoke")),
+            balanceSheet: BalanceSheet(_tryParseAddress(config, "$.contracts.balanceSheet")),
+            tokenFactory: TokenFactory(_tryParseAddress(config, "$.contracts.tokenFactory")),
+            contractUpdater: ContractUpdater(_tryParseAddress(config, "$.contracts.contractUpdater")),
             vaultRegistry: VaultRegistry(_tryParseAddress(config, "$.contracts.vaultRegistry")),
-            hubRegistry: HubRegistry(vm.parseJsonAddress(config, "$.contracts.hubRegistry")),
-            accounting: Accounting(vm.parseJsonAddress(config, "$.contracts.accounting")),
-            holdings: Holdings(vm.parseJsonAddress(config, "$.contracts.holdings")),
-            shareClassManager: ShareClassManager(vm.parseJsonAddress(config, "$.contracts.shareClassManager")),
+            hubRegistry: HubRegistry(_tryParseAddress(config, "$.contracts.hubRegistry")),
+            accounting: Accounting(_tryParseAddress(config, "$.contracts.accounting")),
+            holdings: Holdings(_tryParseAddress(config, "$.contracts.holdings")),
+            shareClassManager: ShareClassManager(_tryParseAddress(config, "$.contracts.shareClassManager")),
             hubHandler: HubHandler(_tryParseAddress(config, "$.contracts.hubHandler")),
-            hub: Hub(vm.parseJsonAddress(config, "$.contracts.hub"))
+            hub: Hub(_tryParseAddress(config, "$.contracts.hub"))
         });
 
         // Build FullReport
         report = FullReport({
             core: core,
-            root: Root(vm.parseJsonAddress(config, "$.contracts.root")),
-            tokenRecoverer: TokenRecoverer(vm.parseJsonAddress(config, "$.contracts.tokenRecoverer")),
+            root: Root(_tryParseAddress(config, "$.contracts.root")),
+            tokenRecoverer: TokenRecoverer(_tryParseAddress(config, "$.contracts.tokenRecoverer")),
             protocolGuardian: ProtocolGuardian(_tryParseAddress(config, "$.contracts.protocolGuardian")),
             opsGuardian: OpsGuardian(_tryParseAddress(config, "$.contracts.opsGuardian")),
-            routerEscrow: Escrow(vm.parseJsonAddress(config, "$.contracts.routerEscrow")),
+            routerEscrow: Escrow(_tryParseAddress(config, "$.contracts.routerEscrow")),
             subsidyManager: SubsidyManager(_tryParseAddress(config, "$.contracts.subsidyManager")),
             refundEscrowFactory: RefundEscrowFactory(_tryParseAddress(config, "$.contracts.refundEscrowFactory")),
-            asyncVaultFactory: AsyncVaultFactory(vm.parseJsonAddress(config, "$.contracts.asyncVaultFactory")),
+            asyncVaultFactory: AsyncVaultFactory(_tryParseAddress(config, "$.contracts.asyncVaultFactory")),
             asyncRequestManager: AsyncRequestManager(
-                payable(vm.parseJsonAddress(config, "$.contracts.asyncRequestManager"))
+                payable(_tryParseAddress(config, "$.contracts.asyncRequestManager"))
             ),
             syncDepositVaultFactory: SyncDepositVaultFactory(
-                vm.parseJsonAddress(config, "$.contracts.syncDepositVaultFactory")
+                _tryParseAddress(config, "$.contracts.syncDepositVaultFactory")
             ),
-            syncManager: SyncManager(vm.parseJsonAddress(config, "$.contracts.syncManager")),
-            vaultRouter: VaultRouter(vm.parseJsonAddress(config, "$.contracts.vaultRouter")),
-            freezeOnlyHook: FreezeOnly(vm.parseJsonAddress(config, "$.contracts.freezeOnlyHook")),
-            fullRestrictionsHook: FullRestrictions(vm.parseJsonAddress(config, "$.contracts.fullRestrictionsHook")),
-            freelyTransferableHook: FreelyTransferable(
-                vm.parseJsonAddress(config, "$.contracts.freelyTransferableHook")
-            ),
+            syncManager: SyncManager(_tryParseAddress(config, "$.contracts.syncManager")),
+            vaultRouter: VaultRouter(_tryParseAddress(config, "$.contracts.vaultRouter")),
+            freezeOnlyHook: FreezeOnly(_tryParseAddress(config, "$.contracts.freezeOnlyHook")),
+            fullRestrictionsHook: FullRestrictions(_tryParseAddress(config, "$.contracts.fullRestrictionsHook")),
+            freelyTransferableHook: FreelyTransferable(_tryParseAddress(config, "$.contracts.freelyTransferableHook")),
             redemptionRestrictionsHook: RedemptionRestrictions(
-                vm.parseJsonAddress(config, "$.contracts.redemptionRestrictionsHook")
+                _tryParseAddress(config, "$.contracts.redemptionRestrictionsHook")
             ),
             queueManager: QueueManager(_tryParseAddress(config, "$.contracts.queueManager")),
             onOfframpManagerFactory: OnOfframpManagerFactory(
-                vm.parseJsonAddress(config, "$.contracts.onOfframpManagerFactory")
+                _tryParseAddress(config, "$.contracts.onOfframpManagerFactory")
             ),
             merkleProofManagerFactory: MerkleProofManagerFactory(
-                vm.parseJsonAddress(config, "$.contracts.merkleProofManagerFactory")
+                _tryParseAddress(config, "$.contracts.merkleProofManagerFactory")
             ),
-            vaultDecoder: VaultDecoder(vm.parseJsonAddress(config, "$.contracts.vaultDecoder")),
-            circleDecoder: CircleDecoder(vm.parseJsonAddress(config, "$.contracts.circleDecoder")),
+            vaultDecoder: VaultDecoder(_tryParseAddress(config, "$.contracts.vaultDecoder")),
+            circleDecoder: CircleDecoder(_tryParseAddress(config, "$.contracts.circleDecoder")),
             batchRequestManager: BatchRequestManager(_tryParseAddress(config, "$.contracts.batchRequestManager")),
-            identityValuation: IdentityValuation(vm.parseJsonAddress(config, "$.contracts.identityValuation")),
+            identityValuation: IdentityValuation(_tryParseAddress(config, "$.contracts.identityValuation")),
             oracleValuation: OracleValuation(_tryParseAddress(config, "$.contracts.oracleValuation")),
             navManager: NAVManager(_tryParseAddress(config, "$.contracts.navManager")),
             simplePriceManager: SimplePriceManager(_tryParseAddress(config, "$.contracts.simplePriceManager")),
@@ -189,7 +187,11 @@ contract ValidationRunner is Test {
         try vm.parseJsonAddress(config, key) returns (address addr) {
             return addr;
         } catch {
-            return address(0);
+            try vm.parseJsonAddress(config, string.concat(key, ".address")) returns (address addr) {
+                return addr;
+            } catch {
+                return address(0);
+            }
         }
     }
 }
