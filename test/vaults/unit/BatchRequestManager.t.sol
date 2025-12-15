@@ -25,7 +25,8 @@ import {
     EpochInvestAmounts,
     EpochRedeemAmounts,
     UserOrder,
-    QueuedOrder
+    QueuedOrder,
+    EpochId
 } from "../../../src/vaults/interfaces/IBatchRequestManager.sol";
 
 import "forge-std/Test.sol";
@@ -3186,5 +3187,32 @@ contract BatchRequestManagerERC165Support is BatchRequestManagerBaseTest {
         assertEq(batchRequestManager.supportsInterface(batchRequestManagerID), true);
 
         assertEq(batchRequestManager.supportsInterface(unsupportedInterfaceId), false);
+    }
+}
+
+contract BatchRequestManagerSetEpochIdsTest is BatchRequestManagerBaseTest {
+    function testSetEpochIdsEmitsEvent() public {
+        EpochId memory epochIdData = EpochId({deposit: 5, issue: 4, redeem: 3, revoke: 2});
+
+        vm.expectEmit(true, true, true, true);
+        emit IBatchRequestManager.EpochIdModified(poolId, scId, USDC, epochIdData);
+
+        batchRequestManager.setEpochIds(poolId, scId, USDC, epochIdData);
+
+        // Verify state was updated
+        (uint32 deposit, uint32 issue, uint32 redeem, uint32 revoke) = batchRequestManager.epochId(poolId, scId, USDC);
+        assertEq(deposit, 5);
+        assertEq(issue, 4);
+        assertEq(redeem, 3);
+        assertEq(revoke, 2);
+    }
+
+    function testSetEpochIdsUnauthorized() public {
+        address unauthorized = makeAddr("unauthorized");
+        EpochId memory epochIdData = EpochId({deposit: 1, issue: 1, redeem: 1, revoke: 1});
+
+        vm.prank(unauthorized);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        batchRequestManager.setEpochIds(poolId, scId, USDC, epochIdData);
     }
 }

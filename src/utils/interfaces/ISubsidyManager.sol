@@ -24,7 +24,15 @@ interface ISubsidyManager is ITrustedContractUpdate {
     /// @notice Withdraw subsidized funds to an account
     function withdraw(PoolId poolId, address to, uint256 value) external;
 
-    /// @notice Withdraw subsidized funds to an account
-    /// @return The escrow from where the subsidy is withdrawn
+    /// @notice Withdraws all subsidized funds to an account for cross-chain message payment.
+    /// @dev Unlike `withdraw()`, this function does not emit a `WithdrawSubsidy` event because
+    ///      it is used as a utility to temporarily withdraw funds for
+    ///      paying cross-chain messages. The excess funds are refunded back to the RefundEscrow
+    ///      in the same transaction (or asynchronously shortly after), so no actual withdrawal
+    ///      from the subsidy system occurs.
+    /// @param poolId The pool whose subsidy escrow to withdraw from.
+    /// @param to The address to send the funds to (typically the caller for message payment).
+    /// @return The escrow address from where the subsidy is withdrawn.
+    /// @return amount The amount withdrawn.
     function withdrawAll(PoolId poolId, address to) external returns (address, uint256 amount);
 }

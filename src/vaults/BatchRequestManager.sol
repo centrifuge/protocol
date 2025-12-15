@@ -97,6 +97,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
     /// @dev used only for migrations
     function setEpochIds(PoolId poolId, ShareClassId scId, AssetId assetId, EpochId memory epochIdData) external auth {
         epochId[poolId][scId][assetId] = epochIdData;
+        emit EpochIdModified(poolId, scId, assetId, epochIdData);
     }
 
     //----------------------------------------------------------------------------------------------

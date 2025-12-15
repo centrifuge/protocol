@@ -551,10 +551,10 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
 
     /// @inheritdoc IDepositManager
     function maxMint(IBaseVault vault_, address user) public view returns (uint256 shares) {
+        shares = uint256(investments[vault_][user].maxMint);
         if (!_canTransfer(
                 vault_, address(balanceSheet.escrow(vault_.poolId())), user, uint256(investments[vault_][user].maxMint)
             )) return 0;
-        return uint256(investments[vault_][user].maxMint);
     }
 
     /// @inheritdoc IRedeemManager

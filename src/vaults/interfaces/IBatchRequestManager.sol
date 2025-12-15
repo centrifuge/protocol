@@ -12,7 +12,7 @@ import {IHubRequestManager, IHubRequestManagerNotifications} from "../../core/hu
 /// @param approvedPoolAmount The amount of pool currency which was approved by the Fund Manager
 /// @param approvedAssetAmount The amount of assets which was approved by the Fund Manager
 /// @param pendingAssetAmount The amount of assets for which issuance was pending by the Fund Manager
-/// @param pricePoolPerAsset The price of 1 pool currency token in terms of asset tokens at the time of approval
+/// @param pricePoolPerAsset The price of one asset unit in terms of pool currency at the time of approval
 /// @param pricePoolPerShare The price of 1 pool currency token in terms of share class tokens at the time of issuance
 /// @param issuedAt The timestamp when shares were issued
 struct EpochInvestAmounts {
@@ -27,7 +27,7 @@ struct EpochInvestAmounts {
 /// @notice Struct containing the epoch data for paying out assets of a share class token
 /// @param approvedShareAmount The amount of share class tokens which was approved by the Fund Manager for payout
 /// @param pendingShareAmount The amount of share class tokens for which payout was pending by the Fund Manager
-/// @param pricePoolPerAsset The price of 1 pool currency token in terms of asset tokens at the time of approval
+/// @param pricePoolPerAsset The price of one asset unit in terms of pool currency at the time of approval
 /// @param pricePoolPerShare The price of 1 pool currency token in terms of share class tokens at the time of revocation
 /// @param payoutAssetAmount The amount of payout assets to claim by redeeming share class tokens
 /// @param revokedAt The timestamp when shares were revoked
@@ -175,6 +175,11 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 what, address addr);
 
+    /// @notice Emitted when epoch IDs are modified via setEpochIds during migration
+    event EpochIdModified(
+        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, EpochId epochIdData
+    );
+
     //----------------------------------------------------------------------------------------------
     // Errors
     //----------------------------------------------------------------------------------------------
@@ -248,7 +253,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     /// @param depositAssetId The asset identifier for deposits
     /// @param nowDepositEpochId The current deposit epoch identifier
     /// @param approvedAssetAmount The amount of assets approved for this epoch
-    /// @param pricePoolPerAsset The price of pool currency per asset unit
+    /// @param pricePoolPerAsset The price of one asset unit in terms of pool currency
     /// @param refund Address to receive unused gas refund
     function approveDeposits(
         PoolId poolId,
@@ -267,7 +272,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     /// @param payoutAssetId The asset identifier for payouts
     /// @param nowRedeemEpochId The current redeem epoch identifier
     /// @param approvedShareAmount The amount of shares approved for redemption
-    /// @param pricePoolPerAsset The price of pool currency per asset unit
+    /// @param pricePoolPerAsset The price of one asset unit in terms of pool currency
     function approveRedeems(
         PoolId poolId,
         ShareClassId scId,

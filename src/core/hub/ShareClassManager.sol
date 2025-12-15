@@ -38,6 +38,10 @@ contract ShareClassManager is Auth, IShareClassManager {
         auth
         returns (ShareClassId scId_)
     {
+        PoolId prefixedPoolId = PoolId.wrap(uint64(bytes8(salt)));
+        require(poolId == prefixedPoolId, InvalidSalt());
+        require(!salts[salt], AlreadyUsedSalt());
+
         scId_ = previewNextShareClassId(poolId);
 
         uint32 index = ++shareClassCount[poolId];
@@ -45,9 +49,6 @@ contract ShareClassManager is Auth, IShareClassManager {
 
         ShareClassMetadata storage meta = _updateMetadata(poolId, scId_, name, symbol);
 
-        PoolId prefixedPoolId = PoolId.wrap(uint64(bytes8(salt)));
-        require(poolId == prefixedPoolId, InvalidSalt());
-        require(!salts[salt], AlreadyUsedSalt());
         salts[salt] = true;
         meta.salt = salt;
 

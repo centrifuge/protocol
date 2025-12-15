@@ -238,8 +238,9 @@ interface ISpoke {
     /// @param scId The share class id
     /// @param assetId The asset id
     /// @param payload The request payload to be processed
-    /// @param refund Address to refund excess payment
+    /// @param extraGasLimit Additional gas stipend for cross-chain execution
     /// @param unpaid Whether to allow unpaid mode
+    /// @param refund Address to refund excess payment
     function request(
         PoolId poolId,
         ShareClassId scId,

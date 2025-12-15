@@ -19,14 +19,13 @@ skinparam sequence {
 actor Investor
 actor BalanceSheetManager
 participant Vault
-participant AsyncRequestManager
-participant GlobalEscrow
+participant AsyncRequestManager as ARM
 participant BalanceSheet
 participant PoolEscrow
 participant Hub
 actor HubManager
 
-note over Hub, AsyncRequestManager
+note over Hub, ARM
     All Hub ↔ AsyncRequestManager communication
     routes through Spoke & cross-chain Messaging
 end note
@@ -34,67 +33,150 @@ end note
 == investor deposits ==
 
 Investor -> Vault : requestDeposit()
-Vault --> GlobalEscrow : transfer assets
+Vault -> ARM : requestDeposit()
+ARM -> PoolEscrow : transfer assets from investor
+ARM -> BalanceSheet : reserve(assets, REASON_DEPOSIT)
+BalanceSheet -> PoolEscrow : mark assets as reserved
+
+note right of PoolEscrow
+    Assets in PoolEscrow:
+    total = X, reserved = X
+    reservedBy[ARM][REASON_DEPOSIT] = X
+end note
 
 == hub manager approves ==
 
 HubManager -> Hub : approvedDeposits()
-Hub -> AsyncRequestManager :
-AsyncRequestManager --> GlobalEscrow :
-GlobalEscrow --> PoolEscrow : transfer assets
+Hub -> ARM : approvedDeposits()
+ARM -> BalanceSheet : unreserve(assets, REASON_DEPOSIT)
+BalanceSheet -> PoolEscrow : decrease reserved counter
+ARM -> BalanceSheet : noteDeposit()
+BalanceSheet -> PoolEscrow : deposit() [tracking only]
+
+note right of PoolEscrow
+    Assets in PoolEscrow:
+    total = X, reserved = 0
+    [available for withdrawal]
+end note
 
 == balance sheet manager withdraws ==
 
-BalanceSheetManager -> BalanceSheet : withdraw
-BalanceSheet -> PoolEscrow : 
+BalanceSheetManager -> BalanceSheet : withdraw(assets)
+BalanceSheet -> PoolEscrow : withdraw() + authTransferTo()
 PoolEscrow --> BalanceSheetManager : transfer assets
+
+note right of PoolEscrow
+    Assets withdrawn for off-chain use
+end note
 
 == hub manager issues shares ==
 
 HubManager -> Hub : issueShares()
-Hub --> AsyncRequestManager :
-AsyncRequestManager --> BalanceSheet :
-BalanceSheet --> GlobalEscrow : mint shares
+Hub --> ARM : issuedShares()
+ARM -> BalanceSheet : issue(shares)
+BalanceSheet -> ShareToken : mint(shares, PoolEscrow)
+ShareToken --> PoolEscrow : shares minted
+ARM -> BalanceSheet : reserve(shares, REASON_DEPOSIT)
+BalanceSheet -> PoolEscrow : mark shares as reserved
+
+note right of PoolEscrow
+    Shares in PoolEscrow:
+    total = Y, reserved = Y
+    reservedBy[ARM][REASON_DEPOSIT] = Y
+end note
 
 == bot triggers fulfillment ==
 
 Bot -> Hub : notifyDeposit()
-Hub --> AsyncRequestManager : fulfill deposit request
+Hub --> ARM : fulfill deposit request
 
-== investor claims ==
+note right of ARM
+    ARM.maxMint updated
+end note
+
+== investor claims shares ==
 
 Investor -> Vault : mint()
-Vault -> GlobalEscrow :
-GlobalEscrow --> Investor : transfer shares
+Vault -> ARM : deposit() or mint()
+ARM -> BalanceSheet : unreserve(shares, REASON_DEPOSIT)
+BalanceSheet -> PoolEscrow : decrease reserved counter
+ARM -> BalanceSheet : withdraw(shares, investor)
+BalanceSheet -> PoolEscrow : authTransferTo(investor)
+PoolEscrow --> Investor : transfer shares
+
+note right of Investor
+    Shares transferred to investor
+    PoolEscrow: total = 0, reserved = 0
+end note
 
 == investor submit redemption request ==
 
 Investor -> Vault : requestRedeem()
-Vault --> GlobalEscrow : transfer shares
+Vault -> ARM : requestRedeem()
+ARM -> BalanceSheet : transferSharesFrom(investor→escrow)
+BalanceSheet -> PoolEscrow : receive shares from investor
+ARM -> BalanceSheet : reserve(shares, REASON_REDEEM)
+BalanceSheet -> PoolEscrow : mark shares as reserved
+
+note right of PoolEscrow
+    Shares in PoolEscrow:
+    total = Y, reserved = Y
+    reservedBy[ARM][REASON_REDEEM] = Y
+end note
+
 HubManager -> Hub : approvedRedeems()
 
 == balance sheet manager repays ==
 
-BalanceSheetManager -> BalanceSheet : deposit
-BalanceSheet --> PoolEscrow : transfer assets
+BalanceSheetManager -> BalanceSheet : deposit(assets)
+BalanceSheet -> PoolEscrow : receive assets
+
+note right of PoolEscrow
+    Assets received (unreserved)
+    Available for reservation
+end note
 
 == hub manager revokes shares ==
 
 HubManager -> Hub : revokeShares()
-Hub -> AsyncRequestManager : revokedShares()
-AsyncRequestManager --> GlobalEscrow : burn shares
-AsyncRequestManager --> PoolEscrow : reserve assets
+Hub -> ARM : revokedShares()
+ARM -> BalanceSheet : reserve(assets, REASON_REDEEM)
+BalanceSheet -> PoolEscrow : mark assets as reserved
+ARM -> BalanceSheet : unreserve(shares, REASON_REDEEM)
+BalanceSheet -> PoolEscrow : mark shares as unreserved
+ARM -> BalanceSheet : transferSharesFrom(escrow→ARM)
+BalanceSheet -> PoolEscrow : transfer shares to ARM
+ARM -> BalanceSheet : revoke(shares)
+BalanceSheet -> ShareToken : burn(shares)
+
+note right of PoolEscrow
+    Assets: total = Z, reserved = Z
+    Shares: burned (removed from supply)
+    reservedBy[ARM][REASON_REDEEM][assets] = Z
+end note
 
 == bot triggers fulfillment ==
 
 Bot -> Hub : notifyRedeem()
-Hub --> AsyncRequestManager : fulfill redeem request
+Hub --> ARM : fulfill redeem request
+
+note right of ARM
+    ARM.maxWithdraw updated
+end note
 
 == investor claims redemption ==
 
 Investor -> Vault : withdraw()
-Vault --> AsyncRequestManager :
-AsyncRequestManager --> PoolEscrow : unreserve assets
+Vault --> ARM : withdraw() or redeem()
+ARM -> BalanceSheet : unreserve(assets, REASON_REDEEM)
+BalanceSheet -> PoolEscrow : decrease reserved counter
+ARM -> BalanceSheet : withdraw(assets, investor)
+BalanceSheet -> PoolEscrow : withdraw() + authTransferTo()
 PoolEscrow --> Investor : transfer assets
+
+note right of Investor
+    Assets transferred to investor
+    Redemption complete
+end note
 
 @enduml

@@ -9,6 +9,8 @@ import {ITransferHook, HookData} from "../core/spoke/interfaces/ITransferHook.so
 /// @notice Hook implementation that:
 ///         * Requires adding accounts to the memberlist before they can receive tokens
 ///         * Supports freezing accounts which blocks transfers both to and from them
+/// @dev    To enable cross-chain transfers to a target chain, `address(uint160(centrifugeId))`
+///         must be whitelisted as a member on the source chain's share token.
 contract FullRestrictions is BaseTransferHook {
     constructor(
         address root_,

@@ -57,10 +57,10 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     {
         Holding storage holding_ = holding[scId][asset][tokenId];
 
-        reservedBy[scId][caller][reason][asset][tokenId] += value;
+        uint128 newReservedAmount = reservedBy[scId][caller][reason][asset][tokenId] + value;
+        reservedBy[scId][caller][reason][asset][tokenId] = newReservedAmount;
         holding_.reserved += value;
 
-        uint128 newReservedAmount = reservedBy[scId][caller][reason][asset][tokenId];
         emit IncreaseReserve(asset, tokenId, poolId, scId, caller, reason, value, newReservedAmount);
     }
 
@@ -71,12 +71,13 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     {
         Holding storage holding_ = holding[scId][asset][tokenId];
 
-        require(reservedBy[scId][caller][reason][asset][tokenId] >= value, InsufficientReserve());
+        uint128 currentReserved = reservedBy[scId][caller][reason][asset][tokenId];
+        require(currentReserved >= value, InsufficientReserve());
 
-        reservedBy[scId][caller][reason][asset][tokenId] -= value;
+        uint128 newReservedAmount = currentReserved - value;
+        reservedBy[scId][caller][reason][asset][tokenId] = newReservedAmount;
         holding_.reserved -= value;
 
-        uint128 newReservedAmount = reservedBy[scId][caller][reason][asset][tokenId];
         emit DecreaseReserve(asset, tokenId, poolId, scId, caller, reason, value, newReservedAmount);
     }
 
