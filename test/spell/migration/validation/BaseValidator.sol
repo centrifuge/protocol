@@ -96,6 +96,16 @@ abstract contract BaseValidator is Test {
         return vm.toString(value);
     }
 
+    /// @notice Convert string to JSON string
+    function _jsonString(string memory value) internal pure returns (string memory) {
+        return string.concat("\\\"", value, "\\\"");
+    }
+
+    /// @notice Convert uint256 to JSON string
+    function _jsonValue(uint256 value) internal pure returns (string memory) {
+        return _jsonString(vm.toString(value));
+    }
+
     /// @notice Trim ValidationError array to actual error count
     function _trimErrors(ValidationError[] memory errors, uint256 errorCount)
         internal

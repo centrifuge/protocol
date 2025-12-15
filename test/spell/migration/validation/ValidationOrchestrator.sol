@@ -4,6 +4,11 @@ pragma solidity 0.8.28;
 import {GraphQLStore} from "./GraphQLStore.sol";
 import {BaseValidator} from "./BaseValidator.sol";
 import {V3ContractsExt} from "./ValidationTypes.sol";
+import {Validate_Spoke} from "./validators/Validate_Spoke.sol";
+import {Validate_Holdings} from "./validators/Validate_Holdings.sol";
+import {Validate_HubRegistry} from "./validators/Validate_HubRegistry.sol";
+import {Validate_BalanceSheet} from "./validators/Validate_BalanceSheet.sol";
+import {Validate_OnOfframpManager} from "./validators/Validate_OnOfframpManager.sol";
 import {Validate_ShareClassManager} from "./validators/Validate_ShareClassManager.sol";
 import {Validate_CrossChainMessages} from "./validators/Validate_CrossChainMessages.sol";
 import {Validate_OutstandingInvests} from "./validators/Validate_OutstandingInvests.sol";
@@ -127,7 +132,7 @@ library ValidationOrchestrator {
     // ============================================
 
     function _buildPreSuite() private returns (ValidationSuite memory) {
-        BaseValidator[] memory validators = new BaseValidator[](6);
+        BaseValidator[] memory validators = new BaseValidator[](11);
 
         // GraphQL-based pre-migration validators (use ctx.store.query())
         validators[0] = new Validate_EpochOutstandingInvests();
@@ -135,18 +140,27 @@ library ValidationOrchestrator {
         validators[2] = new Validate_OutstandingInvests();
         validators[3] = new Validate_OutstandingRedeems();
         validators[4] = new Validate_CrossChainMessages();
+        validators[5] = new Validate_Holdings();
 
         // On-chain validators (BOTH phase)
-        validators[5] = new Validate_ShareClassManager();
+        validators[6] = new Validate_ShareClassManager();
+        validators[7] = new Validate_BalanceSheet();
+        validators[8] = new Validate_HubRegistry();
+        validators[9] = new Validate_OnOfframpManager();
+        validators[10] = new Validate_Spoke();
 
         return ValidationSuite({validators: validators});
     }
 
     function _buildPostSuite() private returns (ValidationSuite memory) {
-        BaseValidator[] memory validators = new BaseValidator[](1);
+        BaseValidator[] memory validators = new BaseValidator[](5);
 
-        // On-chain validators (BOTH phase) - compares old vs new ShareClassManager
+        // On-chain validators (BOTH phase) - compares old vs new state
         validators[0] = new Validate_ShareClassManager();
+        validators[1] = new Validate_BalanceSheet();
+        validators[2] = new Validate_HubRegistry();
+        validators[3] = new Validate_OnOfframpManager();
+        validators[4] = new Validate_Spoke();
 
         return ValidationSuite({validators: validators});
     }
