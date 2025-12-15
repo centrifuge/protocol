@@ -37,10 +37,10 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
         version = vm.envOr("VERSION", string("")).toBytes32();
         setUpCreateXFactory();
         // Load core addresses we need
-        address multiAdapterAddr = vm.parseJsonAddress(config, "$.contracts.multiAdapter");
-        address protocolGuardianAddr = vm.parseJsonAddress(config, "$.contracts.protocolGuardian");
-        address opsGuardianAddr = vm.parseJsonAddress(config, "$.contracts.opsGuardian");
-        address rootAddr = vm.parseJsonAddress(config, "$.contracts.root");
+        address multiAdapterAddr = _readContractAddress(config, "$.contracts.multiAdapter");
+        address protocolGuardianAddr = _readContractAddress(config, "$.contracts.protocolGuardian");
+        address opsGuardianAddr = _readContractAddress(config, "$.contracts.opsGuardian");
+        address rootAddr = _readContractAddress(config, "$.contracts.root");
 
         multiAdapter = MultiAdapter(multiAdapterAddr);
 

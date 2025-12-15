@@ -5,7 +5,9 @@ import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 
 import {IOpsGuardian} from "../../src/admin/interfaces/IOpsGuardian.sol";
 
-import "forge-std/Script.sol";
+import {console} from "forge-std/console.sol";
+
+import {JsonRegistry} from "../utils/JsonRegistry.s.sol";
 
 /// @title WireAdapters
 /// @notice Configures the source network's adapters to communicate with destination networks.
@@ -18,7 +20,7 @@ import "forge-std/Script.sol";
 ///      - Prevents InvalidAdapter errors from asymmetric configurations
 ///
 ///      Intended for testnet use only.
-contract WireAdapters is Script {
+contract WireAdapters is JsonRegistry {
     address private sourceWormholeAddr; // Source Wormhole adapter address (if deployed)
     address private sourceLayerZeroAddr; // Source LayerZero adapter address (if deployed)
     address private sourceAxelarAddr; // Source Axelar adapter address (if deployed)
@@ -63,17 +65,13 @@ contract WireAdapters is Script {
             console.log("Skipping", adapterLabel);
             return address(0);
         }
-        // parseJsonAddress may revert, so wrap in try-catch
-        try vm.parseJsonAddress(config, contractJsonPath) returns (address parsedAddr) {
-            if (parsedAddr != address(0)) {
-                return parsedAddr;
-            } else {
-                console.log("Unexpected:", adapterLabel, "is zero in config for", network);
-            }
-        } catch {
+        address parsedAddr = _readContractAddress(config, contractJsonPath);
+        if (parsedAddr != address(0)) {
+            return parsedAddr;
+        } else {
             console.log("No", adapterLabel, "found in config for network", network);
-            return address(0);
         }
+        return address(0);
     }
 
     function fetchConfig(string memory network) internal view returns (string memory) {
@@ -102,7 +100,8 @@ contract WireAdapters is Script {
 
         // Get list of destination networks to connect to
         string[] memory connectsTo = vm.parseJsonStringArray(sourceConfig, "$.network.connectsTo");
-        IOpsGuardian opsGuardian = IOpsGuardian(vm.parseJsonAddress(sourceConfig, "$.contracts.opsGuardian"));
+
+        IOpsGuardian opsGuardian = IOpsGuardian(_readContractAddress(sourceConfig, "$.contracts.opsGuardian"));
 
         vm.startBroadcast();
 

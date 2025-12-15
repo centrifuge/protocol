@@ -129,7 +129,7 @@ class AnvilManager:
         if not runner.run_deploy("LaunchDeployer"):
             return False
         args.step = "deploy:protocol"
-        verifier.update_network_config()
+        verifier.update_network_config("script/LaunchDeployer.s.sol")
 
         # Deploy test data - temporarily use admin account's private key
         # We need to sign TestData with the ADMIN key

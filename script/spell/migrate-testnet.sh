@@ -37,16 +37,16 @@ deploy() {
     echo ""
 
     export VERSION="v3.1"
-    export ROOT=$(cast call $GUARDIAN_V3 "root()(address)" --rpc-url $RPC_URL)
+    export ROOT=$(cast call $GUARDIAN_V3 "root()(address)" --rpc-url "$RPC_URL")
     export PROTOCOL_ADMIN=$ADMIN
     export OPS_ADMIN=$ADMIN
     forge script script/LaunchDeployer.s.sol \
         --optimize \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY \
+        --rpc-url "$RPC_URL" \
+        --private-key "$PRIVATE_KEY" \
         --broadcast
 
-    VERSION="v3.1" ./script/deploy/update_network_config.py $NETWORK
+    VERSION="v3.1" ./script/deploy/update_network_config.py "$NETWORK" --script script/LaunchDeployer.s.sol
 
     echo ""
     echo "##########################################################################"
@@ -56,8 +56,8 @@ deploy() {
 
     forge script script/testnet/WireAdapters.s.sol \
         --optimize \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY \
+        --rpc-url "$RPC_URL" \
+        --private-key "$PRIVATE_KEY" \
         --broadcast
 
     echo ""
@@ -69,13 +69,13 @@ deploy() {
     forge script script/spell/MigrationV3_1.s.sol:MigrationV3_1Deployer \
         --sig "run(address)" $ADMIN \
         --optimize \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY \
+        --rpc-url "$RPC_URL" \
+        --private-key "$PRIVATE_KEY" \
         --broadcast
 
-    CHAIN_ID=$(cast chain-id --rpc-url $RPC_URL)
+    CHAIN_ID=$(cast chain-id --rpc-url "$RPC_URL")
     MIGRATION_SPELL=$(jq -r '.transactions[] | select(.contractName=="MigrationSpell") | .contractAddress' \
-        broadcast/MigrationV3_1.s.sol/$CHAIN_ID/run-latest.json)
+        broadcast/MigrationV3_1.s.sol/"$CHAIN_ID"/run-latest.json)
 
     echo ""
     echo "##########################################################################"
@@ -83,9 +83,9 @@ deploy() {
     echo "##########################################################################"
     echo ""
 
-    cast send $GUARDIAN_V3 "scheduleRely(address)" $MIGRATION_SPELL \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY
+    cast send $GUARDIAN_V3 "scheduleRely(address)" "$MIGRATION_SPELL" \
+        --rpc-url "$RPC_URL" \
+        --private-key "$PRIVATE_KEY"
 }
 
 execute() {
@@ -97,9 +97,9 @@ execute() {
     echo "##########################################################################"
     echo ""
 
-    cast send $ROOT "executeScheduledRely(address)" $MIGRATION_SPELL \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY
+    cast send "$ROOT" "executeScheduledRely(address)" "$MIGRATION_SPELL" \
+        --rpc-url "$RPC_URL" \
+        --private-key "$PRIVATE_KEY"
 
     echo ""
     echo "##########################################################################"
@@ -108,8 +108,8 @@ execute() {
     echo ""
 
     cast send $GUARDIAN_V3 "pause()" \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY
+        --rpc-url "$RPC_URL" \
+        --private-key "$PRIVATE_KEY"
 
     echo ""
     echo "##########################################################################"
@@ -118,12 +118,12 @@ execute() {
     echo ""
 
     forge script test/spell/migration/ValidationRunner.sol:ValidationRunner \
-        --rpc-url $RPC_URL \
+        --rpc-url "$RPC_URL" \
         --sig "validate(string,string,address,uint64[],bool)" \
-        $NETWORK \
-        $RPC_URL \
+        "$NETWORK" \
+        "$RPC_URL" \
         $ADMIN \
-        $POOLS_TO_MIGRATE \
+        "$POOLS_TO_MIGRATE" \
         $PRE_VALIDATION
 
     echo ""
@@ -133,10 +133,10 @@ execute() {
     echo ""
 
     forge script script/spell/MigrationV3_1.s.sol:MigrationV3_1ExecutorTestnet \
-        --sig "run(address, uint64[])" $MIGRATION_SPELL $POOLS_TO_MIGRATE \
+        --sig "run(address, uint64[])" "$MIGRATION_SPELL" "$POOLS_TO_MIGRATE" \
         --optimize \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY \
+        --rpc-url "$RPC_URL" \
+        --private-key "$PRIVATE_KEY" \
         --broadcast
 
     echo ""
@@ -146,12 +146,12 @@ execute() {
     echo ""
 
     forge script test/spell/migration/ValidationRunner.sol:ValidationRunner \
-        --rpc-url $RPC_URL \
+        --rpc-url "$RPC_URL" \
         --sig "validate(string,string,address,uint64[],bool)" \
-        $NETWORK \
-        $RPC_URL \
+        "$NETWORK" \
+        "$RPC_URL" \
         $ADMIN \
-        $POOLS_TO_MIGRATE \
+        "$POOLS_TO_MIGRATE" \
         $POST_VALIDATION
 
     echo ""
@@ -161,8 +161,8 @@ execute() {
     echo ""
 
     cast send $GUARDIAN_V3 "unpause()" \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY
+        --rpc-url "$RPC_URL" \
+        --private-key "$PRIVATE_KEY"
 
 }
 
@@ -170,7 +170,7 @@ case "$MODE" in
     fork)
         echo "Starting Anvil in fork mode..."
 
-        anvil --fork-url $REMOTE_RPC_URL &
+        anvil --fork-url "$REMOTE_RPC_URL" &
         ANVIL_PID=$!
         trap "kill $ANVIL_PID" EXIT
 
@@ -197,7 +197,7 @@ case "$MODE" in
         fi
 
         echo "Deploy..."
-        deploy $REMOTE_RPC_URL
+        deploy "$REMOTE_RPC_URL"
         ;;
     execute)
         read -p "You're not in a fork. Are you sure you want to continue? [y/N] " confirm
@@ -207,7 +207,7 @@ case "$MODE" in
         fi
 
         echo "Execute..."
-        execute $REMOTE_RPC_URL
+        execute "$REMOTE_RPC_URL"
         ;;
     *)
         echo "Usage: $0 {fork|deploy|execute}"

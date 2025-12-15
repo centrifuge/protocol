@@ -1,0 +1,258 @@
+name: "Registry"
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/registry.yml"
+  push:
+    branches:
+      - main
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  generate:
+    name: Build registry ABI files
+    runs-on: ubuntu-latest
+    outputs:
+      mainnet: ${{ steps.changed_environments.outputs.mainnet }}
+      testnet: ${{ steps.changed_environments.outputs.testnet }}
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.1
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+          cd script/registry && npm install
+
+      - name: Detect changed environments
+        id: changed_environments
+        run: |
+          changed=$(node .github/ci-scripts/detect-changed-environments.js)
+          echo "Changed environments: $changed"
+          mainnet_changed=$(echo $changed | jq -r '.mainnet')
+          testnet_changed=$(echo $changed | jq -r '.testnet')
+          echo "mainnet=$mainnet_changed" >> $GITHUB_OUTPUT
+          echo "testnet=$testnet_changed" >> $GITHUB_OUTPUT
+
+      - name: Determine deployment commits
+        id: deployment_commits
+        run: |
+          # Note: Deployment SHAs remain fetchable because the tag-env-updates workflow
+          # automatically creates tags (deploy-${version}-${timestamp}) whenever env files
+          # are updated. These tags preserve the commit SHAs in git history even after
+          # branch deletion or rebasing.
+          # The script returns full 40-character SHAs, expanding short SHAs if needed.
+          mainnet_commit=$(node .github/ci-scripts/detect-deployment-commit.js mainnet)
+          testnet_commit=$(node .github/ci-scripts/detect-deployment-commit.js testnet)
+          echo "Mainnet deployment commit: $mainnet_commit"
+          echo "Testnet deployment commit: $testnet_commit"
+          echo "mainnet=$mainnet_commit" >> $GITHUB_OUTPUT
+          echo "testnet=$testnet_commit" >> $GITHUB_OUTPUT
+
+      - name: Fetch deployment commits
+        run: |
+          # Fetch the specific commits (script already returns full SHAs)
+          git fetch origin ${{ steps.deployment_commits.outputs.mainnet }} --depth=1 
+          git fetch origin ${{ steps.deployment_commits.outputs.testnet }} --depth=1
+
+      - name: Build contracts at mainnet deployment commit
+        if: steps.changed_environments.outputs.mainnet == 'true'
+        run: |
+          git worktree add /tmp/mainnet-build ${{ steps.deployment_commits.outputs.mainnet }}
+          pushd /tmp/mainnet-build
+          forge --version
+          forge build --skip test
+          popd
+          mkdir -p out-mainnet
+          cp -R /tmp/mainnet-build/out/* ./out-mainnet/
+          git worktree remove /tmp/mainnet-build --force
+
+      - name: Generate mainnet registry
+        if: steps.changed_environments.outputs.mainnet == 'true'
+        env:
+          DEPLOYMENT_COMMIT: ${{ steps.deployment_commits.outputs.mainnet }}
+          ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+        run: |
+          set -euo pipefail
+          rm -rf out
+          cp -R out-mainnet out
+          node script/registry/abi-registry.js mainnet
+
+      - name: Build contracts at testnet deployment commit
+        if: steps.changed_environments.outputs.testnet == 'true'
+        run: |
+          git worktree add /tmp/testnet-build ${{ steps.deployment_commits.outputs.testnet }}
+          pushd /tmp/testnet-build
+          forge --version
+          forge build --skip test
+          popd
+          mkdir -p out-testnet
+          cp -R /tmp/testnet-build/out/* ./out-testnet/
+          git worktree remove /tmp/testnet-build --force
+
+      - name: Generate testnet registry
+        if: steps.changed_environments.outputs.testnet == 'true'
+        env:
+          DEPLOYMENT_COMMIT: ${{ steps.deployment_commits.outputs.testnet }}
+          ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+        run: |
+          set -euo pipefail
+          rm -rf out
+          cp -R out-testnet out
+          node script/registry/abi-registry.js testnet
+
+      - name: Upload registry artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-registries
+          path: |
+            registry/registry-mainnet.json
+            registry/registry-testnet.json
+          if-no-files-found: ignore
+          retention-days: 90
+  pin-to-ipfs:
+    needs: [generate]
+    name: Pin registry files to IPFS
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'release') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main' && 
+       (needs.generate.outputs.mainnet == 'true' || needs.generate.outputs.testnet == 'true'))
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+          cd script/registry && npm install
+
+      - name: Download registry artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: contract-registries
+          path: registry
+
+      - name: Pin registry files to IPFS
+        id: upload_to_ipfs
+        env:
+          PINATA_JWT: ${{ secrets.PINATA_JWT }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Run script - it auto-detects files, compares with remote, pins if changed, and writes summary
+          result=$(node script/registry/pin-to-ipfs.js)
+          echo "$result" > /tmp/ipfs_result.json
+
+          # Extract CIDs and changed status for issue creation
+          mainnet_cid=$(echo $result | jq -r '.mainnet.cid // empty')
+          mainnet_changed=$(echo $result | jq -r '.mainnet.changed // false')
+          testnet_cid=$(echo $result | jq -r '.testnet.cid // empty')
+          testnet_changed=$(echo $result | jq -r '.testnet.changed // false')
+
+          # Set outputs for issue creation step
+          if [ -n "$mainnet_cid" ] && [ "$mainnet_cid" != "null" ]; then
+            echo "mainnet=$mainnet_cid" >> $GITHUB_OUTPUT
+          fi
+          echo "mainnet_changed=$mainnet_changed" >> $GITHUB_OUTPUT
+
+          if [ -n "$testnet_cid" ] && [ "$testnet_cid" != "null" ]; then
+            echo "testnet=$testnet_cid" >> $GITHUB_OUTPUT
+          fi
+          echo "testnet_changed=$testnet_changed" >> $GITHUB_OUTPUT
+
+      - name: Create issue to update external registry pointer
+        if: |
+          github.event_name == 'release' &&
+          (steps.upload_to_ipfs.outputs.mainnet_changed == 'true' || steps.upload_to_ipfs.outputs.testnet_changed == 'true')
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = `Registry pointer update required`;
+            const mainnetHash = `${{ steps.upload_to_ipfs.outputs.mainnet }}`;
+            const testnetHash = `${{ steps.upload_to_ipfs.outputs.testnet }}`;
+            const mainnetChanged = `${{ steps.upload_to_ipfs.outputs.mainnet_changed }}` === 'true';
+            const testnetChanged = `${{ steps.upload_to_ipfs.outputs.testnet_changed }}` === 'true';
+
+            const bodyParts = [
+              `New registries were generated in workflow run ${context.runId}.`,
+              ``,
+              `Please update the registry pointers:`,
+              ``
+            ];
+
+            if (mainnetChanged && mainnetHash) {
+              bodyParts.push(
+                `**Mainnet Registry**`,
+                `- CID: ${mainnetHash}`,
+                `- URL: https://gateway.pinata.cloud/ipfs/${mainnetHash}`,
+                ``
+              );
+            }
+
+            if (testnetChanged && testnetHash) {
+              bodyParts.push(
+                `**Testnet Registry**`,
+                `- CID: ${testnetHash}`,
+                `- URL: https://gateway.pinata.cloud/ipfs/${testnetHash}`,
+                ``
+              );
+            }
+
+            bodyParts.push(
+              `Artifacts:`,
+              `- Uploaded artifact: contract-registries (contains registry-mainnet.json and registry-testnet.json)`
+            );
+
+            const body = bodyParts.join('\n');
+
+            // Check for an open issue with the same title to avoid duplicates
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+            const existing = issues.find(i => i.title === title);
+            if (existing) {
+              console.log(`Issue already exists: #${existing.number}`);
+            } else {
+              const { data: issue } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body
+              });
+              console.log(`Created issue #${issue.number}`);
+            }

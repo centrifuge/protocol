@@ -39,6 +39,7 @@ Examples:
   python3 deploy.py base-sepolia deploy:full --catapulta --priority-gas-price 2
   python3 deploy.py sepolia deploy:test --resume
   python3 deploy.py sepolia verify:protocol
+  python3 deploy.py sepolia verify:contracts  # Verify & merge all contracts from latest deployment
   python3 deploy.py arbitrum-sepolia verify:protocol
   VERSION=vXYZ python3 deploy.py release:sepolia  # Deploy all Sepolia testnets (auto-resumes)
         """
@@ -47,7 +48,7 @@ Examples:
     parser.add_argument("network", nargs="?", help="Network name (must match env/<network>.json)")
     parser.add_argument("step", nargs="?", help="Deployment step", choices=[
         "deploy:protocol", "deploy:full", "deploy:adapters", "wire:adapters",
-        "deploy:test", "verify:protocol", "dump:config", "release:sepolia"
+        "deploy:test", "verify:protocol", "verify:contracts", "dump:config", "release:sepolia"
     ])
     parser.add_argument("--catapulta", action="store_true", help="Use Catapulta for deployment")
     parser.add_argument("--ledger", action="store_true", help="Force use of Ledger hardware wallet")
@@ -254,6 +255,11 @@ def main():
         elif args.step == "verify:protocol":
             print_section(f"Verifying core protocol contracts for {args.network}")
             verify_success = verifier.verify_contracts("LaunchDeployer")
+
+        elif args.step == "verify:contracts":
+            # Verify and merge all contracts from latest deployment (no deployment script needed)
+            print_section(f"Verifying contracts from latest deployment for {args.network}")
+            verify_success = verifier.verify_contracts(None)
 
         elif args.step == "dump:config":
             print_section(f"Dumping config for {args.network}")

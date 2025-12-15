@@ -1,0 +1,80 @@
+name: "Tag Env Updates"
+
+on:
+  push:
+    paths:
+      - "env/*.json"
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Compute tag names
+        id: compute_tags
+        run: |
+          tags=$(node .github/ci-scripts/compute-env-tags.js)
+          if [ -z "$tags" ]; then
+            echo "No tags to create (no env files changed or no version found)"
+            echo "tags=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          # Store tags as multiline output
+          echo "$tags" > /tmp/tags.txt
+          echo "tags<<EOF" >> $GITHUB_OUTPUT
+          echo "$tags" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create and push tags
+        if: steps.compute_tags.outputs.tags != ''
+        run: |
+          # Read tags from file (one per line) and collect tags to push
+          tags_to_push=()
+          while IFS= read -r line; do
+            if [ -z "$line" ]; then
+              continue
+            fi
+            tag=$(echo "$line" | awk '{print $1}')
+            sha=$(echo "$line" | awk '{print $2}')
+            if [ -z "$tag" ] || [ -z "$sha" ]; then
+              echo "Skipping malformed line: $line"
+              continue
+            fi
+            
+            # Check if tag already exists
+            if git rev-parse --verify --quiet "refs/tags/$tag" > /dev/null; then
+              echo "Tag $tag already exists, skipping"
+              continue
+            fi
+            
+            # Create annotated tag pointing directly to the deployment commit SHA
+            git tag -a "$tag" -m "Env update: $tag" "$sha"
+            echo "Created tag: $tag"
+            tags_to_push+=("$tag")
+          done < /tmp/tags.txt
+
+          # Push all new tags
+          if [ ${#tags_to_push[@]} -gt 0 ]; then
+            git push origin "${tags_to_push[@]}"
+            echo "Pushed ${#tags_to_push[@]} tag(s) to origin"
+          else
+            echo "No new tags to push"
+          fi

@@ -60,24 +60,24 @@ abstract contract BaseTestData is LaunchDeployer {
      * @dev Used by all test scripts to initialize contract references
      */
     function loadContractsFromConfig(string memory config) internal {
-        spoke = Spoke(vm.parseJsonAddress(config, "$.contracts.spoke"));
-        hub = Hub(vm.parseJsonAddress(config, "$.contracts.hub"));
-        shareClassManager = ShareClassManager(vm.parseJsonAddress(config, "$.contracts.shareClassManager"));
+        spoke = Spoke(_readContractAddress(config, "$.contracts.spoke"));
+        hub = Hub(_readContractAddress(config, "$.contracts.hub"));
+        shareClassManager = ShareClassManager(_readContractAddress(config, "$.contracts.shareClassManager"));
         redemptionRestrictionsHook =
-            RedemptionRestrictions(vm.parseJsonAddress(config, "$.contracts.redemptionRestrictionsHook"));
-        identityValuation = IdentityValuation(vm.parseJsonAddress(config, "$.contracts.identityValuation"));
-        asyncVaultFactory = AsyncVaultFactory(vm.parseJsonAddress(config, "$.contracts.asyncVaultFactory"));
+            RedemptionRestrictions(_readContractAddress(config, "$.contracts.redemptionRestrictionsHook"));
+        identityValuation = IdentityValuation(_readContractAddress(config, "$.contracts.identityValuation"));
+        asyncVaultFactory = AsyncVaultFactory(_readContractAddress(config, "$.contracts.asyncVaultFactory"));
         syncDepositVaultFactory =
-            SyncDepositVaultFactory(vm.parseJsonAddress(config, "$.contracts.syncDepositVaultFactory"));
-        balanceSheet = BalanceSheet(vm.parseJsonAddress(config, "$.contracts.balanceSheet"));
-        hubRegistry = HubRegistry(vm.parseJsonAddress(config, "$.contracts.hubRegistry"));
+            SyncDepositVaultFactory(_readContractAddress(config, "$.contracts.syncDepositVaultFactory"));
+        balanceSheet = BalanceSheet(_readContractAddress(config, "$.contracts.balanceSheet"));
+        hubRegistry = HubRegistry(_readContractAddress(config, "$.contracts.hubRegistry"));
         asyncRequestManager =
-            AsyncRequestManager(payable(vm.parseJsonAddress(config, "$.contracts.asyncRequestManager")));
-        batchRequestManager = BatchRequestManager(vm.parseJsonAddress(config, "$.contracts.batchRequestManager"));
-        syncManager = SyncManager(vm.parseJsonAddress(config, "$.contracts.syncManager"));
-        protocolGuardian = ProtocolGuardian(vm.parseJsonAddress(config, "$.contracts.protocolGuardian"));
-        opsGuardian = OpsGuardian(vm.parseJsonAddress(config, "$.contracts.opsGuardian"));
-        subsidyManager = SubsidyManager(vm.parseJsonAddress(config, "$.contracts.subsidyManager"));
+            AsyncRequestManager(payable(_readContractAddress(config, "$.contracts.asyncRequestManager")));
+        batchRequestManager = BatchRequestManager(_readContractAddress(config, "$.contracts.batchRequestManager"));
+        syncManager = SyncManager(_readContractAddress(config, "$.contracts.syncManager"));
+        protocolGuardian = ProtocolGuardian(_readContractAddress(config, "$.contracts.protocolGuardian"));
+        opsGuardian = OpsGuardian(_readContractAddress(config, "$.contracts.opsGuardian"));
+        subsidyManager = SubsidyManager(_readContractAddress(config, "$.contracts.subsidyManager"));
     }
 
     struct AsyncVaultParams {

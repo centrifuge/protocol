@@ -28,57 +28,147 @@
     }
   },
   "contracts": {
-    "root": "0x8a7c1D479Cc77a5458F74C480B9b306BB29b953e",
-    "gasService": "0x087f971283A2ca4736a876D4cE2392e710c298af",
-    "gateway": "0xF0A8CcAC3e35b4d5413B55E18f06D8925ab5A226",
-    "multiAdapter": "0x2C61BC7C5aF7f0Af2888dE9343C3ce4b2fBf5933",
-    "messageProcessor": "0x41e9edadb6c8Ea6BE2D8F4Db940cBDC3e4C62C3D",
-    "messageDispatcher": "0x0270E5C92EDCD2D2521B653Eda07CEa62c3B0746",
-    "hubRegistry": "0x92e78c7680303b04e4CE9d1736c000288e2339E5",
-    "accounting": "0x6c472032B511244b41e6d9904e3E22851bec7cA9",
-    "holdings": "0xb8E71f7323186eD8fDa8A9a4bA2563a757bf4b57",
-    "shareClassManager": "0xCEe3d48F701c4Bfd1287f0de2aAA3cEc8582CfDE",
-    "hub": "0xE5e49CEdB5D3DCD24b25e2886a0c5E27e2e9CBe9",
-    "identityValuation": "0x30E2c177310f761a6D14871CB126763aCb31657d",
-    "poolEscrowFactory": "0xecEb1763fD13CDCd44886d91feaE963b6bA63a16",
-    "tokenRecoverer": "0xdc6ec822cf2d8A87ff44c94b3ff3E8F9fA8Eab97",
-    "routerEscrow": "0xE6efa0eE8949869991Dc5f7D3c6B4F729fDbE687",
-    "globalEscrow": "0xEDB3569289a5b73f716c3BB5c822dbb5133C0f88",
-    "freezeOnlyHook": "0xC91FA7e7a521a095fDF0DE51D6b1239d4466c85A",
-    "redemptionRestrictionsHook": "0xEEa1EfDeE0475b362928f017Cf70d964Af09450a",
-    "fullRestrictionsHook": "0xC302839eDE6A864109ea8971C134E3711279477f",
-    "tokenFactory": "0xF377CE2aA3759584f1ef8946B3F74d515Ff73Cc1",
-    "asyncRequestManager": "0x0399981d1A85fcd44857a0cBD5c5E3bd0F6D24A6",
-    "syncManager": "0x75A9604525b7201F8BAD07Da7a1AE06dFC706dD6",
-    "asyncVaultFactory": "0x66f8D4D9F79cc8e621aCe5BdAbacF88D0e6cf943",
-    "syncDepositVaultFactory": "0xDE639FfbCEEc5c5439e9712bf60703cf84a7b05C",
-    "spoke": "0x7Ac5B65764A8b1A19E832FdE942ce618EeF823aF",
-    "vaultRouter": "0xD38215e157418488C7a5Bc924033e4769a62c4ac",
-    "balanceSheet": "0x7574F55F4c26A08d88e2fFCF9555D9B6E8158c9D",
-    "wormholeAdapter": "0x5940ad8841C50a57F0464f36BaF488964E86655e",
-    "onOfframpManagerFactory": "0xa73bEf8c73bA26584C026bdb72FaD1dA281A1743",
-    "merkleProofManagerFactory": "0x96D9E5994c210029DC77EBc45717241061ceA62F",
-    "vaultDecoder": "0xC7C183f5d735382FF1Aa931C8dFD5e03e4e0BcC7",
-    "circleDecoder": "0x0ef7BdA2FB475C0Cbc16164Fc377DEAc656639a4",
-    "contractUpdater": "0x95e13AD12a1C544d02430dB9E3BfB70462A57F81",
-    "vaultRegistry": "0x22dB7862f9D903F49CF179C7079E72739f5a3c1D",
-    "hubHandler": "0x6302c19f056Fd709D164E28F1C0702420b7BdfFE",
-    "protocolGuardian": "0xa265dB5DF8806391E7C8A1915B96368cff0222Ee",
-    "opsGuardian": "0xa14E9158BA9463470210A13a150c0Bcf1dA304f4",
-    "refundEscrowFactory": "0xc45C00aCc305F48c6A99d473b58231754c2364a8",
-    "freelyTransferableHook": "0x88f5eC79Ee4D2ee012439E2a090420f82664C7A3",
-    "queueManager": "0xD5131B978794b11bb62cdd536DA73500401e341D",
-    "batchRequestManager": "0xF76976280300501c9a185Cd9bB214e2e9573fDd3",
-    "oracleValuation": "0xf4D0fb4980516E72d5794126d4Cc52dc586529Ad",
-    "navManager": "0x74AAFBd44700d5D7A8273AB5213475DA7735E4FC",
-    "simplePriceManager": "0x48364458BaD08CE36ba9F0642f3b6c89282d89e3",
-    "layerZeroAdapter": "0x24f3192d46869609F8F6605e662b8146CA4240d3"
+    "root": {
+      "address": "0x8DD4c47fD0018844457c53FC4e9578551b40a261"
+    },
+    "gasService": {
+      "address": "0x18e142FCc0774A801Fb8769d6836D644CE83c187"
+    },
+    "gateway": {
+      "address": "0x8a346ACd924ccD258779894Af6629FCEB68f01F1"
+    },
+    "multiAdapter": {
+      "address": "0x2DdC2070b1F63774C02f3262F1d1B5d451315bF5"
+    },
+    "messageProcessor": {
+      "address": "0x9d2D2e9c5c2F90924f12889b1aD2962D96F92a9c"
+    },
+    "messageDispatcher": {
+      "address": "0xE3BA1052A9be15B675DA5dBd2df4114CBc75f43D"
+    },
+    "hubRegistry": {
+      "address": "0xE4066895dEC891ff25080887626dC080D8Cb5e94"
+    },
+    "accounting": {
+      "address": "0xacEeaAb044e80168A0aFe419Cd628fF62eDE60F8"
+    },
+    "holdings": {
+      "address": "0x1B4040E99F9E27D22fD3ED8Ba03baDD651ADDBb6"
+    },
+    "shareClassManager": {
+      "address": "0x9f2eff33B2723844c2f5fA056721a6e977Dd62aA"
+    },
+    "hub": {
+      "address": "0x8535cc8E57e0AFb2b839C28bC7EfEAE477F8049C"
+    },
+    "identityValuation": {
+      "address": "0x3fe229Edf4f2417aC1CEE87BA013779641FAa0A9"
+    },
+    "poolEscrowFactory": {
+      "address": "0x930a3e26328fb9D7cB9dD81a12fc5F739c35057d"
+    },
+    "tokenRecoverer": {
+      "address": "0x0F6d771aCA8983E77Dd874408a8a03873cf1dA39"
+    },
+    "routerEscrow": {
+      "address": "0x6d8b00BBABDFB636393693C22155cc834E6D861c"
+    },
+    "globalEscrow": {
+      "address": "0xAe38c74bD9C2D2835195493933B5fd31B0aE269D"
+    },
+    "freezeOnlyHook": {
+      "address": "0xC376f60687FDF2F99316E872604734D01DB9543a"
+    },
+    "redemptionRestrictionsHook": {
+      "address": "0x93CE7e739bDCd675b76EA04ed8c037c649057c92"
+    },
+    "fullRestrictionsHook": {
+      "address": "0x089c9C5aCAF21408534f519522f4355434Ca5610"
+    },
+    "tokenFactory": {
+      "address": "0xCA50Ac1B39f3f57eaA1df275592C4690d00a3D8a"
+    },
+    "asyncRequestManager": {
+      "address": "0x08D1dD5723B0F7B02609b74dEF721a13d97b1d02"
+    },
+    "syncManager": {
+      "address": "0xb215656e061fc41831dc459B24dAA5Ad7d51ee9A"
+    },
+    "asyncVaultFactory": {
+      "address": "0x473B767198A743978aB14b864e46d4E6a4aB7A6e"
+    },
+    "syncDepositVaultFactory": {
+      "address": "0xd8a1Ae9F6E1D44190AD65DE66D0D8cD82254dA36"
+    },
+    "spoke": {
+      "address": "0x69db1054302612E5a13Cc77cD802ca482942D3b9"
+    },
+    "vaultRouter": {
+      "address": "0x13452a150c2317200b295a6be96c844DF0D6e4e5"
+    },
+    "balanceSheet": {
+      "address": "0x28B2F3DD3B5cDEe527BEF7BCcaFAD3e33bD93a77"
+    },
+    "wormholeAdapter": {
+      "address": "0xBeE5118BF5d8e3Ff7c662dEB718655402F25f355"
+    },
+    "onOfframpManagerFactory": {
+      "address": "0xE238Fa8B49c4Fcb8203dd2a4777D2489e2666988"
+    },
+    "merkleProofManagerFactory": {
+      "address": "0xa7c95a09D5B9aE4BC94EBa29a563e64237390a36"
+    },
+    "vaultDecoder": {
+      "address": "0x72527Ccf83A3E9Ca00d94d600f3D6F2c5690B781"
+    },
+    "circleDecoder": {
+      "address": "0x1D46C32DeA9cBCdC801B74a16054Aba58de08F80"
+    },
+    "contractUpdater": {
+      "address": "0x89448BE6a5E52f51135231066a2c6BF547289d30"
+    },
+    "vaultRegistry": {
+      "address": "0xd7E21B988DC6396F78F0900A69af745ef86c12B5"
+    },
+    "hubHandler": {
+      "address": "0x68244603f53be41c7c59AcEE76A850E6d2199D85"
+    },
+    "protocolGuardian": {
+      "address": "0x7044908C830Dde350C0D9c1D3F53d5127Fd91eb1"
+    },
+    "opsGuardian": {
+      "address": "0x19F16C4c265a6Afb341275d1560661A0E9eb4bdE"
+    },
+    "refundEscrowFactory": {
+      "address": "0x7c31dDdc128faC0abc2cc0e5609904385a9B610d"
+    },
+    "freelyTransferableHook": {
+      "address": "0x72E92af88300174A9430A761b03dA3961aa31dc0"
+    },
+    "queueManager": {
+      "address": "0x30Fe322791F0dBfeff31DF76E02B0b327978e9Ed"
+    },
+    "batchRequestManager": {
+      "address": "0xdcB4e0FB9f1c77CCaC17195973d137A5e2b6D0d2"
+    },
+    "oracleValuation": {
+      "address": "0xCb01C0d165c8509f03e4f527Ba0CBc9000fE0F1d"
+    },
+    "navManager": {
+      "address": "0xB388512a0A19fDc4654748375549CB0C9ee1B678"
+    },
+    "simplePriceManager": {
+      "address": "0x9c4c6C4be4e78b6A949f9597A3e00136DC62C2bc"
+    },
+    "layerZeroAdapter": {
+      "address": "0x250d750410b94d5B6d407D2b677cE9Ba5777eeFD"
+    }
   },
   "deploymentInfo": {
     "deploy:protocol": {
-      "gitCommit": "5fa5d3c0",
-      "timestamp": "2025-11-18T08:26:55Z",
-      "version": "v3.1"
+      "gitCommit": "33171f4",
+      "timestamp": "2025-10-15T12:27:31Z",
+      "version": "v3.1.1"
     },
     "deploy:adapters": {
       "gitCommit": "e54f27b1",
