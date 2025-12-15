@@ -137,8 +137,10 @@ contract GraphQLStore is GraphQLQuery {
     }
 
     /// @notice Build cache file path from query
+    /// @dev Uses query name + hash suffix to prevent collisions between queries with same name but different params
     function _cacheFile(string memory q) internal view returns (string memory) {
-        return string.concat(_cacheDir, "/", _extractQueryName(q), ".json");
+        bytes32 hash = keccak256(bytes(q));
+        return string.concat(_cacheDir, "/", _extractQueryName(q), "_", _vmInstance().toString(bytes4(hash)), ".json");
     }
 
     /// @notice Get Vm instance for cheatcodes
