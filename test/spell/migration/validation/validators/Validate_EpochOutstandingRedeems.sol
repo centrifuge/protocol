@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
+import {PoolId} from "../../../../../src/core/types/PoolId.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 
 import {BaseValidator} from "../BaseValidator.sol";
@@ -11,15 +12,12 @@ import {BaseValidator} from "../BaseValidator.sol";
 contract Validate_EpochOutstandingRedeems is BaseValidator {
     using stdJson for string;
 
-    string constant QUERY =
-        "epochOutstandingRedeems(limit: 1000) { items { poolId tokenId assetId pendingSharesAmount } totalCount }";
-
     function supportedPhases() public pure override returns (Phase) {
         return Phase.PRE;
     }
 
     function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
-        string memory json = ctx.store.query(QUERY);
+        string memory json = ctx.store.query(_epochOutstandingRedeemsQuery(ctx));
 
         uint256 totalCount = json.readUint(".data.epochOutstandingRedeems.totalCount");
 
@@ -47,5 +45,22 @@ contract Validate_EpochOutstandingRedeems is BaseValidator {
         return ValidationResult({
             passed: errorCount == 0, validatorName: "EpochOutstandingRedeems", errors: _trimErrors(errors, errorCount)
         });
+    }
+
+    function _epochOutstandingRedeemsQuery(ValidationContext memory ctx) internal pure returns (string memory) {
+        string memory poolIdsJson = "[";
+        for (uint256 i = 0; i < ctx.pools.length; i++) {
+            poolIdsJson = string.concat(poolIdsJson, _jsonValue(PoolId.unwrap(ctx.pools[i])));
+            if (i < ctx.pools.length - 1) {
+                poolIdsJson = string.concat(poolIdsJson, ", ");
+            }
+        }
+        poolIdsJson = string.concat(poolIdsJson, "]");
+
+        return string.concat(
+            "epochOutstandingRedeems(limit: 1000, where: { poolId_in: ",
+            poolIdsJson,
+            " }) { items { poolId tokenId assetId pendingSharesAmount } totalCount }"
+        );
     }
 }

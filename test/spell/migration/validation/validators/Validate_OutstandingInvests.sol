@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
+import {PoolId} from "../../../../../src/core/types/PoolId.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 
 import {BaseValidator} from "../BaseValidator.sol";
@@ -11,9 +12,6 @@ import {BaseValidator} from "../BaseValidator.sol";
 /// @dev
 contract Validate_OutstandingInvests is BaseValidator {
     using stdJson for string;
-
-    string constant QUERY =
-        "outstandingInvests(limit: 1000) { items { poolId tokenId assetId account pendingAmount queuedAmount depositAmount approvedAmount approvedIndex approvedAtBlock } totalCount }";
 
     struct OutstandingInvest {
         string account;
@@ -33,7 +31,7 @@ contract Validate_OutstandingInvests is BaseValidator {
     }
 
     function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
-        string memory json = ctx.store.query(QUERY);
+        string memory json = ctx.store.query(_outstandingInvestsQuery(ctx));
 
         uint256 totalCount = json.readUint(".data.outstandingInvests.totalCount");
 
@@ -113,5 +111,22 @@ contract Validate_OutstandingInvests is BaseValidator {
         invest.depositAmount = json.readUint(_buildJsonPath(basePath, index, "depositAmount"));
         invest.approvedAmount = json.readUint(_buildJsonPath(basePath, index, "approvedAmount"));
         // Note: approvedAtBlock, approvedIndex, assetId, tokenId may be null - not parsed
+    }
+
+    function _outstandingInvestsQuery(ValidationContext memory ctx) internal pure returns (string memory) {
+        string memory poolIdsJson = "[";
+        for (uint256 i = 0; i < ctx.pools.length; i++) {
+            poolIdsJson = string.concat(poolIdsJson, _jsonValue(PoolId.unwrap(ctx.pools[i])));
+            if (i < ctx.pools.length - 1) {
+                poolIdsJson = string.concat(poolIdsJson, ", ");
+            }
+        }
+        poolIdsJson = string.concat(poolIdsJson, "]");
+
+        return string.concat(
+            "outstandingInvests(limit: 1000, where: { poolId_in: ",
+            poolIdsJson,
+            " }) { items { poolId tokenId assetId account pendingAmount queuedAmount depositAmount approvedAmount approvedIndex approvedAtBlock } totalCount }"
+        );
     }
 }
