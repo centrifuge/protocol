@@ -39,7 +39,8 @@ import {
     MigrationSpell,
     PoolParamsInput,
     GlobalParamsInput,
-    V3Contracts
+    V3Contracts,
+    SupplementalParamsInput
 } from "../../src/spell/migration_v3.1/MigrationSpell.sol";
 
 contract MigrationV3_1Deployer is Script {
@@ -153,6 +154,10 @@ contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
                 );
             }
         }
+
+        migrationSpell.castSupplemental(
+            SupplementalParamsInput({root: v3.root, multiAdapter: MultiAdapter(_contractAddr("multiAdapter"))})
+        );
 
         migrationSpell.lock(v3.root);
     }

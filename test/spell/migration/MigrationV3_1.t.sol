@@ -4,8 +4,11 @@ pragma solidity 0.8.28;
 import {ChainResolver} from "./ChainResolver.sol";
 import {ValidationOrchestrator} from "./validation/ValidationOrchestrator.sol";
 
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
+
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 
+import {Root} from "../../../src/admin/Root.sol";
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 
 import {MigrationQueries} from "../../../script/spell/MigrationQueries.sol";
@@ -22,10 +25,23 @@ import {
 
 import "forge-std/Test.sol";
 
-import {MigrationSpell} from "../../../src/spell/migration_v3.1/MigrationSpell.sol";
 import {ForkTestLiveValidation} from "../../integration/fork/ForkTestLiveValidation.sol";
+import {
+    MigrationSpell,
+    CFG,
+    WCFG,
+    WCFG_MULTISIG,
+    CHAINBRIDGE_ERC20_HANDLER,
+    CREATE3_PROXY,
+    WORMHOLE_NTT,
+    ROOT_V2
+} from "../../../src/spell/migration_v3.1/MigrationSpell.sol";
 
 contract MigrationV3_1Test is Test {
+    address constant PRODUCTION_MESSAGE_DISPATCHER_V3 = 0x21AF0C29611CFAaFf9271C8a3F84F2bC31d59132;
+    address constant TESTNET_MESSAGE_DISPATCHER_V3 = 0x332bE89CAB9FF501F5EBe3f6DC9487bfF50Bd0BF;
+    address constant GUARDIAN_V2 = 0x09ab10a9c3E6Eac1d18270a2322B6113F4C7f5E8;
+
     ISafe immutable ADMIN = ISafe(makeAddr("ADMIN"));
     bytes32 constant NEW_VERSION = "v3.1";
     PoolId[] poolsToMigrate;
@@ -104,16 +120,53 @@ contract MigrationV3_1Test is Test {
         vm.prank(chain.rootWard);
         chain.rootV3.rely(address(migrationSpell)); // Ideally through guardian.scheduleRely()
 
+        // Mainnet CFG and WCFG have only the v2 root relied, need to rely the v3 root as well
+        // Which is done inside the spell, so the spell also needs to be relied on the v2 root
+        if (isMainnet && chain.localCentrifugeId == 1) {
+            vm.prank(GUARDIAN_V2);
+            Root(ROOT_V2).rely(address(migrationSpell)); // Ideally through guardian.scheduleRely()
+        }
+
         migration.migrate(address(deployer), migrationSpell, poolsToMigrate);
 
         // ----- STEP 3: POST-MIGRATION VALIDATION -----
 
-        assertEq(migrationSpell.owner(), address(0));
+        _validateSupplementalChanges(migrationSpell, chain.rootV3, isMainnet, chain.localCentrifugeId);
 
         ValidationOrchestrator.runPostValidation(shared, deployer.fullReport());
 
         // Also run existing deployment validation
         _validateV3_1Deployment(deployer.fullReport(), address(deployer.adminSafe()), false, isMainnet);
+    }
+
+    /// @notice Validate changes made by the castSupplemental in MigrationSpell
+    function _validateSupplementalChanges(
+        MigrationSpell migrationSpell,
+        Root rootV3,
+        bool isMainnet,
+        uint64 centrifugeId
+    ) internal view {
+        if (ROOT_V2.code.length > 0) {
+            assertEq(Root(ROOT_V2).wards(address(migrationSpell)), 0);
+        }
+
+        if (isMainnet) {
+            assertEq(IAuth(CFG).wards(address(rootV3)), 1);
+
+            if (centrifugeId != 1) {
+                assertEq(IAuth(CFG).wards(CREATE3_PROXY), 0);
+            }
+
+            if (centrifugeId == 2) {
+                assertEq(IAuth(CFG).wards(WORMHOLE_NTT), 1);
+            }
+        }
+
+        if (isMainnet && centrifugeId == 1) {
+            assertEq(IAuth(WCFG).wards(address(rootV3)), 1);
+            assertEq(IAuth(WCFG).wards(WCFG_MULTISIG), 0);
+            assertEq(IAuth(WCFG).wards(CHAINBRIDGE_ERC20_HANDLER), 0);
+        }
     }
 
     /// @notice Validate v3.1 deployment permissions and configuration
