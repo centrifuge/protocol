@@ -85,6 +85,11 @@ execute() {
     echo "##########################################################################"
     echo ""
 
+    ROOT=$(cast call $GUARDIAN_V3 "root()(address)" --rpc-url "$RPC_URL")
+    CHAIN_ID=$(cast chain-id --rpc-url "$RPC_URL")
+    MIGRATION_SPELL=$(jq -r '.transactions[] | select(.contractName=="MigrationSpell") | .contractAddress' \
+        broadcast/MigrationV3_1.s.sol/"$CHAIN_ID"/run-latest.json)
+
     cast send "$ROOT" "executeScheduledRely(address)" "$MIGRATION_SPELL" \
         --rpc-url "$RPC_URL" \
         --private-key "$PRIVATE_KEY"
