@@ -20,13 +20,7 @@ interface IVaultFactory {
     /// @param asset Token id of the underlying asset that is getting deposited inside the pool.
     ///              I.e. zero if asset corresponds to ERC20 or non-zero if asset corresponds to ERC6909.
     /// @param token Address of the share class token that is getting issues against the deposited asset.
-    /// @param wards_ Address which can call methods behind authorized only.
-    function newVault(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        IShareToken token,
-        address[] calldata wards_
-    ) external returns (IVault);
+    function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, IShareToken token)
+        external
+        returns (IVault);
 }

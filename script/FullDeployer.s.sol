@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {AxelarAddressToString} from "./utils/AxelarAddressToString.sol";
 import {CoreInput, CoreReport, CoreDeployer, CoreActionBatcher} from "./CoreDeployer.s.sol";
 
 import {Escrow} from "../src/misc/Escrow.sol";
+
+import {PoolId} from "../src/core/types/PoolId.sol";
+import {IAdapter} from "../src/core/messaging/interfaces/IAdapter.sol";
+import {MAX_ADAPTER_COUNT} from "../src/core/messaging/interfaces/IMultiAdapter.sol";
 
 import {Root} from "../src/admin/Root.sol";
 import {ISafe} from "../src/admin/interfaces/ISafe.sol";
@@ -32,14 +37,16 @@ import {VaultRouter} from "../src/vaults/VaultRouter.sol";
 import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
-import {RefundEscrowFactory} from "../src/vaults/factories/RefundEscrowFactory.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import "forge-std/Script.sol";
 
+import {SubsidyManager} from "../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
+import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
+import {RefundEscrowFactory} from "../src/utils/RefundEscrowFactory.sol";
 
 struct WormholeInput {
     bool shouldDeploy;
@@ -58,10 +65,25 @@ struct LayerZeroInput {
     address delegate;
 }
 
+struct ChainlinkInput {
+    bool shouldDeploy;
+    address ccipRouter;
+}
+
+struct AdapterConnections {
+    uint16 centrifugeId;
+    uint32 layerZeroId;
+    uint16 wormholeId;
+    string axelarId;
+    uint64 chainlinkId;
+}
+
 struct AdaptersInput {
     WormholeInput wormhole;
     AxelarInput axelar;
     LayerZeroInput layerZero;
+    ChainlinkInput chainlink;
+    AdapterConnections[] connections;
 }
 
 struct FullInput {
@@ -78,7 +100,7 @@ struct FullReport {
     ProtocolGuardian protocolGuardian;
     OpsGuardian opsGuardian;
     Escrow routerEscrow;
-    Escrow globalEscrow;
+    SubsidyManager subsidyManager;
     RefundEscrowFactory refundEscrowFactory;
     AsyncVaultFactory asyncVaultFactory;
     AsyncRequestManager asyncRequestManager;
@@ -102,17 +124,26 @@ struct FullReport {
     WormholeAdapter wormholeAdapter;
     AxelarAdapter axelarAdapter;
     LayerZeroAdapter layerZeroAdapter;
+    ChainlinkAdapter chainlinkAdapter;
 }
 
 contract FullActionBatcher is CoreActionBatcher {
+    using AxelarAddressToString for address;
+
     constructor(address deployer_) CoreActionBatcher(deployer_) {}
 
-    function engageFull(FullReport memory report, ISafe adminSafe, ISafe opsSafe, bool newRoot) public onlyDeployer {
+    function engageFull(
+        FullReport memory report,
+        ISafe adminSafe,
+        ISafe opsSafe,
+        bool newRoot,
+        AdapterConnections[] memory connectionList
+    ) public onlyDeployer {
         // Rely Root
         report.tokenRecoverer.rely(address(report.root));
 
         report.routerEscrow.rely(address(report.root));
-        report.globalEscrow.rely(address(report.root));
+        report.subsidyManager.rely(address(report.root));
         report.refundEscrowFactory.rely(address(report.root));
         report.asyncVaultFactory.rely(address(report.root));
         report.asyncRequestManager.rely(address(report.root));
@@ -130,6 +161,7 @@ contract FullActionBatcher is CoreActionBatcher {
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(address(report.root));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.root));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.root));
+        if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(address(report.root));
 
         // Rely spoke
         report.asyncRequestManager.rely(address(report.core.spoke));
@@ -160,6 +192,9 @@ contract FullActionBatcher is CoreActionBatcher {
         if (address(report.layerZeroAdapter) != address(0)) {
             report.layerZeroAdapter.rely(address(report.protocolGuardian));
         }
+        if (address(report.chainlinkAdapter) != address(0)) {
+            report.chainlinkAdapter.rely(address(report.protocolGuardian));
+        }
 
         // Rely opsGuardian
         report.core.multiAdapter.rely(address(report.opsGuardian));
@@ -168,6 +203,7 @@ contract FullActionBatcher is CoreActionBatcher {
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(address(report.opsGuardian));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.opsGuardian));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.opsGuardian));
+        if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(address(report.opsGuardian));
 
         // Rely tokenRecoverer
         if (newRoot) report.root.rely(address(report.tokenRecoverer));
@@ -186,9 +222,11 @@ contract FullActionBatcher is CoreActionBatcher {
         // Rely hubHandler
         report.batchRequestManager.rely(address(report.core.hubHandler));
 
+        // Rely subsidyManager
+        report.refundEscrowFactory.rely(address(report.subsidyManager));
+
         // Rely asyncRequestManager
-        report.globalEscrow.rely(address(report.asyncRequestManager));
-        report.refundEscrowFactory.rely(address(report.asyncRequestManager));
+        report.subsidyManager.rely(address(report.asyncRequestManager));
 
         // Rely asyncVaultFactory
         report.asyncRequestManager.rely(address(report.asyncVaultFactory));
@@ -214,7 +252,7 @@ contract FullActionBatcher is CoreActionBatcher {
 
         report.protocolGuardian.file("safe", address(adminSafe));
 
-        report.refundEscrowFactory.file(bytes32("controller"), address(report.asyncRequestManager));
+        report.refundEscrowFactory.file(bytes32("controller"), address(report.subsidyManager));
 
         report.asyncRequestManager.file("spoke", address(report.core.spoke));
         report.asyncRequestManager.file("balanceSheet", address(report.core.balanceSheet));
@@ -230,8 +268,55 @@ contract FullActionBatcher is CoreActionBatcher {
         if (newRoot) {
             report.root.endorse(address(report.core.balanceSheet));
             report.root.endorse(address(report.asyncRequestManager));
-            report.root.endorse(address(report.globalEscrow));
             report.root.endorse(address(report.vaultRouter));
+        }
+
+        // Connect adapters
+        for (uint256 i; i < connectionList.length; i++) {
+            AdapterConnections memory connections = connectionList[i];
+
+            uint256 n;
+            IAdapter[] memory adapters = new IAdapter[](MAX_ADAPTER_COUNT);
+
+            if (address(report.layerZeroAdapter) != address(0) && connections.layerZeroId != 0) {
+                report.layerZeroAdapter
+                    .wire(connections.centrifugeId, abi.encode(connections.layerZeroId, report.layerZeroAdapter));
+                adapters[n++] = report.layerZeroAdapter;
+            }
+
+            if (address(report.wormholeAdapter) != address(0) && connections.wormholeId != 0) {
+                report.wormholeAdapter
+                    .wire(connections.centrifugeId, abi.encode(connections.wormholeId, report.wormholeAdapter));
+                adapters[n++] = report.wormholeAdapter;
+            }
+
+            if (address(report.axelarAdapter) != address(0) && bytes(connections.axelarId).length != 0) {
+                report.axelarAdapter
+                    .wire(
+                        connections.centrifugeId,
+                        abi.encode(connections.axelarId, address(report.axelarAdapter).toAxelarString())
+                    );
+                adapters[n++] = report.axelarAdapter;
+            }
+
+            if (address(report.chainlinkAdapter) != address(0) && connections.chainlinkId != 0) {
+                report.chainlinkAdapter
+                    .wire(connections.centrifugeId, abi.encode(connections.chainlinkId, report.chainlinkAdapter));
+
+                adapters[n++] = report.chainlinkAdapter;
+            }
+
+            if (n > 0) {
+                assembly { mstore(adapters, n) }
+                report.core.multiAdapter
+                    .setAdapters(
+                        connections.centrifugeId,
+                        PoolId.wrap(0),
+                        adapters,
+                        uint8(adapters.length),
+                        uint8(adapters.length)
+                    );
+            }
         }
     }
 
@@ -240,13 +325,13 @@ contract FullActionBatcher is CoreActionBatcher {
         report.tokenRecoverer.deny(address(this));
 
         report.routerEscrow.deny(address(this));
-        report.globalEscrow.deny(address(this));
         report.refundEscrowFactory.deny(address(this));
         report.asyncVaultFactory.deny(address(this));
         report.asyncRequestManager.deny(address(this));
         report.syncDepositVaultFactory.deny(address(this));
         report.syncManager.deny(address(this));
         report.vaultRouter.deny(address(this));
+        report.subsidyManager.deny(address(this));
 
         report.freezeOnlyHook.deny(address(this));
         report.fullRestrictionsHook.deny(address(this));
@@ -258,6 +343,7 @@ contract FullActionBatcher is CoreActionBatcher {
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.deny(address(this));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
+        if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
     }
 }
 
@@ -273,7 +359,7 @@ contract FullDeployer is CoreDeployer {
     OpsGuardian public opsGuardian;
 
     Escrow public routerEscrow;
-    Escrow public globalEscrow;
+    SubsidyManager public subsidyManager;
     RefundEscrowFactory public refundEscrowFactory;
     AsyncVaultFactory public asyncVaultFactory;
     AsyncRequestManager public asyncRequestManager;
@@ -300,8 +386,9 @@ contract FullDeployer is CoreDeployer {
     NAVManager public navManager;
     SimplePriceManager public simplePriceManager;
 
-    WormholeAdapter wormholeAdapter;
+    ChainlinkAdapter chainlinkAdapter;
     AxelarAdapter axelarAdapter;
+    WormholeAdapter wormholeAdapter;
     LayerZeroAdapter layerZeroAdapter;
 
     function deployFull(FullInput memory input, FullActionBatcher batcher) public {
@@ -334,7 +421,7 @@ contract FullDeployer is CoreDeployer {
                 generateSalt("protocolGuardian"),
                 abi.encodePacked(
                     type(ProtocolGuardian).creationCode,
-                    abi.encode(ISafe(address(batcher)), root, gateway, multiAdapter, messageDispatcher)
+                    abi.encode(ISafe(address(batcher)), root, gateway, messageDispatcher)
                 )
             )
         );
@@ -350,10 +437,6 @@ contract FullDeployer is CoreDeployer {
             create3(generateSalt("routerEscrow"), abi.encodePacked(type(Escrow).creationCode, abi.encode(batcher)))
         );
 
-        globalEscrow = Escrow(
-            create3(generateSalt("globalEscrow"), abi.encodePacked(type(Escrow).creationCode, abi.encode(batcher)))
-        );
-
         refundEscrowFactory = RefundEscrowFactory(
             create3(
                 generateSalt("refundEscrowFactory"),
@@ -361,12 +444,17 @@ contract FullDeployer is CoreDeployer {
             )
         );
 
+        subsidyManager = SubsidyManager(
+            create3(
+                generateSalt("subsidyManager"),
+                abi.encodePacked(type(SubsidyManager).creationCode, abi.encode(refundEscrowFactory, batcher))
+            )
+        );
+
         asyncRequestManager = AsyncRequestManager(
             payable(create3(
                     generateSalt("asyncRequestManager"),
-                    abi.encodePacked(
-                        type(AsyncRequestManager).creationCode, abi.encode(globalEscrow, refundEscrowFactory, batcher)
-                    )
+                    abi.encodePacked(type(AsyncRequestManager).creationCode, abi.encode(subsidyManager, batcher))
                 ))
         );
 
@@ -412,9 +500,10 @@ contract FullDeployer is CoreDeployer {
                         address(root),
                         address(spoke),
                         address(balanceSheet),
-                        address(globalEscrow),
                         address(spoke),
-                        batcher
+                        batcher,
+                        address(poolEscrowFactory),
+                        address(0)
                     )
                 )
             )
@@ -429,9 +518,10 @@ contract FullDeployer is CoreDeployer {
                         address(root),
                         address(spoke),
                         address(balanceSheet),
-                        address(globalEscrow),
                         address(spoke),
-                        batcher
+                        batcher,
+                        address(poolEscrowFactory),
+                        address(0)
                     )
                 )
             )
@@ -446,9 +536,10 @@ contract FullDeployer is CoreDeployer {
                         address(root),
                         address(spoke),
                         address(balanceSheet),
-                        address(globalEscrow),
                         address(spoke),
-                        batcher
+                        batcher,
+                        address(poolEscrowFactory),
+                        address(0)
                     )
                 )
             )
@@ -463,9 +554,10 @@ contract FullDeployer is CoreDeployer {
                         address(root),
                         address(spoke),
                         address(balanceSheet),
-                        address(globalEscrow),
                         address(spoke),
-                        batcher
+                        batcher,
+                        address(poolEscrowFactory),
+                        address(0)
                     )
                 )
             )
@@ -586,14 +678,31 @@ contract FullDeployer is CoreDeployer {
             );
         }
 
+        if (input.adapters.chainlink.shouldDeploy) {
+            require(input.adapters.chainlink.ccipRouter != address(0), "Chainlink ccipRouter address cannot be zero");
+            require(
+                input.adapters.chainlink.ccipRouter.code.length > 0, "Chainlink ccipRouter must be a deployed contract"
+            );
+
+            chainlinkAdapter = ChainlinkAdapter(
+                create3(
+                    generateSalt("chainlinkAdapter"),
+                    abi.encodePacked(
+                        type(ChainlinkAdapter).creationCode,
+                        abi.encode(multiAdapter, input.adapters.chainlink.ccipRouter, batcher)
+                    )
+                )
+            );
+        }
+
         register("root", address(root));
         register("tokenRecoverer", address(tokenRecoverer));
         register("protocolGuardian", address(protocolGuardian));
         register("opsGuardian", address(opsGuardian));
 
         register("routerEscrow", address(routerEscrow));
-        register("globalEscrow", address(globalEscrow));
         register("refundEscrowFactory", address(refundEscrowFactory));
+        register("subsidyManager", address(subsidyManager));
         register("asyncVaultFactory", address(asyncVaultFactory));
         register("asyncRequestManager", address(asyncRequestManager));
         register("syncDepositVaultFactory", address(syncDepositVaultFactory));
@@ -622,19 +731,20 @@ contract FullDeployer is CoreDeployer {
         if (input.adapters.wormhole.shouldDeploy) register("wormholeAdapter", address(wormholeAdapter));
         if (input.adapters.axelar.shouldDeploy) register("axelarAdapter", address(axelarAdapter));
         if (input.adapters.layerZero.shouldDeploy) register("layerZeroAdapter", address(layerZeroAdapter));
+        if (input.adapters.chainlink.shouldDeploy) register("chainlinkAdapter", address(chainlinkAdapter));
 
-        batcher.engageFull(_fullReport(), input.adminSafe, input.opsSafe, newRoot);
+        batcher.engageFull(fullReport(), input.adminSafe, input.opsSafe, newRoot, input.adapters.connections);
     }
 
-    function _fullReport() internal view returns (FullReport memory) {
+    function fullReport() public view returns (FullReport memory) {
         return FullReport(
-            _coreReport(),
+            coreReport(),
             root,
             tokenRecoverer,
             protocolGuardian,
             opsGuardian,
             routerEscrow,
-            globalEscrow,
+            subsidyManager,
             refundEscrowFactory,
             asyncVaultFactory,
             asyncRequestManager,
@@ -657,13 +767,14 @@ contract FullDeployer is CoreDeployer {
             simplePriceManager,
             wormholeAdapter,
             axelarAdapter,
-            layerZeroAdapter
+            layerZeroAdapter,
+            chainlinkAdapter
         );
     }
 
     function removeFullDeployerAccess(FullActionBatcher batcher) public {
         removeCoreDeployerAccess(batcher);
-        batcher.revokeFull(_fullReport());
+        batcher.revokeFull(fullReport());
     }
 }
 
@@ -671,6 +782,10 @@ function noAdaptersInput() pure returns (AdaptersInput memory) {
     return AdaptersInput({
         wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
         axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-        layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
+        layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+        chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
+        connections: new AdapterConnections[](0)
     });
 }
+
+function defaultTxLimits() pure returns (uint8[32] memory) {}

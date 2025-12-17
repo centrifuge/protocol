@@ -38,6 +38,7 @@ import {SyncDepositVaultFactory} from "../../src/vaults/factories/SyncDepositVau
 import "forge-std/Script.sol";
 
 import {LaunchDeployer} from "../LaunchDeployer.s.sol";
+import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
 
 /**
  * @title BaseTestData
@@ -59,23 +60,24 @@ abstract contract BaseTestData is LaunchDeployer {
      * @dev Used by all test scripts to initialize contract references
      */
     function loadContractsFromConfig(string memory config) internal {
-        spoke = Spoke(vm.parseJsonAddress(config, "$.contracts.spoke"));
-        hub = Hub(vm.parseJsonAddress(config, "$.contracts.hub"));
-        shareClassManager = ShareClassManager(vm.parseJsonAddress(config, "$.contracts.shareClassManager"));
+        spoke = Spoke(_readContractAddress(config, "$.contracts.spoke"));
+        hub = Hub(_readContractAddress(config, "$.contracts.hub"));
+        shareClassManager = ShareClassManager(_readContractAddress(config, "$.contracts.shareClassManager"));
         redemptionRestrictionsHook =
-            RedemptionRestrictions(vm.parseJsonAddress(config, "$.contracts.redemptionRestrictionsHook"));
-        identityValuation = IdentityValuation(vm.parseJsonAddress(config, "$.contracts.identityValuation"));
-        asyncVaultFactory = AsyncVaultFactory(vm.parseJsonAddress(config, "$.contracts.asyncVaultFactory"));
+            RedemptionRestrictions(_readContractAddress(config, "$.contracts.redemptionRestrictionsHook"));
+        identityValuation = IdentityValuation(_readContractAddress(config, "$.contracts.identityValuation"));
+        asyncVaultFactory = AsyncVaultFactory(_readContractAddress(config, "$.contracts.asyncVaultFactory"));
         syncDepositVaultFactory =
-            SyncDepositVaultFactory(vm.parseJsonAddress(config, "$.contracts.syncDepositVaultFactory"));
-        balanceSheet = BalanceSheet(vm.parseJsonAddress(config, "$.contracts.balanceSheet"));
-        hubRegistry = HubRegistry(vm.parseJsonAddress(config, "$.contracts.hubRegistry"));
+            SyncDepositVaultFactory(_readContractAddress(config, "$.contracts.syncDepositVaultFactory"));
+        balanceSheet = BalanceSheet(_readContractAddress(config, "$.contracts.balanceSheet"));
+        hubRegistry = HubRegistry(_readContractAddress(config, "$.contracts.hubRegistry"));
         asyncRequestManager =
-            AsyncRequestManager(payable(vm.parseJsonAddress(config, "$.contracts.asyncRequestManager")));
-        batchRequestManager = BatchRequestManager(vm.parseJsonAddress(config, "$.contracts.batchRequestManager"));
-        syncManager = SyncManager(vm.parseJsonAddress(config, "$.contracts.syncManager"));
-        protocolGuardian = ProtocolGuardian(vm.parseJsonAddress(config, "$.contracts.protocolGuardian"));
-        opsGuardian = OpsGuardian(vm.parseJsonAddress(config, "$.contracts.opsGuardian"));
+            AsyncRequestManager(payable(_readContractAddress(config, "$.contracts.asyncRequestManager")));
+        batchRequestManager = BatchRequestManager(_readContractAddress(config, "$.contracts.batchRequestManager"));
+        syncManager = SyncManager(_readContractAddress(config, "$.contracts.syncManager"));
+        protocolGuardian = ProtocolGuardian(_readContractAddress(config, "$.contracts.protocolGuardian"));
+        opsGuardian = OpsGuardian(_readContractAddress(config, "$.contracts.opsGuardian"));
+        subsidyManager = SubsidyManager(_readContractAddress(config, "$.contracts.subsidyManager"));
     }
 
     struct AsyncVaultParams {
@@ -137,7 +139,7 @@ abstract contract BaseTestData is LaunchDeployer {
      */
     function deployAsyncVault(AsyncVaultParams memory params) internal returns (PoolId poolId, ShareClassId scId) {
         poolId = hubRegistry.poolId(params.targetCentrifugeId, params.poolIndex);
-        asyncRequestManager.depositSubsidy{value: 0.5 ether}(poolId);
+        subsidyManager.deposit{value: 0.5 ether}(poolId);
 
         // Create pool on hub
         opsGuardian.createPool(poolId, msg.sender, USD_ID);
@@ -217,7 +219,7 @@ abstract contract BaseTestData is LaunchDeployer {
      */
     function deploySyncDepositVault(SyncVaultParams memory params) internal returns (PoolId poolId, ShareClassId scId) {
         poolId = hubRegistry.poolId(params.targetCentrifugeId, params.poolIndex);
-        asyncRequestManager.depositSubsidy(poolId);
+        subsidyManager.deposit(poolId);
 
         // Create pool on hub
         opsGuardian.createPool(poolId, msg.sender, USD_ID);
@@ -349,7 +351,7 @@ abstract contract BaseTestData is LaunchDeployer {
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
 
         // Withdraw principal
-        balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6);
+        balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6, true);
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
 
         // Issue and claim
@@ -423,7 +425,7 @@ abstract contract BaseTestData is LaunchDeployer {
             xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
         }
         poolId = hubRegistry.poolId(params.hubCentrifugeId, params.poolIndex);
-        asyncRequestManager.depositSubsidy{value: 0.5 ether}(poolId);
+        subsidyManager.deposit{value: 0.5 ether}(poolId);
 
         opsGuardian.createPool(poolId, msg.sender, USD_ID);
         hub.updateHubManager(poolId, params.admin, true);
@@ -491,7 +493,7 @@ abstract contract BaseTestData is LaunchDeployer {
             xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
         }
         poolId = hubRegistry.poolId(params.hubCentrifugeId, params.poolIndex);
-        asyncRequestManager.depositSubsidy(poolId);
+        subsidyManager.deposit(poolId);
 
         opsGuardian.createPool(poolId, msg.sender, USD_ID);
         hub.updateHubManager(poolId, params.admin, true);

@@ -48,6 +48,7 @@ contract MockVaults is Test, Auth, IAdapter {
                     poolId.raw(),
                     scId.raw(),
                     assetId.raw(),
+                    0,
                     RequestMessageLib.DepositRequest({investor: investor, amount: amount}).serialize()
                 ).serialize()
         );
@@ -60,6 +61,7 @@ contract MockVaults is Test, Auth, IAdapter {
                     poolId.raw(),
                     scId.raw(),
                     assetId.raw(),
+                    0,
                     RequestMessageLib.RedeemRequest({investor: investor, amount: amount}).serialize()
                 ).serialize()
         );
@@ -72,6 +74,7 @@ contract MockVaults is Test, Auth, IAdapter {
                     poolId.raw(),
                     scId.raw(),
                     assetId.raw(),
+                    0,
                     RequestMessageLib.CancelDepositRequest({investor: investor}).serialize()
                 ).serialize()
         );
@@ -84,6 +87,7 @@ contract MockVaults is Test, Auth, IAdapter {
                     poolId.raw(),
                     scId.raw(),
                     assetId.raw(),
+                    0,
                     RequestMessageLib.CancelRedeemRequest({investor: investor}).serialize()
                 ).serialize()
         );
@@ -123,7 +127,8 @@ contract MockVaults is Test, Auth, IAdapter {
                     timestamp: 0,
                     isIncrease: isIncrease,
                     isSnapshot: isSnapshot,
-                    nonce: nonce
+                    nonce: nonce,
+                    extraGasLimit: 0
                 }).serialize()
         );
     }
@@ -145,7 +150,8 @@ contract MockVaults is Test, Auth, IAdapter {
                     timestamp: 0,
                     isIssuance: isIssuance,
                     isSnapshot: isSnapshot,
-                    nonce: nonce
+                    nonce: nonce,
+                    extraGasLimit: 100_000
                 }).serialize()
         );
     }

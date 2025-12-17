@@ -7,24 +7,19 @@ import {BaseValidator} from "../BaseValidator.sol";
 
 /// @title Validate_CrossChainMessages
 /// @notice Validates that no pending cross-chain messages exist
-/// @dev Queries for messages not in "Executed" status
+/// @dev
 contract Validate_CrossChainMessages is BaseValidator {
     using stdJson for string;
 
-    struct CrosschainMessage {
-        string fromCentrifugeId;
-        string id;
-        uint256 index;
-        string messageType;
-        string poolId;
-        string status;
-        string toCentrifugeId;
+    string constant QUERY =
+        "crosschainMessages(limit: 1000) { items { id index poolId messageType status fromCentrifugeId toCentrifugeId } totalCount }";
+
+    function supportedPhases() public pure override returns (Phase) {
+        return Phase.PRE;
     }
 
-    function validate() public override returns (ValidationResult memory) {
-        string memory json = _queryGraphQL(
-            '{"query": "{ crosschainMessages(limit: 1000, where: { status_not: Executed }) { items { id index poolId messageType status fromCentrifugeId toCentrifugeId } totalCount } }"}'
-        );
+    function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
+        string memory json = ctx.store.query(QUERY);
 
         uint256 totalCount = json.readUint(".data.crosschainMessages.totalCount");
 
@@ -33,49 +28,60 @@ contract Validate_CrossChainMessages is BaseValidator {
                 ValidationResult({passed: true, validatorName: "CrossChainMessages", errors: new ValidationError[](0)});
         }
 
-        // Parse using stdJson helpers (see BaseValidator for why we don't use abi.decode)
-        CrosschainMessage[] memory messages = new CrosschainMessage[](totalCount);
+        uint256 itemCount = totalCount > 1000 ? 1000 : totalCount;
+
         string memory basePath = ".data.crosschainMessages.items";
-        for (uint256 i = 0; i < totalCount; i++) {
-            messages[i].fromCentrifugeId = json.readString(_buildJsonPath(basePath, i, "fromCentrifugeId"));
-            messages[i].id = json.readString(_buildJsonPath(basePath, i, "id"));
-            messages[i].index = json.readUint(_buildJsonPath(basePath, i, "index"));
-            messages[i].messageType = json.readString(_buildJsonPath(basePath, i, "messageType"));
-            messages[i].poolId = json.readString(_buildJsonPath(basePath, i, "poolId"));
-            messages[i].status = json.readString(_buildJsonPath(basePath, i, "status"));
-            messages[i].toCentrifugeId = json.readString(_buildJsonPath(basePath, i, "toCentrifugeId"));
+        uint256 nonExecutedCount = 0;
+
+        for (uint256 i = 0; i < itemCount; i++) {
+            string memory status = json.readString(_buildJsonPath(basePath, i, "status"));
+            if (!_stringsEqual(status, "Executed")) {
+                nonExecutedCount++;
+            }
         }
 
-        // Create one error summarizing all pending messages + detail errors
-        ValidationError[] memory errors = new ValidationError[](messages.length + 1);
+        if (nonExecutedCount == 0) {
+            return
+                ValidationResult({passed: true, validatorName: "CrossChainMessages", errors: new ValidationError[](0)});
+        }
 
-        // Summary error
-        errors[0] = _buildError({
+        ValidationError[] memory errors = new ValidationError[](nonExecutedCount + 1);
+        uint256 errorIdx = 0;
+
+        errors[errorIdx++] = _buildError({
             field: "totalCount",
             value: "CrossChainMessages",
             expected: "0",
-            actual: _toString(totalCount),
-            message: string.concat(_toString(totalCount), " pending cross-chain messages found")
+            actual: _toString(nonExecutedCount),
+            message: string.concat(_toString(nonExecutedCount), " pending cross-chain messages found")
         });
 
-        // Detail each message
-        for (uint256 i = 0; i < messages.length; i++) {
-            errors[i + 1] = _buildError({
+        // Detail each non-executed message
+        for (uint256 i = 0; i < itemCount; i++) {
+            string memory status = json.readString(_buildJsonPath(basePath, i, "status"));
+            if (_stringsEqual(status, "Executed")) {
+                continue;
+            }
+
+            string memory id = json.readString(_buildJsonPath(basePath, i, "id"));
+            string memory messageType = json.readString(_buildJsonPath(basePath, i, "messageType"));
+            string memory poolId = json.readString(_buildJsonPath(basePath, i, "poolId"));
+
+            errors[errorIdx++] = _buildError({
                 field: "status",
-                value: string.concat("Message ", messages[i].id),
+                value: string.concat("Message ", id),
                 expected: "Executed",
-                actual: messages[i].status,
+                actual: status,
                 message: string.concat(
-                    "Pool ",
-                    bytes(messages[i].poolId).length > 0 ? messages[i].poolId : "N/A",
-                    " - Type: ",
-                    messages[i].messageType,
-                    " - Status: ",
-                    messages[i].status
+                    "Pool ", bytes(poolId).length > 0 ? poolId : "N/A", " - Type: ", messageType, " - Status: ", status
                 )
             });
         }
 
         return ValidationResult({passed: false, validatorName: "CrossChainMessages", errors: errors});
+    }
+
+    function _stringsEqual(string memory a, string memory b) internal pure returns (bool) {
+        return keccak256(bytes(a)) == keccak256(bytes(b));
     }
 }

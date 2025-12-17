@@ -47,17 +47,34 @@ interface IBalanceSheet is IBatchedMulticall {
         uint128 amount,
         D18 pricePoolPerAsset
     );
-    event Deposit(PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 amount);
+    event Deposit(
+        PoolId indexed poolId, ShareClassId indexed scId, address sender, address asset, uint256 tokenId, uint128 amount
+    );
     event NoteDeposit(
         PoolId indexed poolId,
         ShareClassId indexed scId,
+        address sender,
         address asset,
         uint256 tokenId,
         uint128 amount,
         D18 pricePoolPerAsset
     );
-    event Issue(PoolId indexed poolId, ShareClassId indexed scId, address to, D18 pricePoolPerShare, uint128 shares);
-    event Revoke(PoolId indexed poolId, ShareClassId indexed scId, address from, D18 pricePoolPerShare, uint128 shares);
+    event Issue(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        address sender,
+        address to,
+        D18 pricePoolPerShare,
+        uint128 shares
+    );
+    event Revoke(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        address sender,
+        address from,
+        D18 pricePoolPerShare,
+        uint128 shares
+    );
     event TransferSharesFrom(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -116,41 +133,65 @@ interface IBalanceSheet is IBatchedMulticall {
         payable;
 
     /// @notice Withdraw assets from the escrow of the pool
+    /// @dev If wasNoted is true, funds were already added to 'total' (decrements total and emits event)
+    ///      If wasNoted is false, funds are in 'reserved' only (just transfers, no accounting change)
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param asset The asset address
     /// @param tokenId The token ID (SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported)
     /// @param receiver The address to receive the withdrawn assets
     /// @param amount The amount to withdraw
+    /// @param wasNoted If true, funds in 'total'. If false, funds in 'reserved' only.
     function withdraw(
         PoolId poolId,
         ShareClassId scId,
         address asset,
         uint256 tokenId,
         address receiver,
-        uint128 amount
+        uint128 amount,
+        bool wasNoted
     ) external payable;
 
     /// @notice Increase the reserved balance of the pool
     /// @dev These assets are removed from the available balance and cannot be withdrawn before they are unreserved.
-    ///      It is possible to reserve more than the current balance, to lock future expected assets
+    ///      It is possible to reserve more than the current balance, to lock future expected assets.
+    ///      Any manager can reserve on behalf of any address, enabling recovery of stuck funds.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param asset The asset address
     /// @param tokenId The token ID
     /// @param amount The amount to reserve
-    function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external payable;
+    /// @param reserver The address that will own the reservation (tracked in PoolEscrow)
+    /// @param reason The reason code (1=DEPOSIT, 2=REDEEM)
+    function reserve(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        uint128 amount,
+        address reserver,
+        uint32 reason
+    ) external payable;
 
     /// @notice Decrease the reserved balance of the pool
-    /// @dev These assets are re-added to the available balance
+    /// @dev These assets are re-added to the available balance.
+    ///      Any manager can unreserve any reserver's funds, enabling recovery of stuck funds.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param asset The asset address
     /// @param tokenId The token ID
     /// @param amount The amount to unreserve
-    function unreserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
-        external
-        payable;
+    /// @param reserver The address that owns the reservation to be unreserved
+    /// @param reason The reason code that was used when reserving
+    function unreserve(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        uint128 amount,
+        address reserver,
+        uint32 reason
+    ) external payable;
 
     /// @notice Issue new share tokens
     /// @dev Increases the total issuance

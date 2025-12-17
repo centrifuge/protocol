@@ -45,6 +45,12 @@ contract MockMessageProperties is IMessageProperties {
         }
         return PoolId.wrap(0);
     }
+
+    function messageProcessingGasLimit(uint16, bytes calldata message) external pure returns (uint128) {}
+
+    function messageOverallGasLimit(uint16, bytes calldata message) external pure returns (uint128) {}
+
+    function maxBatchGasLimit(uint16 centrifugeId) external view returns (uint128) {}
 }
 
 // -----------------------------------------

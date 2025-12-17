@@ -38,12 +38,19 @@ contract ShareClassManager is Auth, IShareClassManager {
         auth
         returns (ShareClassId scId_)
     {
+        PoolId prefixedPoolId = PoolId.wrap(uint64(bytes8(salt)));
+        require(poolId == prefixedPoolId, InvalidSalt());
+        require(!salts[salt], AlreadyUsedSalt());
+
         scId_ = previewNextShareClassId(poolId);
 
         uint32 index = ++shareClassCount[poolId];
         shareClassIds[poolId][scId_] = true;
 
-        _updateMetadata(poolId, scId_, name, symbol, salt);
+        ShareClassMetadata storage meta = _updateMetadata(poolId, scId_, name, symbol);
+
+        salts[salt] = true;
+        meta.salt = salt;
 
         emit AddShareClass(poolId, scId_, index, name, symbol, salt);
     }
@@ -69,7 +76,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     {
         require(exists(poolId, scId_), ShareClassNotFound());
 
-        _updateMetadata(poolId, scId_, name, symbol, bytes32(0));
+        _updateMetadata(poolId, scId_, name, symbol);
 
         emit UpdateMetadata(poolId, scId_, name, symbol);
     }
@@ -125,33 +132,17 @@ contract ShareClassManager is Auth, IShareClassManager {
     // Internal methods
     //----------------------------------------------------------------------------------------------
 
-    function _updateMetadata(
-        PoolId poolId,
-        ShareClassId scId_,
-        string calldata name,
-        string calldata symbol,
-        bytes32 salt
-    ) internal {
+    function _updateMetadata(PoolId poolId, ShareClassId scId_, string calldata name, string calldata symbol)
+        internal
+        returns (ShareClassMetadata storage meta)
+    {
         uint256 nameLen = bytes(name).length;
         require(nameLen > 0 && nameLen <= 128, InvalidMetadataName());
 
         uint256 symbolLen = bytes(symbol).length;
         require(symbolLen > 0 && symbolLen <= 32, InvalidMetadataSymbol());
 
-        ShareClassMetadata storage meta = metadata[poolId][scId_];
-
-        // Ensure that the salt is not being updated or is being set for the first time
-        require(
-            (salt == bytes32(0) && meta.salt != bytes32(0)) || (salt != bytes32(0) && meta.salt == bytes32(0)),
-            InvalidSalt()
-        );
-
-        if (salt != bytes32(0) && meta.salt == bytes32(0)) {
-            require(!salts[salt], AlreadyUsedSalt());
-            salts[salt] = true;
-            meta.salt = salt;
-        }
-
+        meta = metadata[poolId][scId_];
         meta.name = name;
         meta.symbol = symbol;
     }

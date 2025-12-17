@@ -1,0 +1,7 @@
+{
+    "type": "module",
+    "dependencies": {
+        "pinata": "^2.5.1",
+        "@actions/core": "^1.11.1"
+    }
+}

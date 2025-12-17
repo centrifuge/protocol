@@ -3,9 +3,13 @@ pragma solidity 0.8.28;
 
 import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 
-import {IProtocolGuardian} from "../../src/admin/interfaces/IProtocolGuardian.sol";
+import {IOpsGuardian} from "../../src/admin/interfaces/IOpsGuardian.sol";
 
-import "forge-std/Script.sol";
+import {console} from "forge-std/console.sol";
+
+import {JsonRegistry} from "../utils/JsonRegistry.s.sol";
+
+import {AxelarAddressToString} from "../utils/AxelarAddressToString.sol";
 
 /// @title WireAdapters
 /// @notice Configures the source network's adapters to communicate with destination networks.
@@ -18,7 +22,7 @@ import "forge-std/Script.sol";
 ///      - Prevents InvalidAdapter errors from asymmetric configurations
 ///
 ///      Intended for testnet use only.
-contract WireAdapters is Script {
+contract WireAdapters is JsonRegistry {
     address private sourceWormholeAddr; // Source Wormhole adapter address (if deployed)
     address private sourceLayerZeroAddr; // Source LayerZero adapter address (if deployed)
     address private sourceAxelarAddr; // Source Axelar adapter address (if deployed)
@@ -69,18 +73,13 @@ contract WireAdapters is Script {
             console.log("Skipping", adapterLabel);
             return address(0);
         }
-
-        // parseJsonAddress may revert, so wrap in try-catch
-        try vm.parseJsonAddress(config, contractJsonPath) returns (address parsedAddr) {
-            if (parsedAddr != address(0)) {
-                return parsedAddr;
-            } else {
-                console.log("Unexpected:", adapterLabel, "is zero in config for", network);
-            }
-        } catch {
+        address parsedAddr = _readContractAddress(config, contractJsonPath);
+        if (parsedAddr != address(0)) {
+            return parsedAddr;
+        } else {
             console.log("No", adapterLabel, "found in config for network", network);
-            return address(0);
         }
+        return address(0);
     }
 
     function fetchConfig(string memory network) internal view returns (string memory) {
@@ -109,8 +108,8 @@ contract WireAdapters is Script {
 
         // Get list of destination networks to connect to
         string[] memory connectsTo = vm.parseJsonStringArray(sourceConfig, "$.network.connectsTo");
-        IProtocolGuardian protocolGuardian =
-            IProtocolGuardian(vm.parseJsonAddress(sourceConfig, "$.contracts.protocolGuardian"));
+
+        IOpsGuardian opsGuardian = IOpsGuardian(_readContractAddress(sourceConfig, "$.contracts.opsGuardian"));
 
         vm.startBroadcast();
 
@@ -134,7 +133,7 @@ contract WireAdapters is Script {
                     bytes memory wormholeData = abi.encode(
                         uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")), remoteWormholeAddr
                     );
-                    protocolGuardian.wire(sourceWormholeAddr, remoteCentrifugeId, wormholeData);
+                    opsGuardian.wire(sourceWormholeAddr, remoteCentrifugeId, wormholeData);
                     console.log("Wired WormholeAdapter from source", sourceNetwork, "to destination", remoteNetwork);
                 }
             }
@@ -148,7 +147,7 @@ contract WireAdapters is Script {
                     bytes memory layerZeroData = abi.encode(
                         uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerZero.layerZeroEid")), remoteLayerZeroAddr
                     );
-                    protocolGuardian.wire(sourceLayerZeroAddr, remoteCentrifugeId, layerZeroData);
+                    opsGuardian.wire(sourceLayerZeroAddr, remoteCentrifugeId, layerZeroData);
                     console.log("Wired LayerZeroAdapter from source", sourceNetwork, "to destination", remoteNetwork);
                 }
             }
@@ -160,9 +159,10 @@ contract WireAdapters is Script {
                     remoteAdapters[count] = IAdapter(sourceAxelarAddr);
                     count++;
                     bytes memory axelarData = abi.encode(
-                        vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"), vm.toString(remoteAxelarAddr)
+                        vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
+                        AxelarAddressToString.toAxelarString(remoteAxelarAddr)
                     );
-                    protocolGuardian.wire(sourceAxelarAddr, remoteCentrifugeId, axelarData);
+                    opsGuardian.wire(sourceAxelarAddr, remoteCentrifugeId, axelarData);
                     console.log("Wired AxelarAdapter from source", sourceNetwork, "to destination", remoteNetwork);
                 }
             }
@@ -180,7 +180,7 @@ contract WireAdapters is Script {
             } else {
                 uint8 threshold = uint8(count);
                 uint8 recoveryIndex = uint8(count - 1);
-                protocolGuardian.setAdapters(remoteCentrifugeId, adaptersToRegister, threshold, recoveryIndex);
+                opsGuardian.initAdapters(remoteCentrifugeId, adaptersToRegister, threshold, recoveryIndex);
                 console.log("Registered", count, "source adapters on", vm.envString("NETWORK"));
                 console.log("Registered adapters for destination", remoteNetwork);
             }

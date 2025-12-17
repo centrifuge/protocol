@@ -2,9 +2,11 @@
 pragma solidity 0.8.28;
 
 import {IGasService} from "./interfaces/IGasService.sol";
-import {IMessageLimits} from "./interfaces/IMessageLimits.sol";
-import {GAS_FAIL_MESSAGE_STORAGE} from "./interfaces/IGateway.sol";
+import {PROCESS_FAIL_MESSAGE_GAS} from "./interfaces/IGateway.sol";
+import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
+
+import {PoolId} from "../types/PoolId.sol";
 
 /// @title  GasService
 /// @notice This contract stores the gas limits (in gas units) for cross-chain message execution.
@@ -15,6 +17,15 @@ contract GasService is IGasService {
 
     /// @dev Takes into account diverge computation from the base benchmarked value.
     uint128 public constant BASE_COST = 100_000;
+
+    /// @dev Adds an extra cost to recover token admin message to ensure different assets can transfer successfully
+    uint128 public constant RECOVERY_TOKEN_EXTRA_COST = 100_000;
+
+    uint128 public constant DEFAULT_SUPPORTED_TX_LIMIT = 10; // In millions of gas units
+
+    /// @dev An encoded array of the block limits of the first 32 centrifugeId.
+    ///      Measured in millions of gas units
+    uint256 public immutable txLimitsPerCentrifugeId;
 
     uint128 public immutable scheduleUpgrade;
     uint128 public immutable cancelUpgrade;
@@ -45,40 +56,54 @@ contract GasService is IGasService {
     uint128 public immutable updateGatewayManager;
     uint128 public immutable untrustedContractUpdate;
 
-    constructor() {
+    constructor(uint8[32] memory txLimits) {
+        for (uint256 i; i < txLimits.length; i++) {
+            uint256 value = txLimits[i] > 0 ? txLimits[i] : DEFAULT_SUPPORTED_TX_LIMIT;
+            txLimitsPerCentrifugeId += value << (31 - i) * 8;
+        }
+
         // NOTE: Below values should be updated using script/utils/benchmark.sh
-        scheduleUpgrade = _gasValue(87196);
-        cancelUpgrade = _gasValue(67603);
-        recoverTokens = _gasValue(144282);
-        registerAsset = _gasValue(97006);
-        setPoolAdapters = _gasValue(479718); // using MAX_ADAPTER_COUNT
-        request = _gasValue(213434);
-        notifyPool = _gasValue(1148459); // create escrow case
-        notifyShareClass = _gasValue(1830433);
-        notifyPricePoolPerShare = _gasValue(95106);
-        notifyPricePoolPerAsset = _gasValue(99115);
-        notifyShareMetadata = _gasValue(109525);
-        updateShareHook = _gasValue(84442);
-        initiateTransferShares = _gasValue(274407);
-        executeTransferShares = _gasValue(165534);
-        updateRestriction = _gasValue(102515);
-        trustedContractUpdate = _gasValue(129027);
-        requestCallback = _gasValue(249182); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2832418);
-        updateVaultLink = _gasValue(173406);
-        updateVaultUnlink = _gasValue(122124);
-        setRequestManager = _gasValue(93480);
-        updateBalanceSheetManager = _gasValue(92232);
-        updateHoldingAmount = _gasValue(292619);
-        updateShares = _gasValue(189714);
-        maxAssetPriceAge = _gasValue(98274);
-        maxSharePriceAge = _gasValue(95159);
-        updateGatewayManager = _gasValue(89755);
-        untrustedContractUpdate = _gasValue(76726);
+        scheduleUpgrade = _gasValue(93958);
+        cancelUpgrade = _gasValue(74414);
+        recoverTokens = RECOVERY_TOKEN_EXTRA_COST + _gasValue(150077);
+        registerAsset = _gasValue(104159);
+        setPoolAdapters = _gasValue(484969); // using MAX_ADAPTER_COUNT
+        request = _gasValue(217980);
+        notifyPool = _gasValue(1280737); // create escrow case
+        notifyShareClass = _gasValue(1858394);
+        notifyPricePoolPerShare = _gasValue(102238);
+        notifyPricePoolPerAsset = _gasValue(106051);
+        notifyShareMetadata = _gasValue(115801);
+        updateShareHook = _gasValue(91765);
+        initiateTransferShares = _gasValue(282064);
+        executeTransferShares = _gasValue(172874);
+        updateRestriction = _gasValue(112674);
+        trustedContractUpdate = _gasValue(144097);
+        requestCallback = _gasValue(308422); // approve deposit case
+        updateVaultDeployAndLink = _gasValue(2841256);
+        updateVaultLink = _gasValue(182899);
+        updateVaultUnlink = _gasValue(131666);
+        setRequestManager = _gasValue(101102);
+        updateBalanceSheetManager = _gasValue(99881);
+        updateHoldingAmount = _gasValue(300858);
+        updateShares = _gasValue(198275);
+        maxAssetPriceAge = _gasValue(106136);
+        maxSharePriceAge = _gasValue(103070);
+        updateGatewayManager = _gasValue(97649);
+        untrustedContractUpdate = _gasValue(85090);
     }
 
-    /// @inheritdoc IMessageLimits
-    function messageGasLimit(uint16, bytes calldata message) public view returns (uint128) {
+    /// @inheritdoc IMessageProperties
+    function messageOverallGasLimit(uint16 centrifugeId, bytes calldata message) public view returns (uint128) {
+        return messageProcessingGasLimit(centrifugeId, message) + BASE_COST;
+    }
+
+    /// @inheritdoc IMessageProperties
+    function messageProcessingGasLimit(uint16 centrifugeId, bytes calldata message) public view returns (uint128) {
+        return _messageBaseGasLimit(centrifugeId, message) + message.messageExtraGasLimit();
+    }
+
+    function _messageBaseGasLimit(uint16, bytes calldata message) internal view returns (uint128) {
         MessageType kind = message.messageType();
 
         if (kind == MessageType.ScheduleUpgrade) return scheduleUpgrade;
@@ -116,11 +141,28 @@ contract GasService is IGasService {
         revert InvalidMessageType(); // Unreachable
     }
 
+    /// @inheritdoc IMessageProperties
+    function maxBatchGasLimit(uint16 centrifugeId) external view returns (uint128) {
+        // txLimitsPerCentrifugeId counts millions of gas units, then we need to multiply by 1_000_000
+        return (centrifugeId < 32 ? uint8(bytes32(txLimitsPerCentrifugeId)[centrifugeId]) : DEFAULT_SUPPORTED_TX_LIMIT)
+            * 1_000_000;
+    }
+
+    /// @inheritdoc IMessageProperties
+    function messageLength(bytes calldata message) external pure returns (uint16) {
+        return message.messageLength();
+    }
+
+    /// @inheritdoc IMessageProperties
+    function messagePoolId(bytes calldata message) external pure returns (PoolId) {
+        return message.messagePoolId();
+    }
+
     /// @dev - BASE_COST adds some offset to the benchmarked message
-    ///      - GAS_FAIL_MESSAGE_STORAGE is an extra required to process a possible message failure
+    ///      - PROCESS_FAIL_MESSAGE_GAS is an extra required to process a possible message failure
     ///      - Multiply by 64/63 is because EIP-150 pass 63/64 gas to each method call,
     ///        so we add here the adapter call required gas.
     function _gasValue(uint128 value) internal pure returns (uint128) {
-        return BASE_COST + uint128(GAS_FAIL_MESSAGE_STORAGE) + 64 * value / 63;
+        return uint128(PROCESS_FAIL_MESSAGE_GAS) + 64 * value / 63;
     }
 }

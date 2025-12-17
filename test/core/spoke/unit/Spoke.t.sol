@@ -81,6 +81,7 @@ contract SpokeTest is Test {
     uint64 immutable FUTURE = MAX_AGE + 1;
 
     uint256 constant COST = 123;
+    uint128 constant EXTRA = 456;
 
     SpokeExt spoke = new SpokeExt(tokenFactory, AUTH);
     VaultRegistry vaultRegistry = new VaultRegistry(AUTH);
@@ -172,16 +173,6 @@ contract SpokeTest is Test {
             COST,
             abi.encodeWithSelector(sender.sendRegisterAsset.selector, REMOTE_CENTRIFUGE_ID, assetId, DECIMALS),
             abi.encode()
-        );
-    }
-
-    function _mockVaultFactory(address asset, uint256 tokenId) internal {
-        vm.mockCall(
-            address(vaultFactory),
-            abi.encodeWithSelector(
-                vaultFactory.newVault.selector, POOL_A, SC_1, asset, tokenId, share, new address[](0)
-            ),
-            abi.encode(vault)
         );
     }
 
@@ -523,7 +514,7 @@ contract SpokeTestRequest is SpokeTest {
     function testErrInvalidRequestManager() public {
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.InvalidRequestManager.selector);
-        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND, false);
+        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, EXTRA, false, REFUND);
     }
 
     function testErrNotAuthorized() public {
@@ -534,7 +525,7 @@ contract SpokeTestRequest is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND, false);
+        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, EXTRA, false, REFUND);
     }
 
     function testRequestPaid() public {
@@ -547,13 +538,13 @@ contract SpokeTestRequest is SpokeTest {
             address(sender),
             COST,
             abi.encodeWithSelector(
-                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, false, REFUND
+                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, EXTRA, false, REFUND
             ),
             abi.encode()
         );
 
         vm.prank(address(requestManager));
-        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND, false);
+        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, EXTRA, false, REFUND);
     }
 
     function testRequestUnpaid() public {
@@ -566,13 +557,13 @@ contract SpokeTestRequest is SpokeTest {
             address(sender),
             COST,
             abi.encodeWithSelector(
-                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, true, REFUND
+                ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD, EXTRA, true, REFUND
             ),
             abi.encode()
         );
 
         vm.prank(address(requestManager));
-        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, REFUND, true);
+        spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, EXTRA, true, REFUND);
     }
 }
 
@@ -683,6 +674,11 @@ contract SpokeTestLinkToken is SpokeTest {
         spoke.linkToken(POOL_A, SC_1, share);
 
         assertEq(address(spoke.shareToken(POOL_A, SC_1)), address(share));
+
+        (PoolId returnedPoolId, ShareClassId returnedScId) = spoke.shareTokenDetails(address(share));
+
+        assertEq(returnedPoolId.raw(), POOL_A.raw());
+        assertEq(returnedScId.raw(), SC_1.raw());
     }
 }
 
@@ -1133,5 +1129,14 @@ contract SpokeTestPricesPoolPer is SpokeTest {
 
         assertEq(assetPrice.raw(), PRICE.raw());
         assertEq(sharePrice.raw(), (PRICE + d18(1)).raw());
+    }
+}
+
+contract SpokeTestshareTokenDetails is SpokeTest {
+    function testErrShareTokenDoesNotExist() public {
+        address nonExistentToken = makeAddr("nonExistentToken");
+
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.shareTokenDetails(nonExistentToken);
     }
 }

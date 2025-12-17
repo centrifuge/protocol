@@ -165,6 +165,7 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), 0);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testCancelUpgrade(bytes32 target) public pure {
@@ -175,6 +176,7 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), 0);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testRecoverTokens(bytes32 target, bytes32 token, uint256 tokenId, bytes32 to, uint256 amount) public pure {
@@ -188,8 +190,9 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.to, b.to);
         assertEq(a.amount, b.amount);
 
-        assertEq(a.serialize().messageLength(), a.serialize().length, "XXX");
+        assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), 0);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testRegisterAsset(uint128 assetId, uint8 decimals) public pure {
@@ -201,6 +204,7 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
         assertEq(a.serialize().messagePoolId().raw(), 0);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testSetPoolAdapters(uint64 poolId, uint8 threshold, uint8 recoveryIndex, bytes32[] memory adapterList)
@@ -221,6 +225,7 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
         assertEq(a.serialize().messagePoolId().raw(), 0);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testNotifyPool(uint64 poolId) public pure {
@@ -231,6 +236,7 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testNotifyShareClass(
@@ -259,6 +265,7 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testNotifyPricePoolPerShare(uint64 poolId, bytes16 scId, uint128 price, uint64 timestamp) public pure {
@@ -272,6 +279,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.timestamp, b.timestamp);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testNotifyPricePoolPerAsset(uint64 poolId, bytes16 scId, uint128 assetId, uint128 price, uint64 timestamp)
@@ -291,6 +299,7 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testNotifyShareMetadata(uint64 poolId, bytes16 scId, string calldata name, bytes32 symbol) public pure {
@@ -307,6 +316,7 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testUpdateShareHook(uint64 poolId, bytes16 scId, bytes32 hook) public pure {
@@ -319,6 +329,7 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testInitiateTransferShares(
@@ -327,6 +338,7 @@ contract TestMessageLibIdentities is Test {
         uint16 centrifugeId,
         bytes32 receiver,
         uint128 amount,
+        uint128 remoteExtraGasLimit,
         uint128 extraGasLimit
     ) public pure {
         MessageLib.InitiateTransferShares memory a = MessageLib.InitiateTransferShares({
@@ -335,6 +347,7 @@ contract TestMessageLibIdentities is Test {
             centrifugeId: centrifugeId,
             receiver: receiver,
             amount: amount,
+            remoteExtraGasLimit: remoteExtraGasLimit,
             extraGasLimit: extraGasLimit
         });
         MessageLib.InitiateTransferShares memory b = MessageLib.deserializeInitiateTransferShares(a.serialize());
@@ -344,99 +357,149 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.centrifugeId, b.centrifugeId);
         assertEq(a.receiver, b.receiver);
         assertEq(a.amount, b.amount);
+        assertEq(a.remoteExtraGasLimit, b.remoteExtraGasLimit);
         assertEq(a.extraGasLimit, b.extraGasLimit);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
     }
 
-    function testExecuteTransferShares(uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount) public pure {
-        MessageLib.ExecuteTransferShares memory a =
-            MessageLib.ExecuteTransferShares({poolId: poolId, scId: scId, receiver: receiver, amount: amount});
+    function testExecuteTransferShares(
+        uint64 poolId,
+        bytes16 scId,
+        bytes32 receiver,
+        uint128 amount,
+        uint128 extraGasLimit
+    ) public pure {
+        MessageLib.ExecuteTransferShares memory a = MessageLib.ExecuteTransferShares({
+            poolId: poolId, scId: scId, receiver: receiver, amount: amount, extraGasLimit: extraGasLimit
+        });
         MessageLib.ExecuteTransferShares memory b = MessageLib.deserializeExecuteTransferShares(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
         assertEq(a.receiver, b.receiver);
         assertEq(a.amount, b.amount);
+        assertEq(a.extraGasLimit, b.extraGasLimit);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
     }
 
-    function testUpdateRestriction(uint64 poolId, bytes16 scId, bytes memory payload) public pure {
-        MessageLib.UpdateRestriction memory a =
-            MessageLib.UpdateRestriction({poolId: poolId, scId: scId, payload: payload});
+    function testUpdateRestriction(uint64 poolId, bytes16 scId, uint128 extraGasLimit, bytes memory payload)
+        public
+        pure
+    {
+        MessageLib.UpdateRestriction memory a = MessageLib.UpdateRestriction({
+            poolId: poolId, scId: scId, extraGasLimit: extraGasLimit, payload: payload
+        });
         MessageLib.UpdateRestriction memory b = MessageLib.deserializeUpdateRestriction(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
+        assertEq(a.extraGasLimit, b.extraGasLimit);
         assertEq(a.payload, b.payload);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
 
         // Check the payload length is correctly encoded as little endian
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 
-    function testTrustedContractUpdate(uint64 poolId, bytes16 scId, bytes32 target, bytes memory payload) public pure {
-        MessageLib.TrustedContractUpdate memory a =
-            MessageLib.TrustedContractUpdate({poolId: poolId, scId: scId, target: target, payload: payload});
+    function testTrustedContractUpdate(
+        uint64 poolId,
+        bytes16 scId,
+        bytes32 target,
+        uint128 extraGasLimit,
+        bytes memory payload
+    ) public pure {
+        MessageLib.TrustedContractUpdate memory a = MessageLib.TrustedContractUpdate({
+            poolId: poolId, scId: scId, target: target, extraGasLimit: extraGasLimit, payload: payload
+        });
         MessageLib.TrustedContractUpdate memory b = MessageLib.deserializeTrustedContractUpdate(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
         assertEq(a.target, b.target);
+        assertEq(a.extraGasLimit, b.extraGasLimit);
         assertEq(a.payload, b.payload);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
 
         // Check the payload length is correctly encoded as little endian
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 
-    function testRequest(uint64 poolId, bytes16 scId, uint128 assetId, bytes memory payload) public pure {
-        MessageLib.Request memory a =
-            MessageLib.Request({poolId: poolId, scId: scId, assetId: assetId, payload: payload});
+    function testRequest(uint64 poolId, bytes16 scId, uint128 assetId, uint128 extraGasLimit, bytes memory payload)
+        public
+        pure
+    {
+        MessageLib.Request memory a = MessageLib.Request({
+            poolId: poolId, scId: scId, assetId: assetId, extraGasLimit: extraGasLimit, payload: payload
+        });
         MessageLib.Request memory b = MessageLib.deserializeRequest(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
         assertEq(a.assetId, b.assetId);
+        assertEq(a.extraGasLimit, b.extraGasLimit);
         assertEq(a.payload, b.payload);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
 
         // Check the payload length is correctly encoded as little endian
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 
-    function testRequestCallback(uint64 poolId, bytes16 scId, uint128 assetId, bytes memory payload) public pure {
-        MessageLib.RequestCallback memory a =
-            MessageLib.RequestCallback({poolId: poolId, scId: scId, assetId: assetId, payload: payload});
+    function testRequestCallback(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        uint128 extraGasLimit,
+        bytes memory payload
+    ) public pure {
+        MessageLib.RequestCallback memory a = MessageLib.RequestCallback({
+            poolId: poolId, scId: scId, assetId: assetId, extraGasLimit: extraGasLimit, payload: payload
+        });
         MessageLib.RequestCallback memory b = MessageLib.deserializeRequestCallback(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
         assertEq(a.assetId, b.assetId);
+        assertEq(a.extraGasLimit, b.extraGasLimit);
         assertEq(a.payload, b.payload);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
 
         // Check the payload length is correctly encoded as little endian
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 
-    function testUpdateVault(uint64 poolId, bytes16 scId, bytes32 vaultOrFactory, uint128 assetId, uint8 kind)
-        public
-        pure
-    {
+    function testUpdateVault(
+        uint64 poolId,
+        bytes16 scId,
+        bytes32 vaultOrFactory,
+        uint128 assetId,
+        uint8 kind,
+        uint128 extraGasLimit
+    ) public pure {
         MessageLib.UpdateVault memory a = MessageLib.UpdateVault({
-            poolId: poolId, scId: scId, assetId: assetId, vaultOrFactory: vaultOrFactory, kind: kind
+            poolId: poolId,
+            scId: scId,
+            assetId: assetId,
+            vaultOrFactory: vaultOrFactory,
+            kind: kind,
+            extraGasLimit: extraGasLimit
         });
         MessageLib.UpdateVault memory b = MessageLib.deserializeUpdateVault(a.serialize());
 
@@ -445,9 +508,11 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.assetId, b.assetId);
         assertEq(a.vaultOrFactory, b.vaultOrFactory);
         assertEq(a.kind, b.kind);
+        assertEq(a.extraGasLimit, b.extraGasLimit);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
     }
 
     function testSetRequestManager(uint64 poolId, bytes32 manager) public pure {
@@ -459,6 +524,7 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testUpdateBalanceSheetManager(uint64 poolId, bytes32 who, bool canManage) public pure {
@@ -472,6 +538,7 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testUpdateHoldingAmount(
@@ -483,7 +550,8 @@ contract TestMessageLibIdentities is Test {
         uint64 timestamp,
         bool isIncrease,
         bool isSnapshot,
-        uint64 nonce
+        uint64 nonce,
+        uint128 extraGasLimit
     ) public pure {
         MessageLib.UpdateHoldingAmount memory a = MessageLib.UpdateHoldingAmount({
             poolId: poolId,
@@ -494,7 +562,8 @@ contract TestMessageLibIdentities is Test {
             timestamp: timestamp,
             isIncrease: isIncrease,
             isSnapshot: isSnapshot,
-            nonce: nonce
+            nonce: nonce,
+            extraGasLimit: extraGasLimit
         });
 
         MessageLib.UpdateHoldingAmount memory b = MessageLib.deserializeUpdateHoldingAmount(a.serialize());
@@ -508,9 +577,11 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.isIncrease, b.isIncrease);
         assertEq(a.isSnapshot, b.isSnapshot);
         assertEq(a.nonce, b.nonce);
+        assertEq(a.extraGasLimit, b.extraGasLimit);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
     }
 
     function testUpdateShares(
@@ -520,7 +591,8 @@ contract TestMessageLibIdentities is Test {
         uint64 timestamp,
         bool isIssuance,
         bool isSnapshot,
-        uint64 nonce
+        uint64 nonce,
+        uint128 extraGasLimit
     ) public pure {
         MessageLib.UpdateShares memory a = MessageLib.UpdateShares({
             poolId: poolId,
@@ -529,7 +601,8 @@ contract TestMessageLibIdentities is Test {
             timestamp: timestamp,
             isIssuance: isIssuance,
             isSnapshot: isSnapshot,
-            nonce: nonce
+            nonce: nonce,
+            extraGasLimit: extraGasLimit
         });
 
         MessageLib.UpdateShares memory b = MessageLib.deserializeUpdateShares(a.serialize());
@@ -541,9 +614,11 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.isIssuance, b.isIssuance);
         assertEq(a.isSnapshot, b.isSnapshot);
         assertEq(a.nonce, b.nonce);
+        assertEq(a.extraGasLimit, b.extraGasLimit);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
     }
 
     function testSetMaxAssetPriceAge(uint64 poolId, bytes16 scId, uint128 assetId, uint64 maxPriceAge) public pure {
@@ -558,6 +633,7 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testSetMaxSharePriceAge(uint64 poolId, bytes16 scId, uint64 maxPriceAge) public pure {
@@ -571,6 +647,7 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testUpdateGatewayManager(uint64 poolId, bytes32 who, bool canManage) public pure {
@@ -584,17 +661,19 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
     function testUntrustedContractUpdate(
         uint64 poolId,
         bytes16 scId,
         bytes32 target,
-        bytes memory payload,
-        bytes32 sender
+        bytes32 sender,
+        uint128 extraGasLimit,
+        bytes memory payload
     ) public pure {
         MessageLib.UntrustedContractUpdate memory a = MessageLib.UntrustedContractUpdate({
-            poolId: poolId, scId: scId, target: target, payload: payload, sender: sender
+            poolId: poolId, scId: scId, target: target, sender: sender, extraGasLimit: extraGasLimit, payload: payload
         });
         MessageLib.UntrustedContractUpdate memory b = MessageLib.deserializeUntrustedContractUpdate(a.serialize());
 
@@ -603,8 +682,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.target, b.target);
         assertEq(a.payload, b.payload);
         assertEq(a.sender, b.sender);
+        assertEq(a.extraGasLimit, b.extraGasLimit);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
     }
 }

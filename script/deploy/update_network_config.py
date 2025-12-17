@@ -10,6 +10,9 @@ root_dir = pathlib.Path(__file__).parent.parent.parent
 
 parser = argparse.ArgumentParser(description="Update network configuration.")
 parser.add_argument("network_name")
+parser.add_argument("--script", "-s", 
+                    help="Deployment script path (e.g., script/LaunchDeployer.s.sol) to extract real block numbers from broadcast artifacts",
+                    default=None)
 args_cli = parser.parse_args()
 network_name = args_cli.network_name
 
@@ -28,4 +31,4 @@ env_loader = EnvironmentLoader(network_name, root_dir, args)
 verifier = ContractVerifier(env_loader, args)
 
 # Call the function
-verifier.update_network_config()
+verifier.update_network_config(args_cli.script)

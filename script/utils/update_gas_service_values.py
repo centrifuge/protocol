@@ -6,17 +6,18 @@ def main(json_path, sol_path):
     src  = pathlib.Path(sol_path).read_text(encoding="utf-8")
 
     # For each key, replace the whole assignment line while preserving indentation and trailing comments
-    # Pattern captures: indent + 'key = BASE_COST + ' + number + ';' + optional trailing
+    # Pattern captures: indent + 'key = ' + optional prefix (e.g. CONSTANT + ) + _gasValue(<number>) + ';' + trailing
     missing = []
     for k, v in data.items():
         if k == "BENCHMARKING_RUN_ID": continue
         pat = re.compile(
             rf'^(\s*{re.escape(k)}\s*=\s*)'          # indent + "<name> = "
+            rf'([A-Z_]+\s*\+\s*)?'                   # optional constant prefix (e.g. "RECOVERY_TOKEN_EXTRA_COST + ")
             rf'_gasValue\(\s*([0-9_]+)\s*\)'         # _gasValue(<number>)
             rf'(\s*;)([^\n]*)?',                     # semicolon + trailing comment
             re.M,
         )
-        new_src, n = pat.subn(rf'\1_gasValue({int(v)})\3\4', src, count=1)
+        new_src, n = pat.subn(rf'\1\2_gasValue({int(v)})\4\5', src, count=1)
         if n == 0:
             missing.append((k, v))
         else:

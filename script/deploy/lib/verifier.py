@@ -27,6 +27,51 @@ class ContractVerifier:
         self.root_dir = env_loader.root_dir
         self.rpc_url = self.env_loader.rpc_url
         self.etherscan_api_key = self.env_loader.etherscan_api_key
+    
+    def _get_broadcast_deployment_info(self, deployment_script: str) -> dict:
+        """
+        Parse Forge broadcast artifacts to get real deployment info (block numbers and tx hashes).
+        
+        Returns a dict mapping lowercase addresses to { blockNumber, txHash }.
+        """
+        # Find the broadcast file
+        # deployment_script format: "script/SomeScript.s.sol:ScriptName"
+        script_path = deployment_script.split(":")[0] if ":" in deployment_script else deployment_script
+        script_name = pathlib.Path(script_path).name  # e.g., "LaunchDeployer.s.sol"
+        
+        broadcast_dir = self.root_dir / "broadcast" / script_name / str(self.env_loader.chain_id)
+        broadcast_file = broadcast_dir / "run-latest.json"
+        
+        if not broadcast_file.exists():
+            print_warning(f"Broadcast file not found: {broadcast_file}")
+            return {}
+        
+        try:
+            with open(broadcast_file, 'r') as f:
+                broadcast_data = json.load(f)
+            
+            # Build address -> { blockNumber, txHash } map from receipts
+            deployment_info = {}
+            for receipt in broadcast_data.get("receipts", []):
+                contract_address = receipt.get("contractAddress")
+                block_number_hex = receipt.get("blockNumber")
+                tx_hash = receipt.get("transactionHash")
+                
+                if contract_address and block_number_hex:
+                    # Convert hex block number to decimal string
+                    block_number = str(int(block_number_hex, 16))
+                    deployment_info[contract_address.lower()] = {
+                        'blockNumber': block_number,
+                        'txHash': tx_hash
+                    }
+            
+            if deployment_info:
+                print_step(f"Found {len(deployment_info)} contract deployments from broadcast artifacts")
+            
+            return deployment_info
+        except (json.JSONDecodeError, IOError) as e:
+            print_warning(f"Failed to parse broadcast file: {e}")
+            return {}
 
     def verify_contracts(self, deployment_script: str) -> bool:
         """Verify contracts on Etherscan"""
@@ -84,7 +129,7 @@ class ContractVerifier:
                         print_info("Skipping update of main config file")
                         return True
                 else:
-                    self.update_network_config()
+                    self.update_network_config(deployment_script)
         else:
             print_info("Dry run mode, skipping contracts checks")
 
@@ -155,7 +200,7 @@ class ContractVerifier:
         except Exception:
             return False
 
-    def update_network_config(self):
+    def update_network_config(self, deployment_script: str = None):
         """Update network config with deployment output"""
         relative_path = format_path(self.env_loader.config_file, self.root_dir)
         print_step(f"Merging contract addresses to {relative_path}")
@@ -178,6 +223,11 @@ class ContractVerifier:
             backup_config.unlink()  # Remove backup
             return False
 
+        # Get real deployment info (block numbers and tx hashes) from broadcast artifacts
+        broadcast_deployment_info = {}
+        if deployment_script:
+            broadcast_deployment_info = self._get_broadcast_deployment_info(deployment_script)
+
         try:
             # Load both files
             with open(network_config, 'r') as f:
@@ -190,7 +240,26 @@ class ContractVerifier:
                 config_data['contracts'] = {}
 
             # Update contracts with new deployments
-            config_data['contracts'].update(latest_data.get('contracts', {}))
+            contracts_from_latest = latest_data.get('contracts', {})
+            for contract_name, contract_data in contracts_from_latest.items():
+                # Extract address from either format
+                if isinstance(contract_data, dict):
+                    contract_address = contract_data.get('address')
+                else:
+                    contract_address = contract_data
+                
+                if not contract_address:
+                    continue
+                
+                # Get real deployment info from broadcast artifacts (preferred)
+                deploy_info = broadcast_deployment_info.get(contract_address.lower(), {})
+                
+                # Always write in the new format with address, blockNumber, and txHash
+                config_data['contracts'][contract_name] = {
+                    'address': contract_address,
+                    'blockNumber': deploy_info.get('blockNumber'),  # Will be None if not found
+                    'txHash': deploy_info.get('txHash')  # Will be None if not found
+                }
 
 
             # Get deployment timestamp from latest deployment file

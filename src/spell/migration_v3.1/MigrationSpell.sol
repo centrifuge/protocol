@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {D18} from "../../misc/types/D18.sol";
-import {Escrow} from "../../misc/Escrow.sol";
 import {IERC20} from "../../misc/interfaces/IERC20.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {IERC6909} from "../../misc/interfaces/IERC6909.sol";
@@ -18,6 +17,7 @@ import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {VaultKind} from "../../core/spoke/interfaces/IVault.sol";
 import {MultiAdapter} from "../../core/messaging/MultiAdapter.sol";
 import {ContractUpdater} from "../../core/utils/ContractUpdater.sol";
+import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
 import {ShareClassManager} from "../../core/hub/ShareClassManager.sol";
 import {IShareToken} from "../../core/spoke/interfaces/IShareToken.sol";
 import {PoolEscrow, IPoolEscrow} from "../../core/spoke/PoolEscrow.sol";
@@ -43,9 +43,20 @@ import {BaseVault} from "../../vaults/BaseVaults.sol";
 import {SyncManager} from "../../vaults/SyncManager.sol";
 import {VaultRouter} from "../../vaults/VaultRouter.sol";
 import {AsyncRequestManager} from "../../vaults/AsyncRequestManager.sol";
+import {REASON_REDEEM} from "../../vaults/interfaces/IVaultManagers.sol";
 import {BatchRequestManager, EpochId} from "../../vaults/BatchRequestManager.sol";
 
+import {RefundEscrowFactory} from "../../utils/RefundEscrowFactory.sol";
+
 PoolId constant GLOBAL_POOL = PoolId.wrap(0);
+
+address constant CFG = 0xcccCCCcCCC33D538DBC2EE4fEab0a7A1FF4e8A94;
+address constant WCFG = 0xc221b7E65FfC80DE234bbB6667aBDd46593D34F0;
+address constant WCFG_MULTISIG = 0x3C9D25F2C76BFE63485AE25D524F7f02f2C03372;
+address constant CHAINBRIDGE_ERC20_HANDLER = 0x84D1e77F472a4aA697359168C4aF4ADD4D2a71fa;
+address constant CREATE3_PROXY = 0x28E6eED839a5E03D92f7A5C459430576081fadFb;
+address constant WORMHOLE_NTT = address(1); // TODO
+address constant ROOT_V2 = 0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC;
 
 contract MessageDispatcherInfallibleMock {
     uint16 _localCentrifugeId;
@@ -80,36 +91,8 @@ struct AssetInfo {
     uint256 tokenId;
 }
 
-struct GlobalMigrationOldContracts {
-    address gateway;
-    address spoke;
-    address hubRegistry;
-    address asyncRequestManager;
-    address syncManager;
-}
-
-struct GlobalParamsInput {
-    GlobalMigrationOldContracts v3;
+struct V3Contracts {
     Root root;
-    Spoke spoke;
-    BalanceSheet balanceSheet;
-    HubRegistry hubRegistry;
-    MultiAdapter multiAdapter;
-    MessageDispatcher messageDispatcher;
-    MessageProcessor messageProcessor;
-    AsyncRequestManager asyncRequestManager;
-    SyncManager syncManager;
-    ProtocolGuardian protocolGuardian;
-    TokenRecoverer tokenRecoverer;
-    Escrow globalEscrow;
-    VaultRouter vaultRouter;
-
-    AssetId[] spokeAssetIds;
-    AssetId[] hubAssetIds;
-    address[] vaults;
-}
-
-struct PoolMigrationOldContracts {
     address gateway;
     address poolEscrowFactory;
     address spoke;
@@ -126,10 +109,29 @@ struct PoolMigrationOldContracts {
     address redemptionRestrictions;
 }
 
-struct PoolParamsInput {
-    PoolMigrationOldContracts v3;
+struct GlobalParamsInput {
+    V3Contracts v3;
+    Spoke spoke;
+    BalanceSheet balanceSheet;
+    HubRegistry hubRegistry;
+    MultiAdapter multiAdapter;
+    MessageDispatcher messageDispatcher;
+    MessageProcessor messageProcessor;
+    AsyncRequestManager asyncRequestManager;
+    SyncManager syncManager;
+    ProtocolGuardian protocolGuardian;
+    TokenRecoverer tokenRecoverer;
+    VaultRouter vaultRouter;
 
-    Root root;
+    AssetId[] spokeAssetIds;
+    AssetId[] hubAssetIds;
+    address[] vaults;
+}
+
+struct PoolParamsInput {
+    V3Contracts v3;
+
+    MultiAdapter multiAdapter;
     Spoke spoke;
     BalanceSheet balanceSheet;
     VaultRegistry vaultRegistry;
@@ -144,6 +146,7 @@ struct PoolParamsInput {
     OnOfframpManagerFactory onOfframpManagerFactory;
     BatchRequestManager batchRequestManager;
     ContractUpdater contractUpdater;
+    RefundEscrowFactory refundEscrowFactory;
 
     AssetId[] spokeAssetIds;
     AssetId[] hubAssetIds;
@@ -156,6 +159,11 @@ struct PoolParamsInput {
 
     address[] hubManagers;
     uint16[] chainsWherePoolIsNotified;
+}
+
+struct SupplementalParamsInput {
+    Root root;
+    MultiAdapter multiAdapter;
 }
 
 contract MigrationSpell {
@@ -173,7 +181,7 @@ contract MigrationSpell {
 
         address[] memory contracts = _authorizedContracts(input);
         for (uint256 i; i < contracts.length; i++) {
-            input.root.relyContract(address(contracts[i]), address(this));
+            input.v3.root.relyContract(address(contracts[i]), address(this));
         }
 
         MessageDispatcherInfallibleMock messageDispatcherMock =
@@ -186,8 +194,14 @@ contract MigrationSpell {
         input.spoke.file("sender", address(input.messageDispatcher));
 
         for (uint256 i; i < contracts.length; i++) {
-            input.root.denyContract(address(contracts[i]), address(this));
+            input.v3.root.denyContract(address(contracts[i]), address(this));
         }
+    }
+
+    function castSupplemental(SupplementalParamsInput memory input) external {
+        require(owner == msg.sender, "not authorized");
+
+        _updateCFGWards(input);
     }
 
     function castPool(PoolId poolId, PoolParamsInput memory input) external {
@@ -195,22 +209,27 @@ contract MigrationSpell {
 
         address[] memory contracts = _authorizedContracts(input);
         for (uint256 i; i < contracts.length; i++) {
-            input.root.relyContract(address(contracts[i]), address(this));
+            input.v3.root.relyContract(address(contracts[i]), address(this));
         }
 
         _migratePool(poolId, input);
 
         for (uint256 i; i < contracts.length; i++) {
-            input.root.denyContract(address(contracts[i]), address(this));
+            input.v3.root.denyContract(address(contracts[i]), address(this));
         }
     }
 
     /// @notice after migrate all pools, we need to lock the spell
-    function lock(Root root) external {
+    function lock(Root rootV3) external {
         require(owner == msg.sender, "not authorized");
         owner = address(0);
 
-        root.deny(address(this));
+        rootV3.deny(address(this));
+
+        // If the spell was also relied on the v2 root, remove ourselves there as well
+        if (ROOT_V2.code.length > 0 && Root(ROOT_V2).wards(address(this)) == 1) {
+            Root(ROOT_V2).deny(address(this));
+        }
     }
 
     function _authorizedContracts(GlobalParamsInput memory input) internal pure returns (address[] memory) {
@@ -222,7 +241,7 @@ contract MigrationSpell {
     }
 
     function _authorizedContracts(PoolParamsInput memory input) internal pure returns (address[] memory) {
-        address[] memory contracts = new address[](9);
+        address[] memory contracts = new address[](10);
         contracts[0] = address(input.spoke);
         contracts[1] = address(input.balanceSheet);
         contracts[2] = address(input.vaultRegistry);
@@ -231,20 +250,49 @@ contract MigrationSpell {
         contracts[5] = address(input.syncManager);
         contracts[6] = address(input.batchRequestManager);
         contracts[7] = address(input.contractUpdater);
-        contracts[8] = address(input.v3.gateway);
+        contracts[8] = address(input.multiAdapter);
+        contracts[9] = address(input.v3.gateway);
         return contracts;
     }
 
     /// @dev after deploying with an existing root, the following wards are missing and need to be fixed
     function _missingRootWards(GlobalParamsInput memory input) internal {
-        input.root.rely(address(input.protocolGuardian));
-        input.root.rely(address(input.tokenRecoverer));
-        input.root.rely(address(input.messageDispatcher));
-        input.root.rely(address(input.messageProcessor));
-        input.root.endorse(address(input.balanceSheet));
-        input.root.endorse(address(input.asyncRequestManager));
-        input.root.endorse(address(input.globalEscrow));
-        input.root.endorse(address(input.vaultRouter));
+        input.v3.root.rely(address(input.protocolGuardian));
+        input.v3.root.rely(address(input.tokenRecoverer));
+        input.v3.root.rely(address(input.messageDispatcher));
+        input.v3.root.rely(address(input.messageProcessor));
+        input.v3.root.endorse(address(input.balanceSheet));
+        input.v3.root.endorse(address(input.asyncRequestManager));
+        input.v3.root.endorse(address(input.vaultRouter));
+    }
+
+    function _updateCFGWards(SupplementalParamsInput memory input) internal {
+        uint16 localCentrifugeId = input.multiAdapter.localCentrifugeId();
+
+        // Check if CFG exists
+        if (CFG.code.length > 0) {
+            // Mainnet CFG only has the v2 root relied, need to rely the v3 root as well
+            if (localCentrifugeId == 1) {
+                Root(ROOT_V2).relyContract(CFG, address(input.root));
+            }
+
+            // Deny CREATE3 proxy on new chains
+            if (localCentrifugeId != 1) {
+                input.root.denyContract(CFG, CREATE3_PROXY);
+            }
+
+            // Rely Wormhole adapter on Base
+            if (localCentrifugeId == 2) {
+                input.root.relyContract(CFG, WORMHOLE_NTT);
+            }
+        }
+
+        // Check if WCFG exists
+        if (WCFG.code.length > 0) {
+            Root(ROOT_V2).relyContract(WCFG, address(input.root));
+            input.root.denyContract(WCFG, WCFG_MULTISIG);
+            input.root.denyContract(WCFG, CHAINBRIDGE_ERC20_HANDLER);
+        }
     }
 
     function _migrateGlobal(GlobalParamsInput memory input) internal {
@@ -271,28 +319,28 @@ contract MigrationSpell {
         // ----- VAULTS -----
         for (uint256 i; i < input.vaults.length; i++) {
             BaseVault vault = BaseVault(input.vaults[i]);
-            input.root.relyContract(address(vault), address(this));
+            input.v3.root.relyContract(address(vault), address(this));
 
-            input.root.relyContract(address(vault), address(input.asyncRequestManager));
-            input.root.relyContract(address(input.asyncRequestManager), address(vault));
+            input.v3.root.relyContract(address(vault), address(input.asyncRequestManager));
+            input.v3.root.relyContract(address(input.asyncRequestManager), address(vault));
 
-            input.root.denyContract(address(vault), address(input.v3.asyncRequestManager));
-            input.root.denyContract(address(input.v3.asyncRequestManager), address(vault));
+            input.v3.root.denyContract(address(vault), address(input.v3.asyncRequestManager));
+            input.v3.root.denyContract(address(input.v3.asyncRequestManager), address(vault));
 
             vault.file("manager", address(input.asyncRequestManager));
             vault.file("asyncRedeemManager", address(input.asyncRequestManager));
 
             if (vault.vaultKind() == VaultKind.SyncDepositAsyncRedeem) {
-                input.root.relyContract(address(vault), address(input.syncManager));
-                input.root.relyContract(address(input.syncManager), address(vault));
+                input.v3.root.relyContract(address(vault), address(input.syncManager));
+                input.v3.root.relyContract(address(input.syncManager), address(vault));
 
-                input.root.denyContract(address(vault), input.v3.syncManager);
-                input.root.denyContract(address(input.v3.syncManager), address(vault));
+                input.v3.root.denyContract(address(vault), input.v3.syncManager);
+                input.v3.root.denyContract(address(input.v3.syncManager), address(vault));
 
                 vault.file("syncDepositManager", address(input.syncManager));
             }
 
-            input.root.denyContract(address(vault), address(this));
+            input.v3.root.denyContract(address(vault), address(this));
         }
     }
 
@@ -310,11 +358,10 @@ contract MigrationSpell {
         }
 
         if (inHub || inSpoke) {
-            // ----- REFUND -----
-            address refund = input.hubManagers.length > 0
-                ? input.hubManagers[0]
-                : input.bsManagers.length > 0 ? input.bsManagers[0] : msg.sender;
+            address refund =
+                input.hubManagers.length > 0 ? input.hubManagers[0] : address(input.refundEscrowFactory.get(poolId));
 
+            // ----- REFUND -----
             (uint96 subsidizedFunds,) = GatewayV3Like(input.v3.gateway).subsidy(poolId);
             if (subsidizedFunds > 0) {
                 GatewayV3Like(input.v3.gateway).recoverTokens(ETH_ADDRESS, address(refund), subsidizedFunds);
@@ -322,14 +369,24 @@ contract MigrationSpell {
 
             IPoolEscrow poolEscrowV3 = PoolEscrowFactory(input.v3.poolEscrowFactory).escrow(poolId);
             if (address(poolEscrowV3).balance > 0) {
-                input.root.relyContract(address(poolEscrowV3), address(this));
+                input.v3.root.relyContract(address(poolEscrowV3), address(this));
                 poolEscrowV3.recoverTokens(ETH_ADDRESS, address(refund), address(poolEscrowV3).balance);
-                input.root.denyContract(address(poolEscrowV3), address(this));
+                input.v3.root.denyContract(address(poolEscrowV3), address(this));
             }
         }
     }
 
     function _migratePoolInHub(PoolId poolId, ShareClassId scId, PoolParamsInput memory input) internal {
+        // ----- MULTIADAPTER -----
+        for (uint256 i; i < input.chainsWherePoolIsNotified.length; i++) {
+            uint16 centrifugeId = input.chainsWherePoolIsNotified[i];
+            if (poolId.centrifugeId() != centrifugeId) {
+                IAdapter[] memory adapters = _getAdapters(input.multiAdapter, centrifugeId, poolId);
+                input.multiAdapter
+                    .setAdapters(centrifugeId, poolId, adapters, uint8(adapters.length), uint8(adapters.length));
+            }
+        }
+
         // ---- HUB_REGISTRY -----
         AssetId currency = HubRegistry(input.v3.hubRegistry).currency(poolId);
         if (input.hubManagers.length > 0) {
@@ -357,7 +414,10 @@ contract MigrationSpell {
             (string memory scName, string memory scSymbol, bytes32 scSalt) =
                 ShareClassManagerV3Like(input.v3.shareClassManager).metadata(scId);
             if (bytes(scName).length > 0) {
-                input.shareClassManager.addShareClass(poolId, scName, scSymbol, scSalt);
+                input.shareClassManager
+                    .addShareClass(
+                        poolId, scName, scSymbol, bytes32(abi.encodePacked(bytes8(poolId.raw()), bytes24(scSalt)))
+                    );
 
                 (, D18 navPerShare) = ShareClassManagerV3Like(input.v3.shareClassManager).metrics(scId);
                 input.shareClassManager.updateSharePrice(poolId, scId, navPerShare, uint64(block.timestamp));
@@ -386,6 +446,13 @@ contract MigrationSpell {
 
     function _migratePoolInSpoke(PoolId poolId, ShareClassId scId, PoolParamsInput memory input) internal {
         IShareToken shareToken;
+
+        // ----- MULTIADAPTER -----
+        if (input.multiAdapter.localCentrifugeId() != poolId.centrifugeId()) {
+            IAdapter[] memory adapters = _getAdapters(input.multiAdapter, poolId.centrifugeId(), poolId);
+            input.multiAdapter
+                .setAdapters(poolId.centrifugeId(), poolId, adapters, uint8(adapters.length), uint8(adapters.length));
+        }
 
         // ----- SPOKE -----
         input.spoke.addPool(poolId);
@@ -428,8 +495,8 @@ contract MigrationSpell {
         {
             IPoolEscrow poolEscrowV3 = BalanceSheet(input.v3.balanceSheet).escrow(poolId);
             IPoolEscrow poolEscrow = input.balanceSheet.escrow(poolId);
-            input.root.relyContract(address(poolEscrowV3), address(this));
-            input.root.relyContract(address(poolEscrow), address(this));
+            input.v3.root.relyContract(address(poolEscrowV3), address(this));
+            input.v3.root.relyContract(address(poolEscrow), address(this));
 
             for (uint256 i; i < input.assets.length; i++) {
                 AssetInfo memory assetInfo = input.assets[i];
@@ -451,13 +518,13 @@ contract MigrationSpell {
                     if (isShare) {
                         // NOTE: investment assets can be shares from other pools, special case for them:
                         address shareHook = IShareToken(assetInfo.addr).hook();
-                        input.root.relyContract(address(assetInfo.addr), address(this));
+                        input.v3.root.relyContract(address(assetInfo.addr), address(this));
                         IShareToken(assetInfo.addr).file("hook", address(0)); // we don't want any restrictions
 
                         poolEscrowV3.authTransferTo(assetInfo.addr, assetInfo.tokenId, address(poolEscrow), balance);
 
                         IShareToken(assetInfo.addr).file("hook", shareHook);
-                        input.root.denyContract(address(assetInfo.addr), address(this));
+                        input.v3.root.denyContract(address(assetInfo.addr), address(this));
                     } else {
                         poolEscrowV3.authTransferTo(assetInfo.addr, assetInfo.tokenId, address(poolEscrow), balance);
                     }
@@ -468,24 +535,32 @@ contract MigrationSpell {
 
                 if (total > 0 || reserved > 0) {
                     poolEscrow.deposit(scId, assetInfo.addr, assetInfo.tokenId, total);
-                    poolEscrow.reserve(scId, assetInfo.addr, assetInfo.tokenId, reserved);
+                    // Migrate old reserved to new REDEEM bucket (all v3.0.1 reservations are from ARM revokedShares)
+                    poolEscrow.reserve(
+                        scId,
+                        assetInfo.addr,
+                        assetInfo.tokenId,
+                        reserved,
+                        address(input.asyncRequestManager),
+                        REASON_REDEEM
+                    );
                 }
             }
 
-            input.root.denyContract(address(poolEscrow), address(this));
-            input.root.denyContract(address(poolEscrowV3), address(this));
+            input.v3.root.denyContract(address(poolEscrow), address(this));
+            input.v3.root.denyContract(address(poolEscrowV3), address(this));
         }
 
         // ----- SHARE_TOKEN -----
         if (address(shareToken) != address(0)) {
-            input.root.relyContract(address(shareToken), address(input.spoke));
-            input.root.relyContract(address(shareToken), address(input.balanceSheet));
-            input.root.denyContract(address(shareToken), address(input.v3.spoke));
-            input.root.denyContract(address(shareToken), address(input.v3.balanceSheet));
+            input.v3.root.relyContract(address(shareToken), address(input.spoke));
+            input.v3.root.relyContract(address(shareToken), address(input.balanceSheet));
+            input.v3.root.denyContract(address(shareToken), address(input.v3.spoke));
+            input.v3.root.denyContract(address(shareToken), address(input.v3.balanceSheet));
 
             address hookV3 = shareToken.hook();
             if (hookV3 != address(0)) {
-                input.root.relyContract(address(shareToken), address(this));
+                input.v3.root.relyContract(address(shareToken), address(this));
                 if (hookV3 == input.v3.freezeOnly) {
                     shareToken.file("hook", address(input.freezeOnly));
                 } else if (hookV3 == input.v3.fullRestrictions) {
@@ -495,7 +570,7 @@ contract MigrationSpell {
                 } else if (hookV3 == input.v3.redemptionRestrictions) {
                     shareToken.file("hook", address(input.redemptionRestrictions));
                 }
-                input.root.denyContract(address(shareToken), address(this));
+                input.v3.root.denyContract(address(shareToken), address(this));
             }
         }
 
@@ -565,6 +640,18 @@ contract MigrationSpell {
                     input.contractUpdater.trustedCall(poolId, scId, onOfframpManager, message);
                 }
             }
+        }
+    }
+
+    function _getAdapters(MultiAdapter multiAdapter, uint16 centrifugeId, PoolId poolId)
+        private
+        view
+        returns (IAdapter[] memory adapters)
+    {
+        uint8 adapterCount = multiAdapter.quorum(centrifugeId, poolId);
+        adapters = new IAdapter[](adapterCount);
+        for (uint8 j; j < adapterCount; j++) {
+            adapters[j] = multiAdapter.adapters(centrifugeId, poolId, j);
         }
     }
 }

@@ -33,6 +33,8 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param poolId The id of the pool
     /// @param scId The id of the share class
+    /// @param caller The address of the manager creating the reservation
+    /// @param reason The reason code for the reservation
     /// @param delta The delta amount reserved
     /// @param value The new absolute amount reserved
     event IncreaseReserve(
@@ -40,7 +42,9 @@ interface IPoolEscrow is IEscrow, IRecoverable {
         uint256 indexed tokenId,
         PoolId indexed poolId,
         ShareClassId scId,
-        uint256 delta,
+        address caller,
+        uint32 reason,
+        uint128 delta,
         uint128 value
     );
 
@@ -49,6 +53,8 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param poolId The id of the pool
     /// @param scId The id of the share class
+    /// @param caller The address of the manager that created the reservation
+    /// @param reason The reason code that was used when reserving
     /// @param delta The delta amount unreserved
     /// @param value The new absolute amount reserved
     event DecreaseReserve(
@@ -56,7 +62,9 @@ interface IPoolEscrow is IEscrow, IRecoverable {
         uint256 indexed tokenId,
         PoolId indexed poolId,
         ShareClassId scId,
-        uint256 delta,
+        address caller,
+        uint32 reason,
+        uint128 delta,
         uint128 value
     );
 
@@ -65,9 +73,15 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param poolId The id of the pool
     /// @param scId The id of the share class
+    /// @param receiver The address receiving the withdrawn assets
     /// @param value The amount withdrawn
     event Withdraw(
-        address indexed asset, uint256 indexed tokenId, PoolId indexed poolId, ShareClassId scId, uint128 value
+        address indexed asset,
+        uint256 indexed tokenId,
+        PoolId indexed poolId,
+        ShareClassId scId,
+        address receiver,
+        uint128 value
     );
 
     /// @notice Emitted when ETH is transferred to the escrow
@@ -83,7 +97,7 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     error InsufficientDeposit();
 
     /// @notice Dispatched when the outstanding reserved amount is insufficient for the decrease
-    error InsufficientReservedAmount();
+    error InsufficientReserve();
 
     //----------------------------------------------------------------------------------------------
     // Functions
@@ -98,28 +112,36 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     function deposit(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external;
 
     /// @notice Withdraws `value` of `asset` in underlying `poolId` and given `scId`
-    /// @dev MUST ensure that reserved amounts are not withdrawn
+    /// @dev If wasNoted is true, funds were already added to 'total' (decrements total and emits event)
+    ///      If wasNoted is false, funds are in 'reserved' only (just transfers, no accounting change)
     /// @param scId The id of the share class
     /// @param asset The address of the asset to be withdrawn
     /// @param tokenId The id of the asset - 0 for ERC20
+    /// @param receiver The address receiving the withdrawn assets
     /// @param value The amount to withdraw
-    function withdraw(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external;
+    function withdraw(ShareClassId scId, address asset, uint256 tokenId, address receiver, uint128 value) external;
 
     /// @notice Increases the reserved amount of `value` for `asset` in underlying `poolId` and given `scId`
-    /// @dev MUST prevent the reserved amount from being withdrawn
+    /// @dev Reserves funds in a specific bucket identified by caller and reason
     /// @param scId The id of the share class
     /// @param asset The address of the asset to be reserved
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param value The amount to reserve
-    function reserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external;
+    /// @param caller The address of the manager creating the reservation (passed by BalanceSheet)
+    /// @param reason The reason code (1=DEPOSIT, 2=REDEEM)
+    function reserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value, address caller, uint32 reason)
+        external;
 
     /// @notice Decreases the reserved amount of `value` for `asset` in underlying `poolId` and given `scId`
-    /// @dev MUST fail if `value` is greater than the current reserved amount
+    /// @dev Unreserves funds from a specific bucket. MUST fail if bucket has insufficient funds.
     /// @param scId The id of the share class
-    /// @param asset The address of the asset to be reserved
+    /// @param asset The address of the asset to be unreserved
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param value The amount to decrease
-    function unreserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external;
+    /// @param caller The address of the manager that created the reservation
+    /// @param reason The reason code that was used when reserving
+    function unreserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value, address caller, uint32 reason)
+        external;
 
     /// @notice Provides the available balance of `asset` in underlying `poolId` and given `scId`
     /// @dev MUST return the balance minus the reserved amount

@@ -1,6 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
+# Example of different runs:
+# ./script/spell/migrate-testnet.sh fork eth-sepolia sepolia
+# ./script/spell/migrate-testnet.sh fork base-sepolia base-sepolia
+# ./script/spell/migrate-testnet.sh fork arb-sepolia arbitrum-sepolia
+#
+# ./script/spell/migrate-testnet.sh deploy eth-sepolia sepolia
+# ./script/spell/migrate-testnet.sh deploy base-sepolia base-sepolia
+# ./script/spell/migrate-testnet.sh deploy arb-sepolia arbitrum-sepolia
+#
+# ./script/spell/migrate-testnet.sh execute eth-sepolia sepolia
+# ./script/spell/migrate-testnet.sh execute base-sepolia base-sepolia
+# ./script/spell/migrate-testnet.sh execute arb-sepolia arbitrum-sepolia
+
 # Only PRIVATE_KEY and ALCHEMY_API_KEY are used from .env file
 set -a; source .env; set +a # auto-export all sourced vars
 
@@ -11,6 +24,8 @@ REMOTE_RPC_URL="https://$ALCHEMY_NAME.g.alchemy.com/v2/$ALCHEMY_API_KEY"
 GUARDIAN_V3="0xa5ac766b22d9966c3e64cc44923a48cb8b052eda"
 POOLS_TO_MIGRATE="[281474976710662,281474976710668]"
 ADMIN="0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb" # The account of PRIVATE_KEY
+PRE_VALIDATION=true
+POST_VALIDATION=false
 
 deploy() {
     RPC_URL=$1
@@ -22,54 +37,43 @@ deploy() {
     echo ""
 
     export VERSION="v3.1"
-    export ROOT=$(cast call $GUARDIAN_V3 "root()(address)" --rpc-url $RPC_URL)
+    export ROOT=$(cast call $GUARDIAN_V3 "root()(address)" --rpc-url "$RPC_URL")
     export PROTOCOL_ADMIN=$ADMIN
     export OPS_ADMIN=$ADMIN
     forge script script/LaunchDeployer.s.sol \
         --optimize \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY \
+        --rpc-url "$RPC_URL" \
+        --private-key "$PRIVATE_KEY" \
         --broadcast
 
-    VERSION="v3.1" ./script/deploy/update_network_config.py $NETWORK
+    VERSION="v3.1" ./script/deploy/update_network_config.py "$NETWORK" --script script/LaunchDeployer.s.sol
 
     echo ""
     echo "##########################################################################"
-    echo "#                        STEP 2: Wire adapters"
-    echo "##########################################################################"
-    echo ""
-
-    forge script script/testnet/WireAdapters.s.sol \
-        --optimize \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY \
-        --broadcast
-
-    echo ""
-    echo "##########################################################################"
-    echo "#                    STEP 3: Deploy migration spell"
+    echo "#                    STEP 2: Deploy migration spell"
     echo "##########################################################################"
     echo ""
 
     forge script script/spell/MigrationV3_1.s.sol:MigrationV3_1Deployer \
+        --sig "run(address)" $ADMIN \
         --optimize \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY \
+        --rpc-url "$RPC_URL" \
+        --private-key "$PRIVATE_KEY" \
         --broadcast
 
-    CHAIN_ID=$(cast chain-id --rpc-url $RPC_URL)
+    CHAIN_ID=$(cast chain-id --rpc-url "$RPC_URL")
     MIGRATION_SPELL=$(jq -r '.transactions[] | select(.contractName=="MigrationSpell") | .contractAddress' \
-        broadcast/MigrationV3_1.s.sol/$CHAIN_ID/run-latest.json)
+        broadcast/MigrationV3_1.s.sol/"$CHAIN_ID"/run-latest.json)
 
     echo ""
     echo "##########################################################################"
-    echo "#              STEP 4: Request root permissions to the spell"
+    echo "#              STEP 3: Request root permissions to the spell"
     echo "##########################################################################"
     echo ""
 
-    cast send $GUARDIAN_V3 "scheduleRely(address)" $MIGRATION_SPELL \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY
+    cast send $GUARDIAN_V3 "scheduleRely(address)" "$MIGRATION_SPELL" \
+        --rpc-url "$RPC_URL" \
+        --private-key "$PRIVATE_KEY"
 }
 
 execute() {
@@ -77,13 +81,18 @@ execute() {
 
     echo ""
     echo "##########################################################################"
-    echo "#              STEP 5: Get root permissions to the spell"
+    echo "#              STEP 4: Get root permissions to the spell"
     echo "##########################################################################"
     echo ""
 
-    cast send $ROOT "executeScheduledRely(address)" $MIGRATION_SPELL \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY
+    ROOT=$(cast call $GUARDIAN_V3 "root()(address)" --rpc-url "$RPC_URL")
+    CHAIN_ID=$(cast chain-id --rpc-url "$RPC_URL")
+    MIGRATION_SPELL=$(jq -r '.transactions[] | select(.contractName=="MigrationSpell") | .contractAddress' \
+        broadcast/MigrationV3_1.s.sol/"$CHAIN_ID"/run-latest.json)
+
+    cast send "$ROOT" "executeScheduledRely(address)" "$MIGRATION_SPELL" \
+        --rpc-url "$RPC_URL" \
+        --private-key "$PRIVATE_KEY"
 
     echo ""
     echo "##########################################################################"
@@ -92,8 +101,8 @@ execute() {
     echo ""
 
     cast send $GUARDIAN_V3 "pause()" \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY
+        --rpc-url "$RPC_URL" \
+        --private-key "$PRIVATE_KEY"
 
     echo ""
     echo "##########################################################################"
@@ -101,7 +110,14 @@ execute() {
     echo "##########################################################################"
     echo ""
 
-    # TODO
+    forge script test/spell/migration/ValidationRunner.sol:ValidationRunner \
+        --rpc-url "$RPC_URL" \
+        --sig "validate(string,string,address,uint64[],bool)" \
+        "$NETWORK" \
+        "$RPC_URL" \
+        $ADMIN \
+        "$POOLS_TO_MIGRATE" \
+        $PRE_VALIDATION
 
     echo ""
     echo "##########################################################################"
@@ -110,10 +126,10 @@ execute() {
     echo ""
 
     forge script script/spell/MigrationV3_1.s.sol:MigrationV3_1ExecutorTestnet \
-        --sig "run(address, uint64[])" $MIGRATION_SPELL $POOLS_TO_MIGRATE \
+        --sig "run(address, uint64[])" "$MIGRATION_SPELL" "$POOLS_TO_MIGRATE" \
         --optimize \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY \
+        --rpc-url "$RPC_URL" \
+        --private-key "$PRIVATE_KEY" \
         --broadcast
 
     echo ""
@@ -122,7 +138,14 @@ execute() {
     echo "##########################################################################"
     echo ""
 
-    # TODO
+    forge script test/spell/migration/ValidationRunner.sol:ValidationRunner \
+        --rpc-url "$RPC_URL" \
+        --sig "validate(string,string,address,uint64[],bool)" \
+        "$NETWORK" \
+        "$RPC_URL" \
+        $ADMIN \
+        "$POOLS_TO_MIGRATE" \
+        $POST_VALIDATION
 
     echo ""
     echo "##########################################################################"
@@ -131,8 +154,8 @@ execute() {
     echo ""
 
     cast send $GUARDIAN_V3 "unpause()" \
-        --rpc-url $RPC_URL \
-        --private-key $PRIVATE_KEY
+        --rpc-url "$RPC_URL" \
+        --private-key "$PRIVATE_KEY"
 
 }
 
@@ -140,7 +163,7 @@ case "$MODE" in
     fork)
         echo "Starting Anvil in fork mode..."
 
-        anvil --fork-url $REMOTE_RPC_URL &
+        anvil --fork-url "$REMOTE_RPC_URL" &
         ANVIL_PID=$!
         trap "kill $ANVIL_PID" EXIT
 
@@ -167,7 +190,7 @@ case "$MODE" in
         fi
 
         echo "Deploy..."
-        deploy $REMOTE_RPC_URL
+        deploy "$REMOTE_RPC_URL"
         ;;
     execute)
         read -p "You're not in a fork. Are you sure you want to continue? [y/N] " confirm
@@ -177,7 +200,7 @@ case "$MODE" in
         fi
 
         echo "Execute..."
-        execute $REMOTE_RPC_URL
+        execute "$REMOTE_RPC_URL"
         ;;
     *)
         echo "Usage: $0 {fork|deploy|execute}"

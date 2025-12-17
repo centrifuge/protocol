@@ -33,13 +33,14 @@ contract TestCases is BaseTest {
         opsGuardian.createPool(poolId, FM, USD_ID);
 
         scId = shareClassManager.previewNextShareClassId(poolId);
+        bytes32 salt = bytes32(bytes8(poolId.raw()));
 
         vm.startPrank(FM);
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = cv;
         hub.setAdapters{value: GAS}(poolId, CHAIN_CV, adapters, new bytes32[](0), 1, 1, REFUND);
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
-        hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT);
+        hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, salt);
         hub.notifyPool{value: GAS}(poolId, CHAIN_CV, REFUND);
         hub.notifyShareClass{value: GAS}(poolId, scId, CHAIN_CV, SC_HOOK, REFUND);
         hub.setRequestManager{
@@ -82,7 +83,7 @@ contract TestCases is BaseTest {
         assertEq(m1.name, SC_NAME);
         assertEq(m1.symbol, SC_SYMBOL.toBytes32());
         assertEq(m1.decimals, 18);
-        assertEq(m1.salt, SC_SALT);
+        assertEq(m1.salt, salt);
         assertEq(m1.hook, SC_HOOK);
 
         MessageLib.SetRequestManager memory m2 = MessageLib.deserializeSetRequestManager(cv.popMessage());

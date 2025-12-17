@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IMessageLimits} from "./IMessageLimits.sol";
+import {IMessageProperties} from "./IMessageProperties.sol";
 
 /// @dev Max cost. No messages will take more that this
 uint128 constant MAX_MESSAGE_COST = 3_100_000;
@@ -9,7 +9,7 @@ uint128 constant MAX_MESSAGE_COST = 3_100_000;
 /// @title  IGasService
 /// @notice Interface for estimating gas costs for cross-chain messages
 /// @dev    Provides gas cost estimates for each message type in the protocol
-interface IGasService is IMessageLimits {
+interface IGasService is IMessageProperties {
     error InvalidMessageType();
 
     function scheduleUpgrade() external view returns (uint128);

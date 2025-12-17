@@ -72,7 +72,7 @@ contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatew
         (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
         IShareToken shareToken = spoke.shareToken(poolId, scId);
 
-        IVault vault_ = factory.newVault(poolId, scId, asset, tokenId, shareToken, new address[](0));
+        IVault vault_ = factory.newVault(poolId, scId, asset, tokenId, shareToken);
 
         // We need to check if there's a request manager for async vaults
         if (vault_.vaultKind() == VaultKind.Async) {

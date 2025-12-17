@@ -8,7 +8,7 @@ The vaults module implements ERC-4626 and ERC-7540 tokenized vault standards for
 
 `AsyncVault` implements the ERC-7540 asynchronous tokenized vault standard, extending ERC-4626 with request-based deposit and redeem workflows. Users submit deposit and redeem requests that are queued for execution in the next epoch. After epoch execution, users can claim their shares or assets using standard ERC-4626 methods. The vault integrates with `AsyncRequestManager` for request handling and supports ERC-7887 cancellation flows.
 
-The vault enforces controller/owner validation for all operations and integrates with the global escrow for asset custody during pending requests. It tracks pending and claimable amounts per controller, enabling users to monitor their request status. The vault supports operator endorsements, allowing approved addresses to act on behalf of users for deposits and redemptions.
+The vault enforces controller/owner validation for all operations and integrates with pool-specific escrows via `BalanceSheet` for asset and share custody during pending requests. It tracks pending and claimable amounts per controller, enabling users to monitor their request status. The vault supports operator endorsements, allowing approved addresses to act on behalf of users for deposits and redemptions.
 
 ### `SyncDepositVault`
 
@@ -24,11 +24,11 @@ The contract implements `IHubRequestManager` and receives request callbacks from
 
 ### `AsyncRequestManager`
 
-`AsyncRequestManager` is the primary spoke-side contract that vaults interact with for deposit and redeem request handling. It manages request submission, cancellation, and claim workflows, coordinating with `BalanceSheet` for share issuance/burning and the global escrow for asset custody. The manager tracks per-vault, per-investor state including pending requests, claimable amounts, and cancellation status.
+`AsyncRequestManager` is the primary spoke-side contract that vaults interact with for deposit and redeem request handling. It manages request submission, cancellation, and claim workflows, coordinating with `BalanceSheet` for share issuance/burning and pool-specific `PoolEscrow` contracts for asset and share custody. The manager tracks per-vault, per-investor state including pending requests, claimable amounts, and cancellation status.
 
 The contract handles cross-chain request callbacks from the Hub, processing approvals, rejections, and cancellation confirmations. It manages refund escrows per pool for subsidizing gas for cross-chain transactions. The manager supports both deposit and redeem flows, validating request transitions and ensuring users can only claim what's been approved by the Hub.
 
-The following diagram shows how funds flow in and out of the escrow:
+The following diagram shows how funds flow in and out of the pool escrow:
 
 ![Flow of funds](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/vaults/flow-of-funds.puml)
 

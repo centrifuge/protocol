@@ -8,7 +8,6 @@ import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
-import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {MessageType, MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 import {
     ISpokeGatewayHandler,
@@ -152,7 +151,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 ShareClassId.wrap(m.scId),
                 m.receiver,
                 m.amount,
-                m.extraGasLimit,
+                m.remoteExtraGasLimit,
                 address(0) // Refund is not used because we're in unpaid mode with no payment
             );
         } else if (kind == MessageType.ExecuteTransferShares) {
@@ -232,15 +231,5 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else {
             revert InvalidMessage(uint8(kind));
         }
-    }
-
-    /// @inheritdoc IMessageProperties
-    function messageLength(bytes calldata message) external pure returns (uint16) {
-        return message.messageLength();
-    }
-
-    /// @inheritdoc IMessageProperties
-    function messagePoolId(bytes calldata message) external pure returns (PoolId) {
-        return message.messagePoolId();
     }
 }

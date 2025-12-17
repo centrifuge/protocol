@@ -120,7 +120,8 @@ class AnvilManager:
         self._setup_anvil(sep_env, api_key)
         if not self._deploy_fork(sep_env, args):
             return False
-        print_success("Sepolia fork deployed")
+        args.step = "deploy:protocol"
+        verifier.update_network_config("script/LaunchDeployer.s.sol")
 
         # ARBITRUM SEPOLIA
         # Create env for Arbitrum Sepolia

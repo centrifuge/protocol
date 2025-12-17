@@ -142,7 +142,7 @@ interface IHoldings {
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param assetId The asset identifier
-    /// @param pricePoolPerAsset Price in pool currency per asset unit
+    /// @param pricePoolPerAsset The price of one asset unit in terms of pool currency
     /// @param amount Amount to increase by
     /// @return value The value the holding has incremented
     function increase(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount)
@@ -153,7 +153,7 @@ interface IHoldings {
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param assetId The asset identifier
-    /// @param pricePoolPerAsset Price in pool currency per asset unit
+    /// @param pricePoolPerAsset The price of one asset unit in terms of pool currency
     /// @param amount Amount to decrease by
     /// @return value The value the holding has decremented
     function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount)

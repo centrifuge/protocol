@@ -2,9 +2,8 @@
 pragma solidity >=0.5.0;
 
 import {IMessageHandler} from "./IMessageHandler.sol";
-import {IMessageProperties} from "./IMessageProperties.sol";
 
-interface IMessageProcessor is IMessageHandler, IMessageProperties {
+interface IMessageProcessor is IMessageHandler {
     //----------------------------------------------------------------------------------------------
     // Events
     //----------------------------------------------------------------------------------------------

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {PoolId} from "../../../core/types/PoolId.sol";
+import {IRefundEscrow} from "./IRefundEscrow.sol";
 
-import {IRefundEscrow} from "../../interfaces/IRefundEscrow.sol";
+import {PoolId} from "../../core/types/PoolId.sol";
 
 /// @title  IRefundEscrowFactory
 /// @notice Factory for deploying refund escrow contracts for vault operations

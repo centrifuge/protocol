@@ -39,10 +39,11 @@ contract ShareTokenTest is Test {
         fullRestrictionsHook = new MockFullRestrictions(
             address(new MockRoot()),
             spoke,
-            makeAddr("redeemSource"),
-            makeAddr("depositTarget"),
+            makeAddr("balanceSheet"),
             makeAddr("crosschainSource"),
-            address(this)
+            address(this),
+            makeAddr("poolEscrowProvider"),
+            address(0) // Multi-pool mode
         );
         token.file("hook", address(fullRestrictionsHook));
     }

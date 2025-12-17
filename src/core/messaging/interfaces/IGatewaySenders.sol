@@ -237,6 +237,7 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         AssetId assetId,
         bytes calldata payload,
+        uint128 extraGasLimit,
         bool unpaidMode,
         address refund
     ) external payable;

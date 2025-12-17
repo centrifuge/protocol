@@ -32,7 +32,11 @@ interface IBaseRequestManager is IRequestManager {
     /// @notice Returns the Spoke contract address.
     function spoke() external view returns (ISpoke spoke);
 
-    /// @notice The global escrow used for funds that are not yet free to be used for a specific pool
+    /// @notice DEPRECATED: Returns the pool escrow for the calling vault's pool.
+    /// NOTE: DEPRECATED IMPLEMENTATION: This function is maintained solely for ABI backward compatibility
+    ///      with deployed vaults that call this function.
+    ///      Despite the misleading "globalEscrow" name, this implementation returns the pool-specific
+    ///      but NOT a global escrow. The global escrow concept was deprecated in v3.1.
     function globalEscrow() external view returns (IEscrow escrow);
 
     /// @notice Escrow per pool. Funds are associated to a specific pool

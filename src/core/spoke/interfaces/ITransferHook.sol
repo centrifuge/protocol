@@ -21,16 +21,19 @@ address constant ESCROW_HOOK_ID = address(uint160(0x1CF60));
 
 /// @notice Hook interface to customize share token behaviour
 /// @dev    To detect specific system actions:
-///           Deposit request:                  address(0)      -> address(user)
-///           Deposit request fulfillment:       address(0)      -> Endorsed
-///           Deposit or cancel redeem claim:   Endorsed        -> address(user)
-///           Redeem request:                   address(user)   -> ESCROW_HOOK_ID
-///           Redeem request fulfillment:        Endorsed        -> address(0)
-///           Redeem or cancel deposit claim:   address(user)   -> address(0)
-///           Cross-chain transfer check:       address(user)   -> address(uint160(chainId))
-///           Cross-chain transfer execution:   address(spoke)  -> address(0)
+///           Deposit request/issuance:         address(0)       -> address(user)
+///           Deposit fulfillment:              address(0)       -> poolEscrow
+///           Deposit claim:                    poolEscrow       -> address(user)
+///           Redeem request:                   address(user)    -> ESCROW_HOOK_ID
+///           Redeem fulfillment:               balanceSheet     -> address(0)
+///           Redeem claim/revocation:          address(user)    -> address(0)
+///           Cross-chain transfer:             address(user)    -> address(uint160(chainId))
+///           Cross-chain execution:            crosschainSource -> address(user)
 ///
 ///         Endorsed refers to core protocol contracts, which can be retrieved using root.endorsed(addr)
+///         poolEscrow: Pool-specific escrow contract identified via balanceSheet.escrow(poolId)
+///         balanceSheet: Contract that fulfills redemptions and provides pool escrow lookups
+///         crosschainSource: Contract handling cross-chain message execution (spoke)
 interface ITransferHook is IERC165 {
     //----------------------------------------------------------------------------------------------
     // Errors

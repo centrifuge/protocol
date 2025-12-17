@@ -210,16 +210,27 @@ contract VaultDecoderInheritedFunctionsTest is VaultDecoderTest {
         assertEq(addressesFound, expected);
     }
 
+    function testApproveERC6909() public {
+        address spender = makeAddr("spender");
+        uint256 amount = 1000e18;
+        uint256 tokenId = 42;
+
+        bytes memory addressesFound = decoder.approve(spender, tokenId, amount);
+
+        bytes memory expected = abi.encodePacked(spender, tokenId);
+        assertEq(addressesFound, expected);
+    }
+
     function testDepositBalanceSheet() public {
         PoolId poolId = PoolId.wrap(1);
         ShareClassId scId = ShareClassId.wrap(bytes16("sc1"));
         address asset = makeAddr("asset");
-        uint256 amount = 1000e18;
-        uint128 minSharesOut = 900e18;
+        uint256 tokenId = 1;
+        uint128 amount = 1000e18;
 
-        bytes memory addressesFound = decoder.deposit(poolId, scId, asset, amount, minSharesOut);
+        bytes memory addressesFound = decoder.deposit(poolId, scId, asset, tokenId, amount);
 
-        bytes memory expected = abi.encodePacked(poolId, scId, asset);
+        bytes memory expected = abi.encodePacked(poolId, scId, asset, tokenId);
         assertEq(addressesFound, expected);
     }
 
@@ -227,13 +238,13 @@ contract VaultDecoderInheritedFunctionsTest is VaultDecoderTest {
         PoolId poolId = PoolId.wrap(1);
         ShareClassId scId = ShareClassId.wrap(bytes16("sc1"));
         address asset = makeAddr("asset");
-        uint256 shares = 1000e18;
+        uint256 tokenId = 1;
         address receiver = makeAddr("receiver");
-        uint128 minAssetsOut = 900e18;
+        uint128 shares = 1000e18;
 
-        bytes memory addressesFound = decoder.withdraw(poolId, scId, asset, shares, receiver, minAssetsOut);
+        bytes memory addressesFound = decoder.withdraw(poolId, scId, asset, tokenId, receiver, shares, true);
 
-        bytes memory expected = abi.encodePacked(poolId, scId, asset, receiver);
+        bytes memory expected = abi.encodePacked(poolId, scId, asset, tokenId, receiver, true);
         assertEq(addressesFound, expected);
     }
 

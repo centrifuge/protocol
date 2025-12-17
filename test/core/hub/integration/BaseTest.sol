@@ -17,6 +17,7 @@ import {
     FullDeployer,
     FullInput,
     noAdaptersInput,
+    defaultTxLimits,
     CoreInput
 } from "../../../../script/FullDeployer.s.sol";
 
@@ -31,7 +32,6 @@ contract BaseTest is FullDeployer, Test {
 
     string constant SC_NAME = "ExampleName";
     string constant SC_SYMBOL = "ExampleSymbol";
-    bytes32 constant SC_SALT = bytes32("ExampleSalt");
     bytes32 constant SC_HOOK = bytes32("ExampleHookData");
     bool constant IS_SNAPSHOT = true;
 
@@ -85,10 +85,13 @@ contract BaseTest is FullDeployer, Test {
     function setUp() public virtual {
         // Deployment
         FullActionBatcher batcher = new FullActionBatcher(address(this));
+
         labelAddresses("");
         deployFull(
             FullInput({
-                core: CoreInput({centrifugeId: CHAIN_CP, version: bytes32(0), root: address(0)}),
+                core: CoreInput({
+                    centrifugeId: CHAIN_CP, version: bytes32(0), root: address(0), txLimits: defaultTxLimits()
+                }),
                 adminSafe: adminSafe,
                 opsSafe: opsSafe,
                 adapters: noAdaptersInput()

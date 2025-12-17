@@ -14,11 +14,25 @@ contract GasServiceTest is Test {
     using BytesLib for *;
 
     uint16 constant CENTRIFUGE_ID = 1;
+    GasService service;
 
-    GasService service = new GasService();
+    function setUp() public {
+        uint8[32] memory txLimits;
+        txLimits[0] = 30; // Millions
+        txLimits[1] = 150; // Millions
 
-    function testGasLimit(bytes calldata message) public view {
-        vm.assume(message.length > 0);
+        service = new GasService(txLimits);
+    }
+
+    function testGasLimit(uint256 len, bytes calldata seed) public view {
+        len = bound(len, 121, 4096); // ensuring we can deserialize extraGasLimit from any message
+
+        bytes memory message = new bytes(len);
+        for (uint256 i; i < len && i < seed.length; ++i) {
+            message[i] = seed[i];
+        }
+
+        vm.assume(message.messageExtraGasLimit() < 100_000);
         vm.assume(message.messageCode() > 0);
         vm.assume(message.messageCode() <= uint8(type(MessageType).max));
 
@@ -33,8 +47,18 @@ contract GasServiceTest is Test {
             vm.assume(message.length >= 91); // Minimum length without payload
         }
 
-        uint256 messageGasLimit = service.messageGasLimit(CENTRIFUGE_ID, message);
+        uint256 messageGasLimit = service.messageOverallGasLimit(CENTRIFUGE_ID, message);
         assert(messageGasLimit > service.BASE_COST());
         assert(messageGasLimit <= MAX_MESSAGE_COST);
+    }
+
+    function testMaxBatchGasLimit(uint16 centrifugeId) public view {
+        uint256 expectedGasLimit = service.DEFAULT_SUPPORTED_TX_LIMIT();
+        if (centrifugeId == 0) expectedGasLimit = 30;
+        if (centrifugeId == 1) expectedGasLimit = 150;
+        expectedGasLimit = expectedGasLimit * 1_000_000;
+
+        uint256 maxBatchGasLimit = service.maxBatchGasLimit(centrifugeId);
+        assertEq(maxBatchGasLimit, expectedGasLimit);
     }
 }

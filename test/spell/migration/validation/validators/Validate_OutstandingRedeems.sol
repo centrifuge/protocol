@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
+import {PoolId} from "../../../../../src/core/types/PoolId.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 
 import {BaseValidator} from "../BaseValidator.sol";
 
 /// @title Validate_OutstandingRedeems
 /// @notice Validates that no users have outstanding redeem requests
-/// @dev CRITICAL: Checks ALL 4 amount fields (deposit, pending, queued, approved)
+/// @dev Checks ALL 4 amount fields (deposit, pending, queued, approved)
+/// @dev
 contract Validate_OutstandingRedeems is BaseValidator {
     using stdJson for string;
 
@@ -24,72 +26,68 @@ contract Validate_OutstandingRedeems is BaseValidator {
         string tokenId;
     }
 
-    function validate() public override returns (ValidationResult memory) {
-        string memory json = _queryGraphQL(
-            '{"query": "{ outstandingRedeems(limit: 1000, where: { OR: [{ pendingAmount_gt: \\"0\\" }, { queuedAmount_gt: \\"0\\" }, { depositAmount_gt: \\"0\\" }, { approvedAmount_gt: \\"0\\" }] }) { items { poolId tokenId assetId account depositAmount pendingAmount queuedAmount approvedAmount approvedIndex approvedAtBlock } totalCount } }"}'
-        );
+    function supportedPhases() public pure override returns (Phase) {
+        return Phase.PRE;
+    }
+
+    function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
+        string memory json = ctx.store.query(_outstandingRedeemsQuery(ctx));
 
         uint256 totalCount = json.readUint(".data.outstandingRedeems.totalCount");
 
-        // Parse using stdJson helpers (see BaseValidator for why we don't use abi.decode)
-        OutstandingRedeem[] memory redeems = new OutstandingRedeem[](totalCount);
-        string memory basePath = ".data.outstandingRedeems.items";
-        for (uint256 i = 0; i < totalCount; i++) {
-            redeems[i].account = json.readString(_buildJsonPath(basePath, i, "account"));
-            redeems[i].approvedAmount = json.readUint(_buildJsonPath(basePath, i, "approvedAmount"));
-            redeems[i].approvedAtBlock = json.readUint(_buildJsonPath(basePath, i, "approvedAtBlock"));
-            redeems[i].approvedIndex = json.readUint(_buildJsonPath(basePath, i, "approvedIndex"));
-            redeems[i].assetId = json.readUint(_buildJsonPath(basePath, i, "assetId"));
-            redeems[i].depositAmount = json.readUint(_buildJsonPath(basePath, i, "depositAmount"));
-            redeems[i].pendingAmount = json.readUint(_buildJsonPath(basePath, i, "pendingAmount"));
-            redeems[i].poolId = json.readUint(_buildJsonPath(basePath, i, "poolId"));
-            redeems[i].queuedAmount = json.readUint(_buildJsonPath(basePath, i, "queuedAmount"));
-            redeems[i].tokenId = json.readString(_buildJsonPath(basePath, i, "tokenId"));
-        }
-
-        ValidationError[] memory errors = new ValidationError[](redeems.length * 4);
+        ValidationError[] memory errors = new ValidationError[](totalCount * 4);
         uint256 errorCount = 0;
 
-        for (uint256 i = 0; i < redeems.length; i++) {
-            string memory poolUser =
-                string.concat("Pool ", _toString(redeems[i].poolId), " / User ", redeems[i].account);
+        string memory basePath = ".data.outstandingRedeems.items";
+        for (uint256 i = 0; i < totalCount; i++) {
+            OutstandingRedeem memory redeem = _parseRedeem(json, basePath, i);
 
-            if (redeems[i].depositAmount > 0) {
+            // Skip if all amounts are zero
+            if (
+                redeem.depositAmount == 0 && redeem.pendingAmount == 0 && redeem.queuedAmount == 0
+                    && redeem.approvedAmount == 0
+            ) {
+                continue;
+            }
+
+            string memory poolUser = string.concat("Pool ", _toString(redeem.poolId), " / User ", redeem.account);
+
+            if (redeem.depositAmount > 0) {
                 errors[errorCount++] = _buildError({
                     field: "depositAmount",
                     value: poolUser,
                     expected: "0",
-                    actual: _toString(redeems[i].depositAmount),
+                    actual: _toString(redeem.depositAmount),
                     message: "DEPOSITED shares on Hub"
                 });
             }
 
-            if (redeems[i].pendingAmount > 0) {
+            if (redeem.pendingAmount > 0) {
                 errors[errorCount++] = _buildError({
                     field: "pendingAmount",
                     value: poolUser,
                     expected: "0",
-                    actual: _toString(redeems[i].pendingAmount),
+                    actual: _toString(redeem.pendingAmount),
                     message: "PENDING shares (in-transit Spoke to Hub)"
                 });
             }
 
-            if (redeems[i].queuedAmount > 0) {
+            if (redeem.queuedAmount > 0) {
                 errors[errorCount++] = _buildError({
                     field: "queuedAmount",
                     value: poolUser,
                     expected: "0",
-                    actual: _toString(redeems[i].queuedAmount),
+                    actual: _toString(redeem.queuedAmount),
                     message: "QUEUED shares (for after claim)"
                 });
             }
 
-            if (redeems[i].approvedAmount > 0) {
+            if (redeem.approvedAmount > 0) {
                 errors[errorCount++] = _buildError({
                     field: "approvedAmount",
                     value: poolUser,
                     expected: "0",
-                    actual: _toString(redeems[i].approvedAmount),
+                    actual: _toString(redeem.approvedAmount),
                     message: "APPROVED shares (awaiting claim)"
                 });
             }
@@ -98,5 +96,37 @@ contract Validate_OutstandingRedeems is BaseValidator {
         return ValidationResult({
             passed: errorCount == 0, validatorName: "OutstandingRedeems", errors: _trimErrors(errors, errorCount)
         });
+    }
+
+    function _parseRedeem(string memory json, string memory basePath, uint256 index)
+        internal
+        pure
+        returns (OutstandingRedeem memory redeem)
+    {
+        // Required fields for validation
+        redeem.poolId = json.readUint(_buildJsonPath(basePath, index, "poolId"));
+        redeem.account = json.readString(_buildJsonPath(basePath, index, "account"));
+        redeem.depositAmount = json.readUint(_buildJsonPath(basePath, index, "depositAmount"));
+        redeem.pendingAmount = json.readUint(_buildJsonPath(basePath, index, "pendingAmount"));
+        redeem.queuedAmount = json.readUint(_buildJsonPath(basePath, index, "queuedAmount"));
+        redeem.approvedAmount = json.readUint(_buildJsonPath(basePath, index, "approvedAmount"));
+        // Note: approvedAtBlock, approvedIndex, assetId, tokenId may be null - not parsed
+    }
+
+    function _outstandingRedeemsQuery(ValidationContext memory ctx) internal pure returns (string memory) {
+        string memory poolIdsJson = "[";
+        for (uint256 i = 0; i < ctx.pools.length; i++) {
+            poolIdsJson = string.concat(poolIdsJson, _jsonValue(PoolId.unwrap(ctx.pools[i])));
+            if (i < ctx.pools.length - 1) {
+                poolIdsJson = string.concat(poolIdsJson, ", ");
+            }
+        }
+        poolIdsJson = string.concat(poolIdsJson, "]");
+
+        return string.concat(
+            "outstandingRedeems(limit: 1000, where: { poolId_in: ",
+            poolIdsJson,
+            " }) { items { poolId tokenId assetId account depositAmount pendingAmount queuedAmount approvedAmount approvedIndex approvedAtBlock } totalCount }"
+        );
     }
 }

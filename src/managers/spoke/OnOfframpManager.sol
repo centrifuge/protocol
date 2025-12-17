@@ -80,6 +80,15 @@ contract OnOfframpManager is IOnOfframpManager {
 
             offramp[asset][receiver] = isEnabled;
             emit UpdateOfframp(asset, receiver, isEnabled);
+        } else if (kind == TrustedCall.Withdraw) {
+            (, uint128 assetId, uint128 amount, bytes32 receiverAddress) =
+                abi.decode(payload, (uint8, uint128, uint128, bytes32));
+            (address asset,) = balanceSheet.spoke().idToAsset(AssetId.wrap(assetId));
+            address receiver = receiverAddress.toAddress();
+
+            require(offramp[asset][receiver], InvalidOfframpDestination());
+            balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount, true);
+            emit TrustedWithdraw(asset, amount, receiver);
         }
     }
 
@@ -115,7 +124,7 @@ contract OnOfframpManager is IOnOfframpManager {
         require(relayer[msg.sender], NotRelayer());
         require(receiver != address(0) && offramp[asset][receiver], InvalidOfframpDestination());
 
-        balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount);
+        balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount, true);
     }
 
     //----------------------------------------------------------------------------------------------

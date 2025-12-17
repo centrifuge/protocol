@@ -29,6 +29,7 @@ struct CoreInput {
     uint16 centrifugeId;
     bytes32 version;
     address root;
+    uint8[32] txLimits;
 }
 
 struct CoreReport {
@@ -150,10 +151,10 @@ contract CoreActionBatcher is Constants {
 
         // File
         report.gateway.file("adapter", address(report.multiAdapter));
-        report.gateway.file("messageLimits", address(report.gasService));
+        report.gateway.file("messageProperties", address(report.gasService));
         report.gateway.file("processor", address(report.messageProcessor));
 
-        report.multiAdapter.file("messageProperties", address(report.messageProcessor));
+        report.multiAdapter.file("messageProperties", address(report.gasService));
 
         report.messageDispatcher.file("spoke", address(report.spoke));
         report.messageDispatcher.file("balanceSheet", address(report.balanceSheet));
@@ -169,7 +170,6 @@ contract CoreActionBatcher is Constants {
         report.messageProcessor.file("vaultRegistry", address(report.vaultRegistry));
         report.messageProcessor.file("hubHandler", address(report.hubHandler));
 
-        report.poolEscrowFactory.file("gateway", address(report.gateway));
         report.poolEscrowFactory.file("balanceSheet", address(report.balanceSheet));
 
         report.spoke.file("gateway", address(report.gateway));
@@ -292,7 +292,9 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
 
         // Messaging
         gasService = GasService(
-            create3(generateSalt("gasService"), abi.encodePacked(type(GasService).creationCode, abi.encode()))
+            create3(
+                generateSalt("gasService"), abi.encodePacked(type(GasService).creationCode, abi.encode(input.txLimits))
+            )
         );
 
         messageProcessor = MessageProcessor(
@@ -387,7 +389,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
             )
         );
 
-        batcher.engageCore(_coreReport(), input.root, newRoot);
+        batcher.engageCore(coreReport(), input.root, newRoot);
 
         // Core
         register("gateway", address(gateway));
@@ -416,10 +418,10 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
     }
 
     function removeCoreDeployerAccess(CoreActionBatcher batcher) public {
-        batcher.revokeCore(_coreReport());
+        batcher.revokeCore(coreReport());
     }
 
-    function _coreReport() internal view returns (CoreReport memory) {
+    function coreReport() public view returns (CoreReport memory) {
         return CoreReport(
             gateway,
             multiAdapter,

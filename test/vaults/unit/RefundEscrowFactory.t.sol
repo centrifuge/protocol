@@ -5,10 +5,10 @@ import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 
-import {IRefundEscrow} from "../../../src/vaults/interfaces/IRefundEscrow.sol";
-import {RefundEscrowFactory, IRefundEscrowFactory} from "../../../src/vaults/factories/RefundEscrowFactory.sol";
-
 import "forge-std/Test.sol";
+
+import {IRefundEscrow} from "../../../src/utils/interfaces/IRefundEscrow.sol";
+import {RefundEscrowFactory, IRefundEscrowFactory} from "../../../src/utils/RefundEscrowFactory.sol";
 
 contract RefundEscrowFactoryTest is Test {
     address immutable ANY = makeAddr("any");

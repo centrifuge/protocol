@@ -90,6 +90,8 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
+    /// @dev There can be remaining asset value if the amount was decreased with a lower price, blocking the update.
+    ///      In this case, a manager needs to call `update` first to sync the value to zero.
     function updateIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability_) external auth {
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
@@ -169,18 +171,22 @@ contract Holdings is Auth, IHoldings {
     function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount_)
         external
         auth
-        returns (uint128 amountValue)
+        returns (uint128 amountValueUnclamped)
     {
         Holding storage holding_ = holding[poolId][scId][assetId];
 
-        amountValue = PricingLib.convertWithPrice(
+        amountValueUnclamped = PricingLib.convertWithPrice(
             amount_, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
         );
 
-        holding_.assetAmount -= amount_;
-        holding_.assetAmountValue -= amountValue;
+        // Clamp amount and value to 0 to prevent underflow
+        // The unclamped amount and value are emitted in the event, as well as returned to the caller
+        holding_.assetAmount = amount_ > holding_.assetAmount ? 0 : holding_.assetAmount - amount_;
 
-        emit Decrease(poolId, scId, assetId, pricePoolPerAsset, amount_, amountValue);
+        holding_.assetAmountValue =
+            amountValueUnclamped > holding_.assetAmountValue ? 0 : holding_.assetAmountValue - amountValueUnclamped;
+
+        emit Decrease(poolId, scId, assetId, pricePoolPerAsset, amount_, amountValueUnclamped);
     }
 
     /// @inheritdoc IHoldings

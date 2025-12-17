@@ -33,14 +33,11 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
     }
 
     /// @inheritdoc IVaultFactory
-    function newVault(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        IShareToken token,
-        address[] calldata wards_
-    ) public auth returns (IVault) {
+    function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, IShareToken token)
+        public
+        auth
+        returns (IVault)
+    {
         require(tokenId == 0, UnsupportedTokenId());
 
         bytes32 salt = keccak256(abi.encode(poolId, scId, asset));
@@ -53,11 +50,6 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
 
         IAuth(address(syncDepositManager)).rely(address(vault));
         IAuth(address(asyncRedeemManager)).rely(address(vault));
-
-        uint256 wardsCount = wards_.length;
-        for (uint256 i; i < wardsCount; i++) {
-            vault.rely(wards_[i]);
-        }
 
         vault.deny(address(this));
         return vault;

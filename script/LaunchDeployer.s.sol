@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CoreInput} from "./CoreDeployer.s.sol";
+import {CoreInput, makeSalt} from "./CoreDeployer.s.sol";
 import {
     FullInput,
     FullActionBatcher,
@@ -9,10 +9,14 @@ import {
     AdaptersInput,
     WormholeInput,
     AxelarInput,
-    LayerZeroInput
+    LayerZeroInput,
+    ChainlinkInput,
+    AdapterConnections,
+    MAX_ADAPTER_COUNT
 } from "./FullDeployer.s.sol";
 
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
+import {MathLib} from "../src/misc/libraries/MathLib.sol";
 
 import {ISafe} from "../src/admin/interfaces/ISafe.sol";
 
@@ -20,6 +24,7 @@ import "forge-std/Script.sol";
 
 contract LaunchDeployer is FullDeployer {
     using CastLib for *;
+    using MathLib for *;
 
     function run() public virtual {
         vm.startBroadcast();
@@ -48,10 +53,20 @@ contract LaunchDeployer is FullDeployer {
 
         startDeploymentOutput();
 
+        uint8[32] memory txLimits;
+        try vm.envUint("TX_LIMITS", ",") returns (uint256[] memory txLimitsRaw) {
+            require(txLimitsRaw.length < 32, "only 32 tx limits supported");
+            for (uint256 i; i < txLimitsRaw.length; i++) {
+                txLimits[i] = txLimitsRaw[i].toUint8();
+            }
+        } catch {}
+
         FullInput memory input = FullInput({
             adminSafe: ISafe(vm.envAddress("PROTOCOL_ADMIN")),
             opsSafe: ISafe(vm.envAddress("OPS_ADMIN")),
-            core: CoreInput({centrifugeId: centrifugeId, version: version, root: vm.envOr("ROOT", address(0))}),
+            core: CoreInput({
+                centrifugeId: centrifugeId, version: version, root: vm.envOr("ROOT", address(0)), txLimits: txLimits
+            }),
             adapters: AdaptersInput({
                 wormhole: WormholeInput({
                     shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.wormhole.deploy"),
@@ -66,18 +81,24 @@ contract LaunchDeployer is FullDeployer {
                     shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.layerZero.deploy"),
                     endpoint: _parseJsonAddressOrDefault(config, "$.adapters.layerZero.endpoint"),
                     delegate: vm.envAddress("PROTOCOL_ADMIN")
-                })
+                }),
+                chainlink: ChainlinkInput({
+                    shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.chainlink.deploy"),
+                    ccipRouter: _parseJsonAddressOrDefault(config, "$.adapters.chainlink.ccipRouter")
+                }),
+                connections: _parseConnections(config)
             })
         });
-
-        // TODO: The batcher needs to be deployed in a previous stage or using create3 to be able Root to rely on it.
-        FullActionBatcher batcher = new FullActionBatcher(msg.sender);
 
         // Cache version hash to avoid redundant hash recalculation
         if (input.core.version == "v3.1" && !isTestnet) _verifyMainnetAdmin(input.adminSafe);
 
-        address protocolAdminEnv = vm.envAddress("PROTOCOL_ADMIN");
-        require(protocolAdminEnv != address(0), "PROTOCOL_ADMIN not set");
+        FullActionBatcher batcher = FullActionBatcher(
+            create3(
+                makeSalt("fullActionBatcher", input.core.version, msg.sender),
+                abi.encodePacked(type(FullActionBatcher).creationCode, abi.encode(msg.sender))
+            )
+        );
 
         deployFull(input, batcher);
 
@@ -105,6 +126,43 @@ contract LaunchDeployer is FullDeployer {
             return value;
         } catch {
             return address(0);
+        }
+    }
+
+    function _parseJsonUintOrDefault(string memory config, string memory path) private pure returns (uint256) {
+        try vm.parseJsonUint(config, path) returns (uint256 value) {
+            return value;
+        } catch {
+            return 0;
+        }
+    }
+
+    function _parseJsonStringOrDefault(string memory config, string memory path) private pure returns (string memory) {
+        try vm.parseJsonString(config, path) returns (string memory value) {
+            return value;
+        } catch {
+            return "";
+        }
+    }
+
+    function _parseConnections(string memory config) private view returns (AdapterConnections[] memory connections) {
+        try vm.parseJsonStringArray(config, "$.network.connectsTo") returns (string[] memory connectsTo) {
+            connections = new AdapterConnections[](connectsTo.length);
+
+            for (uint256 i; i < connectsTo.length; i++) {
+                string memory remoteConfigFile = string.concat("env/", connectsTo[i], ".json");
+                string memory remoteConfig = vm.readFile(remoteConfigFile);
+
+                connections[i] = AdapterConnections({
+                    centrifugeId: uint16(_parseJsonUintOrDefault(remoteConfig, "$.network.centrifugeId")),
+                    layerZeroId: uint32(_parseJsonUintOrDefault(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
+                    wormholeId: uint16(_parseJsonUintOrDefault(remoteConfig, "$.adapters.wormhole.wormholeId")),
+                    axelarId: _parseJsonStringOrDefault(remoteConfig, "$.adapters.axelar.axelarId"),
+                    chainlinkId: uint64(_parseJsonUintOrDefault(remoteConfig, "$.adapters.chainlink.chainSelector"))
+                });
+            }
+        } catch {
+            return new AdapterConnections[](0);
         }
     }
 
@@ -220,10 +278,6 @@ contract LaunchDeployer is FullDeployer {
         require(
             address(routerEscrow) == 0xB86B6AE94E6d05AAc086665534A73fee557EE9F6,
             "RouterEscrow address mismatch with mainnet"
-        );
-        require(
-            address(globalEscrow) == 0x43d51be0B6dE2199A2396bA604114d24383F91E9,
-            "GlobalEscrow address mismatch with mainnet"
         );
         require(
             address(asyncRequestManager) == 0xf06f89A1b6C601235729A689595571B7455Dd433,

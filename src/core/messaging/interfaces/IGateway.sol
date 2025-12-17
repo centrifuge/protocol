@@ -7,7 +7,14 @@ import {IRecoverable} from "../../../misc/interfaces/IRecoverable.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 
-uint256 constant GAS_FAIL_MESSAGE_STORAGE = 40_000; // check testMessageFailBenchmark
+// Reserved gas amount for processing a message failure (assuming the worst case)
+uint256 constant PROCESS_FAIL_MESSAGE_GAS = 35_000;
+
+// Max length for a supported message. Note that a batch can use several messages with this length.
+uint256 constant MESSAGE_MAX_LENGTH = 1_000;
+
+// Max length of an error that happens when processing a message.
+uint16 constant ERR_MAX_LENGTH = 32 * 4; // enough for most errors
 
 /// @notice Interface for dispatch-only gateway
 interface IGateway is IMessageHandler, IRecoverable {
@@ -30,8 +37,8 @@ interface IGateway is IMessageHandler, IRecoverable {
     event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
     event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch, bytes32 batchHash);
     event RepayBatch(uint16 indexed centrifugeId, bytes batch);
-    event ExecuteMessage(uint16 indexed centrifugeId, bytes message, bytes32 messageHash);
-    event FailMessage(uint16 indexed centrifugeId, bytes message, bytes32 messageHash, bytes error);
+    event ExecuteMessage(uint16 indexed centrifugeId, bytes32 messageHash);
+    event FailMessage(uint16 indexed centrifugeId, bytes32 messageHash, bytes error);
     event SetRefundAddress(PoolId poolId, IRecoverable refund);
     event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
     event WithdrawSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
@@ -52,14 +59,14 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when the gateway tries to send an empty message.
     error EmptyMessage();
 
+    /// @notice Dispatched when the message exceeds MESSAGE_MAX_LENGTH.
+    error TooLongMessage();
+
     /// @notice Dispatched when a message that has not failed is retried.
     error NotFailedMessage();
 
     /// @notice Dispatched when a batch that has not been underpaid is repaid.
     error NotUnderpaidBatch();
-
-    /// @notice Dispatched when a handle is called without enough gas to process the message.
-    error NotEnoughGasToProcess();
 
     /// @notice Dispatched when the content of a batch doesn't belong to the same pool
     error MalformedBatch();
@@ -72,6 +79,9 @@ interface IGateway is IMessageHandler, IRecoverable {
 
     /// @notice Dispatched when there is not enough gas to send the message
     error NotEnoughGas();
+
+    /// @notice Dispatched when the batch requires more gas than the destination chain can execute in a single transaction
+    error BatchTooExpensive();
 
     /// @notice Dispatched when a message was batched but there was a payment for it
     error NotPayable();
@@ -90,6 +100,9 @@ interface IGateway is IMessageHandler, IRecoverable {
 
     /// @notice Dispatched when there is not enough msg.value to send to the callback
     error NotEnoughValueForCallback();
+
+    /// @notice Dispatched when trying to create a batch during the send loop
+    error ReentrantBatchCreation();
 
     //----------------------------------------------------------------------------------------------
     // Administration
@@ -130,12 +143,9 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Handling outgoing messages
     /// @param centrifugeId Destination chain
     /// @param message The message to send
-    /// @param extraGasLimit Extra gas limit for execution
     /// @param unpaidMode Tells if storing the message as unpaid if not enough funds
     /// @param refund Address to refund excess payment
-    function send(uint16 centrifugeId, bytes calldata message, uint128 extraGasLimit, bool unpaidMode, address refund)
-        external
-        payable;
+    function send(uint16 centrifugeId, bytes calldata message, bool unpaidMode, address refund) external payable;
 
     //----------------------------------------------------------------------------------------------
     // Batching

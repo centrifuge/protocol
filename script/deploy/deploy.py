@@ -42,6 +42,7 @@ Examples:
   python3 deploy.py sepolia deploy:adapters
   python3 deploy.py sepolia deploy:adapters --resume
   python3 deploy.py sepolia verify:protocol
+  python3 deploy.py sepolia verify:contracts  # Verify & merge all contracts from latest deployment
   python3 deploy.py arbitrum-sepolia verify:protocol
   VERSION=vXYZ python3 deploy.py deploy:testnets  # Deploy all Sepolia testnets (auto-resumes)
   python3 deploy.py sepolia crosschaintest:hub  # Run cross-chain hub test
@@ -51,8 +52,8 @@ Examples:
 
     parser.add_argument("network", nargs="?", help="Network name (must match env/<network>.json)")
     parser.add_argument("step", nargs="?", help="Deployment step", choices=[
-        "deploy:full", "deploy:adapters", "deploy:testnets",
-        "wire", "wire:all", "verify:protocol", "config:dump", 
+        "deploy:protocol", "deploy:full", "deploy:adapters", "wire:adapters",
+        "deploy:test", "verify:protocol", "verify:contracts", "dump:config", "release:sepolia",
         "crosschaintest:hub", "crosschaintest:spoke"
     ])
     parser.add_argument("--catapulta", action="store_true", help="Use Catapulta for deployment")
@@ -254,11 +255,29 @@ def main():
             if deploy_success and not args.dry_run:
                 print_section(f"Verifying deployment for {args.network}")
                 verify_success = verifier.verify_contracts("OnlyAdapters")
-            elif args.dry_run:
-                print_info("Dry-run mode: skipping verification")
-                verify_success = True
-        
-        elif args.step == "deploy:testnets":
+
+        elif args.step == "wire:adapters":
+            print_step(f"Wiring adapters for {args.network}")
+            deploy_success = runner.run_deploy("WireAdapters")
+
+        elif args.step == "deploy:test":
+            print_section(f"Deploying test data for {args.network}")
+            deploy_success = runner.run_deploy("TestData")
+
+        elif args.step == "verify:protocol":
+            print_section(f"Verifying core protocol contracts for {args.network}")
+            verify_success = verifier.verify_contracts("LaunchDeployer")
+
+        elif args.step == "verify:contracts":
+            # Verify and merge all contracts from latest deployment (no deployment script needed)
+            print_section(f"Verifying contracts from latest deployment for {args.network}")
+            verify_success = verifier.verify_contracts(None)
+
+        elif args.step == "dump:config":
+            print_section(f"Dumping config for {args.network}")
+            env_loader.dump_config()
+
+        elif args.step == "release:sepolia":
             # Orchestrated deployment across all Sepolia testnets
             release_manager = ReleaseManager(root_dir, args)
             success = release_manager.deploy_sepolia_testnets()
