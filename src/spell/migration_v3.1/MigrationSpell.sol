@@ -57,6 +57,7 @@ address constant CHAINBRIDGE_ERC20_HANDLER = 0x84D1e77F472a4aA697359168C4aF4ADD4
 address constant CREATE3_PROXY = 0x28E6eED839a5E03D92f7A5C459430576081fadFb;
 address constant WORMHOLE_NTT = address(1); // TODO
 address constant ROOT_V2 = 0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC;
+address constant IOU_CFG = 0xACF3c07BeBd65d5f7d86bc0bc716026A0C523069;
 
 contract MessageDispatcherInfallibleMock {
     uint16 _localCentrifugeId;
@@ -271,9 +272,11 @@ contract MigrationSpell {
 
         // Check if CFG exists
         if (CFG.code.length > 0) {
-            // Mainnet CFG only has the v2 root relied, need to rely the v3 root as well
+            // Mainnet CFG only has the v2 root relied, need to replace with v3 root
             if (localCentrifugeId == 1) {
                 Root(ROOT_V2).relyContract(CFG, address(input.root));
+                input.root.denyContract(CFG, IOU_CFG);
+                input.root.denyContract(CFG, ROOT_V2);
             }
 
             // Deny CREATE3 proxy on new chains

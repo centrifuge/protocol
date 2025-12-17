@@ -34,7 +34,8 @@ import {
     CHAINBRIDGE_ERC20_HANDLER,
     CREATE3_PROXY,
     WORMHOLE_NTT,
-    ROOT_V2
+    ROOT_V2,
+    IOU_CFG
 } from "../../../src/spell/migration_v3.1/MigrationSpell.sol";
 
 contract MigrationV3_1Test is Test {
@@ -164,8 +165,10 @@ contract MigrationV3_1Test is Test {
 
         if (isMainnet && centrifugeId == 1) {
             assertEq(IAuth(WCFG).wards(address(rootV3)), 1);
+            assertEq(IAuth(CFG).wards(ROOT_V2), 0);
             assertEq(IAuth(WCFG).wards(WCFG_MULTISIG), 0);
             assertEq(IAuth(WCFG).wards(CHAINBRIDGE_ERC20_HANDLER), 0);
+            assertEq(IAuth(CFG).wards(IOU_CFG), 0);
         }
     }
 
