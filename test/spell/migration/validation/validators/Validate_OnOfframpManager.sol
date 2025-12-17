@@ -5,6 +5,7 @@ import {PoolId} from "../../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../../src/core/types/ShareClassId.sol";
 
 import {OnOfframpManager} from "../../../../../src/managers/spoke/OnOfframpManager.sol";
+
 import {stdJson} from "forge-std/StdJson.sol";
 
 import {BaseValidator} from "../BaseValidator.sol";
@@ -29,6 +30,10 @@ contract Validate_OnOfframpManager is BaseValidator {
 
     function supportedPhases() public pure override returns (Phase) {
         return Phase.BOTH;
+    }
+
+    function name() public pure override returns (string memory) {
+        return "OnOfframpManager";
     }
 
     function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
@@ -282,20 +287,11 @@ contract Validate_OnOfframpManager is BaseValidator {
     }
 
     function _managersQuery(ValidationContext memory ctx) internal pure returns (string memory) {
-        string memory poolIdsJson = "[";
-        for (uint256 i = 0; i < ctx.pools.length; i++) {
-            poolIdsJson = string.concat(poolIdsJson, _jsonValue(PoolId.unwrap(ctx.pools[i])));
-            if (i < ctx.pools.length - 1) {
-                poolIdsJson = string.concat(poolIdsJson, ", ");
-            }
-        }
-        poolIdsJson = string.concat(poolIdsJson, "]");
-
         return string.concat(
             "onOffRampManagers(limit: 1000, where: { centrifugeId: ",
             _jsonValue(ctx.localCentrifugeId),
             ", poolId_in: ",
-            poolIdsJson,
+            _buildPoolIdsJson(ctx.pools),
             " }) { items { address poolId tokenId } totalCount }"
         );
     }

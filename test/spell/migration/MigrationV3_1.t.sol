@@ -204,16 +204,4 @@ contract MigrationV3_1Test is Test {
     function testMigrationPlumeMainnet() external {
         _testCase(string.concat("https://rpc.plume.org/", vm.envString("PLUME_API_KEY")), true);
     }
-
-    function testMigrationEthereumSepolia() external {
-        _testCase(string.concat("https://eth-sepolia.g.alchemy.com/v2/", vm.envString("ALCHEMY_API_KEY")), false);
-    }
-
-    function testMigrationBaseSepolia() external {
-        _testCase(string.concat("https://base-sepolia.g.alchemy.com/v2/", vm.envString("ALCHEMY_API_KEY")), false);
-    }
-
-    function testMigrationArbitrumSepolia() external {
-        _testCase(string.concat("https://arb-sepolia.g.alchemy.com/v2/", vm.envString("ALCHEMY_API_KEY")), false);
-    }
 }

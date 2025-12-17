@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {PoolId} from "../../../../../src/core/types/PoolId.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 
 import {BaseValidator} from "../BaseValidator.sol";
@@ -28,6 +27,10 @@ contract Validate_OutstandingInvests is BaseValidator {
 
     function supportedPhases() public pure override returns (Phase) {
         return Phase.PRE;
+    }
+
+    function name() public pure override returns (string memory) {
+        return "OutstandingInvests";
     }
 
     function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
@@ -114,18 +117,9 @@ contract Validate_OutstandingInvests is BaseValidator {
     }
 
     function _outstandingInvestsQuery(ValidationContext memory ctx) internal pure returns (string memory) {
-        string memory poolIdsJson = "[";
-        for (uint256 i = 0; i < ctx.pools.length; i++) {
-            poolIdsJson = string.concat(poolIdsJson, _jsonValue(PoolId.unwrap(ctx.pools[i])));
-            if (i < ctx.pools.length - 1) {
-                poolIdsJson = string.concat(poolIdsJson, ", ");
-            }
-        }
-        poolIdsJson = string.concat(poolIdsJson, "]");
-
         return string.concat(
             "outstandingInvests(limit: 1000, where: { poolId_in: ",
-            poolIdsJson,
+            _buildPoolIdsJson(ctx.pools),
             " }) { items { poolId tokenId assetId account pendingAmount queuedAmount depositAmount approvedAmount approvedIndex approvedAtBlock } totalCount }"
         );
     }

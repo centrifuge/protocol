@@ -8,4 +8,5 @@ import {V3Contracts} from "../../../../src/spell/migration_v3.1/MigrationSpell.s
 struct V3ContractsExt {
     V3Contracts inner;
     address messageDispatcher;
+    address tokenFactory;
 }

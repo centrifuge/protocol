@@ -27,6 +27,10 @@ contract Validate_BalanceSheet is BaseValidator {
         return Phase.BOTH;
     }
 
+    function name() public pure override returns (string memory) {
+        return "BalanceSheet";
+    }
+
     function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
         if (ctx.phase == Phase.PRE) {
             return _validatePre(ctx);
@@ -165,18 +169,9 @@ contract Validate_BalanceSheet is BaseValidator {
     }
 
     function _vaultsQuery(ValidationContext memory ctx) internal pure returns (string memory) {
-        string memory poolIdsJson = "[";
-        for (uint256 i = 0; i < ctx.pools.length; i++) {
-            poolIdsJson = string.concat(poolIdsJson, _jsonValue(PoolId.unwrap(ctx.pools[i])));
-            if (i < ctx.pools.length - 1) {
-                poolIdsJson = string.concat(poolIdsJson, ", ");
-            }
-        }
-        poolIdsJson = string.concat(poolIdsJson, "]");
-
         return string.concat(
             "vaults(limit: 1000, where: { poolId_in: ",
-            poolIdsJson,
+            _buildPoolIdsJson(ctx.pools),
             " }) { items { asset { id } poolId tokenId } totalCount }"
         );
     }

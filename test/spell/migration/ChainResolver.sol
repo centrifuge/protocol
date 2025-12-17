@@ -16,10 +16,12 @@ interface MessageDispatcherV3Like {
 library ChainResolver {
     address constant PRODUCTION_MESSAGE_DISPATCHER_V3 = 0x21AF0C29611CFAaFf9271C8a3F84F2bC31d59132;
     address constant TESTNET_MESSAGE_DISPATCHER_V3 = 0x332bE89CAB9FF501F5EBe3f6DC9487bfF50Bd0BF;
+    address constant TOKEN_FACTORY_V3 = 0xC8eDca090b772C48BcE5Ae14Eb7dd517cd70A32C;
 
     /// @notice Chain context resolved from isMainnet flag
     struct ChainContext {
         address rootWard;
+        address tokenFactory;
         uint16 localCentrifugeId;
         Root rootV3;
         string graphQLApi;
@@ -38,6 +40,7 @@ library ChainResolver {
 
         ctx = ChainContext({
             rootWard: rootWard,
+            tokenFactory: TOKEN_FACTORY_V3,
             localCentrifugeId: localCentrifugeId,
             rootV3: rootV3,
             graphQLApi: graphQLApi,

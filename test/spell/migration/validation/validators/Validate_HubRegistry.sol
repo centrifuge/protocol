@@ -20,6 +20,10 @@ contract Validate_HubRegistry is BaseValidator {
         return Phase.BOTH;
     }
 
+    function name() public pure override returns (string memory) {
+        return "HubRegistry";
+    }
+
     function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
         if (ctx.phase == Phase.PRE) {
             return _validatePre(ctx);

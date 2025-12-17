@@ -23,6 +23,10 @@ contract Validate_Holdings is BaseValidator {
         return Phase.PRE;
     }
 
+    function name() public pure override returns (string memory) {
+        return "Holdings";
+    }
+
     function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
         string memory json = ctx.store.query(HOLDINGS_QUERY);
 

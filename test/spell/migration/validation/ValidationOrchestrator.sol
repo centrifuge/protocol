@@ -7,12 +7,16 @@ import {V3ContractsExt} from "./ValidationTypes.sol";
 import {Validate_Spoke} from "./validators/Validate_Spoke.sol";
 import {Validate_Holdings} from "./validators/Validate_Holdings.sol";
 import {Validate_HubRegistry} from "./validators/Validate_HubRegistry.sol";
+import {Validate_SyncManager} from "./validators/Validate_SyncManager.sol";
 import {Validate_BalanceSheet} from "./validators/Validate_BalanceSheet.sol";
+import {Validate_TokenFactory} from "./validators/Validate_TokenFactory.sol";
+import {Validate_VaultRegistry} from "./validators/Validate_VaultRegistry.sol";
 import {Validate_OnOfframpManager} from "./validators/Validate_OnOfframpManager.sol";
 import {Validate_ShareClassManager} from "./validators/Validate_ShareClassManager.sol";
 import {Validate_CrossChainMessages} from "./validators/Validate_CrossChainMessages.sol";
 import {Validate_OutstandingInvests} from "./validators/Validate_OutstandingInvests.sol";
 import {Validate_OutstandingRedeems} from "./validators/Validate_OutstandingRedeems.sol";
+import {Validate_BatchRequestManager} from "./validators/Validate_BatchRequestManager.sol";
 import {Validate_EpochOutstandingInvests} from "./validators/Validate_EpochOutstandingInvests.sol";
 import {Validate_EpochOutstandingRedeems} from "./validators/Validate_EpochOutstandingRedeems.sol";
 
@@ -67,8 +71,9 @@ library ValidationOrchestrator {
     ) internal returns (SharedContext memory shared) {
         emit log_string("[CONTEXT] Building shared validation context...");
 
-        V3ContractsExt memory old =
-            V3ContractsExt({inner: queryService.v3Contracts(), messageDispatcher: chain.rootWard});
+        V3ContractsExt memory old = V3ContractsExt({
+            inner: queryService.v3Contracts(), messageDispatcher: chain.rootWard, tokenFactory: chain.tokenFactory
+        });
 
         PoolId[] memory hubPools = queryService.hubPools(pools);
 
@@ -131,64 +136,38 @@ library ValidationOrchestrator {
     // ============================================
 
     function _buildPreSuite() private returns (ValidationSuite memory) {
-        BaseValidator[] memory validators = new BaseValidator[](11);
+        BaseValidator[] memory validators = new BaseValidator[](14);
 
-        // GraphQL-based pre-migration validators (use ctx.store.query())
         validators[0] = new Validate_EpochOutstandingInvests();
-        vm.label(address(validators[0]), "Validate_EpochOutstandingInvests");
-
         validators[1] = new Validate_EpochOutstandingRedeems();
-        vm.label(address(validators[1]), "Validate_EpochOutstandingRedeems");
-
         validators[2] = new Validate_OutstandingInvests();
-        vm.label(address(validators[2]), "Validate_OutstandingInvests");
-
         validators[3] = new Validate_OutstandingRedeems();
-        vm.label(address(validators[3]), "Validate_OutstandingRedeems");
-
         validators[4] = new Validate_CrossChainMessages();
-        vm.label(address(validators[4]), "Validate_CrossChainMessages");
-
         validators[5] = new Validate_Holdings();
-        vm.label(address(validators[5]), "Validate_Holdings");
-
-        // On-chain validators (BOTH phase)
         validators[6] = new Validate_ShareClassManager();
-        vm.label(address(validators[6]), "Validate_ShareClassManager");
-
         validators[7] = new Validate_BalanceSheet();
-        vm.label(address(validators[7]), "Validate_BalanceSheet");
-
         validators[8] = new Validate_HubRegistry();
-        vm.label(address(validators[8]), "Validate_HubRegistry");
-
         validators[9] = new Validate_OnOfframpManager();
-        vm.label(address(validators[9]), "Validate_OnOfframpManager");
-
         validators[10] = new Validate_Spoke();
-        vm.label(address(validators[10]), "Validate_Spoke");
+        validators[11] = new Validate_SyncManager();
+        validators[12] = new Validate_VaultRegistry();
+        validators[13] = new Validate_BatchRequestManager();
 
         return ValidationSuite({validators: validators});
     }
 
     function _buildPostSuite() private returns (ValidationSuite memory) {
-        BaseValidator[] memory validators = new BaseValidator[](5);
+        BaseValidator[] memory validators = new BaseValidator[](9);
 
-        // On-chain validators (BOTH phase) - compares old vs new state
         validators[0] = new Validate_ShareClassManager();
-        vm.label(address(validators[0]), "Validate_ShareClassManager");
-
         validators[1] = new Validate_BalanceSheet();
-        vm.label(address(validators[1]), "Validate_BalanceSheet");
-
         validators[2] = new Validate_HubRegistry();
-        vm.label(address(validators[2]), "Validate_HubRegistry");
-
         validators[3] = new Validate_OnOfframpManager();
-        vm.label(address(validators[3]), "Validate_OnOfframpManager");
-
         validators[4] = new Validate_Spoke();
-        vm.label(address(validators[4]), "Validate_Spoke");
+        validators[5] = new Validate_TokenFactory();
+        validators[6] = new Validate_SyncManager();
+        validators[7] = new Validate_VaultRegistry();
+        validators[8] = new Validate_BatchRequestManager();
 
         return ValidationSuite({validators: validators});
     }

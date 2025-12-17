@@ -8,7 +8,6 @@ import {IOpsGuardian} from "../../src/admin/interfaces/IOpsGuardian.sol";
 import {console} from "forge-std/console.sol";
 
 import {JsonRegistry} from "../utils/JsonRegistry.s.sol";
-
 import {AxelarAddressToString} from "../utils/AxelarAddressToString.sol";
 
 /// @title WireAdapters

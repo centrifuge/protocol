@@ -16,6 +16,10 @@ contract Validate_ShareClassManager is BaseValidator {
         return Phase.BOTH;
     }
 
+    function name() public pure override returns (string memory) {
+        return "ShareClassManager";
+    }
+
     function validate(ValidationContext memory ctx) public view override returns (ValidationResult memory) {
         if (ctx.phase == Phase.PRE) {
             return _validatePre(ctx);
