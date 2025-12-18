@@ -11,6 +11,7 @@ import {Validate_SyncManager} from "./validators/Validate_SyncManager.sol";
 import {Validate_BalanceSheet} from "./validators/Validate_BalanceSheet.sol";
 import {Validate_TokenFactory} from "./validators/Validate_TokenFactory.sol";
 import {Validate_VaultRegistry} from "./validators/Validate_VaultRegistry.sol";
+import {Validate_InvestmentFlows} from "./validators/Validate_InvestmentFlows.sol";
 import {Validate_OnOfframpManager} from "./validators/Validate_OnOfframpManager.sol";
 import {Validate_ShareClassManager} from "./validators/Validate_ShareClassManager.sol";
 import {Validate_CrossChainMessages} from "./validators/Validate_CrossChainMessages.sol";
@@ -104,7 +105,8 @@ library ValidationOrchestrator {
             hubPools: shared.hubPools,
             localCentrifugeId: shared.localCentrifugeId,
             store: shared.store,
-            isMainnet: shared.isMainnet
+            isMainnet: shared.isMainnet,
+            queryService: shared.queryService
         });
 
         ValidationSuite memory suite = _buildPreSuite();
@@ -124,7 +126,8 @@ library ValidationOrchestrator {
             hubPools: shared.hubPools,
             localCentrifugeId: shared.localCentrifugeId,
             store: shared.store,
-            isMainnet: shared.isMainnet
+            isMainnet: shared.isMainnet,
+            queryService: shared.queryService
         });
 
         ValidationSuite memory suite = _buildPostSuite();
@@ -157,7 +160,7 @@ library ValidationOrchestrator {
     }
 
     function _buildPostSuite() private returns (ValidationSuite memory) {
-        BaseValidator[] memory validators = new BaseValidator[](9);
+        BaseValidator[] memory validators = new BaseValidator[](10);
 
         validators[0] = new Validate_ShareClassManager();
         validators[1] = new Validate_BalanceSheet();
@@ -168,6 +171,7 @@ library ValidationOrchestrator {
         validators[6] = new Validate_SyncManager();
         validators[7] = new Validate_VaultRegistry();
         validators[8] = new Validate_BatchRequestManager();
+        validators[9] = new Validate_InvestmentFlows();
 
         return ValidationSuite({validators: validators});
     }

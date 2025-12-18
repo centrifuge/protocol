@@ -45,7 +45,6 @@ contract MigrationV3_1Test is Test {
 
     ISafe immutable ADMIN = ISafe(makeAddr("ADMIN"));
     bytes32 constant NEW_VERSION = "v3.1";
-    PoolId[] poolsToMigrate;
 
     function _testCase(string memory rpcUrl, bool isMainnet) public {
         vm.createSelectFork(rpcUrl);
@@ -54,24 +53,25 @@ contract MigrationV3_1Test is Test {
         MigrationQueries queryService = new MigrationQueries(isMainnet);
         queryService.configureGraphQl(chain.graphQLApi, chain.localCentrifugeId);
 
+        PoolId[] memory poolsToMigrate;
         if (isMainnet) {
-            poolsToMigrate = [
-                PoolId.wrap(281474976710657),
-                PoolId.wrap(281474976710658),
-                PoolId.wrap(281474976710659),
-                PoolId.wrap(281474976710660),
-                PoolId.wrap(281474976710661),
-                PoolId.wrap(281474976710662),
-                PoolId.wrap(281474976710663),
-                PoolId.wrap(281474976710664),
-                PoolId.wrap(281474976710665),
-                PoolId.wrap(1125899906842625)
-            ];
+            // NOTE: EXCLUDED_POOL_JTRSY and EXCLUDED_POOL_JAAA are excluded (see MigrationQueries.sol)
+            poolsToMigrate = new PoolId[](8);
+            poolsToMigrate[0] = PoolId.wrap(281474976710659);
+            poolsToMigrate[1] = PoolId.wrap(281474976710660);
+            poolsToMigrate[2] = PoolId.wrap(281474976710661);
+            poolsToMigrate[3] = PoolId.wrap(281474976710662);
+            poolsToMigrate[4] = PoolId.wrap(281474976710663);
+            poolsToMigrate[5] = PoolId.wrap(281474976710664);
+            poolsToMigrate[6] = PoolId.wrap(281474976710665);
+            poolsToMigrate[7] = PoolId.wrap(1125899906842625);
         } else {
-            poolsToMigrate = [PoolId.wrap(281474976710662), PoolId.wrap(281474976710668)];
+            poolsToMigrate = new PoolId[](2);
+            poolsToMigrate[0] = PoolId.wrap(281474976710662);
+            poolsToMigrate[1] = PoolId.wrap(281474976710668);
         }
 
-        // ----- DEPLOYMENT (v3.1) -----
+        // ----- DEPLOY V3.1 -----
 
         FullDeployer deployer = new FullDeployer();
         FullActionBatcher batcher = new FullActionBatcher(address(deployer));
@@ -130,7 +130,7 @@ contract MigrationV3_1Test is Test {
 
         migration.migrate(address(deployer), migrationSpell, poolsToMigrate);
 
-        // ----- STEP 3: POST-MIGRATION VALIDATION -----
+        // ----- POST-MIGRATION VALIDATION -----
 
         _validateSupplementalChanges(migrationSpell, chain.rootV3, isMainnet, chain.localCentrifugeId);
 

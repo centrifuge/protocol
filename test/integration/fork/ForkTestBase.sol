@@ -20,6 +20,8 @@ import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
 import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
 import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
 import {ShareClassManager} from "../../../src/core/hub/ShareClassManager.sol";
+import {MessageProcessor} from "../../../src/core/messaging/MessageProcessor.sol";
+import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.sol";
 
 import {Root} from "../../../src/admin/Root.sol";
 import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
@@ -40,6 +42,8 @@ import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
+
+import {FullDeployer} from "../../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -79,6 +83,7 @@ struct CSpoke {
     // Core
     Gateway gateway;
     MultiAdapter multiAdapter;
+    MessageProcessor messageProcessor;
     // Admin
     Root root;
     ProtocolGuardian protocolGuardian;
@@ -130,6 +135,20 @@ contract ForkTestBase is Test {
         return IntegrationConstants.ETH_DEFAULT_POOL_ADMIN;
     }
 
+    /// @notice Get the pool admin (hub manager) for a specific pool
+    /// @dev Base implementation uses default pool admin. Child contracts can override for pool-specific lookup.
+    ///      ForkTestInvestmentValidation provides GraphQL-based implementation.
+    function _getPoolAdmin(
+        PoolId /* poolId */
+    )
+        internal
+        view
+        virtual
+        returns (address)
+    {
+        return _poolAdmin(); // Use default pool admin as fallback
+    }
+
     /// @notice Load deployed contract addresses from IntegrationConstants
     /// @dev V3.1: Uses ProtocolGuardian, adds HubHandler, BatchRequestManager, VaultRegistry, RefundEscrowFactory
     ///      NOTE: Some contracts use address(0) placeholders until v3.1 constants are added to IntegrationConstants.sol
@@ -163,6 +182,7 @@ contract ForkTestBase is Test {
             // Core
             gateway: Gateway(payable(IntegrationConstants.GATEWAY)),
             multiAdapter: MultiAdapter(IntegrationConstants.MULTI_ADAPTER),
+            messageProcessor: MessageProcessor(IntegrationConstants.MESSAGE_PROCESSOR),
             // Admin
             root: Root(IntegrationConstants.ROOT),
             protocolGuardian: ProtocolGuardian(IntegrationConstants.PROTOCOL_GUARDIAN),
@@ -191,6 +211,46 @@ contract ForkTestBase is Test {
         vm.deal(_poolAdmin(), 10 ether);
     }
 
+    /// @notice Load contract addresses from FullDeployer
+    function _loadContractsFromDeployer(FullDeployer deploy) public virtual {
+        // Update forkHub with v3.1 addresses
+        forkHub.gateway = Gateway(payable(address(deploy.gateway())));
+        forkHub.multiAdapter = MultiAdapter(address(deploy.multiAdapter()));
+        forkHub.gasService = GasService(address(deploy.gasService()));
+        forkHub.root = Root(address(deploy.root()));
+        forkHub.protocolGuardian = ProtocolGuardian(address(deploy.protocolGuardian()));
+        forkHub.opsGuardian = OpsGuardian(address(deploy.opsGuardian()));
+        forkHub.hubRegistry = HubRegistry(address(deploy.hubRegistry()));
+        forkHub.accounting = Accounting(address(deploy.accounting()));
+        forkHub.holdings = Holdings(address(deploy.holdings()));
+        forkHub.shareClassManager = ShareClassManager(address(deploy.shareClassManager()));
+        forkHub.hub = Hub(address(deploy.hub()));
+        forkHub.hubHandler = HubHandler(address(deploy.hubHandler()));
+        forkHub.batchRequestManager = BatchRequestManager(address(deploy.batchRequestManager()));
+        forkHub.identityValuation = IdentityValuation(address(deploy.identityValuation()));
+
+        // Update forkSpoke with v3.1 addresses
+        forkSpoke.centrifugeId = MessageDispatcher(address(deploy.messageDispatcher())).localCentrifugeId();
+        forkSpoke.gateway = Gateway(payable(address(deploy.gateway())));
+        forkSpoke.multiAdapter = MultiAdapter(address(deploy.multiAdapter()));
+        forkSpoke.messageProcessor = MessageProcessor(address(deploy.messageProcessor()));
+        forkSpoke.root = Root(address(deploy.root()));
+        forkSpoke.protocolGuardian = ProtocolGuardian(address(deploy.protocolGuardian()));
+        forkSpoke.opsGuardian = OpsGuardian(address(deploy.opsGuardian()));
+        forkSpoke.balanceSheet = BalanceSheet(address(deploy.balanceSheet()));
+        forkSpoke.spoke = Spoke(address(deploy.spoke()));
+        forkSpoke.vaultRegistry = VaultRegistry(address(deploy.vaultRegistry()));
+        forkSpoke.router = VaultRouter(address(deploy.vaultRouter()));
+        forkSpoke.asyncVaultFactory = address(deploy.asyncVaultFactory()).toBytes32();
+        forkSpoke.syncDepositVaultFactory = address(deploy.syncDepositVaultFactory()).toBytes32();
+        forkSpoke.asyncRequestManager = AsyncRequestManager(payable(address(deploy.asyncRequestManager())));
+        forkSpoke.syncManager = SyncManager(address(deploy.syncManager()));
+        forkSpoke.refundEscrowFactory = RefundEscrowFactory(address(deploy.refundEscrowFactory()));
+        forkSpoke.freezeOnlyHook = FreezeOnly(address(deploy.freezeOnlyHook()));
+        forkSpoke.fullRestrictionsHook = FullRestrictions(address(deploy.fullRestrictionsHook()));
+        forkSpoke.redemptionRestrictionsHook = RedemptionRestrictions(address(deploy.redemptionRestrictionsHook()));
+    }
+
     /// @notice Create restriction member update message
     function _updateRestrictionMemberMsg(address addr) internal pure returns (bytes memory) {
         return UpdateRestrictionMessageLib.UpdateRestrictionMember({
@@ -200,32 +260,29 @@ contract ForkTestBase is Test {
 
     /// @notice Add a pool member with transfer permissions
     function _addPoolMember(IBaseVault vault, address user) internal virtual {
-        vm.startPrank(_poolAdmin());
+        _addPoolMemberRaw(vault.poolId(), vault.scId(), user);
+    }
+
+    /// @notice Add a user as pool member using raw pool/shareClass IDs
+    function _addPoolMemberRaw(PoolId poolId, ShareClassId scId, address user) internal virtual {
+        vm.startPrank(_getPoolAdmin(poolId));
         forkHub.hub
-            .updateRestriction(
-                vault.poolId(),
-                vault.scId(),
-                forkSpoke.centrifugeId,
-                _updateRestrictionMemberMsg(user),
-                HOOK_GAS,
-                address(this) // refund address
-            );
+        .updateRestriction{
+            value: GAS
+        }(poolId, scId, forkSpoke.centrifugeId, _updateRestrictionMemberMsg(user), HOOK_GAS, address(this));
         vm.stopPrank();
     }
 
     /// @notice Configure prices for a pool (fork-specific version that skips valuation.setPrice())
-    function _baseConfigurePrices(
-        CHub memory hub,
-        CSpoke memory spoke,
-        PoolId poolId,
-        ShareClassId shareClassId,
-        AssetId assetId,
-        address poolManager
-    ) internal virtual {
+    function _baseConfigurePrices(PoolId poolId, ShareClassId shareClassId, AssetId assetId, address poolManager)
+        internal
+        virtual
+    {
         vm.startPrank(poolManager);
-        hub.hub.updateSharePrice(poolId, shareClassId, IntegrationConstants.identityPrice(), uint64(block.timestamp));
-        hub.hub.notifySharePrice(poolId, shareClassId, spoke.centrifugeId, address(this));
-        hub.hub.notifyAssetPrice(poolId, shareClassId, assetId, address(this));
+        forkHub.hub
+            .updateSharePrice(poolId, shareClassId, IntegrationConstants.identityPrice(), uint64(block.timestamp));
+        forkHub.hub.notifySharePrice{value: GAS}(poolId, shareClassId, forkSpoke.centrifugeId, address(this));
+        forkHub.hub.notifyAssetPrice{value: GAS}(poolId, shareClassId, assetId, address(this));
         vm.stopPrank();
     }
 
@@ -237,11 +294,11 @@ contract ForkTestBase is Test {
         }
     }
 
-    function _getAsyncVault(CSpoke memory spoke, PoolId poolId, ShareClassId shareClassId, AssetId assetId)
+    function _getAsyncVault(PoolId poolId, ShareClassId shareClassId, AssetId assetId)
         internal
         view
         returns (address vaultAddr)
     {
-        return address(spoke.vaultRegistry.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
+        return address(forkSpoke.vaultRegistry.vault(poolId, shareClassId, assetId, forkSpoke.asyncRequestManager));
     }
 }

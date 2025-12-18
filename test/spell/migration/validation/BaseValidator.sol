@@ -7,6 +7,7 @@ import {V3ContractsExt} from "./ValidationTypes.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 
 import {FullReport} from "../../../../script/FullDeployer.s.sol";
+import {MigrationQueries} from "../../../../script/spell/MigrationQueries.sol";
 
 import {Test} from "forge-std/Test.sol";
 import {stdJson} from "forge-std/StdJson.sol";
@@ -48,6 +49,7 @@ abstract contract BaseValidator is Test {
         uint16 localCentrifugeId; // Current chain's centrifugeId
         GraphQLStore store; // GraphQL query storage (PRE: query+store, POST: retrieve)
         bool isMainnet;
+        MigrationQueries queryService; // GraphQL query service for vault lookups
     }
 
     struct ValidationError {
