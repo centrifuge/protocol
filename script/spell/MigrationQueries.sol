@@ -32,7 +32,7 @@ contract MigrationQueries is GraphQLQuery {
     using stdJson for string;
 
     string internal _api;
-    uint16 internal _centrifugeId;
+    uint16 public centrifugeId;
     bool public isMainnet;
 
     /// @param isMainnet_ True for mainnet, false for testnets (affects freelyTransferableHook handling)
@@ -44,7 +44,7 @@ contract MigrationQueries is GraphQLQuery {
     /// @param centrifugeId_ The centrifugeId to query for (from MessageDispatcher.localCentrifugeId())
     function configureGraphQl(string memory api_, uint16 centrifugeId_) public {
         _api = api_;
-        _centrifugeId = centrifugeId_;
+        centrifugeId = centrifugeId_;
     }
 
     function _graphQLApi() internal view override returns (string memory) {
@@ -66,7 +66,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
         );
 
@@ -75,6 +75,10 @@ contract MigrationQueries is GraphQLQuery {
             "deployments(", params, ") {",
             "  items {"
             "    root"
+            "    guardian"
+            "    tokenRecoverer"
+            "    messageDispatcher"
+            "    messageProcessor"
             "    gateway"
             "    poolEscrowFactory"
             "    spoke"
@@ -94,6 +98,10 @@ contract MigrationQueries is GraphQLQuery {
         ));
 
         v3.root = Root(json.readAddress(".data.deployments.items[0].root"));
+        v3.guardian = json.readAddress(".data.deployments.items[0].guardian");
+        v3.tokenRecoverer = json.readAddress(".data.deployments.items[0].tokenRecoverer");
+        v3.messageDispatcher = json.readAddress(".data.deployments.items[0].messageDispatcher");
+        v3.messageProcessor = json.readAddress(".data.deployments.items[0].messageProcessor");
         v3.gateway = json.readAddress(".data.deployments.items[0].gateway");
         v3.poolEscrowFactory = json.readAddress(".data.deployments.items[0].poolEscrowFactory");
         v3.spoke = json.readAddress(".data.deployments.items[0].spoke");
@@ -124,7 +132,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
         );
 
@@ -156,7 +164,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
         );
 
@@ -189,7 +197,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
         );
 
@@ -221,7 +229,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
         );
 
@@ -259,7 +267,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "  poolId: ", _jsonValue(poolId.raw()),
             "  isBalancesheetManager: true"
             "}"
@@ -293,7 +301,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "  poolId: ", _jsonValue(poolId.raw()),
             "  isHubManager: true"
             "}"
@@ -327,7 +335,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "  poolId: ", _jsonValue(poolId.raw()),
             "}"
         );
@@ -359,7 +367,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "  poolId: ", _jsonValue(poolId.raw()),
             "}"
         );
@@ -392,7 +400,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "  poolId: ", _jsonValue(poolId.raw()),
             "}"
         );
@@ -425,7 +433,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "  id: ", _jsonValue(poolId.raw()),
             "}"
         );
@@ -467,7 +475,7 @@ contract MigrationQueries is GraphQLQuery {
     /// @return result Pools where this chain is the hub
     function hubPools(PoolId[] memory allPools) public returns (PoolId[] memory result) {
         string memory json = _queryGraphQL(
-            string.concat("pools(where: {centrifugeId: ", _jsonValue(_centrifugeId), "}) { items { id } totalCount }")
+            string.concat("pools(where: {centrifugeId: ", _jsonValue(centrifugeId), "}) { items { id } totalCount }")
         );
 
         uint256 totalCount = json.readUint(".data.pools.totalCount");
@@ -508,7 +516,7 @@ contract MigrationQueries is GraphQLQuery {
         // forgefmt: disable-next-item
         string memory where = string.concat(
             "  where: {"
-            "      centrifugeId: ", _jsonValue(_centrifugeId), ","
+            "      centrifugeId: ", _jsonValue(centrifugeId), ","
             "      status: Linked"
             "  }"
         );
@@ -540,7 +548,7 @@ contract MigrationQueries is GraphQLQuery {
         // forgefmt: disable-next-item
         string memory where = string.concat(
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId), ","
+            "  centrifugeId: ", _jsonValue(centrifugeId), ","
             "  status: Linked"
             "}"
         );
@@ -607,10 +615,5 @@ contract MigrationQueries is GraphQLQuery {
     /// @notice Get the GraphQL API endpoint
     function graphQLApi() public view returns (string memory) {
         return _api;
-    }
-
-    /// @notice Get the stored centrifugeId
-    function centrifugeId() public view returns (uint16) {
-        return _centrifugeId;
     }
 }

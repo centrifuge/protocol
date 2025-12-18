@@ -50,15 +50,6 @@ import {RefundEscrowFactory} from "../../utils/RefundEscrowFactory.sol";
 
 PoolId constant GLOBAL_POOL = PoolId.wrap(0);
 
-address constant CFG = 0xcccCCCcCCC33D538DBC2EE4fEab0a7A1FF4e8A94;
-address constant WCFG = 0xc221b7E65FfC80DE234bbB6667aBDd46593D34F0;
-address constant WCFG_MULTISIG = 0x3C9D25F2C76BFE63485AE25D524F7f02f2C03372;
-address constant CHAINBRIDGE_ERC20_HANDLER = 0x84D1e77F472a4aA697359168C4aF4ADD4D2a71fa;
-address constant CREATE3_PROXY = 0x28E6eED839a5E03D92f7A5C459430576081fadFb;
-address constant WORMHOLE_NTT = address(1); // TODO
-address constant ROOT_V2 = 0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC;
-address constant IOU_CFG = 0xACF3c07BeBd65d5f7d86bc0bc716026A0C523069;
-
 contract MessageDispatcherInfallibleMock {
     uint16 _localCentrifugeId;
 
@@ -94,6 +85,10 @@ struct AssetInfo {
 
 struct V3Contracts {
     Root root;
+    address guardian;
+    address tokenRecoverer;
+    address messageDispatcher;
+    address messageProcessor;
     address gateway;
     address poolEscrowFactory;
     address spoke;
@@ -162,11 +157,6 @@ struct PoolParamsInput {
     uint16[] chainsWherePoolIsNotified;
 }
 
-struct SupplementalParamsInput {
-    Root root;
-    MultiAdapter multiAdapter;
-}
-
 contract MigrationSpell {
     using CastLib for *;
 
@@ -199,12 +189,6 @@ contract MigrationSpell {
         }
     }
 
-    function castSupplemental(SupplementalParamsInput memory input) external {
-        require(owner == msg.sender, "not authorized");
-
-        _updateCFGWards(input);
-    }
-
     function castPool(PoolId poolId, PoolParamsInput memory input) external {
         require(owner == msg.sender, "not authorized");
 
@@ -226,11 +210,6 @@ contract MigrationSpell {
         owner = address(0);
 
         rootV3.deny(address(this));
-
-        // If the spell was also relied on the v2 root, remove ourselves there as well
-        if (ROOT_V2.code.length > 0 && Root(ROOT_V2).wards(address(this)) == 1) {
-            Root(ROOT_V2).deny(address(this));
-        }
     }
 
     function _authorizedContracts(GlobalParamsInput memory input) internal pure returns (address[] memory) {
@@ -265,37 +244,12 @@ contract MigrationSpell {
         input.v3.root.endorse(address(input.balanceSheet));
         input.v3.root.endorse(address(input.asyncRequestManager));
         input.v3.root.endorse(address(input.vaultRouter));
-    }
 
-    function _updateCFGWards(SupplementalParamsInput memory input) internal {
-        uint16 localCentrifugeId = input.multiAdapter.localCentrifugeId();
-
-        // Check if CFG exists
-        if (CFG.code.length > 0) {
-            // Mainnet CFG only has the v2 root relied, need to replace with v3 root
-            if (localCentrifugeId == 1) {
-                Root(ROOT_V2).relyContract(CFG, address(input.root));
-                input.root.denyContract(CFG, IOU_CFG);
-                input.root.denyContract(CFG, ROOT_V2);
-            }
-
-            // Deny CREATE3 proxy on new chains
-            if (localCentrifugeId != 1) {
-                input.root.denyContract(CFG, CREATE3_PROXY);
-            }
-
-            // Rely Wormhole adapter on Base
-            if (localCentrifugeId == 2) {
-                input.root.relyContract(CFG, WORMHOLE_NTT);
-            }
-        }
-
-        // Check if WCFG exists
-        if (WCFG.code.length > 0) {
-            Root(ROOT_V2).relyContract(WCFG, address(input.root));
-            input.root.denyContract(WCFG, WCFG_MULTISIG);
-            input.root.denyContract(WCFG, CHAINBRIDGE_ERC20_HANDLER);
-        }
+        // Remove access to root from v3 contracts
+        input.v3.root.deny(address(input.v3.guardian));
+        input.v3.root.deny(address(input.v3.tokenRecoverer));
+        input.v3.root.deny(address(input.v3.messageDispatcher));
+        input.v3.root.deny(address(input.v3.messageProcessor));
     }
 
     function _migrateGlobal(GlobalParamsInput memory input) internal {
