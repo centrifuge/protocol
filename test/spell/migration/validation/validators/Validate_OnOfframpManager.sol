@@ -122,16 +122,12 @@ contract Validate_OnOfframpManager is BaseValidator {
         string memory managerIdStr = string.concat("Pool ", _toString(managerData.poolId), " SC ", managerData.tokenId);
 
         address expectedNewManager = _computeManagerAddress(ctx, pid, scid);
-
         errorCount = _validateExists(expectedNewManager, managerIdStr, errors, errorCount);
 
         OnOfframpManager newManager = OnOfframpManager(expectedNewManager);
-
         errorCount = _validateOnrampSettings(newManager, assets, managerData, managerIdStr, errors, errorCount);
-
         errorCount =
             _validateOfframpSettings(ctx, newManager, pid, managerData, assets, managerIdStr, errors, errorCount);
-
         errorCount = _validateRelayerSettings(ctx, newManager, pid, managerData, managerIdStr, errors, errorCount);
 
         return errorCount;

@@ -54,9 +54,9 @@ contract Validate_Spoke is BaseValidator {
         VaultData[] memory vaults = _getVaults(ctx);
         AssetId[] memory spokeAssetIds = _getSpokeAssetIds(ctx);
 
-        // Pre-allocate errors: pool checks + vault checks + asset id checks
+        // Pre-allocate errors: pool checks (isActive + requestManager) + vault checks + asset id checks (idToAsset + assetToId)
         ValidationError[] memory errors =
-            new ValidationError[](ctx.pools.length * 2 + vaults.length * 3 + spokeAssetIds.length);
+            new ValidationError[](ctx.pools.length * 2 + vaults.length * 3 + spokeAssetIds.length * 2);
         uint256 errorCount = 0;
 
         errorCount = _validatePools(ctx, errors, errorCount);
@@ -301,6 +301,21 @@ contract Validate_Spoke is BaseValidator {
                 expected: string.concat("asset: ", vm.toString(oldAsset), ", tokenId: ", _toString(oldTokenId)),
                 actual: string.concat("asset: ", vm.toString(newAsset), ", tokenId: ", _toString(newTokenId)),
                 message: string.concat("AssetId ", _toString(AssetId.unwrap(assetId)), " idToAsset mismatch")
+            });
+        }
+
+        AssetId oldReversedId = oldSpoke.assetToId(oldAsset, oldTokenId);
+        AssetId newReversedId = newSpoke.assetToId(newAsset, newTokenId);
+
+        if (!(oldReversedId == newReversedId)) {
+            errors[errorCount++] = _buildError({
+                field: "assetToId",
+                value: string.concat("Asset ", vm.toString(oldAsset), " tokenId ", _toString(oldTokenId)),
+                expected: string.concat("AssetId ", _toString(AssetId.unwrap(oldReversedId))),
+                actual: string.concat("AssetId ", _toString(AssetId.unwrap(newReversedId))),
+                message: string.concat(
+                    "Asset ", vm.toString(oldAsset), " tokenId ", _toString(oldTokenId), " assetToId mismatch"
+                )
             });
         }
 
