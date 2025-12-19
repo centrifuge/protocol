@@ -4,21 +4,31 @@
     "environment": "mainnet",
     "centrifugeId": 4,
     "connectsTo": [
-      "ethereum"
+      "ethereum",
+      "base",
+      "arbitrum",
+      "avalanche",
+      "bnb-smart-chain"
     ],
     "safeAdmin": "0x2d442069f78561F817d92c94924D5EaddA9C5767"
   },
   "adapters": {
+    "threshold": 3,
     "wormhole": {
       "wormholeId": 55,
       "relayer": "0xaBf89de706B583424328B54dD05a8fC986750Da8",
-      "deploy": false
+      "deploy": true
     },
     "axelar": {
       "axelarId": "plume",
-      "gateway": null,
-      "gasService": null,
-      "deploy": false
+      "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+      "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "deploy": true
+    },
+    "layerZero": {
+      "endpoint": "0xC1b15d3B262bEeC0e3565C11C9e0F6134BdaCB36",
+      "layerZeroEid": 30370,
+      "deploy": true
     },
     "chainlink": {
       "chainSelector": 17912061998839310979,

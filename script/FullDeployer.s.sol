@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {AxelarAddressToString} from "./utils/AxelarAddressToString.sol";
 import {CoreInput, CoreReport, CoreDeployer, CoreActionBatcher} from "./CoreDeployer.s.sol";
 
 import {Escrow} from "../src/misc/Escrow.sol";
@@ -76,6 +75,7 @@ struct AdapterConnections {
     uint16 wormholeId;
     string axelarId;
     uint64 chainlinkId;
+    uint8 threshold;
 }
 
 struct AdaptersInput {
@@ -128,8 +128,6 @@ struct FullReport {
 }
 
 contract FullActionBatcher is CoreActionBatcher {
-    using AxelarAddressToString for address;
-
     constructor(address deployer_) CoreActionBatcher(deployer_) {}
 
     function engageFull(
@@ -137,7 +135,8 @@ contract FullActionBatcher is CoreActionBatcher {
         ISafe adminSafe,
         ISafe opsSafe,
         bool newRoot,
-        AdapterConnections[] memory connectionList
+        AdapterConnections[] memory connectionList,
+        string memory remoteAxelarAdapter
     ) public onlyDeployer {
         // Rely Root
         report.tokenRecoverer.rely(address(report.root));
@@ -292,10 +291,7 @@ contract FullActionBatcher is CoreActionBatcher {
 
             if (address(report.axelarAdapter) != address(0) && bytes(connections.axelarId).length != 0) {
                 report.axelarAdapter
-                    .wire(
-                        connections.centrifugeId,
-                        abi.encode(connections.axelarId, address(report.axelarAdapter).toAxelarString())
-                    );
+                    .wire(connections.centrifugeId, abi.encode(connections.axelarId, remoteAxelarAdapter));
                 adapters[n++] = report.axelarAdapter;
             }
 
@@ -313,7 +309,7 @@ contract FullActionBatcher is CoreActionBatcher {
                         connections.centrifugeId,
                         PoolId.wrap(0),
                         adapters,
-                        uint8(adapters.length),
+                        connections.threshold > 0 ? connections.threshold : uint8(adapters.length),
                         uint8(adapters.length)
                     );
             }
@@ -733,7 +729,14 @@ contract FullDeployer is CoreDeployer {
         if (input.adapters.layerZero.shouldDeploy) register("layerZeroAdapter", address(layerZeroAdapter));
         if (input.adapters.chainlink.shouldDeploy) register("chainlinkAdapter", address(chainlinkAdapter));
 
-        batcher.engageFull(fullReport(), input.adminSafe, input.opsSafe, newRoot, input.adapters.connections);
+        batcher.engageFull(
+            fullReport(),
+            input.adminSafe,
+            input.opsSafe,
+            newRoot,
+            input.adapters.connections,
+            vm.toString(address(axelarAdapter))
+        );
     }
 
     function fullReport() public view returns (FullReport memory) {

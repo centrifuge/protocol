@@ -6,12 +6,14 @@
     "connectsTo": [
       "base",
       "arbitrum",
+      "plume",
       "avalanche",
       "bnb-smart-chain"
     ],
     "safeAdmin": "0xD9D30ab47c0f096b0AA67e9B8B1624504a63e7FD"
   },
   "adapters": {
+    "threshold": 3,
     "wormhole": {
       "wormholeId": 2,
       "relayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",

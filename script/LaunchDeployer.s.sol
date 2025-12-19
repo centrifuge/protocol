@@ -158,7 +158,8 @@ contract LaunchDeployer is FullDeployer {
                     layerZeroId: uint32(_parseJsonUintOrDefault(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
                     wormholeId: uint16(_parseJsonUintOrDefault(remoteConfig, "$.adapters.wormhole.wormholeId")),
                     axelarId: _parseJsonStringOrDefault(remoteConfig, "$.adapters.axelar.axelarId"),
-                    chainlinkId: uint64(_parseJsonUintOrDefault(remoteConfig, "$.adapters.chainlink.chainSelector"))
+                    chainlinkId: uint64(_parseJsonUintOrDefault(remoteConfig, "$.adapters.chainlink.chainSelector")),
+                    threshold: uint8(_parseJsonUintOrDefault(remoteConfig, "$.adapters.threshold"))
                 });
             }
         } catch {

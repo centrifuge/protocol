@@ -6,12 +6,14 @@
     "connectsTo": [
       "ethereum",
       "base",
+      "plume",
       "avalanche",
       "bnb-smart-chain"
     ],
     "safeAdmin": "0xa36caE0ACd40C6BbA61014282f6AE51c7807A433"
   },
   "adapters": {
+    "threshold": 3,
     "wormhole": {
       "wormholeId": 23,
       "relayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
