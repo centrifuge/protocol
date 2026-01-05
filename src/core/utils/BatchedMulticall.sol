@@ -13,8 +13,9 @@ import {IGateway} from "../messaging/interfaces/IGateway.sol";
 ///         while coordinating payment handling across batched operations.
 /// @dev    IMPORTANT: Integrators MUST replace msg.sender with msgSender() and msg.value with msgValue()
 ///         for the methods called by the multicall.
-/// @dev    IMPORTANT: The contract which extends BatchedMulticall must not rely on Gateway to avoid
-///         the multicall execution to call auth methods, opening security issues.
+/// @dev    IMPORTANT: The contract which extends BatchedMulticall must not treat the gateway
+///         as a permissioned/authenticated msg.sender to avoid the multicall execution to call auth methods,
+///         opening security issues.
 abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
     IGateway public gateway;
     address private transient _sender;

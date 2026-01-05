@@ -28,7 +28,6 @@ abstract contract VMLabeling is Test {
         vm.label(IntegrationConstants.SPOKE, "Spoke");
         vm.label(IntegrationConstants.CONTRACT_UPDATER, "ContractUpdater");
         vm.label(IntegrationConstants.ROUTER, "Router");
-        vm.label(IntegrationConstants.ROUTER_ESCROW, "RouterEscrow");
         vm.label(IntegrationConstants.GLOBAL_ESCROW, "GlobalEscrow");
         vm.label(IntegrationConstants.ASYNC_VAULT_FACTORY, "AsyncVaultFactory");
         vm.label(IntegrationConstants.SYNC_DEPOSIT_VAULT_FACTORY, "SyncDepositVaultFactory");

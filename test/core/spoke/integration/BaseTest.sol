@@ -113,7 +113,6 @@ contract BaseTest is FullDeployer, Test {
         contractUpdater.rely(address(this));
         vaultRegistry.rely(address(this));
         tokenRecoverer.rely(address(this));
-        routerEscrow.rely(address(this));
         refundEscrowFactory.rely(address(this));
         asyncVaultFactory.rely(address(this));
         asyncRequestManager.rely(address(this));

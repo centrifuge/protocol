@@ -9,7 +9,6 @@ import {IVaultRouter} from "./interfaces/IVaultRouter.sol";
 import {Auth} from "../misc/Auth.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
-import {IEscrow} from "../misc/interfaces/IEscrow.sol";
 import {IERC7540Deposit} from "../misc/interfaces/IERC7540.sol";
 import {IERC20, IERC20Permit} from "../misc/interfaces/IERC20.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
@@ -29,24 +28,19 @@ import {VaultDetails, IVaultRegistry} from "../core/spoke/interfaces/IVaultRegis
 ///         the multicall functionality which batches message calls into a single one.
 /// @dev    It is critical to ensure that at the end of any transaction, no funds remain in the
 ///         VaultRouter. Any funds that do remain are at risk of being taken by other users.
-contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
+contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
     using CastLib for address;
 
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
     uint256 private constant REQUEST_ID = 0;
 
     ISpoke public immutable spoke;
-    IEscrow public immutable escrow;
     IVaultRegistry public immutable vaultRegistry;
 
-    /// @inheritdoc IVaultRouter
-    mapping(address controller => mapping(IBaseVault vault => uint256 amount)) public lockedRequests;
-
-    constructor(address escrow_, IGateway gateway_, ISpoke spoke_, IVaultRegistry vaultRegistry_, address deployer)
+    constructor(IGateway gateway_, ISpoke spoke_, IVaultRegistry vaultRegistry_, address deployer)
         Auth(deployer)
         BatchedMulticall(gateway_)
     {
-        escrow = IEscrow(escrow_);
         spoke = spoke_;
         vaultRegistry = vaultRegistry_;
     }
@@ -118,60 +112,6 @@ contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
         spoke.crosschainTransferShares{
             value: msgValue()
         }(centrifugeId, vault.poolId(), vault.scId(), receiver, shares, extraGasLimit, remoteExtraGasLimit, refund);
-    }
-
-    /// @inheritdoc IVaultRouter
-    function lockDepositRequest(IBaseVault vault, uint256 amount, address controller, address owner)
-        public
-        payable
-        protected
-    {
-        require(owner == msgSender() || owner == address(this), InvalidOwner());
-        require(vault.supportsInterface(type(IERC7540Deposit).interfaceId), NonAsyncVault());
-
-        lockedRequests[controller][vault] += amount;
-
-        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
-
-        if (address(this) != owner) {
-            SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(escrow), amount);
-        } else {
-            SafeTransferLib.safeTransfer(vaultDetails.asset, address(escrow), amount);
-        }
-
-        emit LockDepositRequest(vault, controller, owner, msgSender(), amount);
-    }
-
-    /// @inheritdoc IVaultRouter
-    function enableLockDepositRequest(IBaseVault vault, uint256 amount) external payable protected {
-        enable(vault);
-        lockDepositRequest(vault, amount, msgSender(), msgSender());
-    }
-
-    /// @inheritdoc IVaultRouter
-    function unlockDepositRequest(IBaseVault vault, address receiver) external payable protected {
-        uint256 lockedRequest = lockedRequests[msgSender()][vault];
-        require(lockedRequest != 0, NoLockedBalance());
-        lockedRequests[msgSender()][vault] = 0;
-
-        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
-        escrow.authTransferTo(vaultDetails.asset, 0, receiver, lockedRequest);
-
-        emit UnlockDepositRequest(vault, msgSender(), receiver);
-    }
-
-    /// @inheritdoc IVaultRouter
-    function executeLockedDepositRequest(IAsyncVault vault, address controller) external payable protected {
-        uint256 lockedRequest = lockedRequests[controller][vault];
-        require(lockedRequest != 0, NoLockedRequest());
-        lockedRequests[controller][vault] = 0;
-
-        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
-        escrow.authTransferTo(vaultDetails.asset, 0, address(this), lockedRequest);
-
-        _approveMax(vaultDetails.asset, address(vault));
-        vault.requestDeposit(lockedRequest, controller, address(this));
-        emit ExecuteLockedDepositRequest(vault, controller, msgSender());
     }
 
     /// @inheritdoc IVaultRouter

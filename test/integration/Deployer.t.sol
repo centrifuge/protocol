@@ -444,16 +444,6 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         assertEq(address(opsGuardian.hub()), address(hub));
     }
 
-    function testRouterEscrow(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(vaultRouter));
-
-        assertEq(routerEscrow.wards(address(root)), 1);
-        assertEq(routerEscrow.wards(address(vaultRouter)), 1);
-        assertEq(routerEscrow.wards(nonWard), 0);
-    }
-
     function testSubsidyManager(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
@@ -545,7 +535,6 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(vaultRouter.spoke()), address(spoke));
-        assertEq(address(vaultRouter.escrow()), address(routerEscrow));
         assertEq(address(vaultRouter.gateway()), address(gateway));
 
         // root endorsements

@@ -277,10 +277,6 @@ contract LaunchDeployer is FullDeployer {
             "ContractUpdater address mismatch with mainnet"
         );
         require(
-            address(routerEscrow) == 0xB86B6AE94E6d05AAc086665534A73fee557EE9F6,
-            "RouterEscrow address mismatch with mainnet"
-        );
-        require(
             address(asyncRequestManager) == 0xf06f89A1b6C601235729A689595571B7455Dd433,
             "AsyncRequestManager address mismatch with mainnet"
         );

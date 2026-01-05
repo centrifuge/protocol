@@ -4,8 +4,6 @@ pragma solidity 0.8.28;
 import {ChainResolver} from "./ChainResolver.sol";
 import {ValidationOrchestrator} from "./validation/ValidationOrchestrator.sol";
 
-import {Escrow} from "../../../src/misc/Escrow.sol";
-
 import {Hub} from "../../../src/core/hub/Hub.sol";
 import {Spoke} from "../../../src/core/spoke/Spoke.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
@@ -144,7 +142,6 @@ contract ValidationRunner is Test {
             tokenRecoverer: TokenRecoverer(_tryParseAddress(config, "$.contracts.tokenRecoverer")),
             protocolGuardian: ProtocolGuardian(_tryParseAddress(config, "$.contracts.protocolGuardian")),
             opsGuardian: OpsGuardian(_tryParseAddress(config, "$.contracts.opsGuardian")),
-            routerEscrow: Escrow(_tryParseAddress(config, "$.contracts.routerEscrow")),
             subsidyManager: SubsidyManager(_tryParseAddress(config, "$.contracts.subsidyManager")),
             refundEscrowFactory: RefundEscrowFactory(_tryParseAddress(config, "$.contracts.refundEscrowFactory")),
             asyncVaultFactory: AsyncVaultFactory(_tryParseAddress(config, "$.contracts.asyncVaultFactory")),
