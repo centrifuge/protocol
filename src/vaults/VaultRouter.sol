@@ -116,7 +116,7 @@ contract VaultRouter is Auth, BatchedMulticall, Recoverable, IVaultRouter {
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vault.share(), owner, address(this), shares);
 
         spoke.crosschainTransferShares{
-            value: gateway.isBatching() ? 0 : msg.value
+            value: msgValue()
         }(centrifugeId, vault.poolId(), vault.scId(), receiver, shares, extraGasLimit, remoteExtraGasLimit, refund);
     }
 
