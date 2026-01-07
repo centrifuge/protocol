@@ -18,6 +18,8 @@ import {Validate_CrossChainMessages} from "./validators/Validate_CrossChainMessa
 import {Validate_OutstandingInvests} from "./validators/Validate_OutstandingInvests.sol";
 import {Validate_OutstandingRedeems} from "./validators/Validate_OutstandingRedeems.sol";
 import {Validate_BatchRequestManager} from "./validators/Validate_BatchRequestManager.sol";
+import {Validate_UnclaimedInvestOrders} from "./validators/Validate_UnclaimedInvestOrders.sol";
+import {Validate_UnclaimedRedeemOrders} from "./validators/Validate_UnclaimedRedeemOrders.sol";
 import {Validate_EpochOutstandingInvests} from "./validators/Validate_EpochOutstandingInvests.sol";
 import {Validate_EpochOutstandingRedeems} from "./validators/Validate_EpochOutstandingRedeems.sol";
 
@@ -139,7 +141,7 @@ library ValidationOrchestrator {
     // ============================================
 
     function _buildPreSuite() private returns (ValidationSuite memory) {
-        BaseValidator[] memory validators = new BaseValidator[](14);
+        BaseValidator[] memory validators = new BaseValidator[](16);
 
         validators[0] = new Validate_EpochOutstandingInvests();
         validators[1] = new Validate_EpochOutstandingRedeems();
@@ -155,6 +157,8 @@ library ValidationOrchestrator {
         validators[11] = new Validate_SyncManager();
         validators[12] = new Validate_VaultRegistry();
         validators[13] = new Validate_BatchRequestManager();
+        validators[14] = new Validate_UnclaimedInvestOrders();
+        validators[15] = new Validate_UnclaimedRedeemOrders();
 
         return ValidationSuite({validators: validators});
     }
