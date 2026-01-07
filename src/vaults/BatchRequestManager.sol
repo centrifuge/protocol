@@ -517,24 +517,34 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         EpochInvestAmounts storage epochAmounts =
             epochInvestAmounts[poolId][scId_][depositAssetId][userOrder.lastUpdate];
 
+        // Calculate ceiling for pending reduction (ensures sum(user.pending) <= pendingTotal)
         paymentAssetAmount = epochAmounts.approvedAssetAmount == 0
             ? 0
-            : userOrder.pending.mulDiv(epochAmounts.approvedAssetAmount, epochAmounts.pendingAssetAmount).toUint128();
+            : userOrder.pending
+                .mulDiv(epochAmounts.approvedAssetAmount, epochAmounts.pendingAssetAmount, MathLib.Rounding.Up)
+                .toUint128();
 
-        // NOTE: Due to precision loss, the sum of claimable user amounts is leq than the amount of minted share class
-        // tokens corresponding to the approved share amount (instead of equality). I.e., it is possible for an epoch to
-        // have an excess of a share class tokens which cannot be claimed by anyone.
+        // NOTE: To ensure sum(user.pending) <= pendingTotal, we reduce pending by ceiling of the
+        // proportional share. Payout amounts use floor to ensure sum(claimed) <= sum(issued).
+        // This means users may lose up to 1 wei per claim, but prevents unbounded drift.
         if (paymentAssetAmount > 0) {
-            payoutShareAmount = epochAmounts.pricePoolPerShare.isNotZero()
-                ? PricingLib.assetToShareAmount(
-                    paymentAssetAmount,
-                    hubRegistry.decimals(depositAssetId),
-                    hubRegistry.decimals(poolId),
-                    epochAmounts.pricePoolPerAsset,
-                    epochAmounts.pricePoolPerShare,
-                    MathLib.Rounding.Down
-                )
-                : 0;
+            // Calculate floor for share payout (ensures sum(shares claimed) <= shares issued)
+            uint128 paymentAssetFloor = userOrder.pending
+                .mulDiv(epochAmounts.approvedAssetAmount, epochAmounts.pendingAssetAmount, MathLib.Rounding.Down)
+                .toUint128();
+
+            if (paymentAssetFloor > 0) {
+                payoutShareAmount = epochAmounts.pricePoolPerShare.isNotZero()
+                    ? PricingLib.assetToShareAmount(
+                        paymentAssetFloor,
+                        hubRegistry.decimals(depositAssetId),
+                        hubRegistry.decimals(poolId),
+                        epochAmounts.pricePoolPerAsset,
+                        epochAmounts.pricePoolPerShare,
+                        MathLib.Rounding.Down
+                    )
+                    : 0;
+            }
 
             userOrder.pending -= paymentAssetAmount;
         }
@@ -631,24 +641,34 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
 
         EpochRedeemAmounts storage epochAmounts = epochRedeemAmounts[poolId][scId_][payoutAssetId][userOrder.lastUpdate];
 
+        // Calculate ceiling for pending reduction (ensures sum(user.pending) <= pendingTotal)
         paymentShareAmount = epochAmounts.approvedShareAmount == 0
             ? 0
-            : userOrder.pending.mulDiv(epochAmounts.approvedShareAmount, epochAmounts.pendingShareAmount).toUint128();
+            : userOrder.pending
+                .mulDiv(epochAmounts.approvedShareAmount, epochAmounts.pendingShareAmount, MathLib.Rounding.Up)
+                .toUint128();
 
-        // NOTE: Due to precision loss, the sum of claimable user amounts is leq than the amount of payout asset
-        // corresponding to the approved share class (instead of equality). I.e., it is possible for an epoch to
-        // have an excess of payout assets which cannot be claimed by anyone.
+        // NOTE: To ensure sum(user.pending) <= pendingTotal, we reduce pending by ceiling of the
+        // proportional share. Payout amounts use floor to ensure sum(claimed) <= sum(issued).
+        // This means users may lose up to 1 wei per claim, but prevents unbounded drift.
         if (paymentShareAmount > 0) {
-            payoutAssetAmount = epochAmounts.pricePoolPerAsset.isNotZero()
-                ? PricingLib.shareToAssetAmount(
-                    paymentShareAmount,
-                    hubRegistry.decimals(poolId),
-                    hubRegistry.decimals(payoutAssetId),
-                    epochAmounts.pricePoolPerShare,
-                    epochAmounts.pricePoolPerAsset,
-                    MathLib.Rounding.Down
-                )
-                : 0;
+            // Calculate floor for asset payout (ensures sum(assets claimed) <= assets available)
+            uint128 paymentShareFloor = userOrder.pending
+                .mulDiv(epochAmounts.approvedShareAmount, epochAmounts.pendingShareAmount, MathLib.Rounding.Down)
+                .toUint128();
+
+            if (paymentShareFloor > 0) {
+                payoutAssetAmount = epochAmounts.pricePoolPerAsset.isNotZero()
+                    ? PricingLib.shareToAssetAmount(
+                        paymentShareFloor,
+                        hubRegistry.decimals(poolId),
+                        hubRegistry.decimals(payoutAssetId),
+                        epochAmounts.pricePoolPerShare,
+                        epochAmounts.pricePoolPerAsset,
+                        MathLib.Rounding.Down
+                    )
+                    : 0;
+            }
 
             userOrder.pending -= paymentShareAmount;
         }
