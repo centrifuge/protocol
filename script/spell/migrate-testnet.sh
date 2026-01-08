@@ -2,25 +2,25 @@
 set -euo pipefail
 
 # Example of different runs:
-# ./script/spell/migrate-testnet.sh fork eth-sepolia sepolia
-# ./script/spell/migrate-testnet.sh fork base-sepolia base-sepolia
-# ./script/spell/migrate-testnet.sh fork arb-sepolia arbitrum-sepolia
+# ./script/spell/migrate-testnet.sh fork  sepolia
+# ./script/spell/migrate-testnet.sh fork  base-sepolia
+# ./script/spell/migrate-testnet.sh fork  arbitrum-sepolia
 #
-# ./script/spell/migrate-testnet.sh deploy eth-sepolia sepolia
-# ./script/spell/migrate-testnet.sh deploy base-sepolia base-sepolia
-# ./script/spell/migrate-testnet.sh deploy arb-sepolia arbitrum-sepolia
+# ./script/spell/migrate-testnet.sh deploy  sepolia
+# ./script/spell/migrate-testnet.sh deploy  base-sepolia
+# ./script/spell/migrate-testnet.sh deploy  arbitrum-sepolia
 #
-# ./script/spell/migrate-testnet.sh execute eth-sepolia sepolia
-# ./script/spell/migrate-testnet.sh execute base-sepolia base-sepolia
-# ./script/spell/migrate-testnet.sh execute arb-sepolia arbitrum-sepolia
+# ./script/spell/migrate-testnet.sh execute sepolia
+# ./script/spell/migrate-testnet.sh execute base-sepolia
+# ./script/spell/migrate-testnet.sh execute arbitrum-sepolia
 
 # Only PRIVATE_KEY and ALCHEMY_API_KEY are used from .env file
+python3 script/deploy/deploy.py --network "$2" dump:config
 set -a; source .env; set +a # auto-export all sourced vars
 
 MODE=$1
-ALCHEMY_NAME=$2
-export NETWORK=$3
-REMOTE_RPC_URL="https://$ALCHEMY_NAME.g.alchemy.com/v2/$ALCHEMY_API_KEY"
+export NETWORK=$2
+REMOTE_RPC_URL=$RPC_URL
 GUARDIAN_V3="0xa5ac766b22d9966c3e64cc44923a48cb8b052eda"
 POOLS_TO_MIGRATE="[281474976710662,281474976710668]"
 ADMIN="0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb" # The account of PRIVATE_KEY
@@ -28,7 +28,7 @@ PRE_VALIDATION=true
 POST_VALIDATION=false
 
 deploy() {
-    RPC_URL=$1
+    RPC_URL_LOCAL=$1
 
     echo ""
     echo "##########################################################################"
@@ -36,17 +36,17 @@ deploy() {
     echo "##########################################################################"
     echo ""
 
-    export VERSION="v3.1"
-    export ROOT=$(cast call $GUARDIAN_V3 "root()(address)" --rpc-url "$RPC_URL")
+
+    export ROOT=$(cast call $GUARDIAN_V3 "root()(address)" --rpc-url "$RPC_URL_LOCAL")
     export PROTOCOL_ADMIN=$ADMIN
     export OPS_ADMIN=$ADMIN
     forge script script/LaunchDeployer.s.sol \
         --optimize \
-        --rpc-url "$RPC_URL" \
+        --rpc-url "$RPC_URL_LOCAL" \
         --private-key "$PRIVATE_KEY" \
         --broadcast
 
-    VERSION="v3.1" ./script/deploy/update_network_config.py "$NETWORK" --script script/LaunchDeployer.s.sol
+    VERSION="v3.1" ./script/deploy/update_network_config.py "$NETWORK" --script LaunchDeployer.s.sol
 
     echo ""
     echo "##########################################################################"
@@ -57,11 +57,11 @@ deploy() {
     forge script script/spell/MigrationV3_1.s.sol:MigrationV3_1Deployer \
         --sig "run(address)" $ADMIN \
         --optimize \
-        --rpc-url "$RPC_URL" \
+        --rpc-url "$RPC_URL_LOCAL" \
         --private-key "$PRIVATE_KEY" \
         --broadcast
 
-    CHAIN_ID=$(cast chain-id --rpc-url "$RPC_URL")
+    CHAIN_ID=$(cast chain-id --rpc-url "$RPC_URL_LOCAL")
     MIGRATION_SPELL=$(jq -r '.transactions[] | select(.contractName=="MigrationSpell") | .contractAddress' \
         broadcast/MigrationV3_1.s.sol/"$CHAIN_ID"/run-latest.json)
 
@@ -72,12 +72,12 @@ deploy() {
     echo ""
 
     cast send $GUARDIAN_V3 "scheduleRely(address)" "$MIGRATION_SPELL" \
-        --rpc-url "$RPC_URL" \
+        --rpc-url "$RPC_URL_LOCAL" \
         --private-key "$PRIVATE_KEY"
 }
 
 execute() {
-    RPC_URL=$1
+    RPC_URL_LOCAL=$1
 
     echo ""
     echo "##########################################################################"
@@ -85,8 +85,13 @@ execute() {
     echo "##########################################################################"
     echo ""
 
+    ROOT=$(cast call $GUARDIAN_V3 "root()(address)" --rpc-url "$RPC_URL_LOCAL")
+    CHAIN_ID=$(cast chain-id --rpc-url "$RPC_URL_LOCAL")
+    MIGRATION_SPELL=$(jq -r '.transactions[] | select(.contractName=="MigrationSpell") | .contractAddress' \
+        broadcast/MigrationV3_1.s.sol/"$CHAIN_ID"/run-latest.json)
+
     cast send "$ROOT" "executeScheduledRely(address)" "$MIGRATION_SPELL" \
-        --rpc-url "$RPC_URL" \
+        --rpc-url "$RPC_URL_LOCAL" \
         --private-key "$PRIVATE_KEY"
 
     echo ""
@@ -96,7 +101,7 @@ execute() {
     echo ""
 
     cast send $GUARDIAN_V3 "pause()" \
-        --rpc-url "$RPC_URL" \
+        --rpc-url "$RPC_URL_LOCAL" \
         --private-key "$PRIVATE_KEY"
 
     echo ""
@@ -106,10 +111,10 @@ execute() {
     echo ""
 
     forge script test/spell/migration/ValidationRunner.sol:ValidationRunner \
-        --rpc-url "$RPC_URL" \
+        --rpc-url "$RPC_URL_LOCAL" \
         --sig "validate(string,string,address,uint64[],bool)" \
         "$NETWORK" \
-        "$RPC_URL" \
+        "$RPC_URL_LOCAL" \
         $ADMIN \
         "$POOLS_TO_MIGRATE" \
         $PRE_VALIDATION
@@ -123,7 +128,7 @@ execute() {
     forge script script/spell/MigrationV3_1.s.sol:MigrationV3_1ExecutorTestnet \
         --sig "run(address, uint64[])" "$MIGRATION_SPELL" "$POOLS_TO_MIGRATE" \
         --optimize \
-        --rpc-url "$RPC_URL" \
+        --rpc-url "$RPC_URL_LOCAL" \
         --private-key "$PRIVATE_KEY" \
         --broadcast
 
@@ -134,10 +139,10 @@ execute() {
     echo ""
 
     forge script test/spell/migration/ValidationRunner.sol:ValidationRunner \
-        --rpc-url "$RPC_URL" \
+        --rpc-url "$RPC_URL_LOCAL" \
         --sig "validate(string,string,address,uint64[],bool)" \
         "$NETWORK" \
-        "$RPC_URL" \
+        "$RPC_URL_LOCAL" \
         $ADMIN \
         "$POOLS_TO_MIGRATE" \
         $POST_VALIDATION
@@ -149,7 +154,7 @@ execute() {
     echo ""
 
     cast send $GUARDIAN_V3 "unpause()" \
-        --rpc-url "$RPC_URL" \
+        --rpc-url "$RPC_URL_LOCAL" \
         --private-key "$PRIVATE_KEY"
 
 }
@@ -162,20 +167,20 @@ case "$MODE" in
         ANVIL_PID=$!
         trap "kill $ANVIL_PID" EXIT
 
-        LOCAL_RPC_URL="http://127.0.0.1:8545" #anvil
+        LOCALHOST_RPC_URL="http://127.0.0.1:8545" #anvil
         sleep 3.0 # Wait ensuring Anvil is up
 
-        deploy $LOCAL_RPC_URL
+        deploy $LOCALHOST_RPC_URL
 
         # As a mocked process to skip 48 hours of delay
         cast rpc evm_increaseTime 172800 \
-            --rpc-url $LOCAL_RPC_URL \
+            --rpc-url $LOCALHOST_RPC_URL \
 
         # Mine a new block to set the new timestamp
         cast rpc evm_mine \
-            --rpc-url $LOCAL_RPC_URL
+            --rpc-url $LOCALHOST_RPC_URL
 
-        execute $LOCAL_RPC_URL
+        execute $LOCALHOST_RPC_URL
         ;;
     deploy)
         read -p "You're not in a fork. Are you sure you want to continue? [y/N] " confirm

@@ -63,6 +63,7 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
         startDeploymentOutput();
 
         vm.startBroadcast();
+        captureStartBlock();
 
         if (deployWormhole) {
             address wormholeRelayer = vm.parseJsonAddress(config, "$.adapters.wormhole.relayer");

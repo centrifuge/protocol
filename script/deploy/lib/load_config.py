@@ -59,7 +59,17 @@ class EnvironmentLoader:
         env_vars["ETHERSCAN_API_KEY"] = self.etherscan_api_key
         env_vars["PROTOCOL_ADMIN"] = self.protocol_admin_address
         env_vars["OPS_ADMIN"] = self.ops_admin_address
-        env_vars["PRIVATE_KEY"] = self.private_key
+        # For mainnet, leave PRIVATE_KEY blank (should use Ledger or external signing)
+        # For testnet, try to get the private key if available
+        if self.is_testnet:
+            try:
+                env_vars["PRIVATE_KEY"] = self.private_key or ""
+            except (ValueError, RuntimeError):
+                # If loading fails (e.g., GCP not configured), leave blank
+                env_vars["PRIVATE_KEY"] = ""
+        else:
+            # Mainnet: leave PRIVATE_KEY blank (should use Ledger or external signing)
+            env_vars["PRIVATE_KEY"] = ""
         env_vars["RPC_URL"] = self.rpc_url
 
         # Write back to .env (preserving order if possible, otherwise sorted)

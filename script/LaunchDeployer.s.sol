@@ -28,6 +28,7 @@ contract LaunchDeployer is FullDeployer {
 
     function run() public virtual {
         vm.startBroadcast();
+        captureStartBlock();
 
         string memory network;
         string memory config;

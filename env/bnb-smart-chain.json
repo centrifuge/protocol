@@ -153,7 +153,8 @@
     "deploy:protocol": {
       "gitCommit": "e56ca26",
       "timestamp": "2025-07-21T11:48:56Z",
-      "version": "3"
+      "version": "3",
+      "startBlock": 54800894
     }
   }
 }
