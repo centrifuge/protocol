@@ -148,11 +148,13 @@ ARM -> BalanceSheet : transferSharesFrom(escrow→ARM)
 BalanceSheet -> PoolEscrow : transfer shares to ARM
 ARM -> BalanceSheet : revoke(shares)
 BalanceSheet -> ShareToken : burn(shares)
+ARM -> BalanceSheet : noteWithdraw(assets)
 
 note right of PoolEscrow
     Assets: total = Z, reserved = Z
     Shares: burned (removed from supply)
     reservedBy[ARM][REASON_REDEEM][assets] = Z
+    noteWithdraw queues asset decrease for Hub
 end note
 
 == bot triggers fulfillment ==
@@ -170,12 +172,13 @@ Investor -> Vault : withdraw()
 Vault --> ARM : withdraw() or redeem()
 ARM -> BalanceSheet : unreserve(assets, REASON_REDEEM)
 BalanceSheet -> PoolEscrow : decrease reserved counter
-ARM -> BalanceSheet : withdraw(assets, investor)
+ARM -> BalanceSheet : withdraw(EscrowAndTransfer)
 BalanceSheet -> PoolEscrow : withdraw() + authTransferTo()
 PoolEscrow --> Investor : transfer assets
 
 note right of Investor
     Assets transferred to investor
+    EscrowAndTransfer: noteWithdraw already queued
     Redemption complete
 end note
 

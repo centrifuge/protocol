@@ -20,7 +20,6 @@ import {Gateway} from "../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
 import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
-import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
 import {GasService} from "../../src/core/messaging/GasService.sol";
 import {PricingLib} from "../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
@@ -29,6 +28,7 @@ import {VaultRegistry} from "../../src/core/spoke/VaultRegistry.sol";
 import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
+import {BalanceSheet, WithdrawMode} from "../../src/core/spoke/BalanceSheet.sol";
 import {MAX_MESSAGE_COST} from "../../src/core/messaging/interfaces/IGasService.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 import {IMessageHandler} from "../../src/core/messaging/interfaces/IMessageHandler.sol";
@@ -672,6 +672,14 @@ contract EndToEndFlows is EndToEndUtils {
         vault.withdraw(vault.maxWithdraw(INVESTOR_A), INVESTOR_A, INVESTOR_A);
 
         assertEq(s.usdc.balanceOf(INVESTOR_A), shareToAsset(shares), "expected assets");
+
+        if (nonZeroPrices) {
+            assertEq(
+                s.balanceSheet.availableBalanceOf(POOL_A, SC_1, address(s.usdc), 0),
+                0,
+                "escrow balance should be zero after full redemption"
+            );
+        }
     }
 
     //----------------------------------------------------------------------------------------------
@@ -848,7 +856,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.startPrank(BSM);
         s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
         s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
-        s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5, true);
+        s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5, WithdrawMode.Full);
         s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
 
         // CHECKS

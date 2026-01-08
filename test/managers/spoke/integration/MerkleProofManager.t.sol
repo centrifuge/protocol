@@ -123,8 +123,8 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             decoder: address(decoder),
             target: address(balanceSheet),
             valueNonZero: false,
-            selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128,bool)"),
-            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20, erc20TokenId, manager, true)
+            selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
+            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20, erc20TokenId, manager)
         });
 
         leafs[1] = PolicyLeaf({
@@ -151,14 +151,13 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             decoder: makeAddr("notADecoder"),
             target: address(balanceSheet),
             targetData: abi.encodeWithSelector(
-                BalanceSheet.withdraw.selector,
+                _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
                 POOL_A,
                 defaultTypedShareClassId,
                 address(erc20),
                 erc20TokenId,
                 address(manager),
-                withdrawAmount,
-                true
+                withdrawAmount
             ),
             value: 0,
             proof: proofs[0]
@@ -179,8 +178,8 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             decoder: address(decoder),
             target: address(balanceSheet),
             valueNonZero: false,
-            selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128,bool)"),
-            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20, erc20TokenId, manager, true)
+            selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
+            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20, erc20TokenId, manager)
         });
 
         leafs[1] = PolicyLeaf({
@@ -207,14 +206,13 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             decoder: address(decoder),
             target: address(balanceSheet),
             targetData: abi.encodeWithSelector(
-                BalanceSheet.withdraw.selector,
+                _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
                 POOL_A,
                 defaultTypedShareClassId,
                 address(erc20),
                 erc20TokenId,
                 address(manager),
-                withdrawAmount,
-                true
+                withdrawAmount
             ),
             value: 0,
             proof: proofs[0]
@@ -224,7 +222,7 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             abi.encodeWithSelector(
                 IERC7751.WrappedError.selector,
                 address(balanceSheet),
-                BalanceSheet.withdraw.selector,
+                _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
                 abi.encodeWithSelector(IAuth.NotAuthorized.selector),
                 abi.encodeWithSignature("CallFailed()")
             )
@@ -246,7 +244,7 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             decoder: address(decoder),
             target: address(balanceSheet),
             valueNonZero: false,
-            selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128,bool)"),
+            selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
             addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20, erc20TokenId, manager)
         });
 
@@ -274,14 +272,13 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             decoder: address(decoder),
             target: address(balanceSheet),
             targetData: abi.encodeWithSelector(
-                BalanceSheet.withdraw.selector,
+                _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
                 POOL_A,
                 defaultTypedShareClassId,
                 address(erc20),
                 erc20TokenId,
                 address(manager),
-                withdrawAmount,
-                true
+                withdrawAmount
             ),
             value: 0,
             proof: proofs[0]
@@ -293,9 +290,9 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
                 PolicyLeaf({
                     decoder: address(decoder),
                     target: address(balanceSheet),
-                    selector: BalanceSheet.withdraw.selector,
+                    selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
                     addresses: abi.encodePacked(
-                        POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(manager), true
+                        POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(manager)
                     ),
                     valueNonZero: false
                 }),
@@ -319,7 +316,7 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             decoder: address(decoder),
             target: address(balanceSheet),
             valueNonZero: false,
-            selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128,bool)"),
+            selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
             addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20, erc20TokenId, manager)
         });
 
@@ -347,14 +344,13 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             decoder: address(decoder),
             target: address(balanceSheet),
             targetData: abi.encodeWithSelector(
-                BalanceSheet.withdraw.selector,
+                _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
                 POOL_A,
                 defaultTypedShareClassId,
                 address(erc20),
                 erc20TokenId,
                 makeAddr("otherTarget"), // invalid target, should be address(manager)
-                withdrawAmount,
-                true
+                withdrawAmount
             ),
             value: 0,
             proof: proofs[0]
@@ -366,9 +362,9 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
                 PolicyLeaf({
                     decoder: address(decoder),
                     target: address(balanceSheet),
-                    selector: BalanceSheet.withdraw.selector,
+                    selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
                     addresses: abi.encodePacked(
-                        POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, makeAddr("otherTarget"), true
+                        POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, makeAddr("otherTarget")
                     ),
                     valueNonZero: false
                 }),
@@ -405,8 +401,8 @@ contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
             decoder: address(decoder),
             target: address(balanceSheet),
             valueNonZero: false,
-            selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128,bool)"),
-            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20, erc20TokenId, manager, true)
+            selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
+            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20, erc20TokenId, manager)
         });
 
         leafs[1] = PolicyLeaf({
@@ -451,14 +447,13 @@ contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
             decoder: address(decoder),
             target: address(balanceSheet),
             targetData: abi.encodeWithSelector(
-                BalanceSheet.withdraw.selector,
+                _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
                 POOL_A,
                 defaultTypedShareClassId,
                 address(erc20),
                 erc20TokenId,
                 address(manager),
-                withdrawAmount,
-                true
+                withdrawAmount
             ),
             value: 0,
             proof: proofs[0]

@@ -16,8 +16,8 @@ import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IEndorsements} from "../../../../src/core/spoke/interfaces/IEndorsements.sol";
-import {BalanceSheet, IBalanceSheet} from "../../../../src/core/spoke/BalanceSheet.sol";
 import {ISpokeMessageSender} from "../../../../src/core/messaging/interfaces/IGatewaySenders.sol";
+import {BalanceSheet, IBalanceSheet, WithdrawMode} from "../../../../src/core/spoke/BalanceSheet.sol";
 import {IPoolEscrowProvider} from "../../../../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
 import {IRoot} from "../../../../src/admin/interfaces/IRoot.sol";
@@ -336,7 +336,7 @@ contract BalanceSheetTestWithdraw is BalanceSheetTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, true);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, WithdrawMode.Full);
     }
 
     function testWithdraw() public {
@@ -345,7 +345,7 @@ contract BalanceSheetTestWithdraw is BalanceSheetTest {
         vm.prank(MANAGER);
         vm.expectEmit();
         emit IBalanceSheet.Withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, ASSET_PRICE);
-        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, true);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, WithdrawMode.Full);
 
         (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(queuedAssetCounter, 1);
@@ -358,7 +358,7 @@ contract BalanceSheetTestWithdraw is BalanceSheetTest {
         _mockEscrowWithdraw(erc20, 0, 0);
 
         vm.startPrank(MANAGER);
-        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, 0, true);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, 0, WithdrawMode.Full);
 
         (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(queuedAssetCounter, 0);
@@ -368,8 +368,8 @@ contract BalanceSheetTestWithdraw is BalanceSheetTest {
         _mockEscrowWithdraw(erc20, 0, AMOUNT);
 
         vm.startPrank(MANAGER);
-        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, true);
-        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, true);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, WithdrawMode.Full);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, WithdrawMode.Full);
 
         (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(queuedAssetCounter, 1);
@@ -386,7 +386,36 @@ contract BalanceSheetTestWithdraw is BalanceSheetTest {
 
         vm.expectEmit();
         emit IBalanceSheet.Withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, IDENTITY_PRICE); // override
-        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, true);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, WithdrawMode.Full);
+    }
+
+    function testWithdrawEscrowOnlyNoQueue() public {
+        vm.mockCall(
+            escrow, abi.encodeWithSelector(IPoolEscrow.withdraw.selector, SC_1, erc20, 0, TO, AMOUNT), abi.encode()
+        );
+        vm.mockCall(escrow, abi.encodeWithSelector(IEscrow.authTransferTo.selector, erc20, 0, TO, AMOUNT), abi.encode());
+
+        vm.prank(MANAGER);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, WithdrawMode.EscrowAndTransfer);
+
+        // Verify no queueing happened
+        (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(queuedAssetCounter, 0);
+        (, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
+        assertEq(withdrawals, 0);
+    }
+
+    function testWithdrawEscrowAndTransferEmitsEvent() public {
+        vm.mockCall(
+            escrow, abi.encodeWithSelector(IPoolEscrow.withdraw.selector, SC_1, erc20, 0, TO, AMOUNT), abi.encode()
+        );
+        vm.mockCall(escrow, abi.encodeWithSelector(IEscrow.authTransferTo.selector, erc20, 0, TO, AMOUNT), abi.encode());
+
+        vm.expectEmit();
+        emit IBalanceSheet.Withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, ASSET_PRICE);
+
+        vm.prank(MANAGER);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, WithdrawMode.EscrowAndTransfer);
     }
 }
 
@@ -672,7 +701,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
 
         vm.startPrank(MANAGER);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT * 3);
-        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, true);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, WithdrawMode.Full);
 
         vm.expectEmit();
         emit IBalanceSheet.SubmitQueuedAssets(
@@ -696,7 +725,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
 
         vm.startPrank(MANAGER);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
-        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT * 3, true);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT * 3, WithdrawMode.Full);
         balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
 
         (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
@@ -715,7 +744,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
 
         vm.startPrank(MANAGER);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
-        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, true);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, WithdrawMode.Full);
         balanceSheet.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_20, EXTRA_GAS, REFUND);
 
         (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
@@ -922,12 +951,12 @@ contract BalanceSheetTestResetPricePoolPerShare is BalanceSheetTest {
     }
 }
 
-contract BalanceSheetTestWithdrawUnnoted is BalanceSheetTest {
-    function testWithdrawUnnotedERC20() public {
+contract BalanceSheetTestWithdrawTransferOnly is BalanceSheetTest {
+    function testWithdrawTransferOnlyERC20() public {
         vm.mockCall(escrow, abi.encodeWithSelector(IEscrow.authTransferTo.selector, erc20, 0, TO, AMOUNT), abi.encode());
 
         vm.prank(MANAGER);
-        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, false);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT, WithdrawMode.TransferOnly);
 
         // Verify 0 accounting changes
         (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
@@ -936,13 +965,13 @@ contract BalanceSheetTestWithdrawUnnoted is BalanceSheetTest {
         assertEq(withdrawals, 0);
     }
 
-    function testWithdrawUnnotedERC6909() public {
+    function testWithdrawTransferOnlyERC6909() public {
         vm.mockCall(
             escrow, abi.encodeWithSelector(IEscrow.authTransferTo.selector, erc6909, TOKEN_ID, TO, AMOUNT), abi.encode()
         );
 
         vm.prank(MANAGER);
-        balanceSheet.withdraw(POOL_A, SC_1, erc6909, TOKEN_ID, TO, AMOUNT, false);
+        balanceSheet.withdraw(POOL_A, SC_1, erc6909, TOKEN_ID, TO, AMOUNT, WithdrawMode.TransferOnly);
 
         (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(queuedAssetCounter, 0);

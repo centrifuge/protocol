@@ -17,7 +17,7 @@ import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {IPoolEscrow} from "../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
-import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {IBalanceSheet, WithdrawMode} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {VaultDetails, IVaultRegistry} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
@@ -75,6 +75,10 @@ contract AsyncRequestManagerTest is Test {
     uint128 constant ASSETS = 1000e6;
     uint128 constant SHARES = 2000e18;
     D18 immutable PRICE = d18(0.5e18); // 0.5 assets per share
+
+    // Explicit selector for withdraw with WithdrawMode enum
+    bytes4 constant WITHDRAW_SELECTOR =
+        bytes4(keccak256("withdraw(uint64,bytes16,address,uint256,address,uint128,uint8)"));
 
     AsyncRequestManager manager;
 
@@ -511,8 +515,10 @@ contract AsyncRequestManagerTestApprovedDeposits is AsyncRequestManagerTest {
         );
         vm.mockCall(
             address(balanceSheet),
-            abi.encodeWithSelector(balanceSheet.noteDeposit.selector, POOL_A, SC_1, asset, TOKEN_ID, ASSETS),
-            abi.encode()
+            abi.encodeWithSignature(
+                "noteDeposit(uint64,bytes16,address,uint256,uint128)", POOL_A, SC_1, asset, TOKEN_ID, ASSETS
+            ),
+            abi.encode(PRICE)
         );
         vm.mockCall(
             address(balanceSheet),
@@ -609,6 +615,13 @@ contract AsyncRequestManagerTestRevokedShares is AsyncRequestManagerTest {
         );
         vm.mockCall(
             address(balanceSheet),
+            abi.encodeWithSignature(
+                "noteWithdraw(uint64,bytes16,address,uint256,uint128)", POOL_A, SC_1, asset, TOKEN_ID, ASSETS
+            ),
+            abi.encode(PRICE)
+        );
+        vm.mockCall(
+            address(balanceSheet),
             abi.encodeWithSelector(balanceSheet.overridePricePoolPerShare.selector, POOL_A, SC_1, PRICE),
             abi.encode()
         );
@@ -656,6 +669,12 @@ contract AsyncRequestManagerTestRevokedShares is AsyncRequestManagerTest {
                 SHARES,
                 address(manager),
                 REASON_REDEEM
+            )
+        );
+        vm.expectCall(
+            address(balanceSheet),
+            abi.encodeWithSignature(
+                "noteWithdraw(uint64,bytes16,address,uint256,uint128)", POOL_A, SC_1, asset, TOKEN_ID, ASSETS
             )
         );
 
@@ -730,7 +749,7 @@ contract AsyncRequestManagerTestFulfillDepositRequest is AsyncRequestManagerTest
         vm.mockCall(
             address(balanceSheet),
             abi.encodeWithSelector(
-                balanceSheet.withdraw.selector, POOL_A, SC_1, asset, TOKEN_ID, USER, cancelledAmount, false
+                WITHDRAW_SELECTOR, POOL_A, SC_1, asset, TOKEN_ID, USER, cancelledAmount, WithdrawMode.TransferOnly
             ),
             abi.encode()
         );
@@ -794,7 +813,7 @@ contract AsyncRequestManagerTestFulfillDepositRequest is AsyncRequestManagerTest
         vm.mockCall(
             address(balanceSheet),
             abi.encodeWithSelector(
-                balanceSheet.withdraw.selector, POOL_A, SC_1, asset, TOKEN_ID, RECEIVER, cancelledAmount, false
+                WITHDRAW_SELECTOR, POOL_A, SC_1, asset, TOKEN_ID, RECEIVER, cancelledAmount, WithdrawMode.TransferOnly
             ),
             abi.encode()
         );
@@ -815,7 +834,7 @@ contract AsyncRequestManagerTestFulfillDepositRequest is AsyncRequestManagerTest
         vm.expectCall(
             address(balanceSheet),
             abi.encodeWithSelector(
-                balanceSheet.withdraw.selector, POOL_A, SC_1, asset, TOKEN_ID, RECEIVER, cancelledAmount, false
+                WITHDRAW_SELECTOR, POOL_A, SC_1, asset, TOKEN_ID, RECEIVER, cancelledAmount, WithdrawMode.TransferOnly
             )
         );
 
@@ -928,7 +947,14 @@ contract AsyncRequestManagerTestDeposit is AsyncRequestManagerTest {
         vm.mockCall(
             address(balanceSheet),
             abi.encodeWithSelector(
-                balanceSheet.withdraw.selector, POOL_A, SC_1, address(shareToken), uint256(0), RECEIVER, SHARES, false
+                WITHDRAW_SELECTOR,
+                POOL_A,
+                SC_1,
+                address(shareToken),
+                uint256(0),
+                RECEIVER,
+                SHARES,
+                WithdrawMode.TransferOnly
             ),
             abi.encode()
         );
@@ -996,7 +1022,14 @@ contract AsyncRequestManagerTestMint is AsyncRequestManagerTest {
         vm.mockCall(
             address(balanceSheet),
             abi.encodeWithSelector(
-                balanceSheet.withdraw.selector, POOL_A, SC_1, address(shareToken), uint256(0), RECEIVER, SHARES, false
+                WITHDRAW_SELECTOR,
+                POOL_A,
+                SC_1,
+                address(shareToken),
+                uint256(0),
+                RECEIVER,
+                SHARES,
+                WithdrawMode.TransferOnly
             ),
             abi.encode()
         );

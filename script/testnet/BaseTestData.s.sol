@@ -15,6 +15,7 @@ import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
+import {WithdrawMode} from "../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 
@@ -351,7 +352,7 @@ abstract contract BaseTestData is LaunchDeployer {
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
 
         // Withdraw principal
-        balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6, true);
+        balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6, WithdrawMode.Full);
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
 
         // Issue and claim

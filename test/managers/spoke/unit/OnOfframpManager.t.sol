@@ -12,7 +12,7 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {IBalanceSheet, WithdrawMode} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 
 import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
 import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
@@ -37,6 +37,10 @@ contract OnOfframpManagerTest is Test {
     uint128 constant DEFAULT_AMOUNT = 100;
     uint128 constant DEFAULT_ASSET_ID = 100;
     uint256 constant ERC20_TOKEN_ID = 0;
+
+    // Selector for the withdraw function with WithdrawMode
+    bytes4 constant WITHDRAW_SELECTOR =
+        bytes4(keccak256("withdraw(uint64,bytes16,address,uint256,address,uint128,uint8)"));
 
     address contractUpdater = makeAddr("contractUpdater");
     address relayer = makeAddr("relayer");
@@ -100,7 +104,7 @@ contract OnOfframpManagerTest is Test {
         internal
     {
         bytes memory callData = abi.encodeWithSelector(
-            IBalanceSheet.withdraw.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver_, amount
+            WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver_, amount, WithdrawMode.Full
         );
 
         if (shouldRevert) {
@@ -365,7 +369,7 @@ contract OnOfframpManagerWithdrawSuccessTests is OnOfframpManagerTest {
         vm.expectCall(
             address(balanceSheet),
             abi.encodeWithSelector(
-                IBalanceSheet.withdraw.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount
+                WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount, WithdrawMode.Full
             )
         );
 
@@ -509,7 +513,7 @@ contract OnOfframpManagerTrustedWithdrawSuccessTests is OnOfframpManagerTest {
         vm.expectCall(
             address(balanceSheet),
             abi.encodeWithSelector(
-                IBalanceSheet.withdraw.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount
+                WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount, WithdrawMode.Full
             )
         );
 
@@ -536,7 +540,7 @@ contract OnOfframpManagerTrustedWithdrawSuccessTests is OnOfframpManagerTest {
         vm.expectCall(
             address(balanceSheet),
             abi.encodeWithSelector(
-                IBalanceSheet.withdraw.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount1
+                WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount1, WithdrawMode.Full
             )
         );
 
@@ -552,7 +556,7 @@ contract OnOfframpManagerTrustedWithdrawSuccessTests is OnOfframpManagerTest {
         vm.expectCall(
             address(balanceSheet),
             abi.encodeWithSelector(
-                IBalanceSheet.withdraw.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver2, amount2
+                WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver2, amount2, WithdrawMode.Full
             )
         );
 
@@ -592,7 +596,7 @@ contract OnOfframpManagerTrustedWithdrawSuccessTests is OnOfframpManagerTest {
         vm.expectCall(
             address(balanceSheet),
             abi.encodeWithSelector(
-                IBalanceSheet.withdraw.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount
+                WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount, WithdrawMode.Full
             )
         );
 

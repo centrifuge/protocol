@@ -12,8 +12,8 @@ import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
+import {IBalanceSheet, WithdrawMode} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 
 /// @title  OnOfframpManager
 /// @notice Balance sheet manager for depositing and withdrawing ERC20 assets.
@@ -87,7 +87,7 @@ contract OnOfframpManager is IOnOfframpManager {
             address receiver = receiverAddress.toAddress();
 
             require(offramp[asset][receiver], InvalidOfframpDestination());
-            balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount, true);
+            balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount, WithdrawMode.Full);
             emit TrustedWithdraw(asset, amount, receiver);
         }
     }
@@ -124,7 +124,7 @@ contract OnOfframpManager is IOnOfframpManager {
         require(relayer[msg.sender], NotRelayer());
         require(receiver != address(0) && offramp[asset][receiver], InvalidOfframpDestination());
 
-        balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount, true);
+        balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount, WithdrawMode.Full);
     }
 
     //----------------------------------------------------------------------------------------------
