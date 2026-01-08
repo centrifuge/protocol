@@ -7,6 +7,6 @@ import {V3Contracts} from "../../../../src/spell/migration_v3.1/MigrationSpell.s
 /// @dev Wraps PoolMigrationOldContracts to avoid polluting production code
 struct V3ContractsExt {
     V3Contracts inner;
-    address messageDispatcher;
     address tokenFactory;
+    address routerEscrow;
 }

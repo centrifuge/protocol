@@ -8,6 +8,7 @@ import {Validate_Spoke} from "./validators/Validate_Spoke.sol";
 import {Validate_Holdings} from "./validators/Validate_Holdings.sol";
 import {Validate_HubRegistry} from "./validators/Validate_HubRegistry.sol";
 import {Validate_SyncManager} from "./validators/Validate_SyncManager.sol";
+import {Validate_VaultRouter} from "./validators/Validate_VaultRouter.sol";
 import {Validate_BalanceSheet} from "./validators/Validate_BalanceSheet.sol";
 import {Validate_TokenFactory} from "./validators/Validate_TokenFactory.sol";
 import {Validate_VaultRegistry} from "./validators/Validate_VaultRegistry.sol";
@@ -75,7 +76,7 @@ library ValidationOrchestrator {
         emit log_string("[CONTEXT] Building shared validation context...");
 
         V3ContractsExt memory old = V3ContractsExt({
-            inner: queryService.v3Contracts(), messageDispatcher: chain.rootWard, tokenFactory: chain.tokenFactory
+            inner: queryService.v3Contracts(), tokenFactory: chain.tokenFactory, routerEscrow: chain.routerEscrow
         });
 
         PoolId[] memory hubPools = queryService.hubPools(pools);
@@ -141,7 +142,7 @@ library ValidationOrchestrator {
     // ============================================
 
     function _buildPreSuite() private returns (ValidationSuite memory) {
-        BaseValidator[] memory validators = new BaseValidator[](16);
+        BaseValidator[] memory validators = new BaseValidator[](17);
 
         validators[0] = new Validate_EpochOutstandingInvests();
         validators[1] = new Validate_EpochOutstandingRedeems();
@@ -159,6 +160,7 @@ library ValidationOrchestrator {
         validators[13] = new Validate_BatchRequestManager();
         validators[14] = new Validate_UnclaimedInvestOrders();
         validators[15] = new Validate_UnclaimedRedeemOrders();
+        validators[16] = new Validate_VaultRouter();
 
         return ValidationSuite({validators: validators});
     }
