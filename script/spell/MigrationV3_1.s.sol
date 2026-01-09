@@ -60,15 +60,15 @@ contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
 
     receive() external payable {}
 
-    function run(MigrationSpell migrationSpell, PoolId[] memory poolsToMigrate) external {
+    function run(MigrationSpell migrationSpell) external {
         vm.startBroadcast();
 
-        migrate(msg.sender, migrationSpell, poolsToMigrate);
+        migrate(msg.sender, migrationSpell);
 
         vm.stopBroadcast();
     }
 
-    function migrate(address deployer_, MigrationSpell migrationSpell, PoolId[] memory poolsToMigrate) public {
+    function migrate(address deployer_, MigrationSpell migrationSpell) public {
         deployer = deployer_; // This must be set before _contractAddr
         string memory graphQLApi = isMainnet ? GraphQLConstants.PRODUCTION_API : GraphQLConstants.TESTNET_API;
         configureGraphQl(graphQLApi, MessageDispatcher(_contractAddr("messageDispatcher")).localCentrifugeId());
@@ -112,6 +112,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
             })
         );
 
+        PoolId[] memory poolsToMigrate = pools();
         for (uint256 i; i < poolsToMigrate.length; i++) {
             PoolId poolId = poolsToMigrate[i];
 

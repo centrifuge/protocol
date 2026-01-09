@@ -13,7 +13,6 @@ import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {HubRegistry} from "../../core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../../core/spoke/BalanceSheet.sol";
-import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {VaultKind} from "../../core/spoke/interfaces/IVault.sol";
 import {MultiAdapter} from "../../core/messaging/MultiAdapter.sol";
 import {ContractUpdater} from "../../core/utils/ContractUpdater.sol";
@@ -25,6 +24,7 @@ import {IVault, VaultKind} from "../../core/spoke/interfaces/IVault.sol";
 import {MessageProcessor} from "../../core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../../core/messaging/MessageDispatcher.sol";
 import {VaultRegistry, VaultDetails} from "../../core/spoke/VaultRegistry.sol";
+import {ShareClassId, newShareClassId} from "../../core/types/ShareClassId.sol";
 import {PoolEscrowFactory} from "../../core/spoke/factories/PoolEscrowFactory.sol";
 import {IVaultFactory} from "../../core/spoke/factories/interfaces/IVaultFactory.sol";
 
@@ -302,7 +302,7 @@ contract MigrationSpell {
     }
 
     function _migratePool(PoolId poolId, PoolParamsInput memory input) internal {
-        ShareClassId scId = input.shareClassManager.previewNextShareClassId(poolId);
+        ShareClassId scId = newShareClassId(poolId, 1);
         bool inHub = HubRegistry(input.v3.hubRegistry).exists(poolId);
         bool inSpoke = Spoke(input.v3.spoke).isPoolActive(poolId);
 
@@ -338,9 +338,17 @@ contract MigrationSpell {
         for (uint256 i; i < input.chainsWherePoolIsNotified.length; i++) {
             uint16 centrifugeId = input.chainsWherePoolIsNotified[i];
             if (poolId.centrifugeId() != centrifugeId) {
-                IAdapter[] memory adapters = _getAdapters(input.multiAdapter, centrifugeId, poolId);
-                input.multiAdapter
-                    .setAdapters(centrifugeId, poolId, adapters, uint8(adapters.length), uint8(adapters.length));
+                IAdapter[] memory adapters = _getAdapters(input.multiAdapter, centrifugeId, GLOBAL_POOL);
+                if (adapters.length > 0) {
+                    input.multiAdapter
+                        .setAdapters(
+                            centrifugeId,
+                            poolId,
+                            adapters,
+                            input.multiAdapter.threshold(centrifugeId, GLOBAL_POOL),
+                            input.multiAdapter.recoveryIndex(centrifugeId, GLOBAL_POOL)
+                        );
+                }
             }
         }
 

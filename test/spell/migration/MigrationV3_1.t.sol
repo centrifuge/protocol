@@ -4,8 +4,6 @@ pragma solidity 0.8.28;
 import {ChainResolver} from "./ChainResolver.sol";
 import {ValidationOrchestrator} from "./validation/ValidationOrchestrator.sol";
 
-import {PoolId} from "../../../src/core/types/PoolId.sol";
-
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 
 import {MigrationQueries} from "../../../script/spell/MigrationQueries.sol";
@@ -35,24 +33,6 @@ contract MigrationV3_1Test is Test {
         ChainResolver.ChainContext memory chain = ChainResolver.resolveChainContext(isMainnet);
         MigrationQueries queryService = new MigrationQueries(isMainnet);
         queryService.configureGraphQl(chain.graphQLApi, chain.localCentrifugeId);
-
-        PoolId[] memory poolsToMigrate;
-        if (isMainnet) {
-            // NOTE: EXCLUDED_POOL_JTRSY and EXCLUDED_POOL_JAAA are excluded (see MigrationQueries.sol)
-            poolsToMigrate = new PoolId[](8);
-            poolsToMigrate[0] = PoolId.wrap(281474976710659);
-            poolsToMigrate[1] = PoolId.wrap(281474976710660);
-            poolsToMigrate[2] = PoolId.wrap(281474976710661);
-            poolsToMigrate[3] = PoolId.wrap(281474976710662);
-            poolsToMigrate[4] = PoolId.wrap(281474976710663);
-            poolsToMigrate[5] = PoolId.wrap(281474976710664);
-            poolsToMigrate[6] = PoolId.wrap(281474976710665);
-            poolsToMigrate[7] = PoolId.wrap(1125899906842625);
-        } else {
-            poolsToMigrate = new PoolId[](2);
-            poolsToMigrate[0] = PoolId.wrap(281474976710662);
-            poolsToMigrate[1] = PoolId.wrap(281474976710668);
-        }
 
         // ----- DEPLOY V3.1 -----
 
@@ -90,7 +70,7 @@ contract MigrationV3_1Test is Test {
         // ----- BUILD SHARED CONTEXT -----
 
         ValidationOrchestrator.SharedContext memory shared =
-            ValidationOrchestrator.buildSharedContext(queryService, poolsToMigrate, chain, "", true);
+            ValidationOrchestrator.buildSharedContext(queryService, chain, "", true);
 
         // ----- PRE-MIGRATION VALIDATION -----
 
@@ -106,7 +86,7 @@ contract MigrationV3_1Test is Test {
 
         // ----- EXECUTE MIGRATION -----
 
-        migration.migrate(address(deployer), migrationSpell, poolsToMigrate);
+        migration.migrate(address(deployer), migrationSpell);
 
         // ----- POST-MIGRATION VALIDATION -----
 

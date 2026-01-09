@@ -126,6 +126,33 @@ contract MigrationQueries is GraphQLQuery {
         v3.redemptionRestrictions = json.readAddress(".data.deployments.items[0].redemptionRestrictionsHook");
     }
 
+    /// @notice Get all pools from all chains
+    function pools()
+        public
+        returns (PoolId[] memory result)
+    {
+
+        // forgefmt: disable-next-item
+        string memory json = _queryGraphQL(string.concat(
+            "pools(limit: 1000) {",
+            "  totalCount"
+            "  items {"
+            "    id"
+            "  }"
+            "}"
+        ));
+
+        uint256 totalCount = json.readUint(".data.pools.totalCount");
+        if (totalCount == 0) {
+            return new PoolId[](0);
+        }
+
+        result = new PoolId[](totalCount);
+        for (uint256 i = 0; i < totalCount; i++) {
+            result[i] = PoolId.wrap(uint64(json.readUint(_buildJsonPath(".data.pools.items", i, "id"))));
+        }
+    }
+
     /// @notice Get all spoke asset IDs for this chain
     function spokeAssetIds()
         public

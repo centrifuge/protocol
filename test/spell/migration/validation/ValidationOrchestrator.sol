@@ -60,7 +60,6 @@ library ValidationOrchestrator {
     /// @notice Build shared context for validation
     /// @dev Call this ONCE before runPreValidation, reuse for runPostValidation
     /// @param queryService MigrationQueries instance (shared with executor)
-    /// @param pools All pools to migrate
     /// @param chain ChainContext with resolved addresses and API endpoint
     /// @param cacheDir Cache directory for file persistence (empty string = in-memory only)
     /// For tests: cacheDir = "" (in-memory only)
@@ -68,7 +67,6 @@ library ValidationOrchestrator {
     /// @return shared SharedContext to pass to runPreValidation and runPostValidation
     function buildSharedContext(
         MigrationQueries queryService,
-        PoolId[] memory pools,
         ChainResolver.ChainContext memory chain,
         string memory cacheDir,
         bool cleanCache
@@ -79,6 +77,7 @@ library ValidationOrchestrator {
             inner: queryService.v3Contracts(), tokenFactory: chain.tokenFactory, routerEscrow: chain.routerEscrow
         });
 
+        PoolId[] memory pools = queryService.pools();
         PoolId[] memory hubPools = queryService.hubPools(pools);
 
         shared = SharedContext({

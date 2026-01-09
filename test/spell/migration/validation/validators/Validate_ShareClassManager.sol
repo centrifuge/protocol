@@ -62,15 +62,13 @@ contract Validate_ShareClassManager is BaseValidator {
             PoolId poolId = ctx.hubPools[i];
             uint32 count = scm.shareClassCount(poolId);
 
-            if (count != 1) {
+            if (count > 1) {
                 errors[errorCount++] = _buildError({
                     field: "shareClassCount",
                     value: string.concat("Pool ", _toString(PoolId.unwrap(poolId))),
                     expected: "1",
                     actual: _toString(count),
-                    message: count == 0
-                        ? "Pool has no share classes (not initialized?)"
-                        : "Pool has multiple share classes (migration assumes 1)"
+                    message: "Pool has multiple share classes (migration assumes 1)"
                 });
             }
         }

@@ -6,7 +6,6 @@ import {ValidationOrchestrator} from "./validation/ValidationOrchestrator.sol";
 
 import {Hub} from "../../../src/core/hub/Hub.sol";
 import {Spoke} from "../../../src/core/spoke/Spoke.sol";
-import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {Holdings} from "../../../src/core/hub/Holdings.sol";
 import {Accounting} from "../../../src/core/hub/Accounting.sol";
 import {Gateway} from "../../../src/core/messaging/Gateway.sol";
@@ -78,13 +77,7 @@ contract ValidationRunner is Test {
     ISafe immutable ADMIN = ISafe(makeAddr("ADMIN"));
     bytes32 constant NEW_VERSION = "v3.1";
 
-    function validate(
-        string memory network,
-        string memory rpcUrl,
-        address safeAdmin,
-        PoolId[] memory poolsToMigrate,
-        bool isPre
-    ) public {
+    function validate(string memory network, string memory rpcUrl, address safeAdmin, bool isPre) public {
         vm.createSelectFork(rpcUrl);
 
         string memory configFile = string.concat("env/", network, ".json");
@@ -96,9 +89,8 @@ contract ValidationRunner is Test {
         ChainResolver.ChainContext memory chain = ChainResolver.resolveChainContext(isMainnet);
         MigrationQueries queryService = new MigrationQueries(isMainnet);
         queryService.configureGraphQl(chain.graphQLApi, chain.localCentrifugeId);
-        ValidationOrchestrator.SharedContext memory shared = ValidationOrchestrator.buildSharedContext(
-            queryService, poolsToMigrate, chain, "spell-cache/validation", isPre
-        );
+        ValidationOrchestrator.SharedContext memory shared =
+            ValidationOrchestrator.buildSharedContext(queryService, chain, "spell-cache/validation", isPre);
 
         FullReport memory latest = _reportFromJson(config);
 
