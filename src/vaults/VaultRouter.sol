@@ -109,9 +109,9 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
         vaultRegistry.vaultDetails(vault); // Ensure vault is valid
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vault.share(), owner, address(this), shares);
 
-        spoke.crosschainTransferShares{
-            value: msgValue()
-        }(centrifugeId, vault.poolId(), vault.scId(), receiver, shares, extraGasLimit, remoteExtraGasLimit, refund);
+        spoke.crosschainTransferShares{value: msgValue()}(
+            centrifugeId, vault.poolId(), vault.scId(), receiver, shares, extraGasLimit, remoteExtraGasLimit, refund
+        );
     }
 
     /// @inheritdoc IVaultRouter

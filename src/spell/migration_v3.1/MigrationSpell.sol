@@ -475,8 +475,9 @@ contract MigrationSpell {
 
                 if (balance > 0) {
                     bool isShare = false;
-                    try IERC165(assetInfo.addr)
-                        .supportsInterface(type(IERC7575Share).interfaceId) returns (bool result) {
+                    try IERC165(assetInfo.addr).supportsInterface(type(IERC7575Share).interfaceId) returns (
+                        bool result
+                    ) {
                         isShare = result;
                     } catch {}
 

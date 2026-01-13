@@ -436,24 +436,22 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.setPoolMetadata(poolId, bytes(params.poolMetadata));
         hub.addShareClass(poolId, params.shareClassName, params.shareClassSymbol, params.shareClassMeta);
         hub.notifyPool{value: xcGasPerCall}(poolId, params.targetCentrifugeId, msg.sender);
-        hub.notifyShareClass{
-            value: xcGasPerCall
-        }(poolId, scId, params.targetCentrifugeId, address(redemptionRestrictionsHook).toBytes32(), msg.sender);
-        hub.setRequestManager{
-            value: xcGasPerCall
-        }(
+        hub.notifyShareClass{value: xcGasPerCall}(
+            poolId, scId, params.targetCentrifugeId, address(redemptionRestrictionsHook).toBytes32(), msg.sender
+        );
+        hub.setRequestManager{value: xcGasPerCall}(
             poolId,
             params.targetCentrifugeId,
             IHubRequestManager(batchRequestManager),
             address(asyncRequestManager).toBytes32(),
             msg.sender
         );
-        hub.updateBalanceSheetManager{
-            value: xcGasPerCall
-        }(poolId, params.targetCentrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender);
-        hub.updateBalanceSheetManager{
-            value: xcGasPerCall
-        }(poolId, params.targetCentrifugeId, address(params.admin).toBytes32(), true, msg.sender);
+        hub.updateBalanceSheetManager{value: xcGasPerCall}(
+            poolId, params.targetCentrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender
+        );
+        hub.updateBalanceSheetManager{value: xcGasPerCall}(
+            poolId, params.targetCentrifugeId, address(params.admin).toBytes32(), true, msg.sender
+        );
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
@@ -470,9 +468,7 @@ abstract contract BaseTestData is LaunchDeployer {
                 AccountId.wrap(0x04)
             );
         }
-        hub.updateVault{
-            value: xcGasPerCall
-        }(
+        hub.updateVault{value: xcGasPerCall}(
             poolId,
             scId,
             params.assetId,
@@ -504,24 +500,22 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.setPoolMetadata(poolId, bytes(params.poolMetadata));
         hub.addShareClass(poolId, params.shareClassName, params.shareClassSymbol, params.shareClassMeta);
         hub.notifyPool{value: xcGasPerCall}(poolId, params.targetCentrifugeId, msg.sender);
-        hub.notifyShareClass{
-            value: xcGasPerCall
-        }(poolId, scId, params.targetCentrifugeId, address(redemptionRestrictionsHook).toBytes32(), msg.sender);
-        hub.setRequestManager{
-            value: xcGasPerCall
-        }(
+        hub.notifyShareClass{value: xcGasPerCall}(
+            poolId, scId, params.targetCentrifugeId, address(redemptionRestrictionsHook).toBytes32(), msg.sender
+        );
+        hub.setRequestManager{value: xcGasPerCall}(
             poolId,
             params.targetCentrifugeId,
             IHubRequestManager(batchRequestManager),
             address(asyncRequestManager).toBytes32(),
             msg.sender
         );
-        hub.updateBalanceSheetManager{
-            value: xcGasPerCall
-        }(poolId, params.targetCentrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender);
-        hub.updateBalanceSheetManager{
-            value: xcGasPerCall
-        }(poolId, params.targetCentrifugeId, address(syncManager).toBytes32(), true, msg.sender);
+        hub.updateBalanceSheetManager{value: xcGasPerCall}(
+            poolId, params.targetCentrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender
+        );
+        hub.updateBalanceSheetManager{value: xcGasPerCall}(
+            poolId, params.targetCentrifugeId, address(syncManager).toBytes32(), true, msg.sender
+        );
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
@@ -538,9 +532,7 @@ abstract contract BaseTestData is LaunchDeployer {
                 AccountId.wrap(0x04)
             );
         }
-        hub.updateVault{
-            value: xcGasPerCall
-        }(
+        hub.updateVault{value: xcGasPerCall}(
             poolId,
             scId,
             params.assetId,
@@ -552,9 +544,7 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.updateSharePrice(poolId, scId, pricePoolPerShare, uint64(block.timestamp));
         hub.notifySharePrice{value: xcGasPerCall}(poolId, scId, params.targetCentrifugeId, msg.sender);
         hub.notifyAssetPrice{value: xcGasPerCall}(poolId, scId, params.assetId, msg.sender);
-        hub.updateContract{
-            value: xcGasPerCall
-        }(
+        hub.updateContract{value: xcGasPerCall}(
             poolId,
             scId,
             params.targetCentrifugeId,

@@ -54,9 +54,9 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
 
     /// @inheritdoc IQueueManager
     function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds, address refund) external payable {
-        gateway.withBatch{
-            value: msg.value
-        }(abi.encodeWithSelector(QueueManager.syncCallback.selector, poolId, scId, assetIds), refund);
+        gateway.withBatch{value: msg.value}(
+            abi.encodeWithSelector(QueueManager.syncCallback.selector, poolId, scId, assetIds), refund
+        );
     }
 
     function syncCallback(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external {

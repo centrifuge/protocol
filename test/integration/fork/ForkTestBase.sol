@@ -266,10 +266,9 @@ contract ForkTestBase is Test {
     /// @notice Add a user as pool member using raw pool/shareClass IDs
     function _addPoolMemberRaw(PoolId poolId, ShareClassId scId, address user) internal virtual {
         vm.startPrank(_getPoolAdmin(poolId));
-        forkHub.hub
-        .updateRestriction{
-            value: GAS
-        }(poolId, scId, forkSpoke.centrifugeId, _updateRestrictionMemberMsg(user), HOOK_GAS, address(this));
+        forkHub.hub.updateRestriction{value: GAS}(
+            poolId, scId, forkSpoke.centrifugeId, _updateRestrictionMemberMsg(user), HOOK_GAS, address(this)
+        );
         vm.stopPrank();
     }
 

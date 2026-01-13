@@ -30,9 +30,9 @@ abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
         require(_sender == address(0), AlreadyBatching());
 
         _sender = msg.sender;
-        gateway.withBatch{
-            value: msg.value
-        }(abi.encodeWithSelector(BatchedMulticall.executeMulticall.selector, data), msg.sender);
+        gateway.withBatch{value: msg.value}(
+            abi.encodeWithSelector(BatchedMulticall.executeMulticall.selector, data), msg.sender
+        );
         _sender = address(0);
     }
 

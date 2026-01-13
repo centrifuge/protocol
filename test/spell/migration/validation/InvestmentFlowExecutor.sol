@@ -324,10 +324,7 @@ contract InvestmentFlowExecutor is Test {
         }
 
         vm.startPrank(ctx.gql.hubManager);
-        ctx.report.core.hub
-        .updateContract{
-            value: GAS
-        }(
+        ctx.report.core.hub.updateContract{value: GAS}(
             ctx.poolId,
             ctx.scId,
             ctx.localCentrifugeId,
@@ -467,10 +464,9 @@ contract InvestmentFlowExecutor is Test {
         uint16 localCentrifugeId
     ) internal {
         vm.startPrank(hubManager);
-        report.core.hub
-        .updateRestriction{
-            value: GAS
-        }(poolId, scId, localCentrifugeId, _updateRestrictionMemberMsg(investor), HOOK_GAS, address(this));
+        report.core.hub.updateRestriction{value: GAS}(
+            poolId, scId, localCentrifugeId, _updateRestrictionMemberMsg(investor), HOOK_GAS, address(this)
+        );
         vm.stopPrank();
     }
 
@@ -479,15 +475,15 @@ contract InvestmentFlowExecutor is Test {
 
         uint32 depositEpochId = ctx.report.batchRequestManager.nowDepositEpoch(ctx.poolId, ctx.scId, ctx.assetId);
         D18 pricePoolPerAsset = ctx.report.core.hub.pricePoolPerAsset(ctx.poolId, ctx.scId, ctx.assetId);
-        ctx.report.batchRequestManager
-        .approveDeposits{
-            value: GAS
-        }(ctx.poolId, ctx.scId, ctx.assetId, depositEpochId, amount, pricePoolPerAsset, address(this));
+        ctx.report.batchRequestManager.approveDeposits{value: GAS}(
+            ctx.poolId, ctx.scId, ctx.assetId, depositEpochId, amount, pricePoolPerAsset, address(this)
+        );
 
         uint32 issueEpochId = ctx.report.batchRequestManager.nowIssueEpoch(ctx.poolId, ctx.scId, ctx.assetId);
         (D18 sharePrice,) = ctx.report.core.shareClassManager.pricePoolPerShare(ctx.poolId, ctx.scId);
-        ctx.report.batchRequestManager
-        .issueShares{value: GAS}(ctx.poolId, ctx.scId, ctx.assetId, issueEpochId, sharePrice, HOOK_GAS, address(this));
+        ctx.report.batchRequestManager.issueShares{value: GAS}(
+            ctx.poolId, ctx.scId, ctx.assetId, issueEpochId, sharePrice, HOOK_GAS, address(this)
+        );
 
         vm.stopPrank();
     }
@@ -496,10 +492,7 @@ contract InvestmentFlowExecutor is Test {
         address ANY = makeAddr("ANY");
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        ctx.report.batchRequestManager
-        .notifyDeposit{
-            value: GAS
-        }(
+        ctx.report.batchRequestManager.notifyDeposit{value: GAS}(
             ctx.poolId,
             ctx.scId,
             ctx.assetId,
@@ -530,8 +523,9 @@ contract InvestmentFlowExecutor is Test {
 
         uint32 revokeEpochId = ctx.report.batchRequestManager.nowRevokeEpoch(ctx.poolId, ctx.scId, ctx.assetId);
         (D18 sharePrice,) = ctx.report.core.shareClassManager.pricePoolPerShare(ctx.poolId, ctx.scId);
-        ctx.report.batchRequestManager
-        .revokeShares{value: GAS}(ctx.poolId, ctx.scId, ctx.assetId, revokeEpochId, sharePrice, HOOK_GAS, address(this));
+        ctx.report.batchRequestManager.revokeShares{value: GAS}(
+            ctx.poolId, ctx.scId, ctx.assetId, revokeEpochId, sharePrice, HOOK_GAS, address(this)
+        );
 
         vm.stopPrank();
     }
@@ -542,10 +536,7 @@ contract InvestmentFlowExecutor is Test {
         address ANY = makeAddr("ANY");
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        ctx.report.batchRequestManager
-        .notifyRedeem{
-            value: GAS
-        }(
+        ctx.report.batchRequestManager.notifyRedeem{value: GAS}(
             ctx.poolId,
             ctx.scId,
             ctx.assetId,
@@ -571,10 +562,9 @@ contract InvestmentFlowExecutor is Test {
             vm.startPrank(ctx.gql.hubManager);
             while (nowIssueEpoch < nowDepositEpoch) {
                 (D18 sharePrice,) = ctx.report.core.shareClassManager.pricePoolPerShare(ctx.poolId, ctx.scId);
-                ctx.report.batchRequestManager
-                .issueShares{
-                    value: GAS
-                }(ctx.poolId, ctx.scId, ctx.assetId, nowIssueEpoch, sharePrice, HOOK_GAS, address(this));
+                ctx.report.batchRequestManager.issueShares{value: GAS}(
+                    ctx.poolId, ctx.scId, ctx.assetId, nowIssueEpoch, sharePrice, HOOK_GAS, address(this)
+                );
                 nowIssueEpoch = ctx.report.batchRequestManager.nowIssueEpoch(ctx.poolId, ctx.scId, ctx.assetId);
             }
             vm.stopPrank();
@@ -589,10 +579,9 @@ contract InvestmentFlowExecutor is Test {
             vm.startPrank(ctx.gql.hubManager);
             while (nowRevokeEpoch < nowRedeemEpoch) {
                 (D18 sharePrice,) = ctx.report.core.shareClassManager.pricePoolPerShare(ctx.poolId, ctx.scId);
-                ctx.report.batchRequestManager
-                .revokeShares{
-                    value: GAS
-                }(ctx.poolId, ctx.scId, ctx.assetId, nowRevokeEpoch, sharePrice, HOOK_GAS, address(this));
+                ctx.report.batchRequestManager.revokeShares{value: GAS}(
+                    ctx.poolId, ctx.scId, ctx.assetId, nowRevokeEpoch, sharePrice, HOOK_GAS, address(this)
+                );
                 nowRevokeEpoch = ctx.report.batchRequestManager.nowRevokeEpoch(ctx.poolId, ctx.scId, ctx.assetId);
             }
             vm.stopPrank();

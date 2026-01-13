@@ -18,7 +18,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.4.1
+          version: v1.4.4
 
       - name: Run tests
         run: forge test --deny warnings --nmp "test/spell/**/*.sol"
@@ -34,7 +34,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.4.1
+          version: v1.4.4
 
       - name: Run pre-migration validation
         run: forge test --match-contract PreMigrationValidation --ffi -vv
@@ -49,7 +49,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.4.1
+          version: v1.4.4
 
       - name: Build contracts
         run: |
@@ -167,7 +167,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.4.1
+          version: v1.4.4
       #Make sure all tools are installed and with proper versions
       - name: Setup deployer tools
         env:
@@ -192,7 +192,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.4.1
+          version: v1.4.4
 
       - name: Run coverage
         run: forge coverage --report summary --report lcov --nmp "test/spell/**/*.sol"

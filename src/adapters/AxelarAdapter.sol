@@ -103,9 +103,9 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         AxelarDestination memory destination = destinations[centrifugeId];
         require(bytes(destination.axelarId).length != 0, UnknownChainId());
 
-        axelarGasService.payNativeGasForContractCall{
-            value: msg.value
-        }(address(this), destination.axelarId, destination.addr, payload, refund);
+        axelarGasService.payNativeGasForContractCall{value: msg.value}(
+            address(this), destination.axelarId, destination.addr, payload, refund
+        );
 
         axelarGateway.callContract(destination.axelarId, destination.addr, payload);
 

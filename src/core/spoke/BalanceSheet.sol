@@ -200,9 +200,9 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         shareQueue.queuedAssetCounter -= assetCounter;
 
         emit SubmitQueuedAssets(poolId, scId, assetId, data, pricePoolPerAsset);
-        sender.sendUpdateHoldingAmount{
-            value: msgValue()
-        }(poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit, refund);
+        sender.sendUpdateHoldingAmount{value: msgValue()}(
+            poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit, refund
+        );
     }
 
     /// @inheritdoc IBalanceSheet
