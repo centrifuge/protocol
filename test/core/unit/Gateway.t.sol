@@ -517,6 +517,13 @@ contract GatewayTestSend is GatewayTest {
         gateway.send{value: cost - 1}(REMOTE_CENT_ID, message, false, REFUND);
     }
 
+    function testErrMessageTooExpensive() public {
+        bytes memory message = MessageKind.WithPoolA1TooMuchGas.asBytes();
+
+        vm.expectRevert(IGateway.BatchTooExpensive.selector);
+        gateway.send(REMOTE_CENT_ID, message, false, REFUND);
+    }
+
     function testErrBatchTooExpensive() public {
         bytes memory message = MessageKind.WithPoolA1TooMuchGas.asBytes();
 

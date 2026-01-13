@@ -94,8 +94,6 @@ contract Gateway is Auth, Recoverable, IGateway {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMessageHandler
-    /// @dev If there is gas issues processing messages, none of the messages are executed
-    ///      Messages are only stored as failed by logical issues.
     function handle(uint16 centrifugeId, bytes memory batch) public pauseable auth {
         PoolId batchPoolId = messageProperties.messagePoolId(batch);
 
@@ -182,6 +180,8 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             TransientBytesLib.append(batchSlot, message);
         } else {
+            require(gasLimit <= messageProperties.maxBatchGasLimit(centrifugeId), BatchTooExpensive());
+
             uint256 cost = _send(centrifugeId, message, gasLimit, refund, unpaidMode, msg.value);
             _refund(refund, msg.value - cost);
         }
