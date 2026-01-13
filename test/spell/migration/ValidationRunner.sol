@@ -77,7 +77,9 @@ contract ValidationRunner is Test {
     ISafe immutable ADMIN = ISafe(makeAddr("ADMIN"));
     bytes32 constant NEW_VERSION = "v3.1";
 
-    function validate(string memory network, string memory rpcUrl, address safeAdmin, bool isPre) public {
+    function validate(string memory network, string memory rpcUrl, address safeAdmin, bool isPre, address executor)
+        public
+    {
         vm.createSelectFork(rpcUrl);
 
         string memory configFile = string.concat("env/", network, ".json");
@@ -90,7 +92,7 @@ contract ValidationRunner is Test {
         MigrationQueries queryService = new MigrationQueries(isMainnet);
         queryService.configureGraphQl(chain.graphQLApi, chain.localCentrifugeId);
         ValidationOrchestrator.SharedContext memory shared =
-            ValidationOrchestrator.buildSharedContext(queryService, chain, "spell-cache/validation", isPre);
+            ValidationOrchestrator.buildSharedContext(queryService, chain, "spell-cache/validation", isPre, executor);
 
         FullReport memory latest = _reportFromJson(config);
 

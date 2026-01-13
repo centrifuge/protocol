@@ -70,7 +70,7 @@ contract MigrationV3_1Test is Test {
         // ----- BUILD SHARED CONTEXT -----
 
         ValidationOrchestrator.SharedContext memory shared =
-            ValidationOrchestrator.buildSharedContext(queryService, chain, "", true);
+            ValidationOrchestrator.buildSharedContext(queryService, chain, "", true, address(migration));
 
         // ----- PRE-MIGRATION VALIDATION -----
 

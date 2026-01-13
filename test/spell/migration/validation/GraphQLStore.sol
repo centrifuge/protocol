@@ -75,6 +75,21 @@ contract GraphQLStore is GraphQLQuery {
         return json;
     }
 
+    /// @notice Set a custom json value
+    /// @dev Use in PRE phase - set value, stores in memory and optionally to file
+    /// @param q Any query used as key
+    /// @param json JSON response as string
+    function set(string memory q, string memory json) public {
+        bytes32 key = keccak256(bytes(q));
+
+        _stored[key] = json;
+
+        // Persist to file for cross-script access
+        if (_useFiles) {
+            _vmInstance().writeFile(_cacheFile(q), json);
+        }
+    }
+
     /// @notice Retrieve previously stored query result
     /// @dev Use in POST phase - retrieves from memory or file cache
     /// @param q GraphQL query string (same as used in query())

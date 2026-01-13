@@ -50,6 +50,7 @@ abstract contract BaseValidator is Test {
         GraphQLStore store; // GraphQL query storage (PRE: query+store, POST: retrieve)
         bool isMainnet;
         MigrationQueries queryService; // GraphQL query service for vault lookups
+        address executor; // Address that executes the migration spell
     }
 
     struct ValidationError {
