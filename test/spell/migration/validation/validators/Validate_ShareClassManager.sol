@@ -96,6 +96,11 @@ contract Validate_ShareClassManager is BaseValidator {
         for (uint256 i = 0; i < ctx.hubPools.length; i++) {
             PoolValidationContext memory pctx = _buildPoolContext(ctx.hubPools[i], oldScm, newScm);
 
+            // Skip pools without share class metadata (inactive/uninitialized)
+            // These pools are still registered in HubRegistry but have no share class
+            (string memory oldName,,) = pctx.oldScm.metadata(pctx.scId);
+            if (bytes(oldName).length == 0) continue;
+
             errorCount = _validateShareClassCount(pctx, errors, errorCount);
             errorCount = _validateSalts(pctx, errors, errorCount);
             errorCount = _validateTotalIssuance(pctx, errors, errorCount);
