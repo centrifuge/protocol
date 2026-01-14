@@ -12,6 +12,7 @@ import {Validate_HubRegistry} from "./validators/Validate_HubRegistry.sol";
 import {Validate_SyncManager} from "./validators/Validate_SyncManager.sol";
 import {Validate_VaultRouter} from "./validators/Validate_VaultRouter.sol";
 import {Validate_BalanceSheet} from "./validators/Validate_BalanceSheet.sol";
+import {Validate_MultiAdapter} from "./validators/Validate_MultiAdapter.sol";
 import {Validate_TokenFactory} from "./validators/Validate_TokenFactory.sol";
 import {Validate_VaultRegistry} from "./validators/Validate_VaultRegistry.sol";
 import {Validate_ShareTokenHook} from "./validators/Validate_ShareTokenHook.sol";
@@ -176,7 +177,7 @@ library ValidationOrchestrator {
     }
 
     function _buildPostSuite() private returns (ValidationSuite memory) {
-        BaseValidator[] memory validators = new BaseValidator[](12);
+        BaseValidator[] memory validators = new BaseValidator[](13);
 
         validators[0] = new Validate_ShareClassManager();
         validators[1] = new Validate_BalanceSheet();
@@ -190,6 +191,7 @@ library ValidationOrchestrator {
         validators[9] = new Validate_InvestmentFlows();
         validators[10] = new Validate_Subsidy();
         validators[11] = new Validate_ShareTokenHook();
+        validators[12] = new Validate_MultiAdapter();
 
         return ValidationSuite({validators: validators});
     }
