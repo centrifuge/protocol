@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 import json, re, sys, pathlib
 
+# Takes into account diverge computation from the base benchmarked value.
+OFFSET = 25_000;
+
 def main(json_path, sol_path):
     data = json.loads(pathlib.Path(json_path).read_text(encoding="utf-8"))
     src  = pathlib.Path(sol_path).read_text(encoding="utf-8")
@@ -17,7 +20,7 @@ def main(json_path, sol_path):
             rf'(\s*;)([^\n]*)?',                     # semicolon + trailing comment
             re.M,
         )
-        new_src, n = pat.subn(rf'\1\2_gasValue({int(v)})\4\5', src, count=1)
+        new_src, n = pat.subn(rf'\1\2_gasValue({int(v) + OFFSET})\4\5', src, count=1)
         if n == 0:
             missing.append((k, v))
         else:
