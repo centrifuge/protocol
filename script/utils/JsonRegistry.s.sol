@@ -10,7 +10,6 @@ contract JsonRegistry is Script {
     bool shouldLabelAddresses;
     string addressLabelPrefix;
     uint256 deploymentStartBlock;
-    uint256 deploymentEndBlock;
 
     function register(string memory name, address target) public {
         // Note: Real block numbers are extracted from broadcast artifacts by verifier.py
@@ -41,33 +40,27 @@ contract JsonRegistry is Script {
         deploymentStartBlock = block.number;
     }
 
-    function captureEndBlock() public {
-        deploymentEndBlock = block.number;
-    }
-
     function saveDeploymentOutput() public {
         string memory dir = "./env/latest/";
         if (!vm.exists(dir)) {
             vm.createDir(dir, true);
         }
 
-        // Add deployment block range to output if captured
-        string memory blockRangeJson = "";
-        if (deploymentStartBlock > 0 && deploymentEndBlock > 0) {
-            blockRangeJson = string(
+        // Add deployment start block to output if captured
+        string memory blockJson = "";
+
+        // forgefmt: disable-next-item
+        if (deploymentStartBlock > 0)
+        {
+            blockJson = string(
                 abi.encodePacked(
-                    "\n  },\n  \"deploymentBlocks\": {\n",
-                    "    \"startBlock\": \"",
+                    "\n  },\n  \"deploymentStartBlock\": \"",
                     vm.toString(deploymentStartBlock),
-                    "\",\n",
-                    "    \"endBlock\": \"",
-                    vm.toString(deploymentEndBlock),
-                    "\"\n",
-                    "  }\n}"
+                    "\"\n}"
                 )
             );
         } else {
-            blockRangeJson = "\n  }\n}";
+            blockJson = "\n  }\n}";
         }
 
         // Save with timestamp for history
@@ -83,7 +76,7 @@ contract JsonRegistry is Script {
                 ".json"
             )
         );
-        string memory fullOutput = string(abi.encodePacked(deploymentOutput, blockRangeJson));
+        string memory fullOutput = string(abi.encodePacked(deploymentOutput, blockJson));
         vm.writeFile(timestampedPath, fullOutput);
         console.log("Contract addresses saved to: %s", timestampedPath);
 

@@ -18,6 +18,10 @@ contract Validate_CrossChainMessages is BaseValidator {
         return Phase.PRE;
     }
 
+    function name() public pure override returns (string memory) {
+        return "CrossChainMessages";
+    }
+
     function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
         string memory json = ctx.store.query(QUERY);
 

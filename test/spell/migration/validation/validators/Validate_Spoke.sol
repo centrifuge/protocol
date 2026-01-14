@@ -28,6 +28,10 @@ contract Validate_Spoke is BaseValidator {
         return Phase.BOTH;
     }
 
+    function name() public pure override returns (string memory) {
+        return "Spoke";
+    }
+
     function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
         if (ctx.phase == Phase.PRE) {
             return _validatePre(ctx);
@@ -50,9 +54,9 @@ contract Validate_Spoke is BaseValidator {
         VaultData[] memory vaults = _getVaults(ctx);
         AssetId[] memory spokeAssetIds = _getSpokeAssetIds(ctx);
 
-        // Pre-allocate errors: pool checks + vault checks + asset id checks
+        // Pre-allocate errors: pool checks (isActive + requestManager) + vault checks + asset id checks (idToAsset + assetToId)
         ValidationError[] memory errors =
-            new ValidationError[](ctx.pools.length * 2 + vaults.length * 3 + spokeAssetIds.length);
+            new ValidationError[](ctx.pools.length * 2 + vaults.length * 3 + spokeAssetIds.length * 2);
         uint256 errorCount = 0;
 
         errorCount = _validatePools(ctx, errors, errorCount);
@@ -300,24 +304,30 @@ contract Validate_Spoke is BaseValidator {
             });
         }
 
+        AssetId oldReversedId = oldSpoke.assetToId(oldAsset, oldTokenId);
+        AssetId newReversedId = newSpoke.assetToId(newAsset, newTokenId);
+
+        if (!(oldReversedId == newReversedId)) {
+            errors[errorCount++] = _buildError({
+                field: "assetToId",
+                value: string.concat("Asset ", vm.toString(oldAsset), " tokenId ", _toString(oldTokenId)),
+                expected: string.concat("AssetId ", _toString(AssetId.unwrap(oldReversedId))),
+                actual: string.concat("AssetId ", _toString(AssetId.unwrap(newReversedId))),
+                message: string.concat(
+                    "Asset ", vm.toString(oldAsset), " tokenId ", _toString(oldTokenId), " assetToId mismatch"
+                )
+            });
+        }
+
         return errorCount;
     }
 
     function _vaultsQuery(ValidationContext memory ctx) internal pure returns (string memory) {
-        string memory poolIdsJson = "[";
-        for (uint256 i = 0; i < ctx.pools.length; i++) {
-            poolIdsJson = string.concat(poolIdsJson, _jsonValue(PoolId.unwrap(ctx.pools[i])));
-            if (i < ctx.pools.length - 1) {
-                poolIdsJson = string.concat(poolIdsJson, ", ");
-            }
-        }
-        poolIdsJson = string.concat(poolIdsJson, "]");
-
         return string.concat(
             "vaults(limit: 1000, where: { centrifugeId: ",
             _jsonValue(ctx.localCentrifugeId),
             ", poolId_in: ",
-            poolIdsJson,
+            _buildPoolIdsJson(ctx.pools),
             " }) { items { asset { id } poolId tokenId } totalCount }"
         );
     }

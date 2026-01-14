@@ -114,10 +114,9 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         }
 
         vm.prank(INVESTOR_A);
-        origin.spoke
-        .crosschainTransferShares{
-            value: GAS
-        }(dest.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), AMOUNT, HOOK_GAS, HOOK_GAS, INVESTOR_A);
+        origin.spoke.crosschainTransferShares{value: GAS}(
+            dest.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), AMOUNT, HOOK_GAS, HOOK_GAS, INVESTOR_A
+        );
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should be burned on chain B");
         assertEq(
             h.snapshotHook.transfers(POOL_A, SC_1, origin.centrifugeId, dest.centrifugeId),

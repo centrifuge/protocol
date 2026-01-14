@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {AxelarAddressToString} from "./utils/AxelarAddressToString.sol";
 import {CoreInput, CoreReport, CoreDeployer, CoreActionBatcher} from "./CoreDeployer.s.sol";
-
-import {Escrow} from "../src/misc/Escrow.sol";
 
 import {PoolId} from "../src/core/types/PoolId.sol";
 import {IAdapter} from "../src/core/messaging/interfaces/IAdapter.sol";
@@ -76,6 +73,7 @@ struct AdapterConnections {
     uint16 wormholeId;
     string axelarId;
     uint64 chainlinkId;
+    uint8 threshold;
 }
 
 struct AdaptersInput {
@@ -99,7 +97,6 @@ struct FullReport {
     TokenRecoverer tokenRecoverer;
     ProtocolGuardian protocolGuardian;
     OpsGuardian opsGuardian;
-    Escrow routerEscrow;
     SubsidyManager subsidyManager;
     RefundEscrowFactory refundEscrowFactory;
     AsyncVaultFactory asyncVaultFactory;
@@ -128,8 +125,6 @@ struct FullReport {
 }
 
 contract FullActionBatcher is CoreActionBatcher {
-    using AxelarAddressToString for address;
-
     constructor(address deployer_) CoreActionBatcher(deployer_) {}
 
     function engageFull(
@@ -137,12 +132,12 @@ contract FullActionBatcher is CoreActionBatcher {
         ISafe adminSafe,
         ISafe opsSafe,
         bool newRoot,
-        AdapterConnections[] memory connectionList
+        AdapterConnections[] memory connectionList,
+        string memory remoteAxelarAdapter
     ) public onlyDeployer {
         // Rely Root
         report.tokenRecoverer.rely(address(report.root));
 
-        report.routerEscrow.rely(address(report.root));
         report.subsidyManager.rely(address(report.root));
         report.refundEscrowFactory.rely(address(report.root));
         report.asyncVaultFactory.rely(address(report.root));
@@ -235,9 +230,6 @@ contract FullActionBatcher is CoreActionBatcher {
         report.syncManager.rely(address(report.syncDepositVaultFactory));
         report.asyncRequestManager.rely(address(report.syncDepositVaultFactory));
 
-        // Rely vaultRouter
-        report.routerEscrow.rely(address(report.vaultRouter));
-
         // Rely adminSafe
         if (address(report.layerZeroAdapter) != address(0)) {
             // Needed for setDelegate calls
@@ -292,10 +284,7 @@ contract FullActionBatcher is CoreActionBatcher {
 
             if (address(report.axelarAdapter) != address(0) && bytes(connections.axelarId).length != 0) {
                 report.axelarAdapter
-                    .wire(
-                        connections.centrifugeId,
-                        abi.encode(connections.axelarId, address(report.axelarAdapter).toAxelarString())
-                    );
+                    .wire(connections.centrifugeId, abi.encode(connections.axelarId, remoteAxelarAdapter));
                 adapters[n++] = report.axelarAdapter;
             }
 
@@ -313,7 +302,7 @@ contract FullActionBatcher is CoreActionBatcher {
                         connections.centrifugeId,
                         PoolId.wrap(0),
                         adapters,
-                        uint8(adapters.length),
+                        connections.threshold > 0 ? connections.threshold : uint8(adapters.length),
                         uint8(adapters.length)
                     );
             }
@@ -324,7 +313,6 @@ contract FullActionBatcher is CoreActionBatcher {
         if (report.root.wards(address(this)) == 1) report.root.deny(address(this));
         report.tokenRecoverer.deny(address(this));
 
-        report.routerEscrow.deny(address(this));
         report.refundEscrowFactory.deny(address(this));
         report.asyncVaultFactory.deny(address(this));
         report.asyncRequestManager.deny(address(this));
@@ -358,7 +346,6 @@ contract FullDeployer is CoreDeployer {
     ProtocolGuardian public protocolGuardian;
     OpsGuardian public opsGuardian;
 
-    Escrow public routerEscrow;
     SubsidyManager public subsidyManager;
     RefundEscrowFactory public refundEscrowFactory;
     AsyncVaultFactory public asyncVaultFactory;
@@ -433,10 +420,6 @@ contract FullDeployer is CoreDeployer {
             )
         );
 
-        routerEscrow = Escrow(
-            create3(generateSalt("routerEscrow"), abi.encodePacked(type(Escrow).creationCode, abi.encode(batcher)))
-        );
-
         refundEscrowFactory = RefundEscrowFactory(
             create3(
                 generateSalt("refundEscrowFactory"),
@@ -465,10 +448,7 @@ contract FullDeployer is CoreDeployer {
         vaultRouter = VaultRouter(
             create3(
                 generateSalt("vaultRouter"),
-                abi.encodePacked(
-                    type(VaultRouter).creationCode,
-                    abi.encode(address(routerEscrow), gateway, spoke, vaultRegistry, batcher)
-                )
+                abi.encodePacked(type(VaultRouter).creationCode, abi.encode(gateway, spoke, vaultRegistry, batcher))
             )
         );
 
@@ -700,7 +680,6 @@ contract FullDeployer is CoreDeployer {
         register("protocolGuardian", address(protocolGuardian));
         register("opsGuardian", address(opsGuardian));
 
-        register("routerEscrow", address(routerEscrow));
         register("refundEscrowFactory", address(refundEscrowFactory));
         register("subsidyManager", address(subsidyManager));
         register("asyncVaultFactory", address(asyncVaultFactory));
@@ -733,7 +712,14 @@ contract FullDeployer is CoreDeployer {
         if (input.adapters.layerZero.shouldDeploy) register("layerZeroAdapter", address(layerZeroAdapter));
         if (input.adapters.chainlink.shouldDeploy) register("chainlinkAdapter", address(chainlinkAdapter));
 
-        batcher.engageFull(fullReport(), input.adminSafe, input.opsSafe, newRoot, input.adapters.connections);
+        batcher.engageFull(
+            fullReport(),
+            input.adminSafe,
+            input.opsSafe,
+            newRoot,
+            input.adapters.connections,
+            vm.toString(address(axelarAdapter))
+        );
     }
 
     function fullReport() public view returns (FullReport memory) {
@@ -743,7 +729,6 @@ contract FullDeployer is CoreDeployer {
             tokenRecoverer,
             protocolGuardian,
             opsGuardian,
-            routerEscrow,
             subsidyManager,
             refundEscrowFactory,
             asyncVaultFactory,

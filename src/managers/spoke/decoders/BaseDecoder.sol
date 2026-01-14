@@ -61,17 +61,20 @@ contract BaseDecoder {
     /// @param  asset ERC20/ERC6909 asset that is withdrawn
     /// @param  tokenId ID of the token being withdrawn (for ERC6909)
     /// @param  receiver account receiving the withdrawn assets
-    /// @param  wasNoted whether funds were previously noted in accounting (should be true in general)
     function withdraw(
         PoolId poolId,
         ShareClassId scId,
         address asset,
         uint256 tokenId,
         address receiver,
-        uint128, /* amount */
-        bool wasNoted
-    ) external view virtual returns (bytes memory addressesFound) {
-        addressesFound = abi.encodePacked(poolId, scId, asset, tokenId, receiver, wasNoted);
+        uint128 /* amount */
+    )
+        external
+        view
+        virtual
+        returns (bytes memory addressesFound)
+    {
+        addressesFound = abi.encodePacked(poolId, scId, asset, tokenId, receiver);
     }
 
     fallback() external {

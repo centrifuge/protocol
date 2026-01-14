@@ -13,14 +13,30 @@ import {stdJson} from "forge-std/StdJson.sol";
 import {GraphQLQuery} from "../utils/GraphQLQuery.s.sol";
 import {AssetInfo, V3Contracts} from "../../src/spell/migration_v3.1/MigrationSpell.sol";
 
+struct VaultGraphQLData {
+    address vault; // vaults.id
+    uint64 poolIdRaw; // vaults.poolId
+    bytes16 tokenIdRaw; // vaults.tokenId (scId as bytes16)
+    string kind; // vaults.kind ("Async" | "SyncDepositAsyncRedeem")
+    address assetAddress; // vaults.assetAddress
+    uint8 assetDecimals; // vaults.asset.decimals
+    string assetSymbol; // vaults.asset.symbol
+    address hubManager; // vaults.token.pool.managers.items[0].address
+    uint16 hubCentrifugeId; // vaults.token.pool.managers.items[0].centrifugeId
+}
+
 /// @title MigrationQueries
 /// @notice Centralized GraphQL queries for migration scripts
 /// @dev Extracts query logic from MigrationV3_1Executor for reuse across spells and tests
 contract MigrationQueries is GraphQLQuery {
     using stdJson for string;
 
+    /// @notice Inactive/misconfigured pools excluded from migration (JTRSY and JAAA - wrong decimals)
+    uint64 public constant EXCLUDED_POOL_JTRSY = 281474976710657;
+    uint64 public constant EXCLUDED_POOL_JAAA = 281474976710658;
+
     string internal _api;
-    uint16 internal _centrifugeId;
+    uint16 public centrifugeId;
     bool public isMainnet;
 
     /// @param isMainnet_ True for mainnet, false for testnets (affects freelyTransferableHook handling)
@@ -32,7 +48,7 @@ contract MigrationQueries is GraphQLQuery {
     /// @param centrifugeId_ The centrifugeId to query for (from MessageDispatcher.localCentrifugeId())
     function configureGraphQl(string memory api_, uint16 centrifugeId_) public {
         _api = api_;
-        _centrifugeId = centrifugeId_;
+        centrifugeId = centrifugeId_;
     }
 
     function _graphQLApi() internal view override returns (string memory) {
@@ -54,7 +70,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
         );
 
@@ -63,6 +79,10 @@ contract MigrationQueries is GraphQLQuery {
             "deployments(", params, ") {",
             "  items {"
             "    root"
+            "    guardian"
+            "    tokenRecoverer"
+            "    messageDispatcher"
+            "    messageProcessor"
             "    gateway"
             "    poolEscrowFactory"
             "    spoke"
@@ -82,6 +102,10 @@ contract MigrationQueries is GraphQLQuery {
         ));
 
         v3.root = Root(json.readAddress(".data.deployments.items[0].root"));
+        v3.guardian = json.readAddress(".data.deployments.items[0].guardian");
+        v3.tokenRecoverer = json.readAddress(".data.deployments.items[0].tokenRecoverer");
+        v3.messageDispatcher = json.readAddress(".data.deployments.items[0].messageDispatcher");
+        v3.messageProcessor = json.readAddress(".data.deployments.items[0].messageProcessor");
         v3.gateway = json.readAddress(".data.deployments.items[0].gateway");
         v3.poolEscrowFactory = json.readAddress(".data.deployments.items[0].poolEscrowFactory");
         v3.spoke = json.readAddress(".data.deployments.items[0].spoke");
@@ -102,6 +126,33 @@ contract MigrationQueries is GraphQLQuery {
         v3.redemptionRestrictions = json.readAddress(".data.deployments.items[0].redemptionRestrictionsHook");
     }
 
+    /// @notice Get all pools from all chains
+    function pools()
+        public
+        returns (PoolId[] memory result)
+    {
+
+        // forgefmt: disable-next-item
+        string memory json = _queryGraphQL(string.concat(
+            "pools(limit: 1000) {",
+            "  totalCount"
+            "  items {"
+            "    id"
+            "  }"
+            "}"
+        ));
+
+        uint256 totalCount = json.readUint(".data.pools.totalCount");
+        if (totalCount == 0) {
+            return new PoolId[](0);
+        }
+
+        result = new PoolId[](totalCount);
+        for (uint256 i = 0; i < totalCount; i++) {
+            result[i] = PoolId.wrap(uint64(json.readUint(_buildJsonPath(".data.pools.items", i, "id"))));
+        }
+    }
+
     /// @notice Get all spoke asset IDs for this chain
     function spokeAssetIds()
         public
@@ -112,7 +163,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
         );
 
@@ -144,7 +195,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
         );
 
@@ -177,7 +228,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
         );
 
@@ -209,7 +260,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
         );
 
@@ -247,7 +298,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "  poolId: ", _jsonValue(poolId.raw()),
             "  isBalancesheetManager: true"
             "}"
@@ -281,7 +332,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "  poolId: ", _jsonValue(poolId.raw()),
             "  isHubManager: true"
             "}"
@@ -315,7 +366,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "  poolId: ", _jsonValue(poolId.raw()),
             "}"
         );
@@ -347,7 +398,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "  poolId: ", _jsonValue(poolId.raw()),
             "}"
         );
@@ -380,7 +431,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "  poolId: ", _jsonValue(poolId.raw()),
             "}"
         );
@@ -413,7 +464,7 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "  id: ", _jsonValue(poolId.raw()),
             "}"
         );
@@ -455,7 +506,7 @@ contract MigrationQueries is GraphQLQuery {
     /// @return result Pools where this chain is the hub
     function hubPools(PoolId[] memory allPools) public returns (PoolId[] memory result) {
         string memory json = _queryGraphQL(
-            string.concat("pools(where: {centrifugeId: ", _jsonValue(_centrifugeId), "}) { items { id } totalCount }")
+            string.concat("pools(where: {centrifugeId: ", _jsonValue(centrifugeId), "}) { items { id } totalCount }")
         );
 
         uint256 totalCount = json.readUint(".data.pools.totalCount");
@@ -486,6 +537,108 @@ contract MigrationQueries is GraphQLQuery {
         }
     }
 
+    /// @notice Get all vaults with linked status for the current chain
+    /// @dev Used by investment validation to test vault flows
+    function linkedVaults()
+        external
+        returns (address[] memory vaultAddrs)
+    {
+
+        // forgefmt: disable-next-item
+        string memory where = string.concat(
+            "  where: {"
+            "      centrifugeId: ", _jsonValue(centrifugeId), ","
+            "      status: Linked"
+            "  }"
+        );
+
+        // forgefmt: disable-next-item
+        string memory json = _queryGraphQL(string.concat(
+            "vaults(", where, ") {",
+            "  totalCount"
+            "  items {"
+            "    id"
+            "  }"
+            "}"
+        ));
+
+        uint256 totalCount = json.readUint(".data.vaults.totalCount");
+
+        vaultAddrs = new address[](totalCount);
+        for (uint256 i = 0; i < totalCount; i++) {
+            vaultAddrs[i] = json.readAddress(_buildJsonPath(".data.vaults.items", i, "id"));
+        }
+    }
+
+    /// @notice Get complete vault metadata for all linked vaults on this chain
+    function linkedVaultsWithMetadata()
+        external
+        returns (VaultGraphQLData[] memory vaultData)
+    {
+
+        // forgefmt: disable-next-item
+        string memory where = string.concat(
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId), ","
+            "  status: Linked"
+            "}"
+        );
+
+        // forgefmt: disable-next-item
+        string memory json = _queryGraphQL(string.concat(
+            "vaults(", where, ") {",
+            "  totalCount"
+            "  items {"
+            "    id"
+            "    poolId"
+            "    tokenId"
+            "    kind"
+            "    assetAddress"
+            "    asset {"
+            "      decimals"
+            "      symbol"
+            "    }"
+            "    token {"
+            "      pool {"
+            "        managers(where: {isHubManager: true}, limit: 1) {"
+            "          items {"
+            "            address"
+            "            centrifugeId"
+            "          }"
+            "        }"
+            "      }"
+            "    }"
+            "  }"
+            "}"
+        ));
+
+        uint256 totalCount = json.readUint(".data.vaults.totalCount");
+        vaultData = new VaultGraphQLData[](totalCount);
+
+        for (uint256 i = 0; i < totalCount; i++) {
+            string memory base = _buildJsonPath(".data.vaults.items", i, "");
+
+            vaultData[i].vault = json.readAddress(string.concat(base, "id"));
+            vaultData[i].poolIdRaw = uint64(json.readUint(string.concat(base, "poolId")));
+            vaultData[i].tokenIdRaw = _parseBytes16(json, string.concat(base, "tokenId"));
+            vaultData[i].kind = json.readString(string.concat(base, "kind"));
+            vaultData[i].assetAddress = json.readAddress(string.concat(base, "assetAddress"));
+            vaultData[i].assetDecimals = uint8(json.readUint(string.concat(base, "asset.decimals")));
+            vaultData[i].assetSymbol = json.readString(string.concat(base, "asset.symbol"));
+            vaultData[i].hubManager = json.readAddress(string.concat(base, "token.pool.managers.items[0].address"));
+            vaultData[i].hubCentrifugeId =
+                uint16(json.readUint(string.concat(base, "token.pool.managers.items[0].centrifugeId")));
+        }
+    }
+
+    function _parseBytes16(string memory json, string memory path) internal pure returns (bytes16 result) {
+        bytes memory rawBytes = json.readBytes(path);
+        require(rawBytes.length == 16, "Expected 16 bytes for tokenId");
+        assembly {
+            result := mload(add(rawBytes, 32))
+        }
+    }
+
     // ============================================
     // Getters
     // ============================================
@@ -493,10 +646,5 @@ contract MigrationQueries is GraphQLQuery {
     /// @notice Get the GraphQL API endpoint
     function graphQLApi() public view returns (string memory) {
         return _api;
-    }
-
-    /// @notice Get the stored centrifugeId
-    function centrifugeId() public view returns (uint16) {
-        return _centrifugeId;
     }
 }

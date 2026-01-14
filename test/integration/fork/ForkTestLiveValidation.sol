@@ -98,7 +98,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
     // Vault system
     address public router;
-    address public routerEscrow;
     address public asyncRequestManager;
     address public syncManager;
     address public refundEscrowFactory;
@@ -274,7 +273,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         // Vault system
         router = IntegrationConstants.ROUTER;
-        routerEscrow = IntegrationConstants.ROUTER_ESCROW;
         asyncRequestManager = IntegrationConstants.ASYNC_REQUEST_MANAGER;
         syncManager = IntegrationConstants.SYNC_MANAGER;
         refundEscrowFactory = IntegrationConstants.REFUND_ESCROW_FACTORY;
@@ -409,7 +407,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         // Vault system
         router = address(report.vaultRouter);
-        routerEscrow = address(report.routerEscrow);
         asyncRequestManager = address(report.asyncRequestManager);
         syncManager = address(report.syncManager);
         refundEscrowFactory = address(report.refundEscrowFactory);
@@ -459,7 +456,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         vm.label(contractUpdater, "ContractUpdater");
         vm.label(poolEscrowFactory, "PoolEscrowFactory");
         vm.label(router, "VaultRouter");
-        vm.label(routerEscrow, "RouterEscrow");
         vm.label(asyncRequestManager, "AsyncRequestManager");
         vm.label(syncManager, "SyncManager");
         vm.label(wormholeAdapter, "WormholeAdapter");
@@ -544,7 +540,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         // From FullDeployer - Admin & escrows
         _validateRootWard(tokenRecoverer);
-        _validateRootWard(routerEscrow);
         if (refundEscrowFactory != address(0)) _validateRootWard(refundEscrowFactory); // TODO: Remove condition when constant added
 
         // From FullDeployer - Vault system
@@ -717,8 +712,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         _validateWard(syncManager, contractUpdater);
         _validateWard(syncManager, syncDepositVaultFactory);
-
-        _validateWard(routerEscrow, router);
 
         if (vaultRegistry != address(0)) {
             _validateWard(asyncVaultFactory, vaultRegistry);

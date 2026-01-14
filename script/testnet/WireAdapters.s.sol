@@ -9,8 +9,6 @@ import {console} from "forge-std/console.sol";
 
 import {JsonRegistry} from "../utils/JsonRegistry.s.sol";
 
-import {AxelarAddressToString} from "../utils/AxelarAddressToString.sol";
-
 /// @title WireAdapters
 /// @notice Configures the source network's adapters to communicate with destination networks.
 /// @dev This script sets up one-directional communication (source → destination).
@@ -159,8 +157,7 @@ contract WireAdapters is JsonRegistry {
                     remoteAdapters[count] = IAdapter(sourceAxelarAddr);
                     count++;
                     bytes memory axelarData = abi.encode(
-                        vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
-                        AxelarAddressToString.toAxelarString(remoteAxelarAddr)
+                        vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"), vm.toString(remoteAxelarAddr)
                     );
                     opsGuardian.wire(sourceAxelarAddr, remoteCentrifugeId, axelarData);
                     console.log("Wired AxelarAdapter from source", sourceNetwork, "to destination", remoteNetwork);

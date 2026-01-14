@@ -6,12 +6,14 @@
     "connectsTo": [
       "ethereum",
       "arbitrum",
+      "plume",
       "avalanche",
       "bnb-smart-chain"
     ],
     "safeAdmin": "0x8b83962fB9dB346a20c95D98d4E312f17f4C0d9b"
   },
   "adapters": {
+    "threshold": 3,
     "wormhole": {
       "wormholeId": 30,
       "relayer": "0x706f82e9bb5b0813501714ab5974216704980e31",
@@ -151,7 +153,8 @@
     "deploy:protocol": {
       "gitCommit": "9706a86",
       "timestamp": "2025-07-15T15:03:18Z",
-      "version": "3"
+      "version": "3",
+      "startBlock": 32901251
     }
   }
 }

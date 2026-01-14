@@ -7,6 +7,7 @@ import {V3ContractsExt} from "./ValidationTypes.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 
 import {FullReport} from "../../../../script/FullDeployer.s.sol";
+import {MigrationQueries} from "../../../../script/spell/MigrationQueries.sol";
 
 import {Test} from "forge-std/Test.sol";
 import {stdJson} from "forge-std/StdJson.sol";
@@ -23,6 +24,10 @@ import {stdJson} from "forge-std/StdJson.sol";
 /// This works for all struct types and is the recommended approach.
 abstract contract BaseValidator is Test {
     using stdJson for string;
+
+    constructor() {
+        vm.label(address(this), string.concat("Validate_", name()));
+    }
 
     // ============================================
     // TYPES
@@ -44,6 +49,8 @@ abstract contract BaseValidator is Test {
         uint16 localCentrifugeId; // Current chain's centrifugeId
         GraphQLStore store; // GraphQL query storage (PRE: query+store, POST: retrieve)
         bool isMainnet;
+        MigrationQueries queryService; // GraphQL query service for vault lookups
+        address executor; // Address that executes the migration spell
     }
 
     struct ValidationError {
@@ -68,7 +75,11 @@ abstract contract BaseValidator is Test {
     /// @notice Declare which phases this validator supports
     /// @dev Must be implemented by each validator
     /// @return Phase enum value (PRE, POST, or BOTH)
-    function supportedPhases() public view virtual returns (Phase);
+    function supportedPhases() public pure virtual returns (Phase);
+
+    /// @notice Return the validator name for labeling and logging
+    /// @return Validator name without "Validate_" prefix (e.g., "EpochOutstandingInvests")
+    function name() public pure virtual returns (string memory);
 
     /// @notice Execute validation checks
     /// @dev Must be implemented by each validator
@@ -130,5 +141,17 @@ abstract contract BaseValidator is Test {
         returns (string memory)
     {
         return string.concat(basePath, "[", vm.toString(index), "].", fieldName);
+    }
+
+    /// @notice Build JSON array string from PoolId array for GraphQL queries
+    function _buildPoolIdsJson(PoolId[] memory pools) internal pure returns (string memory) {
+        string memory json = "[";
+        for (uint256 i = 0; i < pools.length; i++) {
+            json = string.concat(json, _jsonValue(PoolId.unwrap(pools[i])));
+            if (i < pools.length - 1) {
+                json = string.concat(json, ", ");
+            }
+        }
+        return string.concat(json, "]");
     }
 }

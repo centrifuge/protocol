@@ -39,8 +39,7 @@ import {
     MigrationSpell,
     PoolParamsInput,
     GlobalParamsInput,
-    V3Contracts,
-    SupplementalParamsInput
+    V3Contracts
 } from "../../src/spell/migration_v3.1/MigrationSpell.sol";
 
 contract MigrationV3_1Deployer is Script {
@@ -55,22 +54,21 @@ contract MigrationV3_1Deployer is Script {
 
 contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
     bytes32 constant NEW_VERSION = "v3.1";
-
     address deployer;
 
     constructor(bool isMainnet_) MigrationQueries(isMainnet_) {}
 
     receive() external payable {}
 
-    function run(MigrationSpell migrationSpell, PoolId[] memory poolsToMigrate) external {
+    function run(MigrationSpell migrationSpell) external {
         vm.startBroadcast();
 
-        migrate(msg.sender, migrationSpell, poolsToMigrate);
+        migrate(msg.sender, migrationSpell);
 
         vm.stopBroadcast();
     }
 
-    function migrate(address deployer_, MigrationSpell migrationSpell, PoolId[] memory poolsToMigrate) public {
+    function migrate(address deployer_, MigrationSpell migrationSpell) public {
         deployer = deployer_; // This must be set before _contractAddr
         string memory graphQLApi = isMainnet ? GraphQLConstants.PRODUCTION_API : GraphQLConstants.TESTNET_API;
         configureGraphQl(graphQLApi, MessageDispatcher(_contractAddr("messageDispatcher")).localCentrifugeId());
@@ -114,6 +112,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
             })
         );
 
+        PoolId[] memory poolsToMigrate = pools();
         for (uint256 i; i < poolsToMigrate.length; i++) {
             PoolId poolId = poolsToMigrate[i];
 
@@ -155,10 +154,6 @@ contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
                 );
             }
         }
-
-        migrationSpell.castSupplemental(
-            SupplementalParamsInput({root: v3.root, multiAdapter: MultiAdapter(_contractAddr("multiAdapter"))})
-        );
 
         migrationSpell.lock(v3.root);
     }

@@ -28,6 +28,7 @@ contract LaunchDeployer is FullDeployer {
 
     function run() public virtual {
         vm.startBroadcast();
+        captureStartBlock();
 
         string memory network;
         string memory config;
@@ -158,7 +159,8 @@ contract LaunchDeployer is FullDeployer {
                     layerZeroId: uint32(_parseJsonUintOrDefault(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
                     wormholeId: uint16(_parseJsonUintOrDefault(remoteConfig, "$.adapters.wormhole.wormholeId")),
                     axelarId: _parseJsonStringOrDefault(remoteConfig, "$.adapters.axelar.axelarId"),
-                    chainlinkId: uint64(_parseJsonUintOrDefault(remoteConfig, "$.adapters.chainlink.chainSelector"))
+                    chainlinkId: uint64(_parseJsonUintOrDefault(remoteConfig, "$.adapters.chainlink.chainSelector")),
+                    threshold: uint8(_parseJsonUintOrDefault(remoteConfig, "$.adapters.threshold"))
                 });
             }
         } catch {
@@ -274,10 +276,6 @@ contract LaunchDeployer is FullDeployer {
         require(
             address(contractUpdater) == 0x8dD5a3d4e9ec54388dAd23B8a1f3B2159B2f2D85,
             "ContractUpdater address mismatch with mainnet"
-        );
-        require(
-            address(routerEscrow) == 0xB86B6AE94E6d05AAc086665534A73fee557EE9F6,
-            "RouterEscrow address mismatch with mainnet"
         );
         require(
             address(asyncRequestManager) == 0xf06f89A1b6C601235729A689595571B7455Dd433,

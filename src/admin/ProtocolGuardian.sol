@@ -106,9 +106,9 @@ contract ProtocolGuardian is IProtocolGuardian {
         uint256 amount,
         address refund
     ) external payable onlySafe {
-        sender.sendRecoverTokens{
-            value: msg.value
-        }(centrifugeId, target.toBytes32(), token.toBytes32(), tokenId, to.toBytes32(), amount, refund);
+        sender.sendRecoverTokens{value: msg.value}(
+            centrifugeId, target.toBytes32(), token.toBytes32(), tokenId, to.toBytes32(), amount, refund
+        );
     }
 
     /// @inheritdoc IProtocolGuardian

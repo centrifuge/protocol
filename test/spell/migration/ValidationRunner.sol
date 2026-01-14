@@ -4,11 +4,8 @@ pragma solidity 0.8.28;
 import {ChainResolver} from "./ChainResolver.sol";
 import {ValidationOrchestrator} from "./validation/ValidationOrchestrator.sol";
 
-import {Escrow} from "../../../src/misc/Escrow.sol";
-
 import {Hub} from "../../../src/core/hub/Hub.sol";
 import {Spoke} from "../../../src/core/spoke/Spoke.sol";
-import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {Holdings} from "../../../src/core/hub/Holdings.sol";
 import {Accounting} from "../../../src/core/hub/Accounting.sol";
 import {Gateway} from "../../../src/core/messaging/Gateway.sol";
@@ -80,13 +77,9 @@ contract ValidationRunner is Test {
     ISafe immutable ADMIN = ISafe(makeAddr("ADMIN"));
     bytes32 constant NEW_VERSION = "v3.1";
 
-    function validate(
-        string memory network,
-        string memory rpcUrl,
-        address safeAdmin,
-        PoolId[] memory poolsToMigrate,
-        bool isPre
-    ) public {
+    function validate(string memory network, string memory rpcUrl, address safeAdmin, bool isPre, address executor)
+        public
+    {
         vm.createSelectFork(rpcUrl);
 
         string memory configFile = string.concat("env/", network, ".json");
@@ -98,9 +91,8 @@ contract ValidationRunner is Test {
         ChainResolver.ChainContext memory chain = ChainResolver.resolveChainContext(isMainnet);
         MigrationQueries queryService = new MigrationQueries(isMainnet);
         queryService.configureGraphQl(chain.graphQLApi, chain.localCentrifugeId);
-        ValidationOrchestrator.SharedContext memory shared = ValidationOrchestrator.buildSharedContext(
-            queryService, poolsToMigrate, chain, "spell-cache/validation", isPre
-        );
+        ValidationOrchestrator.SharedContext memory shared =
+            ValidationOrchestrator.buildSharedContext(queryService, chain, "spell-cache/validation", isPre, executor);
 
         FullReport memory latest = _reportFromJson(config);
 
@@ -144,7 +136,6 @@ contract ValidationRunner is Test {
             tokenRecoverer: TokenRecoverer(_tryParseAddress(config, "$.contracts.tokenRecoverer")),
             protocolGuardian: ProtocolGuardian(_tryParseAddress(config, "$.contracts.protocolGuardian")),
             opsGuardian: OpsGuardian(_tryParseAddress(config, "$.contracts.opsGuardian")),
-            routerEscrow: Escrow(_tryParseAddress(config, "$.contracts.routerEscrow")),
             subsidyManager: SubsidyManager(_tryParseAddress(config, "$.contracts.subsidyManager")),
             refundEscrowFactory: RefundEscrowFactory(_tryParseAddress(config, "$.contracts.refundEscrowFactory")),
             asyncVaultFactory: AsyncVaultFactory(_tryParseAddress(config, "$.contracts.asyncVaultFactory")),

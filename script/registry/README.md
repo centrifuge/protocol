@@ -32,7 +32,6 @@ interface Registry {
   version: string;              // Version identifier (e.g., "3.0", "3.1.12")
   deploymentInfo: {
     gitCommit: string;          // Git commit hash used to build the ABIs
-    startBlock: number | null;  // Lowest block number across all chains for this deployment
   };
   previousRegistry: {           // null for first/base registry
     version: string;            // Version of the previous registry
@@ -77,7 +76,6 @@ interface ChainConfig {
   deployment: {
     deployedAt: number | null;     // Unix timestamp (seconds) when the last deployment finished
     startBlock: number | null;     // Block before deployment started (for indexing)
-    endBlock: number | null;       // Block after deployment finished (for indexing)
   };
 }
 ```
@@ -103,9 +101,9 @@ They may still be `null` when:
 
 May be `null` when the env file is missing `deploymentInfo.timestamp`.
 
-### `deployment.startBlock` / `deployment.endBlock`
+### `deployment.startBlock`
 
-May be `null` when the env file lacks `deploymentInfo.startBlock` / `deploymentInfo.endBlock`. We expect this to exist for future deployments.
+May be `null` when the env file lacks `deploymentInfo.startBlock`. We expect this to exist for future deployments.
 
 ### `adapters.$adapterName`
 
@@ -123,22 +121,98 @@ May be `null` when an adapter is not configured for a given network.
 
 ## Generating registries locally
 
+### **IMPORTANT: Build ABIs from the correct commit**
+
+Before generating any registry (delta or full), you **must** build the `/out` folder from the correct deployment commit, not the tip of the branch. The ABIs must match the deployed contract versions.
+
 ```bash
-# Generate mainnet registry
+# 1. Checkout or build at the deployment commit
+git checkout <deployment-commit>
+# OR use git worktree to keep current branch checked out
+git worktree add /tmp/deploy-build <deployment-commit>
+
+# 2. Build contracts at that commit
+cd /tmp/deploy-build  # if using worktree
+forge build --skip test
+
+# 3. Copy /out to the main workspace (if using worktree)
+cp -R /tmp/deploy-build/out ./out
+cd -  # back to main workspace
+```
+
+### Delta mode (default)
+
+Generates a delta registry containing only contracts that changed since the previous version:
+
+```bash
+# Generate mainnet registry (delta)
 DEPLOYMENT_COMMIT=$(node .github/ci-scripts/detect-deployment-commit.js mainnet) \
 ETHERSCAN_API_KEY=<key> \
 node script/registry/abi-registry.js mainnet
 
-# Generate testnet registry
+# Generate testnet registry (delta)
 DEPLOYMENT_COMMIT=$(node .github/ci-scripts/detect-deployment-commit.js testnet) \
 ETHERSCAN_API_KEY=<key> \
 node script/registry/abi-registry.js testnet
 ```
 
-Environment variables:
+### Full snapshot mode
+
+Generates a complete registry from scratch, including all contracts from all chains. Use this when:
+- Rebuilding a base registry (e.g., mainnet v3 from scratch)
+- Creating the first registry in a new format
+- Fixing a registry that was generated incorrectly
+
+```bash
+# Generate full mainnet registry (all contracts included)
+DEPLOYMENT_COMMIT=$(node .github/ci-scripts/detect-deployment-commit.js mainnet) \
+ETHERSCAN_API_KEY=<key> \
+node script/registry/abi-registry.js mainnet --full
+
+# Or using environment variable
+REGISTRY_MODE=full \
+DEPLOYMENT_COMMIT=$(node .github/ci-scripts/detect-deployment-commit.js mainnet) \
+ETHERSCAN_API_KEY=<key> \
+node script/registry/abi-registry.js mainnet
+```
+
+In full mode:
+- All contracts from all matching chains are included (no delta comparison)
+- `previousRegistry` is set to `null` (marks this as the base registry)
+- All ABIs for all contracts are included
+
+### Delta mode with custom source URL
+
+Regenerate a delta against a specific previous registry URL. Useful for:
+- Fixing a broken delta version (e.g., testnet 3.1)
+- Regenerating against an archived or IPFS registry
+- Testing delta generation against a specific version
+
+```bash
+# Regenerate testnet 3.1 delta against a specific previous registry
+DEPLOYMENT_COMMIT=<commit_for_testnet_3.1> \
+ETHERSCAN_API_KEY=<key> \
+REGISTRY_SOURCE_URL="https://gateway.pinata.cloud/ipfs/<previous-registry-cid>" \
+node script/registry/abi-registry.js testnet
+
+# Or using CLI flag
+DEPLOYMENT_COMMIT=<commit> \
+ETHERSCAN_API_KEY=<key> \
+node script/registry/abi-registry.js testnet --source-url="https://gateway.pinata.cloud/ipfs/<cid>"
+```
+
+### Environment variables and CLI flags
+
+**Environment Variables:**
 - `DEPLOYMENT_COMMIT` – commit hash to read ABIs from, you can use `.github/ci-scripts/detect-deployment-commit.js` to set it.
 - `ETHERSCAN_API_KEY` – required to fetch contract creation data for Etherscan-compatible chains. You can use `script/deploy/deploy.py $any_network_name config:dump` to dump the API key to a .env file
+- `REGISTRY_MODE` – set to `"full"` to generate a full snapshot (alternative to `--full` flag)
+- `REGISTRY_SOURCE_URL` – override URL for fetching previous registry (alternative to `--source-url` flag)
 - `PINATA_JWT` – required by `pin-to-ipfs.js` to pin registries. Only available in 1Password (not for everybody)
+
+**CLI Flags:**
+- `--full` – generate a full snapshot registry (includes all contracts, no delta comparison)
+- `--source-url=<url>` – override the registry URL used for delta comparison
 
 ## CI/CD overview
 
