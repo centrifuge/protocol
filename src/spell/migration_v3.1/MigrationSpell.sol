@@ -407,9 +407,17 @@ contract MigrationSpell {
 
         // ----- MULTIADAPTER -----
         if (input.multiAdapter.localCentrifugeId() != poolId.centrifugeId()) {
-            IAdapter[] memory adapters = _getAdapters(input.multiAdapter, poolId.centrifugeId(), poolId);
-            input.multiAdapter
-                .setAdapters(poolId.centrifugeId(), poolId, adapters, uint8(adapters.length), uint8(adapters.length));
+            IAdapter[] memory adapters = _getAdapters(input.multiAdapter, poolId.centrifugeId(), GLOBAL_POOL);
+            if (adapters.length > 0) {
+                input.multiAdapter
+                    .setAdapters(
+                        poolId.centrifugeId(),
+                        poolId,
+                        adapters,
+                        input.multiAdapter.threshold(poolId.centrifugeId(), GLOBAL_POOL),
+                        input.multiAdapter.recoveryIndex(poolId.centrifugeId(), GLOBAL_POOL)
+                    );
+            }
         }
 
         // ----- SPOKE -----
