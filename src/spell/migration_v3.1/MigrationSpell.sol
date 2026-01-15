@@ -471,6 +471,7 @@ contract MigrationSpell {
 
                 uint256 balance;
                 try IERC20(assetInfo.addr).balanceOf(address(poolEscrowV3)) returns (uint256 balance_) {
+                    // The protocol has no control about the assets, so they could revert
                     balance = balance_;
                 } catch {}
 
