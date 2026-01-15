@@ -31,10 +31,6 @@ struct VaultGraphQLData {
 contract MigrationQueries is GraphQLQuery {
     using stdJson for string;
 
-    /// @notice Inactive/misconfigured pools excluded from migration (JTRSY and JAAA - wrong decimals)
-    uint64 public constant EXCLUDED_POOL_JTRSY = 281474976710657;
-    uint64 public constant EXCLUDED_POOL_JAAA = 281474976710658;
-
     string internal _api;
     uint16 public centrifugeId;
     bool public isMainnet;

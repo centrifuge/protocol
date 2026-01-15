@@ -23,7 +23,6 @@ import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.s
 import {PoolEscrowFactory} from "../../../src/core/spoke/factories/PoolEscrowFactory.sol";
 
 import {Root} from "../../../src/admin/Root.sol";
-import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
 import {TokenRecoverer} from "../../../src/admin/TokenRecoverer.sol";
 import {ProtocolGuardian} from "../../../src/admin/ProtocolGuardian.sol";
@@ -74,9 +73,6 @@ import {RefundEscrowFactory} from "../../../src/utils/RefundEscrowFactory.sol";
 import {ForkTestLiveValidation} from "../../integration/fork/ForkTestLiveValidation.sol";
 
 contract ValidationRunner is Test {
-    ISafe immutable ADMIN = ISafe(makeAddr("ADMIN"));
-    bytes32 constant NEW_VERSION = "v3.1";
-
     function validate(string memory network, string memory rpcUrl, address safeAdmin, bool isPre, address executor)
         public
     {
