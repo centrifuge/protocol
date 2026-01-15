@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {D18} from "../../misc/types/D18.sol";
 import {IERC20} from "../../misc/interfaces/IERC20.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
-import {IERC6909} from "../../misc/interfaces/IERC6909.sol";
 import {IERC7575Share, IERC165} from "../../misc/interfaces/IERC7575.sol";
 import {ETH_ADDRESS, IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 
@@ -473,9 +472,7 @@ contract MigrationSpell {
                 uint256 balance;
                 try IERC20(assetInfo.addr).balanceOf(address(poolEscrowV3)) returns (uint256 balance_) {
                     balance = balance_;
-                } catch {
-                    balance = IERC6909(assetInfo.addr).balanceOf(address(poolEscrowV3), assetInfo.tokenId);
-                }
+                } catch {}
 
                 if (balance > 0) {
                     bool isShare = false;
