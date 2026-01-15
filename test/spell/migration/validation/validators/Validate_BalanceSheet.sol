@@ -3,8 +3,10 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "../../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../../src/core/types/AssetId.sol";
-import {ShareClassId} from "../../../../../src/core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {ShareClassId, newShareClassId} from "../../../../../src/core/types/ShareClassId.sol";
+
+import {OnOfframpManager, OnOfframpManagerFactory} from "../../../../../src/managers/spoke/OnOfframpManager.sol";
 
 import {stdJson} from "forge-std/StdJson.sol";
 
@@ -123,6 +125,9 @@ contract Validate_BalanceSheet is BaseValidator {
                     manager = address(ctx.latest.asyncRequestManager);
                 } else if (manager == ctx.old.inner.syncManager) {
                     manager = address(ctx.latest.syncManager);
+                } else if (manager == address(ctx.queryService.onOfframpManagerV3(pid))) {
+                    ShareClassId scId = newShareClassId(pid, 1);
+                    manager = _computeOnOfframpManagerAddress(ctx.latest.onOfframpManagerFactory, pid, scId);
                 }
 
                 bool isManager = ctx.latest.core.balanceSheet.manager(pid, manager);
@@ -166,6 +171,20 @@ contract Validate_BalanceSheet is BaseValidator {
         for (uint256 i = 0; i < totalCount; i++) {
             managers[i] = json.readAddress(_buildJsonPath(".data.poolManagers.items", i, "address"));
         }
+    }
+
+    function _computeOnOfframpManagerAddress(OnOfframpManagerFactory factory, PoolId poolId, ShareClassId scId)
+        internal
+        returns (address)
+    {
+        bytes32 salt = keccak256(abi.encode(PoolId.unwrap(poolId), ShareClassId.unwrap(scId)));
+
+        bytes memory initCode = abi.encodePacked(
+            type(OnOfframpManager).creationCode,
+            abi.encode(poolId, scId, factory.contractUpdater(), factory.balanceSheet())
+        );
+
+        return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), factory, salt, keccak256(initCode))))));
     }
 
     function _vaultsQuery(ValidationContext memory ctx) internal pure returns (string memory) {

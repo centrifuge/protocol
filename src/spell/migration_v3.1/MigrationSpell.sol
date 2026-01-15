@@ -305,19 +305,19 @@ contract MigrationSpell {
         ShareClassId scId = newShareClassId(poolId, 1);
         bool inHub = HubRegistry(input.v3.hubRegistry).exists(poolId);
         bool inSpoke = Spoke(input.v3.spoke).isPoolActive(poolId);
+        address refund;
 
         if (inHub) {
+            refund = input.hubManagers[0]; // At least one
             _migratePoolInHub(poolId, scId, input);
         }
 
         if (inSpoke) {
+            refund = address(input.refundEscrowFactory.get(poolId));
             _migratePoolInSpoke(poolId, scId, input);
         }
 
         if (inHub || inSpoke) {
-            address refund =
-                input.hubManagers.length > 0 ? input.hubManagers[0] : address(input.refundEscrowFactory.get(poolId));
-
             // ----- REFUND -----
             (uint96 subsidizedFunds,) = GatewayV3Like(input.v3.gateway).subsidy(poolId);
             if (subsidizedFunds > 0) {
@@ -354,13 +354,7 @@ contract MigrationSpell {
 
         // ---- HUB_REGISTRY -----
         AssetId currency = HubRegistry(input.v3.hubRegistry).currency(poolId);
-        if (input.hubManagers.length > 0) {
-            input.hubRegistry.registerPool(poolId, input.hubManagers[0], currency);
-        } else {
-            // For removed pools (pools without any manager)
-            input.hubRegistry.registerPool(poolId, address(0), currency);
-            input.hubRegistry.updateManager(poolId, address(0), false);
-        }
+        input.hubRegistry.registerPool(poolId, input.hubManagers[0], currency);
 
         for (uint256 i = 1; i < input.hubManagers.length; i++) {
             input.hubRegistry.updateManager(poolId, input.hubManagers[i], true);
@@ -429,28 +423,38 @@ contract MigrationSpell {
             input.spoke.linkToken(poolId, scId, shareToken);
 
             (uint64 computedAt, uint64 maxAge,) = Spoke(input.v3.spoke).markersPricePoolPerShare(poolId, scId);
-            (D18 price) = Spoke(input.v3.spoke).pricePoolPerShare(poolId, scId, false);
-            input.spoke.updatePricePoolPerShare(poolId, scId, price, computedAt);
-            input.spoke.setMaxSharePriceAge(poolId, scId, maxAge);
+            if (computedAt != 0) {
+                D18 price = Spoke(input.v3.spoke).pricePoolPerShare(poolId, scId, false);
+                input.spoke.updatePricePoolPerShare(poolId, scId, price, computedAt);
+            }
+            if (maxAge != 0) {
+                input.spoke.setMaxSharePriceAge(poolId, scId, maxAge);
+            }
 
             for (uint256 i; i < input.spokeAssetIds.length; i++) {
                 AssetId assetId = input.spokeAssetIds[i];
                 (computedAt, maxAge,) = Spoke(input.v3.spoke).markersPricePoolPerAsset(poolId, scId, assetId);
                 if (computedAt != 0) {
-                    (price) = Spoke(input.v3.spoke).pricePoolPerAsset(poolId, scId, assetId, false);
+                    D18 price = Spoke(input.v3.spoke).pricePoolPerAsset(poolId, scId, assetId, false);
                     input.spoke.updatePricePoolPerAsset(poolId, scId, assetId, price, computedAt);
+                }
+                if (maxAge != 0) {
                     input.spoke.setMaxAssetPriceAge(poolId, scId, assetId, maxAge);
                 }
             }
         } catch {}
 
         // ----- BALANCE_SHEET -----
+        address onOfframpManager;
         for (uint256 i; i < input.bsManagers.length; i++) {
             address manager = input.bsManagers[i];
             if (manager == input.v3.asyncRequestManager) {
                 manager = address(input.asyncRequestManager);
             } else if (manager == input.v3.syncManager) {
                 manager = address(input.syncManager);
+            } else if (manager == address(input.onOfframpManagerV3)) {
+                onOfframpManager = address(input.onOfframpManagerFactory.newManager(poolId, scId));
+                manager = onOfframpManager;
             }
 
             input.balanceSheet.updateManager(poolId, manager, true);
@@ -470,7 +474,7 @@ contract MigrationSpell {
                 try IERC20(assetInfo.addr).balanceOf(address(poolEscrowV3)) returns (uint256 balance_) {
                     balance = balance_;
                 } catch {
-                    IERC6909(assetInfo.addr).balanceOf(address(poolEscrowV3), assetInfo.tokenId);
+                    balance = IERC6909(assetInfo.addr).balanceOf(address(poolEscrowV3), assetInfo.tokenId);
                 }
 
                 if (balance > 0) {
@@ -579,8 +583,6 @@ contract MigrationSpell {
 
         // ----- ON_OFFRAMP_MANAGER -----
         if (address(input.onOfframpManagerV3) != address(0)) {
-            address onOfframpManager = address(input.onOfframpManagerFactory.newManager(poolId, scId));
-
             for (uint256 i; i < input.assets.length; i++) {
                 AssetInfo memory assetInfo = input.assets[i];
                 AssetId assetId = Spoke(input.v3.spoke).assetToId(assetInfo.addr, assetInfo.tokenId);

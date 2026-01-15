@@ -70,6 +70,7 @@ contract V2CleaningsSpell {
             Root(ROOT_V2).relyContract(WCFG, address(ROOT_V3));
             ROOT_V3.denyContract(WCFG, WCFG_MULTISIG);
             ROOT_V3.denyContract(WCFG, CHAINBRIDGE_ERC20_HANDLER);
+            ROOT_V3.denyContract(WCFG, address(ROOT_V2));
         }
     }
 
