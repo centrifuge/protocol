@@ -33,11 +33,32 @@ contract Validate_HubRegistry is BaseValidator {
     }
 
     /// @notice PRE-migration: Cache data needed for POST validation
-    /// @dev No actual validation performed, just queries and caches GraphQL data
+    /// @dev Validates that each pool has at least one hub manager
     function _validatePre(ValidationContext memory ctx) internal returns (ValidationResult memory) {
         _cachePostValidationData(ctx);
 
-        return ValidationResult({passed: true, validatorName: "HubRegistry (PRE)", errors: new ValidationError[](0)});
+        PoolId[] memory hubPools = ctx.queryService.hubPools(ctx.pools);
+        ValidationError[] memory errors = new ValidationError[](hubPools.length);
+        uint256 errorCount = 0;
+
+        for (uint256 i = 0; i < hubPools.length; i++) {
+            PoolId pid = hubPools[i];
+            address[] memory managers = _getHubManagers(ctx, pid);
+
+            if (managers.length == 0) {
+                errors[errorCount++] = _buildError({
+                    field: "hubManagers",
+                    value: string.concat("Pool ", _toString(PoolId.unwrap(pid))),
+                    expected: "At least one hub manager",
+                    actual: "No hub managers found",
+                    message: string.concat("Pool ", _toString(PoolId.unwrap(pid)), " has no hub managers")
+                });
+            }
+        }
+
+        return ValidationResult({
+            passed: errorCount == 0, validatorName: "HubRegistry (PRE)", errors: _trimErrors(errors, errorCount)
+        });
     }
 
     /// @notice POST-migration: Validate all HubRegistry state was migrated correctly
@@ -47,13 +68,14 @@ contract Validate_HubRegistry is BaseValidator {
         IHubRegistry newHubRegistry = ctx.latest.core.hubRegistry;
 
         AssetId[] memory assetIds = _getHubAssetIds(ctx);
+        PoolId[] memory hubPools = ctx.queryService.hubPools(ctx.pools);
 
         // Pre-allocate max possible errors (assume max 10 managers per pool + 1 metadata + 1 currency per pool + asset errors)
-        ValidationError[] memory errors = new ValidationError[](ctx.pools.length * 12 + assetIds.length);
+        ValidationError[] memory errors = new ValidationError[](hubPools.length * 12 + assetIds.length);
         uint256 errorCount = 0;
 
-        for (uint256 i = 0; i < ctx.pools.length; i++) {
-            PoolId pid = ctx.pools[i];
+        for (uint256 i = 0; i < hubPools.length; i++) {
+            PoolId pid = hubPools[i];
             errorCount = _validatePool(ctx, pid, PoolId.unwrap(pid), oldHubRegistry, newHubRegistry, errors, errorCount);
         }
 
@@ -92,8 +114,9 @@ contract Validate_HubRegistry is BaseValidator {
     /// @notice Cache data needed for POST validation
     /// @dev Called during PRE phase to ensure POST can retrieve from cache
     function _cachePostValidationData(ValidationContext memory ctx) internal {
-        for (uint256 i = 0; i < ctx.pools.length; i++) {
-            ctx.store.query(_managersQuery(ctx, PoolId.unwrap(ctx.pools[i])));
+        PoolId[] memory hubPools = ctx.queryService.hubPools(ctx.pools);
+        for (uint256 i = 0; i < hubPools.length; i++) {
+            ctx.store.query(_managersQuery(ctx, PoolId.unwrap(hubPools[i])));
         }
 
         ctx.store.query(_assetsQuery(ctx));

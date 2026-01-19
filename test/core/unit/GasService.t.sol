@@ -49,7 +49,7 @@ contract GasServiceTest is Test {
 
         uint256 messageGasLimit = service.messageOverallGasLimit(CENTRIFUGE_ID, message);
         assert(messageGasLimit > service.BASE_COST());
-        assert(messageGasLimit <= MAX_MESSAGE_COST);
+        assertLt(messageGasLimit, MAX_MESSAGE_COST, "Higher than MAX_MESSAGE_COST");
     }
 
     function testMaxBatchGasLimit(uint16 centrifugeId) public view {

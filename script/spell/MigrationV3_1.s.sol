@@ -60,10 +60,10 @@ contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
 
     receive() external payable {}
 
-    function run(MigrationSpell migrationSpell) external {
+    function run(address deployer_, MigrationSpell migrationSpell) external {
         vm.startBroadcast();
 
-        migrate(msg.sender, migrationSpell);
+        migrate(deployer_, migrationSpell);
 
         vm.stopBroadcast();
     }

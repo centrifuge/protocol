@@ -3,7 +3,9 @@ pragma solidity 0.8.28;
 
 import {IRecoverable} from "../../../../../src/misc/interfaces/IRecoverable.sol";
 
+import {Spoke} from "../../../../../src/core/spoke/Spoke.sol";
 import {PoolId} from "../../../../../src/core/types/PoolId.sol";
+import {HubRegistry} from "../../../../../src/core/hub/HubRegistry.sol";
 import {PoolEscrowFactory} from "../../../../../src/core/spoke/factories/PoolEscrowFactory.sol";
 
 import {stdJson} from "forge-std/StdJson.sol";
@@ -118,8 +120,13 @@ contract Validate_Subsidy is BaseValidator {
         for (uint256 i; i < pools.length; i++) {
             PoolId poolId = pools[i];
             address[] memory hubManagers = ctx.queryService.hubManagers(poolId);
-            address refund =
-                hubManagers.length > 0 ? hubManagers[0] : address(ctx.latest.refundEscrowFactory.get(poolId));
+
+            bool inHub = HubRegistry(ctx.old.inner.hubRegistry).exists(poolId);
+            bool inSpoke = Spoke(ctx.old.inner.spoke).isPoolActive(poolId);
+
+            address refund;
+            if (inHub) refund = hubManagers[0];
+            if (inSpoke) refund = address(ctx.latest.refundEscrowFactory.get(poolId));
 
             (uint96 poolSubsidy,) = GatewayV3Like(oldGateway).subsidy(poolId);
             uint256 oldPoolEscrowBalance =

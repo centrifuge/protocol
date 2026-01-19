@@ -70,6 +70,7 @@ contract V2CleaningsSpellTest is Test {
             assertEq(IAuth(WCFG).wards(address(ROOT_V3)), 1);
             assertEq(IAuth(WCFG).wards(WCFG_MULTISIG), 0);
             assertEq(IAuth(WCFG).wards(CHAINBRIDGE_ERC20_HANDLER), 0);
+            assertEq(IAuth(WCFG).wards(address(ROOT_V2)), 0);
 
             assertEq(IAuth(CFG).wards(address(ROOT_V2)), 0);
             assertEq(IAuth(CFG).wards(IOU_CFG), 0);
