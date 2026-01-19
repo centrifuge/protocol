@@ -460,36 +460,26 @@ contract MigrationQueries is GraphQLQuery {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(centrifugeId),
-            "  id: ", _jsonValue(poolId.raw()),
+            "  poolId: ", _jsonValue(poolId.raw()),
             "}"
         );
 
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
-            "pools(", params, ") {",
+            "poolSpokeBlockchains(", params, ") {",
             "  totalCount"
             "  items {"
-            "    spokeBlockchains {"
-            "      totalCount"
-            "      items {"
-            "        centrifugeId"
-            "      }"
-            "    }"
+            "    centrifugeId"
             "  }"
             "}"
         ));
 
-        if (json.readUint(".data.pools.totalCount") == 0) {
-            return new uint16[](0);
-        }
-
-        uint256 totalCount = json.readUint(".data.pools.items[0].spokeBlockchains.totalCount");
+        uint256 totalCount = json.readUint(".data.poolSpokeBlockchains.totalCount");
 
         centrifugeIds = new uint16[](totalCount);
         for (uint256 i = 0; i < totalCount; i++) {
             centrifugeIds[i] =
-                uint16(json.readUint(_buildJsonPath(".data.pools.items[0].spokeBlockchains.items", i, "centrifugeId")));
+                uint16(json.readUint(_buildJsonPath(".data.poolSpokeBlockchains.items", i, "centrifugeId")));
         }
     }
 

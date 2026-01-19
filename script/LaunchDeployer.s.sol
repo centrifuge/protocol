@@ -158,10 +158,18 @@ contract LaunchDeployer is FullDeployer {
 
                 connections[i] = AdapterConnections({
                     centrifugeId: uint16(_parseJsonUintOrDefault(remoteConfig, "$.network.centrifugeId")),
-                    layerZeroId: uint32(_parseJsonUintOrDefault(remoteConfig, "$.adapters.layerZero.layerZeroEid")),
-                    wormholeId: uint16(_parseJsonUintOrDefault(remoteConfig, "$.adapters.wormhole.wormholeId")),
-                    axelarId: _parseJsonStringOrDefault(remoteConfig, "$.adapters.axelar.axelarId"),
-                    chainlinkId: uint64(_parseJsonUintOrDefault(remoteConfig, "$.adapters.chainlink.chainSelector")),
+                    layerZeroId: _parseJsonBoolOrDefault(config, "$.adapters.layerZero.deploy")
+                        ? uint32(_parseJsonUintOrDefault(remoteConfig, "$.adapters.layerZero.layerZeroEid"))
+                        : 0,
+                    wormholeId: _parseJsonBoolOrDefault(config, "$.adapters.wormhole.deploy")
+                        ? uint16(_parseJsonUintOrDefault(remoteConfig, "$.adapters.wormhole.wormholeId"))
+                        : 0,
+                    axelarId: _parseJsonBoolOrDefault(config, "$.adapters.axelar.deploy")
+                        ? _parseJsonStringOrDefault(remoteConfig, "$.adapters.axelar.axelarId")
+                        : "",
+                    chainlinkId: _parseJsonBoolOrDefault(config, "$.adapters.chainlink.deploy")
+                        ? uint64(_parseJsonUintOrDefault(remoteConfig, "$.adapters.chainlink.chainSelector"))
+                        : 0,
                     threshold: uint8(_parseJsonUintOrDefault(remoteConfig, "$.adapters.threshold"))
                 });
             }

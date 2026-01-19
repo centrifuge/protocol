@@ -13,11 +13,11 @@
     "safeAdmin": "0x2d442069f78561F817d92c94924D5EaddA9C5767"
   },
   "adapters": {
-    "threshold": 3,
+    "threshold": 2,
     "wormhole": {
       "wormholeId": 55,
       "relayer": "0xaBf89de706B583424328B54dD05a8fC986750Da8",
-      "deploy": true
+      "deploy": false
     },
     "axelar": {
       "axelarId": "plume",

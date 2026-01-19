@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {D18} from "../../misc/types/D18.sol";
 import {IERC20} from "../../misc/interfaces/IERC20.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
-import {IERC6909} from "../../misc/interfaces/IERC6909.sol";
 import {IERC7575Share, IERC165} from "../../misc/interfaces/IERC7575.sol";
 import {ETH_ADDRESS, IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 
@@ -408,9 +407,17 @@ contract MigrationSpell {
 
         // ----- MULTIADAPTER -----
         if (input.multiAdapter.localCentrifugeId() != poolId.centrifugeId()) {
-            IAdapter[] memory adapters = _getAdapters(input.multiAdapter, poolId.centrifugeId(), poolId);
-            input.multiAdapter
-                .setAdapters(poolId.centrifugeId(), poolId, adapters, uint8(adapters.length), uint8(adapters.length));
+            IAdapter[] memory adapters = _getAdapters(input.multiAdapter, poolId.centrifugeId(), GLOBAL_POOL);
+            if (adapters.length > 0) {
+                input.multiAdapter
+                    .setAdapters(
+                        poolId.centrifugeId(),
+                        poolId,
+                        adapters,
+                        input.multiAdapter.threshold(poolId.centrifugeId(), GLOBAL_POOL),
+                        input.multiAdapter.recoveryIndex(poolId.centrifugeId(), GLOBAL_POOL)
+                    );
+            }
         }
 
         // ----- SPOKE -----
@@ -472,10 +479,9 @@ contract MigrationSpell {
 
                 uint256 balance;
                 try IERC20(assetInfo.addr).balanceOf(address(poolEscrowV3)) returns (uint256 balance_) {
+                    // The protocol has no control about the assets, so they could revert
                     balance = balance_;
-                } catch {
-                    balance = IERC6909(assetInfo.addr).balanceOf(address(poolEscrowV3), assetInfo.tokenId);
-                }
+                } catch {}
 
                 if (balance > 0) {
                     bool isShare = false;
