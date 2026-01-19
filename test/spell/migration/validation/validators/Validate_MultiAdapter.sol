@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {PoolId} from "../../../../../src/core/types/PoolId.sol";
-import {IAdapter} from "../../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {Spoke} from "../../../../../src/core/spoke/Spoke.sol";
+import {PoolId} from "../../../../../src/core/types/PoolId.sol";
 import {HubRegistry} from "../../../../../src/core/hub/HubRegistry.sol";
 import {MultiAdapter} from "../../../../../src/core/messaging/MultiAdapter.sol";
+import {IAdapter} from "../../../../../src/core/messaging/interfaces/IAdapter.sol";
 
 import {BaseValidator} from "../BaseValidator.sol";
 
