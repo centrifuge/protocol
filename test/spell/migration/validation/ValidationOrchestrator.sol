@@ -188,10 +188,10 @@ library ValidationOrchestrator {
         validators[6] = new Validate_SyncManager();
         validators[7] = new Validate_VaultRegistry();
         validators[8] = new Validate_BatchRequestManager();
-        validators[9] = new Validate_InvestmentFlows();
-        validators[10] = new Validate_Subsidy();
-        validators[11] = new Validate_ShareTokenHook();
-        validators[12] = new Validate_MultiAdapter();
+        validators[9] = new Validate_Subsidy();
+        validators[10] = new Validate_ShareTokenHook();
+        validators[11] = new Validate_MultiAdapter();
+        validators[12] = new Validate_InvestmentFlows();
 
         return ValidationSuite({validators: validators});
     }

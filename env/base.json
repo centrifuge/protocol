@@ -13,21 +13,21 @@
     "safeAdmin": "0x8b83962fB9dB346a20c95D98d4E312f17f4C0d9b"
   },
   "adapters": {
-    "threshold": 3,
+    "threshold": 2,
+    "layerZero": {
+      "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+      "layerZeroEid": 30184,
+      "deploy": true
+    },
     "wormhole": {
       "wormholeId": 30,
       "relayer": "0x706f82e9bb5b0813501714ab5974216704980e31",
-      "deploy": true
+      "deploy": false
     },
     "axelar": {
       "axelarId": "base",
       "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
       "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
-      "deploy": true
-    },
-    "layerZero": {
-      "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
-      "layerZeroEid": 30184,
       "deploy": true
     },
     "chainlink": {

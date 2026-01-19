@@ -65,8 +65,16 @@ contract Validate_InvestmentFlows is BaseValidator {
         InvestmentFlowExecutor executor = new InvestmentFlowExecutor();
         vm.deal(address(executor), 100 ether);
 
+        // Assume the protocol is unpause for this post-validation
+        vm.prank(address(ctx.latest.protocolGuardian));
+        ctx.latest.root.unpause();
+
         InvestmentFlowResult[] memory results =
             executor.executeAllFlows(ctx.latest, testableVaults, ctx.localCentrifugeId);
+
+        // Restore state for other validations
+        vm.prank(address(ctx.latest.protocolGuardian));
+        ctx.latest.root.pause();
 
         return _buildResult(results, testableVaults.length, skipped);
     }

@@ -77,9 +77,9 @@ struct AdapterConnections {
 }
 
 struct AdaptersInput {
+    LayerZeroInput layerZero;
     WormholeInput wormhole;
     AxelarInput axelar;
-    LayerZeroInput layerZero;
     ChainlinkInput chainlink;
     AdapterConnections[] connections;
 }
@@ -118,9 +118,9 @@ struct FullReport {
     OracleValuation oracleValuation;
     NAVManager navManager;
     SimplePriceManager simplePriceManager;
+    LayerZeroAdapter layerZeroAdapter;
     WormholeAdapter wormholeAdapter;
     AxelarAdapter axelarAdapter;
-    LayerZeroAdapter layerZeroAdapter;
     ChainlinkAdapter chainlinkAdapter;
 }
 
@@ -153,9 +153,9 @@ contract FullActionBatcher is CoreActionBatcher {
 
         report.batchRequestManager.rely(address(report.root));
 
+        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.root));
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(address(report.root));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.root));
-        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.root));
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(address(report.root));
 
         // Rely spoke
@@ -180,13 +180,13 @@ contract FullActionBatcher is CoreActionBatcher {
         if (newRoot) report.root.rely(address(report.protocolGuardian));
         report.tokenRecoverer.rely(address(report.protocolGuardian));
         // Permanent ward for ongoing adapter maintenance
+        if (address(report.layerZeroAdapter) != address(0)) {
+            report.layerZeroAdapter.rely(address(report.protocolGuardian));
+        }
         if (address(report.wormholeAdapter) != address(0)) {
             report.wormholeAdapter.rely(address(report.protocolGuardian));
         }
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.protocolGuardian));
-        if (address(report.layerZeroAdapter) != address(0)) {
-            report.layerZeroAdapter.rely(address(report.protocolGuardian));
-        }
         if (address(report.chainlinkAdapter) != address(0)) {
             report.chainlinkAdapter.rely(address(report.protocolGuardian));
         }
@@ -195,9 +195,9 @@ contract FullActionBatcher is CoreActionBatcher {
         report.core.multiAdapter.rely(address(report.opsGuardian));
         report.core.hub.rely(address(report.opsGuardian));
         // Temporal ward for initial adapter wiring
+        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.opsGuardian));
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(address(report.opsGuardian));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.opsGuardian));
-        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.opsGuardian));
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(address(report.opsGuardian));
 
         // Rely tokenRecoverer
@@ -606,6 +606,24 @@ contract FullDeployer is CoreDeployer {
             )
         );
 
+        if (input.adapters.layerZero.shouldDeploy) {
+            require(input.adapters.layerZero.endpoint != address(0), "LayerZero endpoint address cannot be zero");
+            require(input.adapters.layerZero.endpoint.code.length > 0, "LayerZero endpoint must be a deployed contract");
+            require(input.adapters.layerZero.delegate != address(0), "LayerZero delegate address cannot be zero");
+
+            layerZeroAdapter = LayerZeroAdapter(
+                create3(
+                    generateSalt("layerZeroAdapter"),
+                    abi.encodePacked(
+                        type(LayerZeroAdapter).creationCode,
+                        abi.encode(
+                            multiAdapter, input.adapters.layerZero.endpoint, input.adapters.layerZero.delegate, batcher
+                        )
+                    )
+                )
+            );
+        }
+
         if (input.adapters.wormhole.shouldDeploy) {
             require(input.adapters.wormhole.relayer != address(0), "Wormhole relayer address cannot be zero");
             require(input.adapters.wormhole.relayer.code.length > 0, "Wormhole relayer must be a deployed contract");
@@ -634,24 +652,6 @@ contract FullDeployer is CoreDeployer {
                         type(AxelarAdapter).creationCode,
                         abi.encode(
                             multiAdapter, input.adapters.axelar.gateway, input.adapters.axelar.gasService, batcher
-                        )
-                    )
-                )
-            );
-        }
-
-        if (input.adapters.layerZero.shouldDeploy) {
-            require(input.adapters.layerZero.endpoint != address(0), "LayerZero endpoint address cannot be zero");
-            require(input.adapters.layerZero.endpoint.code.length > 0, "LayerZero endpoint must be a deployed contract");
-            require(input.adapters.layerZero.delegate != address(0), "LayerZero delegate address cannot be zero");
-
-            layerZeroAdapter = LayerZeroAdapter(
-                create3(
-                    generateSalt("layerZeroAdapter"),
-                    abi.encodePacked(
-                        type(LayerZeroAdapter).creationCode,
-                        abi.encode(
-                            multiAdapter, input.adapters.layerZero.endpoint, input.adapters.layerZero.delegate, batcher
                         )
                     )
                 )
@@ -750,9 +750,9 @@ contract FullDeployer is CoreDeployer {
             oracleValuation,
             navManager,
             simplePriceManager,
+            layerZeroAdapter,
             wormholeAdapter,
             axelarAdapter,
-            layerZeroAdapter,
             chainlinkAdapter
         );
     }

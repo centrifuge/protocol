@@ -13,21 +13,21 @@
     "safeAdmin": "0xD9D30ab47c0f096b0AA67e9B8B1624504a63e7FD"
   },
   "adapters": {
-    "threshold": 3,
+    "threshold": 2,
+    "layerZero": {
+      "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+      "layerZeroEid": 30101,
+      "deploy": true
+    },
     "wormhole": {
       "wormholeId": 2,
       "relayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
-      "deploy": true
+      "deploy": false
     },
     "axelar": {
       "axelarId": "Ethereum",
       "gateway": "0x4F4495243837681061C4743b74B3eEdf548D56A5",
       "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
-      "deploy": true
-    },
-    "layerZero": {
-      "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
-      "layerZeroEid": 30101,
       "deploy": true
     },
     "chainlink": {
