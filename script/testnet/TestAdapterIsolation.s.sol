@@ -68,9 +68,10 @@ contract TestAdapterIsolation is BaseTestData {
     address constant ARBITRUM_SEPOLIA_USDC = 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d;
     address constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
 
-    // NOTE: Chainlink (index 3) excluded due to CCIP gas limit issue (MessageGasLimitTooHigh)
-    // When batching messages, combined gas exceeds CCIP's ~2M limit. See README.md for details.
-    uint8 constant ADAPTER_COUNT = 3; // 0=Axelar, 1=LayerZero, 2=Wormhole (Chainlink=3 skipped)
+    // Chainlink (index 3) requires special handling due to CCIP gas limits.
+    // Messages are sent in sequential smaller batches to stay under the per-message gas limit.
+    // See README.md for details on Chainlink testing workflow.
+    uint8 constant ADAPTER_COUNT = 4; // 0=Axelar, 1=LayerZero, 2=Wormhole, 3=Chainlink
     uint8 constant POOL_TYPES = 2;
 
     uint256 constant ASYNC_VAULT_XC_MSG_COUNT = 8;
@@ -234,6 +235,16 @@ contract TestAdapterIsolation is BaseTestData {
         runPhase2_Operations();
     }
 
+    function runChainlink_Setup() public {
+        selectedAdapter = uint8(AdapterType.Chainlink);
+        runPhase1_Setup();
+    }
+
+    function runChainlink_Operations() public {
+        selectedAdapter = uint8(AdapterType.Chainlink);
+        runPhase2_Operations();
+    }
+
     //----------------------------------------------------------------------------------------------
     // CONFIGURATION
     //----------------------------------------------------------------------------------------------
@@ -310,6 +321,8 @@ contract TestAdapterIsolation is BaseTestData {
             selectedAdapter = uint8(AdapterType.LayerZero);
         } else if (adapterHash == keccak256("wormhole") || adapterHash == keccak256("2")) {
             selectedAdapter = uint8(AdapterType.Wormhole);
+        } else if (adapterHash == keccak256("chainlink") || adapterHash == keccak256("3")) {
+            selectedAdapter = uint8(AdapterType.Chainlink);
         } else {
             selectedAdapter = 255;
         }
@@ -768,7 +781,6 @@ contract TestAdapterIsolation is BaseTestData {
                 " (Sync)"
             )
         );
-        console.log("  - Chainlink: SKIPPED (CCIP gas limit issue)");
         console.log(
             string.concat(
                 "\nSetPoolAdapters messages sent to spoke (centrifugeId: ", vm.toString(spokeCentrifugeId), ")"
