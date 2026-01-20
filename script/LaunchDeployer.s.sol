@@ -54,19 +54,14 @@ contract LaunchDeployer is FullDeployer {
 
         startDeploymentOutput();
 
-        uint8[32] memory txLimits;
-        try vm.envUint("TX_LIMITS", ",") returns (uint256[] memory txLimitsRaw) {
-            require(txLimitsRaw.length < 32, "only 32 tx limits supported");
-            for (uint256 i; i < txLimitsRaw.length; i++) {
-                txLimits[i] = txLimitsRaw[i].toUint8();
-            }
-        } catch {}
-
         FullInput memory input = FullInput({
             adminSafe: ISafe(vm.envAddress("PROTOCOL_ADMIN")),
             opsSafe: ISafe(vm.envAddress("OPS_ADMIN")),
             core: CoreInput({
-                centrifugeId: centrifugeId, version: version, root: vm.envOr("ROOT", address(0)), txLimits: txLimits
+                centrifugeId: centrifugeId,
+                version: version,
+                root: vm.envOr("ROOT", address(0)),
+                txLimits: _parseBatchLimits(config)
             }),
             adapters: AdaptersInput({
                 layerZero: LayerZeroInput({
@@ -176,5 +171,21 @@ contract LaunchDeployer is FullDeployer {
         } catch {
             return new AdapterConnections[](0);
         }
+    }
+
+    function _parseBatchLimits(string memory config) private view returns (uint8[32] memory batchLimits) {
+        try vm.parseJsonStringArray(config, "$.network.connectsTo") returns (string[] memory connectsTo) {
+            for (uint256 i; i < connectsTo.length; i++) {
+                string memory remoteConfigFile = string.concat("env/", connectsTo[i], ".json");
+                string memory remoteConfig = vm.readFile(remoteConfigFile);
+
+                uint16 centrifugeId = _parseJsonUintOrDefault(remoteConfig, "$.network.centrifugeId").toUint16();
+                if (centrifugeId <= 31) {
+                    batchLimits[centrifugeId] = _parseJsonUintOrDefault(remoteConfig, "$.network.batchLimit").toUint8();
+                } else {
+                    revert("loaded centrifugeId value higher than 31");
+                }
+            }
+        } catch {}
     }
 }

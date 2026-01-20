@@ -10,7 +10,8 @@
       "plume",
       "avalanche"
     ],
-    "safeAdmin": "0x57066D897cB9cDef21b9Ecd7CecdD1d39b6eE445"
+    "safeAdmin": "0x57066D897cB9cDef21b9Ecd7CecdD1d39b6eE445",
+    "batchLimit": 16
   },
   "adapters": {
     "threshold": 2,

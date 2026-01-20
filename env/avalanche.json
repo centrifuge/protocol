@@ -10,7 +10,8 @@
       "plume",
       "bnb-smart-chain"
     ],
-    "safeAdmin": "0xb6642fEd2221e177dD29581BB6d1959Bd1c54185"
+    "safeAdmin": "0xb6642fEd2221e177dD29581BB6d1959Bd1c54185",
+    "batchLimit": 10
   },
   "adapters": {
     "threshold": 2,

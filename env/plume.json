@@ -10,7 +10,8 @@
       "avalanche",
       "bnb-smart-chain"
     ],
-    "safeAdmin": "0x2d442069f78561F817d92c94924D5EaddA9C5767"
+    "safeAdmin": "0x2d442069f78561F817d92c94924D5EaddA9C5767",
+    "batchLimit": 16
   },
   "adapters": {
     "threshold": 2,
