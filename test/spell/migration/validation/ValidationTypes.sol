@@ -9,4 +9,5 @@ struct V3ContractsExt {
     V3Contracts inner;
     address tokenFactory;
     address routerEscrow;
+    address globalEscrow;
 }

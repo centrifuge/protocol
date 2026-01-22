@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {D18} from "../../misc/types/D18.sol";
 import {IERC20} from "../../misc/interfaces/IERC20.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {IEscrow} from "../../misc/interfaces/IEscrow.sol";
 import {IERC7575Share, IERC165} from "../../misc/interfaces/IERC7575.sol";
 import {ETH_ADDRESS, IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 
@@ -102,6 +103,7 @@ struct V3Contracts {
     address fullRestrictions;
     address freelyTransferable;
     address redemptionRestrictions;
+    address globalEscrow;
 }
 
 struct GlobalParamsInput {
@@ -212,10 +214,11 @@ contract MigrationSpell {
     }
 
     function _authorizedContracts(GlobalParamsInput memory input) internal pure returns (address[] memory) {
-        address[] memory contracts = new address[](3);
+        address[] memory contracts = new address[](4);
         contracts[0] = address(input.spoke);
         contracts[1] = address(input.hubRegistry);
         contracts[2] = address(input.v3.gateway);
+        contracts[3] = input.v3.globalEscrow;
         return contracts;
     }
 
@@ -297,6 +300,24 @@ contract MigrationSpell {
             }
 
             input.v3.root.denyContract(address(vault), address(this));
+        }
+
+        // ----- GLOBAL_ESCROW SWEEP (ERC20 only, skip shares) -----
+        for (uint256 i; i < input.spokeAssetIds.length; i++) {
+            (address asset, uint256 tokenId) = input.spoke.idToAsset(input.spokeAssetIds[i]);
+            if (tokenId != 0) continue;
+
+            // Skip share tokens as they must be resolved by closing pending orders
+            bool isShare = false;
+            try IERC165(asset).supportsInterface(type(IERC7575Share).interfaceId) returns (bool result) {
+                isShare = result;
+            } catch {}
+            if (isShare) continue;
+
+            uint256 balance = IERC20(asset).balanceOf(input.v3.globalEscrow);
+            if (balance > 0) {
+                IEscrow(input.v3.globalEscrow).authTransferTo(asset, 0, msg.sender, balance);
+            }
         }
     }
 
