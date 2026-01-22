@@ -18,7 +18,12 @@
     "layerZero": {
       "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
       "layerZeroEid": 30184,
-      "deploy": true
+      "deploy": true,
+      "blockConfirmations": 15,
+      "DVNs": [
+        "0x554833698Ae0FB22ECC90B01222903fD62CA4B47",
+        "0x9e059a54699a285714207b43b055483e78faac25"
+      ]
     },
     "wormhole": {
       "wormholeId": 30,

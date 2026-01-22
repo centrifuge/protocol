@@ -26,7 +26,9 @@
     "layerZero": {
       "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
       "layerZeroEid": 40231,
-      "deploy": true
+      "deploy": true,
+      "blockConfirmations": 5,
+      "DVNs": ["0x53f488e93b4f1b60e8e83aa374dbe1780a1ee8a8"]
     },
     "chainlink": {
       "chainSelector": 3478487238524512106,

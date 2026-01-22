@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {CoreInput, CoreReport, CoreDeployer, CoreActionBatcher} from "./CoreDeployer.s.sol";
+import {SetConfigParam, ILayerZeroEndpointV2Like} from "./utils/ILayerZeroEndpointV2Like.sol";
 
 import {PoolId} from "../src/core/types/PoolId.sol";
 import {IAdapter} from "../src/core/messaging/interfaces/IAdapter.sol";
@@ -74,6 +75,9 @@ struct AdapterConnections {
     string axelarId;
     uint64 chainlinkId;
     uint8 threshold;
+    // Pre-computed LayerZero ULN config
+    // Should contain SetConfigParam[] for both send and receive libraries
+    SetConfigParam[] layerZeroConfigParams;
 }
 
 struct AdaptersInput {
@@ -133,7 +137,8 @@ contract FullActionBatcher is CoreActionBatcher {
         ISafe opsSafe,
         bool newRoot,
         AdapterConnections[] memory connectionList,
-        string memory remoteAxelarAdapter
+        string memory remoteAxelarAdapter,
+        address layerZeroDelegate
     ) public onlyDeployer {
         // Rely Root
         report.tokenRecoverer.rely(address(report.root));
@@ -274,6 +279,12 @@ contract FullActionBatcher is CoreActionBatcher {
                 report.layerZeroAdapter
                     .wire(connections.centrifugeId, abi.encode(connections.layerZeroId, report.layerZeroAdapter));
                 adapters[n++] = report.layerZeroAdapter;
+
+                if (connections.layerZeroConfigParams.length > 0) {
+                    _setLayerZeroUlnConfig(
+                        report.layerZeroAdapter, connections.layerZeroId, connections.layerZeroConfigParams
+                    );
+                }
             }
 
             if (address(report.wormholeAdapter) != address(0) && connections.wormholeId != 0) {
@@ -307,6 +318,11 @@ contract FullActionBatcher is CoreActionBatcher {
                     );
             }
         }
+
+        if (address(report.layerZeroAdapter) != address(0)) {
+            // Set delegate to the right address after setting the ULN config
+            report.layerZeroAdapter.setDelegate(layerZeroDelegate);
+        }
     }
 
     function revokeFull(FullReport memory report) public onlyDeployer {
@@ -332,6 +348,22 @@ contract FullActionBatcher is CoreActionBatcher {
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
+    }
+
+    function _setLayerZeroUlnConfig(LayerZeroAdapter adapter, uint32 eid, SetConfigParam[] memory params) internal {
+        ILayerZeroEndpointV2Like endpoint = ILayerZeroEndpointV2Like(address(adapter.endpoint()));
+        address oapp = address(adapter);
+        address sendLib = endpoint.defaultSendLibrary(eid);
+        address recvLib = endpoint.defaultReceiveLibrary(eid);
+
+        // Set send and receive libraries
+        // Because we set the config on these libraries, we need to set them explicitly
+        // Even though they are the default ones, as the defaults may change
+        endpoint.setSendLibrary(oapp, eid, sendLib);
+        endpoint.setReceiveLibrary(oapp, eid, recvLib, 0);
+
+        endpoint.setConfig(oapp, sendLib, params);
+        endpoint.setConfig(oapp, recvLib, params);
     }
 }
 
@@ -616,9 +648,8 @@ contract FullDeployer is CoreDeployer {
                     generateSalt("layerZeroAdapter"),
                     abi.encodePacked(
                         type(LayerZeroAdapter).creationCode,
-                        abi.encode(
-                            multiAdapter, input.adapters.layerZero.endpoint, input.adapters.layerZero.delegate, batcher
-                        )
+                        // Set delegate to batcher initially, to be able to set ULN config
+                        abi.encode(multiAdapter, input.adapters.layerZero.endpoint, batcher, batcher)
                     )
                 )
             );
@@ -718,7 +749,8 @@ contract FullDeployer is CoreDeployer {
             input.opsSafe,
             newRoot,
             input.adapters.connections,
-            vm.toString(address(axelarAdapter))
+            vm.toString(address(axelarAdapter)),
+            input.adapters.layerZero.delegate
         );
     }
 
