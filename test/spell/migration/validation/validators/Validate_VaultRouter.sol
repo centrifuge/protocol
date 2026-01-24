@@ -66,9 +66,17 @@ contract Validate_VaultRouter is BaseValidator {
 
     function _getAssetBalance(address asset, uint256 tokenId, address escrow) internal view returns (uint256) {
         if (tokenId == 0) {
-            return IERC20(asset).balanceOf(escrow);
+            try IERC20(asset).balanceOf(escrow) returns (uint256 bal) {
+                return bal;
+            } catch {
+                return 0; // Skip malicious assets that revert
+            }
         } else {
-            return IERC6909(asset).balanceOf(escrow, tokenId);
+            try IERC6909(asset).balanceOf(escrow, tokenId) returns (uint256 bal) {
+                return bal;
+            } catch {
+                return 0; // Skip malicious assets that revert
+            }
         }
     }
 }

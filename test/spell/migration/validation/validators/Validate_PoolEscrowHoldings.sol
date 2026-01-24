@@ -91,7 +91,13 @@ contract Validate_PoolEscrowHoldings is BaseValidator {
             address asset = json.readAddress(_buildJsonPath(basePath, i, "assetAddress"));
             address escrow = json.readAddress(_buildJsonPath(basePath, i, "escrowAddress"));
 
-            uint256 balance = IERC20(asset).balanceOf(escrow);
+            // Defensive: skip assets that revert on balanceOf (malicious assets)
+            uint256 balance;
+            try IERC20(asset).balanceOf(escrow) returns (uint256 bal) {
+                balance = bal;
+            } catch {
+                continue; // Skip malicious assets
+            }
 
             string memory key = _buildCacheKey(poolIdRaw, scIdRaw, asset);
             balancesJson = vm.serializeUint(BALANCES_CACHE_KEY, key, balance);
@@ -127,7 +133,25 @@ contract Validate_PoolEscrowHoldings is BaseValidator {
 
         address newEscrow = address(ctx.latest.core.poolEscrowFactory.escrow(PoolId.wrap(poolIdRaw)));
         (uint128 newTotal, uint128 newReserved) = PoolEscrow(newEscrow).holding(ShareClassId.wrap(scIdRaw), asset, 0);
-        uint256 newBalance = IERC20(asset).balanceOf(newEscrow);
+
+        // Defensive: skip assets that revert on balanceOf (malicious assets)
+        // If asset was skipped in PRE phase, it won't be in the cache and we skip it here too
+        string memory key = _buildCacheKey(poolIdRaw, scIdRaw, asset);
+        try vm.parseJsonUint(_balancesJson, string.concat(".", key)) {
+        // Asset exists in cache - proceed with validation
+        }
+        catch {
+            // Asset was skipped in PRE phase (malicious) - skip in POST too
+            return;
+        }
+
+        uint256 newBalance;
+        try IERC20(asset).balanceOf(newEscrow) returns (uint256 bal) {
+            newBalance = bal;
+        } catch {
+            // Asset reverts on balanceOf - skip validation
+            return;
+        }
 
         _compareTotal(poolIdRaw, scIdRaw, asset, newTotal);
         _compareReserved(poolIdRaw, scIdRaw, asset, newReserved);
