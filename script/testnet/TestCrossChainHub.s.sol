@@ -23,7 +23,6 @@ import {console} from "forge-std/console.sol";
  *
  * Prerequisites:
  *   - Run deploy.py dump for the hub network to set environment variables
- *   - Ensure PROTOCOL_ADMIN is set
  *
  * Configuration (optional env vars):
  *   POOL_INDEX_OFFSET - Offset to add to pool indices (default: current timestamp % 1000)
@@ -82,19 +81,14 @@ contract TestCrossChainHub is BaseTestData {
         // Get test run ID (default: timestamp-based)
         testRunId = vm.envOr("TEST_RUN_ID", vm.toString(block.timestamp));
 
-        // Resolve admin with fallback to broadcaster if PROTOCOL_ADMIN not set
-        address maybeAdmin = address(0);
-        try vm.envAddress("PROTOCOL_ADMIN") returns (address a) {
-            maybeAdmin = a;
-        } catch {}
-        admin = (maybeAdmin != address(0)) ? maybeAdmin : msg.sender;
+        admin = vm.parseJsonAddress(config, "$.network.protocolAdmin");
 
         console.log("=== Cross-Chain Hub Test Configuration ===");
         console.log("Hub Network:", network);
         console.log("Hub centrifugeId:", hubCentrifugeId);
         console.log("Pool Index Offset:", poolIndexOffset);
         console.log("Test Run ID:", testRunId);
-        console.log("Admin (PROTOCOL_ADMIN or broadcaster):", admin);
+        console.log("Admin:", admin);
         console.log("Connected networks:", connectedNetworks.length);
         for (uint256 i = 0; i < connectedNetworks.length; i++) {
             console.log("  -", connectedNetworks[i]);

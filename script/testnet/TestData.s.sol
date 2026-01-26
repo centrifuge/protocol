@@ -21,8 +21,6 @@ contract TestData is BaseTestData {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
 
-    address public admin;
-
     function run() public override {
         string memory network = vm.envString("NETWORK");
         string memory configFile = string.concat("env/", network, ".json");
@@ -30,7 +28,7 @@ contract TestData is BaseTestData {
 
         uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
 
-        admin = vm.envAddress("PROTOCOL_ADMIN");
+        address admin = vm.parseJsonAddress(config, "$.network.protocolAdmin");
         loadContractsFromConfig(config);
 
         vm.startBroadcast();

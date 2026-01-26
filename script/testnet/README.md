@@ -15,7 +15,6 @@ Standalone, local/testnet deployment and validation script for a single chain.
 **Usage:**
 ```bash
 export NETWORK=sepolia
-export PROTOCOL_ADMIN=0x... # your EOA
 forge script script/testnet/TestData.s.sol:TestData \
   --rpc-url $RPC_URL \
   --broadcast \
@@ -54,7 +53,6 @@ Hub-side script to create cross-chain test pools.
 
 **Prerequisites:**
 - Run `deploy.py dump` for the hub network to set environment variables
-- Ensure `PROTOCOL_ADMIN` is set
 
 **Configuration (optional env vars):**
 - `POOL_INDEX_OFFSET` - Offset to add to pool indices (default: current timestamp % 1000)

@@ -60,9 +60,11 @@ contract LaunchDeployer is FullDeployer {
             ? uint8(_parseJsonUintOrDefault(config, "$.adapters.layerZero.blockConfirmations"))
             : 0;
 
+        address protocolAdmin = vm.parseJsonAddress(config, "$.network.protocolAdmin");
+
         FullInput memory input = FullInput({
-            adminSafe: ISafe(vm.envAddress("PROTOCOL_ADMIN")),
-            opsSafe: ISafe(vm.envAddress("OPS_ADMIN")),
+            adminSafe: ISafe(protocolAdmin),
+            opsSafe: ISafe(vm.parseJsonAddress(config, "$.network.opsAdmin")),
             core: CoreInput({
                 centrifugeId: centrifugeId,
                 version: version,
@@ -73,7 +75,7 @@ contract LaunchDeployer is FullDeployer {
                 layerZero: LayerZeroInput({
                     shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.layerZero.deploy"),
                     endpoint: _parseJsonAddressOrDefault(config, "$.adapters.layerZero.endpoint"),
-                    delegate: vm.envAddress("PROTOCOL_ADMIN")
+                    delegate: protocolAdmin
                 }),
                 wormhole: WormholeInput({
                     shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.wormhole.deploy"),

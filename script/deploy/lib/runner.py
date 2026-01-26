@@ -40,8 +40,6 @@ class DeploymentRunner:
         env["VERSION"] = os.environ.get("VERSION", "")
         if self.env_loader.etherscan_api_key is not None:
             env["ETHERSCAN_API_KEY"] = self.env_loader.etherscan_api_key
-        env["PROTOCOL_ADMIN"] = self.env_loader.protocol_admin_address
-        env["OPS_ADMIN"] = self.env_loader.ops_admin_address
         # Also add the vars in .env (if .env is there)
         env_file = ".env"
         if os.path.exists(env_file):

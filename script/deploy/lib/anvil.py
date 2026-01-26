@@ -64,6 +64,8 @@ class AnvilManager:
                 "centrifugeId": 9,  # Anvil's centrifuge ID
                 "environment": "testnet",
                 "connectsTo": [],
+                "protocolAdmin": self.protocol_admin_address,
+                "opsAdmin": self.ops_admin_address
             },
             "contracts": {},  # Will be populated after LaunchDeployer runs
             "adapters": {

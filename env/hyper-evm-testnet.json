@@ -4,7 +4,8 @@
     "environment": "testnet",
     "centrifugeId": 9,
     "connectsTo": [],
-    "safeAdmin": null
+    "protocolAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
+    "opsAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb"
   },
   "contracts": {
     "gateway": {

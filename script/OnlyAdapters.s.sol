@@ -109,7 +109,7 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
 
         if (deployLayerZero) {
             address lzEndpoint = vm.parseJsonAddress(config, "$.adapters.layerZero.endpoint");
-            address lzDelegate = vm.envAddress("PROTOCOL_ADMIN");
+            address lzDelegate = vm.parseJsonAddress(config, "$.network.protocolAdmin");
             require(lzEndpoint != address(0), "LayerZero endpoint address cannot be zero");
             require(lzEndpoint.code.length > 0, "LayerZero endpoint must be a deployed contract");
             require(lzDelegate != address(0), "LayerZero delegate address cannot be zero");

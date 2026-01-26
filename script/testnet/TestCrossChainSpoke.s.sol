@@ -81,7 +81,7 @@ contract TestCrossChainSpoke is BaseTestData {
         console.log("Test Run ID:", testRunId);
         console.log("==========================================\n");
 
-        admin = vm.envAddress("PROTOCOL_ADMIN");
+        admin = vm.parseJsonAddress(config, "$.network.protocolAdmin");
         loadContractsFromConfig(config);
 
         vm.startBroadcast();

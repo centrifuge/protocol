@@ -8,7 +8,9 @@
     "connectsTo": [
       "sepolia",
       "arbitrum-sepolia"
-    ]
+    ],
+    "protocolAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
+    "opsAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb"
   },
   "adapters": {
     "threshold": 2,

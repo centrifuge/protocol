@@ -57,8 +57,6 @@ class EnvironmentLoader:
         # Update or add the relevant keys
         env_vars["NETWORK"] = self.network_name
         env_vars["ETHERSCAN_API_KEY"] = self.etherscan_api_key
-        env_vars["PROTOCOL_ADMIN"] = self.protocol_admin_address
-        env_vars["OPS_ADMIN"] = self.ops_admin_address
         # For mainnet, leave PRIVATE_KEY blank (should use Ledger or external signing)
         # For testnet, try to get the private key if available
         if self.is_testnet:
@@ -82,7 +80,7 @@ class EnvironmentLoader:
         """Check if existing .env file is for the correct network"""
         if not os.path.exists(".env"):
             return True
-            
+
         with open(".env", "r") as f:
             for line in f:
                 if line.startswith("NETWORK="):
@@ -91,7 +89,7 @@ class EnvironmentLoader:
                         print_warning(f"Existing .env file is configured for network '{existing_network}'")
                         print_warning(f"Current deployment is for network '{self.network_name}'")
                         print_info("This could lead to deploying to the wrong network or using wrong credentials.")
-                        
+
                         response = input("Do you want to continue? [y/N]: ").strip().lower()
                         if response not in ("y", "yes"):
                             print_info("Please run 'python3 script/deploy/deploy.py {network} dump:config' to update .env for the correct network")
@@ -109,7 +107,7 @@ class EnvironmentLoader:
                     if line.startswith(f"{variable_name}="):
                         print_warning(f"Using {variable_name} from .env")
                         return line.split("=")[1].strip()
-                    
+
     def _load_config(self):
         if not self.config_file.exists():
             raise FileNotFoundError(f"Network config file {self.config_file} not found")
@@ -125,7 +123,7 @@ class EnvironmentLoader:
             self._etherscan_api_key = self._get_secret("etherscan_api")
             print_success("Etherscan API key loaded")
         return self._etherscan_api_key
-    
+
     @property
     def rpc_url(self) -> str:
         if self.args.catapulta:
@@ -136,7 +134,7 @@ class EnvironmentLoader:
             else:
                 self._rpc_url = self._check_env_file("RPC_URL")
         return self._rpc_url
-    
+
     @property
     def private_key(self) -> str:
         if  self._private_key is None:
@@ -162,7 +160,7 @@ class EnvironmentLoader:
                 self._private_key = self._get_secret("testnet-private-key")
                 print_success("Private key loaded")
         return self._private_key
-    
+
     @property
     def protocol_admin_address(self) -> str:
         if self._protocol_admin_address is None:
@@ -187,16 +185,8 @@ class EnvironmentLoader:
         """Get protocol admin address based on network type"""
         print_step("Loading Protocol Admin Address")
 
-        if protocol_admin_address := self._check_env_file("PROTOCOL_ADMIN"):
-            return protocol_admin_address
-
-        if self.is_testnet:
-            protocol_admin_address = "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb"
-        else:
-            if "protocolAdmin" in self.config["network"]:
-                protocol_admin_address = self.config["network"]["protocolAdmin"]
-            else:
-                protocol_admin_address = self.config["network"]["safeAdmin"]
+        if "protocolAdmin" in self.config["network"]:
+            protocol_admin_address = self.config["network"]["protocolAdmin"]
 
         print_success(f"Protocol Admin address loaded: {format_account(protocol_admin_address)}")
         return protocol_admin_address
@@ -205,16 +195,8 @@ class EnvironmentLoader:
         """Get ops admin address based on network type"""
         print_step("Loading Ops Admin Address")
 
-        if ops_admin_address := self._check_env_file("OPS_ADMIN"):
-            return ops_admin_address
-
-        if self.is_testnet:
-            ops_admin_address = "0x423420Ae467df6e90291fd0252c0A8a637C1e03f"
-        else:
-            if "opsAdmin" in self.config["network"]:
-                ops_admin_address = self.config["network"]["opsAdmin"]
-            else:
-                ops_admin_address = self.config["network"]["safeAdmin"]
+        if "opsAdmin" in self.config["network"]:
+            ops_admin_address = self.config["network"]["opsAdmin"]
 
         print_success(f"Ops Admin address loaded: {format_account(ops_admin_address)}")
         return ops_admin_address
@@ -223,9 +205,9 @@ class EnvironmentLoader:
         """Setup and test RPC URL"""
         if rpc_url := self._check_env_file("RPC_URL"):
             return rpc_url
-        
+
         print_step("Guessing RPC URL")
-        
+
         # Special case for Plume
         if self.network_name == "plume":
             if self.is_testnet:
@@ -237,7 +219,7 @@ class EnvironmentLoader:
             # Use Alchemy for other networks
             rpc_url = self.get_alchemy_rpc_url(self.network_name)
             print_info("Using Alchemy RPC endpoint")
-        
+
         # Test the connection
         try:
             subprocess.run([
@@ -255,23 +237,23 @@ class EnvironmentLoader:
 
         # Load network mapping from config file
         network_mapping_file = self.root_dir / "script" / "deploy" / "config" / "alchemy_networks.json"
-        
+
         if not network_mapping_file.exists():
             raise FileNotFoundError(f"Network mapping file not found: {network_mapping_file}")
-        
+
         with open(network_mapping_file, 'r') as f:
             config = json.load(f)
-        
+
         # Determine which mapping to use
         if self.is_testnet:
             network_mapping = config.get("testnet", {})
         else:
             network_mapping = config.get("mainnet", {})
-        
+
         # Get the Alchemy network identifier
         if network_name not in network_mapping:
             raise ValueError(f"Unknown network: {network_name} (testnet: {self.is_testnet})")
-        
+
         alchemy_network = network_mapping[network_name]
         return f"https://{alchemy_network}.g.alchemy.com/v2/{api_key}"
 
@@ -307,7 +289,7 @@ class EnvironmentLoader:
     def _get_secret_with_cli(self, gcp_secret: str) -> str:
         """Get secret using gcloud CLI"""
         try:
-            subprocess.run(["gcloud", "auth", "list"], 
+            subprocess.run(["gcloud", "auth", "list"],
                          capture_output=True, check=True)
             print_info(f"Loading {gcp_secret} from Google Secrets using gcloud CLI")
         except (subprocess.CalledProcessError, FileNotFoundError):
@@ -325,4 +307,4 @@ class EnvironmentLoader:
             secret_value = secret_value.replace('\n', '').replace('\r', '').strip()
             return secret_value
         except subprocess.CalledProcessError:
-            raise RuntimeError(f"Could not fetch {gcp_secret} from Secret Manager") 
+            raise RuntimeError(f"Could not fetch {gcp_secret} from Secret Manager")
