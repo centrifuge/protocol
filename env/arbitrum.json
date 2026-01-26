@@ -8,10 +8,12 @@
       "base",
       "plume",
       "avalanche",
-      "bnb-smart-chain"
+      "bnb-smart-chain",
+      "hyper-evm",
+      "optimism"
     ],
     "safeAdmin": "0xa36caE0ACd40C6BbA61014282f6AE51c7807A433",
-    "batchLimit": 16
+    "batchLimit": 15
   },
   "adapters": {
     "threshold": 2,
@@ -39,7 +41,7 @@
     "chainlink": {
       "chainSelector": 4949039107694359620,
       "ccipRouter": "0x141fa059441E0ca23ce184B6A78bafD2A517DdE8",
-      "deploy": true
+      "deploy": false
     }
   },
   "contracts": {

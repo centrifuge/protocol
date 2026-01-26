@@ -1,0 +1,42 @@
+{
+  "network": {
+    "chainId": 999,
+    "environment": "mainnet",
+    "centrifugeId": 9,
+    "connectsTo": [
+      "ethereum",
+      "base",
+      "arbitrum",
+      "avalanche",
+      "bnb-smart-chain",
+      "plume",
+      "optimism"
+    ],
+    "safeAdmin": null,
+    "batchLimit": 15
+  },
+  "adapters": {
+    "threshold": 2,
+    "layerZero": {
+      "endpoint": "0x3a73033C0B1407574C76BDbAC67F126F6b4a9Aa9",
+      "layerZeroEid": 30367,
+      "deploy": true,
+      "blockConfirmations": 15,
+      "DVNs": [
+        "0x83342EC538dF0460e730a8F543Fe63063e2D44C4",
+        "0xc097ab8CD7b053326DFe9fB3E3a31a0CCe3B526f"
+      ]
+    },
+    "axelar": {
+      "axelarId": "hyperliquid",
+      "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+      "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "deploy": true
+    },
+    "chainlink": {
+      "chainSelector": 2442541497099098535,
+      "ccipRouter": "0x13b3332b66389B1467CA6eBd6fa79775CCeF65ec",
+      "deploy": false
+    }
+  }
+}

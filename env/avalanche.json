@@ -8,7 +8,9 @@
       "base",
       "arbitrum",
       "plume",
-      "bnb-smart-chain"
+      "bnb-smart-chain",
+      "hyper-evm",
+      "optimism"
     ],
     "safeAdmin": "0xb6642fEd2221e177dD29581BB6d1959Bd1c54185",
     "batchLimit": 10
@@ -39,7 +41,7 @@
     "chainlink": {
       "chainSelector": 6433500567565415381,
       "ccipRouter": "0xF4c7E640EdA248ef95972845a62bdC74237805dB",
-      "deploy": true
+      "deploy": false
     }
   },
   "contracts": {

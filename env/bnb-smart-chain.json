@@ -8,10 +8,12 @@
       "base",
       "arbitrum",
       "plume",
-      "avalanche"
+      "avalanche",
+      "hyper-evm",
+      "optimism"
     ],
     "safeAdmin": "0x57066D897cB9cDef21b9Ecd7CecdD1d39b6eE445",
-    "batchLimit": 16
+    "batchLimit": 15
   },
   "adapters": {
     "threshold": 2,
@@ -39,7 +41,7 @@
     "chainlink": {
       "chainSelector": 11344663589394136015,
       "ccipRouter": "0x34B03Cb9086d7D758AC55af71584F81A598759FE",
-      "deploy": true
+      "deploy": false
     }
   },
   "contracts": {

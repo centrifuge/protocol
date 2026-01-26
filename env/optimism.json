@@ -1,0 +1,42 @@
+{
+  "network": {
+    "chainId": 10,
+    "environment": "mainnet",
+    "centrifugeId": 10,
+    "connectsTo": [
+      "ethereum",
+      "base",
+      "arbitrum",
+      "avalanche",
+      "bnb-smart-chain",
+      "plume",
+      "hyper-evm"
+    ],
+    "safeAdmin": null,
+    "batchLimit": 15
+  },
+  "adapters": {
+    "threshold": 2,
+    "layerZero": {
+      "endpoint": "0x1a44076050125825900e736c501f859c50fe728c",
+      "layerZeroEid": 30111,
+      "deploy": true,
+      "blockConfirmations": 15,
+      "DVNs": [
+        "0x5b6735c66d97479cCD18294fc96B3084EcB2fa3f",
+        "0x6A02D83e8d433304bba74EF1c427913958187142"
+      ]
+    },
+    "axelar": {
+      "axelarId": "optimism",
+      "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+      "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "deploy": true
+    },
+    "chainlink": {
+      "chainSelector": 3734403246176062136,
+      "ccipRouter": "0x3206695CaE29952f4b0c22a169725a865bc8Ce0f",
+      "deploy": false
+    }
+  }
+}
