@@ -86,7 +86,7 @@ contract MigrationV3_1Test is Test {
 
         // ----- EXECUTE MIGRATION -----
 
-        migration.migrate(address(deployer), migrationSpell);
+        migration.migrate(address(deployer), "", migrationSpell);
 
         // ----- POST-MIGRATION VALIDATION -----
 

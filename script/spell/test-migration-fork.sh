@@ -162,7 +162,7 @@ echo "##########################################################################
 echo ""
 
 forge script script/spell/MigrationV3_1.s.sol:MigrationV3_1ExecutorMainnet \
-    --sig "run(address, address)" "$DEPLOYER_V3_1" "$MIGRATION_SPELL" \
+    --sig "run(address,string,address)" "$DEPLOYER_V3_1" "" "$MIGRATION_SPELL" \
     --optimize \
     --rpc-url "$LOCAL_RPC_URL" \
     --unlocked --sender "$SPELL_EXECUTOR" \

@@ -1,2 +1,6 @@
 forge-std/=lib/forge-std/src/
 @chimera/=lib/chimera/src/
+safe-utils/=lib/safe-utils/src/
+safe-smart-account/=lib/safe-utils/lib/safe-smart-account/contracts/
+solidity-http/=lib/safe-utils/lib/solidity-http/src/
+solidity-stringutils/=lib/safe-utils/lib/solidity-stringutils/src/

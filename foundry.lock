@@ -1,0 +1,14 @@
+{
+  "lib/chimera": {
+    "rev": "d5cf52bc5bbf75f988f8aada23fd12d0bcf7798a"
+  },
+  "lib/forge-std": {
+    "rev": "1eea5bae12ae557d589f9f0f0edae2faa47cb262"
+  },
+  "lib/safe-utils": {
+    "tag": {
+      "name": "v0.0.17",
+      "rev": "c057d167139dc4878f10ab7133a8c069fa6b1601"
+    }
+  }
+}
