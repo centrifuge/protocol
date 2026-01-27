@@ -12,7 +12,7 @@ contract Validate_CrossChainMessages is BaseValidator {
     using stdJson for string;
 
     string constant QUERY =
-        "crosschainMessages(limit: 1000) { items { id index poolId messageType status fromCentrifugeId toCentrifugeId } totalCount }";
+        "crosschainMessages(limit: 1000, where: {status_not: Executed}) { items { id index poolId messageType status fromCentrifugeId toCentrifugeId } totalCount }";
 
     function supportedPhases() public pure override returns (Phase) {
         return Phase.PRE;
@@ -32,36 +32,20 @@ contract Validate_CrossChainMessages is BaseValidator {
                 ValidationResult({passed: true, validatorName: "CrossChainMessages", errors: new ValidationError[](0)});
         }
 
-        uint256 itemCount = totalCount > 1000 ? 1000 : totalCount;
-
-        string memory basePath = ".data.crosschainMessages.items";
-        uint256 nonExecutedCount = 0;
-
-        for (uint256 i = 0; i < itemCount; i++) {
-            string memory status = json.readString(_buildJsonPath(basePath, i, "status"));
-            if (!_stringsEqual(status, "Executed")) {
-                nonExecutedCount++;
-            }
-        }
-
-        if (nonExecutedCount == 0) {
-            return
-                ValidationResult({passed: true, validatorName: "CrossChainMessages", errors: new ValidationError[](0)});
-        }
-
-        ValidationError[] memory errors = new ValidationError[](nonExecutedCount + 1);
+        ValidationError[] memory errors = new ValidationError[](totalCount + 1);
         uint256 errorIdx = 0;
 
         errors[errorIdx++] = _buildError({
             field: "totalCount",
             value: "CrossChainMessages",
             expected: "0",
-            actual: _toString(nonExecutedCount),
-            message: string.concat(_toString(nonExecutedCount), " pending cross-chain messages found")
+            actual: _toString(totalCount),
+            message: string.concat(_toString(totalCount), " pending cross-chain messages found")
         });
 
         // Detail each non-executed message
-        for (uint256 i = 0; i < itemCount; i++) {
+        string memory basePath = ".data.crosschainMessages.items";
+        for (uint256 i = 0; i < totalCount; i++) {
             string memory status = json.readString(_buildJsonPath(basePath, i, "status"));
             if (_stringsEqual(status, "Executed")) {
                 continue;
