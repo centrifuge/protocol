@@ -30,9 +30,9 @@
       ]
     },
     "wormhole": {
-      "wormholeId": 55,
+      "wormholeId": 0,
       "relayer": "0xaBf89de706B583424328B54dD05a8fC986750Da8",
-      "deploy": false
+      "deploy": true
     },
     "axelar": {
       "axelarId": "plume",
@@ -41,9 +41,9 @@
       "deploy": true
     },
     "chainlink": {
-      "chainSelector": 17912061998839310979,
+      "chainSelector": 0,
       "ccipRouter": "0x5C4f4622AD0EC4a47e04840db7E9EcA8354109af",
-      "deploy": false
+      "deploy": true
     }
   },
   "contracts": {

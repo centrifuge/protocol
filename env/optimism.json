@@ -35,9 +35,9 @@
       "deploy": true
     },
     "chainlink": {
-      "chainSelector": 3734403246176062136,
+      "chainSelector": 0,
       "ccipRouter": "0x3206695CaE29952f4b0c22a169725a865bc8Ce0f",
-      "deploy": false
+      "deploy": true
     }
   }
 }
