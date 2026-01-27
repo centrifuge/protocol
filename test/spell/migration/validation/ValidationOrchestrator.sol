@@ -156,7 +156,7 @@ library ValidationOrchestrator {
     // ============================================
 
     function _buildPreSuite() private returns (ValidationSuite memory) {
-        BaseValidator[] memory validators = new BaseValidator[](21);
+        BaseValidator[] memory validators = new BaseValidator[](20);
 
         validators[0] = new Validate_EpochOutstandingInvests();
         validators[1] = new Validate_EpochOutstandingRedeems();
@@ -177,8 +177,7 @@ library ValidationOrchestrator {
         validators[16] = new Validate_VaultRouter();
         validators[17] = new Validate_Subsidy();
         validators[18] = new Validate_IsPaused();
-        validators[19] = new Validate_GlobalEscrow();
-        validators[20] = new Validate_PoolEscrowHoldings();
+        validators[19] = new Validate_PoolEscrowHoldings();
 
         return ValidationSuite({validators: validators});
     }

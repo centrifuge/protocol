@@ -11,12 +11,11 @@ import {AssetInfo} from "../../../../../src/spell/migration_v3.1/MigrationSpell.
 
 /// @title Validate_GlobalEscrow
 /// @notice Validates that GlobalEscrow has zero balance for all ERC20 assets (excludes share tokens)
-/// @dev PRE: Warns about existing balances that need migration
-/// @dev POST: Asserts migration swept all ERC20 funds to msg.sender. Share tokens are skipped
+/// @dev POST: Asserts migration swept all ERC20 funds from GlobalEscrow. Share tokens are skipped
 ///      (users must claim via old contracts) and logged as warnings.
 contract Validate_GlobalEscrow is BaseValidator {
     function supportedPhases() public pure override returns (Phase) {
-        return Phase.BOTH;
+        return Phase.POST;
     }
 
     function name() public pure override returns (string memory) {
@@ -25,15 +24,11 @@ contract Validate_GlobalEscrow is BaseValidator {
 
     function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
         address globalEscrow = ctx.old.globalEscrow;
-        string memory phaseName = ctx.phase == Phase.PRE ? "PRE" : "POST";
         AssetInfo[] memory assets = ctx.queryService.assets();
 
         if (assets.length == 0) {
-            return ValidationResult({
-                passed: true,
-                validatorName: string.concat("GlobalEscrow (", phaseName, ")"),
-                errors: new ValidationError[](0)
-            });
+            return
+                ValidationResult({passed: true, validatorName: "GlobalEscrow (POST)", errors: new ValidationError[](0)});
         }
 
         ValidationError[] memory errors = new ValidationError[](assets.length);
@@ -69,7 +64,7 @@ contract Validate_GlobalEscrow is BaseValidator {
                 continue;
             }
 
-            // ERC20 tokens should be swept in POST phase
+            // ERC20 tokens should have been swept during migration
             errors[errorCount++] = _buildError({
                 field: "globalEscrow.balance",
                 value: vm.toString(asset),
@@ -82,9 +77,7 @@ contract Validate_GlobalEscrow is BaseValidator {
         }
 
         return ValidationResult({
-            passed: errorCount == 0,
-            validatorName: string.concat("GlobalEscrow (", phaseName, ")"),
-            errors: _trimErrors(errors, errorCount)
+            passed: errorCount == 0, validatorName: "GlobalEscrow (POST)", errors: _trimErrors(errors, errorCount)
         });
     }
 }
