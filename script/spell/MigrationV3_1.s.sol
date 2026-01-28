@@ -43,11 +43,16 @@ import {
     V3Contracts
 } from "../../src/spell/migration_v3.1/MigrationSpell.sol";
 
-contract MigrationV3_1Deployer is Script {
+contract MigrationV3_1Deployer is Script, CreateXScript {
     function run(address owner) external {
         vm.startBroadcast();
 
-        new MigrationSpell(owner);
+        setUpCreateXFactory();
+
+        create3(
+            makeSalt("migrationSpell", "1", msg.sender),
+            abi.encodePacked(type(MigrationSpell).creationCode, abi.encode(owner))
+        );
 
         vm.stopBroadcast();
     }
