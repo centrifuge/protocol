@@ -9,7 +9,8 @@
     "avalanche": "avax-mainnet",
     "bnb-smart-chain": "bnb-mainnet",
     "hyper-evm": "hyperliquid-mainnet",
-    "optimism": "opt-mainnet"
+    "optimism": "opt-mainnet",
+    "monad": "monad-mainnet"
   },
   "testnet": {
     "sepolia": "eth-sepolia",
@@ -37,6 +38,7 @@
     "mantle": "mantle-testnet",
     "opbnb": "opbnb-testnet",
     "manta": "manta-testnet",
-    "blast": "blast-sepolia"
+    "blast": "blast-sepolia",
+    "monad": "monad-testnet"
   }
 }
