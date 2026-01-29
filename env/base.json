@@ -205,9 +205,6 @@
       "blockNumber": 41362504,
       "txHash": "0x18f3d4be4d259727e076cc0afbd06d84c7ea90996930b2e2a7e2424dfd0d334f"
     },
-    "wormholeAdapter": {
-      "address": "0x6b98679eEC5b5DE3A803Dc801B2f12aDdDCD39Ec"
-    },
     "axelarAdapter": {
       "address": "0x34e904237341C3de02D4447C3fF0ca8880ca6484",
       "blockNumber": 41362545,
@@ -272,6 +269,16 @@
       "address": "0xD517BC7ba17271a8D87BE7355B2523bF5c750295",
       "blockNumber": 41362539,
       "txHash": "0x8295ee07637c04d73e1e7dc2998edb93f315ebfd21816ef0c793d66f6f1c9532"
+    },
+    "chainlinkAdapter": {
+      "address": "0x39CF679Eb0Ac9075CFb5f94930A367Ba1557D955",
+      "blockNumber": 41455566,
+      "txHash": "0xc6ede0a81611b5ac8b1798aa584525e847bafb0a86049f088eca3bcb712062ad"
+    },
+    "wormholeAdapter": {
+      "address": "0x4BE430401760075315E931dD34b892DFdfc706A7",
+      "blockNumber": 41455648,
+      "txHash": "0x9e9827b7c1d4eb1b2510c7cb93206f0b1a39bc32110ea40d20d018a88012e1eb"
     }
   },
   "deploymentInfo": {

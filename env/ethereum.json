@@ -205,11 +205,6 @@
       "blockNumber": 24319372,
       "txHash": "0x529317c3321ae4af7277cd66ff8f1f4e38a51bb1ad5317145d0be002ba0a2fe0"
     },
-    "wormholeAdapter": {
-      "address": "0x6b98679eEC5b5DE3A803Dc801B2f12aDdDCD39Ec",
-      "blockNumber": 22924344,
-      "txHash": "0x7156d84d5e0e4eae578c4d8eefd5659aa70f46341ee96dd38395a78bdc6d5618"
-    },
     "axelarAdapter": {
       "address": "0x34e904237341C3de02D4447C3fF0ca8880ca6484",
       "blockNumber": 24319385,
@@ -274,6 +269,16 @@
       "address": "0xD517BC7ba17271a8D87BE7355B2523bF5c750295",
       "blockNumber": 24319384,
       "txHash": "0x615c3619e25701320002aaff0e016484a844c271f8dbcc7f0ada921f5c3108e7"
+    },
+    "chainlinkAdapter": {
+      "address": "0x39CF679Eb0Ac9075CFb5f94930A367Ba1557D955",
+      "blockNumber": 24341373,
+      "txHash": "0x05e9e095010810c615c7f5c266a7b564a4c65d306e6e8a8e9e8c977a9eb0b469"
+    },
+    "wormholeAdapter": {
+      "address": "0x4BE430401760075315E931dD34b892DFdfc706A7",
+      "blockNumber": 24341381,
+      "txHash": "0x8255b58724d8f340f94459e333280dfe590b69e3c6cb582538545935dd795ff2"
     }
   },
   "deploymentInfo": {
