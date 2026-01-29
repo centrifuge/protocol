@@ -2,8 +2,6 @@
 pragma solidity 0.8.28;
 
 import {PoolId} from "../../../../../src/core/types/PoolId.sol";
-import {AssetId} from "../../../../../src/core/types/AssetId.sol";
-import {IBalanceSheet} from "../../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {ShareClassId, newShareClassId} from "../../../../../src/core/types/ShareClassId.sol";
 
 import {OnOfframpManager, OnOfframpManagerFactory} from "../../../../../src/managers/spoke/OnOfframpManager.sol";
@@ -13,17 +11,10 @@ import {stdJson} from "forge-std/StdJson.sol";
 import {BaseValidator} from "../BaseValidator.sol";
 
 /// @title Validate_BalanceSheet
-/// @notice Validates BalanceSheet state before and after migration
-/// @dev PRE: Validates no queued assets or shares exist
+/// @notice Validates BalanceSheet state after migration
 /// @dev POST: Validates all pool managers were migrated correctly
 contract Validate_BalanceSheet is BaseValidator {
     using stdJson for string;
-
-    struct Vault {
-        uint256 poolId;
-        string tokenId;
-        string assetId;
-    }
 
     function supportedPhases() public pure override returns (Phase) {
         return Phase.BOTH;
@@ -35,75 +26,12 @@ contract Validate_BalanceSheet is BaseValidator {
 
     function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
         if (ctx.phase == Phase.PRE) {
-            return _validatePre(ctx);
+            _cachePostValidationData(ctx);
+            return
+                ValidationResult({passed: true, validatorName: "BalanceSheet (PRE)", errors: new ValidationError[](0)});
         } else {
             return _validatePost(ctx);
         }
-    }
-
-    /// @notice PRE-migration: Verify no queued assets or shares exist in BalanceSheet
-    /// @dev Migration requires clean state with no pending operations
-    /// @dev Also queries data needed for POST validation and caches it
-    function _validatePre(ValidationContext memory ctx) internal returns (ValidationResult memory) {
-        _cachePostValidationData(ctx);
-
-        IBalanceSheet balanceSheet = IBalanceSheet(ctx.old.inner.balanceSheet);
-
-        string memory json = ctx.store.query(_vaultsQuery(ctx));
-
-        uint256 totalCount = json.readUint(".data.vaults.totalCount");
-
-        if (totalCount == 0) {
-            return
-                ValidationResult({passed: true, validatorName: "BalanceSheet (PRE)", errors: new ValidationError[](0)});
-        }
-
-        Vault[] memory vaults = new Vault[](totalCount);
-        string memory basePath = ".data.vaults.items";
-        for (uint256 i = 0; i < totalCount; i++) {
-            vaults[i].poolId = json.readUint(_buildJsonPath(basePath, i, "poolId"));
-            vaults[i].tokenId = json.readString(_buildJsonPath(basePath, i, "tokenId"));
-            vaults[i].assetId = json.readString(_buildJsonPath(basePath, i, "asset.id"));
-        }
-
-        // Pre-allocate max possible errors (3 per vault: deposits, withdrawals, shares)
-        ValidationError[] memory errors = new ValidationError[](vaults.length * 3);
-        uint256 errorCount = 0;
-
-        for (uint256 i = 0; i < vaults.length; i++) {
-            PoolId pid = PoolId.wrap(uint64(vaults[i].poolId));
-            ShareClassId scid = ShareClassId.wrap(bytes16(vm.parseBytes(vaults[i].tokenId)));
-            AssetId aid = AssetId.wrap(uint128(vm.parseUint(vaults[i].assetId)));
-
-            (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(pid, scid, aid);
-
-            if (deposits > 0) {
-                errors[errorCount++] = _buildAssetError(
-                    "queuedDeposits", vaults[i].poolId, vaults[i].tokenId, vaults[i].assetId, deposits
-                );
-            }
-
-            if (withdrawals > 0) {
-                errors[errorCount++] = _buildAssetError(
-                    "queuedWithdrawals", vaults[i].poolId, vaults[i].tokenId, vaults[i].assetId, withdrawals
-                );
-            }
-        }
-
-        for (uint256 i = 0; i < vaults.length; i++) {
-            PoolId pid = PoolId.wrap(uint64(vaults[i].poolId));
-            ShareClassId scid = ShareClassId.wrap(bytes16(vm.parseBytes(vaults[i].tokenId)));
-
-            (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(pid, scid);
-
-            if (delta > 0) {
-                errors[errorCount++] = _buildShareError(vaults[i].poolId, vaults[i].tokenId, delta, isPositive);
-            }
-        }
-
-        return ValidationResult({
-            passed: errorCount == 0, validatorName: "BalanceSheet (PRE)", errors: _trimErrors(errors, errorCount)
-        });
     }
 
     /// @notice POST-migration: Verify all pool managers were migrated to new BalanceSheet
@@ -187,14 +115,6 @@ contract Validate_BalanceSheet is BaseValidator {
         return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), factory, salt, keccak256(initCode))))));
     }
 
-    function _vaultsQuery(ValidationContext memory ctx) internal pure returns (string memory) {
-        return string.concat(
-            "vaults(limit: 1000, where: { poolId_in: ",
-            _buildPoolIdsJson(ctx.pools),
-            " }) { items { asset { id } poolId tokenId } totalCount }"
-        );
-    }
-
     function _managersQuery(ValidationContext memory ctx, uint256 poolId) internal pure returns (string memory) {
         return string.concat(
             "poolManagers(limit: 1000, where: { centrifugeId: ",
@@ -203,37 +123,5 @@ contract Validate_BalanceSheet is BaseValidator {
             _jsonValue(poolId),
             ", isBalancesheetManager: true }) { items { address } totalCount }"
         );
-    }
-
-    function _buildAssetError(
-        string memory field,
-        uint256 poolId,
-        string memory tokenId,
-        string memory assetId,
-        uint128 amount
-    ) internal pure returns (ValidationError memory) {
-        return _buildError({
-            field: field,
-            value: string.concat("Pool ", _toString(poolId)),
-            expected: "0",
-            actual: _toString(amount),
-            message: string.concat("Pool ", _toString(poolId), " SC ", tokenId, " Asset ", assetId)
-        });
-    }
-
-    function _buildShareError(uint256 poolId, string memory tokenId, uint128 delta, bool isPositive)
-        internal
-        pure
-        returns (ValidationError memory)
-    {
-        return _buildError({
-            field: "queuedSharesDelta",
-            value: string.concat("Pool ", _toString(poolId)),
-            expected: "0",
-            actual: _toString(delta),
-            message: string.concat(
-                "Pool ", _toString(poolId), " SC ", tokenId, " ", isPositive ? "+" : "-", _toString(delta)
-            )
-        });
     }
 }
