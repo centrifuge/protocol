@@ -8,6 +8,16 @@
     "opsAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb"
   },
   "contracts": {
+    "root": {
+      "address": "0x1Fa8a2fe2eAE2373B03Fa313E016605EB86cBae8",
+      "blockNumber": 43580306,
+      "txHash": "0xa1fe213c5124a8f1e37f87c86cf5ca8e9e7f8661e8723ac309df926a20139f7c"
+    },
+    "gasService": {
+      "address": "0xC486678A507f0c0e61bcdB158DC23CA03Dfb8CFf",
+      "blockNumber": 43580306,
+      "txHash": "0xd189a699a94089fb51579bb435580492aa41be274566e50c19b567c432e5f266"
+    },
     "gateway": {
       "address": "0x1a04566561EF19116D91684c8512348940DDc3ec",
       "blockNumber": 43580306,
@@ -22,11 +32,6 @@
       "address": "0x69752e9dd9375Dab0563a56620547B61279678A4",
       "blockNumber": 43580306,
       "txHash": "0x5f197dd237efe4ef4168ecb6512c92bad37c48443da8d5412679e5b9c9a63e8b"
-    },
-    "gasService": {
-      "address": "0xC486678A507f0c0e61bcdB158DC23CA03Dfb8CFf",
-      "blockNumber": 43580306,
-      "txHash": "0xd189a699a94089fb51579bb435580492aa41be274566e50c19b567c432e5f266"
     },
     "messageProcessor": {
       "address": "0x5583D22Fa3c0e71DcBeabD0D67a978115370216b",
@@ -92,11 +97,6 @@
       "address": "0xb2D1EBaEB0007578B09a555F8FB05DaD9150cFDD",
       "blockNumber": 43580428,
       "txHash": "0xff5d135745e790be6650d1f66ba504885f237e3a510352c9836ff957559627ac"
-    },
-    "root": {
-      "address": "0x1Fa8a2fe2eAE2373B03Fa313E016605EB86cBae8",
-      "blockNumber": 43580306,
-      "txHash": "0xa1fe213c5124a8f1e37f87c86cf5ca8e9e7f8661e8723ac309df926a20139f7c"
     },
     "tokenRecoverer": {
       "address": "0xf6E0a95A857EBE0633167416Ce1f96486932644a",
