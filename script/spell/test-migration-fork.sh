@@ -11,8 +11,7 @@ set -euo pipefail
 #
 # Only requirements is to have PLUME_API_KEY and ALCHEMY_API_KEY in the .env file
 
-export NETWORK=$1
-export VERSION="v3.1"
+NETWORK=$1
 
 if [ "$NETWORK" == "plume" ]; then
     PLUME_API_KEY=$(grep -E '^PLUME_API_KEY=' .env | cut -d= -f2-)
@@ -32,6 +31,7 @@ OPS_ADMIN="0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16"
 DEPLOYER_V3_1="0x926702C7f1af679a8f99A40af8917DDd82fD6F6c"
 SPELL_EXECUTOR="$OPS_ADMIN"
 ANY="0x1234567890000000000000000000000000000000"
+MIGRATION_SPELL="0xe97ac43a22b8df15d53503cf8001f12c6b349327"
 
 echo ""
 echo "##########################################################################"
@@ -62,38 +62,19 @@ mock_addr "$OPS_ADMIN"
 mock_addr "$ANY"
 
 CHAIN_ID=$(cast chain-id --rpc-url "$LOCAL_RPC_URL")
+ROOT=$(cast call $GUARDIAN_V3 "root()(address)" --rpc-url "$LOCAL_RPC_URL")
 
 echo ""
 echo "##########################################################################"
 echo "#                          STEP 1: Deploy V3.1"
 echo "##########################################################################"
-echo ""
-
-# Important! Deploying for the migrations requires to have ROOT envvar exported at this time.
-export ROOT=$(cast call $GUARDIAN_V3 "root()(address)" --rpc-url "$LOCAL_RPC_URL")
-forge script script/LaunchDeployer.s.sol \
-    --optimize \
-    --rpc-url "$LOCAL_RPC_URL" \
-    --unlocked --sender "$DEPLOYER_V3_1" \
-    --broadcast
-
-VERSION="$VERSION" ./script/deploy/update_network_config.py "$NETWORK" --script LaunchDeployer.s.sol
+echo " Done!"
 
 echo ""
 echo "##########################################################################"
 echo "#                    STEP 2: Deploy migration spell"
 echo "##########################################################################"
-echo ""
-
-forge script script/spell/MigrationV3_1.s.sol:MigrationV3_1Deployer \
-    --sig "run(address)" $SPELL_EXECUTOR \
-    --optimize \
-    --rpc-url "$LOCAL_RPC_URL" \
-    --unlocked --sender "$ANY" \
-    --broadcast
-
-MIGRATION_SPELL=$(jq -r '.transactions[] | select(.contractName=="MigrationSpell") | .contractAddress' \
-    broadcast/MigrationV3_1.s.sol/"$CHAIN_ID"/run-latest.json)
+echo " Done!"
 
 echo ""
 echo "##########################################################################"
