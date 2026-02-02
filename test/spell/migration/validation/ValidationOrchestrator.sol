@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {GraphQLStore} from "./GraphQLStore.sol";
 import {BaseValidator} from "./BaseValidator.sol";
 import {V3ContractsExt} from "./ValidationTypes.sol";
+import {Validate_Root} from "./validators/Validate_Root.sol";
 import {Validate_Spoke} from "./validators/Validate_Spoke.sol";
 import {Validate_Subsidy} from "./validators/Validate_Subsidy.sol";
 import {Validate_Holdings} from "./validators/Validate_Holdings.sol";
@@ -183,7 +184,7 @@ library ValidationOrchestrator {
     }
 
     function _buildPostSuite() private returns (ValidationSuite memory) {
-        BaseValidator[] memory validators = new BaseValidator[](15);
+        BaseValidator[] memory validators = new BaseValidator[](16);
 
         validators[0] = new Validate_ShareClassManager();
         validators[1] = new Validate_BalanceSheet();
@@ -199,9 +200,10 @@ library ValidationOrchestrator {
         validators[11] = new Validate_MultiAdapter();
         validators[12] = new Validate_PoolEscrowHoldings();
         validators[13] = new Validate_GlobalEscrow();
+        validators[14] = new Validate_Root();
         // NOTE: Always keep InvestmentFlows last - it executes full deposit/redeem cycles that modify:
         // escrow balances, pending requests, prices, whitelist state, and manager registrations
-        validators[14] = new Validate_InvestmentFlows();
+        validators[15] = new Validate_InvestmentFlows();
 
         return ValidationSuite({validators: validators});
     }
