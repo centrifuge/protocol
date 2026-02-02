@@ -83,6 +83,14 @@ contract Validate_UnclaimedInvestOrders is BaseValidator {
             uint128 pendingCancelDepositRequest,
             uint128 /* pendingCancelRedeemRequest */
         ) {
+            if (
+                vault == 0x314d8AEb02bB5f6b86D2Ac1feF4c5Fc1771e6817
+                    && investor == 0xD8Cd65E62E7A40E0E226C61BfB1346EF6a3f566B
+            ) {
+                // Discard this investment: https://kflabs.slack.com/archives/C07PG2EUR9C/p1770051860364119
+                return;
+            }
+
             if (maxMint > 0) {
                 _addMaxMintError(vault, investor, maxMint, poolIdRaw);
             }

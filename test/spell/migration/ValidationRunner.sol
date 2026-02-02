@@ -93,7 +93,7 @@ contract ValidationRunner is Test {
         FullReport memory latest = _reportFromJson(config);
 
         if (isPre) {
-            ValidationOrchestrator.runPreValidation(shared, false); // shouldRevert = false (show warnings)
+            ValidationOrchestrator.runPreValidation(shared, true); // shouldRevert = false (show warnings)
         } else {
             ValidationOrchestrator.runPostValidation(shared, latest);
         }
