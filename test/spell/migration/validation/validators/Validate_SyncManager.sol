@@ -99,7 +99,7 @@ contract Validate_SyncManager is BaseValidator {
         PoolId poolId = PoolId.wrap(uint64(vault.poolId));
         ShareClassId scId = ShareClassId.wrap(bytes16(vm.parseBytes(vault.tokenId)));
 
-        if (scId.index() != 0) return errorCount;
+        if (scId.index() != 1) return errorCount;
 
         AssetId assetId = AssetId.wrap(uint128(vm.parseUint(vault.assetId)));
         (address asset, uint256 tokenId) = oldSpoke.idToAsset(assetId);
