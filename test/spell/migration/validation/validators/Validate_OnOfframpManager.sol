@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {PoolId} from "../../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../../src/core/types/ShareClassId.sol";
 
+import {IBalanceSheet} from "../../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {OnOfframpManager} from "../../../../../src/managers/spoke/OnOfframpManager.sol";
 
 import {stdJson} from "forge-std/StdJson.sol";
@@ -116,13 +117,21 @@ contract Validate_OnOfframpManager is BaseValidator {
         PoolId pid = PoolId.wrap(uint64(managerData.poolId));
         ShareClassId scid = ShareClassId.wrap(bytes16(vm.parseBytes(managerData.tokenId)));
 
+        // Only OnOffRampManagers that are also BalanceSheet managers are migrated
+        if (!IBalanceSheet(address(ctx.old.inner.balanceSheet)).manager(pid, managerData.managerAddress)) {
+            return errorCount;
+        }
+
         // The spell migrates only the first share class of a pool, so skip others
-        if (scid.index() != 0) return errorCount;
+        if (scid.index() != 1) return errorCount;
 
         string memory managerIdStr = string.concat("Pool ", _toString(managerData.poolId), " SC ", managerData.tokenId);
 
         address expectedNewManager = _computeManagerAddress(ctx, pid, scid);
-        errorCount = _validateExists(expectedNewManager, managerIdStr, errors, errorCount);
+        bool exists;
+        (errorCount, exists) = _validateExists(expectedNewManager, managerIdStr, errors, errorCount);
+
+        if (!exists) return errorCount;
 
         OnOfframpManager newManager = OnOfframpManager(expectedNewManager);
         errorCount = _validateOnrampSettings(newManager, assets, managerData, managerIdStr, errors, errorCount);
@@ -138,7 +147,7 @@ contract Validate_OnOfframpManager is BaseValidator {
         string memory managerIdStr,
         ValidationError[] memory errors,
         uint256 errorCount
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256, bool) {
         uint256 codeSize;
         assembly {
             codeSize := extcodesize(expectedNewManager)
@@ -153,7 +162,7 @@ contract Validate_OnOfframpManager is BaseValidator {
                 message: string.concat(managerIdStr, " new OnOfframpManager not deployed")
             });
         }
-        return errorCount;
+        return (errorCount, codeSize != 0);
     }
 
     function _validateOnrampSettings(
