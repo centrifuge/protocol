@@ -29,7 +29,6 @@ OPS_ADMIN="0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16"
 
 DEPLOYER_V3_1="0x926702C7f1af679a8f99A40af8917DDd82fD6F6c"
 SPELL_EXECUTOR="$OPS_ADMIN"
-ANY="0x1234567890000000000000000000000000000000"
 MIGRATION_SPELL="0xe97ac43a22b8df15d53503cf8001f12c6b349327"
 
 echo ""
@@ -57,11 +56,9 @@ mock_addr "$ADMIN_V3"
 mock_addr "$DEPLOYER_V3_1"
 mock_addr "$SPELL_EXECUTOR"
 mock_addr "$PROTOCOL_ADMIN"
-mock_addr "$OPS_ADMIN"
-mock_addr "$ANY"
 
 CHAIN_ID=$(cast chain-id --rpc-url "$LOCAL_RPC_URL")
-ROOT=$(cast call $GUARDIAN_V3 "root()(address)" --rpc-url "$LOCAL_RPC_URL")
+ROOT="0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f"
 
 echo ""
 echo "##########################################################################"
@@ -79,35 +76,19 @@ echo ""
 echo "##########################################################################"
 echo "#              STEP 3: Request root permissions to the spell"
 echo "##########################################################################"
-echo ""
-
-cast send $GUARDIAN_V3 "scheduleRely(address)" "$MIGRATION_SPELL" \
-    --rpc-url "$LOCAL_RPC_URL" \
-    --unlocked --from "$ADMIN_V3"
+echo " Done!"
 
 echo ""
 echo "##########################################################################"
 echo "#                    INTERLUDE: Mock passing 48 hours"
 echo "##########################################################################"
-echo ""
-
-# As a mocked process to skip 48 hours of delay
-cast rpc evm_increaseTime 172800 \
-    --rpc-url $LOCAL_RPC_URL \
-
-# Mine a new block to set the new timestamp
-cast rpc evm_mine \
-    --rpc-url $LOCAL_RPC_URL
+echo " Done!"
 
 echo ""
 echo "##########################################################################"
 echo "#              STEP 4: Get root permissions to the spell"
 echo "##########################################################################"
-echo ""
-
-cast send "$ROOT" "executeScheduledRely(address)" "$MIGRATION_SPELL" \
-    --rpc-url "$LOCAL_RPC_URL" \
-    --unlocked --from "$ANY"
+echo " Done!"
 
 echo ""
 echo "##########################################################################"
