@@ -5,7 +5,8 @@
     "centrifugeId": 9,
     "connectsTo": [],
     "protocolAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
-    "opsAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb"
+    "opsAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
+    "baseRpcUrl": "https://hyperliquid-testnet.g.alchemy.com/v2/"
   },
   "contracts": {
     "root": {

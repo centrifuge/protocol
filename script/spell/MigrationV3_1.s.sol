@@ -30,8 +30,8 @@ import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 
 import "forge-std/Script.sol";
-import {Safe, Enum} from "safe-utils/Safe.sol";
 
+import {Safe, Enum} from "safe-utils/Safe.sol";
 import {makeSalt} from "../CoreDeployer.s.sol";
 import {CreateXScript} from "../utils/CreateXScript.sol";
 import {GraphQLConstants} from "../utils/GraphQLConstants.sol";

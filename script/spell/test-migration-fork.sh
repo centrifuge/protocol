@@ -9,18 +9,17 @@ set -euo pipefail
 # ./script/spell/test-migration-fork.sh avalanche
 # ./script/spell/test-migration-fork.sh bnb-smart-chain
 #
-# Only requirements is to have PLUME_API_KEY and ALCHEMY_API_KEY in the .env file
+# Only requirement is to have ALCHEMY_API_KEY (or PLUME_API_KEY for plume) in the .env file
 
 NETWORK=$1
 
+BASE_RPC_URL=$(jq -r '.network.baseRpcUrl' env/"$NETWORK".json)
 if [ "$NETWORK" == "plume" ]; then
-    PLUME_API_KEY=$(grep -E '^PLUME_API_KEY=' .env | cut -d= -f2-)
-    REMOTE_RPC_URL="https://rpc.plume.org/$PLUME_API_KEY"
+    API_KEY=$(grep -E '^PLUME_API_KEY=' .env | cut -d= -f2-)
 else
-    ALCHEMY_API_KEY=$(grep -E '^ALCHEMY_API_KEY=' .env | cut -d= -f2-)
-    ALCHEMY_NAME=$(jq -r --arg net "$NETWORK" '.mainnet[$net] // empty' script/deploy/config/alchemy_networks.json)
-    REMOTE_RPC_URL="https://$ALCHEMY_NAME.g.alchemy.com/v2/$ALCHEMY_API_KEY"
+    API_KEY=$(grep -E '^ALCHEMY_API_KEY=' .env | cut -d= -f2-)
 fi
+REMOTE_RPC_URL="${BASE_RPC_URL}${API_KEY}"
 
 GUARDIAN_V3="0xFEE13c017693a4706391D516ACAbF6789D5c3157"
 ADMIN_V3=$(jq -r '.network.safeAdmin' env/"$NETWORK".json)

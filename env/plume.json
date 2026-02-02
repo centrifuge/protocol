@@ -15,7 +15,8 @@
     "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "safeAdmin": "0x2d442069f78561F817d92c94924D5EaddA9C5767",
-    "batchLimit": 15
+    "batchLimit": 15,
+    "baseRpcUrl": "https://rpc.plume.org/"
   },
   "adapters": {
     "threshold": 2,

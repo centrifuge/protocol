@@ -15,7 +15,8 @@
     "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "safeAdmin": "0x8b83962fB9dB346a20c95D98d4E312f17f4C0d9b",
-    "batchLimit": 15
+    "batchLimit": 15,
+    "baseRpcUrl": "https://base-mainnet.g.alchemy.com/v2/"
   },
   "adapters": {
     "threshold": 2,

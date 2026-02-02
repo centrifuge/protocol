@@ -11,8 +11,8 @@ set -euo pipefail
 export NETWORK=$1
 
 ALCHEMY_API_KEY=$(grep -E '^ALCHEMY_API_KEY=' .env | cut -d= -f2-)
-ALCHEMY_NAME=$(jq -r --arg net "$NETWORK" '.mainnet[$net] // empty' script/deploy/config/alchemy_networks.json)
-REMOTE_RPC_URL="https://$ALCHEMY_NAME.g.alchemy.com/v2/$ALCHEMY_API_KEY"
+BASE_RPC_URL=$(jq -r '.network.baseRpcUrl' env/"$NETWORK".json)
+REMOTE_RPC_URL="${BASE_RPC_URL}${ALCHEMY_API_KEY}"
 
 GUARDIAN_V3="0xFEE13c017693a4706391D516ACAbF6789D5c3157"
 GUARDIAN_V2_ETHEREUM_OR_ARBITRUM="0x09ab10a9c3E6Eac1d18270a2322B6113F4C7f5E8";

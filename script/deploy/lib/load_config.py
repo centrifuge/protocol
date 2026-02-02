@@ -206,19 +206,19 @@ class EnvironmentLoader:
         if rpc_url := self._check_env_file("RPC_URL"):
             return rpc_url
 
-        print_step("Guessing RPC URL")
+        print_step("Setting up RPC URL")
 
-        # Special case for Plume
-        if self.network_name == "plume":
-            if self.is_testnet:
-                rpc_url = "https://testnet-rpc.plume.org"
-            else:
-                rpc_url = "https://rpc.plume.org"
-            print_info("Using Plume RPC endpoint")
-        else:
-            # Use Alchemy for other networks
-            rpc_url = self.get_alchemy_rpc_url(self.network_name)
+        base_url = self.config["network"].get("baseRpcUrl")
+        if not base_url:
+            raise ValueError(f"No baseRpcUrl found in config for {self.network_name}")
+
+        if "alchemy.com" in base_url:
+            api_key = self._get_secret("alchemy_api")
+            rpc_url = f"{base_url}{api_key}"
             print_info("Using Alchemy RPC endpoint")
+        else:
+            rpc_url = base_url
+            print_info(f"Using RPC endpoint: {base_url}")
 
         # Test the connection
         try:
@@ -229,33 +229,6 @@ class EnvironmentLoader:
             return rpc_url
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             raise RuntimeError(f"RPC connection failed. URL: {rpc_url}.")
-
-
-    def get_alchemy_rpc_url(self, network_name: str) -> str:
-        """Get Alchemy RPC URL for the network"""
-        api_key = self._get_secret("alchemy_api")
-
-        # Load network mapping from config file
-        network_mapping_file = self.root_dir / "script" / "deploy" / "config" / "alchemy_networks.json"
-
-        if not network_mapping_file.exists():
-            raise FileNotFoundError(f"Network mapping file not found: {network_mapping_file}")
-
-        with open(network_mapping_file, 'r') as f:
-            config = json.load(f)
-
-        # Determine which mapping to use
-        if self.is_testnet:
-            network_mapping = config.get("testnet", {})
-        else:
-            network_mapping = config.get("mainnet", {})
-
-        # Get the Alchemy network identifier
-        if network_name not in network_mapping:
-            raise ValueError(f"Unknown network: {network_name} (testnet: {self.is_testnet})")
-
-        alchemy_network = network_mapping[network_name]
-        return f"https://{alchemy_network}.g.alchemy.com/v2/{api_key}"
 
     def _get_secret(self, secret_name: str) -> str:
         """Get secret from GCP Secret Manager"""
