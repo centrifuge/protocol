@@ -1,28 +1,91 @@
 # Registry Documentation
 
-This folder contains everything related to Centrifuge's contract registry. It documents the JSON schema, helper scripts, and automated workflows that keep the registries up to date.
+This folder contains everything for Centrifuge's contract registry: scripts that generate and pin registries, CI pipelines that keep them up to date, and the JSON schema they follow.
 
 ## Delta Registry Format
 
-Starting with v3.0, registries use a **delta format** where each version only contains contracts that changed since the previous version. This enables:
+Registries use a **delta format**: each version only contains contracts that changed since the previous version. Each delta has a `previousRegistry` field with an IPFS hash to the prior version, forming a linked chain. This enables selective loading, version-aware indexing (each delta has a `startBlock`), and full reconstruction by walking the IPFS chain.
 
-- **Selective loading**: Only load the delta you need, swap ABIs for changed contracts
-- **Version-aware indexing**: Each delta has a `startBlock` - use different ABIs for different block ranges
-- **Full reconstruction**: Walk the IPFS chain to build the complete registry when needed
+## Endpoints and outputs
 
-Each delta registry includes a `previousRegistry` field with an IPFS hash pointer to the prior version, creating a linked chain of versions.
+- **Published:** `registry.centrifuge.io` (mainnet), `registry.testnet.centrifuge.io` (testnet). Each serves a JSON file with the schema below.
+- **Generated files:** `registry-mainnet.json`, `registry-testnet.json` (production and testnet deployments).
 
-## Published endpoints
+---
 
-- `registry.centrifuge.io` – current production (mainnet) registry for the latest deployed release.
-- `registry.testnet.centrifuge.io` – registry for the currently deployed testnet release. This normally matches production unless the next release is being staged.
+## How it works
 
-Each endpoint hosts a JSON file with the schema described below.
+### Scripts
 
-## Generated files
+| Script | Purpose |
+|--------|---------|
+| `abi-registry.js` | Builds `registry-*.json` from env files, explorer APIs, and Forge broadcast artifacts. Supports delta (default) or full snapshot. |
+| `pin-to-ipfs.js` | Pins generated registries to Pinata, writes nightly/mainnet/testnet summaries, outputs CID metadata. |
+| `.github/ci-scripts/detect-changed-environments.js` | Detects mainnet/testnet env changes to skip unnecessary CI builds. |
+| `.github/ci-scripts/detect-deployment-commit.js` | Returns the git commit that produced the latest env files so ABIs are built from that revision. |
+| `.github/ci-scripts/compute-env-tags.js` | Creates tags (`deploy-${version}-${timestamp}`) when env files change so deployment commits stay reachable after squashing. |
 
-- `registry-mainnet.json` – production deployments (Ethereum, Base, Arbitrum, etc.)
-- `registry-testnet.json` – testnet deployments (Sepolia, Base Sepolia, Arbitrum Sepolia, etc.)
+### Pipelines
+
+- **`registry.yml`** – On env/registry changes: detects changed envs, rebuilds ABIs at deployment commits, generates `registry-mainnet.json` / `registry-testnet.json`, publishes artifacts, pins to IPFS, writes step summaries with CIDs and opens issues when pointers need updates.
+- **`tag-env-updates.yml`** – On any push that touches `env/**/*.json`: runs `compute-env-tags.js` and pushes annotated tags.
+
+---
+
+## Generating registries locally
+
+**Build ABIs from the deployment commit.** The `/out` folder must come from that commit, not from the branch tip.
+
+```bash
+git checkout <deployment-commit>
+# or: git worktree add /tmp/deploy-build <deployment-commit> && cd /tmp/deploy-build
+forge build --skip test
+# if worktree: cp -R /tmp/deploy-build/out ./out and cd back
+```
+
+**Delta (default)** – only contracts that changed since the previous version:
+
+```bash
+DEPLOYMENT_COMMIT=$(node .github/ci-scripts/detect-deployment-commit.js mainnet) \
+ETHERSCAN_API_KEY=<key> \
+node script/registry/abi-registry.js mainnet
+
+# testnet
+DEPLOYMENT_COMMIT=$(node .github/ci-scripts/detect-deployment-commit.js testnet) \
+ETHERSCAN_API_KEY=<key> \
+node script/registry/abi-registry.js testnet
+```
+
+**Full snapshot** – all contracts, no delta; use for base registry or first version in a new format:
+
+```bash
+DEPLOYMENT_COMMIT=$(node .github/ci-scripts/detect-deployment-commit.js mainnet) \
+ETHERSCAN_API_KEY=<key> \
+node script/registry/abi-registry.js mainnet --full
+```
+
+**Delta with custom previous registry** – fix a broken delta or test against a specific version:
+
+```bash
+DEPLOYMENT_COMMIT=<commit> \
+ETHERSCAN_API_KEY=<key> \
+REGISTRY_SOURCE_URL="https://gateway.pinata.cloud/ipfs/<previous-cid>" \
+node script/registry/abi-registry.js testnet
+```
+
+**Env / flags:** `DEPLOYMENT_COMMIT`, `ETHERSCAN_API_KEY` (required), `REGISTRY_MODE=full`, `REGISTRY_SOURCE_URL`; `--full`, `--source-url=<url>`. For pinning: `PINATA_JWT` (1Password, limited access).
+
+---
+
+## Registry consumption
+
+**Selective loading (indexers):** Use the latest delta; swap ABIs only for contracts that changed at the delta’s block.
+
+**Full reconstruction:** Walk `previousRegistry.ipfsHash` backwards from the latest registry URL, then merge `abis` and `chains` (older first, newer overrides).
+
+**Single version:** Import the JSON; use `registry.abis.<ContractName>`, `registry.chains[chainId].contracts.<name>.address`, and optional `blockNumber` / `txHash` for deployment metadata.
+
+---
 
 ## Schema
 
@@ -80,220 +143,9 @@ interface ChainConfig {
 }
 ```
 
-## Nullable fields and trade-offs
+### Nullable fields
 
-Several fields may be `null` depending on data availability:
-
-### `contracts[name].blockNumber` and `contracts[name].txHash`
-
-These fields are populated from:
-
-1. **Broadcast artifacts** – when deploying via Forge scripts, `verifier.py` extracts real block numbers and tx hashes from `broadcast/*/run-latest.json`.
-2. **Explorer APIs** – as a fallback for block numbers when they are missing from env files.
-
-They may still be `null` when:
-- **Contract not verified** – explorer APIs do not return block info if the contract is not verified.
-- **Unsupported chains** – BNB Smart Chain (56, 97) and Base (8453, 84532) are not available via the free Etherscan API. Block numbers must be manually added to env files or inferred from `deployment.{start|end}Block`.
-- **Custom explorer chains** – Avalanche (43114) and Plume (98866) use alternative APIs (Routescan, Conduit) which may not have data for every contract.
-- **Legacy deployments** – older env files might not contain `txHash`.
-
-### `deployment.deployedAt`
-
-May be `null` when the env file is missing `deploymentInfo.timestamp`.
-
-### `deployment.startBlock`
-
-May be `null` when the env file lacks `deploymentInfo.startBlock`. We expect this to exist for future deployments.
-
-### `adapters.$adapterName`
-
-May be `null` when an adapter is not configured for a given network.
-
-## Helper scripts
-
-| Script | Description |
-| --- | --- |
-| `abi-registry.js` | Generates `registry-*.json` using env files, explorer APIs, and Forge broadcast artifacts. |
-| `pin-to-ipfs.js` | Pins generated registries to Pinata, writes the nightly/mainnet/testnet summaries, and outputs CID metadata. |
-| `.github/ci-scripts/detect-changed-environments.js` | Detects if mainnet or testnet env files changed to skip unnecessary builds. |
-| `.github/ci-scripts/detect-deployment-commit.js` | Determines which git commit generated the latest env files so ABIs can be rebuilt for that revision. |
-| `.github/ci-scripts/compute-env-tags.js` | Creates git tags (`deploy-${version}-${timestamp}`) whenever env files change to preserve deployment hashes after squashing commits. |
-
-## Generating registries locally
-
-### **IMPORTANT: Build ABIs from the correct commit**
-
-Before generating any registry (delta or full), you **must** build the `/out` folder from the correct deployment commit, not the tip of the branch. The ABIs must match the deployed contract versions.
-
-```bash
-# 1. Checkout or build at the deployment commit
-git checkout <deployment-commit>
-# OR use git worktree to keep current branch checked out
-git worktree add /tmp/deploy-build <deployment-commit>
-
-# 2. Build contracts at that commit
-cd /tmp/deploy-build  # if using worktree
-forge build --skip test
-
-# 3. Copy /out to the main workspace (if using worktree)
-cp -R /tmp/deploy-build/out ./out
-cd -  # back to main workspace
-```
-
-### Delta mode (default)
-
-Generates a delta registry containing only contracts that changed since the previous version:
-
-```bash
-# Generate mainnet registry (delta)
-DEPLOYMENT_COMMIT=$(node .github/ci-scripts/detect-deployment-commit.js mainnet) \
-ETHERSCAN_API_KEY=<key> \
-node script/registry/abi-registry.js mainnet
-
-# Generate testnet registry (delta)
-DEPLOYMENT_COMMIT=$(node .github/ci-scripts/detect-deployment-commit.js testnet) \
-ETHERSCAN_API_KEY=<key> \
-node script/registry/abi-registry.js testnet
-```
-
-### Full snapshot mode
-
-Generates a complete registry from scratch, including all contracts from all chains. Use this when:
-- Rebuilding a base registry (e.g., mainnet v3 from scratch)
-- Creating the first registry in a new format
-- Fixing a registry that was generated incorrectly
-
-```bash
-# Generate full mainnet registry (all contracts included)
-DEPLOYMENT_COMMIT=$(node .github/ci-scripts/detect-deployment-commit.js mainnet) \
-ETHERSCAN_API_KEY=<key> \
-node script/registry/abi-registry.js mainnet --full
-
-# Or using environment variable
-REGISTRY_MODE=full \
-DEPLOYMENT_COMMIT=$(node .github/ci-scripts/detect-deployment-commit.js mainnet) \
-ETHERSCAN_API_KEY=<key> \
-node script/registry/abi-registry.js mainnet
-```
-
-In full mode:
-- All contracts from all matching chains are included (no delta comparison)
-- `previousRegistry` is set to `null` (marks this as the base registry)
-- All ABIs for all contracts are included
-
-### Delta mode with custom source URL
-
-Regenerate a delta against a specific previous registry URL. Useful for:
-- Fixing a broken delta version (e.g., testnet 3.1)
-- Regenerating against an archived or IPFS registry
-- Testing delta generation against a specific version
-
-```bash
-# Regenerate testnet 3.1 delta against a specific previous registry
-DEPLOYMENT_COMMIT=<commit_for_testnet_3.1> \
-ETHERSCAN_API_KEY=<key> \
-REGISTRY_SOURCE_URL="https://gateway.pinata.cloud/ipfs/<previous-registry-cid>" \
-node script/registry/abi-registry.js testnet
-
-# Or using CLI flag
-DEPLOYMENT_COMMIT=<commit> \
-ETHERSCAN_API_KEY=<key> \
-node script/registry/abi-registry.js testnet --source-url="https://gateway.pinata.cloud/ipfs/<cid>"
-```
-
-### Environment variables and CLI flags
-
-**Environment Variables:**
-- `DEPLOYMENT_COMMIT` – commit hash to read ABIs from, you can use `.github/ci-scripts/detect-deployment-commit.js` to set it.
-- `ETHERSCAN_API_KEY` – required to fetch contract creation data for Etherscan-compatible chains. You can use `script/deploy/deploy.py $any_network_name config:dump` to dump the API key to a .env file
-- `REGISTRY_MODE` – set to `"full"` to generate a full snapshot (alternative to `--full` flag)
-- `REGISTRY_SOURCE_URL` – override URL for fetching previous registry (alternative to `--source-url` flag)
-- `PINATA_JWT` – required by `pin-to-ipfs.js` to pin registries. Only available in 1Password (not for everybody)
-
-**CLI Flags:**
-- `--full` – generate a full snapshot registry (includes all contracts, no delta comparison)
-- `--source-url=<url>` – override the registry URL used for delta comparison
-
-## CI/CD overview
-
-1. **`registry.yml` workflow**
-   - Detects changed env files.
-   - Rebuilds ABIs at the relevant deployment commits.
-   - Generates `registry-mainnet.json` / `registry-testnet.json`.
-   - Publishes artifacts and pins updated registries to IPFS (main, testnet, nightly endpoints).
-   - Writes step summaries with CIDs and creates GitHub issues when pointers need updates.
-
-2. **`tag-env-updates.yml` workflow**
-   - Runs on any push that modifies `env/**/*.json`.
-   - Computes tags using `compute-env-tags.js` and pushes annotated tags so deployment commits remain reachable.
-
-## Registry Consumption
-
-### Option 1: Selective Loading (Recommended for Indexers)
-
-Each delta tells you which contracts changed at which block. Load deltas selectively and swap ABIs only for changed contracts:
-
-```javascript
-// Fetch latest delta
-const latest = await fetch("https://registry.centrifuge.io").then(r => r.json());
-
-// At block X, use these new ABIs for these contracts
-console.log(`Version ${latest.version} starts at block ${latest.deploymentInfo.startBlock}`);
-console.log(`Changed contracts:`, Object.keys(latest.chains["1"]?.contracts || {}));
-
-// Keep existing ABIs for unchanged contracts, swap only the new ones
-```
-
-### Option 2: Full Registry Reconstruction
-
-Walk the IPFS chain to build a complete registry with all contracts:
-
-```javascript
-const IPFS_GATEWAY = "https://gateway.pinata.cloud/ipfs/";
-
-async function buildFullRegistry(startUrl) {
-  const versions = [];
-  let url = startUrl;
-  
-  // Walk backwards through the chain
-  while (url) {
-    const registry = await fetch(url).then(r => r.json());
-    versions.unshift(registry); // oldest first
-    url = registry.previousRegistry?.ipfsHash 
-      ? IPFS_GATEWAY + registry.previousRegistry.ipfsHash 
-      : null;
-  }
-  
-  // Merge: older first, newer overrides
-  const merged = { chains: {}, abis: {} };
-  for (const reg of versions) {
-    Object.assign(merged.abis, reg.abis || {});
-    for (const [chainId, data] of Object.entries(reg.chains || {})) {
-      if (!merged.chains[chainId]) merged.chains[chainId] = { contracts: {} };
-      Object.assign(merged.chains[chainId].contracts, data.contracts || {});
-    }
-  }
-  return merged;
-}
-```
-
-### Simple Example (Single Version)
-
-```javascript
-import registry from './registry-mainnet.json';
-
-// ABI for a contract
-const vaultRouterAbi = registry.abis.VaultRouter;
-
-// Contract address on Ethereum (chainId 1)
-const vaultRouter = registry.chains["1"].contracts.vaultRouter;
-const vaultRouterAddress = vaultRouter.address;
-
-// Deployment metadata
-const deploymentBlock = vaultRouter.blockNumber;
-const deploymentTx = vaultRouter.txHash;
-if (deploymentTx) {
-  console.log(`View deployment: https://etherscan.io/tx/${deploymentTx}`);
-}
-```
-
+- **`contracts[name].blockNumber` / `txHash`** – Filled from broadcast artifacts or explorer APIs. Can be `null` when contract is unverified, chain isn’t on the free Etherscan API (e.g. BNB, Base), or legacy env has no `txHash`.
+- **`deployment.deployedAt`** – `null` if env has no `deploymentInfo.timestamp`.
+- **`deployment.startBlock`** – `null` if env has no `deploymentInfo.startBlock` (expected for future deployments).
+- **`adapters.$adapterName`** – `null` when that adapter isn’t configured for the network.

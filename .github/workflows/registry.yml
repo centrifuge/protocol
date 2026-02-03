@@ -170,15 +170,16 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Run script - it auto-detects files, compares with remote, pins if changed, and writes summary
+          # Run script - it logs progress then prints a single JSON line; use only last line for jq
           result=$(node script/registry/pin-to-ipfs.js)
-          echo "$result" > /tmp/ipfs_result.json
+          json_line=$(echo "$result" | tail -n 1)
+          echo "$json_line" > /tmp/ipfs_result.json
 
-          # Extract CIDs and changed status for issue creation
-          mainnet_cid=$(echo $result | jq -r '.mainnet.cid // empty')
-          mainnet_changed=$(echo $result | jq -r '.mainnet.changed // false')
-          testnet_cid=$(echo $result | jq -r '.testnet.cid // empty')
-          testnet_changed=$(echo $result | jq -r '.testnet.changed // false')
+          # Extract CIDs and changed status for issue creation (jq expects valid JSON only)
+          mainnet_cid=$(echo "$json_line" | jq -r '.mainnet.cid // empty')
+          mainnet_changed=$(echo "$json_line" | jq -r '.mainnet.changed // false')
+          testnet_cid=$(echo "$json_line" | jq -r '.testnet.cid // empty')
+          testnet_changed=$(echo "$json_line" | jq -r '.testnet.changed // false')
 
           # Set outputs for issue creation step
           if [ -n "$mainnet_cid" ] && [ "$mainnet_cid" != "null" ]; then
@@ -256,3 +257,12 @@ jobs:
               });
               console.log(`Created issue #${issue.number}`);
             }
+
+      - name: Update Cloudflare Web3 URL
+        if: steps.upload_to_ipfs.outputs.mainnet != '' || steps.upload_to_ipfs.outputs.testnet != ''
+        env:
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          MAINNET_CID: ${{ steps.upload_to_ipfs.outputs.mainnet }}
+          TESTNET_CID: ${{ steps.upload_to_ipfs.outputs.testnet }}
+        run: node script/registry/update-cloudflare.js
