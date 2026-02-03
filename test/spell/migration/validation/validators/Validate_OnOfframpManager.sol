@@ -13,7 +13,7 @@ import {BaseValidator} from "../BaseValidator.sol";
 
 /// @title Validate_OnOfframpManager
 /// @notice Validates OnOfframpManager settings (onramp, offramp, relayer) before and after migration
-/// @dev PRE: Caches data needed for POST validation
+/// @dev PRE: Cache data and validate non-BalanceSheet managers have no state
 /// @dev POST: Validates OnOfframpManager settings are migrated correctly
 contract Validate_OnOfframpManager is BaseValidator {
     using stdJson for string;
@@ -45,13 +45,151 @@ contract Validate_OnOfframpManager is BaseValidator {
         }
     }
 
-    /// @notice PRE-migration: Cache data needed for POST validation
-    /// @dev No actual validation performed, just queries and caches GraphQL data
+    /// @notice PRE-migration: Cache data and validate non-BalanceSheet managers have no state
+    /// @dev The Migration Spell will not deploy a new OnOfframpManager for non-BalanceSheet managers,
+    ///      but will still try to migrate, so they must have no configured state
     function _validatePre(ValidationContext memory ctx) internal returns (ValidationResult memory) {
-        _cachePostValidationData(ctx);
+        _cacheValidationData(ctx);
 
-        return
-            ValidationResult({passed: true, validatorName: "OnOfframpManager (PRE)", errors: new ValidationError[](0)});
+        string memory managersJson = ctx.store.get(_managersQuery(ctx));
+        uint256 managerCount = managersJson.readUint(".data.onOffRampManagers.totalCount");
+
+        if (managerCount == 0) {
+            return
+                ValidationResult({
+                    passed: true, validatorName: "OnOfframpManager (PRE)", errors: new ValidationError[](0)
+                });
+        }
+
+        OnOfframpManagerData[] memory managers = new OnOfframpManagerData[](managerCount);
+        string memory basePath = ".data.onOffRampManagers.items";
+        for (uint256 i = 0; i < managerCount; i++) {
+            managers[i].managerAddress = managersJson.readAddress(_buildJsonPath(basePath, i, "address"));
+            managers[i].poolId = managersJson.readUint(_buildJsonPath(basePath, i, "poolId"));
+            managers[i].tokenId = managersJson.readString(_buildJsonPath(basePath, i, "tokenId"));
+        }
+
+        AssetData[] memory assets = _getAssets(ctx);
+
+        ValidationError[] memory errors = new ValidationError[](managerCount * 100);
+        uint256 errorCount = 0;
+
+        for (uint256 i = 0; i < managers.length; i++) {
+            errorCount = _preValidateManager(ctx, managers[i], assets, errors, errorCount);
+        }
+
+        return ValidationResult({
+            passed: errorCount == 0, validatorName: "OnOfframpManager (PRE)", errors: _trimErrors(errors, errorCount)
+        });
+    }
+
+    /// @notice Validate that non-BalanceSheet managers have no state
+    function _preValidateManager(
+        ValidationContext memory ctx,
+        OnOfframpManagerData memory managerData,
+        AssetData[] memory assets,
+        ValidationError[] memory errors,
+        uint256 errorCount
+    ) internal returns (uint256) {
+        PoolId pid = PoolId.wrap(uint64(managerData.poolId));
+
+        if (IBalanceSheet(address(ctx.old.inner.balanceSheet)).manager(pid, managerData.managerAddress)) {
+            return errorCount;
+        }
+
+        string memory managerIdStr = string.concat("Pool ", _toString(managerData.poolId), " SC ", managerData.tokenId);
+        OnOfframpManager manager = OnOfframpManager(managerData.managerAddress);
+
+        errorCount = _preValidateNoOnrampState(manager, assets, managerIdStr, errors, errorCount);
+        errorCount = _preValidateNoOfframpState(
+            ctx, manager, pid, managerData.tokenId, assets, managerIdStr, errors, errorCount
+        );
+        errorCount =
+            _preValidateNoRelayerState(ctx, manager, pid, managerData.tokenId, managerIdStr, errors, errorCount);
+
+        return errorCount;
+    }
+
+    function _preValidateNoOnrampState(
+        OnOfframpManager manager,
+        AssetData[] memory assets,
+        string memory managerIdStr,
+        ValidationError[] memory errors,
+        uint256 errorCount
+    ) internal view returns (uint256) {
+        for (uint256 i = 0; i < assets.length; i++) {
+            address asset = assets[i].assetAddress;
+            if (manager.onramp(asset)) {
+                errors[errorCount++] = _buildError({
+                    field: "onramp",
+                    value: string.concat(managerIdStr, " Asset ", vm.toString(asset)),
+                    expected: "disabled",
+                    actual: "enabled",
+                    message: string.concat(
+                        managerIdStr, " non-BalanceSheet manager has onramp enabled for ", vm.toString(asset)
+                    )
+                });
+            }
+        }
+        return errorCount;
+    }
+
+    function _preValidateNoOfframpState(
+        ValidationContext memory ctx,
+        OnOfframpManager manager,
+        PoolId pid,
+        string memory tokenId,
+        AssetData[] memory assets,
+        string memory managerIdStr,
+        ValidationError[] memory errors,
+        uint256 errorCount
+    ) internal returns (uint256) {
+        address[] memory receivers = _getOfframpReceivers(ctx, pid, tokenId);
+        for (uint256 i = 0; i < assets.length; i++) {
+            address asset = assets[i].assetAddress;
+            for (uint256 j = 0; j < receivers.length; j++) {
+                if (manager.offramp(asset, receivers[j])) {
+                    errors[errorCount++] = _buildError({
+                        field: "offramp",
+                        value: string.concat(
+                            managerIdStr, " Asset ", vm.toString(asset), " Receiver ", vm.toString(receivers[j])
+                        ),
+                        expected: "disabled",
+                        actual: "enabled",
+                        message: string.concat(
+                            managerIdStr, " non-BalanceSheet manager has offramp enabled for ", vm.toString(asset)
+                        )
+                    });
+                }
+            }
+        }
+        return errorCount;
+    }
+
+    function _preValidateNoRelayerState(
+        ValidationContext memory ctx,
+        OnOfframpManager manager,
+        PoolId pid,
+        string memory tokenId,
+        string memory managerIdStr,
+        ValidationError[] memory errors,
+        uint256 errorCount
+    ) internal returns (uint256) {
+        address[] memory relayers = _getOfframpRelayers(ctx, pid, tokenId);
+        for (uint256 i = 0; i < relayers.length; i++) {
+            if (manager.relayer(relayers[i])) {
+                errors[errorCount++] = _buildError({
+                    field: "relayer",
+                    value: string.concat(managerIdStr, " Relayer ", vm.toString(relayers[i])),
+                    expected: "disabled",
+                    actual: "enabled",
+                    message: string.concat(
+                        managerIdStr, " non-BalanceSheet manager has relayer enabled for ", vm.toString(relayers[i])
+                    )
+                });
+            }
+        }
+        return errorCount;
     }
 
     /// @notice POST-migration: Validate OnOfframpManager settings were migrated correctly
@@ -81,7 +219,7 @@ contract Validate_OnOfframpManager is BaseValidator {
         uint256 errorCount = 0;
 
         for (uint256 i = 0; i < managers.length; i++) {
-            errorCount = _validateManager(ctx, managers[i], assets, errors, errorCount);
+            errorCount = _postValidateManager(ctx, managers[i], assets, errors, errorCount);
         }
 
         return ValidationResult({
@@ -91,7 +229,7 @@ contract Validate_OnOfframpManager is BaseValidator {
 
     /// @notice Cache data needed for POST validation
     /// @dev Called during PRE phase to ensure POST can retrieve from cache
-    function _cachePostValidationData(ValidationContext memory ctx) internal {
+    function _cacheValidationData(ValidationContext memory ctx) internal {
         string memory managersJson = ctx.store.query(_managersQuery(ctx));
         uint256 managerCount = managersJson.readUint(".data.onOffRampManagers.totalCount");
 
@@ -107,7 +245,7 @@ contract Validate_OnOfframpManager is BaseValidator {
         }
     }
 
-    function _validateManager(
+    function _postValidateManager(
         ValidationContext memory ctx,
         OnOfframpManagerData memory managerData,
         AssetData[] memory assets,
@@ -129,20 +267,20 @@ contract Validate_OnOfframpManager is BaseValidator {
 
         address expectedNewManager = _computeManagerAddress(ctx, pid, scid);
         bool exists;
-        (errorCount, exists) = _validateExists(expectedNewManager, managerIdStr, errors, errorCount);
+        (errorCount, exists) = _postValidateExists(expectedNewManager, managerIdStr, errors, errorCount);
 
         if (!exists) return errorCount;
 
         OnOfframpManager newManager = OnOfframpManager(expectedNewManager);
-        errorCount = _validateOnrampSettings(newManager, assets, managerData, managerIdStr, errors, errorCount);
+        errorCount = _postValidateOnrampSettings(newManager, assets, managerData, managerIdStr, errors, errorCount);
         errorCount =
-            _validateOfframpSettings(ctx, newManager, pid, managerData, assets, managerIdStr, errors, errorCount);
-        errorCount = _validateRelayerSettings(ctx, newManager, pid, managerData, managerIdStr, errors, errorCount);
+            _postValidateOfframpSettings(ctx, newManager, pid, managerData, assets, managerIdStr, errors, errorCount);
+        errorCount = _postValidateRelayerSettings(ctx, newManager, pid, managerData, managerIdStr, errors, errorCount);
 
         return errorCount;
     }
 
-    function _validateExists(
+    function _postValidateExists(
         address expectedNewManager,
         string memory managerIdStr,
         ValidationError[] memory errors,
@@ -165,7 +303,7 @@ contract Validate_OnOfframpManager is BaseValidator {
         return (errorCount, codeSize != 0);
     }
 
-    function _validateOnrampSettings(
+    function _postValidateOnrampSettings(
         OnOfframpManager newManager,
         AssetData[] memory assets,
         OnOfframpManagerData memory managerData,
@@ -193,7 +331,7 @@ contract Validate_OnOfframpManager is BaseValidator {
         return errorCount;
     }
 
-    function _validateOfframpSettings(
+    function _postValidateOfframpSettings(
         ValidationContext memory ctx,
         OnOfframpManager newManager,
         PoolId pid,
@@ -220,7 +358,7 @@ contract Validate_OnOfframpManager is BaseValidator {
         return errorCount;
     }
 
-    function _validateRelayerSettings(
+    function _postValidateRelayerSettings(
         ValidationContext memory ctx,
         OnOfframpManager newManager,
         PoolId pid,
