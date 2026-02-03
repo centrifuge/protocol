@@ -67,6 +67,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
     address deployer;
     string ledgerDerivationPath;
     Safe.Client safe;
+    uint256 nonce;
 
     constructor(bool isMainnet_) MigrationQueries(isMainnet_) {}
 
@@ -90,6 +91,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
 
         if (bytes(ledgerDerivationPath).length > 0) {
             safe.initialize(address(IOpsGuardian(_contractAddr("opsGuardian")).opsSafe()));
+            nonce = safe.getNonce();
         }
 
         vm.label(address(migrationSpell), "migrationSpell");
@@ -178,12 +180,19 @@ contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
 
     function _spellCall(bytes memory data) internal {
         if (bytes(ledgerDerivationPath).length > 0) {
-            safe.proposeTransactionWithSignature(
-                address(migrationSpell),
-                data,
-                msg.sender,
-                safe.sign(address(migrationSpell), data, Enum.Operation.Call, msg.sender, ledgerDerivationPath)
-            );
+            Safe.ExecTransactionParams memory params = Safe.ExecTransactionParams({
+                to: address(migrationSpell),
+                value: 0,
+                data: data,
+                operation: Enum.Operation.Call,
+                sender: msg.sender,
+                signature: safe.sign(
+                    address(migrationSpell), data, Enum.Operation.Call, msg.sender, nonce, ledgerDerivationPath
+                ),
+                nonce: nonce
+            });
+            safe.proposeTransaction(params);
+            nonce++;
         } else {
             (bool success, bytes memory returnData) = address(migrationSpell).call(data);
             if (!success) assembly { revert(add(returnData, 32), mload(returnData)) }
