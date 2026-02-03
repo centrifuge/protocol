@@ -9,8 +9,8 @@ Test each cross-chain adapter (Axelar, LayerZero, Wormhole) in isolation between
 **Test Configuration:**
 - Hub: Base Sepolia (centrifugeId: 2)
 - Spoke: Arbitrum Sepolia (centrifugeId: 3)
-- Pools: 6 (3 adapters × 2 vault types) - Chainlink excluded (see Known Issues)
-- Pool IDs: Configurable via `ADAPTER_TEST_BASE` env var (default: 90000)
+- Adapters: Axelar, LayerZero, Wormhole, Chainlink
+- Pool IDs: Configurable via `ADAPTER_TEST_BASE` / `GAS_TEST_BASE` env vars
 
 ---
 
@@ -66,12 +66,73 @@ Test each cross-chain adapter in isolation by creating pools with per-pool adapt
 
 ---
 
+### TestAdapterGasEstimation.s.sol
+
+**Optimized script for repeated gas estimation testing.** Separates pool setup from adapter configuration, allowing repeated `NotifyShareClass` tests without re-running expensive adapter setup.
+
+**Purpose:**
+- Validate that gas estimations are sufficient for cross-chain message execution
+- Test `NotifyShareClass` (most expensive static message) repeatedly
+- Minimize cost by reusing pool/adapter setup across multiple tests
+
+**Three-Phase Workflow:**
+
+| Phase | Entry Point | Frequency | XC Messages | Cost |
+|-------|-------------|-----------|-------------|------|
+| 1 | `runPoolSetup()` | Once | 0 | Hub gas only |
+| 2 | `runAdapterSetup()` | Once per adapter | 2 (SetPoolAdapters + NotifyPool) | ~0.2 ETH |
+| 3 | `runShareClassTest()` | **Repeatable** | 1 (NotifyShareClass) | ~0.1 ETH |
+
+**Comparison with TestAdapterIsolation.s.sol:**
+- **Old:** 6 pools × (setup + adapter config) = 6 adapter setups per test round
+- **New:** 4 pools × 1 adapter setup + N repeatable share class tests
+
+**Quick Start:**
+```bash
+# Phase 1: Create pools (hub only, no XC)
+NETWORK=base-sepolia forge script script/testnet/TestAdapterGasEstimation.s.sol:TestAdapterGasEstimation \
+  --sig "runPoolSetup()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
+
+# Phase 2: Configure adapters (sends XC messages)
+NETWORK=base-sepolia forge script script/testnet/TestAdapterGasEstimation.s.sol:TestAdapterGasEstimation \
+  --sig "runAdapterSetup()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
+
+# Wait for XC relay (~5-10 min)
+
+# Phase 3: Test NotifyShareClass (repeatable!)
+NETWORK=base-sepolia forge script script/testnet/TestAdapterGasEstimation.s.sol:TestAdapterGasEstimation \
+  --sig "runShareClassTest()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
+
+# Run Phase 3 again to test another share class...
+```
+
+**Single Adapter Testing:**
+```bash
+# Axelar only
+forge script ... --sig "runAxelar_PoolSetup()"
+forge script ... --sig "runAxelar_AdapterSetup()"
+forge script ... --sig "runAxelar_ShareClassTest()"
+
+# Or use ADAPTER env var
+ADAPTER=layerzero forge script ... --sig "runPoolSetup()"
+```
+
+**Environment Variables:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GAS_TEST_BASE` | 91000 | Base pool index (different from TestAdapterIsolation) |
+| `ADAPTER` | all | Single adapter: axelar, layerzero, wormhole, chainlink |
+| `XC_GAS_PER_CALL` | 0.1 ether | Gas for each cross-chain call |
+| `SPOKE_NETWORK` | arbitrum-sepolia | Target spoke network |
+
+---
+
 ## Quick Start
 
 ```bash
 # Set environment
 export TESTNET_SAFE_PK="your-private-key"
-export BASE_SEPOLIA_RPC="https://sepolia.base.org"
+export RPC_URL="https://sepolia.base.org"
 export ARBITRUM_SEPOLIA_RPC="https://sepolia-rollup.arbitrum.io/rpc"
 
 # Step 0: Register asset from spoke (one-time, if not already done)
@@ -139,7 +200,7 @@ Wait for XC relay (~5-10 min), then verify on Hub:
 ```bash
 # Check if asset is registered (assetId for Arbitrum USDC)
 cast call $HUB_REGISTRY "isRegistered(uint128)(bool)" 15576890575604482885591488987660289 \
-  --rpc-url $BASE_SEPOLIA_RPC
+  --rpc-url $RPC_URL
 # Expected: true
 ```
 
@@ -155,7 +216,7 @@ SKIP_ASSET_REGISTRATION=true \
 ADAPTER_TEST_BASE=90100 \
 forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
   --sig "runPhase1_Setup()" \
-  --fork-url $BASE_SEPOLIA_RPC \
+  --fork-url $RPC_URL \
   --broadcast \
   --private-key $TESTNET_SAFE_PK \
   -vvvv
@@ -208,7 +269,7 @@ NETWORK=base-sepolia \
 ADAPTER_TEST_BASE=90100 \
 forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
   --sig "runPhase2_Operations()" \
-  --fork-url $BASE_SEPOLIA_RPC \
+  --fork-url $RPC_URL \
   --broadcast \
   --private-key $TESTNET_SAFE_PK \
   -vvvv
@@ -268,11 +329,11 @@ Test a specific adapter in isolation to validate gas estimation and cross-chain 
 ```bash
 # Axelar only
 forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
-  --sig "runAxelar_Setup()" --fork-url $BASE_SEPOLIA_RPC --broadcast --private-key $TESTNET_SAFE_PK -vvvv
+  --sig "runAxelar_Setup()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
 
 # After XC relay...
 forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
-  --sig "runAxelar_Operations()" --fork-url $BASE_SEPOLIA_RPC --broadcast --private-key $TESTNET_SAFE_PK -vvvv
+  --sig "runAxelar_Operations()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
 
 # LayerZero only
 forge script ... --sig "runLayerZero_Setup()"
@@ -317,7 +378,9 @@ This avoids any conflicts with previously created pools.
 ## Known Issues
 
 ### Chainlink CCIP Gas Limit
-Chainlink CCIP has ~2M gas limit. Batched messages exceed this, causing `MessageGasLimitTooHigh()`. Chainlink pools are skipped.
+Chainlink CCIP has a per-message gas limit (~2M). When batching multiple messages, the combined gas can exceed this limit, causing `MessageGasLimitTooHigh()`.
+
+**Workaround:** Use `TestAdapterGasEstimation.s.sol` which sends single `NotifyShareClass` messages, staying under the limit.
 
 ### Keystore Issues with --account
 Using `--account TESTNET_SAFE` can cause simulation issues. Use `--private-key $TESTNET_SAFE_PK` instead.
@@ -331,18 +394,18 @@ Always use `--fork-url` (not `--rpc-url`) for proper chain state access during s
 
 ### Check adapter wiring
 ```bash
-cast call $AXELAR_ADAPTER "isWired(uint16)(bool)" 3 --rpc-url $BASE_SEPOLIA_RPC
+cast call $AXELAR_ADAPTER "isWired(uint16)(bool)" 3 --rpc-url $RPC_URL
 ```
 
 ### Check pool subsidy balance
 ```bash
-cast call 0x85b38b923273A604C3cDbcF407DdBFE549346A9a "subsidies(uint64)(uint256)" 562949953511412 --rpc-url $BASE_SEPOLIA_RPC
+cast call 0x85b38b923273A604C3cDbcF407DdBFE549346A9a "subsidies(uint64)(uint256)" 562949953511412 --rpc-url $RPC_URL
 ```
 
 ### Debug transaction
 ```bash
-cast receipt <tx-hash> --rpc-url $BASE_SEPOLIA_RPC
-cast run <tx-hash> --rpc-url $BASE_SEPOLIA_RPC
+cast receipt <tx-hash> --rpc-url $RPC_URL
+cast run <tx-hash> --rpc-url $RPC_URL
 ```
 
 ---
