@@ -7,6 +7,7 @@ import {ISafe} from "../../../../../src/admin/interfaces/ISafe.sol";
 import {ProtocolGuardian} from "../../../../../src/admin/ProtocolGuardian.sol";
 
 import {BaseValidator} from "../BaseValidator.sol";
+import {IntegrationConstants} from "../../../../integration/utils/IntegrationConstants.sol";
 
 /// @title Validate_Root
 /// @notice Validates that Root has the ProtocolGuardian as ward and the ProtocolGuardian's Safe has the expected owners
@@ -54,17 +55,32 @@ contract Validate_Root is BaseValidator {
         }
 
         // Check that Safe has all expected owners
-        address[9] memory expectedOwners = [
-            0xd55114BfE98a2ca16202Aa741BeE571765292616,
-            0x080001dBE12fA46A1d7C03fa0Cbf1839E367F155,
-            0x9eDec77dd2651Ce062ab17e941347018AD4eAEA9,
-            0x4d47a7a89478745200Bd51c26bA87664538Df541,
-            0xE9441B34f71659cCA2bfE90d98ee0e57D9CAD28F,
-            0x5e7A86178252Aeae9cBDa30f9C342c71799A3EE1,
-            0x701Da7A0c8ee46521955CC29D32943d47E2c02b9,
-            0x044671aCf58340Ac9d7AB782D3F93D1943fE24Bf,
-            0xb307f0b2eDdB84EF63f3F9dc99a3A1a66D68EB3a
-        ];
+        address[9] memory expectedOwners;
+        if (ctx.localCentrifugeId == IntegrationConstants.PLUME_CENTRIFUGE_ID) {
+            expectedOwners = [
+                0xd55114BfE98a2ca16202Aa741BeE571765292616,
+                0x080001dBE12fA46A1d7C03fa0Cbf1839E367F155,
+                0x9eDec77dd2651Ce062ab17e941347018AD4eAEA9,
+                0x4d47a7a89478745200Bd51c26bA87664538Df541,
+                0xE9441B34f71659cCA2bfE90d98ee0e57D9CAD28F,
+                0x5e7A86178252Aeae9cBDa30f9C342c71799A3EE1,
+                0x701Da7A0c8ee46521955CC29D32943d47E2c02b9,
+                0x044671aCf58340Ac9d7AB782D3F93D1943fE24Bf,
+                0xa542A86f0fFd0A3F32C765D175935F1714437598
+            ];
+        } else {
+            expectedOwners = [
+                0xd55114BfE98a2ca16202Aa741BeE571765292616,
+                0x080001dBE12fA46A1d7C03fa0Cbf1839E367F155,
+                0x9eDec77dd2651Ce062ab17e941347018AD4eAEA9,
+                0x4d47a7a89478745200Bd51c26bA87664538Df541,
+                0xE9441B34f71659cCA2bfE90d98ee0e57D9CAD28F,
+                0x5e7A86178252Aeae9cBDa30f9C342c71799A3EE1,
+                0x701Da7A0c8ee46521955CC29D32943d47E2c02b9,
+                0x044671aCf58340Ac9d7AB782D3F93D1943fE24Bf,
+                0xb307f0b2eDdB84EF63f3F9dc99a3A1a66D68EB3a
+            ];
+        }
 
         ISafe safe = ISafe(EXPECTED_SAFE);
         for (uint256 i = 0; i < expectedOwners.length; i++) {
