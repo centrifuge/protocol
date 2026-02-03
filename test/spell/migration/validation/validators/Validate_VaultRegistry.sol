@@ -26,12 +26,12 @@ contract Validate_VaultRegistry is BaseValidator {
 
     function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
         if (ctx.phase == Phase.PRE) {
-            ctx.store.query(_linkedVaultsQuery(ctx));
+            ctx.store.query(_vaultsQuery(ctx));
             return
                 ValidationResult({passed: true, validatorName: "VaultRegistry (PRE)", errors: new ValidationError[](0)});
         }
 
-        address[] memory vaultAddrs = _getLinkedVaults(ctx);
+        address[] memory vaultAddrs = _getVaults(ctx);
 
         ValidationError[] memory errors = new ValidationError[](vaultAddrs.length * 2);
         uint256 errorCount = 0;
@@ -122,8 +122,8 @@ contract Validate_VaultRegistry is BaseValidator {
         return errorCount;
     }
 
-    function _getLinkedVaults(ValidationContext memory ctx) internal returns (address[] memory vaultAddrs) {
-        string memory json = ctx.store.get(_linkedVaultsQuery(ctx));
+    function _getVaults(ValidationContext memory ctx) internal returns (address[] memory vaultAddrs) {
+        string memory json = ctx.store.get(_vaultsQuery(ctx));
 
         uint256 totalCount = json.readUint(".data.vaults.totalCount");
 
@@ -133,11 +133,11 @@ contract Validate_VaultRegistry is BaseValidator {
         }
     }
 
-    function _linkedVaultsQuery(ValidationContext memory ctx) internal pure returns (string memory) {
+    function _vaultsQuery(ValidationContext memory ctx) internal pure returns (string memory) {
         return string.concat(
             "vaults(limit: 1000, where: { centrifugeId: ",
             _jsonValue(ctx.localCentrifugeId),
-            ", status: Linked }) { items { id } totalCount }"
+            " }) { items { id } totalCount }"
         );
     }
 }

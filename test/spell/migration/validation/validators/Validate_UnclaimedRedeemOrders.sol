@@ -7,16 +7,22 @@ import {VaultGraphQLData} from "../../../../../script/spell/MigrationQueries.sol
 
 import {BaseValidator} from "../BaseValidator.sol";
 
+/// @dev Interface matching the actual V3.0.1 AsyncInvestmentState struct layout
 interface IAsyncRequestManagerV3Redeem {
     function investments(address vault, address investor)
         external
         view
         returns (
-            uint256 maxMint,
+            uint128 maxMint,
             uint128 maxWithdraw,
+            uint256 depositPrice, // D18
+            uint256 redeemPrice, // D18
             uint128 pendingDepositRequest,
-            uint128 pendingCancelDepositRequest,
-            uint128 pendingCancelRedeemRequest
+            uint128 pendingRedeemRequest,
+            uint128 claimableCancelDepositRequest,
+            uint128 claimableCancelRedeemRequest,
+            bool pendingCancelDepositRequest,
+            bool pendingCancelRedeemRequest
         );
 }
 
@@ -39,7 +45,7 @@ contract Validate_UnclaimedRedeemOrders is BaseValidator {
     }
 
     function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
-        VaultGraphQLData[] memory vaults = ctx.queryService.linkedVaultsWithMetadata();
+        VaultGraphQLData[] memory vaults = ctx.queryService.vaultsWithMetadata();
         if (vaults.length == 0) {
             return ValidationResult({passed: true, validatorName: name(), errors: new ValidationError[](0)});
         }
@@ -78,18 +84,49 @@ contract Validate_UnclaimedRedeemOrders is BaseValidator {
         uint64 poolIdRaw
     ) internal {
         try asyncReqMgr.investments(vault, investor) returns (
-            uint256, /* maxMint */
+            uint128, /* maxMint */
             uint128 maxWithdraw,
+            uint256, /* depositPrice */
+            uint256, /* redeemPrice */
             uint128, /* pendingDepositRequest */
-            uint128, /* pendingCancelDepositRequest */
-            uint128 pendingCancelRedeemRequest
+            uint128, /* pendingRedeemRequest */
+            uint128, /* claimableCancelDepositRequest */
+            uint128 claimableCancelRedeemRequest,
+            bool, /* pendingCancelDepositRequest */
+            bool /* pendingCancelRedeemRequest */
         ) {
+            // Skip dust/small unclaimed redemption (maxWithdraw) entries
+            // See https://www.notion.so/v3-1-Skipped-Unclaimed-Orders-2fc2eac24e1780e99763dde335e6d9d2?source=copy_link
+
+            // Ethereum: ~$2 USDC (pool 281474976710660)
+            if (
+                vault == 0x18Ab9fC0B2e4Fef9e0e03c8EC63BA287a3238257
+                    && investor == 0x051DBB9689C4390ff827cE1562eB3Db16a62Bb98
+            ) {
+                return;
+            }
+            // BNB: 5 wei USDT (pool 281474976710662)
+            if (
+                vault == 0x6e6B8498415083a4386BE83DD59Edd4366402FFa
+                    && investor == 0xC1AeEBBfD8b1280e78D930C43700758F543F5Fc6
+            ) {
+                return;
+            }
+            // BNB: 10 wei USDT (pool 281474976710663)
+            if (
+                vault == 0xcbAfe61d84C6Fb88252a6Adf1C9CB0B9D029cb99
+                    && investor == 0x69D15B7a232244EB0FDDED2a3E038589E5C50105
+            ) {
+                return;
+            }
+
             if (maxWithdraw > 0) {
                 _addMaxWithdrawError(vault, investor, maxWithdraw, poolIdRaw);
             }
 
-            if (pendingCancelRedeemRequest > 0) {
-                _addPendingCancelError(vault, investor, pendingCancelRedeemRequest, poolIdRaw);
+            // Check claimableCancelRedeemRequest - shares that can be claimed from a cancelled redemption
+            if (claimableCancelRedeemRequest > 0) {
+                _addClaimableCancelError(vault, investor, claimableCancelRedeemRequest, poolIdRaw);
             }
         } catch {
             // Silently skip if call fails (vault may not be registered)
@@ -109,19 +146,19 @@ contract Validate_UnclaimedRedeemOrders is BaseValidator {
         _errorCount++;
     }
 
-    function _addPendingCancelError(
+    function _addClaimableCancelError(
         address vault,
         address investor,
-        uint128 pendingCancelRedeemRequest,
+        uint128 claimableCancelRedeemRequest,
         uint64 poolIdRaw
     ) internal {
         _errors.push(
             _buildError({
-                field: "pendingCancelRedeemRequest",
+                field: "claimableCancelRedeemRequest",
                 value: string.concat("Vault ", _addressToString(vault), " / User ", _addressToString(investor)),
                 expected: "0",
-                actual: _toString(uint256(pendingCancelRedeemRequest)),
-                message: string.concat("User has PENDING cancel redeem request - Pool ", _toString(poolIdRaw))
+                actual: _toString(uint256(claimableCancelRedeemRequest)),
+                message: string.concat("User has UNCLAIMED cancelled redemption shares - Pool ", _toString(poolIdRaw))
             })
         );
         _errorCount++;

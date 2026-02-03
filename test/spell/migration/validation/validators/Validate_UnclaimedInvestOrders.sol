@@ -7,16 +7,22 @@ import {VaultGraphQLData} from "../../../../../script/spell/MigrationQueries.sol
 
 import {BaseValidator} from "../BaseValidator.sol";
 
+/// @dev Interface matching the actual V3.0.1 AsyncInvestmentState struct layout
 interface IAsyncRequestManagerV3 {
     function investments(address vault, address investor)
         external
         view
         returns (
-            uint256 maxMint,
+            uint128 maxMint,
             uint128 maxWithdraw,
+            uint256 depositPrice, // D18
+            uint256 redeemPrice, // D18
             uint128 pendingDepositRequest,
-            uint128 pendingCancelDepositRequest,
-            uint128 pendingCancelRedeemRequest
+            uint128 pendingRedeemRequest,
+            uint128 claimableCancelDepositRequest,
+            uint128 claimableCancelRedeemRequest,
+            bool pendingCancelDepositRequest,
+            bool pendingCancelRedeemRequest
         );
 }
 
@@ -39,7 +45,7 @@ contract Validate_UnclaimedInvestOrders is BaseValidator {
     }
 
     function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
-        VaultGraphQLData[] memory vaults = ctx.queryService.linkedVaultsWithMetadata();
+        VaultGraphQLData[] memory vaults = ctx.queryService.vaultsWithMetadata();
         if (vaults.length == 0) {
             return ValidationResult({passed: true, validatorName: name(), errors: new ValidationError[](0)});
         }
@@ -77,17 +83,33 @@ contract Validate_UnclaimedInvestOrders is BaseValidator {
         internal
     {
         try asyncReqMgr.investments(vault, investor) returns (
-            uint256 maxMint,
+            uint128 maxMint,
             uint128, /* maxWithdraw */
+            uint256, /* depositPrice */
+            uint256, /* redeemPrice */
             uint128, /* pendingDepositRequest */
-            uint128 pendingCancelDepositRequest,
-            uint128 /* pendingCancelRedeemRequest */
+            uint128, /* pendingRedeemRequest */
+            uint128 claimableCancelDepositRequest,
+            uint128, /* claimableCancelRedeemRequest */
+            bool, /* pendingCancelDepositRequest */
+            bool /* pendingCancelRedeemRequest */
         ) {
+            // Skip Ethereum dust maxMint entries
+            // See https://www.notion.so/v3-1-Skipped-Unclaimed-Orders-2fc2eac24e1780e99763dde335e6d9d2?source=copy_link
+
+            // ~0.00099 shares (pool 281474976710660)
             if (
-                vault == 0x314d8AEb02bB5f6b86D2Ac1feF4c5Fc1771e6817
-                    && investor == 0xD8Cd65E62E7A40E0E226C61BfB1346EF6a3f566B
+                vault == 0x18Ab9fC0B2e4Fef9e0e03c8EC63BA287a3238257
+                    && investor == 0xAaDCe129527Ac636b76bA281763E02906a0B3DbF
             ) {
-                // Discard this investment: https://kflabs.slack.com/archives/C07PG2EUR9C/p1770051860364119
+                return;
+            }
+            // ~0.00099 shares (pool 281474976710659)
+            if (
+                vault == 0x4865BC9701fBD1207A7B50e2aF442C7DAf154c9c
+                    && (investor == 0x9116C05A5Daf51632Ba0f50A582BfeE2c1b89Fce
+                        || investor == 0xAaDCe129527Ac636b76bA281763E02906a0B3DbF)
+            ) {
                 return;
             }
 
@@ -95,15 +117,16 @@ contract Validate_UnclaimedInvestOrders is BaseValidator {
                 _addMaxMintError(vault, investor, maxMint, poolIdRaw);
             }
 
-            if (pendingCancelDepositRequest > 0) {
-                _addPendingCancelError(vault, investor, pendingCancelDepositRequest, poolIdRaw);
+            // Check claimableCancelDepositRequest - assets that can be claimed from a cancelled deposit
+            if (claimableCancelDepositRequest > 0) {
+                _addClaimableCancelError(vault, investor, claimableCancelDepositRequest, poolIdRaw);
             }
         } catch {
             // Silently skip if call fails (vault may not be registered)
         }
     }
 
-    function _addMaxMintError(address vault, address investor, uint256 maxMint, uint64 poolIdRaw) internal {
+    function _addMaxMintError(address vault, address investor, uint128 maxMint, uint64 poolIdRaw) internal {
         _errors.push(
             _buildError({
                 field: "maxMint",
@@ -116,19 +139,19 @@ contract Validate_UnclaimedInvestOrders is BaseValidator {
         _errorCount++;
     }
 
-    function _addPendingCancelError(
+    function _addClaimableCancelError(
         address vault,
         address investor,
-        uint128 pendingCancelDepositRequest,
+        uint128 claimableCancelDepositRequest,
         uint64 poolIdRaw
     ) internal {
         _errors.push(
             _buildError({
-                field: "pendingCancelDepositRequest",
+                field: "claimableCancelDepositRequest",
                 value: string.concat("Vault ", _addressToString(vault), " / User ", _addressToString(investor)),
                 expected: "0",
-                actual: _toString(uint256(pendingCancelDepositRequest)),
-                message: string.concat("User has PENDING cancel deposit request - Pool ", _toString(poolIdRaw))
+                actual: _toString(uint256(claimableCancelDepositRequest)),
+                message: string.concat("User has UNCLAIMED cancelled deposit assets - Pool ", _toString(poolIdRaw))
             })
         );
         _errorCount++;

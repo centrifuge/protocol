@@ -525,41 +525,9 @@ contract MigrationQueries is GraphQLQuery {
         }
     }
 
-    /// @notice Get all vaults with linked status for the current chain
-    /// @dev Used by investment validation to test vault flows
-    function linkedVaults()
-        external
-        returns (address[] memory vaultAddrs)
-    {
-
-        // forgefmt: disable-next-item
-        string memory where = string.concat(
-            "  where: {"
-            "      centrifugeId: ", _jsonValue(centrifugeId), ","
-            "      status: Linked"
-            "  }"
-        );
-
-        // forgefmt: disable-next-item
-        string memory json = _queryGraphQL(string.concat(
-            "vaults(", where, ") {",
-            "  totalCount"
-            "  items {"
-            "    id"
-            "  }"
-            "}"
-        ));
-
-        uint256 totalCount = json.readUint(".data.vaults.totalCount");
-
-        vaultAddrs = new address[](totalCount);
-        for (uint256 i = 0; i < totalCount; i++) {
-            vaultAddrs[i] = json.readAddress(_buildJsonPath(".data.vaults.items", i, "id"));
-        }
-    }
-
-    /// @notice Get complete vault metadata for all linked vaults on this chain
-    function linkedVaultsWithMetadata()
+    /// @notice Get complete vault metadata for all vaults on this chain (regardless of linked status)
+    /// @dev Validators should filter by linked status at validation time if needed
+    function vaultsWithMetadata()
         external
         returns (VaultGraphQLData[] memory vaultData)
     {
@@ -567,8 +535,7 @@ contract MigrationQueries is GraphQLQuery {
         // forgefmt: disable-next-item
         string memory where = string.concat(
             "where: {"
-            "  centrifugeId: ", _jsonValue(centrifugeId), ","
-            "  status: Linked"
+            "  centrifugeId: ", _jsonValue(centrifugeId),
             "}"
         );
 

@@ -30,7 +30,7 @@ contract Validate_InvestmentFlows is BaseValidator {
     }
 
     function validate(ValidationContext memory ctx) public override returns (ValidationResult memory) {
-        VaultGraphQLData[] memory allVaults = ctx.queryService.linkedVaultsWithMetadata();
+        VaultGraphQLData[] memory allVaults = ctx.queryService.vaultsWithMetadata();
 
         console.log("");
         console.log("=== InvestmentFlows Validator (centrifugeId: %s) ===", ctx.localCentrifugeId);

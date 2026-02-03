@@ -12,9 +12,9 @@ import {Hub} from "../../../../src/core/hub/Hub.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
 import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
+import {IVault, VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
 import {MessageLib} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
@@ -29,6 +29,7 @@ import {FullReport} from "../../../../script/FullDeployer.s.sol";
 import {VaultGraphQLData} from "../../../../script/spell/MigrationQueries.sol";
 
 import {Test} from "forge-std/Test.sol";
+import {console} from "forge-std/console.sol";
 
 import {IntegrationConstants} from "../../../integration/utils/IntegrationConstants.sol";
 
@@ -120,6 +121,32 @@ contract InvestmentFlowExecutor is Test {
         result.vault = gql.vault;
         result.kind = _parseVaultKind(gql.kind);
         result.isCrossChain = gql.hubCentrifugeId != localCentrifugeId;
+
+        string memory tokenName = _getShareTokenName(gql.vault);
+
+        // Should never fail but let's be safe
+        if (gql.hubManager == address(0)) {
+            console.log("ERROR (no hubManager): %s [%s]", gql.vault, tokenName);
+            result.depositPassed = false;
+            result.redeemPassed = false;
+            result.depositError = "Missing hubManager from indexer";
+            result.redeemError = "Missing hubManager from indexer";
+            return result;
+        }
+
+        // If vault is not linked, link it temporarily for validation
+        // Many previously linked vaults have been unlinked pre-migration to block investments,
+        // but we still need to validate they work correctly post-migration
+        AssetId assetId = report.core.spoke.assetToId(gql.assetAddress, 0);
+        if (!report.core.vaultRegistry.isLinked(IVault(gql.vault))) {
+            console.log("LINKING for validation: %s [%s]", gql.vault, tokenName);
+            PoolId poolId = PoolId.wrap(gql.poolIdRaw);
+            ShareClassId scId = ShareClassId.wrap(gql.tokenIdRaw);
+            vm.prank(address(report.root));
+            report.core.vaultRegistry.linkVault(poolId, scId, assetId, IVault(gql.vault));
+        }
+
+        console.log("VALIDATING: %s [%s] (%s)", gql.vault, tokenName, gql.kind);
 
         InvestmentFlowContext memory ctx = _buildContext(report, gql, localCentrifugeId);
 
@@ -744,6 +771,17 @@ contract InvestmentFlowExecutor is Test {
     // ============================================
     // Utility Functions
     // ============================================
+
+    function _getShareTokenName(address vault) internal view returns (string memory) {
+        try IBaseVault(vault).share() returns (address shareToken) {
+            if (shareToken != address(0)) {
+                try ERC20(shareToken).name() returns (string memory tokenName) {
+                    return tokenName;
+                } catch {}
+            }
+        } catch {}
+        return "Unknown ShareToken";
+    }
 
     function _parseVaultKind(string memory kind) internal pure returns (VaultKind) {
         if (keccak256(bytes(kind)) == keccak256("Async")) {
