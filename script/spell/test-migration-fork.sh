@@ -9,9 +9,29 @@ set -euo pipefail
 # ./script/spell/test-migration-fork.sh avalanche
 # ./script/spell/test-migration-fork.sh bnb-smart-chain
 #
+# Run in parallel (each network gets its own anvil port):
+# ./script/spell/test-migration-fork.sh ethereum & ./script/spell/test-migration-fork.sh base & ./script/spell/test-migration-fork.sh arbitrum & wait
+#
+# Override port with second argument:
+# ./script/spell/test-migration-fork.sh ethereum 9545
+#
 # Only requirement is to have ALCHEMY_API_KEY (or PLUME_API_KEY for plume) in the .env file
 
 NETWORK=$1
+
+# Map network to unique port (allows parallel execution)
+case "$NETWORK" in
+    ethereum) DEFAULT_PORT=8545 ;;
+    base) DEFAULT_PORT=8546 ;;
+    arbitrum) DEFAULT_PORT=8547 ;;
+    plume) DEFAULT_PORT=8548 ;;
+    avalanche) DEFAULT_PORT=8549 ;;
+    bnb-smart-chain) DEFAULT_PORT=8550 ;;
+    *) DEFAULT_PORT=8545 ;;
+esac
+
+# Allow port override via second argument
+PORT=${2:-$DEFAULT_PORT}
 
 BASE_RPC_URL=$(jq -r '.network.baseRpcUrl' env/"$NETWORK".json)
 if [ "$NETWORK" == "plume" ]; then
@@ -37,11 +57,11 @@ echo "#                   STEP 0: Start anvil in fork mode"
 echo "##########################################################################"
 echo ""
 
-anvil --fork-url "$REMOTE_RPC_URL" &
+anvil --fork-url "$REMOTE_RPC_URL" --port "$PORT" &
 ANVIL_PID=$!
 trap "kill $ANVIL_PID" EXIT
 
-LOCAL_RPC_URL="http://127.0.0.1:8545" #anvil
+LOCAL_RPC_URL="http://127.0.0.1:$PORT"
 sleep 3.0 # Wait ensuring Anvil is up
 
 mock_addr() {

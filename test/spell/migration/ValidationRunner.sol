@@ -87,8 +87,9 @@ contract ValidationRunner is Test {
         ChainResolver.ChainContext memory chain = ChainResolver.resolveChainContext(isMainnet);
         MigrationQueries queryService = new MigrationQueries(isMainnet);
         queryService.configureGraphQl(chain.graphQLApi, chain.localCentrifugeId);
-        ValidationOrchestrator.SharedContext memory shared =
-            ValidationOrchestrator.buildSharedContext(queryService, chain, "spell-cache/validation", isPre, executor);
+        ValidationOrchestrator.SharedContext memory shared = ValidationOrchestrator.buildSharedContext(
+            queryService, chain, string.concat("spell-cache/validation/", network), isPre, executor
+        );
 
         FullReport memory latest = _reportFromJson(config);
 
