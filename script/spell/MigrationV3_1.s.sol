@@ -16,6 +16,7 @@ import {MessageDispatcher} from "../../src/core/messaging/MessageDispatcher.sol"
 
 import {TokenRecoverer} from "../../src/admin/TokenRecoverer.sol";
 import {ProtocolGuardian} from "../../src/admin/ProtocolGuardian.sol";
+import {IOpsGuardian} from "../../src/admin/interfaces/IOpsGuardian.sol";
 
 import {FreezeOnly} from "../../src/hooks/FreezeOnly.sol";
 import {FullRestrictions} from "../../src/hooks/FullRestrictions.sol";
@@ -88,7 +89,7 @@ contract MigrationV3_1Executor is Script, CreateXScript, MigrationQueries {
         configureGraphQl(graphQLApi, MessageDispatcher(_contractAddr("messageDispatcher")).localCentrifugeId());
 
         if (bytes(ledgerDerivationPath).length > 0) {
-            safe.initialize(msg.sender);
+            safe.initialize(address(IOpsGuardian(_contractAddr("opsGuardian")).opsSafe()));
         }
 
         vm.label(address(migrationSpell), "migrationSpell");
