@@ -110,26 +110,26 @@ contract MigrationV3_1Test is Test, RPCComposer {
     }
 
     function testMigrationEthereumMainnet() external {
-        _testCase(_rpcUrl("ethereum"), true);
+        _testCase(_getRpcUrl("ethereum"), true);
     }
 
     function testMigrationBaseMainnet() external {
-        _testCase(_rpcUrl("base"), true);
+        _testCase(_getRpcUrl("base"), true);
     }
 
     function testMigrationArbitrumMainnet() external {
-        _testCase(_rpcUrl("arbitrum"), true);
+        _testCase(_getRpcUrl("arbitrum"), true);
     }
 
     function testMigrationAvalancheMainnet() external {
-        _testCase(_rpcUrl("avalanche"), true);
+        _testCase(_getRpcUrl("avalanche"), true);
     }
 
     function testMigrationBNBMainnet() external {
-        _testCase(_rpcUrl("bnb-smart-chain"), true);
+        _testCase(_getRpcUrl("bnb-smart-chain"), true);
     }
 
     function testMigrationPlumeMainnet() external {
-        _testCase(_rpcUrl("plume"), true);
+        _testCase(_getRpcUrl("plume"), true);
     }
 }

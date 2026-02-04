@@ -16,7 +16,9 @@
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "safeAdmin": "0x2d442069f78561F817d92c94924D5EaddA9C5767",
     "batchLimit": 15,
-    "baseRpcUrl": "https://rpc.plume.org/"
+    "baseRpcUrl": "https://rpc.plume.org/",
+    "verifier": "blockscout",
+    "verifierUrl": "https://explorer.plume.org/api/"
   },
   "adapters": {
     "threshold": 2,
