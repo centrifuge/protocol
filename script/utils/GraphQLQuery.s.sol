@@ -67,4 +67,12 @@ abstract contract GraphQLQuery {
     function _jsonValue(uint256 value) internal pure returns (string memory) {
         return string.concat("\\\"", _vm().toString(value), "\\\"");
     }
+
+    /// @notice Convert string value to JSON-escaped string
+    /// @dev Wraps value in escaped quotes for JSON queries
+    /// @param value The string value to convert
+    /// @return JSON-escaped string representation
+    function _jsonString(string memory value) internal pure returns (string memory) {
+        return string.concat("\\\"", value, "\\\"");
+    }
 }
