@@ -14,7 +14,6 @@
     ],
     "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
-    "safeAdmin": "0xD9D30ab47c0f096b0AA67e9B8B1624504a63e7FD",
     "batchLimit": 15,
     "baseRpcUrl": "https://eth-mainnet.g.alchemy.com/v2/"
   },

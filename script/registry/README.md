@@ -49,7 +49,8 @@ interface ChainConfig {
   network: {
     chainId: number;
     centrifugeId: number;       // Internal Centrifuge chain identifier
-    safeAdmin?: string;         // Safe multisig admin address (mainnet only)
+    protocolAdmin?: string;     // multisig safe admin address
+    opsAdmin?: string;          // multisig safe admin address
   };
   adapters: {
     wormhole?: {
@@ -254,16 +255,16 @@ const IPFS_GATEWAY = "https://gateway.pinata.cloud/ipfs/";
 async function buildFullRegistry(startUrl) {
   const versions = [];
   let url = startUrl;
-  
+
   // Walk backwards through the chain
   while (url) {
     const registry = await fetch(url).then(r => r.json());
     versions.unshift(registry); // oldest first
-    url = registry.previousRegistry?.ipfsHash 
-      ? IPFS_GATEWAY + registry.previousRegistry.ipfsHash 
+    url = registry.previousRegistry?.ipfsHash
+      ? IPFS_GATEWAY + registry.previousRegistry.ipfsHash
       : null;
   }
-  
+
   // Merge: older first, newer overrides
   const merged = { chains: {}, abis: {} };
   for (const reg of versions) {
