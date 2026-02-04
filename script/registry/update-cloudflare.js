@@ -75,6 +75,26 @@ async function listWeb3Hostnames(zoneId, token) {
     return data.result;
 }
 
+async function getWeb3Hostname(zoneId, token, hostnameId) {
+    const url = `${CLOUDFLARE_API_BASE}/zones/${zoneId}/web3/hostnames/${hostnameId}`;
+    const response = await fetch(url, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+        },
+    });
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`GET hostname failed: ${response.status} ${response.statusText} - ${text}`);
+    }
+    const data = await response.json();
+    if (!data.success || !data.result) {
+        throw new Error(`GET hostname invalid response: ${JSON.stringify(data)}`);
+    }
+    return data.result;
+}
+
 async function updateHostnameDnslink(zoneId, token, hostnameId, dnslink) {
     const url = `${CLOUDFLARE_API_BASE}/zones/${zoneId}/web3/hostnames/${hostnameId}`;
     const response = await fetch(url, {

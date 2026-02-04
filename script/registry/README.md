@@ -75,6 +75,35 @@ node script/registry/abi-registry.js testnet
 
 **Env / flags:** `DEPLOYMENT_COMMIT`, `ETHERSCAN_API_KEY` (required), `REGISTRY_MODE=full`, `REGISTRY_SOURCE_URL`; `--full`, `--source-url=<url>`. For pinning: `PINATA_JWT` (1Password, limited access).
 
+### Testing API keys (no changes made)
+
+To confirm Pinata and Cloudflare credentials work without modifying DNS or pinning new files:
+
+```bash
+cd script/registry && npm install
+```
+
+- **Pinata (read):** `PINATA_JWT=<jwt> node validate-api-keys.js` — lists pins (read-only).
+- **Cloudflare (read):** `CLOUDFLARE_ZONE_ID=<id> CLOUDFLARE_API_TOKEN=<token> node validate-api-keys.js` — lists Web3 hostnames. Use the **zone** ID (from the zone’s Overview), not the account ID. If you see "Invalid API Token" but the token works in the dashboard, set `CLOUDFLARE_ACCOUNT_ID` to your **account** ID (from the token’s verify URL or dashboard); the script will then use the account-scoped verify endpoint.
+- **Cloudflare (prove write, no-op):** same env plus `--test-write` — PATCHes each hostname with its current dnslink so nothing changes, but confirms the token can write.
+- **Both:** set all three env vars and run `node validate-api-keys.js` (optionally `--test-write` for Cloudflare).
+
+Use `--pinata-only` or `--cloudflare-only` to test a single provider. If you see "Invalid API Token", ensure the token is active, not expired, and copied in full; create a new token in Cloudflare if needed.
+
+**Equivalent curl commands (Cloudflare):** Use your **account** ID for verify and **zone** ID for hostnames.
+
+```bash
+# 1. Token verify (account-scoped token: use account ID in URL)
+curl -s "https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/tokens/verify" \
+  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+
+# 2. List Web3 hostnames (use zone ID)
+curl -s "https://api.cloudflare.com/client/v4/zones/ZONE_ID/web3/hostnames" \
+  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+```
+
+If (1) works but the script fails at step 1/5, set `CLOUDFLARE_ACCOUNT_ID` to your account ID so the script uses the same verify URL.
+
 ---
 
 ## Registry consumption
