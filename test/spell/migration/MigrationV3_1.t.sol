@@ -6,7 +6,7 @@ import {ValidationOrchestrator} from "./validation/ValidationOrchestrator.sol";
 
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 
-import {RPCComposer} from "../../../script/utils/RPCComposer.s.sol";
+import {EnvConfigLoader, EnvConfig} from "../../../script/utils/EnvConfig.s.sol";
 import {MigrationQueries} from "../../../script/spell/MigrationQueries.sol";
 import {MigrationV3_1Executor} from "../../../script/spell/MigrationV3_1.s.sol";
 import {
@@ -24,7 +24,7 @@ import "forge-std/Test.sol";
 import {MigrationSpell} from "../../../src/spell/migration_v3.1/MigrationSpell.sol";
 import {ForkTestLiveValidation} from "../../integration/fork/ForkTestLiveValidation.sol";
 
-contract MigrationV3_1Test is Test, RPCComposer {
+contract MigrationV3_1Test is Test {
     ISafe immutable ADMIN = ISafe(makeAddr("ADMIN"));
     bytes32 constant NEW_VERSION = "v3.1";
 
@@ -110,26 +110,26 @@ contract MigrationV3_1Test is Test, RPCComposer {
     }
 
     function testMigrationEthereumMainnet() external {
-        _testCase(_getRpcUrl("ethereum"), true);
+        _testCase(EnvConfigLoader.loadEnvConfig("ethereum").network.rpcUrl(), true);
     }
 
     function testMigrationBaseMainnet() external {
-        _testCase(_getRpcUrl("base"), true);
+        _testCase(EnvConfigLoader.loadEnvConfig("base").network.rpcUrl(), true);
     }
 
     function testMigrationArbitrumMainnet() external {
-        _testCase(_getRpcUrl("arbitrum"), true);
+        _testCase(EnvConfigLoader.loadEnvConfig("arbitrum").network.rpcUrl(), true);
     }
 
     function testMigrationAvalancheMainnet() external {
-        _testCase(_getRpcUrl("avalanche"), true);
+        _testCase(EnvConfigLoader.loadEnvConfig("avalanche").network.rpcUrl(), true);
     }
 
     function testMigrationBNBMainnet() external {
-        _testCase(_getRpcUrl("bnb-smart-chain"), true);
+        _testCase(EnvConfigLoader.loadEnvConfig("bnb-smart-chain").network.rpcUrl(), true);
     }
 
     function testMigrationPlumeMainnet() external {
-        _testCase(_getRpcUrl("plume"), true);
+        _testCase(EnvConfigLoader.loadEnvConfig("plume").network.rpcUrl(), true);
     }
 }
