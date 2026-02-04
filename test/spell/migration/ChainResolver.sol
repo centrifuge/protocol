@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.sol";
-
 import {Root} from "../../../src/admin/Root.sol";
-
-import {GraphQLConstants} from "../../../script/utils/GraphQLConstants.sol";
 
 /// @title ChainResolver
 /// @notice Initialize the context for a chain.

@@ -4,8 +4,6 @@ pragma solidity 0.8.28;
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
 
-import {Root} from "../../src/admin/Root.sol";
-
 import {OnOfframpManager} from "../../src/managers/spoke/OnOfframpManager.sol";
 
 import {stdJson} from "forge-std/StdJson.sol";
