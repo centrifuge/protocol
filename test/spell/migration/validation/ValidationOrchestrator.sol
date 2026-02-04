@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {GraphQLStore} from "./GraphQLStore.sol";
-import {BaseValidator} from "./BaseValidator.sol";
+import {BaseValidator, OldContracts} from "./BaseValidator.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 
@@ -20,8 +20,6 @@ library ValidationOrchestrator {
     Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
     event log_string(string);
-
-    struct OldContracts {}
 
     struct ValidationSuite {
         BaseValidator[] validators;
@@ -59,7 +57,7 @@ library ValidationOrchestrator {
         emit log_string("[CONTEXT] Building shared validation context...");
 
         // TODO: initialize old contracts using env/*.json files
-        OldContracts memory old = OldContracts();
+        OldContracts memory old = OldContracts(address(0));
 
         PoolId[] memory pools = queryService.pools();
         PoolId[] memory hubPools = queryService.hubPools(pools);
