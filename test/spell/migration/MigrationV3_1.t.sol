@@ -6,6 +6,7 @@ import {ValidationOrchestrator} from "./validation/ValidationOrchestrator.sol";
 
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 
+import {RPCComposer} from "../../../script/utils/RPCComposer.s.sol";
 import {MigrationQueries} from "../../../script/spell/MigrationQueries.sol";
 import {MigrationV3_1Executor} from "../../../script/spell/MigrationV3_1.s.sol";
 import {
@@ -23,7 +24,7 @@ import "forge-std/Test.sol";
 import {MigrationSpell} from "../../../src/spell/migration_v3.1/MigrationSpell.sol";
 import {ForkTestLiveValidation} from "../../integration/fork/ForkTestLiveValidation.sol";
 
-contract MigrationV3_1Test is Test {
+contract MigrationV3_1Test is Test, RPCComposer {
     ISafe immutable ADMIN = ISafe(makeAddr("ADMIN"));
     bytes32 constant NEW_VERSION = "v3.1";
 
@@ -86,7 +87,7 @@ contract MigrationV3_1Test is Test {
 
         // ----- EXECUTE MIGRATION -----
 
-        migration.migrate(address(deployer), migrationSpell);
+        migration.migrate(address(deployer), "", migrationSpell);
 
         // ----- POST-MIGRATION VALIDATION -----
 
@@ -109,26 +110,26 @@ contract MigrationV3_1Test is Test {
     }
 
     function testMigrationEthereumMainnet() external {
-        _testCase(string.concat("https://eth-mainnet.g.alchemy.com/v2/", vm.envString("ALCHEMY_API_KEY")), true);
+        _testCase(_rpcUrl("ethereum"), true);
     }
 
     function testMigrationBaseMainnet() external {
-        _testCase(string.concat("https://base-mainnet.g.alchemy.com/v2/", vm.envString("ALCHEMY_API_KEY")), true);
+        _testCase(_rpcUrl("base"), true);
     }
 
     function testMigrationArbitrumMainnet() external {
-        _testCase(string.concat("https://arb-mainnet.g.alchemy.com/v2/", vm.envString("ALCHEMY_API_KEY")), true);
+        _testCase(_rpcUrl("arbitrum"), true);
     }
 
     function testMigrationAvalancheMainnet() external {
-        _testCase(string.concat("https://avax-mainnet.g.alchemy.com/v2/", vm.envString("ALCHEMY_API_KEY")), true);
+        _testCase(_rpcUrl("avalanche"), true);
     }
 
     function testMigrationBNBMainnet() external {
-        _testCase(string.concat("https://bnb-mainnet.g.alchemy.com/v2/", vm.envString("ALCHEMY_API_KEY")), true);
+        _testCase(_rpcUrl("bnb-smart-chain"), true);
     }
 
     function testMigrationPlumeMainnet() external {
-        _testCase(string.concat("https://rpc.plume.org/", vm.envString("PLUME_API_KEY")), true);
+        _testCase(_rpcUrl("plume"), true);
     }
 }

@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {GraphQLStore} from "./GraphQLStore.sol";
 import {BaseValidator} from "./BaseValidator.sol";
 import {V3ContractsExt} from "./ValidationTypes.sol";
+import {Validate_Root} from "./validators/Validate_Root.sol";
 import {Validate_Spoke} from "./validators/Validate_Spoke.sol";
 import {Validate_Subsidy} from "./validators/Validate_Subsidy.sol";
 import {Validate_Holdings} from "./validators/Validate_Holdings.sol";
@@ -12,6 +13,7 @@ import {Validate_HubRegistry} from "./validators/Validate_HubRegistry.sol";
 import {Validate_SyncManager} from "./validators/Validate_SyncManager.sol";
 import {Validate_VaultRouter} from "./validators/Validate_VaultRouter.sol";
 import {Validate_BalanceSheet} from "./validators/Validate_BalanceSheet.sol";
+import {Validate_GlobalEscrow} from "./validators/Validate_GlobalEscrow.sol";
 import {Validate_MultiAdapter} from "./validators/Validate_MultiAdapter.sol";
 import {Validate_TokenFactory} from "./validators/Validate_TokenFactory.sol";
 import {Validate_VaultRegistry} from "./validators/Validate_VaultRegistry.sol";
@@ -22,6 +24,7 @@ import {Validate_ShareClassManager} from "./validators/Validate_ShareClassManage
 import {Validate_CrossChainMessages} from "./validators/Validate_CrossChainMessages.sol";
 import {Validate_OutstandingInvests} from "./validators/Validate_OutstandingInvests.sol";
 import {Validate_OutstandingRedeems} from "./validators/Validate_OutstandingRedeems.sol";
+import {Validate_PoolEscrowHoldings} from "./validators/Validate_PoolEscrowHoldings.sol";
 import {Validate_BatchRequestManager} from "./validators/Validate_BatchRequestManager.sol";
 import {Validate_UnclaimedInvestOrders} from "./validators/Validate_UnclaimedInvestOrders.sol";
 import {Validate_UnclaimedRedeemOrders} from "./validators/Validate_UnclaimedRedeemOrders.sol";
@@ -81,7 +84,10 @@ library ValidationOrchestrator {
         emit log_string("[CONTEXT] Building shared validation context...");
 
         V3ContractsExt memory old = V3ContractsExt({
-            inner: queryService.v3Contracts(), tokenFactory: chain.tokenFactory, routerEscrow: chain.routerEscrow
+            inner: queryService.v3Contracts(),
+            tokenFactory: chain.tokenFactory,
+            routerEscrow: chain.routerEscrow,
+            globalEscrow: chain.globalEscrow
         });
 
         PoolId[] memory pools = queryService.pools();
@@ -151,7 +157,7 @@ library ValidationOrchestrator {
     // ============================================
 
     function _buildPreSuite() private returns (ValidationSuite memory) {
-        BaseValidator[] memory validators = new BaseValidator[](19);
+        BaseValidator[] memory validators = new BaseValidator[](20);
 
         validators[0] = new Validate_EpochOutstandingInvests();
         validators[1] = new Validate_EpochOutstandingRedeems();
@@ -172,12 +178,13 @@ library ValidationOrchestrator {
         validators[16] = new Validate_VaultRouter();
         validators[17] = new Validate_Subsidy();
         validators[18] = new Validate_IsPaused();
+        validators[19] = new Validate_PoolEscrowHoldings();
 
         return ValidationSuite({validators: validators});
     }
 
     function _buildPostSuite() private returns (ValidationSuite memory) {
-        BaseValidator[] memory validators = new BaseValidator[](13);
+        BaseValidator[] memory validators = new BaseValidator[](16);
 
         validators[0] = new Validate_ShareClassManager();
         validators[1] = new Validate_BalanceSheet();
@@ -191,7 +198,12 @@ library ValidationOrchestrator {
         validators[9] = new Validate_Subsidy();
         validators[10] = new Validate_ShareTokenHook();
         validators[11] = new Validate_MultiAdapter();
-        validators[12] = new Validate_InvestmentFlows();
+        validators[12] = new Validate_PoolEscrowHoldings();
+        validators[13] = new Validate_GlobalEscrow();
+        validators[14] = new Validate_Root();
+        // NOTE: Always keep InvestmentFlows last - it executes full deposit/redeem cycles that modify:
+        // escrow balances, pending requests, prices, whitelist state, and manager registrations
+        validators[15] = new Validate_InvestmentFlows();
 
         return ValidationSuite({validators: validators});
     }

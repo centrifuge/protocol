@@ -178,7 +178,7 @@ contract Validate_Spoke is BaseValidator {
         ShareClassId scid = ShareClassId.wrap(bytes16(vm.parseBytes(vault.tokenId)));
 
         // The spell migrates only the first share class of a pool, so skip others
-        if (!oldSpoke.isPoolActive(pid) || scid.index() != 0) return errorCount;
+        if (!oldSpoke.isPoolActive(pid) || scid.index() != 1) return errorCount;
 
         string memory vaultIdStr = string.concat("Pool ", _toString(vault.poolId), " SC ", vault.tokenId);
 

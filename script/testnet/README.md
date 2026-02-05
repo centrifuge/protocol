@@ -28,8 +28,10 @@ Standalone script for single-chain deployment and validation.
 **Usage:**
 ```bash
 export NETWORK=sepolia
-export PROTOCOL_ADMIN=0x...
-forge script script/testnet/TestData.s.sol:TestData --rpc-url $RPC_URL --broadcast -vvvv
+forge script script/testnet/TestData.s.sol:TestData \
+  --rpc-url $RPC_URL \
+  --broadcast \
+  -vvvv
 ```
 
 ---
@@ -59,6 +61,9 @@ Test each cross-chain adapter in isolation by creating pools with per-pool adapt
 - Creates isolated test pools where each pool uses only ONE adapter
 - Tests Axelar, LayerZero, and Wormhole adapters independently
 - Validates adapter forwarding and message execution without interference
+
+**Prerequisites:**
+- Run `deploy.py dump` for the hub network to set environment variables
 
 **Two-Phase Workflow:**
 1. **Phase 1: Setup** - Create pools and configure isolated adapters

@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {CoreInput, makeSalt} from "./CoreDeployer.s.sol";
+import {UlnConfig, SetConfigParam} from "./utils/ILayerZeroEndpointV2Like.sol";
 import {
     FullInput,
     FullActionBatcher,
@@ -54,21 +55,28 @@ contract LaunchDeployer is FullDeployer {
 
         startDeploymentOutput();
 
-        uint8[32] memory txLimits;
-        try vm.envUint("TX_LIMITS", ",") returns (uint256[] memory txLimitsRaw) {
-            require(txLimitsRaw.length < 32, "only 32 tx limits supported");
-            for (uint256 i; i < txLimitsRaw.length; i++) {
-                txLimits[i] = txLimitsRaw[i].toUint8();
-            }
-        } catch {}
+        address[] memory layerZeroDVNs = _parseAndValidateLayerZeroConfig(config);
+        uint8 layerZeroBlockConfirmations = layerZeroDVNs.length > 0
+            ? uint8(_parseJsonUintOrDefault(config, "$.adapters.layerZero.blockConfirmations"))
+            : 0;
+
+        address protocolAdmin = vm.parseJsonAddress(config, "$.network.protocolAdmin");
 
         FullInput memory input = FullInput({
-            adminSafe: ISafe(vm.envAddress("PROTOCOL_ADMIN")),
-            opsSafe: ISafe(vm.envAddress("OPS_ADMIN")),
+            adminSafe: ISafe(protocolAdmin),
+            opsSafe: ISafe(vm.parseJsonAddress(config, "$.network.opsAdmin")),
             core: CoreInput({
-                centrifugeId: centrifugeId, version: version, root: vm.envOr("ROOT", address(0)), txLimits: txLimits
+                centrifugeId: centrifugeId,
+                version: version,
+                root: vm.envOr("ROOT", address(0)),
+                txLimits: _parseBatchLimits(config)
             }),
             adapters: AdaptersInput({
+                layerZero: LayerZeroInput({
+                    shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.layerZero.deploy"),
+                    endpoint: _parseJsonAddressOrDefault(config, "$.adapters.layerZero.endpoint"),
+                    delegate: protocolAdmin
+                }),
                 wormhole: WormholeInput({
                     shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.wormhole.deploy"),
                     relayer: _parseJsonAddressOrDefault(config, "$.adapters.wormhole.relayer")
@@ -78,16 +86,11 @@ contract LaunchDeployer is FullDeployer {
                     gateway: _parseJsonAddressOrDefault(config, "$.adapters.axelar.gateway"),
                     gasService: _parseJsonAddressOrDefault(config, "$.adapters.axelar.gasService")
                 }),
-                layerZero: LayerZeroInput({
-                    shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.layerZero.deploy"),
-                    endpoint: _parseJsonAddressOrDefault(config, "$.adapters.layerZero.endpoint"),
-                    delegate: vm.envAddress("PROTOCOL_ADMIN")
-                }),
                 chainlink: ChainlinkInput({
                     shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.chainlink.deploy"),
                     ccipRouter: _parseJsonAddressOrDefault(config, "$.adapters.chainlink.ccipRouter")
                 }),
-                connections: _parseConnections(config)
+                connections: _buildConnections(_parseConnections(config), layerZeroDVNs, layerZeroBlockConfirmations)
             })
         });
 
@@ -148,33 +151,131 @@ contract LaunchDeployer is FullDeployer {
         }
     }
 
-    function _parseConnections(string memory config) private view returns (AdapterConnections[] memory connections) {
-        try vm.parseJsonStringArray(config, "$.network.connectsTo") returns (string[] memory connectsTo) {
-            connections = new AdapterConnections[](connectsTo.length);
+    function _buildConnections(
+        string[] memory connectsTo,
+        address[] memory layerZeroDvns,
+        uint8 layerZeroBlockConfirmations
+    ) private view returns (AdapterConnections[] memory connections) {
+        connections = new AdapterConnections[](connectsTo.length);
 
+        for (uint256 i; i < connectsTo.length; i++) {
+            string memory remoteConfigFile = string.concat("env/", connectsTo[i], ".json");
+            string memory remoteConfig = vm.readFile(remoteConfigFile);
+
+            _checkLayerZeroConfiguration(layerZeroDvns, layerZeroBlockConfirmations, remoteConfig);
+
+            uint32 layerZeroId = _parseJsonBoolOrDefault(remoteConfig, "$.adapters.layerZero.deploy")
+                ? uint32(_parseJsonUintOrDefault(remoteConfig, "$.adapters.layerZero.layerZeroEid"))
+                : 0;
+
+            connections[i] = AdapterConnections({
+                centrifugeId: uint16(_parseJsonUintOrDefault(remoteConfig, "$.network.centrifugeId")),
+                layerZeroId: layerZeroId,
+                wormholeId: _parseJsonBoolOrDefault(remoteConfig, "$.adapters.wormhole.deploy")
+                    ? uint16(_parseJsonUintOrDefault(remoteConfig, "$.adapters.wormhole.wormholeId"))
+                    : 0,
+                axelarId: _parseJsonBoolOrDefault(remoteConfig, "$.adapters.axelar.deploy")
+                    ? _parseJsonStringOrDefault(remoteConfig, "$.adapters.axelar.axelarId")
+                    : "",
+                chainlinkId: _parseJsonBoolOrDefault(remoteConfig, "$.adapters.chainlink.deploy")
+                    ? uint64(_parseJsonUintOrDefault(remoteConfig, "$.adapters.chainlink.chainSelector"))
+                    : 0,
+                threshold: uint8(_parseJsonUintOrDefault(remoteConfig, "$.adapters.threshold")),
+                layerZeroConfigParams: _getLayerZeroConfigParams(
+                        layerZeroId, layerZeroBlockConfirmations, layerZeroDvns
+                    )
+            });
+        }
+    }
+
+    function _parseConnections(string memory config) internal pure returns (string[] memory connectsTo) {
+        try vm.parseJsonStringArray(config, "$.network.connectsTo") returns (string[] memory connectsTo_) {
+            return connectsTo_;
+        } catch {
+            return new string[](0);
+        }
+    }
+
+    function _checkLayerZeroConfiguration(
+        address[] memory layerZeroDvns,
+        uint8 layerZeroBlockConfirmations,
+        string memory remoteConfig
+    ) private pure {
+        if (layerZeroDvns.length == 0) return;
+
+        uint8 remoteBlockConfirmations =
+            uint8(_parseJsonUintOrDefault(remoteConfig, "$.adapters.layerZero.blockConfirmations"));
+        require(
+            remoteBlockConfirmations == layerZeroBlockConfirmations,
+            "blockConfirmations mismatch between local and remote config"
+        );
+    }
+
+    function _parseAndValidateLayerZeroConfig(string memory config) private pure returns (address[] memory) {
+        try vm.parseJsonStringArray(config, "$.adapters.layerZero.DVNs") returns (string[] memory dvns) {
+            address[] memory layerZeroDVNs = new address[](dvns.length);
+            for (uint256 i; i < dvns.length; i++) {
+                layerZeroDVNs[i] = vm.parseAddress(dvns[i]);
+            }
+            for (uint256 i = 1; i < layerZeroDVNs.length; i++) {
+                require(layerZeroDVNs[i - 1] < layerZeroDVNs[i], "DVNs must be sorted in ascending order");
+            }
+
+            return layerZeroDVNs;
+        } catch {
+            return new address[](0);
+        }
+    }
+
+    /// @notice Gets LayerZero SetConfigParam[] for a given connection
+    /// @param layerZeroId The LayerZero endpoint id for the remote chain
+    /// @param blockConfirmations block confirmations required
+    /// @param dvns Required DVN addresses
+    ///             Must be sorted alphabetically
+    ///             Must be the same DVNs everywhere, though addresses can differ per chain
+    function _getLayerZeroConfigParams(uint32 layerZeroId, uint8 blockConfirmations, address[] memory dvns)
+        internal
+        pure
+        returns (SetConfigParam[] memory params)
+    {
+        if (dvns.length == 0) {
+            return new SetConfigParam[](0);
+        }
+
+        uint32 ULN_CONFIG_TYPE = 2;
+
+        /// @notice UlnConfig controls verification threshold for incoming messages
+        /// @notice Receive config enforces these settings have been applied to the DVNs and Executor
+        /// @dev 0 values will be interpreted as defaults, so to apply NIL settings, use:
+        /// @dev uint8 internal constant NIL_DVN_COUNT = type(uint8).max;
+        /// @dev uint64 internal constant NIL_CONFIRMATIONS = type(uint64).max;
+        /// @dev confirmations must be the same on the source and destination chains
+        UlnConfig memory uln = UlnConfig({
+            confirmations: blockConfirmations,
+            requiredDVNCount: uint8(dvns.length),
+            optionalDVNCount: type(uint8).max,
+            optionalDVNThreshold: 0,
+            requiredDVNs: dvns,
+            optionalDVNs: new address[](0)
+        });
+
+        params = new SetConfigParam[](1);
+        params[0] = SetConfigParam(layerZeroId, ULN_CONFIG_TYPE, abi.encode(uln));
+    }
+
+    function _parseBatchLimits(string memory config) private view returns (uint8[32] memory batchLimits) {
+        try vm.parseJsonStringArray(config, "$.network.connectsTo") returns (string[] memory connectsTo) {
             for (uint256 i; i < connectsTo.length; i++) {
                 string memory remoteConfigFile = string.concat("env/", connectsTo[i], ".json");
                 string memory remoteConfig = vm.readFile(remoteConfigFile);
 
-                connections[i] = AdapterConnections({
-                    centrifugeId: uint16(_parseJsonUintOrDefault(remoteConfig, "$.network.centrifugeId")),
-                    layerZeroId: _parseJsonBoolOrDefault(config, "$.adapters.layerZero.deploy")
-                        ? uint32(_parseJsonUintOrDefault(remoteConfig, "$.adapters.layerZero.layerZeroEid"))
-                        : 0,
-                    wormholeId: _parseJsonBoolOrDefault(config, "$.adapters.wormhole.deploy")
-                        ? uint16(_parseJsonUintOrDefault(remoteConfig, "$.adapters.wormhole.wormholeId"))
-                        : 0,
-                    axelarId: _parseJsonBoolOrDefault(config, "$.adapters.axelar.deploy")
-                        ? _parseJsonStringOrDefault(remoteConfig, "$.adapters.axelar.axelarId")
-                        : "",
-                    chainlinkId: _parseJsonBoolOrDefault(config, "$.adapters.chainlink.deploy")
-                        ? uint64(_parseJsonUintOrDefault(remoteConfig, "$.adapters.chainlink.chainSelector"))
-                        : 0,
-                    threshold: uint8(_parseJsonUintOrDefault(remoteConfig, "$.adapters.threshold"))
-                });
+                uint16 centrifugeId = _parseJsonUintOrDefault(remoteConfig, "$.network.centrifugeId").toUint16();
+                if (centrifugeId <= 31) {
+                    batchLimits[centrifugeId] = _parseJsonUintOrDefault(remoteConfig, "$.network.batchLimit").toUint8();
+                } else {
+                    revert("loaded centrifugeId value higher than 31");
+                }
             }
-        } catch {
-            return new AdapterConnections[](0);
-        }
+        } catch {}
     }
 }

@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {D18} from "../../misc/types/D18.sol";
 import {IERC20} from "../../misc/interfaces/IERC20.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {IEscrow} from "../../misc/interfaces/IEscrow.sol";
 import {IERC7575Share, IERC165} from "../../misc/interfaces/IERC7575.sol";
 import {ETH_ADDRESS, IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 
@@ -102,6 +103,7 @@ struct V3Contracts {
     address fullRestrictions;
     address freelyTransferable;
     address redemptionRestrictions;
+    address globalEscrow;
 }
 
 struct GlobalParamsInput {
@@ -212,10 +214,11 @@ contract MigrationSpell {
     }
 
     function _authorizedContracts(GlobalParamsInput memory input) internal pure returns (address[] memory) {
-        address[] memory contracts = new address[](3);
+        address[] memory contracts = new address[](4);
         contracts[0] = address(input.spoke);
         contracts[1] = address(input.hubRegistry);
         contracts[2] = address(input.v3.gateway);
+        contracts[3] = input.v3.globalEscrow;
         return contracts;
     }
 
@@ -297,6 +300,33 @@ contract MigrationSpell {
             }
 
             input.v3.root.denyContract(address(vault), address(this));
+        }
+
+        // ----- GLOBAL_ESCROW SWEEP (ERC20 only, skip shares) -----
+        // Defensive: wrap all external asset calls to prevent malicious assets from blocking migration
+        for (uint256 i; i < input.spokeAssetIds.length; i++) {
+            (address asset, uint256 tokenId) = input.spoke.idToAsset(input.spokeAssetIds[i]);
+            if (tokenId != 0) continue;
+
+            // Skip share tokens as they must be resolved by closing pending orders
+            bool isShare = false;
+            try IERC165(asset).supportsInterface(type(IERC7575Share).interfaceId) returns (bool result) {
+                isShare = result;
+            } catch {}
+            if (isShare) continue;
+
+            // Defensive: balanceOf could revert on malicious assets
+            uint256 balance;
+            try IERC20(asset).balanceOf(input.v3.globalEscrow) returns (uint256 balance_) {
+                balance = balance_;
+            } catch {
+                continue;
+            }
+
+            if (balance > 0) {
+                // Defensive: transfer could revert on malicious assets
+                try IEscrow(input.v3.globalEscrow).authTransferTo(asset, 0, msg.sender, balance) {} catch {}
+            }
         }
     }
 
@@ -468,6 +498,7 @@ contract MigrationSpell {
         }
 
         // ----- POOL_ESCROW (state) -----
+        // Defensive: wrap all external asset calls to prevent malicious assets from blocking migration
         {
             IPoolEscrow poolEscrowV3 = BalanceSheet(input.v3.balanceSheet).escrow(poolId);
             IPoolEscrow poolEscrow = input.balanceSheet.escrow(poolId);
@@ -475,52 +506,9 @@ contract MigrationSpell {
             input.v3.root.relyContract(address(poolEscrow), address(this));
 
             for (uint256 i; i < input.assets.length; i++) {
-                AssetInfo memory assetInfo = input.assets[i];
-
-                uint256 balance;
-                try IERC20(assetInfo.addr).balanceOf(address(poolEscrowV3)) returns (uint256 balance_) {
-                    // The protocol has no control about the assets, so they could revert
-                    balance = balance_;
-                } catch {}
-
-                if (balance > 0) {
-                    bool isShare = false;
-                    try IERC165(assetInfo.addr).supportsInterface(type(IERC7575Share).interfaceId) returns (
-                        bool result
-                    ) {
-                        isShare = result;
-                    } catch {}
-
-                    if (isShare) {
-                        // NOTE: investment assets can be shares from other pools, special case for them:
-                        address shareHook = IShareToken(assetInfo.addr).hook();
-                        input.v3.root.relyContract(address(assetInfo.addr), address(this));
-                        IShareToken(assetInfo.addr).file("hook", address(0)); // we don't want any restrictions
-
-                        poolEscrowV3.authTransferTo(assetInfo.addr, assetInfo.tokenId, address(poolEscrow), balance);
-
-                        IShareToken(assetInfo.addr).file("hook", shareHook);
-                        input.v3.root.denyContract(address(assetInfo.addr), address(this));
-                    } else {
-                        poolEscrowV3.authTransferTo(assetInfo.addr, assetInfo.tokenId, address(poolEscrow), balance);
-                    }
-                }
-
-                (uint128 total, uint128 reserved) =
-                    PoolEscrow(address(poolEscrowV3)).holding(scId, assetInfo.addr, assetInfo.tokenId);
-
-                if (total > 0 || reserved > 0) {
-                    poolEscrow.deposit(scId, assetInfo.addr, assetInfo.tokenId, total);
-                    // Migrate old reserved to new REDEEM bucket (all v3.0.1 reservations are from ARM revokedShares)
-                    poolEscrow.reserve(
-                        scId,
-                        assetInfo.addr,
-                        assetInfo.tokenId,
-                        reserved,
-                        address(input.asyncRequestManager),
-                        REASON_REDEEM
-                    );
-                }
+                _migratePoolEscrowAsset(
+                    scId, input.assets[i], poolEscrowV3, poolEscrow, input.asyncRequestManager, input.v3.root
+                );
             }
 
             input.v3.root.denyContract(address(poolEscrow), address(this));
@@ -626,6 +614,70 @@ contract MigrationSpell {
         adapters = new IAdapter[](adapterCount);
         for (uint8 j; j < adapterCount; j++) {
             adapters[j] = multiAdapter.adapters(centrifugeId, poolId, j);
+        }
+    }
+
+    /// @dev Defensively migrates a single asset from v3 pool escrow to new pool escrow.
+    ///      Wraps external calls in try-catch to prevent malicious assets from blocking migration.
+    function _migratePoolEscrowAsset(
+        ShareClassId scId,
+        AssetInfo memory assetInfo,
+        IPoolEscrow poolEscrowV3,
+        IPoolEscrow poolEscrow,
+        AsyncRequestManager asyncRequestManager,
+        Root rootV3
+    ) private {
+        // Defensive: balanceOf could revert on malicious assets
+        uint256 balance;
+        try IERC20(assetInfo.addr).balanceOf(address(poolEscrowV3)) returns (uint256 balance_) {
+            balance = balance_;
+        } catch {
+            return;
+        }
+
+        bool transferFailed = false;
+
+        if (balance > 0) {
+            bool isShare = false;
+            try IERC165(assetInfo.addr).supportsInterface(type(IERC7575Share).interfaceId) returns (bool result) {
+                isShare = result;
+            } catch {}
+
+            if (isShare) {
+                // NOTE: investment assets can be shares from other pools but we trust hook() and file() calls
+                address shareHook = IShareToken(assetInfo.addr).hook();
+                rootV3.relyContract(address(assetInfo.addr), address(this));
+                IShareToken(assetInfo.addr).file("hook", address(0)); // we don't want any restrictions
+
+                // Defensive: transfer could revert on malicious assets
+                try poolEscrowV3.authTransferTo(assetInfo.addr, assetInfo.tokenId, address(poolEscrow), balance) {}
+                catch {
+                    transferFailed = true;
+                }
+
+                // Cleanup always runs
+                IShareToken(assetInfo.addr).file("hook", shareHook);
+                rootV3.denyContract(address(assetInfo.addr), address(this));
+            } else {
+                // Defensive: transfer could revert on malicious assets
+                try poolEscrowV3.authTransferTo(assetInfo.addr, assetInfo.tokenId, address(poolEscrow), balance) {}
+                catch {
+                    transferFailed = true;
+                }
+            }
+        }
+
+        if (transferFailed) return;
+
+        (uint128 total, uint128 reserved) =
+            PoolEscrow(address(poolEscrowV3)).holding(scId, assetInfo.addr, assetInfo.tokenId);
+
+        if (total > 0 || reserved > 0) {
+            poolEscrow.deposit(scId, assetInfo.addr, assetInfo.tokenId, total);
+            // Migrate old reserved to new REDEEM bucket (all v3.0.1 reservations are from ARM revokedShares)
+            poolEscrow.reserve(
+                scId, assetInfo.addr, assetInfo.tokenId, reserved, address(asyncRequestManager), REASON_REDEEM
+            );
         }
     }
 }

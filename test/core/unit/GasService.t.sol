@@ -20,6 +20,7 @@ contract GasServiceTest is Test {
         uint8[32] memory txLimits;
         txLimits[0] = 30; // Millions
         txLimits[1] = 150; // Millions
+        txLimits[10] = 64; // Millions
 
         service = new GasService(txLimits);
     }
@@ -56,6 +57,7 @@ contract GasServiceTest is Test {
         uint256 expectedGasLimit = service.DEFAULT_SUPPORTED_TX_LIMIT();
         if (centrifugeId == 0) expectedGasLimit = 30;
         if (centrifugeId == 1) expectedGasLimit = 150;
+        if (centrifugeId == 10) expectedGasLimit = 64;
         expectedGasLimit = expectedGasLimit * 1_000_000;
 
         uint256 maxBatchGasLimit = service.maxBatchGasLimit(centrifugeId);

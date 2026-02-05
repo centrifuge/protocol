@@ -84,7 +84,42 @@ class AnvilManager:
                 self.is_testnet = True
                 self.config_file = config_path
 
-        return AnvilEnv(self, network_name, port, dst_cfg, chain_id)
+        return AnvilEnv(self)
+
+    def _create_anvil_config(self) -> None:
+        """Create temporary anvil.json config file for Solidity scripts"""
+        if self.anvil_config_file.exists():
+            self.anvil_config_file.unlink()
+            print_step("Cleaned up existing anvil.json config")
+        anvil_config = {
+            "network": {
+                "chainId": int(self.chain_id),
+                "centrifugeId": 9,  # Anvil's centrifuge ID
+                "environment": "testnet",
+                "connectsTo": [],
+                "protocolAdmin": self.protocol_admin_address,
+                "opsAdmin": self.ops_admin_address
+            },
+            "contracts": {},  # Will be populated after LaunchDeployer runs
+            "adapters": {
+                "wormhole": {
+                "wormholeId": "10002",
+                "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",
+                "deploy": "true"
+                },
+                "axelar": {
+                "axelarId": "ethereum-sepolia",
+                "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+                "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+                "deploy": "true"
+                }
+            }
+        }
+
+        with open(self.anvil_config_file, 'w') as f:
+            json.dump(anvil_config, f, indent=2)
+
+        print_step("Created temporary anvil.json config")
 
 
     def deploy_full_protocol(self) -> bool:

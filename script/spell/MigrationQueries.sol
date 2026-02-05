@@ -120,6 +120,8 @@ contract MigrationQueries is GraphQLQuery {
             v3.freelyTransferable = address(0xDEAD); // Not deployed in testnets
         }
         v3.redemptionRestrictions = json.readAddress(".data.deployments.items[0].redemptionRestrictionsHook");
+        // GlobalEscrow is deterministic (CREATE3) and not available in GraphQL API
+        v3.globalEscrow = 0x43d51be0B6dE2199A2396bA604114d24383F91E9;
     }
 
     /// @notice Get all pools from all chains
@@ -622,6 +624,117 @@ contract MigrationQueries is GraphQLQuery {
         require(rawBytes.length == 16, "Expected 16 bytes for tokenId");
         assembly {
             result := mload(add(rawBytes, 32))
+        }
+    }
+
+    // ============================================
+    // Investor Queries
+    // ============================================
+
+    /// @notice Get all whitelisted investors for a pool on this chain
+    /// @param poolId The pool to query
+    /// @return investors Array of investor addresses
+    function whitelistedInvestorsByPool(PoolId poolId)
+        public
+        returns (address[] memory investors)
+    {
+
+        // forgefmt: disable-next-item
+        string memory params = string.concat(
+            "limit: 1000,"
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId), ","
+            "  poolId: ", _jsonValue(poolId.raw()),
+            "}"
+        );
+
+        // forgefmt: disable-next-item
+        string memory json = _queryGraphQL(string.concat(
+            "whitelistedInvestors(", params, ") {",
+            "  totalCount"
+            "  items {"
+            "    accountAddress"
+            "  }"
+            "}"
+        ));
+
+        uint256 totalCount = json.readUint(".data.whitelistedInvestors.totalCount");
+
+        investors = new address[](totalCount);
+        for (uint256 i = 0; i < totalCount; i++) {
+            investors[i] = json.readAddress(_buildJsonPath(".data.whitelistedInvestors.items", i, "accountAddress"));
+        }
+    }
+
+    /// @notice Get all investors who have had DEPOSIT_CLAIMABLE or REDEEM_CLAIMABLE events for a pool
+    /// @dev These are investors who have pending claims on the Spoke side
+    /// @param poolId The pool to query
+    /// @return investors Array of unique investor addresses
+    function investorsByTransactionHistory(PoolId poolId)
+        public
+        returns (address[] memory investors)
+    {
+
+        // forgefmt: disable-next-item
+        string memory params = string.concat(
+            "limit: 1000,"
+            "where: {"
+            "  centrifugeId: ", _jsonValue(centrifugeId), ","
+            "  poolId: ", _jsonValue(poolId.raw()), ","
+            "  type_in: [DEPOSIT_CLAIMABLE, REDEEM_CLAIMABLE]"
+            "}"
+        );
+
+        // forgefmt: disable-next-item
+        string memory json = _queryGraphQL(string.concat(
+            "investorTransactions(", params, ") {",
+            "  totalCount"
+            "  items {"
+            "    account"
+            "  }"
+            "}"
+        ));
+
+        uint256 totalCount = json.readUint(".data.investorTransactions.totalCount");
+        if (totalCount == 0) {
+            return new address[](0);
+        }
+
+        // Collect all addresses (may have duplicates)
+        address[] memory allAddrs = new address[](totalCount);
+        for (uint256 i = 0; i < totalCount; i++) {
+            allAddrs[i] = json.readAddress(_buildJsonPath(".data.investorTransactions.items", i, "account"));
+        }
+
+        // Deduplicate - count unique addresses first
+        uint256 uniqueCount = 0;
+        for (uint256 i = 0; i < totalCount; i++) {
+            bool isDuplicate = false;
+            for (uint256 j = 0; j < i; j++) {
+                if (allAddrs[i] == allAddrs[j]) {
+                    isDuplicate = true;
+                    break;
+                }
+            }
+            if (!isDuplicate) {
+                uniqueCount++;
+            }
+        }
+
+        // Build unique array
+        investors = new address[](uniqueCount);
+        uint256 idx = 0;
+        for (uint256 i = 0; i < totalCount; i++) {
+            bool isDuplicate = false;
+            for (uint256 j = 0; j < i; j++) {
+                if (allAddrs[i] == allAddrs[j]) {
+                    isDuplicate = true;
+                    break;
+                }
+            }
+            if (!isDuplicate) {
+                investors[idx++] = allAddrs[i];
+            }
         }
     }
 

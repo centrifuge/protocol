@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
 import {CoreInput} from "../../script/CoreDeployer.s.sol";
+import {ILayerZeroEndpointV2Like} from "../../script/utils/ILayerZeroEndpointV2Like.sol";
 import {
     FullInput,
     FullActionBatcher,
@@ -19,8 +20,15 @@ import {
 
 import "forge-std/Test.sol";
 
-import {ILayerZeroEndpointV2} from "../../src/adapters/interfaces/ILayerZeroAdapter.sol";
 import {IWormholeRelayer, IWormholeDeliveryProvider} from "../../src/adapters/interfaces/IWormholeAdapter.sol";
+
+contract LayerZeroEndpointMock {
+    mapping(address oapp => address delegate) public delegates;
+
+    function setDelegate(address _delegate) external {
+        delegates[msg.sender] = _delegate;
+    }
+}
 
 contract FullDeploymentConfigTest is Test, FullDeployer {
     uint16 constant CENTRIFUGE_ID = 23;
@@ -34,7 +42,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
     address immutable AXELAR_GATEWAY = makeAddr("AxelarGateway");
     address immutable AXELAR_GAS_SERVICE = makeAddr("AxelarGasService");
 
-    address immutable LAYERZERO_ENDPOINT = makeAddr("LayerZeroEndpoint");
+    address immutable LAYERZERO_ENDPOINT = address(new LayerZeroEndpointMock());
     address immutable LAYERZERO_DELEGATE = makeAddr("LayerZeroDelegate");
 
     address immutable CHAINLINK_CCIP_ROUTER = makeAddr("ChainlinkCCIPRouter");
@@ -55,14 +63,6 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
         );
     }
 
-    function _mockRealLayerZeroContracts() private {
-        vm.mockCall(
-            LAYERZERO_ENDPOINT,
-            abi.encodeWithSelector(ILayerZeroEndpointV2.setDelegate.selector),
-            abi.encode(LAYERZERO_ENDPOINT)
-        );
-    }
-
     /// @dev Mock deployed code for validation check which requires deployed code length > 0
     function _mockBridgeContracts() internal {
         vm.etch(WORMHOLE_RELAYER, SIMPLE_CONTRACT);
@@ -75,7 +75,6 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
         FullActionBatcher batcher = new FullActionBatcher(address(this));
 
         _mockRealWormholeContracts();
-        _mockRealLayerZeroContracts();
         _mockBridgeContracts();
         deployFull(
             FullInput({
@@ -714,6 +713,12 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(layerZeroAdapter.entrypoint()), address(multiAdapter));
         assertEq(address(layerZeroAdapter.endpoint()), LAYERZERO_ENDPOINT);
+        assertEq(
+            address(
+                ILayerZeroEndpointV2Like(address(layerZeroAdapter.endpoint())).delegates(address(layerZeroAdapter))
+            ),
+            LAYERZERO_DELEGATE
+        );
     }
 
     function testChainlinkAdapter(address nonWard) public view {
@@ -895,9 +900,6 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
     }
 
     function testLayerZeroDelegateZeroAddressFails() public {
-        // Etch some non-zero code to enable the endpoint test to pass
-        vm.etch(LAYERZERO_ENDPOINT, bytes("0x01"));
-
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
