@@ -296,7 +296,7 @@ library Env {
 
 library EnvConfigLib {
     function etherscanApiKey(EnvConfig memory) internal view returns (string memory) {
-        return vm.envString("ETHERSCAN_API_KEY"); // by now all chains uses the same
+        return _envString("ETHERSCAN_API_KEY");
     }
 }
 
@@ -315,9 +315,9 @@ library NetworkConfigLib {
     }
 
     function rpcUrl(NetworkConfig memory config) internal view returns (string memory) {
-        string memory apiKey = vm.envString("ALCHEMY_API_KEY");
-        if (_contains(config.baseRpcUrl, "plume")) apiKey = vm.envString("PLUME_API_KEY");
-        if (_contains(config.baseRpcUrl, "pharos")) apiKey = vm.envString("PHAROS_API_KEY");
+        string memory apiKey = _envString("ALCHEMY_API_KEY");
+        if (_contains(config.baseRpcUrl, "plume")) apiKey = _envString("PLUME_API_KEY");
+        if (_contains(config.baseRpcUrl, "pharos")) apiKey = _envString("PHAROS_API_KEY");
 
         return string.concat(config.baseRpcUrl, apiKey);
     }
@@ -354,3 +354,9 @@ library NetworkConfigLib {
         return type(uint256).max;
     }
 }
+
+function _envString(string memory name) view returns (string memory value) {
+    value = vm.envOr(name, string(""));
+    if (bytes(value).length == 0) revert(string.concat("Missing env var: ", name));
+}
+
