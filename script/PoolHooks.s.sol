@@ -1,28 +1,27 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {PoolId} from "../src/core/types/PoolId.sol";
-import {ShareClassId} from "../src/core/types/ShareClassId.sol";
+import {makeSalt} from "./CoreDeployer.s.sol";
+import {CreateXScript} from "./utils/CreateXScript.sol";
+import {GraphQLQuery} from "./utils/GraphQLQuery.s.sol";
+import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
+import {GraphQLConstants} from "./utils/GraphQLConstants.sol";
 
-import {Root} from "../src/admin/Root.sol";
 import {Spoke} from "../src/core/spoke/Spoke.sol";
+import {PoolId} from "../src/core/types/PoolId.sol";
 import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
-import {IShareToken} from "../src/core/spoke/interfaces/IShareToken.sol";
+import {ShareClassId} from "../src/core/types/ShareClassId.sol";
 import {IPoolEscrow} from "../src/core/spoke/interfaces/IPoolEscrow.sol";
+import {IShareToken} from "../src/core/spoke/interfaces/IShareToken.sol";
 import {IPoolEscrowProvider} from "../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
-import {FreelyTransferable} from "../src/hooks/FreelyTransferable.sol";
+import {Root} from "../src/admin/Root.sol";
+
 import {FullRestrictions} from "../src/hooks/FullRestrictions.sol";
+import {FreelyTransferable} from "../src/hooks/FreelyTransferable.sol";
 
-import {stdJson} from "forge-std/StdJson.sol";
 import {console} from "forge-std/console.sol";
-
-import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
-import {GraphQLQuery} from "./utils/GraphQLQuery.s.sol";
-import {GraphQLConstants} from "./utils/GraphQLConstants.sol";
-import {CreateXScript} from "./utils/CreateXScript.sol";
-import {MessageDispatcher} from "../src/core/messaging/MessageDispatcher.sol";
-import {makeSalt} from "./CoreDeployer.s.sol";
+import {stdJson} from "forge-std/StdJson.sol";
 
 struct TokenInstanceData {
     PoolId poolId;
