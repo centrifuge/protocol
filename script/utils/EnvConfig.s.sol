@@ -214,7 +214,7 @@ library EnvConfigLoader {
     }
 
     function _parseContractsConfig(string memory json) private view returns (ContractsConfig memory config) {
-        if (!vm.keyExists(json, ".contracts")) {
+        if (!vm.keyExistsJson(json, ".contracts")) {
             return config;
         }
 
@@ -277,14 +277,22 @@ library EnvConfigLoader {
         config.circleDecoder = _parseContractAddress(json, "circleDecoder");
 
         // Adapters
-        config.layerZeroAdapter = _parseContractAddress(json, "layerZeroAdapter");
-        config.wormholeAdapter = _parseContractAddress(json, "wormholeAdapter");
-        config.axelarAdapter = _parseContractAddress(json, "axelarAdapter");
-        config.chainlinkAdapter = _parseContractAddress(json, "chainlinkAdapter");
+        config.layerZeroAdapter = _tryParseContractAddress(json, "layerZeroAdapter");
+        config.wormholeAdapter = _tryParseContractAddress(json, "wormholeAdapter");
+        config.axelarAdapter = _tryParseContractAddress(json, "axelarAdapter");
+        config.chainlinkAdapter = _tryParseContractAddress(json, "chainlinkAdapter");
     }
 
     function _parseContractAddress(string memory json, string memory key) private pure returns (address) {
         return vm.parseJsonAddress(json, string.concat(".contracts.", key, ".address"));
+    }
+
+    function _tryParseContractAddress(string memory json, string memory key) private pure returns (address) {
+        try vm.parseJsonAddress(json, string.concat(".contracts.", key, ".address")) returns (address addr) {
+            return addr;
+        } catch {
+            return address(0);
+        }
     }
 }
 
