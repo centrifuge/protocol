@@ -122,11 +122,8 @@ using NetworkConfigLib for NetworkConfig global;
 using EnvConfigLib for EnvConfig global;
 
 /// @notice loads an env/<network>.json file
-library EnvConfigLoader {
-    error MissingNetworkField(string field);
-    error MissingAdapterField(string adapter, string field);
-
-    function loadEnvConfig(string memory network) internal view returns (EnvConfig memory config) {
+library Env {
+    function load(string memory network) internal view returns (EnvConfig memory config) {
         string memory json = vm.readFile(string.concat("env/", network, ".json"));
 
         config.network = _parseNetworkConfig(json);
@@ -307,7 +304,7 @@ library NetworkConfigLib {
         string[] memory connectsTo = config.connectsTo;
 
         for (uint256 i; i < connectsTo.length; i++) {
-            EnvConfig memory remoteConfig = EnvConfigLoader.loadEnvConfig(connectsTo[i]);
+            EnvConfig memory remoteConfig = Env.load(connectsTo[i]);
 
             uint16 centrifugeId = remoteConfig.network.centrifugeId;
             require(centrifugeId <= 31, "centrifugeId value higher than 31");

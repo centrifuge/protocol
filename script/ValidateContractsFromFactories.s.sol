@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {EnvConfig, EnvConfigLoader} from "./utils/EnvConfig.s.sol";
+import {EnvConfig, Env} from "./utils/EnvConfig.s.sol";
 import {GraphQLQuery} from "./utils/GraphQLQuery.s.sol";
 import {GraphQLConstants} from "./utils/GraphQLConstants.sol";
 
@@ -45,7 +45,7 @@ contract ValidateContractsFromFactories is Script, GraphQLQuery {
     EnvConfig config;
 
     constructor() {
-        config = EnvConfigLoader.loadEnvConfig(vm.envString("NETWORK"));
+        config = Env.load(vm.envString("NETWORK"));
     }
 
     function _graphQLApi() internal view override returns (string memory) {

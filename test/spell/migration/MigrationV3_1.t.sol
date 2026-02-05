@@ -6,7 +6,7 @@ import {ValidationOrchestrator} from "./validation/ValidationOrchestrator.sol";
 
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 
-import {EnvConfigLoader, EnvConfig} from "../../../script/utils/EnvConfig.s.sol";
+import {Env, EnvConfig} from "../../../script/utils/EnvConfig.s.sol";
 import {MigrationQueries} from "../../../script/spell/MigrationQueries.sol";
 import {MigrationV3_1Executor} from "../../../script/spell/MigrationV3_1.s.sol";
 import {
@@ -110,26 +110,26 @@ contract MigrationV3_1Test is Test {
     }
 
     function testMigrationEthereumMainnet() external {
-        _testCase(EnvConfigLoader.loadEnvConfig("ethereum").network.rpcUrl(), true);
+        _testCase(Env.load("ethereum").network.rpcUrl(), true);
     }
 
     function testMigrationBaseMainnet() external {
-        _testCase(EnvConfigLoader.loadEnvConfig("base").network.rpcUrl(), true);
+        _testCase(Env.load("base").network.rpcUrl(), true);
     }
 
     function testMigrationArbitrumMainnet() external {
-        _testCase(EnvConfigLoader.loadEnvConfig("arbitrum").network.rpcUrl(), true);
+        _testCase(Env.load("arbitrum").network.rpcUrl(), true);
     }
 
     function testMigrationAvalancheMainnet() external {
-        _testCase(EnvConfigLoader.loadEnvConfig("avalanche").network.rpcUrl(), true);
+        _testCase(Env.load("avalanche").network.rpcUrl(), true);
     }
 
     function testMigrationBNBMainnet() external {
-        _testCase(EnvConfigLoader.loadEnvConfig("bnb-smart-chain").network.rpcUrl(), true);
+        _testCase(Env.load("bnb-smart-chain").network.rpcUrl(), true);
     }
 
     function testMigrationPlumeMainnet() external {
-        _testCase(EnvConfigLoader.loadEnvConfig("plume").network.rpcUrl(), true);
+        _testCase(Env.load("plume").network.rpcUrl(), true);
     }
 }
