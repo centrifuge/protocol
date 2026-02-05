@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import "forge-std/Vm.sol";
 import "./GraphQLConstants.sol";
-import {UlnConfig, SetConfigParam} from "./ILayerZeroEndpointV2Like.sol";
 
 Vm constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -289,80 +288,9 @@ library EnvConfigLoader {
     }
 }
 
-struct AdapterConnections {
-    uint16 centrifugeId;
-    uint32 layerZeroId;
-    uint16 wormholeId;
-    string axelarId;
-    uint64 chainlinkId;
-    uint8 threshold;
-}
-
 library EnvConfigLib {
     function etherscanApiKey(EnvConfig memory) internal view returns (string memory) {
         return vm.envString("ETHERSCAN_API_KEY"); // by now all chains uses the same
-    }
-
-    function buildConnections(EnvConfig memory config) internal view returns (AdapterConnections[] memory connections) {
-        string[] memory connectsTo = config.network.connectsTo;
-        connections = new AdapterConnections[](connectsTo.length);
-
-        for (uint256 i; i < connectsTo.length; i++) {
-            EnvConfig memory remoteConfig = EnvConfigLoader.loadEnvConfig(connectsTo[i]);
-
-            connections[i] = AdapterConnections({
-                centrifugeId: remoteConfig.network.centrifugeId,
-                layerZeroId: remoteConfig.adapters.layerZero.layerZeroEid,
-                wormholeId: remoteConfig.adapters.wormhole.wormholeId,
-                axelarId: remoteConfig.adapters.axelar.axelarId,
-                chainlinkId: remoteConfig.adapters.chainlink.chainSelector,
-                threshold: remoteConfig.adapters.threshold
-            });
-        }
-    }
-
-    function buildZeroConfigParams(EnvConfig memory config) internal view returns (SetConfigParam[] memory params) {
-        string[] memory connectsTo = config.network.connectsTo;
-        params = new SetConfigParam[](connectsTo.length);
-
-        for (uint256 i; i < connectsTo.length; i++) {
-            EnvConfig memory remoteConfig = EnvConfigLoader.loadEnvConfig(connectsTo[i]);
-
-            require(
-                config.adapters.layerZero.dvns.length == remoteConfig.adapters.layerZero.dvns.length,
-                "DVNs count mismatch between local and remote config"
-            );
-            for (uint256 j; j < config.adapters.layerZero.dvns.length; j++) {
-                require(
-                    config.adapters.layerZero.dvns[j] == remoteConfig.adapters.layerZero.dvns[j],
-                    "DVNs mismatch between local and remote config"
-                );
-            }
-
-            require(
-                config.adapters.layerZero.blockConfirmations == remoteConfig.adapters.layerZero.blockConfirmations,
-                "blockConfirmations mismatch between local and remote config"
-            );
-
-            /// @notice UlnConfig controls verification threshold for incoming messages
-            /// @notice Receive config enforces these settings have been applied to the DVNs and Executor
-            /// @dev 0 values will be interpreted as defaults, so to apply NIL settings, use:
-            /// @dev uint8 internal constant NIL_DVN_COUNT = type(uint8).max;
-            /// @dev uint64 internal constant NIL_CONFIRMATIONS = type(uint64).max;
-            /// @dev confirmations must be the same on the source and destination chains
-            UlnConfig memory uln = UlnConfig({
-                confirmations: config.adapters.layerZero.blockConfirmations,
-                requiredDVNCount: uint8(config.adapters.layerZero.dvns.length),
-                optionalDVNCount: type(uint8).max,
-                optionalDVNThreshold: 0,
-                requiredDVNs: config.adapters.layerZero.dvns,
-                optionalDVNs: new address[](0)
-            });
-
-            uint32 ULN_CONFIG_TYPE = 2;
-
-            params[i] = SetConfigParam(remoteConfig.adapters.layerZero.layerZeroEid, ULN_CONFIG_TYPE, abi.encode(uln));
-        }
     }
 }
 
