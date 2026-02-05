@@ -864,42 +864,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         }
     }
 
-    /// @dev Property: The amount of tokens existing in the AssetRegistry MUST always be <= the balance of the
-    /// associated token in the escrow
-    // TODO: confirm if this is correct because it seems like AssetRegistry would never be receiving tokens in the first
-    // place
-    // TODO: verify if this should be applied to the vaults side instead
-    // function property_assetRegistry_balance_leq_escrow_balance() public {
-    //     address[] memory _actors = _getActors();
-
-    //     for (uint256 i = 0; i < createdPools.length; i++) {
-    //         PoolId poolId = createdPools[i];
-    //         uint32 shareClassCount = batchRequestManager.shareClassCount(poolId);
-    //         // skip the first share class because it's never assigned
-    //         for (uint32 j = 1; j < shareClassCount; j++) {
-    //             ShareClassId scId = batchRequestManager.previewShareClassId(poolId, j);
-    //             AssetId assetId = _getAssetId();
-    //             AssetId assetId = AssetId.wrap(_getAssetId());
-
-    //             address pendingShareClassEscrow = hub.escrow(poolId, scId, EscrowId.PendingShareClass);
-    //             address shareClassEscrow = hub.escrow(poolId, scId, EscrowId.ShareClass);
-    //             uint256 assetRegistryBalance = assetRegistry.balanceOf(address(assetRegistry), assetId.raw());
-    //             uint256 pendingShareClassEscrowBalance = assetRegistry.balanceOf(pendingShareClassEscrow,
-    // assetId.raw());
-    //             uint256 shareClassEscrowBalance = assetRegistry.balanceOf(shareClassEscrow, assetId.raw());
-
-    //             lte(assetRegistryBalance, pendingShareClassEscrowBalance + shareClassEscrowBalance, "assetRegistry
-    // balance > escrow balance");
-    //         }
-    //     }
-
-    //     // TODO: check if this is the correct check
-    //     // loop through all created assetIds
-    //     // check if the asset is in the HubRegistry
-    //     // if it is, check if there's any of the asset in the escrow
-    // }
-
-    /// Stateless Properties ///
+    /// Stateless Properties
 
     /// @dev Property: The sum of eligible user payoutShareAmount for an epoch is <= the number of issued
     /// epochInvestAmounts[..].pendingAssetAmount converted to shares
@@ -1292,16 +1257,6 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                 bytes32 key = _poolShareKey(poolId, scId);
 
                 (,,, uint64 nonce) = balanceSheet.queuedShares(poolId, scId);
-
-                // If a submission occurred, verify reset
-                if (nonce > before_nonce[key]) {
-                    // TODO(wischli): Investigate
-                    // After submission, delta should be 0 and isPositive false
-                    // (unless new operations occurred after submission)
-                    // Property 3.7: Snapshot logic
-                    // isSnapshot should be true when assetCounter == 0
-                    // This is checked during submission execution
-                }
 
                 // Verify nonce never decreases
                 gte(nonce, before_nonce[key], "SHARE-QUEUE-07: Nonce must never decrease");

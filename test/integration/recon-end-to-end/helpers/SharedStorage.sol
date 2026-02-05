@@ -31,8 +31,11 @@ abstract contract SharedStorage {
     bool RECON_USE_SINGLE_DEPLOY = true; // NOTE: Actor Properties break if you use multi cause they are
     // mono-dimensional
 
-    // TODO: This is broken rn
-    // Liquidity Pool functions
+    /**
+     * @notice Enable exact balance checking for liquidity pool operations
+     * @dev Currently disabled due to precision issues in pool balance calculations
+     *      TODO: Fix rounding errors in PoolEscrow balance tracking before enabling
+     */
     bool RECON_EXACT_BAL_CHECK = false;
 
     /// === INTERNAL COUNTERS === ///
@@ -47,120 +50,140 @@ abstract contract SharedStorage {
     uint16 DEFAULT_DESTINATION_CHAIN = 1;
     uint128 ASSET_ID = uint128(bytes16(abi.encodePacked(DEFAULT_DESTINATION_CHAIN, uint32(1))));
 
-    // NOTE: TODO
-    // ** INCOMPLETE - Deployment, Setup and Cycling of Assets, Shares, Pools and Vaults **/
-    // Step 1
-    /// TODO: Consider dropping
+    /**
+     * @notice Bidirectional mapping between asset addresses and AssetId
+     * @dev Used for asset ID resolution during deployment and handler operations
+     *
+     * TODO: Evaluate if this can be replaced with spoke.assetToId() calls
+     *       to reduce storage redundancy and simplify asset tracking
+     */
     mapping(address => uint128) assetAddressToAssetId;
     mapping(uint128 => address) assetIdToAssetAddress;
 
-    // === invariant_E_1 === //
-    // Currency
-    // Indexed by Currency
+    // ═══════════════════════════════════════════════════════════════
+    // ASSET FLOW TRACKING
+    // ═══════════════════════════════════════════════════════════════
+    // Tracks the movement of assets (currencies) through the protocol:
+    //   - Deposit requests, redemption claims, transfers
+    //   - Used by: property_sum_of_assets_received, property_sum_of_pending_redeem_request
+    // Indexed by asset address
+
     /**
-     * See:
-     *         - vault_requestDeposit
+     * @notice Total assets requested for deposit across all actors
+     * @dev Updated by: vault_requestDeposit
      */
     mapping(address => uint256) sumOfDepositRequests;
+
     /**
-     * See:
-     *         - invariant_asyncVault_9_r
-     *         - invariant_asyncVault_9_w
-     *         - vault_redeem
-     *         - vault_withdraw
+     * @notice Total assets claimed from redemptions (withdraw/redeem calls)
+     * @dev Updated by: vault_withdraw, vault_redeem (ERC7540Properties)
+     *      Used by: property_sum_of_assets_received, property_sum_of_pending_redeem_request
      */
     mapping(address => uint256) sumOfClaimedRedemptions;
 
     /**
-     * See:
-     *         - spoke_handleTransfer(bytes32 receiver, uint128 amount)
-     *         - spoke_handleTransfer(address receiver, uint128 amount)
-     *
-     *         - spoke_transfer
+     * @notice Total assets transferred into the protocol via spoke
+     * @dev Updated by: spoke_handleTransfer, spoke_transfer
      */
     mapping(address => uint256) sumOfTransfersIn;
 
     /**
-     * See:
-     *     -   spoke_handleTransfer
+     * @notice Total assets transferred out of the protocol via spoke
+     * @dev Updated by: spoke_handleTransfer
      */
     mapping(address => uint256) sumOfTransfersOut;
 
-    // Global-1
+    /**
+     * @notice Total assets returned from cancelled deposit requests
+     * @dev Updated by: vault claim cancel deposit operations
+     */
     mapping(address => uint256) sumOfClaimedCancelledDeposits;
 
-    // END === invariant_E_1 === //
+    // END === ASSET FLOW TRACKING === //
 
-    // UNSURE | TODO
-    // Pretty sure I need to clamp by an amount sent by the user
-    // Else they get like a bazillion tokens
-    mapping(address => bool) hasRequestedDepositCancellation;
-    mapping(address => bool) hasRequestedRedeemCancellation;
-
-    // === invariant_E_2 === //
-    // Share
-    // Indexed by Share Token
+    // ═══════════════════════════════════════════════════════════════
+    // SHARE TOKEN FLOW TRACKING
+    // ═══════════════════════════════════════════════════════════════
+    // Tracks share token issuance, claims, and withdrawable balances
+    //   - Used by: property_sum_of_shares_received, property_sum_of_assets_received
+    // Indexed by share token address (or asset address for withdrawable amounts)
 
     /**
-     * // TODO: Jeroen to review!
-     *     // NOTE This is basically an imaginary counter
-     *     // It's not supposed to work this way in reality
-     *     // TODO: MUST REMOVE
-     *     See:
-     *         - asyncRequests_fulfillCancelRedeemRequest
-     *         - asyncRequests_fulfillRedeemRequest // NOTE: Used by E_1
+     * @notice Tracks cumulative withdrawable assets from fulfilled redemptions
+     * @dev Incremented when hub_notifyRedeem processes redemptions and increases
+     *      user's maxWithdraw allocation.
+     *
+     * Note: Bridges asset tracking (E_1 concept) and share tracking (E_2 concept)
+     *       because it represents withdrawable assets resulting from share redemptions.
+     *
+     * Updated by:
+     *   - hub_notifyRedeem → _updateRedeemGhostVariables (HubTargets.sol:211, 513)
+     * Used by:
+     *   - property_sum_of_assets_received (Properties.sol:87)
      */
     mapping(address => uint256) sumOfWithdrawable;
+
     /**
-     * See:
-     *         - asyncRequests_fulfillDepositRequest
+     * @notice Total shares made available from fulfilled deposit requests
+     * @dev Updated by: hub_notifyDeposit operations
+     *      Used by: property_sum_of_shares_received
      */
     mapping(address => uint256) sumOfFulfilledDeposits;
 
     /**
-     * See:
-     *         -
+     * @notice Total shares actually claimed by users (deposit/mint calls)
+     * @dev Updated by: vault deposit/mint operations
+     *      Used by: property_sum_of_shares_received
      */
     mapping(address => uint256) sumOfClaimedDeposits;
 
     /**
-     * See:
-     *         - vault_requestRedeem
-     *         - asyncRequests_triggerRedeemRequest
+     * @notice Total shares requested for redemption
+     * @dev Updated by: vault_requestRedeem
      */
     mapping(address => uint256) sumOfRedeemRequests;
 
+    /**
+     * @notice Sync vault deposit tracking (assets and shares)
+     * @dev Updated by: sync vault deposit operations
+     */
     mapping(address asset => uint256) sumOfSyncDepositsAsset;
     mapping(address share => uint256) sumOfSyncDepositsShare;
 
-    // END === invariant_E_2 === //
+    // END === SHARE TOKEN FLOW TRACKING === //
 
-    // NOTE: OLD
-    mapping(address => uint256) totalCurrenciesSent;
+    // ═══════════════════════════════════════════════════════════════
+    // ADDITIONAL GHOST VARIABLES
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * @notice Tracks net share balance sent via spoke transfers
+     * @dev Decremented when shares are transferred out via spoke
+     *      Used by: Properties._decreaseTotalShareSent
+     */
     mapping(address => uint256) totalShareSent;
 
-    // These are used by invariant_global_3
+    /**
+     * @notice Tracks executed investment operations (share minting from deposits)
+     * @dev Incremented when deposits/mints result in share issuance:
+     *        - vault_deposit_sync
+     *        - hub_issue
+     */
     mapping(address => uint256) executedInvestments;
+
+    /**
+     * @notice Tracks executed redemption operations (share burning from withdrawals)
+     * @dev Incremented when redemptions result in share burning:
+     *        - hub_revoke
+     */
     mapping(address => uint256) executedRedemptions;
 
-    mapping(address => uint256) incomingTransfers;
-    mapping(address => uint256) outGoingTransfers;
-
-    // NOTE: You need to decide if these should exist
-    mapping(address => uint256) shareMints;
-
-    // TODO: Global-1 and Global-2
-    // Something is off
     /**
-     * handleExecutedCollectInvest
-     *     handleExecutedCollectRedeem
+     * @notice Net share mints tracked through BalanceSheet operations
+     * @dev Incremented on issue(), decremented on revoke()
+     *      Used by: balanceSheet_issue, balanceSheet_revoke
      */
-
-    // Global-1
-    mapping(address => uint256) claimedAmounts;
-
-    // Global-2
-    mapping(address => uint256) depositRequests;
+    mapping(address => uint256) shareMints;
 
     // Requests
     // NOTE: We need to store request data to be able to cap the values as otherwise the
