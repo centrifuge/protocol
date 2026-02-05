@@ -78,9 +78,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
         _mockBridgeContracts();
         deployFull(
             FullInput({
-                core: CoreInput({
-                    centrifugeId: CENTRIFUGE_ID, version: bytes32(0), root: address(0), txLimits: defaultTxLimits()
-                }),
+                core: CoreInput({centrifugeId: CENTRIFUGE_ID, version: bytes32(0), txLimits: defaultTxLimits()}),
                 adminSafe: ADMIN_SAFE,
                 opsSafe: OPS_SAFE,
                 adapters: AdaptersInput({

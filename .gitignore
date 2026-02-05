@@ -25,3 +25,6 @@ lcov.info
 
 ## Spell validation cache
 spell-cache/
+
+script/registry/node_modules
+script/registry/package-lock.json

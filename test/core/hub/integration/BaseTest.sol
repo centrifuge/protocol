@@ -89,9 +89,7 @@ contract BaseTest is FullDeployer, Test {
         labelAddresses("");
         deployFull(
             FullInput({
-                core: CoreInput({
-                    centrifugeId: CHAIN_CP, version: bytes32(0), root: address(0), txLimits: defaultTxLimits()
-                }),
+                core: CoreInput({centrifugeId: CHAIN_CP, version: bytes32(0), txLimits: defaultTxLimits()}),
                 adminSafe: adminSafe,
                 opsSafe: opsSafe,
                 adapters: noAdaptersInput()

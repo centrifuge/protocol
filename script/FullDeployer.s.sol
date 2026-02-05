@@ -135,7 +135,6 @@ contract FullActionBatcher is CoreActionBatcher {
         FullReport memory report,
         ISafe adminSafe,
         ISafe opsSafe,
-        bool newRoot,
         AdapterConnections[] memory connectionList,
         string memory remoteAxelarAdapter,
         address layerZeroDelegate
@@ -182,7 +181,7 @@ contract FullActionBatcher is CoreActionBatcher {
         report.core.gateway.rely(address(report.protocolGuardian));
         report.core.multiAdapter.rely(address(report.protocolGuardian));
         report.core.messageDispatcher.rely(address(report.protocolGuardian));
-        if (newRoot) report.root.rely(address(report.protocolGuardian));
+        report.root.rely(address(report.protocolGuardian));
         report.tokenRecoverer.rely(address(report.protocolGuardian));
         // Permanent ward for ongoing adapter maintenance
         if (address(report.layerZeroAdapter) != address(0)) {
@@ -206,14 +205,14 @@ contract FullActionBatcher is CoreActionBatcher {
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(address(report.opsGuardian));
 
         // Rely tokenRecoverer
-        if (newRoot) report.root.rely(address(report.tokenRecoverer));
+        report.root.rely(address(report.tokenRecoverer));
 
         // Rely messageDispatcher
-        if (newRoot) report.root.rely(address(report.core.messageDispatcher));
+        report.root.rely(address(report.core.messageDispatcher));
         report.tokenRecoverer.rely(address(report.core.messageDispatcher));
 
         // Rely messageProcessor
-        if (newRoot) report.root.rely(address(report.core.messageProcessor));
+        report.root.rely(address(report.core.messageProcessor));
         report.tokenRecoverer.rely(address(report.core.messageProcessor));
 
         // Rely hub
@@ -262,11 +261,10 @@ contract FullActionBatcher is CoreActionBatcher {
         report.batchRequestManager.file("hub", address(report.core.hub));
 
         // Endorse methods
-        if (newRoot) {
-            report.root.endorse(address(report.core.balanceSheet));
-            report.root.endorse(address(report.asyncRequestManager));
-            report.root.endorse(address(report.vaultRouter));
-        }
+
+        report.root.endorse(address(report.core.balanceSheet));
+        report.root.endorse(address(report.asyncRequestManager));
+        report.root.endorse(address(report.vaultRouter));
 
         // Connect adapters
         for (uint256 i; i < connectionList.length; i++) {
@@ -416,17 +414,10 @@ contract FullDeployer is CoreDeployer {
         adminSafe = input.adminSafe;
         opsSafe = input.opsSafe;
 
-        bool newRoot = input.core.root == address(0);
-        if (newRoot) {
-            root = Root(
-                create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher)))
-            );
-            input.core.root = address(root);
-        } else {
-            root = Root(input.core.root);
-        }
+        root =
+            Root(create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));
 
-        deployCore(input.core, batcher, newRoot);
+        deployCore(input.core, batcher, address(root));
 
         tokenRecoverer = TokenRecoverer(
             create3(
@@ -747,7 +738,6 @@ contract FullDeployer is CoreDeployer {
             fullReport(),
             input.adminSafe,
             input.opsSafe,
-            newRoot,
             input.adapters.connections,
             vm.toString(address(axelarAdapter)),
             input.adapters.layerZero.delegate

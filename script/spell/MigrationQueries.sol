@@ -4,14 +4,16 @@ pragma solidity 0.8.28;
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
 
-import {Root} from "../../src/admin/Root.sol";
-
 import {OnOfframpManager} from "../../src/managers/spoke/OnOfframpManager.sol";
 
 import {stdJson} from "forge-std/StdJson.sol";
 
 import {GraphQLQuery} from "../utils/GraphQLQuery.s.sol";
-import {AssetInfo, V3Contracts} from "../../src/spell/migration_v3.1/MigrationSpell.sol";
+
+struct AssetInfo {
+    address addr;
+    uint256 tokenId;
+}
 
 struct VaultGraphQLData {
     address vault; // vaults.id
@@ -54,75 +56,6 @@ contract MigrationQueries is GraphQLQuery {
     // ============================================
     // Global Queries
     // ============================================
-
-    /// @notice Get v3.0.1 pool-level contract addresses for migration
-    /// @dev Public so tests can reuse this instead of duplicating addresses
-    function v3Contracts()
-        public
-        returns (V3Contracts memory v3)
-    {
-
-        // forgefmt: disable-next-item
-        string memory params = string.concat(
-            "limit: 1000,"
-            "where: {"
-            "  centrifugeId: ", _jsonValue(centrifugeId),
-            "}"
-        );
-
-        // forgefmt: disable-next-item
-        string memory json = _queryGraphQL(string.concat(
-            "deployments(", params, ") {",
-            "  items {"
-            "    root"
-            "    guardian"
-            "    tokenRecoverer"
-            "    messageDispatcher"
-            "    messageProcessor"
-            "    gateway"
-            "    poolEscrowFactory"
-            "    spoke"
-            "    balanceSheet"
-            "    hubRegistry"
-            "    shareClassManager"
-            "    asyncVaultFactory"
-            "    asyncRequestManager"
-            "    syncDepositVaultFactory"
-            "    syncManager"
-            "    freezeOnlyHook"
-            "    fullRestrictionsHook", (isMainnet) ?
-            "    freelyTransferableHook" : "",
-            "    redemptionRestrictionsHook"
-            "  }"
-            "}"
-        ));
-
-        v3.root = Root(json.readAddress(".data.deployments.items[0].root"));
-        v3.guardian = json.readAddress(".data.deployments.items[0].guardian");
-        v3.tokenRecoverer = json.readAddress(".data.deployments.items[0].tokenRecoverer");
-        v3.messageDispatcher = json.readAddress(".data.deployments.items[0].messageDispatcher");
-        v3.messageProcessor = json.readAddress(".data.deployments.items[0].messageProcessor");
-        v3.gateway = json.readAddress(".data.deployments.items[0].gateway");
-        v3.poolEscrowFactory = json.readAddress(".data.deployments.items[0].poolEscrowFactory");
-        v3.spoke = json.readAddress(".data.deployments.items[0].spoke");
-        v3.balanceSheet = json.readAddress(".data.deployments.items[0].balanceSheet");
-        v3.hubRegistry = json.readAddress(".data.deployments.items[0].hubRegistry");
-        v3.shareClassManager = json.readAddress(".data.deployments.items[0].shareClassManager");
-        v3.asyncVaultFactory = json.readAddress(".data.deployments.items[0].asyncVaultFactory");
-        v3.asyncRequestManager = json.readAddress(".data.deployments.items[0].asyncRequestManager");
-        v3.syncDepositVaultFactory = json.readAddress(".data.deployments.items[0].syncDepositVaultFactory");
-        v3.syncManager = json.readAddress(".data.deployments.items[0].syncManager");
-        v3.freezeOnly = json.readAddress(".data.deployments.items[0].freezeOnlyHook");
-        v3.fullRestrictions = json.readAddress(".data.deployments.items[0].fullRestrictionsHook");
-        if (isMainnet) {
-            v3.freelyTransferable = json.readAddress(".data.deployments.items[0].freelyTransferableHook");
-        } else {
-            v3.freelyTransferable = address(0xDEAD); // Not deployed in testnets
-        }
-        v3.redemptionRestrictions = json.readAddress(".data.deployments.items[0].redemptionRestrictionsHook");
-        // GlobalEscrow is deterministic (CREATE3) and not available in GraphQL API
-        v3.globalEscrow = 0x43d51be0B6dE2199A2396bA604114d24383F91E9;
-    }
 
     /// @notice Get all pools from all chains
     function pools()
