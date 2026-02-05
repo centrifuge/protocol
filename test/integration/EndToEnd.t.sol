@@ -282,7 +282,6 @@ contract EndToEndDeployment is Test {
                 core: CoreInput({
                     centrifugeId: localCentrifugeId,
                     version: bytes32(abi.encodePacked(localCentrifugeId)),
-                    root: address(0),
                     txLimits: defaultTxLimits()
                 }),
                 adminSafe: adminSafe,

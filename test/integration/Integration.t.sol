@@ -42,12 +42,7 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
         super.labelAddresses("");
         super.deployFull(
             FullInput({
-                core: CoreInput({
-                    centrifugeId: LOCAL_CENTRIFUGE_ID,
-                    version: bytes32(0),
-                    root: address(0),
-                    txLimits: defaultTxLimits()
-                }),
+                core: CoreInput({centrifugeId: LOCAL_CENTRIFUGE_ID, version: bytes32(0), txLimits: defaultTxLimits()}),
                 adminSafe: adminSafe,
                 opsSafe: adminSafe,
                 adapters: noAdaptersInput()

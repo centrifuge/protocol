@@ -65,12 +65,7 @@ contract LaunchDeployer is FullDeployer {
         FullInput memory input = FullInput({
             adminSafe: ISafe(protocolAdmin),
             opsSafe: ISafe(vm.parseJsonAddress(config, "$.network.opsAdmin")),
-            core: CoreInput({
-                centrifugeId: centrifugeId,
-                version: version,
-                root: vm.envOr("ROOT", address(0)),
-                txLimits: _parseBatchLimits(config)
-            }),
+            core: CoreInput({centrifugeId: centrifugeId, version: version, txLimits: _parseBatchLimits(config)}),
             adapters: AdaptersInput({
                 layerZero: LayerZeroInput({
                     shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.layerZero.deploy"),
