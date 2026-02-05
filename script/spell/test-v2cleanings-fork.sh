@@ -14,11 +14,11 @@ ALCHEMY_API_KEY=$(grep -E '^ALCHEMY_API_KEY=' .env | cut -d= -f2-)
 BASE_RPC_URL=$(jq -r '.network.baseRpcUrl' env/"$NETWORK".json)
 REMOTE_RPC_URL="${BASE_RPC_URL}${ALCHEMY_API_KEY}"
 
-GUARDIAN_V3="0xFEE13c017693a4706391D516ACAbF6789D5c3157"
+PROTOCOL_GUARDIAN="0xCEb7eD5d5B3bAD3088f6A1697738B60d829635c6"
 GUARDIAN_V2_ETHEREUM_OR_ARBITRUM="0x09ab10a9c3E6Eac1d18270a2322B6113F4C7f5E8";
 GUARDIAN_V2_BASE="0x427A1ce127b1775e4Cbd4F58ad468B9F832eA7e9";
 
-ADMIN_V3=$(jq -r '.network.safeAdmin' env/"$NETWORK".json)
+PROTOCOL_ADMIN=$(jq -r '.network.protocolAdmin' env/"$NETWORK".json)
 ADMIN_V2_ETHEREUM="0xD9D30ab47c0f096b0AA67e9B8B1624504a63e7FD"
 ADMIN_V2_BASE="0x8b83962fB9dB346a20c95D98d4E312f17f4C0d9b"
 ADMIN_V2_ARBITRUM="0xa36caE0ACd40C6BbA61014282f6AE51c7807A433"
@@ -61,12 +61,12 @@ mock_addr() {
         --rpc-url "$LOCAL_RPC_URL"
 }
 
-mock_addr "$ADMIN_V3"
+mock_addr "$PROTOCOL_ADMIN"
 mock_addr "$ADMIN_V2"
 mock_addr "$ANY"
 
 CHAIN_ID=$(cast chain-id --rpc-url "$LOCAL_RPC_URL")
-ROOT_V3=$(cast call $GUARDIAN_V3 "root()(address)" --rpc-url "$LOCAL_RPC_URL")
+ROOT_V3=$(cast call $PROTOCOL_GUARDIAN "root()(address)" --rpc-url "$LOCAL_RPC_URL")
 ROOT_V2=$(cast call $GUARDIAN_V2 "root()(address)" --rpc-url "$LOCAL_RPC_URL")
 
 echo ""
@@ -90,9 +90,9 @@ echo "#              STEP 2: Request root permissions to the spell"
 echo "##########################################################################"
 echo ""
 
-cast send $GUARDIAN_V3 "scheduleRely(address)" "$SPELL" \
+cast send $PROTOCOL_GUARDIAN "scheduleRely(address)" "$SPELL" \
     --rpc-url "$LOCAL_RPC_URL" \
-    --unlocked --from "$ADMIN_V3"
+    --unlocked --from "$PROTOCOL_ADMIN"
 
 cast send $GUARDIAN_V2 "scheduleRely(address)" "$SPELL" \
     --rpc-url "$LOCAL_RPC_URL" \

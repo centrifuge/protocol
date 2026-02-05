@@ -30,7 +30,7 @@ import {
 } from "../../src/spell/V2CleaningsSpell.sol";
 
 contract V2CleaningsSpellTest is Test {
-    address constant GUARDIAN_V3 = 0xFEE13c017693a4706391D516ACAbF6789D5c3157;
+    address constant PROTOCOL_GUARDIAN_V3_1 = 0xCEb7eD5d5B3bAD3088f6A1697738B60d829635c6;
     address constant GUARDIAN_V2_ETHEREUM_OR_ARBITRUM = 0x09ab10a9c3E6Eac1d18270a2322B6113F4C7f5E8;
     address constant GUARDIAN_V2_BASE = 0x427A1ce127b1775e4Cbd4F58ad468B9F832eA7e9;
 
@@ -48,7 +48,7 @@ contract V2CleaningsSpellTest is Test {
 
         // ----- REQUIRED RELIES -----
 
-        vm.prank(GUARDIAN_V3);
+        vm.prank(PROTOCOL_GUARDIAN_V3_1);
         ROOT_V3.rely(address(spell)); // Ideally through guardian.scheduleRely()
 
         vm.prank(block.chainid == BASE_CHAIN_ID ? GUARDIAN_V2_BASE : GUARDIAN_V2_ETHEREUM_OR_ARBITRUM);
