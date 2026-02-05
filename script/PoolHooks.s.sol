@@ -34,7 +34,7 @@ struct TokenInstanceData {
 contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
     using stdJson for string;
 
-    bytes32 constant VERSION = "1";
+    bytes32 constant VERSION = "v3.1";
 
     uint16 public centrifugeId;
 
@@ -149,14 +149,22 @@ contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
         }
     }
 
-    function _deployFreelyTransferable(PoolId poolId, ShareClassId scId, address poolEscrow)
-        internal
-        returns (FreelyTransferable hook)
-    {
+    function _deployFreelyTransferable(PoolId poolId, ShareClassId scId, address poolEscrow) internal {
         string memory saltName = string.concat("freelyTransferable-", vm.toString(PoolId.unwrap(poolId)));
         bytes32 salt = makeSalt(saltName, VERSION, deployer);
 
-        hook = FreelyTransferable(
+        address expectedAddr = computeCreate3Address(salt, deployer);
+        if (expectedAddr.code.length > 0) {
+            console.log(
+                "FreelyTransferable already deployed at %s for pool %d scId %s",
+                expectedAddr,
+                PoolId.unwrap(poolId),
+                vm.toString(abi.encodePacked(ShareClassId.unwrap(scId)))
+            );
+            return;
+        }
+
+        FreelyTransferable hook = FreelyTransferable(
             create3(
                 salt,
                 abi.encodePacked(
@@ -186,14 +194,22 @@ contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
         hook.deny(msg.sender);
     }
 
-    function _deployFullRestrictions(PoolId poolId, ShareClassId scId, address poolEscrow)
-        internal
-        returns (FullRestrictions hook)
-    {
+    function _deployFullRestrictions(PoolId poolId, ShareClassId scId, address poolEscrow) internal {
         string memory saltName = string.concat("fullRestrictions-", vm.toString(PoolId.unwrap(poolId)));
         bytes32 salt = makeSalt(saltName, VERSION, deployer);
 
-        hook = FullRestrictions(
+        address expectedAddr = computeCreate3Address(salt, deployer);
+        if (expectedAddr.code.length > 0) {
+            console.log(
+                "FullRestrictions already deployed at %s for pool %d scId %s",
+                expectedAddr,
+                PoolId.unwrap(poolId),
+                vm.toString(abi.encodePacked(ShareClassId.unwrap(scId)))
+            );
+            return;
+        }
+
+        FullRestrictions hook = FullRestrictions(
             create3(
                 salt,
                 abi.encodePacked(
