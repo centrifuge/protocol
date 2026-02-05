@@ -142,10 +142,8 @@ contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
         console.log("Pool escrow: %s", poolEscrowAddr);
 
         if (currentHook == freelyTransferableHook) {
-            console.log("Deploying new FreelyTransferable with pool escrow");
             _deployFreelyTransferable(token.poolId, token.scId, poolEscrowAddr);
         } else if (currentHook == fullRestrictionsHook) {
-            console.log("Deploying new FullRestrictions with pool escrow");
             _deployFullRestrictions(token.poolId, token.scId, poolEscrowAddr);
         } else {
             console.log("Hook is not freelyTransferable or fullRestrictions, skipping");
