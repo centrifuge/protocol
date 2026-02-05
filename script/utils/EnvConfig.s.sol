@@ -121,6 +121,7 @@ struct EnvConfig {
 using NetworkConfigLib for NetworkConfig global;
 using EnvConfigLib for EnvConfig global;
 
+/// @notice loads an env/<network>.json file
 library EnvConfigLoader {
     error MissingNetworkField(string field);
     error MissingAdapterField(string adapter, string field);
@@ -205,7 +206,11 @@ library EnvConfigLoader {
         }
     }
 
-    function _parseContractsConfig(string memory json) private pure returns (ContractsConfig memory config) {
+    function _parseContractsConfig(string memory json) private view returns (ContractsConfig memory config) {
+        if (!vm.keyExists(json, ".contracts")) {
+            return config;
+        }
+
         // Core
         config.root = _parseContractAddress(json, "root");
         config.gasService = _parseContractAddress(json, "gasService");
