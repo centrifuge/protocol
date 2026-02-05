@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {EnvConfig, Env} from "./utils/EnvConfig.s.sol";
 import {GraphQLQuery} from "./utils/GraphQLQuery.s.sol";
-import {GraphQLConstants} from "./utils/GraphQLConstants.sol";
 
 import {IERC20Metadata} from "../src/misc/interfaces/IERC20.sol";
 

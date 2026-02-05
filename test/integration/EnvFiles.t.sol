@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {EnvConfig, Env} from "../../script/utils/EnvConfig.s.sol";
+
 import "forge-std/Test.sol";
 
 // NOTE: the action of parse the config file does the biggest validation part

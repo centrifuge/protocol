@@ -6,7 +6,7 @@ import {ValidationOrchestrator} from "./validation/ValidationOrchestrator.sol";
 
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 
-import {Env, EnvConfig} from "../../../script/utils/EnvConfig.s.sol";
+import {Env} from "../../../script/utils/EnvConfig.s.sol";
 import {MigrationQueries} from "../../../script/spell/MigrationQueries.sol";
 import {MigrationV3_1Executor} from "../../../script/spell/MigrationV3_1.s.sol";
 import {

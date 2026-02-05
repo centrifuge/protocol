@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "forge-std/Vm.sol";
 import "./GraphQLConstants.sol";
+
+import "forge-std/Vm.sol";
 
 Vm constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
