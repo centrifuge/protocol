@@ -1132,7 +1132,7 @@ contract SpokeTestPricesPoolPer is SpokeTest {
     }
 }
 
-contract SpokeTestshareTokenDetails is SpokeTest {
+contract SpokeTestShareTokenDetails is SpokeTest {
     function testErrShareTokenDoesNotExist() public {
         address nonExistentToken = makeAddr("nonExistentToken");
 
