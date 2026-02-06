@@ -80,9 +80,7 @@ contract TokenBridge is Auth, ITokenBridge {
         (PoolId poolId, ShareClassId scId) = spoke.shareTokenDetails(token);
         GasLimits memory limits = gasLimits[poolId][scId];
 
-        spoke.crosschainTransferShares{
-            value: msg.value
-        }(
+        spoke.crosschainTransferShares{value: msg.value}(
             centrifugeId,
             poolId,
             scId,
@@ -94,17 +92,5 @@ contract TokenBridge is Auth, ITokenBridge {
         );
 
         return bytes("");
-    }
-
-    /// @inheritdoc ITokenBridge
-    function send(
-        address token,
-        uint256 amount,
-        bytes32 receiver,
-        uint256 destinationChainId,
-        address refundAddress,
-        bytes32 /* outputToken */
-    ) public payable returns (bytes memory) {
-        return send(token, amount, receiver, destinationChainId, refundAddress);
     }
 }

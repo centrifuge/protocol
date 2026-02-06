@@ -62,25 +62,6 @@ interface ITokenBridge is ITrustedContractUpdate {
         payable
         returns (bytes memory);
 
-    /// @notice Send a token from chain A to chain B with a specific output token
-    /// @dev This allows routing through a specific bridge when multiple bridges are available
-    /// @dev These methods match the expected interface from Glacis Airlift for cross-chain token transfers
-    /// @param token The address of the token sending across chains
-    /// @param amount The amount of the token to send across chains
-    /// @param receiver The target address that should receive the funds on the destination chain
-    /// @param destinationChainId The Ethereum chain ID of the destination chain
-    /// @param refundAddress The address that should receive any funds if the cross-chain gas value is too high
-    /// @param outputToken The address of the token to receive on the destination chain
-    /// @return sendResponse The response from the token's handler function (not standardized)
-    function send(
-        address token,
-        uint256 amount,
-        bytes32 receiver,
-        uint256 destinationChainId,
-        address refundAddress,
-        bytes32 outputToken
-    ) external payable returns (bytes memory);
-
     //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
