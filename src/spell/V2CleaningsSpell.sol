@@ -15,6 +15,7 @@ address constant WCFG_MULTISIG = 0x3C9D25F2C76BFE63485AE25D524F7f02f2C03372;
 address constant CHAINBRIDGE_ERC20_HANDLER = 0x84D1e77F472a4aA697359168C4aF4ADD4D2a71fa;
 address constant CREATE3_PROXY = 0x28E6eED839a5E03D92f7A5C459430576081fadFb;
 address constant IOU_CFG = 0xACF3c07BeBd65d5f7d86bc0bc716026A0C523069;
+address constant CFG_MINTER = 0x0000000000000000000000000000000000000000; // TODO: Update when CFG Minter is deployed
 
 address constant TRANCHE_JTRSY = 0x8c213ee79581Ff4984583C6a801e5263418C4b86; // ETH_JTRSY, BASE_JTRSY, ARBITRUM_JTRSY
 address constant TRANCHE_JAAA = 0x5a0F93D040De44e78F251b03c43be9CF317Dcf64; // ETH_JAAA, BASE_JAAA
@@ -55,6 +56,7 @@ contract V2CleaningsSpell {
             // Mainnet CFG only has the v2 root relied, need to replace with v3 root
             if (block.chainid == ETHEREUM_CHAIN_ID) {
                 ROOT_V2.relyContract(CFG, address(ROOT_V3));
+                ROOT_V2.relyContract(CFG, CFG_MINTER);
                 ROOT_V3.denyContract(CFG, IOU_CFG);
                 ROOT_V3.denyContract(CFG, address(ROOT_V2));
             }
