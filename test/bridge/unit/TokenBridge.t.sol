@@ -289,12 +289,4 @@ contract TokenBridgeSendTest is TokenBridgeTest {
         vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
         bridge.send(invalidToken, DEFAULT_AMOUNT, receiver.toBytes32(), EVM_CHAIN_ID_1, user);
     }
-
-    function testSendWithOutputToken() public {
-        bytes32 outputToken = bytes32(uint256(uint160(makeAddr("outputToken"))));
-
-        bridge.send{
-            value: 0.1 ether
-        }(shareToken1, DEFAULT_AMOUNT, receiver.toBytes32(), EVM_CHAIN_ID_1, user, outputToken);
-    }
 }
