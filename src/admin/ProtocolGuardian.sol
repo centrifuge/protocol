@@ -11,6 +11,8 @@ import {PoolId} from "../core/types/PoolId.sol";
 import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
 import {IScheduleAuthMessageSender} from "../core/messaging/interfaces/IGatewaySenders.sol";
 
+import {ITokenBridge} from "../bridge/interfaces/ITokenBridge.sol";
+
 /// @title  ProtocolGuardian
 /// @notice This contract provides emergency controls and protocol-level management including pausing,
 ///         permission scheduling, cross-chain upgrade coordination, and adapter configuration.
@@ -23,12 +25,20 @@ contract ProtocolGuardian is IProtocolGuardian {
     ISafe public safe;
     IGateway public gateway;
     IScheduleAuthMessageSender public sender;
+    ITokenBridge public tokenBridge;
 
-    constructor(ISafe safe_, IRoot root_, IGateway gateway_, IScheduleAuthMessageSender sender_) {
+    constructor(
+        ISafe safe_,
+        IRoot root_,
+        IGateway gateway_,
+        IScheduleAuthMessageSender sender_,
+        ITokenBridge tokenBridge_
+    ) {
         safe = safe_;
         root = root_;
         gateway = gateway_;
         sender = sender_;
+        tokenBridge = tokenBridge_;
     }
 
     modifier onlySafe() {
@@ -50,6 +60,7 @@ contract ProtocolGuardian is IProtocolGuardian {
         if (what == "safe") safe = ISafe(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "sender") sender = IScheduleAuthMessageSender(data);
+        else if (what == "tokenBridge") tokenBridge = ITokenBridge(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -114,6 +125,20 @@ contract ProtocolGuardian is IProtocolGuardian {
     /// @inheritdoc IProtocolGuardian
     function blockOutgoing(uint16 centrifugeId, bool isBlocked) external onlySafe {
         gateway.blockOutgoing(centrifugeId, GLOBAL_POOL, isBlocked);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // TokenBridge Management
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IProtocolGuardian
+    function fileTokenBridgeRelayer(address relayer) external onlySafe {
+        tokenBridge.file("relayer", relayer);
+    }
+
+    /// @inheritdoc IProtocolGuardian
+    function fileTokenBridgeCentrifugeId(uint256 evmChainId, uint16 centrifugeId) external onlySafe {
+        tokenBridge.file("centrifugeId", evmChainId, centrifugeId);
     }
 
     //----------------------------------------------------------------------------------------------

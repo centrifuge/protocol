@@ -39,6 +39,7 @@ import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultF
 
 import "forge-std/Script.sol";
 
+import {TokenBridge} from "../src/bridge/TokenBridge.sol";
 import {SubsidyManager} from "../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
@@ -101,6 +102,7 @@ struct FullReport {
     TokenRecoverer tokenRecoverer;
     ProtocolGuardian protocolGuardian;
     OpsGuardian opsGuardian;
+    TokenBridge tokenBridge;
     SubsidyManager subsidyManager;
     RefundEscrowFactory refundEscrowFactory;
     AsyncVaultFactory asyncVaultFactory;
@@ -141,6 +143,7 @@ contract FullActionBatcher is CoreActionBatcher {
     ) public onlyDeployer {
         // Rely Root
         report.tokenRecoverer.rely(address(report.root));
+        report.tokenBridge.rely(address(report.root));
 
         report.subsidyManager.rely(address(report.root));
         report.refundEscrowFactory.rely(address(report.root));
@@ -183,6 +186,7 @@ contract FullActionBatcher is CoreActionBatcher {
         report.core.messageDispatcher.rely(address(report.protocolGuardian));
         report.root.rely(address(report.protocolGuardian));
         report.tokenRecoverer.rely(address(report.protocolGuardian));
+        report.tokenBridge.rely(address(report.protocolGuardian));
         // Permanent ward for ongoing adapter maintenance
         if (address(report.layerZeroAdapter) != address(0)) {
             report.layerZeroAdapter.rely(address(report.protocolGuardian));
@@ -261,10 +265,10 @@ contract FullActionBatcher is CoreActionBatcher {
         report.batchRequestManager.file("hub", address(report.core.hub));
 
         // Endorse methods
-
         report.root.endorse(address(report.core.balanceSheet));
         report.root.endorse(address(report.asyncRequestManager));
         report.root.endorse(address(report.vaultRouter));
+        report.root.endorse(address(report.tokenBridge));
 
         // Connect adapters
         for (uint256 i; i < connectionList.length; i++) {
@@ -326,6 +330,7 @@ contract FullActionBatcher is CoreActionBatcher {
     function revokeFull(FullReport memory report) public onlyDeployer {
         if (report.root.wards(address(this)) == 1) report.root.deny(address(this));
         report.tokenRecoverer.deny(address(this));
+        report.tokenBridge.deny(address(this));
 
         report.refundEscrowFactory.deny(address(this));
         report.asyncVaultFactory.deny(address(this));
@@ -375,6 +380,7 @@ contract FullDeployer is CoreDeployer {
     TokenRecoverer public tokenRecoverer;
     ProtocolGuardian public protocolGuardian;
     OpsGuardian public opsGuardian;
+    TokenBridge public tokenBridge;
 
     SubsidyManager public subsidyManager;
     RefundEscrowFactory public refundEscrowFactory;
@@ -426,12 +432,19 @@ contract FullDeployer is CoreDeployer {
             )
         );
 
+        tokenBridge = TokenBridge(
+            create3(
+                generateSalt("tokenBridge"),
+                abi.encodePacked(type(TokenBridge).creationCode, abi.encode(spoke, batcher))
+            )
+        );
+
         protocolGuardian = ProtocolGuardian(
             create3(
                 generateSalt("protocolGuardian"),
                 abi.encodePacked(
                     type(ProtocolGuardian).creationCode,
-                    abi.encode(ISafe(address(batcher)), root, gateway, messageDispatcher)
+                    abi.encode(ISafe(address(batcher)), root, gateway, messageDispatcher, tokenBridge)
                 )
             )
         );
@@ -701,6 +714,7 @@ contract FullDeployer is CoreDeployer {
         register("tokenRecoverer", address(tokenRecoverer));
         register("protocolGuardian", address(protocolGuardian));
         register("opsGuardian", address(opsGuardian));
+        register("tokenBridge", address(tokenBridge));
 
         register("refundEscrowFactory", address(refundEscrowFactory));
         register("subsidyManager", address(subsidyManager));
@@ -751,6 +765,7 @@ contract FullDeployer is CoreDeployer {
             tokenRecoverer,
             protocolGuardian,
             opsGuardian,
+            tokenBridge,
             subsidyManager,
             refundEscrowFactory,
             asyncVaultFactory,
