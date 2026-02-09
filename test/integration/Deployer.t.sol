@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
 import {CoreInput} from "../../script/CoreDeployer.s.sol";
-import {ILayerZeroEndpointV2Like} from "../../script/utils/ILayerZeroEndpointV2Like.sol";
+import {ILayerZeroEndpointV2Like, SetConfigParam} from "../../script/utils/ILayerZeroEndpointV2Like.sol";
 import {
     FullInput,
     FullActionBatcher,
@@ -85,7 +85,10 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
                     wormhole: WormholeInput({shouldDeploy: true, relayer: WORMHOLE_RELAYER}),
                     axelar: AxelarInput({shouldDeploy: true, gateway: AXELAR_GATEWAY, gasService: AXELAR_GAS_SERVICE}),
                     layerZero: LayerZeroInput({
-                        shouldDeploy: true, endpoint: LAYERZERO_ENDPOINT, delegate: LAYERZERO_DELEGATE
+                        shouldDeploy: true,
+                        endpoint: LAYERZERO_ENDPOINT,
+                        delegate: LAYERZERO_DELEGATE,
+                        configParams: new SetConfigParam[](0)
                     }),
                     chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: CHAINLINK_CCIP_ROUTER}),
                     connections: new AdapterConnections[](0) // TODO: test this
@@ -777,7 +780,12 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: true, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            layerZero: LayerZeroInput({
+                shouldDeploy: false,
+                endpoint: address(0),
+                delegate: address(0),
+                configParams: new SetConfigParam[](0)
+            }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
             connections: new AdapterConnections[](0)
         });
@@ -791,7 +799,12 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: true, relayer: mockRelayer}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            layerZero: LayerZeroInput({
+                shouldDeploy: false,
+                endpoint: address(0),
+                delegate: address(0),
+                configParams: new SetConfigParam[](0)
+            }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
             connections: new AdapterConnections[](0)
         });
@@ -807,7 +820,12 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: true, gateway: address(0), gasService: validGasService}),
-            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            layerZero: LayerZeroInput({
+                shouldDeploy: false,
+                endpoint: address(0),
+                delegate: address(0),
+                configParams: new SetConfigParam[](0)
+            }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
             connections: new AdapterConnections[](0)
         });
@@ -823,7 +841,12 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: true, gateway: validGateway, gasService: address(0)}),
-            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            layerZero: LayerZeroInput({
+                shouldDeploy: false,
+                endpoint: address(0),
+                delegate: address(0),
+                configParams: new SetConfigParam[](0)
+            }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
             connections: new AdapterConnections[](0)
         });
@@ -842,7 +865,12 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: true, gateway: mockGateway, gasService: mockGasService}),
-            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            layerZero: LayerZeroInput({
+                shouldDeploy: false,
+                endpoint: address(0),
+                delegate: address(0),
+                configParams: new SetConfigParam[](0)
+            }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
             connections: new AdapterConnections[](0)
         });
@@ -861,7 +889,12 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: true, gateway: mockGateway, gasService: mockGasService}),
-            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            layerZero: LayerZeroInput({
+                shouldDeploy: false,
+                endpoint: address(0),
+                delegate: address(0),
+                configParams: new SetConfigParam[](0)
+            }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
             connections: new AdapterConnections[](0)
         });
@@ -874,7 +907,12 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-            layerZero: LayerZeroInput({shouldDeploy: true, endpoint: address(0), delegate: address(0)}),
+            layerZero: LayerZeroInput({
+                shouldDeploy: true,
+                endpoint: address(0),
+                delegate: address(0),
+                configParams: new SetConfigParam[](0)
+            }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
             connections: new AdapterConnections[](0)
         });
@@ -888,7 +926,12 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-            layerZero: LayerZeroInput({shouldDeploy: true, endpoint: mockEndpoint, delegate: address(0)}),
+            layerZero: LayerZeroInput({
+                shouldDeploy: true,
+                endpoint: mockEndpoint,
+                delegate: address(0),
+                configParams: new SetConfigParam[](0)
+            }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
             connections: new AdapterConnections[](0)
         });
@@ -901,7 +944,12 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-            layerZero: LayerZeroInput({shouldDeploy: true, endpoint: LAYERZERO_ENDPOINT, delegate: address(0)}),
+            layerZero: LayerZeroInput({
+                shouldDeploy: true,
+                endpoint: LAYERZERO_ENDPOINT,
+                delegate: address(0),
+                configParams: new SetConfigParam[](0)
+            }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
             connections: new AdapterConnections[](0)
         });
@@ -914,7 +962,12 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            layerZero: LayerZeroInput({
+                shouldDeploy: false,
+                endpoint: address(0),
+                delegate: address(0),
+                configParams: new SetConfigParam[](0)
+            }),
             chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: address(0)}),
             connections: new AdapterConnections[](0)
         });
@@ -928,7 +981,12 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
             axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+            layerZero: LayerZeroInput({
+                shouldDeploy: false,
+                endpoint: address(0),
+                delegate: address(0),
+                configParams: new SetConfigParam[](0)
+            }),
             chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: mockCCIPRouter}),
             connections: new AdapterConnections[](0)
         });

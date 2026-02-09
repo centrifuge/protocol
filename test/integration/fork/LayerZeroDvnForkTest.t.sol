@@ -195,8 +195,7 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
             wormholeId: 0,
             axelarId: "",
             chainlinkId: 0,
-            threshold: 1,
-            layerZeroConfigParams: _ulnConfig(dvn1, dvn2, remoteEid)
+            threshold: 1
         });
 
         return FullInput({
@@ -207,7 +206,10 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
                 wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
                 axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
                 layerZero: LayerZeroInput({
-                    shouldDeploy: true, endpoint: address(lzEndpoint), delegate: address(adminSafe)
+                    shouldDeploy: true,
+                    endpoint: address(lzEndpoint),
+                    delegate: address(adminSafe),
+                    configParams: _ulnConfig(dvn1, dvn2, remoteEid)
                 }),
                 chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
                 connections: connections

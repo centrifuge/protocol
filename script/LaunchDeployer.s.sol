@@ -70,7 +70,8 @@ contract LaunchDeployer is FullDeployer {
                 layerZero: LayerZeroInput({
                     shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.layerZero.deploy"),
                     endpoint: _parseJsonAddressOrDefault(config, "$.adapters.layerZero.endpoint"),
-                    delegate: protocolAdmin
+                    delegate: protocolAdmin,
+                    configParams: new SetConfigParam[](0)
                 }),
                 wormhole: WormholeInput({
                     shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.wormhole.deploy"),
@@ -175,10 +176,10 @@ contract LaunchDeployer is FullDeployer {
                 chainlinkId: _parseJsonBoolOrDefault(remoteConfig, "$.adapters.chainlink.deploy")
                     ? uint64(_parseJsonUintOrDefault(remoteConfig, "$.adapters.chainlink.chainSelector"))
                     : 0,
-                threshold: uint8(_parseJsonUintOrDefault(remoteConfig, "$.adapters.threshold")),
-                layerZeroConfigParams: _getLayerZeroConfigParams(
+                threshold: uint8(_parseJsonUintOrDefault(remoteConfig, "$.adapters.threshold"))
+                /*layerZeroConfigParams: _getLayerZeroConfigParams(
                         layerZeroId, layerZeroBlockConfirmations, layerZeroDvns
-                    )
+                    )*/
             });
         }
     }

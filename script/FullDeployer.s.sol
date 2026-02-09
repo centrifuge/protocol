@@ -61,6 +61,10 @@ struct LayerZeroInput {
     bool shouldDeploy;
     address endpoint;
     address delegate;
+    // Pre-computed LayerZero ULN config
+    // Should contain SetConfigParam[] for both send and receive libraries
+    // The order of this array must be the same as the connections
+    SetConfigParam[] configParams;
 }
 
 struct ChainlinkInput {
@@ -75,9 +79,6 @@ struct AdapterConnections {
     string axelarId;
     uint64 chainlinkId;
     uint8 threshold;
-    // Pre-computed LayerZero ULN config
-    // Should contain SetConfigParam[] for both send and receive libraries
-    SetConfigParam[] layerZeroConfigParams;
 }
 
 struct AdaptersInput {
@@ -131,14 +132,10 @@ struct FullReport {
 contract FullActionBatcher is CoreActionBatcher {
     constructor(address deployer_) CoreActionBatcher(deployer_) {}
 
-    function engageFull(
-        FullReport memory report,
-        ISafe adminSafe,
-        ISafe opsSafe,
-        AdapterConnections[] memory connectionList,
-        string memory remoteAxelarAdapter,
-        address layerZeroDelegate
-    ) public onlyDeployer {
+    function engageFull(FullReport memory report, FullInput memory input, string memory remoteAxelarAdapter)
+        public
+        onlyDeployer
+    {
         // Rely Root
         report.tokenRecoverer.rely(address(report.root));
 
@@ -237,16 +234,16 @@ contract FullActionBatcher is CoreActionBatcher {
         // Rely adminSafe
         if (address(report.layerZeroAdapter) != address(0)) {
             // Needed for setDelegate calls
-            report.layerZeroAdapter.rely(address(adminSafe));
+            report.layerZeroAdapter.rely(address(input.adminSafe));
         }
 
         // File methods
         report.core.messageDispatcher.file("tokenRecoverer", address(report.tokenRecoverer));
         report.core.messageProcessor.file("tokenRecoverer", address(report.tokenRecoverer));
 
-        report.opsGuardian.file("opsSafe", address(opsSafe));
+        report.opsGuardian.file("opsSafe", address(input.opsSafe));
 
-        report.protocolGuardian.file("safe", address(adminSafe));
+        report.protocolGuardian.file("safe", address(input.adminSafe));
 
         report.refundEscrowFactory.file(bytes32("controller"), address(report.subsidyManager));
 
@@ -267,8 +264,8 @@ contract FullActionBatcher is CoreActionBatcher {
         report.root.endorse(address(report.vaultRouter));
 
         // Connect adapters
-        for (uint256 i; i < connectionList.length; i++) {
-            AdapterConnections memory connections = connectionList[i];
+        for (uint256 i; i < input.adapters.connections.length; i++) {
+            AdapterConnections memory connections = input.adapters.connections[i];
 
             uint256 n;
             IAdapter[] memory adapters = new IAdapter[](MAX_ADAPTER_COUNT);
@@ -278,9 +275,9 @@ contract FullActionBatcher is CoreActionBatcher {
                     .wire(connections.centrifugeId, abi.encode(connections.layerZeroId, report.layerZeroAdapter));
                 adapters[n++] = report.layerZeroAdapter;
 
-                if (connections.layerZeroConfigParams.length > 0) {
+                if (input.adapters.layerZero.configParams.length > 0) {
                     _setLayerZeroUlnConfig(
-                        report.layerZeroAdapter, connections.layerZeroId, connections.layerZeroConfigParams
+                        report.layerZeroAdapter, connections.layerZeroId, input.adapters.layerZero.configParams[i]
                     );
                 }
             }
@@ -319,7 +316,7 @@ contract FullActionBatcher is CoreActionBatcher {
 
         if (address(report.layerZeroAdapter) != address(0)) {
             // Set delegate to the right address after setting the ULN config
-            report.layerZeroAdapter.setDelegate(layerZeroDelegate);
+            report.layerZeroAdapter.setDelegate(input.adapters.layerZero.delegate);
         }
     }
 
@@ -348,7 +345,7 @@ contract FullActionBatcher is CoreActionBatcher {
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
     }
 
-    function _setLayerZeroUlnConfig(LayerZeroAdapter adapter, uint32 eid, SetConfigParam[] memory params) internal {
+    function _setLayerZeroUlnConfig(LayerZeroAdapter adapter, uint32 eid, SetConfigParam memory param) internal {
         ILayerZeroEndpointV2Like endpoint = ILayerZeroEndpointV2Like(address(adapter.endpoint()));
         address oapp = address(adapter);
         address sendLib = endpoint.defaultSendLibrary(eid);
@@ -359,6 +356,9 @@ contract FullActionBatcher is CoreActionBatcher {
         // Even though they are the default ones, as the defaults may change
         endpoint.setSendLibrary(oapp, eid, sendLib);
         endpoint.setReceiveLibrary(oapp, eid, recvLib, 0);
+
+        SetConfigParam[] memory params = new SetConfigParam[](1);
+        params[0] = param;
 
         endpoint.setConfig(oapp, sendLib, params);
         endpoint.setConfig(oapp, recvLib, params);
@@ -734,14 +734,7 @@ contract FullDeployer is CoreDeployer {
         if (input.adapters.layerZero.shouldDeploy) register("layerZeroAdapter", address(layerZeroAdapter));
         if (input.adapters.chainlink.shouldDeploy) register("chainlinkAdapter", address(chainlinkAdapter));
 
-        batcher.engageFull(
-            fullReport(),
-            input.adminSafe,
-            input.opsSafe,
-            input.adapters.connections,
-            vm.toString(address(axelarAdapter)),
-            input.adapters.layerZero.delegate
-        );
+        batcher.engageFull(fullReport(), input, vm.toString(address(axelarAdapter)));
     }
 
     function fullReport() public view returns (FullReport memory) {
@@ -789,7 +782,9 @@ function noAdaptersInput() pure returns (AdaptersInput memory) {
     return AdaptersInput({
         wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
         axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-        layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)}),
+        layerZero: LayerZeroInput({
+            shouldDeploy: false, endpoint: address(0), delegate: address(0), configParams: new SetConfigParam[](0)
+        }),
         chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
         connections: new AdapterConnections[](0)
     });
