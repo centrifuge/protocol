@@ -302,7 +302,7 @@ library EnvConfigLib {
     }
 
     function buildZeroConfigParams(EnvConfig memory config) internal view returns (SetConfigParam[] memory params) {
-        if (config.adapters.layerZero.deploy) return params;
+        if (!config.adapters.layerZero.deploy) return params;
 
         string[] memory connectsTo = config.network.connectsTo;
         params = new SetConfigParam[](connectsTo.length);
