@@ -5,6 +5,7 @@ import "./GraphQLConstants.sol";
 import {UlnConfig, SetConfigParam} from "./ILayerZeroEndpointV2Like.sol";
 
 import "forge-std/Vm.sol";
+import "forge-std/Console.sol";
 
 Vm constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -295,39 +296,14 @@ library Env {
     }
 }
 
-struct AdapterConnections {
-    uint16 centrifugeId;
-    uint32 layerZeroId;
-    uint16 wormholeId;
-    string axelarId;
-    uint64 chainlinkId;
-    uint8 threshold;
-}
-
 library EnvConfigLib {
     function etherscanApiKey(EnvConfig memory) internal view returns (string memory) {
-        return _envString("ETHERSCAN_API_KEY");
-    }
-
-    function buildConnections(EnvConfig memory config) internal view returns (AdapterConnections[] memory connections) {
-        string[] memory connectsTo = config.network.connectsTo;
-        connections = new AdapterConnections[](connectsTo.length);
-
-        for (uint256 i; i < connectsTo.length; i++) {
-            EnvConfig memory remoteConfig = Env.load(connectsTo[i]);
-
-            connections[i] = AdapterConnections({
-                centrifugeId: remoteConfig.network.centrifugeId,
-                layerZeroId: remoteConfig.adapters.layerZero.layerZeroEid,
-                wormholeId: remoteConfig.adapters.wormhole.wormholeId,
-                axelarId: remoteConfig.adapters.axelar.axelarId,
-                chainlinkId: remoteConfig.adapters.chainlink.chainSelector,
-                threshold: remoteConfig.adapters.threshold
-            });
-        }
+        return prettyEnvString("ETHERSCAN_API_KEY");
     }
 
     function buildZeroConfigParams(EnvConfig memory config) internal view returns (SetConfigParam[] memory params) {
+        if (config.adapters.layerZero.deploy) return params;
+
         string[] memory connectsTo = config.network.connectsTo;
         params = new SetConfigParam[](connectsTo.length);
 
@@ -383,9 +359,9 @@ library NetworkConfigLib {
 
     function rpcUrl(NetworkConfig memory config) internal view returns (string memory) {
         string memory apiKey = "";
-        if (_contains(config.baseRpcUrl, "alchemy")) apiKey = _envString("ALCHEMY_API_KEY");
-        else if (_contains(config.baseRpcUrl, "plume")) apiKey = _envString("PLUME_API_KEY");
-        else if (_contains(config.baseRpcUrl, "pharos")) apiKey = _envString("PHAROS_API_KEY");
+        if (_contains(config.baseRpcUrl, "alchemy")) apiKey = prettyEnvString("ALCHEMY_API_KEY");
+        else if (_contains(config.baseRpcUrl, "plume")) apiKey = prettyEnvString("PLUME_API_KEY");
+        else if (_contains(config.baseRpcUrl, "pharos")) apiKey = prettyEnvString("PHAROS_API_KEY");
 
         return string.concat(config.baseRpcUrl, apiKey);
     }
@@ -422,8 +398,9 @@ library NetworkConfigLib {
     }
 }
 
-function _envString(string memory name) view returns (string memory value) {
+function prettyEnvString(string memory name) view returns (string memory value) {
     value = vm.envOr(name, string(""));
     if (bytes(value).length == 0) revert(string.concat("Missing env var: ", name));
+    else console.log(string.concat("Loaded env var: ", name));
 }
 
