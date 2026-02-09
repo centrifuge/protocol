@@ -160,10 +160,7 @@ contract FullActionBatcher is CoreActionBatcher {
 
         report.batchRequestManager.rely(address(report.root));
 
-        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.root));
-        if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(address(report.root));
-        if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.root));
-        if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(address(report.root));
+        _relyAdapters(report, address(report.root));
 
         // Rely spoke
         report.asyncRequestManager.rely(address(report.core.spoke));
@@ -188,25 +185,13 @@ contract FullActionBatcher is CoreActionBatcher {
         report.tokenRecoverer.rely(address(report.protocolGuardian));
         report.tokenBridge.rely(address(report.protocolGuardian));
         // Permanent ward for ongoing adapter maintenance
-        if (address(report.layerZeroAdapter) != address(0)) {
-            report.layerZeroAdapter.rely(address(report.protocolGuardian));
-        }
-        if (address(report.wormholeAdapter) != address(0)) {
-            report.wormholeAdapter.rely(address(report.protocolGuardian));
-        }
-        if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.protocolGuardian));
-        if (address(report.chainlinkAdapter) != address(0)) {
-            report.chainlinkAdapter.rely(address(report.protocolGuardian));
-        }
+        _relyAdapters(report, address(report.protocolGuardian));
 
         // Rely opsGuardian
         report.core.multiAdapter.rely(address(report.opsGuardian));
         report.core.hub.rely(address(report.opsGuardian));
         // Temporal ward for initial adapter wiring
-        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.opsGuardian));
-        if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(address(report.opsGuardian));
-        if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.opsGuardian));
-        if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(address(report.opsGuardian));
+        _relyAdapters(report, address(report.opsGuardian));
 
         // Rely tokenRecoverer
         report.root.rely(address(report.tokenRecoverer));
@@ -351,6 +336,14 @@ contract FullActionBatcher is CoreActionBatcher {
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
+    }
+
+    /// @dev helper function to save some bytes
+    function _relyAdapters(FullReport memory report, address ward) internal {
+        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(ward);
+        if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(ward);
+        if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(ward);
+        if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(ward);
     }
 
     function _setLayerZeroUlnConfig(LayerZeroAdapter adapter, uint32 eid, SetConfigParam[] memory params) internal {
