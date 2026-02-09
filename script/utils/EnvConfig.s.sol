@@ -315,9 +315,10 @@ library NetworkConfigLib {
     }
 
     function rpcUrl(NetworkConfig memory config) internal view returns (string memory) {
-        string memory apiKey = _envString("ALCHEMY_API_KEY");
-        if (_contains(config.baseRpcUrl, "plume")) apiKey = _envString("PLUME_API_KEY");
-        if (_contains(config.baseRpcUrl, "pharos")) apiKey = _envString("PHAROS_API_KEY");
+        string memory apiKey = "";
+        if (_contains(config.baseRpcUrl, "alchemy")) apiKey = _envString("ALCHEMY_API_KEY");
+        else if (_contains(config.baseRpcUrl, "plume")) apiKey = _envString("PLUME_API_KEY");
+        else if (_contains(config.baseRpcUrl, "pharos")) apiKey = _envString("PHAROS_API_KEY");
 
         return string.concat(config.baseRpcUrl, apiKey);
     }
@@ -331,8 +332,7 @@ library NetworkConfigLib {
     }
 
     function _contains(string memory str, string memory substr) private pure returns (bool) {
-        return bytes(str).length >= bytes(substr).length && keccak256(bytes(str)) != keccak256(bytes(substr))
-            && _indexOf(str, substr) != type(uint256).max;
+        return _indexOf(str, substr) != type(uint256).max;
     }
 
     function _indexOf(string memory str, string memory substr) private pure returns (uint256) {
