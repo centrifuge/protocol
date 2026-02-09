@@ -90,7 +90,7 @@ struct AdaptersInput {
 }
 
 struct FullInput {
-    ISafe adminSafe;
+    ISafe protocolSafe;
     ISafe opsSafe;
     CoreInput core;
     AdaptersInput adapters;
@@ -231,10 +231,10 @@ contract FullActionBatcher is CoreActionBatcher {
         report.syncManager.rely(address(report.syncDepositVaultFactory));
         report.asyncRequestManager.rely(address(report.syncDepositVaultFactory));
 
-        // Rely adminSafe
+        // Rely protocolSafe
         if (address(report.layerZeroAdapter) != address(0)) {
             // Needed for setDelegate calls
-            report.layerZeroAdapter.rely(address(input.adminSafe));
+            report.layerZeroAdapter.rely(address(input.protocolSafe));
         }
 
         // File methods
@@ -243,7 +243,7 @@ contract FullActionBatcher is CoreActionBatcher {
 
         report.opsGuardian.file("opsSafe", address(input.opsSafe));
 
-        report.protocolGuardian.file("safe", address(input.adminSafe));
+        report.protocolGuardian.file("safe", address(input.protocolSafe));
 
         report.refundEscrowFactory.file(bytes32("controller"), address(report.subsidyManager));
 
@@ -368,7 +368,7 @@ contract FullActionBatcher is CoreActionBatcher {
 contract FullDeployer is CoreDeployer {
     uint256 public constant DELAY = 48 hours;
 
-    ISafe public adminSafe;
+    ISafe public protocolSafe;
     ISafe public opsSafe;
 
     Root public root;
@@ -411,7 +411,7 @@ contract FullDeployer is CoreDeployer {
     function deployFull(FullInput memory input, FullActionBatcher batcher) public {
         _init(input.core.version, batcher.deployer());
 
-        adminSafe = input.adminSafe;
+        protocolSafe = input.protocolSafe;
         opsSafe = input.opsSafe;
 
         root =

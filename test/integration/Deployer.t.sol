@@ -79,7 +79,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
         deployFull(
             FullInput({
                 core: CoreInput({centrifugeId: CENTRIFUGE_ID, version: bytes32(0), txLimits: defaultTxLimits()}),
-                adminSafe: ADMIN_SAFE,
+                protocolSafe: ADMIN_SAFE,
                 opsSafe: OPS_SAFE,
                 adapters: AdaptersInput({
                     wormhole: WormholeInput({shouldDeploy: true, relayer: WORMHOLE_RELAYER}),

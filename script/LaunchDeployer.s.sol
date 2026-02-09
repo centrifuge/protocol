@@ -53,7 +53,7 @@ contract LaunchDeployer is FullDeployer {
 
         // Hardcoded wards to double-check a correct mainnet deployment
         if (config.network.isMainnet()) {
-            require(address(input.adminSafe) == 0x9711730060C73Ee7Fcfe1890e8A0993858a7D225, "wrong safe admin");
+            require(address(input.protocolSafe) == 0x9711730060C73Ee7Fcfe1890e8A0993858a7D225, "wrong safe admin");
             require(address(input.opsSafe) == 0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16, "wrong ops admin");
             require(msg.sender == 0x926702C7f1af679a8f99A40af8917DDd82fD6F6c, "wrong deployer");
         }
@@ -63,7 +63,7 @@ contract LaunchDeployer is FullDeployer {
 
     function _buildFullInput(EnvConfig memory config, bytes32 version) internal view returns (FullInput memory) {
         return FullInput({
-            adminSafe: ISafe(config.network.protocolAdmin),
+            protocolSafe: ISafe(config.network.protocolAdmin),
             opsSafe: ISafe(config.network.opsAdmin),
             core: CoreInput({
                 centrifugeId: config.network.centrifugeId, version: version, txLimits: config.network.buildBatchLimits()

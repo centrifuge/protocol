@@ -35,7 +35,7 @@ contract BaseTest is FullDeployer, Test {
     bytes32 constant SC_HOOK = bytes32("ExampleHookData");
     bool constant IS_SNAPSHOT = true;
 
-    address immutable ADMIN = address(adminSafe);
+    address immutable ADMIN = address(protocolSafe);
     address immutable FM = makeAddr("FM");
     address immutable ANY = makeAddr("Anyone");
     bytes32 immutable INVESTOR = bytes32("Investor");
@@ -90,7 +90,7 @@ contract BaseTest is FullDeployer, Test {
         deployFull(
             FullInput({
                 core: CoreInput({centrifugeId: CHAIN_CP, version: bytes32(0), txLimits: defaultTxLimits()}),
-                adminSafe: adminSafe,
+                protocolSafe: protocolSafe,
                 opsSafe: opsSafe,
                 adapters: noAdaptersInput()
             }),

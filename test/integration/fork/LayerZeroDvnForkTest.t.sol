@@ -103,7 +103,7 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
     bytes message;
 
     function setUp() public {
-        adminSafe = ISafe(makeAddr("AdminSafe"));
+        protocolSafe = ISafe(makeAddr("AdminSafe"));
         opsSafe = ISafe(makeAddr("OpsSafe"));
     }
 
@@ -200,7 +200,7 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
 
         return FullInput({
             core: CoreInput({centrifugeId: localId, version: bytes32("1337"), txLimits: defaultTxLimits()}),
-            adminSafe: adminSafe,
+            protocolSafe: protocolSafe,
             opsSafe: opsSafe,
             adapters: AdaptersInput({
                 wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
@@ -208,7 +208,7 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
                 layerZero: LayerZeroInput({
                     shouldDeploy: true,
                     endpoint: address(lzEndpoint),
-                    delegate: address(adminSafe),
+                    delegate: address(protocolSafe),
                     configParams: _ulnConfig(dvn1, dvn2, remoteEid)
                 }),
                 chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
