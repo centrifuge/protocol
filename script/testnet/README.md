@@ -4,13 +4,13 @@
 
 ## Overview
 
-Test each cross-chain adapter (Axelar, LayerZero, Wormhole) in isolation between Base Sepolia (Hub) and Arbitrum Sepolia (Spoke).
+Test each cross-chain adapter (Axelar, LayerZero, Wormhole, Chainlink) in isolation between Base Sepolia (Hub) and Arbitrum Sepolia (Spoke).
 
 **Test Configuration:**
 - Hub: Base Sepolia (centrifugeId: 2)
 - Spoke: Arbitrum Sepolia (centrifugeId: 3)
 - Adapters: Axelar, LayerZero, Wormhole, Chainlink
-- Pool IDs: Configurable via `ADAPTER_TEST_BASE` / `GAS_TEST_BASE` env vars
+- Pool IDs: Configurable via `GAS_TEST_BASE` env var
 
 ---
 
@@ -41,7 +41,7 @@ forge script script/testnet/TestData.s.sol:TestData \
 Configures adapter communication between networks.
 
 **Purpose:**
-- Sets up one-directional communication (source → destination)
+- Sets up one-directional communication (source -> destination)
 - Wires adapters (Wormhole, LayerZero, Axelar) between networks
 - Registers adapters that exist on BOTH source and destination networks
 
@@ -55,27 +55,10 @@ forge script script/testnet/WireAdapters.s.sol:WireAdapters --rpc-url $RPC_URL -
 
 ### TestAdapterIsolation.s.sol
 
-Test each cross-chain adapter in isolation by creating pools with per-pool adapter configuration.
+Test each cross-chain adapter in isolation. Separates pool setup from adapter configuration, allowing repeated `NotifyShareClass` tests without re-running expensive adapter setup.
 
 **Purpose:**
-- Creates isolated test pools where each pool uses only ONE adapter
-- Tests Axelar, LayerZero, and Wormhole adapters independently
-- Validates adapter forwarding and message execution without interference
-
-**Prerequisites:**
-- Run `deploy.py dump` for the hub network to set environment variables
-
-**Two-Phase Workflow:**
-1. **Phase 1: Setup** - Create pools and configure isolated adapters
-2. **Phase 2: Operations** - Send pool operations through isolated adapters
-
----
-
-### TestAdapterGasEstimation.s.sol
-
-**Optimized script for repeated gas estimation testing.** Separates pool setup from adapter configuration, allowing repeated `NotifyShareClass` tests without re-running expensive adapter setup.
-
-**Purpose:**
+- Test each adapter in isolation (one pool per adapter)
 - Validate that gas estimations are sufficient for cross-chain message execution
 - Test `NotifyShareClass` (most expensive static message) repeatedly
 - Minimize cost by reusing pool/adapter setup across multiple tests
@@ -88,24 +71,20 @@ Test each cross-chain adapter in isolation by creating pools with per-pool adapt
 | 2     | `runAdapterSetup()`   | Once per adapter | 2 (SetPoolAdapters + NotifyPool) | ~0.2 ETH     |
 | 3     | `runShareClassTest()` | **Repeatable**   | 1 (NotifyShareClass)             | ~0.1 ETH     |
 
-**Comparison with TestAdapterIsolation.s.sol:**
-- **Old:** 6 pools × (setup + adapter config) = 6 adapter setups per test round
-- **New:** 4 pools × 1 adapter setup + N repeatable share class tests
-
 **Quick Start:**
 ```bash
 # Phase 1: Create pools (hub only, no XC)
-NETWORK=base-sepolia forge script script/testnet/TestAdapterGasEstimation.s.sol:TestAdapterGasEstimation \
+NETWORK=base-sepolia forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
   --sig "runPoolSetup()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
 
 # Phase 2: Configure adapters (sends XC messages)
-NETWORK=base-sepolia forge script script/testnet/TestAdapterGasEstimation.s.sol:TestAdapterGasEstimation \
+NETWORK=base-sepolia forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
   --sig "runAdapterSetup()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
 
 # Wait for XC relay (~5-10 min)
 
 # Phase 3: Test NotifyShareClass (repeatable!)
-NETWORK=base-sepolia forge script script/testnet/TestAdapterGasEstimation.s.sol:TestAdapterGasEstimation \
+NETWORK=base-sepolia forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
   --sig "runShareClassTest()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
 
 # Run Phase 3 again to test another share class...
@@ -123,12 +102,12 @@ ADAPTER=layerzero forge script ... --sig "runPoolSetup()"
 ```
 
 **Environment Variables:**
-| Variable          | Default          | Description                                            |
-| ----------------- | ---------------- | ------------------------------------------------------ |
-| `GAS_TEST_BASE`   | 91000            | Base pool index (different from TestAdapterIsolation)  |
+| Variable          | Default          | Description                            |
+| ----------------- | ---------------- | -------------------------------------- |
+| `GAS_TEST_BASE`   | 91000            | Base pool index                        |
 | `ADAPTER`         | all              | Single adapter: axelar, layerzero, wormhole, chainlink |
-| `XC_GAS_PER_CALL` | 0.1 ether        | Gas for each cross-chain call                          |
-| `SPOKE_NETWORK`   | arbitrum-sepolia | Target spoke network                                   |
+| `XC_GAS_PER_CALL` | 0.1 ether        | Gas for each cross-chain call          |
+| `SPOKE_NETWORK`   | arbitrum-sepolia | Target spoke network                   |
 
 **Note:** For cross-chain setups, asset registration is optional. If not registered, pools are created without holdings initialization.
 
@@ -143,11 +122,10 @@ export RPC_URL="https://sepolia.base.org"
 export ARBITRUM_SEPOLIA_RPC="https://sepolia-rollup.arbitrum.io/rpc"
 
 # Step 0: Register asset from spoke (one-time, if not already done)
-# Step 1: Create pools + configure adapters on Hub
-# Step 2: Wait for XC relay (~5-10 min)
-# Step 3: Send pool operations
-# Step 4: Wait for XC relay (~5-10 min)
-# Step 5: Verify vaults on spoke
+# Step 1: Create pools on hub (Phase 1)
+# Step 2: Configure adapters (Phase 2) + wait for XC relay
+# Step 3: Test share class notifications (Phase 3, repeatable)
+# Step 4: Verify on spoke
 ```
 
 ---
@@ -157,7 +135,7 @@ export ARBITRUM_SEPOLIA_RPC="https://sepolia-rollup.arbitrum.io/rpc"
 ### ETH Requirements
 
 You need ETH on Base Sepolia for:
-- Pool subsidies: ~0.1 ETH × 6 pools = 0.6 ETH
+- Pool subsidies: ~0.1 ETH x 4 pools = 0.4 ETH
 - XC gas fees: ~0.01-0.1 ETH per call
 - **Total: ~1-2 ETH recommended**
 
@@ -213,69 +191,69 @@ cast call $HUB_REGISTRY "isRegistered(uint128)(bool)" 15576890575604482885591488
 
 ---
 
-## Step 1: Create Pools + Configure Adapters
+## Step 1: Create Pools (Phase 1)
 
-Run Phase 1 on Hub (Base Sepolia):
+Run on Hub (Base Sepolia). Creates one pool per adapter, no cross-chain messages:
 
 ```bash
 NETWORK=base-sepolia \
-SKIP_ASSET_REGISTRATION=true \
-ADAPTER_TEST_BASE=90100 \
 forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
-  --sig "runPhase1_Setup()" \
+  --sig "runPoolSetup()" \
   --fork-url $RPC_URL \
   --broadcast \
   --private-key $TESTNET_SAFE_PK \
   -vvvv
 ```
 
-**Environment Variables:**
-| Variable                  | Default          | Description                                        |
-| ------------------------- | ---------------- | -------------------------------------------------- |
-| `ADAPTER_TEST_BASE`       | 90000            | Base pool index (increment by 100 for fresh pools) |
-| `SKIP_ASSET_REGISTRATION` | false            | Skip asset registration (set true after Step 0)    |
-| `XC_GAS_PER_CALL`         | 0.1 ether        | Gas for each cross-chain call                      |
-| `SPOKE_NETWORK`           | arbitrum-sepolia | Target spoke network                               |
-
 **What happens:**
-1. Creates 6 pools (Axelar/LayerZero/Wormhole × Async/Sync)
+1. Creates 4 pools (Axelar, LayerZero, Wormhole, Chainlink)
 2. Adds share classes and initializes holdings
-3. Calls `hub.setAdapters()` to configure isolated adapters
-4. Sends `SetPoolAdapters` cross-chain messages to spoke
+3. No cross-chain messages — hub gas only
 
 ---
 
-## Step 2: Wait for XC Relay + Verify
+## Step 2: Configure Adapters (Phase 2) + Wait for Relay
+
+```bash
+NETWORK=base-sepolia \
+forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
+  --sig "runAdapterSetup()" \
+  --fork-url $RPC_URL \
+  --broadcast \
+  --private-key $TESTNET_SAFE_PK \
+  -vvvv
+```
+
+**What happens:**
+- Calls `hub.setAdapters()` to configure isolated adapter per pool
+- Sends `SetPoolAdapters` + `NotifyPool` cross-chain to spoke
+- 2 XC messages per adapter
 
 Monitor cross-chain message delivery:
-- **Axelar**: https://testnet.axelarscan.io
-- **LayerZero**: https://testnet.layerzeroscan.com
-- **Wormhole**: https://wormholescan.io/#/?network=TESTNET
+- **Axelar**: https://testnet.axelarscan.io/gmp/search?sourceChain=base-sepolia&destinationChain=arbitrum-sepolia&senderAddress=0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb
+- **LayerZero**: https://testnet.layerzeroscan.com/address/0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb
+- **Chainlink CCIP**: https://ccip.chain.link/address/0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb
+- **Wormhole** (deprecated): https://wormholescan.io/#/txs?address=0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb&network=Testnet
 
 Verify adapter config on spoke (Arbitrum Sepolia):
 ```bash
-# Check Axelar Async pool (90100) has adapter configured
-# Pool ID = (2 << 48) | 90100 = 562949953511412
-cast call $MULTI_ADAPTER "quorum(uint16,uint64)(uint8)" 2 562949953511412 \
+# Check Axelar pool (91000) has adapter configured
+# Pool ID = (2 << 48) | 91000 = 562949953512312
+cast call $MULTI_ADAPTER "quorum(uint16,uint64)(uint8)" 2 562949953512312 \
   --rpc-url $ARBITRUM_SEPOLIA_RPC
 # Expected: 1 (single adapter)
-
-cast call $MULTI_ADAPTER "threshold(uint16,uint64)(uint8)" 2 562949953511412 \
-  --rpc-url $ARBITRUM_SEPOLIA_RPC
-# Expected: 1
 ```
 
 ---
 
-## Step 3: Send Pool Operations
+## Step 3: Test Share Class (Phase 3, Repeatable)
 
-After adapter config is confirmed on spoke, run Phase 2:
+After adapter config is confirmed on spoke:
 
 ```bash
 NETWORK=base-sepolia \
-ADAPTER_TEST_BASE=90100 \
 forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
-  --sig "runPhase2_Operations()" \
+  --sig "runShareClassTest()" \
   --fork-url $RPC_URL \
   --broadcast \
   --private-key $TESTNET_SAFE_PK \
@@ -283,21 +261,22 @@ forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
 ```
 
 **What happens:**
-- Sends `NotifyPool`, `NotifyShareClass`, `UpdateVault`, price notifications
-- Messages route through the isolated adapter for each pool
+- Adds a new share class to each pool
+- Sends `NotifyShareClass` through the isolated adapter
+- Run this repeatedly to test gas estimation with different share classes
 
 ---
 
-## Step 4: Wait for XC Relay + Verify
+## Step 4: Verify on Spoke
 
-Wait for pool operations to be delivered, then verify on spoke:
+Wait for cross-chain relay, then verify share tokens exist:
 
 ```bash
-# Check ShareToken exists on Spoke (this is the correct check!)
+# Check ShareToken exists on Spoke
 # NOTE: HubRegistry.exists() is Hub-only. On Spoke, check ShareToken instead.
-cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953511412 0x0002000000015ff40000000000000001 \
+cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512312 0x00020000000163780000000000000001 \
   --rpc-url $ARBITRUM_SEPOLIA_RPC
-# Expected: non-zero ShareToken address (e.g., 0xbcD054C096F5deF41567cd043f58fa5a4dB53FA7)
+# Expected: non-zero ShareToken address
 
 # If you get error 0xd100e440 (ShareTokenDoesNotExist), the message hasn't been processed yet
 ```
@@ -306,23 +285,21 @@ cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953511412 0x0002000
 
 ## Pool ID Reference
 
-With `ADAPTER_TEST_BASE=90100`:
+With `GAS_TEST_BASE=91000` (default):
 
-| Adapter   | Type  | Pool Index | Pool ID (decimal) | Pool ID (hex)      |
-| --------- | ----- | ---------- | ----------------- | ------------------ |
-| Axelar    | Async | 90100      | 562949953511412   | 0x0002000000015ff4 |
-| Axelar    | Sync  | 90101      | 562949953511413   | 0x0002000000015ff5 |
-| LayerZero | Async | 90110      | 562949953511422   | 0x0002000000015ffe |
-| LayerZero | Sync  | 90111      | 562949953511423   | 0x0002000000015fff |
-| Wormhole  | Async | 90120      | 562949953511432   | 0x0002000000016008 |
-| Wormhole  | Sync  | 90121      | 562949953511433   | 0x0002000000016009 |
+| Adapter   | Pool Index | Pool ID (decimal) | Pool ID (hex)      |
+| --------- | ---------- | ----------------- | ------------------ |
+| Axelar    | 91000      | 562949953512312   | 0x0002000000016378 |
+| LayerZero | 91001      | 562949953512313   | 0x0002000000016379 |
+| Wormhole  | 91002      | 562949953512314   | 0x000200000001637a |
+| Chainlink | 91003      | 562949953512315   | 0x000200000001637b |
 
 **Formula:** `PoolId = (centrifugeId << 48) | poolIndex`
 
 Calculate manually:
 ```bash
-python3 -c "print((2 << 48) | 90100)"
-# Output: 562949953511412
+python3 -c "print((2 << 48) | 91000)"
+# Output: 562949953512312
 ```
 
 ---
@@ -336,35 +313,42 @@ Test a specific adapter in isolation to validate gas estimation and cross-chain 
 ```bash
 # Axelar only
 forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
-  --sig "runAxelar_Setup()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
+  --sig "runAxelar_PoolSetup()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
 
 # After XC relay...
 forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
-  --sig "runAxelar_Operations()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
+  --sig "runAxelar_AdapterSetup()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
+
+# Repeatable share class test
+forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
+  --sig "runAxelar_ShareClassTest()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
 
 # LayerZero only
-forge script ... --sig "runLayerZero_Setup()"
-forge script ... --sig "runLayerZero_Operations()"
+forge script ... --sig "runLayerZero_PoolSetup()"
+forge script ... --sig "runLayerZero_AdapterSetup()"
+forge script ... --sig "runLayerZero_ShareClassTest()"
 
 # Wormhole only
-forge script ... --sig "runWormhole_Setup()"
-forge script ... --sig "runWormhole_Operations()"
+forge script ... --sig "runWormhole_PoolSetup()"
+forge script ... --sig "runWormhole_AdapterSetup()"
+forge script ... --sig "runWormhole_ShareClassTest()"
 ```
 
 ### Method 2: ADAPTER Environment Variable
 
 ```bash
 # Run Phase 1 for LayerZero only
-ADAPTER=layerzero NETWORK=base-sepolia forge script ... --sig "runPhase1_Setup()"
+ADAPTER=layerzero NETWORK=base-sepolia forge script ... --sig "runPoolSetup()"
 
 # Run Phase 2 for Axelar only
-ADAPTER=axelar NETWORK=base-sepolia forge script ... --sig "runPhase2_Operations()"
+ADAPTER=axelar NETWORK=base-sepolia forge script ... --sig "runAdapterSetup()"
 ```
 
 **Supported ADAPTER values:**
 - `axelar` or `0` - Axelar adapter only
 - `layerzero` or `1` - LayerZero adapter only
 - `wormhole` or `2` - Wormhole adapter only
+- `chainlink` or `3` - Chainlink adapter only
 - `all` (default) - All adapters
 
 ---
@@ -374,8 +358,8 @@ ADAPTER=axelar NETWORK=base-sepolia forge script ... --sig "runPhase2_Operations
 To run tests with completely fresh pools:
 
 ```bash
-# Increment ADAPTER_TEST_BASE by 100
-ADAPTER_TEST_BASE=90200 forge script ...
+# Increment GAS_TEST_BASE
+GAS_TEST_BASE=92000 forge script ...
 ```
 
 This avoids any conflicts with previously created pools.
@@ -385,9 +369,7 @@ This avoids any conflicts with previously created pools.
 ## Known Issues
 
 ### Chainlink CCIP Gas Limit
-Chainlink CCIP has a per-message gas limit (~2M). When batching multiple messages, the combined gas can exceed this limit, causing `MessageGasLimitTooHigh()`.
-
-**Workaround:** Use `TestAdapterGasEstimation.s.sol` which sends single `NotifyShareClass` messages, staying under the limit.
+Chainlink CCIP has a per-message gas limit (~2M). Phase 3 sends single `NotifyShareClass` messages which stay under this limit.
 
 ### Keystore Issues with --account
 Using `--account TESTNET_SAFE` can cause simulation issues. Use `--private-key $TESTNET_SAFE_PK` instead.
@@ -406,7 +388,7 @@ cast call $AXELAR_ADAPTER "isWired(uint16)(bool)" 3 --rpc-url $RPC_URL
 
 ### Check pool subsidy balance
 ```bash
-cast call 0x85b38b923273A604C3cDbcF407DdBFE549346A9a "subsidies(uint64)(uint256)" 562949953511412 --rpc-url $RPC_URL
+cast call 0x85b38b923273A604C3cDbcF407DdBFE549346A9a "subsidies(uint64)(uint256)" 562949953512312 --rpc-url $RPC_URL
 ```
 
 ### Debug transaction
@@ -422,18 +404,20 @@ cast run <tx-hash> --rpc-url $RPC_URL
 ### Check ShareToken existence on Spoke
 
 ```bash
-# Quick check all 6 pools
 SPOKE=0x7Ac5B65764A8b1A19E832FdE942ce618EeF823aF
 ARBITRUM_RPC="https://sepolia-rollup.arbitrum.io/rpc"
 
-# Axelar Async (90100)
-cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953511412 0x0002000000015ff40000000000000001 --rpc-url $ARBITRUM_RPC
+# Axelar (91000)
+cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512312 0x00020000000163780000000000000001 --rpc-url $ARBITRUM_RPC
 
-# LayerZero Async (90110)
-cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953511422 0x0002000000015ffe0000000000000001 --rpc-url $ARBITRUM_RPC
+# LayerZero (91001)
+cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512313 0x00020000000163790000000000000001 --rpc-url $ARBITRUM_RPC
 
-# Wormhole Async (90120)
-cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953511432 0x00020000000160080000000000000001 --rpc-url $ARBITRUM_RPC
+# Wormhole (91002)
+cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512314 0x000200000001637a0000000000000001 --rpc-url $ARBITRUM_RPC
+
+# Chainlink (91003)
+cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512315 0x000200000001637b0000000000000001 --rpc-url $ARBITRUM_RPC
 ```
 
 ### Check Axelar Message Status
@@ -476,6 +460,7 @@ Edit the network config files (`env/<network>.json`) to control which adapters a
 
 ## Monitoring Cross-Chain Messages
 
-- **Axelar**: https://testnet.axelarscan.io
-- **Wormhole**: https://wormholescan.io
-- **LayerZero**: https://testnet.layerzeroscan.com
+- **Axelar**: https://testnet.axelarscan.io/gmp/search?sourceChain=base-sepolia&destinationChain=arbitrum-sepolia&senderAddress=0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb
+- **LayerZero**: https://testnet.layerzeroscan.com/address/0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb
+- **Chainlink CCIP**: https://ccip.chain.link/address/0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb
+- **Wormhole** (deprecated): https://wormholescan.io/#/txs?address=0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb&network=Testnet
