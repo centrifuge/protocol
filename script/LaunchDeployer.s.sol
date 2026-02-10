@@ -73,30 +73,8 @@ contract LaunchDeployer is FullDeployer {
                 chainlink: ChainlinkInput({
                     shouldDeploy: config.adapters.chainlink.deploy, ccipRouter: config.adapters.chainlink.ccipRouter
                 }),
-                connections: _buildConnections(config)
+                connections: config.network.buildConnections()
             })
         });
-    }
-
-    function _buildConnections(EnvConfig memory config)
-        internal
-        view
-        returns (AdapterConnections[] memory connections)
-    {
-        string[] memory connectsTo = config.network.connectsTo;
-        connections = new AdapterConnections[](connectsTo.length);
-
-        for (uint256 i; i < connectsTo.length; i++) {
-            EnvConfig memory remoteConfig = Env.load(connectsTo[i]);
-
-            connections[i] = AdapterConnections({
-                centrifugeId: remoteConfig.network.centrifugeId,
-                layerZeroId: remoteConfig.adapters.layerZero.layerZeroEid,
-                wormholeId: remoteConfig.adapters.wormhole.wormholeId,
-                axelarId: remoteConfig.adapters.axelar.axelarId,
-                chainlinkId: remoteConfig.adapters.chainlink.chainSelector,
-                threshold: remoteConfig.adapters.threshold
-            });
-        }
     }
 }

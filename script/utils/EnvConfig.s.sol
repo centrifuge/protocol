@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {GraphQLConstants} from "./GraphQLConstants.sol";
 import {UlnConfig, SetConfigParam} from "./ILayerZeroEndpointV2Like.sol";
+import {AdapterConnections} from "../../src/deployer/ActionBatchers.sol";
 
 import "forge-std/Vm.sol";
 import "forge-std/Script.sol";
@@ -352,6 +353,28 @@ library NetworkConfigLib {
             require(centrifugeId <= 31, "centrifugeId value higher than 31");
 
             batchLimits[centrifugeId] = remoteConfig.network.batchLimit;
+        }
+    }
+
+    function buildConnections(NetworkConfig memory config)
+        internal
+        view
+        returns (AdapterConnections[] memory connections)
+    {
+        string[] memory connectsTo = config.connectsTo;
+        connections = new AdapterConnections[](connectsTo.length);
+
+        for (uint256 i; i < connectsTo.length; i++) {
+            EnvConfig memory remoteConfig = Env.load(connectsTo[i]);
+
+            connections[i] = AdapterConnections({
+                centrifugeId: remoteConfig.network.centrifugeId,
+                layerZeroId: remoteConfig.adapters.layerZero.layerZeroEid,
+                wormholeId: remoteConfig.adapters.wormhole.wormholeId,
+                axelarId: remoteConfig.adapters.axelar.axelarId,
+                chainlinkId: remoteConfig.adapters.chainlink.chainSelector,
+                threshold: remoteConfig.adapters.threshold
+            });
         }
     }
 

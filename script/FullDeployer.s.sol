@@ -205,8 +205,9 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
     }
 
     /// @dev Generates a deterministic salt based on contract name and optional VERSION
-    function generateSalt(string memory contractName) internal view returns (bytes32) {
-        return makeSalt(contractName, version, deployer);
+    function generateSalt(string memory contractName) internal returns (bytes32 salt) {
+        salt = makeSalt(contractName, version, deployer);
+        register(contractName, computeCreate3Address(salt, deployer));
     }
 
     function deployFull(FullInput memory input, address deployer_) public {
@@ -392,35 +393,6 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
                 abi.encodePacked(type(OpsGuardian).creationCode, abi.encode(ISafe(address(batcher)), hub, multiAdapter))
             )
         );
-
-        // Admin
-        register("root", address(root));
-        register("tokenRecoverer", address(tokenRecoverer));
-        register("protocolGuardian", address(protocolGuardian));
-        register("opsGuardian", address(opsGuardian));
-
-        // Messaging
-        register("gateway", address(gateway));
-        register("multiAdapter", address(multiAdapter));
-        register("contractUpdater", address(contractUpdater));
-        register("gasService", address(gasService));
-        register("messageProcessor", address(messageProcessor));
-        register("messageDispatcher", address(messageDispatcher));
-
-        // Spoke
-        register("tokenFactory", address(tokenFactory));
-        register("spoke", address(spoke));
-        register("balanceSheet", address(balanceSheet));
-        register("vaultRegistry", address(vaultRegistry));
-        register("poolEscrowFactory", address(poolEscrowFactory));
-
-        // Hub
-        register("hubRegistry", address(hubRegistry));
-        register("accounting", address(accounting));
-        register("holdings", address(holdings));
-        register("shareClassManager", address(shareClassManager));
-        register("hubHandler", address(hubHandler));
-        register("hub", address(hub));
     }
 
     function _deployNonCore(address batcher) public {
@@ -679,38 +651,6 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
                 )
             );
         }
-
-        register("refundEscrowFactory", address(refundEscrowFactory));
-        register("subsidyManager", address(subsidyManager));
-        register("asyncVaultFactory", address(asyncVaultFactory));
-        register("asyncRequestManager", address(asyncRequestManager));
-        register("syncDepositVaultFactory", address(syncDepositVaultFactory));
-        register("syncManager", address(syncManager));
-        register("vaultRouter", address(vaultRouter));
-
-        register("freezeOnlyHook", address(freezeOnlyHook));
-        register("fullRestrictionsHook", address(fullRestrictionsHook));
-        register("freelyTransferableHook", address(freelyTransferableHook));
-        register("redemptionRestrictionsHook", address(redemptionRestrictionsHook));
-
-        register("queueManager", address(queueManager));
-        register("onOfframpManagerFactory", address(onOfframpManagerFactory));
-        register("merkleProofManagerFactory", address(merkleProofManagerFactory));
-        register("vaultDecoder", address(vaultDecoder));
-        register("circleDecoder", address(circleDecoder));
-
-        register("batchRequestManager", address(batchRequestManager));
-
-        register("identityValuation", address(identityValuation));
-        register("oracleValuation", address(oracleValuation));
-
-        register("navManager", address(navManager));
-        register("simplePriceManager", address(simplePriceManager));
-
-        if (input.wormhole.shouldDeploy) register("wormholeAdapter", address(wormholeAdapter));
-        if (input.axelar.shouldDeploy) register("axelarAdapter", address(axelarAdapter));
-        if (input.layerZero.shouldDeploy) register("layerZeroAdapter", address(layerZeroAdapter));
-        if (input.chainlink.shouldDeploy) register("chainlinkAdapter", address(chainlinkAdapter));
     }
 
     function coreReport() public view returns (CoreReport memory) {
