@@ -123,6 +123,10 @@ struct FullReport {
     OracleValuation oracleValuation;
     NAVManager navManager;
     SimplePriceManager simplePriceManager;
+}
+
+struct AdaptersReport {
+    FullReport full;
     LayerZeroAdapter layerZeroAdapter;
     WormholeAdapter wormholeAdapter;
     AxelarAdapter axelarAdapter;
@@ -147,13 +151,13 @@ contract AdapterActionBatcher {
         deployer = address(0);
     }
 
-    function engageAdapters(FullReport memory report, FullInput memory input, string memory remoteAxelarAdapter)
+    function engageAdapters(AdaptersReport memory report, FullInput memory input, string memory remoteAxelarAdapter)
         public
         onlyDeployer
     {
-        _relyAdapters(report, address(report.root));
-        _relyAdapters(report, address(report.protocolGuardian));
-        _relyAdapters(report, address(report.opsGuardian));
+        _relyAdapters(report, address(report.full.root));
+        _relyAdapters(report, address(report.full.protocolGuardian));
+        _relyAdapters(report, address(report.full.opsGuardian));
 
         // Rely protocolSafe on LayerZero (needed for setDelegate calls)
         if (address(report.layerZeroAdapter) != address(0)) {
@@ -202,7 +206,7 @@ contract AdapterActionBatcher {
                 assembly {
                     mstore(adapters, n)
                 }
-                report.core.multiAdapter
+                report.full.core.multiAdapter
                     .setAdapters(
                         connections.centrifugeId,
                         PoolId.wrap(0),
@@ -219,15 +223,15 @@ contract AdapterActionBatcher {
         }
     }
 
-    function revokeAdapters(FullReport memory report) public onlyDeployer {
-        report.core.multiAdapter.deny(address(this));
+    function revokeAdapters(AdaptersReport memory report) public onlyDeployer {
+        report.full.core.multiAdapter.deny(address(this));
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.deny(address(this));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
     }
 
-    function _relyAdapters(FullReport memory report, address ward) internal {
+    function _relyAdapters(AdaptersReport memory report, address ward) internal {
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(ward);
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(ward);
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(ward);
@@ -767,7 +771,7 @@ contract FullDeployer is CoreDeployer {
         if (input.adapters.chainlink.shouldDeploy) register("chainlinkAdapter", address(chainlinkAdapter));
 
         batcher.engageFull(fullReport(), input, address(adapterBatcher));
-        adapterBatcher.engageAdapters(fullReport(), input, vm.toString(address(axelarAdapter)));
+        adapterBatcher.engageAdapters(adaptersReport(), input, vm.toString(address(axelarAdapter)));
     }
 
     function fullReport() public view returns (FullReport memory) {
@@ -797,18 +801,18 @@ contract FullDeployer is CoreDeployer {
             identityValuation,
             oracleValuation,
             navManager,
-            simplePriceManager,
-            layerZeroAdapter,
-            wormholeAdapter,
-            axelarAdapter,
-            chainlinkAdapter
+            simplePriceManager
         );
+    }
+
+    function adaptersReport() public view returns (AdaptersReport memory) {
+        return AdaptersReport(fullReport(), layerZeroAdapter, wormholeAdapter, axelarAdapter, chainlinkAdapter);
     }
 
     function removeFullDeployerAccess() public {
         removeCoreDeployerAccess(batcher);
         batcher.revokeFull(fullReport());
-        adapterBatcher.revokeAdapters(fullReport());
+        adapterBatcher.revokeAdapters(adaptersReport());
 
         batcher.lock();
         adapterBatcher.lock();

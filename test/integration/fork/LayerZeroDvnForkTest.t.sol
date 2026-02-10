@@ -114,12 +114,14 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
 
         testToken = address(new TestToken());
 
-        FullReport memory fullReport = _deployEthereum();
-        lzAdapter = address(fullReport.layerZeroAdapter);
+        _deployEthereum();
+        lzAdapter = address(layerZeroAdapter);
+
+        FullReport memory report = fullReport();
 
         // Record logs to capture PacketSent event
         vm.recordLogs();
-        fullReport.core.spoke.registerAsset{value: 0.1 ether}(BASE_CENT_ID, testToken, 0, address(this));
+        report.core.spoke.registerAsset{value: 0.1 ether}(BASE_CENT_ID, testToken, 0, address(this));
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
         bytes memory encodedPacket;
@@ -152,20 +154,15 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
         message = PacketV1Codec.message(packet);
     }
 
-    function _deployEthereum() internal returns (FullReport memory) {
+    function _deployEthereum() internal {
         deployFull(_fullInput(ETH_CENT_ID, BASE_CENT_ID, BASE_EID, ETH_DVN_1, ETH_DVN_2), address(this));
-
-        return fullReport();
     }
 
-    function _deployBase() internal returns (FullReport memory) {
+    function _deployBase() internal {
         deployFull(_fullInput(BASE_CENT_ID, ETH_CENT_ID, ETH_EID, BASE_DVN_1, BASE_DVN_2), address(this));
 
-        FullReport memory report = fullReport();
-
         vm.prank(address(adapterBatcher));
-        report.layerZeroAdapter.wire(ETH_CENT_ID, abi.encode(ETH_EID, lzAdapter));
-        return report;
+        layerZeroAdapter.wire(ETH_CENT_ID, abi.encode(ETH_EID, lzAdapter));
     }
 
     function _fullInput(uint16 localId, uint16 remoteId, uint32 remoteEid, address dvn1, address dvn2)
