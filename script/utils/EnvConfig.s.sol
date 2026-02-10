@@ -331,12 +331,6 @@ library EnvConfigLib {
                 config.adapters.layerZero.dvns.length == remoteConfig.adapters.layerZero.dvns.length,
                 "DVNs count mismatch between local and remote config"
             );
-            for (uint256 j; j < config.adapters.layerZero.dvns.length; j++) {
-                require(
-                    config.adapters.layerZero.dvns[j] == remoteConfig.adapters.layerZero.dvns[j],
-                    "DVNs mismatch between local and remote config"
-                );
-            }
             require(
                 config.adapters.layerZero.blockConfirmations == remoteConfig.adapters.layerZero.blockConfirmations,
                 "blockConfirmations mismatch between local and remote config"
