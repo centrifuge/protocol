@@ -767,7 +767,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
     }
 
     function adaptersReport() public view returns (AdaptersReport memory) {
-        return AdaptersReport(nonCoreReport(), layerZeroAdapter, wormholeAdapter, axelarAdapter, chainlinkAdapter);
+        return AdaptersReport(coreReport(), layerZeroAdapter, wormholeAdapter, axelarAdapter, chainlinkAdapter);
     }
 }
 

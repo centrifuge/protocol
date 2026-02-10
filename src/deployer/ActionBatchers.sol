@@ -110,6 +110,14 @@ struct NonCoreReport {
     SimplePriceManager simplePriceManager;
 }
 
+struct AdaptersReport {
+    CoreReport core;
+    LayerZeroAdapter layerZeroAdapter;
+    WormholeAdapter wormholeAdapter;
+    AxelarAdapter axelarAdapter;
+    ChainlinkAdapter chainlinkAdapter;
+}
+
 struct AdapterConnections {
     uint16 centrifugeId;
     uint32 layerZeroId;
@@ -117,14 +125,6 @@ struct AdapterConnections {
     string axelarId;
     uint64 chainlinkId;
     uint8 threshold;
-}
-
-struct AdaptersReport {
-    NonCoreReport nonCore;
-    LayerZeroAdapter layerZeroAdapter;
-    WormholeAdapter wormholeAdapter;
-    AxelarAdapter axelarAdapter;
-    ChainlinkAdapter chainlinkAdapter;
 }
 
 abstract contract Constants {
@@ -152,7 +152,7 @@ contract CoreActionBatcher is Constants {
         ISafe protocolSafe,
         ISafe opsSafe,
         address adapterBatcher_,
-        address fullBatcher_
+        address nonCoreBatcher_
     ) public onlyDeployer {
         address root = address(report.root);
 
@@ -305,7 +305,7 @@ contract CoreActionBatcher is Constants {
 
         // Other batchers
         report.multiAdapter.rely(adapterBatcher_);
-        report.root.rely(fullBatcher_);
+        report.root.rely(nonCoreBatcher_);
     }
 
     function revokeCore(CoreReport memory report) public onlyDeployer {
@@ -465,9 +465,9 @@ contract AdapterActionBatcher {
         address layerZeroDelegate,
         string memory remoteAxelarAdapter
     ) public onlyDeployer {
-        _relyAdapters(report, address(report.nonCore.core.root));
-        _relyAdapters(report, address(report.nonCore.core.protocolGuardian));
-        _relyAdapters(report, address(report.nonCore.core.opsGuardian));
+        _relyAdapters(report, address(report.core.root));
+        _relyAdapters(report, address(report.core.protocolGuardian));
+        _relyAdapters(report, address(report.core.opsGuardian));
 
         // Rely protocolSafe on LayerZero (needed for setDelegate calls)
         if (address(report.layerZeroAdapter) != address(0)) {
@@ -514,7 +514,7 @@ contract AdapterActionBatcher {
                 assembly {
                     mstore(adapters, n)
                 }
-                report.nonCore.core.multiAdapter
+                report.core.multiAdapter
                     .setAdapters(
                         connections.centrifugeId,
                         PoolId.wrap(0),
@@ -537,7 +537,7 @@ contract AdapterActionBatcher {
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
 
-        report.nonCore.core.multiAdapter.deny(address(this));
+        report.core.multiAdapter.deny(address(this));
 
         deployer = address(0);
     }
