@@ -69,7 +69,7 @@ import {
     AdaptersReport,
     AdapterConnections,
     SetConfigParam
-} from "../src/deployer/ActionBatchers.sol";
+} from "../src/deployment/ActionBatchers.sol";
 
 struct WormholeInput {
     bool shouldDeploy;
