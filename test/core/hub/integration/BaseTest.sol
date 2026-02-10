@@ -12,8 +12,13 @@ import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {MAX_MESSAGE_COST} from "../../../../src/core/messaging/interfaces/IGasService.sol";
 import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
-import {CoreInput} from "../../../../script/CoreDeployer.s.sol";
-import {FullDeployer, FullInput, noAdaptersInput, defaultTxLimits} from "../../../../script/FullDeployer.s.sol";
+import {
+    CoreInput,
+    FullDeployer,
+    FullInput,
+    noAdaptersInput,
+    defaultTxLimits
+} from "../../../../script/FullDeployer.s.sol";
 
 import {MockVaults} from "../mocks/MockVaults.sol";
 import {MockValuation} from "../../mocks/MockValuation.sol";

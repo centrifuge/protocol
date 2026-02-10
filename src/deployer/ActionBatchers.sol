@@ -194,11 +194,7 @@ contract CoreActionBatcher is Constants {
         _;
     }
 
-    function lock() public onlyDeployer {
-        deployer = address(0);
-    }
-
-    function engageCore(CoreReport memory report, CoreInput memory input) public onlyDeployer {
+    function engageCore(CoreReport memory report, CoreInput memory input, address adapterBatcher_) public onlyDeployer {
         address root = address(report.root);
 
         // Rely root
@@ -347,6 +343,9 @@ contract CoreActionBatcher is Constants {
         // Initial configuration
         report.hubRegistry.registerAsset(USD_ID, ISO4217_DECIMALS);
         report.hubRegistry.registerAsset(EUR_ID, ISO4217_DECIMALS);
+
+        // Rely adapterBatcher on multiAdapter (needed for adapter connection wiring)
+        report.multiAdapter.rely(adapterBatcher_);
     }
 
     function revokeCore(CoreReport memory report) public onlyDeployer {
@@ -378,10 +377,7 @@ contract CoreActionBatcher is Constants {
 contract FullActionBatcher is CoreActionBatcher {
     constructor(address deployer_) CoreActionBatcher(deployer_) {}
 
-    function engageFull(FullReport memory report, address adapterBatcher_) public onlyDeployer {
-        // Rely adapterBatcher on multiAdapter (needed for adapter connection wiring)
-        report.core.multiAdapter.rely(adapterBatcher_);
-
+    function engageFull(FullReport memory report) public onlyDeployer {
         address root = address(report.core.root);
 
         // Rely Root
@@ -467,6 +463,8 @@ contract FullActionBatcher is CoreActionBatcher {
         report.redemptionRestrictionsHook.deny(address(this));
 
         report.batchRequestManager.deny(address(this));
+
+        deployer = address(0);
     }
 }
 
@@ -482,10 +480,6 @@ contract AdapterActionBatcher {
     modifier onlyDeployer() {
         require(msg.sender == deployer, NotDeployer());
         _;
-    }
-
-    function lock() public onlyDeployer {
-        deployer = address(0);
     }
 
     function engageAdapters(AdaptersReport memory report, FullInput memory input, string memory remoteAxelarAdapter)
@@ -561,11 +555,13 @@ contract AdapterActionBatcher {
     }
 
     function revokeAdapters(AdaptersReport memory report) public onlyDeployer {
-        report.full.core.multiAdapter.deny(address(this));
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.deny(address(this));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
+
+        report.full.core.multiAdapter.deny(address(this));
+        deployer = address(0);
     }
 
     function _relyAdapters(AdaptersReport memory report, address ward) internal {

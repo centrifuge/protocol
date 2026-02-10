@@ -271,7 +271,6 @@ class WardCoverageChecker:
         )
 
         deployer_scripts = [
-            self.script_path / "CoreDeployer.s.sol",
             self.script_path / "FullDeployer.s.sol",
             self.script_path / "LaunchDeployer.s.sol",
         ]

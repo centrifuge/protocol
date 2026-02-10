@@ -61,7 +61,7 @@ import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 
-import {CoreInput} from "../../script/CoreDeployer.s.sol";
+import {CoreInput} from "../../script/FullDeployer.s.sol";
 import {FullDeployer, FullInput, noAdaptersInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";

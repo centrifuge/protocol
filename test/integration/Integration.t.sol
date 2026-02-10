@@ -14,8 +14,7 @@ import {MAX_MESSAGE_COST as GAS} from "../../src/core/messaging/interfaces/IGasS
 
 import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 
-import {CoreInput} from "../../script/CoreDeployer.s.sol";
-import {FullDeployer, FullInput, noAdaptersInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
+import {CoreInput, FullDeployer, FullInput, noAdaptersInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
