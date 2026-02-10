@@ -407,4 +407,3 @@ function prettyEnvString(string memory name) view returns (string memory value) 
     if (bytes(value).length == 0) revert(string.concat("Missing env var: ", name));
     else console.log(string.concat("Loaded env var: ", name));
 }
-

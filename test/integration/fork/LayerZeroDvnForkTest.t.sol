@@ -190,12 +190,7 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
     {
         AdapterConnections[] memory connections = new AdapterConnections[](1);
         connections[0] = AdapterConnections({
-            centrifugeId: remoteId,
-            layerZeroId: remoteEid,
-            wormholeId: 0,
-            axelarId: "",
-            chainlinkId: 0,
-            threshold: 1
+            centrifugeId: remoteId, layerZeroId: remoteEid, wormholeId: 0, axelarId: "", chainlinkId: 0, threshold: 1
         });
 
         return FullInput({

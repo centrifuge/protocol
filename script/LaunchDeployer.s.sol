@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {CoreInput, makeSalt} from "./CoreDeployer.s.sol";
-import {SetConfigParam} from "./utils/ILayerZeroEndpointV2Like.sol";
 import {EnvConfig, Env, prettyEnvString} from "./utils/EnvConfig.s.sol";
 import {
     FullInput,
