@@ -13,7 +13,7 @@ import {SetConfigParam, UlnConfig, ILayerZeroEndpointV2Like} from "../../../scri
 import {
     CoreInput,
     FullInput,
-    FullReport,
+    NonCoreReport,
     FullDeployer,
     AdaptersInput,
     WormholeInput,
@@ -117,7 +117,7 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
         _deployEthereum();
         lzAdapter = address(layerZeroAdapter);
 
-        FullReport memory report = fullReport();
+        NonCoreReport memory report = nonCoreReport();
 
         // Record logs to capture PacketSent event
         vm.recordLogs();

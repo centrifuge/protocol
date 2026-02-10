@@ -61,14 +61,6 @@ import {ChainlinkAdapter} from "../adapters/ChainlinkAdapter.sol";
 import {LayerZeroAdapter} from "../adapters/LayerZeroAdapter.sol";
 import {RefundEscrowFactory} from "../utils/RefundEscrowFactory.sol";
 
-struct CoreInput {
-    uint16 centrifugeId;
-    bytes32 version;
-    uint8[32] txLimits;
-    ISafe protocolSafe;
-    ISafe opsSafe;
-}
-
 struct CoreReport {
     Gateway gateway;
     MultiAdapter multiAdapter;
@@ -93,55 +85,7 @@ struct CoreReport {
     OpsGuardian opsGuardian;
 }
 
-struct WormholeInput {
-    bool shouldDeploy;
-    address relayer;
-}
-
-struct AxelarInput {
-    bool shouldDeploy;
-    address gateway;
-    address gasService;
-}
-
-struct LayerZeroInput {
-    bool shouldDeploy;
-    address endpoint;
-    address delegate;
-    // Pre-computed LayerZero ULN config
-    // Should contain SetConfigParam[] for both send and receive libraries
-    // The order of this array must be the same as the connections
-    SetConfigParam[] configParams;
-}
-
-struct ChainlinkInput {
-    bool shouldDeploy;
-    address ccipRouter;
-}
-
-struct AdapterConnections {
-    uint16 centrifugeId;
-    uint32 layerZeroId;
-    uint16 wormholeId;
-    string axelarId;
-    uint64 chainlinkId;
-    uint8 threshold;
-}
-
-struct AdaptersInput {
-    LayerZeroInput layerZero;
-    WormholeInput wormhole;
-    AxelarInput axelar;
-    ChainlinkInput chainlink;
-    AdapterConnections[] connections;
-}
-
-struct FullInput {
-    CoreInput core;
-    AdaptersInput adapters;
-}
-
-struct FullReport {
+struct NonCoreReport {
     CoreReport core;
     SubsidyManager subsidyManager;
     RefundEscrowFactory refundEscrowFactory;
@@ -166,8 +110,17 @@ struct FullReport {
     SimplePriceManager simplePriceManager;
 }
 
+struct AdapterConnections {
+    uint16 centrifugeId;
+    uint32 layerZeroId;
+    uint16 wormholeId;
+    string axelarId;
+    uint64 chainlinkId;
+    uint8 threshold;
+}
+
 struct AdaptersReport {
-    FullReport full;
+    NonCoreReport nonCore;
     LayerZeroAdapter layerZeroAdapter;
     WormholeAdapter wormholeAdapter;
     AxelarAdapter axelarAdapter;
@@ -194,10 +147,13 @@ contract CoreActionBatcher is Constants {
         _;
     }
 
-    function engageCore(CoreReport memory report, CoreInput memory input, address adapterBatcher_, address fullBatcher_)
-        public
-        onlyDeployer
-    {
+    function engageCore(
+        CoreReport memory report,
+        ISafe protocolSafe,
+        ISafe opsSafe,
+        address adapterBatcher_,
+        address fullBatcher_
+    ) public onlyDeployer {
         address root = address(report.root);
 
         // Rely root
@@ -332,8 +288,8 @@ contract CoreActionBatcher is Constants {
 
         report.hubHandler.file("sender", address(report.messageDispatcher));
 
-        report.opsGuardian.file("opsSafe", address(input.opsSafe));
-        report.protocolGuardian.file("safe", address(input.protocolSafe));
+        report.opsGuardian.file("opsSafe", address(opsSafe));
+        report.protocolGuardian.file("safe", address(protocolSafe));
 
         address[] memory tokenWards = new address[](2);
         tokenWards[0] = address(report.spoke);
@@ -347,10 +303,8 @@ contract CoreActionBatcher is Constants {
         report.hubRegistry.registerAsset(USD_ID, ISO4217_DECIMALS);
         report.hubRegistry.registerAsset(EUR_ID, ISO4217_DECIMALS);
 
-        // Rely adapterBatcher on multiAdapter (needed for adapter connection wiring)
+        // Other batchers
         report.multiAdapter.rely(adapterBatcher_);
-
-        // Rely fullBatcher on root (needed for endorse calls in engageFull)
         report.root.rely(fullBatcher_);
     }
 
@@ -396,7 +350,7 @@ contract NonCoreActionBatcher {
         _;
     }
 
-    function engageFull(FullReport memory report) public onlyDeployer {
+    function engageNonCore(NonCoreReport memory report) public onlyDeployer {
         address root = address(report.core.root);
 
         // Rely Root
@@ -467,7 +421,7 @@ contract NonCoreActionBatcher {
         report.core.root.endorse(address(report.vaultRouter));
     }
 
-    function revokeFull(FullReport memory report) public onlyDeployer {
+    function revokeNonCore(NonCoreReport memory report) public onlyDeployer {
         report.refundEscrowFactory.deny(address(this));
         report.asyncVaultFactory.deny(address(this));
         report.asyncRequestManager.deny(address(this));
@@ -503,22 +457,26 @@ contract AdapterActionBatcher {
         _;
     }
 
-    function engageAdapters(AdaptersReport memory report, FullInput memory input, string memory remoteAxelarAdapter)
-        public
-        onlyDeployer
-    {
-        _relyAdapters(report, address(report.full.core.root));
-        _relyAdapters(report, address(report.full.core.protocolGuardian));
-        _relyAdapters(report, address(report.full.core.opsGuardian));
+    function engageAdapters(
+        AdaptersReport memory report,
+        ISafe protocolSafe,
+        AdapterConnections[] memory connectionList,
+        SetConfigParam[] memory layerZeroConfigParams,
+        address layerZeroDelegate,
+        string memory remoteAxelarAdapter
+    ) public onlyDeployer {
+        _relyAdapters(report, address(report.nonCore.core.root));
+        _relyAdapters(report, address(report.nonCore.core.protocolGuardian));
+        _relyAdapters(report, address(report.nonCore.core.opsGuardian));
 
         // Rely protocolSafe on LayerZero (needed for setDelegate calls)
         if (address(report.layerZeroAdapter) != address(0)) {
-            report.layerZeroAdapter.rely(address(input.core.protocolSafe));
+            report.layerZeroAdapter.rely(address(protocolSafe));
         }
 
         // Connect adapters
-        for (uint256 i; i < input.adapters.connections.length; i++) {
-            AdapterConnections memory connections = input.adapters.connections[i];
+        for (uint256 i; i < connectionList.length; i++) {
+            AdapterConnections memory connections = connectionList[i];
 
             uint256 n;
             IAdapter[] memory adapters = new IAdapter[](MAX_ADAPTER_COUNT);
@@ -528,10 +486,8 @@ contract AdapterActionBatcher {
                     .wire(connections.centrifugeId, abi.encode(connections.layerZeroId, report.layerZeroAdapter));
                 adapters[n++] = report.layerZeroAdapter;
 
-                if (input.adapters.layerZero.configParams.length > 0) {
-                    _setLayerZeroUlnConfig(
-                        report.layerZeroAdapter, connections.layerZeroId, input.adapters.layerZero.configParams[i]
-                    );
+                if (layerZeroConfigParams.length > 0) {
+                    _setLayerZeroUlnConfig(report.layerZeroAdapter, connections.layerZeroId, layerZeroConfigParams[i]);
                 }
             }
 
@@ -558,7 +514,7 @@ contract AdapterActionBatcher {
                 assembly {
                     mstore(adapters, n)
                 }
-                report.full.core.multiAdapter
+                report.nonCore.core.multiAdapter
                     .setAdapters(
                         connections.centrifugeId,
                         PoolId.wrap(0),
@@ -571,7 +527,7 @@ contract AdapterActionBatcher {
 
         if (address(report.layerZeroAdapter) != address(0)) {
             // Set delegate to the right address after setting the ULN config
-            report.layerZeroAdapter.setDelegate(input.adapters.layerZero.delegate);
+            report.layerZeroAdapter.setDelegate(layerZeroDelegate);
         }
     }
 
@@ -581,7 +537,8 @@ contract AdapterActionBatcher {
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
 
-        report.full.core.multiAdapter.deny(address(this));
+        report.nonCore.core.multiAdapter.deny(address(this));
+
         deployer = address(0);
     }
 

@@ -398,7 +398,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
     }
 }
 
-contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
+contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
     function testRoot(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(protocolGuardian));
@@ -662,7 +662,9 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         assertEq(batchRequestManager.wards(address(hubHandler)), 1);
         assertEq(batchRequestManager.wards(nonWard), 0);
     }
+}
 
+contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
     function testWormholeAdapter(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));

@@ -45,7 +45,7 @@ import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
 
-import {FullReport} from "../../../script/FullDeployer.s.sol";
+import {NonCoreReport} from "../../../script/FullDeployer.s.sol";
 
 import {VMLabeling} from "../utils/VMLabeling.sol";
 import {ChainConfigs} from "../utils/ChainConfigs.sol";
@@ -374,8 +374,8 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     /// @dev Alternative to _initializeContractAddresses() when testing fresh deployments
     ///      Use this when validating a freshly deployed v3.1 system in fork (e.g., MigrationV3_1Test)
     ///      Use _initializeContractAddresses() when validating live on-chain state (post-migration)
-    /// @param report The FullReport instance that comes from the deployed v3.1 contracts
-    function loadContractsFromDeployer(FullReport memory report, address protocolSafe_) public virtual {
+    /// @param report The NonCoreReport instance that comes from the deployed v3.1 contracts
+    function loadContractsFromDeployer(NonCoreReport memory report, address protocolSafe_) public virtual {
         // Core system contracts
         root = address(report.core.root);
         protocolGuardian = address(report.core.protocolGuardian);

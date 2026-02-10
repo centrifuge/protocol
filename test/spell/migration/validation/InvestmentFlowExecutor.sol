@@ -25,7 +25,7 @@ import {ISyncManager} from "../../../../src/vaults/interfaces/IVaultManagers.sol
 import {IAsyncRedeemVault} from "../../../../src/vaults/interfaces/IAsyncVault.sol";
 import {RequestCallbackMessageLib} from "../../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
-import {FullReport} from "../../../../script/FullDeployer.s.sol";
+import {NonCoreReport} from "../../../../script/FullDeployer.s.sol";
 import {VaultGraphQLData} from "../../../../script/spell/MigrationQueries.sol";
 
 import {Test} from "forge-std/Test.sol";
@@ -60,7 +60,7 @@ struct InvestmentFlowResult {
 }
 
 struct InvestmentFlowContext {
-    FullReport report;
+    NonCoreReport report;
     VaultGraphQLData gql;
     uint16 localCentrifugeId;
     PoolId poolId;
@@ -98,7 +98,7 @@ contract InvestmentFlowExecutor is Test {
     // Entry Points
     // ============================================
 
-    function executeAllFlows(FullReport memory report, VaultGraphQLData[] memory vaults, uint16 localCentrifugeId)
+    function executeAllFlows(NonCoreReport memory report, VaultGraphQLData[] memory vaults, uint16 localCentrifugeId)
         external
         returns (InvestmentFlowResult[] memory results)
     {
@@ -113,7 +113,7 @@ contract InvestmentFlowExecutor is Test {
     }
 
     function _executeSingleVault(
-        FullReport memory report,
+        NonCoreReport memory report,
         VaultGraphQLData memory gql,
         uint16 localCentrifugeId,
         uint256 index
@@ -161,7 +161,7 @@ contract InvestmentFlowExecutor is Test {
         }
     }
 
-    function _buildContext(FullReport memory report, VaultGraphQLData memory gql, uint16 localCentrifugeId)
+    function _buildContext(NonCoreReport memory report, VaultGraphQLData memory gql, uint16 localCentrifugeId)
         internal
         view
         returns (InvestmentFlowContext memory ctx)
@@ -468,7 +468,7 @@ contract InvestmentFlowExecutor is Test {
     // ============================================
 
     function _configurePrices(
-        FullReport memory report,
+        NonCoreReport memory report,
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
@@ -483,7 +483,7 @@ contract InvestmentFlowExecutor is Test {
     }
 
     function _whitelistInvestor(
-        FullReport memory report,
+        NonCoreReport memory report,
         PoolId poolId,
         ShareClassId scId,
         address investor,
