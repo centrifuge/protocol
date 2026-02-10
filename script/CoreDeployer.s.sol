@@ -22,6 +22,12 @@ import {MessageProcessor} from "../src/core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../src/core/messaging/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
 
+import {Root} from "../src/admin/Root.sol";
+import {ISafe} from "../src/admin/interfaces/ISafe.sol";
+import {OpsGuardian} from "../src/admin/OpsGuardian.sol";
+import {TokenRecoverer} from "../src/admin/TokenRecoverer.sol";
+import {ProtocolGuardian} from "../src/admin/ProtocolGuardian.sol";
+
 import "forge-std/Script.sol";
 
 import {Constants, CoreActionBatcher, CoreInput, CoreReport} from "../src/deployer/ActionBatchers.sol";
@@ -34,8 +40,18 @@ function makeSalt(string memory contractName, bytes32 version, address deployer)
 }
 
 abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants {
+    uint256 public constant DELAY = 48 hours;
+
     bytes32 public version;
     address public deployer;
+
+    ISafe public protocolSafe;
+    ISafe public opsSafe;
+
+    Root public root;
+    TokenRecoverer public tokenRecoverer;
+    ProtocolGuardian public protocolGuardian;
+    OpsGuardian public opsGuardian;
 
     Gateway public gateway;
     MultiAdapter public multiAdapter;
@@ -71,8 +87,15 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
         return makeSalt(contractName, version, deployer);
     }
 
-    function deployCore(CoreInput memory input, CoreActionBatcher batcher, address root) public {
+    function deployCore(CoreInput memory input, CoreActionBatcher batcher) public {
         _init(input.version, batcher.deployer());
+
+        protocolSafe = input.protocolSafe;
+        opsSafe = input.opsSafe;
+
+        // Admin
+        root =
+            Root(create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));
 
         // Core
         gateway = Gateway(
@@ -195,14 +218,43 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
             )
         );
 
-        batcher.engageCore(coreReport(), root);
+        // Admin (depends on core contracts)
+        tokenRecoverer = TokenRecoverer(
+            create3(
+                generateSalt("tokenRecoverer"),
+                abi.encodePacked(type(TokenRecoverer).creationCode, abi.encode(root, batcher))
+            )
+        );
 
-        // Core
+        protocolGuardian = ProtocolGuardian(
+            create3(
+                generateSalt("protocolGuardian"),
+                abi.encodePacked(
+                    type(ProtocolGuardian).creationCode,
+                    abi.encode(ISafe(address(batcher)), root, gateway, messageDispatcher)
+                )
+            )
+        );
+
+        opsGuardian = OpsGuardian(
+            create3(
+                generateSalt("opsGuardian"),
+                abi.encodePacked(type(OpsGuardian).creationCode, abi.encode(ISafe(address(batcher)), hub, multiAdapter))
+            )
+        );
+
+        batcher.engageCore(coreReport(), input);
+
+        // Admin
+        register("root", address(root));
+        register("tokenRecoverer", address(tokenRecoverer));
+        register("protocolGuardian", address(protocolGuardian));
+        register("opsGuardian", address(opsGuardian));
+
+        // Messaging
         register("gateway", address(gateway));
         register("multiAdapter", address(multiAdapter));
         register("contractUpdater", address(contractUpdater));
-
-        // Messaging
         register("gasService", address(gasService));
         register("messageProcessor", address(messageProcessor));
         register("messageDispatcher", address(messageDispatcher));
@@ -245,7 +297,11 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
             holdings,
             shareClassManager,
             hubHandler,
-            hub
+            hub,
+            root,
+            tokenRecoverer,
+            protocolGuardian,
+            opsGuardian
         );
     }
 }

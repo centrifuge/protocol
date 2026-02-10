@@ -6,7 +6,8 @@ import {ESCROW_HOOK_ID} from "../../../src/core/spoke/interfaces/ITransferHook.s
 
 import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
 
-import {FullDeployer, FullInput, noAdaptersInput, defaultTxLimits, CoreInput} from "../../../script/FullDeployer.s.sol";
+import {CoreInput} from "../../../script/CoreDeployer.s.sol";
+import {FullDeployer, FullInput, noAdaptersInput, defaultTxLimits} from "../../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -34,9 +35,13 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         super.labelAddresses("");
         super.deployFull(
             FullInput({
-                core: CoreInput({centrifugeId: LOCAL_CENTRIFUGE_ID, version: bytes32(0), txLimits: defaultTxLimits()}),
-                protocolSafe: protocolSafe,
-                opsSafe: protocolSafe,
+                core: CoreInput({
+                    centrifugeId: LOCAL_CENTRIFUGE_ID,
+                    version: bytes32(0),
+                    txLimits: defaultTxLimits(),
+                    protocolSafe: protocolSafe,
+                    opsSafe: protocolSafe
+                }),
                 adapters: noAdaptersInput()
             }),
             address(this)

@@ -3,12 +3,6 @@ pragma solidity 0.8.28;
 
 import {CoreDeployer} from "./CoreDeployer.s.sol";
 
-import {Root} from "../src/admin/Root.sol";
-import {ISafe} from "../src/admin/interfaces/ISafe.sol";
-import {OpsGuardian} from "../src/admin/OpsGuardian.sol";
-import {TokenRecoverer} from "../src/admin/TokenRecoverer.sol";
-import {ProtocolGuardian} from "../src/admin/ProtocolGuardian.sol";
-
 import {FreezeOnly} from "../src/hooks/FreezeOnly.sol";
 import {FullRestrictions} from "../src/hooks/FullRestrictions.sol";
 import {FreelyTransferable} from "../src/hooks/FreelyTransferable.sol";
@@ -56,16 +50,6 @@ import {
 } from "../src/deployer/ActionBatchers.sol";
 
 contract FullDeployer is CoreDeployer {
-    uint256 public constant DELAY = 48 hours;
-
-    ISafe public protocolSafe;
-    ISafe public opsSafe;
-
-    Root public root;
-    TokenRecoverer public tokenRecoverer;
-    ProtocolGuardian public protocolGuardian;
-    OpsGuardian public opsGuardian;
-
     SubsidyManager public subsidyManager;
     RefundEscrowFactory public refundEscrowFactory;
     AsyncVaultFactory public asyncVaultFactory;
@@ -107,37 +91,7 @@ contract FullDeployer is CoreDeployer {
         batcher = new FullActionBatcher(deployer_);
         adapterBatcher = new AdapterActionBatcher(deployer_);
 
-        protocolSafe = input.protocolSafe;
-        opsSafe = input.opsSafe;
-
-        root =
-            Root(create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));
-
-        deployCore(input.core, batcher, address(root));
-
-        tokenRecoverer = TokenRecoverer(
-            create3(
-                generateSalt("tokenRecoverer"),
-                abi.encodePacked(type(TokenRecoverer).creationCode, abi.encode(root, batcher))
-            )
-        );
-
-        protocolGuardian = ProtocolGuardian(
-            create3(
-                generateSalt("protocolGuardian"),
-                abi.encodePacked(
-                    type(ProtocolGuardian).creationCode,
-                    abi.encode(ISafe(address(batcher)), root, gateway, messageDispatcher)
-                )
-            )
-        );
-
-        opsGuardian = OpsGuardian(
-            create3(
-                generateSalt("opsGuardian"),
-                abi.encodePacked(type(OpsGuardian).creationCode, abi.encode(ISafe(address(batcher)), hub, multiAdapter))
-            )
-        );
+        deployCore(input.core, batcher);
 
         refundEscrowFactory = RefundEscrowFactory(
             create3(
@@ -401,11 +355,6 @@ contract FullDeployer is CoreDeployer {
             );
         }
 
-        register("root", address(root));
-        register("tokenRecoverer", address(tokenRecoverer));
-        register("protocolGuardian", address(protocolGuardian));
-        register("opsGuardian", address(opsGuardian));
-
         register("refundEscrowFactory", address(refundEscrowFactory));
         register("subsidyManager", address(subsidyManager));
         register("asyncVaultFactory", address(asyncVaultFactory));
@@ -438,17 +387,13 @@ contract FullDeployer is CoreDeployer {
         if (input.adapters.layerZero.shouldDeploy) register("layerZeroAdapter", address(layerZeroAdapter));
         if (input.adapters.chainlink.shouldDeploy) register("chainlinkAdapter", address(chainlinkAdapter));
 
-        batcher.engageFull(fullReport(), input, address(adapterBatcher));
+        batcher.engageFull(fullReport(), address(adapterBatcher));
         adapterBatcher.engageAdapters(adaptersReport(), input, vm.toString(address(axelarAdapter)));
     }
 
     function fullReport() public view returns (FullReport memory) {
         return FullReport(
             coreReport(),
-            root,
-            tokenRecoverer,
-            protocolGuardian,
-            opsGuardian,
             subsidyManager,
             refundEscrowFactory,
             asyncVaultFactory,

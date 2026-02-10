@@ -65,6 +65,8 @@ struct CoreInput {
     uint16 centrifugeId;
     bytes32 version;
     uint8[32] txLimits;
+    ISafe protocolSafe;
+    ISafe opsSafe;
 }
 
 struct CoreReport {
@@ -85,6 +87,10 @@ struct CoreReport {
     ShareClassManager shareClassManager;
     HubHandler hubHandler;
     Hub hub;
+    Root root;
+    TokenRecoverer tokenRecoverer;
+    ProtocolGuardian protocolGuardian;
+    OpsGuardian opsGuardian;
 }
 
 struct WormholeInput {
@@ -131,18 +137,12 @@ struct AdaptersInput {
 }
 
 struct FullInput {
-    ISafe protocolSafe;
-    ISafe opsSafe;
     CoreInput core;
     AdaptersInput adapters;
 }
 
 struct FullReport {
     CoreReport core;
-    Root root;
-    TokenRecoverer tokenRecoverer;
-    ProtocolGuardian protocolGuardian;
-    OpsGuardian opsGuardian;
     SubsidyManager subsidyManager;
     RefundEscrowFactory refundEscrowFactory;
     AsyncVaultFactory asyncVaultFactory;
@@ -198,7 +198,9 @@ contract CoreActionBatcher is Constants {
         deployer = address(0);
     }
 
-    function engageCore(CoreReport memory report, address root) public onlyDeployer {
+    function engageCore(CoreReport memory report, CoreInput memory input) public onlyDeployer {
+        address root = address(report.root);
+
         // Rely root
         report.gateway.rely(root);
         report.multiAdapter.rely(root);
@@ -220,6 +222,8 @@ contract CoreActionBatcher is Constants {
         report.hub.rely(root);
         report.hubHandler.rely(root);
 
+        report.tokenRecoverer.rely(root);
+
         // Rely gateway
         report.multiAdapter.rely(address(report.gateway));
         report.messageProcessor.rely(address(report.gateway));
@@ -234,6 +238,8 @@ contract CoreActionBatcher is Constants {
         report.contractUpdater.rely(address(report.messageDispatcher));
         report.vaultRegistry.rely(address(report.messageDispatcher));
         report.hubHandler.rely(address(report.messageDispatcher));
+        report.root.rely(address(report.messageDispatcher));
+        report.tokenRecoverer.rely(address(report.messageDispatcher));
 
         // Rely messageProcessor
         report.gateway.rely(address(report.messageProcessor));
@@ -243,6 +249,8 @@ contract CoreActionBatcher is Constants {
         report.contractUpdater.rely(address(report.messageProcessor));
         report.vaultRegistry.rely(address(report.messageProcessor));
         report.hubHandler.rely(address(report.messageProcessor));
+        report.root.rely(address(report.messageProcessor));
+        report.tokenRecoverer.rely(address(report.messageProcessor));
 
         // Rely spoke
         report.gateway.rely(address(report.spoke));
@@ -271,7 +279,21 @@ contract CoreActionBatcher is Constants {
         report.hub.rely(address(report.hubHandler));
         report.messageDispatcher.rely(address(report.hubHandler));
 
-        // File
+        // Rely protocolGuardian
+        report.gateway.rely(address(report.protocolGuardian));
+        report.multiAdapter.rely(address(report.protocolGuardian));
+        report.messageDispatcher.rely(address(report.protocolGuardian));
+        report.root.rely(address(report.protocolGuardian));
+        report.tokenRecoverer.rely(address(report.protocolGuardian));
+
+        // Rely opsGuardian
+        report.multiAdapter.rely(address(report.opsGuardian));
+        report.hub.rely(address(report.opsGuardian));
+
+        // Rely tokenRecoverer
+        report.root.rely(address(report.tokenRecoverer));
+
+        // File methods
         report.gateway.file("adapter", address(report.multiAdapter));
         report.gateway.file("messageProperties", address(report.gasService));
         report.gateway.file("processor", address(report.messageProcessor));
@@ -283,6 +305,7 @@ contract CoreActionBatcher is Constants {
         report.messageDispatcher.file("contractUpdater", address(report.contractUpdater));
         report.messageDispatcher.file("vaultRegistry", address(report.vaultRegistry));
         report.messageDispatcher.file("hubHandler", address(report.hubHandler));
+        report.messageDispatcher.file("tokenRecoverer", address(report.tokenRecoverer));
 
         report.messageProcessor.file("multiAdapter", address(report.multiAdapter));
         report.messageProcessor.file("gateway", address(report.gateway));
@@ -291,6 +314,7 @@ contract CoreActionBatcher is Constants {
         report.messageProcessor.file("contractUpdater", address(report.contractUpdater));
         report.messageProcessor.file("vaultRegistry", address(report.vaultRegistry));
         report.messageProcessor.file("hubHandler", address(report.hubHandler));
+        report.messageProcessor.file("tokenRecoverer", address(report.tokenRecoverer));
 
         report.poolEscrowFactory.file("balanceSheet", address(report.balanceSheet));
 
@@ -309,12 +333,18 @@ contract CoreActionBatcher is Constants {
 
         report.hubHandler.file("sender", address(report.messageDispatcher));
 
+        report.opsGuardian.file("opsSafe", address(input.opsSafe));
+        report.protocolGuardian.file("safe", address(input.protocolSafe));
+
         address[] memory tokenWards = new address[](2);
         tokenWards[0] = address(report.spoke);
         tokenWards[1] = address(report.balanceSheet);
         report.tokenFactory.file("wards", tokenWards);
 
-        // Init configuration
+        // Endorse methods
+        report.root.endorse(address(report.balanceSheet));
+
+        // Initial configuration
         report.hubRegistry.registerAsset(USD_ID, ISO4217_DECIMALS);
         report.hubRegistry.registerAsset(EUR_ID, ISO4217_DECIMALS);
     }
@@ -339,33 +369,36 @@ contract CoreActionBatcher is Constants {
         report.shareClassManager.deny(address(this));
         report.hub.deny(address(this));
         report.hubHandler.deny(address(this));
+
+        report.root.deny(address(this));
+        report.tokenRecoverer.deny(address(this));
     }
 }
 
 contract FullActionBatcher is CoreActionBatcher {
     constructor(address deployer_) CoreActionBatcher(deployer_) {}
 
-    function engageFull(FullReport memory report, FullInput memory input, address adapterBatcher_) public onlyDeployer {
+    function engageFull(FullReport memory report, address adapterBatcher_) public onlyDeployer {
         // Rely adapterBatcher on multiAdapter (needed for adapter connection wiring)
         report.core.multiAdapter.rely(adapterBatcher_);
 
+        address root = address(report.core.root);
+
         // Rely Root
-        report.tokenRecoverer.rely(address(report.root));
+        report.subsidyManager.rely(root);
+        report.refundEscrowFactory.rely(root);
+        report.asyncVaultFactory.rely(root);
+        report.asyncRequestManager.rely(root);
+        report.syncDepositVaultFactory.rely(root);
+        report.syncManager.rely(root);
+        report.vaultRouter.rely(root);
 
-        report.subsidyManager.rely(address(report.root));
-        report.refundEscrowFactory.rely(address(report.root));
-        report.asyncVaultFactory.rely(address(report.root));
-        report.asyncRequestManager.rely(address(report.root));
-        report.syncDepositVaultFactory.rely(address(report.root));
-        report.syncManager.rely(address(report.root));
-        report.vaultRouter.rely(address(report.root));
+        report.freezeOnlyHook.rely(root);
+        report.fullRestrictionsHook.rely(root);
+        report.freelyTransferableHook.rely(root);
+        report.redemptionRestrictionsHook.rely(root);
 
-        report.freezeOnlyHook.rely(address(report.root));
-        report.fullRestrictionsHook.rely(address(report.root));
-        report.freelyTransferableHook.rely(address(report.root));
-        report.redemptionRestrictionsHook.rely(address(report.root));
-
-        report.batchRequestManager.rely(address(report.root));
+        report.batchRequestManager.rely(root);
 
         // Rely spoke
         report.asyncRequestManager.rely(address(report.core.spoke));
@@ -381,28 +414,6 @@ contract FullActionBatcher is CoreActionBatcher {
         // Rely contractUpdater
         report.syncManager.rely(address(report.core.contractUpdater));
         report.asyncRequestManager.rely(address(report.core.contractUpdater));
-
-        // Rely protocolGuardian
-        report.core.gateway.rely(address(report.protocolGuardian));
-        report.core.multiAdapter.rely(address(report.protocolGuardian));
-        report.core.messageDispatcher.rely(address(report.protocolGuardian));
-        report.root.rely(address(report.protocolGuardian));
-        report.tokenRecoverer.rely(address(report.protocolGuardian));
-
-        // Rely opsGuardian
-        report.core.multiAdapter.rely(address(report.opsGuardian));
-        report.core.hub.rely(address(report.opsGuardian));
-
-        // Rely tokenRecoverer
-        report.root.rely(address(report.tokenRecoverer));
-
-        // Rely messageDispatcher
-        report.root.rely(address(report.core.messageDispatcher));
-        report.tokenRecoverer.rely(address(report.core.messageDispatcher));
-
-        // Rely messageProcessor
-        report.root.rely(address(report.core.messageProcessor));
-        report.tokenRecoverer.rely(address(report.core.messageProcessor));
 
         // Rely hub
         report.batchRequestManager.rely(address(report.core.hub));
@@ -424,13 +435,6 @@ contract FullActionBatcher is CoreActionBatcher {
         report.asyncRequestManager.rely(address(report.syncDepositVaultFactory));
 
         // File methods
-        report.core.messageDispatcher.file("tokenRecoverer", address(report.tokenRecoverer));
-        report.core.messageProcessor.file("tokenRecoverer", address(report.tokenRecoverer));
-
-        report.opsGuardian.file("opsSafe", address(input.opsSafe));
-
-        report.protocolGuardian.file("safe", address(input.protocolSafe));
-
         report.refundEscrowFactory.file(bytes32("controller"), address(report.subsidyManager));
 
         report.asyncRequestManager.file("spoke", address(report.core.spoke));
@@ -444,16 +448,11 @@ contract FullActionBatcher is CoreActionBatcher {
         report.batchRequestManager.file("hub", address(report.core.hub));
 
         // Endorse methods
-
-        report.root.endorse(address(report.core.balanceSheet));
-        report.root.endorse(address(report.asyncRequestManager));
-        report.root.endorse(address(report.vaultRouter));
+        report.core.root.endorse(address(report.asyncRequestManager));
+        report.core.root.endorse(address(report.vaultRouter));
     }
 
     function revokeFull(FullReport memory report) public onlyDeployer {
-        if (report.root.wards(address(this)) == 1) report.root.deny(address(this));
-        report.tokenRecoverer.deny(address(this));
-
         report.refundEscrowFactory.deny(address(this));
         report.asyncVaultFactory.deny(address(this));
         report.asyncRequestManager.deny(address(this));
@@ -493,13 +492,13 @@ contract AdapterActionBatcher {
         public
         onlyDeployer
     {
-        _relyAdapters(report, address(report.full.root));
-        _relyAdapters(report, address(report.full.protocolGuardian));
-        _relyAdapters(report, address(report.full.opsGuardian));
+        _relyAdapters(report, address(report.full.core.root));
+        _relyAdapters(report, address(report.full.core.protocolGuardian));
+        _relyAdapters(report, address(report.full.core.opsGuardian));
 
         // Rely protocolSafe on LayerZero (needed for setDelegate calls)
         if (address(report.layerZeroAdapter) != address(0)) {
-            report.layerZeroAdapter.rely(address(input.protocolSafe));
+            report.layerZeroAdapter.rely(address(input.core.protocolSafe));
         }
 
         // Connect adapters

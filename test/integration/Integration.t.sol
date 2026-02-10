@@ -14,7 +14,8 @@ import {MAX_MESSAGE_COST as GAS} from "../../src/core/messaging/interfaces/IGasS
 
 import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 
-import {FullDeployer, FullInput, noAdaptersInput, CoreInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
+import {CoreInput} from "../../script/CoreDeployer.s.sol";
+import {FullDeployer, FullInput, noAdaptersInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -34,9 +35,13 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
         super.labelAddresses("");
         super.deployFull(
             FullInput({
-                core: CoreInput({centrifugeId: LOCAL_CENTRIFUGE_ID, version: bytes32(0), txLimits: defaultTxLimits()}),
-                protocolSafe: protocolSafe,
-                opsSafe: protocolSafe,
+                core: CoreInput({
+                    centrifugeId: LOCAL_CENTRIFUGE_ID,
+                    version: bytes32(0),
+                    txLimits: defaultTxLimits(),
+                    protocolSafe: protocolSafe,
+                    opsSafe: protocolSafe
+                }),
                 adapters: noAdaptersInput()
             }),
             address(this)

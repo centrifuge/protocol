@@ -142,7 +142,7 @@ contract InvestmentFlowExecutor is Test {
             console.log("LINKING for validation: %s [%s]", gql.vault, tokenName);
             PoolId poolId = PoolId.wrap(gql.poolIdRaw);
             ShareClassId scId = ShareClassId.wrap(gql.tokenIdRaw);
-            vm.prank(address(report.root));
+            vm.prank(address(report.core.root));
             report.core.vaultRegistry.linkVault(poolId, scId, assetId, IVault(gql.vault));
         }
 
@@ -624,7 +624,7 @@ contract InvestmentFlowExecutor is Test {
         // This fixes cross-chain pools where manager registration is missing from on-chain state
         // Only register if pool exists in local Hub (Ethereum mainnet has pools, spoke chains don't)
         if (ctx.report.core.hubRegistry.exists(ctx.poolId)) {
-            vm.startPrank(address(ctx.report.root));
+            vm.startPrank(address(ctx.report.core.root));
             ctx.report.core.balanceSheet.updateManager(ctx.poolId, address(ctx.report.asyncRequestManager), true);
             vm.stopPrank();
         }
@@ -667,7 +667,7 @@ contract InvestmentFlowExecutor is Test {
         address escrowAddr = address(ctx.report.refundEscrowFactory.get(ctx.poolId));
 
         if (escrowAddr.code.length == 0) {
-            vm.startPrank(address(ctx.report.root));
+            vm.startPrank(address(ctx.report.core.root));
             ctx.report.refundEscrowFactory.newEscrow(ctx.poolId);
             vm.stopPrank();
         }
@@ -690,7 +690,7 @@ contract InvestmentFlowExecutor is Test {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = IAdapter(address(hubAdapter));
 
-        vm.startPrank(address(ctx.report.protocolGuardian));
+        vm.startPrank(address(ctx.report.core.protocolGuardian));
         ctx.report.core.multiAdapter
             .setAdapters(hubCentrifugeId, ctx.poolId, adapters, uint8(adapters.length), uint8(adapters.length));
         vm.stopPrank();

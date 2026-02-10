@@ -377,12 +377,12 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     /// @param report The FullReport instance that comes from the deployed v3.1 contracts
     function loadContractsFromDeployer(FullReport memory report, address protocolSafe_) public virtual {
         // Core system contracts
-        root = address(report.root);
-        protocolGuardian = address(report.protocolGuardian);
-        opsGuardian = address(report.opsGuardian);
+        root = address(report.core.root);
+        protocolGuardian = address(report.core.protocolGuardian);
+        opsGuardian = address(report.core.opsGuardian);
         gateway = address(report.core.gateway);
         gasService = address(report.core.gasService);
-        tokenRecoverer = address(report.tokenRecoverer);
+        tokenRecoverer = address(report.core.tokenRecoverer);
         messageProcessor = address(report.core.messageProcessor);
         messageDispatcher = address(report.core.messageDispatcher);
         multiAdapter = address(report.core.multiAdapter);

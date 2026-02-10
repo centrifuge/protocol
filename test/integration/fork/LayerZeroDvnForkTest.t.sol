@@ -176,9 +176,13 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
         });
 
         return FullInput({
-            core: CoreInput({centrifugeId: localId, version: bytes32("1337"), txLimits: defaultTxLimits()}),
-            protocolSafe: protocolSafe,
-            opsSafe: opsSafe,
+            core: CoreInput({
+                centrifugeId: localId,
+                version: bytes32("1337"),
+                txLimits: defaultTxLimits(),
+                protocolSafe: protocolSafe,
+                opsSafe: opsSafe
+            }),
             adapters: AdaptersInput({
                 wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
                 axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
