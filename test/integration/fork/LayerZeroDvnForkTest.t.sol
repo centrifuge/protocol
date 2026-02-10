@@ -103,7 +103,7 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
     bytes message;
 
     function setUp() public {
-        adminSafe = ISafe(makeAddr("AdminSafe"));
+        protocolSafe = ISafe(makeAddr("AdminSafe"));
         opsSafe = ISafe(makeAddr("OpsSafe"));
     }
 
@@ -190,24 +190,21 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
     {
         AdapterConnections[] memory connections = new AdapterConnections[](1);
         connections[0] = AdapterConnections({
-            centrifugeId: remoteId,
-            layerZeroId: remoteEid,
-            wormholeId: 0,
-            axelarId: "",
-            chainlinkId: 0,
-            threshold: 1,
-            layerZeroConfigParams: _ulnConfig(dvn1, dvn2, remoteEid)
+            centrifugeId: remoteId, layerZeroId: remoteEid, wormholeId: 0, axelarId: "", chainlinkId: 0, threshold: 1
         });
 
         return FullInput({
             core: CoreInput({centrifugeId: localId, version: bytes32("1337"), txLimits: defaultTxLimits()}),
-            adminSafe: adminSafe,
+            protocolSafe: protocolSafe,
             opsSafe: opsSafe,
             adapters: AdaptersInput({
                 wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
                 axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
                 layerZero: LayerZeroInput({
-                    shouldDeploy: true, endpoint: address(lzEndpoint), delegate: address(adminSafe)
+                    shouldDeploy: true,
+                    endpoint: address(lzEndpoint),
+                    delegate: address(protocolSafe),
+                    configParams: _ulnConfig(dvn1, dvn2, remoteEid)
                 }),
                 chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
                 connections: connections

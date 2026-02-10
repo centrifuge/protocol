@@ -109,7 +109,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     address public layerZeroAdapter;
 
     // Admin
-    address public adminSafe;
+    address public protocolSafe;
 
     //----------------------------------------------------------------------------------------------
     // FACTORY CONTRACTS
@@ -223,11 +223,11 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     }
 
     /// @notice Configure chain-specific settings
-    /// @param adminSafe_ The admin safe address for this chain
+    /// @param protocolSafe_ The admin safe address for this chain
     /// @param centrifugeId_ The centrifuge chain ID
-    function _configureChain(address adminSafe_, uint16 centrifugeId_) public {
+    function _configureChain(address protocolSafe_, uint16 centrifugeId_) public {
         localCentrifugeId = centrifugeId_;
-        adminSafe = adminSafe_;
+        protocolSafe = protocolSafe_;
     }
 
     /// @notice Detects if the deployment is v3.1 or v3.0.1
@@ -367,7 +367,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         // Multichain config
         localCentrifugeId = IntegrationConstants.ETH_CENTRIFUGE_ID;
-        adminSafe = IntegrationConstants.ETH_ADMIN_SAFE; // Default for standalone tests
+        protocolSafe = IntegrationConstants.ETH_ADMIN_SAFE; // Default for standalone tests
     }
 
     /// @notice Load contract addresses from a FullDeployer instance (for pre-migration testing)
@@ -375,7 +375,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     ///      Use this when validating a freshly deployed v3.1 system in fork (e.g., MigrationV3_1Test)
     ///      Use _initializeContractAddresses() when validating live on-chain state (post-migration)
     /// @param report The FullReport instance that comes from the deployed v3.1 contracts
-    function loadContractsFromDeployer(FullReport memory report, address adminSafe_) public virtual {
+    function loadContractsFromDeployer(FullReport memory report, address protocolSafe_) public virtual {
         // Core system contracts
         root = address(report.root);
         protocolGuardian = address(report.protocolGuardian);
@@ -427,7 +427,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         // Multichain config - from deployed contracts
         localCentrifugeId = report.core.messageDispatcher.localCentrifugeId();
-        adminSafe = adminSafe_;
+        protocolSafe = protocolSafe_;
     }
 
     /// @notice Setup VM labels for debugging
@@ -757,8 +757,8 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             if (layerZeroAdapter != address(0)) _validateWard(layerZeroAdapter, opsGuardian);
         }
 
-        if (layerZeroAdapter != address(0) && adminSafe != address(0)) {
-            _validateWard(layerZeroAdapter, adminSafe);
+        if (layerZeroAdapter != address(0) && protocolSafe != address(0)) {
+            _validateWard(layerZeroAdapter, protocolSafe);
         }
 
         // ==================== TOKEN RECOVERER (FullDeployer) ====================
@@ -945,8 +945,8 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             assertTrue(opsSafeAddr != address(0), "OpsGuardian opsSafe not configured");
         }
 
-        if (protocolGuardian != address(0) && adminSafe != address(0)) {
-            assertEq(address(ProtocolGuardian(protocolGuardian).safe()), adminSafe, "ProtocolGuardian safe mismatch");
+        if (protocolGuardian != address(0) && protocolSafe != address(0)) {
+            assertEq(address(ProtocolGuardian(protocolGuardian).safe()), protocolSafe, "ProtocolGuardian safe mismatch");
         }
     }
 
