@@ -581,7 +581,7 @@ class WardCoverageChecker:
                 print(f"  📌 {contract}.file(\"{param_name}\", ...)")
                 print(f"      Type: {target_type}")
                 print(f"      Location: {location}")
-                print(f"      Fix: Add to deployment script (CoreDeployer/FullDeployer/LaunchDeployer):")
+                print(f"      Fix: Add to deployment script (FullDeployer/LaunchDeployer):")
                 print(f"           report.{contract}.file(\"{param_name}\", address(report.{target_type.lower()}));")
                 print(f"      Then ensure: {target_type}.wards({contract}) == 1 and add test assertion!")
                 print()

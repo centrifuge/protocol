@@ -52,7 +52,7 @@ import {BatchRequestManager} from "../vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../vaults/factories/SyncDepositVaultFactory.sol";
 
-import {SetConfigParam, ILayerZeroEndpointV2Like} from "../../script/utils/ILayerZeroEndpointV2Like.sol";
+import {SetConfigParam, ILayerZeroEndpointV2Like} from "./interfaces/ILayerZeroEndpointV2Like.sol";
 
 import {SubsidyManager} from "../utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../adapters/AxelarAdapter.sol";

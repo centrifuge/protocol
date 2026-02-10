@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
-import {ILayerZeroEndpointV2Like, SetConfigParam} from "../../script/utils/ILayerZeroEndpointV2Like.sol";
+import {ILayerZeroEndpointV2Like, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 import {
     CoreInput,
     FullInput,

@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {GraphQLConstants} from "./GraphQLConstants.sol";
-import {UlnConfig, SetConfigParam} from "./ILayerZeroEndpointV2Like.sol";
+import {UlnConfig, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 import {AdapterConnections} from "../../src/deployment/ActionBatchers.sol";
 
 import "forge-std/Vm.sol";

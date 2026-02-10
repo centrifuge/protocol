@@ -395,7 +395,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
         );
     }
 
-    function _deployNonCore(address batcher) public {
+    function _deployNonCore(address batcher) internal {
         refundEscrowFactory = RefundEscrowFactory(
             create3(
                 generateSalt("refundEscrowFactory"),
@@ -583,7 +583,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
         );
     }
 
-    function _deployAdapters(address batcher, AdaptersInput memory input) public {
+    function _deployAdapters(address batcher, AdaptersInput memory input) internal {
         if (input.layerZero.shouldDeploy) {
             require(input.layerZero.endpoint != address(0), "LayerZero endpoint address cannot be zero");
             require(input.layerZero.endpoint.code.length > 0, "LayerZero endpoint must be a deployed contract");

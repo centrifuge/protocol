@@ -74,7 +74,6 @@ contract OnlyAdapters is FullDeployer {
             wormholeAdapter.rely(rootAddr);
             wormholeAdapter.rely(protocolGuardianAddr);
             wormholeAdapter.rely(opsGuardianAddr);
-            register("wormholeAdapter", address(wormholeAdapter));
         }
 
         if (deployAxelar) {
@@ -97,7 +96,6 @@ contract OnlyAdapters is FullDeployer {
             axelarAdapter.rely(rootAddr);
             axelarAdapter.rely(protocolGuardianAddr);
             axelarAdapter.rely(opsGuardianAddr);
-            register("axelarAdapter", address(axelarAdapter));
         }
 
         if (deployLayerZero) {
@@ -119,7 +117,6 @@ contract OnlyAdapters is FullDeployer {
             layerZeroAdapter.rely(rootAddr);
             layerZeroAdapter.rely(protocolGuardianAddr);
             layerZeroAdapter.rely(opsGuardianAddr);
-            register("layerZeroAdapter", address(layerZeroAdapter));
         }
 
         saveDeploymentOutput();
