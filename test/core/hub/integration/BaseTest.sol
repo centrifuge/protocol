@@ -13,8 +13,6 @@ import {MAX_MESSAGE_COST} from "../../../../src/core/messaging/interfaces/IGasSe
 import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
 import {
-    FullActionBatcher,
-    AdapterActionBatcher,
     FullDeployer,
     FullInput,
     noAdaptersInput,
@@ -70,7 +68,7 @@ contract BaseTest is FullDeployer, Test {
     MockValuation valuation;
     IHubRequestManager hubRequestManager;
 
-    function _mockStuff(FullActionBatcher batcher) private {
+    function _mockStuff() private {
         vm.startPrank(address(batcher));
 
         cv = new MockVaults(CHAIN_CV, multiAdapter);
@@ -85,9 +83,6 @@ contract BaseTest is FullDeployer, Test {
 
     function setUp() public virtual {
         // Deployment
-        FullActionBatcher batcher = new FullActionBatcher(address(this));
-        AdapterActionBatcher adapterBatcher = new AdapterActionBatcher(address(this));
-
         labelAddresses("");
         deployFull(
             FullInput({
@@ -96,11 +91,10 @@ contract BaseTest is FullDeployer, Test {
                 opsSafe: opsSafe,
                 adapters: noAdaptersInput()
             }),
-            batcher,
-            adapterBatcher
+            address(this)
         );
-        _mockStuff(batcher);
-        removeFullDeployerAccess(batcher, adapterBatcher);
+        _mockStuff();
+        removeFullDeployerAccess();
         hubRequestManager = new MockHubRequestManager();
 
         // Initialize accounts

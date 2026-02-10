@@ -6,15 +6,7 @@ import {ESCROW_HOOK_ID} from "../../../src/core/spoke/interfaces/ITransferHook.s
 
 import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
 
-import {
-    FullActionBatcher,
-    AdapterActionBatcher,
-    FullDeployer,
-    FullInput,
-    noAdaptersInput,
-    defaultTxLimits,
-    CoreInput
-} from "../../../script/FullDeployer.s.sol";
+import {FullDeployer, FullInput, noAdaptersInput, defaultTxLimits, CoreInput} from "../../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -39,8 +31,6 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     address public poolEscrow;
 
     function setUp() public {
-        FullActionBatcher batcher = new FullActionBatcher(address(this));
-        AdapterActionBatcher adapterBatcher = new AdapterActionBatcher(address(this));
         super.labelAddresses("");
         super.deployFull(
             FullInput({
@@ -49,8 +39,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
                 opsSafe: protocolSafe,
                 adapters: noAdaptersInput()
             }),
-            batcher,
-            adapterBatcher
+            address(this)
         );
 
         MockPoolEscrow mockPoolEscrow = new MockPoolEscrow(TEST_POOL_ID);
@@ -61,7 +50,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             abi.encode(poolEscrow)
         );
 
-        super.removeFullDeployerAccess(batcher, adapterBatcher);
+        super.removeFullDeployerAccess();
 
         vm.startPrank(ADMIN);
         correctHook = new FullRestrictions(

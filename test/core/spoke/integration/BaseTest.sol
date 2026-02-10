@@ -24,8 +24,6 @@ import {AsyncVault} from "../../../../src/vaults/AsyncVault.sol";
 import {SyncDepositVault} from "../../../../src/vaults/SyncDepositVault.sol";
 
 import {
-    FullActionBatcher,
-    AdapterActionBatcher,
     FullDeployer,
     FullInput,
     noAdaptersInput,
@@ -83,9 +81,6 @@ contract BaseTest is FullDeployer, Test {
     }
 
     function setUp() public virtual {
-        FullActionBatcher batcher = new FullActionBatcher(address(this));
-        AdapterActionBatcher adapterBatcher = new AdapterActionBatcher(address(this));
-
         labelAddresses("");
 
         deployFull(
@@ -95,8 +90,7 @@ contract BaseTest is FullDeployer, Test {
                 opsSafe: ISafe(ADMIN),
                 adapters: noAdaptersInput()
             }),
-            batcher,
-            adapterBatcher
+            address(this)
         );
 
         // Give permissions to address(this) for most call in these tests.
@@ -126,7 +120,7 @@ contract BaseTest is FullDeployer, Test {
         redemptionRestrictionsHook.rely(address(this));
         vm.stopPrank();
 
-        removeFullDeployerAccess(batcher, adapterBatcher);
+        removeFullDeployerAccess();
 
         // Ensure test contract has auth on vaultRegistry for testing
         vaultRegistry.rely(address(this));

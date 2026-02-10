@@ -7,8 +7,6 @@ import {CoreInput} from "../../script/CoreDeployer.s.sol";
 import {ILayerZeroEndpointV2Like, SetConfigParam} from "../../script/utils/ILayerZeroEndpointV2Like.sol";
 import {
     FullInput,
-    FullActionBatcher,
-    AdapterActionBatcher,
     FullDeployer,
     AdaptersInput,
     WormholeInput,
@@ -73,9 +71,6 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
     }
 
     function setUp() public virtual {
-        FullActionBatcher batcher = new FullActionBatcher(address(this));
-        AdapterActionBatcher adapterBatcher = new AdapterActionBatcher(address(this));
-
         _mockRealWormholeContracts();
         _mockBridgeContracts();
         deployFull(
@@ -96,11 +91,10 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
                     connections: new AdapterConnections[](0) // TODO: test this
                 })
             }),
-            batcher,
-            adapterBatcher
+            address(this)
         );
 
-        removeFullDeployerAccess(batcher, adapterBatcher);
+        removeFullDeployerAccess();
     }
 }
 

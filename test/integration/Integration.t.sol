@@ -14,15 +14,7 @@ import {MAX_MESSAGE_COST as GAS} from "../../src/core/messaging/interfaces/IGasS
 
 import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 
-import {
-    FullActionBatcher,
-    AdapterActionBatcher,
-    FullDeployer,
-    FullInput,
-    noAdaptersInput,
-    CoreInput,
-    defaultTxLimits
-} from "../../script/FullDeployer.s.sol";
+import {FullDeployer, FullInput, noAdaptersInput, CoreInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -39,8 +31,6 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
 
     function setUp() public virtual {
         // Deployment
-        FullActionBatcher batcher = new FullActionBatcher(address(this));
-        AdapterActionBatcher adapterBatcher = new AdapterActionBatcher(address(this));
         super.labelAddresses("");
         super.deployFull(
             FullInput({
@@ -49,10 +39,9 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
                 opsSafe: protocolSafe,
                 adapters: noAdaptersInput()
             }),
-            batcher,
-            adapterBatcher
+            address(this)
         );
-        super.removeFullDeployerAccess(batcher, adapterBatcher);
+        super.removeFullDeployerAccess();
 
         // Extra deployment
         valuation = new MockValuation(hubRegistry);

@@ -426,8 +426,14 @@ contract FullDeployer is CoreDeployer {
     WormholeAdapter wormholeAdapter;
     LayerZeroAdapter layerZeroAdapter;
 
-    function deployFull(FullInput memory input, FullActionBatcher batcher, AdapterActionBatcher adapterBatcher) public {
-        _init(input.core.version, batcher.deployer());
+    FullActionBatcher public batcher;
+    AdapterActionBatcher public adapterBatcher;
+
+    function deployFull(FullInput memory input, address deployer_) public {
+        _init(input.core.version, deployer_);
+
+        batcher = new FullActionBatcher(deployer_);
+        adapterBatcher = new AdapterActionBatcher(deployer_);
 
         protocolSafe = input.protocolSafe;
         opsSafe = input.opsSafe;
@@ -799,10 +805,13 @@ contract FullDeployer is CoreDeployer {
         );
     }
 
-    function removeFullDeployerAccess(FullActionBatcher batcher, AdapterActionBatcher adapterBatcher) public {
+    function removeFullDeployerAccess() public {
         removeCoreDeployerAccess(batcher);
         batcher.revokeFull(fullReport());
         adapterBatcher.revokeAdapters(fullReport());
+
+        batcher.lock();
+        adapterBatcher.lock();
     }
 }
 

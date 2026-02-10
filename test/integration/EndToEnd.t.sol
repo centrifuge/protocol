@@ -61,15 +61,7 @@ import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 
-import {
-    FullActionBatcher,
-    AdapterActionBatcher,
-    FullDeployer,
-    FullInput,
-    noAdaptersInput,
-    CoreInput,
-    defaultTxLimits
-} from "../../script/FullDeployer.s.sol";
+import {FullDeployer, FullInput, noAdaptersInput, CoreInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -275,9 +267,6 @@ contract EndToEndDeployment is Test {
         internal
         returns (LocalAdapter adapter)
     {
-        FullActionBatcher batcher = new FullActionBatcher(address(deploy));
-        AdapterActionBatcher adapterBatcher = new AdapterActionBatcher(address(deploy));
-
         deploy.labelAddresses(string(abi.encodePacked(vm.toString(localCentrifugeId), "-")));
         deploy.deployFull(
             FullInput({
@@ -290,14 +279,13 @@ contract EndToEndDeployment is Test {
                 opsSafe: protocolSafe,
                 adapters: noAdaptersInput()
             }),
-            batcher,
-            adapterBatcher
+            address(deploy)
         );
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         _setAdapter(deploy, remoteCentrifugeId, adapter);
 
-        deploy.removeFullDeployerAccess(batcher, adapterBatcher);
+        deploy.removeFullDeployerAccess();
     }
 
     function _setSpoke(FullDeployer deploy, uint16 centrifugeId, CSpoke storage s_) internal {

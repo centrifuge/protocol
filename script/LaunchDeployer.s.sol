@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CoreInput, makeSalt} from "./CoreDeployer.s.sol";
+import {CoreInput} from "./CoreDeployer.s.sol";
 import {EnvConfig, Env, prettyEnvString} from "./utils/EnvConfig.s.sol";
 import {
     FullInput,
-    FullActionBatcher,
-    AdapterActionBatcher,
     FullDeployer,
     AdaptersInput,
     WormholeInput,
@@ -28,36 +26,14 @@ contract LaunchDeployer is FullDeployer {
     function run() public virtual {
         vm.startBroadcast();
         captureStartBlock();
+        startDeploymentOutput();
 
         EnvConfig memory config = Env.load(prettyEnvString("NETWORK"));
         bytes32 version = prettyEnvString("VERSION").toBytes32();
 
-        startDeploymentOutput();
-
         FullInput memory input = _buildFullInput(config, version);
-
-        FullActionBatcher batcher = FullActionBatcher(
-            create3(
-                makeSalt("fullActionBatcher", input.core.version, msg.sender),
-                abi.encodePacked(type(FullActionBatcher).creationCode, abi.encode(msg.sender))
-            )
-        );
-
-        AdapterActionBatcher adapterBatcher = AdapterActionBatcher(
-            create3(
-                makeSalt("adapterActionBatcher", input.core.version, msg.sender),
-                abi.encodePacked(type(AdapterActionBatcher).creationCode, abi.encode(msg.sender))
-            )
-        );
-
-        deployFull(input, batcher, adapterBatcher);
-
-        removeFullDeployerAccess(batcher, adapterBatcher);
-
-        batcher.lock();
-        adapterBatcher.lock();
-
-        saveDeploymentOutput();
+        deployFull(input, msg.sender);
+        removeFullDeployerAccess();
 
         // Hardcoded wards to double-check a correct mainnet deployment
         if (config.network.isMainnet()) {
@@ -66,6 +42,7 @@ contract LaunchDeployer is FullDeployer {
             require(msg.sender == 0x926702C7f1af679a8f99A40af8917DDd82fD6F6c, "wrong deployer");
         }
 
+        saveDeploymentOutput();
         vm.stopBroadcast();
     }
 
