@@ -264,6 +264,19 @@ jobs:
         env:
           FOUNDRY_PROFILE: ci
 
+  claude-md-tree:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Check CLAUDE.md directory tree
+        run: python3 script/utils/check_claude_tree.py
+
   ward-coverage:
     runs-on: ubuntu-latest
     steps:
