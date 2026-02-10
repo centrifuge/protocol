@@ -286,9 +286,9 @@
       "startBlock": 36922335
     },
     "deploy:adapters": {
-      "gitCommit": "c3c331c9",
-      "timestamp": "2025-10-31T13:50:22Z",
-      "version": "v3.1.7"
+      "gitCommit": "e54f27b1",
+      "timestamp": "2025-10-16T08:21:30Z",
+      "version": "test-v3.0.1"
     }
   }
 }

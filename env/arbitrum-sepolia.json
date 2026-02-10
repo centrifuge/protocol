@@ -4,7 +4,6 @@
     "environment": "testnet",
     "centrifugeId": 3,
     "network": "arbitrum",
-    "etherscanUrl": "https://sepolia.arbiscan.io/",
     "catapultaNetwork": "arbitrumSepolia",
     "connectsTo": [
       "sepolia",
@@ -287,9 +286,9 @@
       "startBlock": 10142334
     },
     "deploy:adapters": {
-      "gitCommit": "22709bc3",
-      "timestamp": "2025-10-31T13:55:20Z",
-      "version": "v3.1.7"
+      "gitCommit": "e54f27b1",
+      "timestamp": "2025-10-16T08:28:21Z",
+      "version": "test-v3.0.1"
     }
   }
 }
