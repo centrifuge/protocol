@@ -63,7 +63,8 @@ import {
     Constants,
     CoreInput,
     CoreReport,
-    FullActionBatcher,
+    CoreActionBatcher,
+    NonCoreActionBatcher,
     AdapterActionBatcher,
     FullInput,
     FullReport,
@@ -151,7 +152,8 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
     WormholeAdapter wormholeAdapter;
     LayerZeroAdapter layerZeroAdapter;
 
-    FullActionBatcher public batcher;
+    CoreActionBatcher public coreBatcher;
+    NonCoreActionBatcher public nonCoreBatcher;
     AdapterActionBatcher public adapterBatcher;
 
     function _init(bytes32 version_, address deployer_) internal {
@@ -170,7 +172,8 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
     function deployFull(FullInput memory input, address deployer_) public {
         _init(input.core.version, deployer_);
 
-        batcher = new FullActionBatcher(deployer_);
+        coreBatcher = new CoreActionBatcher(deployer_);
+        nonCoreBatcher = new NonCoreActionBatcher(deployer_);
         adapterBatcher = new AdapterActionBatcher(deployer_);
 
         deployCore(input.core);
@@ -178,32 +181,37 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
         refundEscrowFactory = RefundEscrowFactory(
             create3(
                 generateSalt("refundEscrowFactory"),
-                abi.encodePacked(type(RefundEscrowFactory).creationCode, abi.encode(batcher))
+                abi.encodePacked(type(RefundEscrowFactory).creationCode, abi.encode(nonCoreBatcher))
             )
         );
 
         subsidyManager = SubsidyManager(
             create3(
                 generateSalt("subsidyManager"),
-                abi.encodePacked(type(SubsidyManager).creationCode, abi.encode(refundEscrowFactory, batcher))
+                abi.encodePacked(type(SubsidyManager).creationCode, abi.encode(refundEscrowFactory, nonCoreBatcher))
             )
         );
 
         asyncRequestManager = AsyncRequestManager(
             payable(create3(
                     generateSalt("asyncRequestManager"),
-                    abi.encodePacked(type(AsyncRequestManager).creationCode, abi.encode(subsidyManager, batcher))
+                    abi.encodePacked(type(AsyncRequestManager).creationCode, abi.encode(subsidyManager, nonCoreBatcher))
                 ))
         );
 
         syncManager = SyncManager(
-            create3(generateSalt("syncManager"), abi.encodePacked(type(SyncManager).creationCode, abi.encode(batcher)))
+            create3(
+                generateSalt("syncManager"),
+                abi.encodePacked(type(SyncManager).creationCode, abi.encode(nonCoreBatcher))
+            )
         );
 
         vaultRouter = VaultRouter(
             create3(
                 generateSalt("vaultRouter"),
-                abi.encodePacked(type(VaultRouter).creationCode, abi.encode(gateway, spoke, vaultRegistry, batcher))
+                abi.encodePacked(
+                    type(VaultRouter).creationCode, abi.encode(gateway, spoke, vaultRegistry, nonCoreBatcher)
+                )
             )
         );
 
@@ -211,7 +219,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
             create3(
                 generateSalt("asyncVaultFactory"),
                 abi.encodePacked(
-                    type(AsyncVaultFactory).creationCode, abi.encode(address(root), asyncRequestManager, batcher)
+                    type(AsyncVaultFactory).creationCode, abi.encode(address(root), asyncRequestManager, nonCoreBatcher)
                 )
             )
         );
@@ -221,7 +229,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
                 generateSalt("syncDepositVaultFactory"),
                 abi.encodePacked(
                     type(SyncDepositVaultFactory).creationCode,
-                    abi.encode(address(root), syncManager, asyncRequestManager, batcher)
+                    abi.encode(address(root), syncManager, asyncRequestManager, nonCoreBatcher)
                 )
             )
         );
@@ -236,7 +244,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
                         address(spoke),
                         address(balanceSheet),
                         address(spoke),
-                        batcher,
+                        nonCoreBatcher,
                         address(poolEscrowFactory),
                         address(0)
                     )
@@ -254,7 +262,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
                         address(spoke),
                         address(balanceSheet),
                         address(spoke),
-                        batcher,
+                        nonCoreBatcher,
                         address(poolEscrowFactory),
                         address(0)
                     )
@@ -272,7 +280,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
                         address(spoke),
                         address(balanceSheet),
                         address(spoke),
-                        batcher,
+                        nonCoreBatcher,
                         address(poolEscrowFactory),
                         address(0)
                     )
@@ -290,7 +298,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
                         address(spoke),
                         address(balanceSheet),
                         address(spoke),
-                        batcher,
+                        nonCoreBatcher,
                         address(poolEscrowFactory),
                         address(0)
                     )
@@ -302,7 +310,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
             create3(
                 generateSalt("queueManager"),
                 abi.encodePacked(
-                    type(QueueManager).creationCode, abi.encode(contractUpdater, balanceSheet, address(batcher))
+                    type(QueueManager).creationCode, abi.encode(contractUpdater, balanceSheet, address(nonCoreBatcher))
                 )
             )
         );
@@ -332,7 +340,9 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
         batchRequestManager = BatchRequestManager(
             create3(
                 generateSalt("batchRequestManager"),
-                abi.encodePacked(type(BatchRequestManager).creationCode, abi.encode(hubRegistry, gateway, batcher))
+                abi.encodePacked(
+                    type(BatchRequestManager).creationCode, abi.encode(hubRegistry, gateway, nonCoreBatcher)
+                )
             )
         );
 
@@ -469,7 +479,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
         if (input.adapters.layerZero.shouldDeploy) register("layerZeroAdapter", address(layerZeroAdapter));
         if (input.adapters.chainlink.shouldDeploy) register("chainlinkAdapter", address(chainlinkAdapter));
 
-        batcher.engageFull(fullReport());
+        nonCoreBatcher.engageFull(fullReport());
         adapterBatcher.engageAdapters(adaptersReport(), input, vm.toString(address(axelarAdapter)));
     }
 
@@ -478,28 +488,29 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
         opsSafe = input.opsSafe;
 
         // Admin
-        root =
-            Root(create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));
+        root = Root(
+            create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, coreBatcher)))
+        );
 
         // Core
         gateway = Gateway(
             create3(
                 generateSalt("gateway"),
-                abi.encodePacked(type(Gateway).creationCode, abi.encode(input.centrifugeId, root, batcher))
+                abi.encodePacked(type(Gateway).creationCode, abi.encode(input.centrifugeId, root, coreBatcher))
             )
         );
 
         multiAdapter = MultiAdapter(
             create3(
                 generateSalt("multiAdapter"),
-                abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, batcher))
+                abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, coreBatcher))
             )
         );
 
         contractUpdater = ContractUpdater(
             create3(
                 generateSalt("contractUpdater"),
-                abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(batcher))
+                abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(coreBatcher))
             )
         );
 
@@ -513,7 +524,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
         messageProcessor = MessageProcessor(
             create3(
                 generateSalt("messageProcessor"),
-                abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, batcher))
+                abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, coreBatcher))
             )
         );
 
@@ -521,7 +532,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
             create3(
                 generateSalt("messageDispatcher"),
                 abi.encodePacked(
-                    type(MessageDispatcher).creationCode, abi.encode(input.centrifugeId, root, gateway, batcher)
+                    type(MessageDispatcher).creationCode, abi.encode(input.centrifugeId, root, gateway, coreBatcher)
                 )
             )
         );
@@ -530,56 +541,61 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
         tokenFactory = TokenFactory(
             create3(
                 generateSalt("tokenFactory"),
-                abi.encodePacked(type(TokenFactory).creationCode, abi.encode(root, batcher))
+                abi.encodePacked(type(TokenFactory).creationCode, abi.encode(root, coreBatcher))
             )
         );
 
         spoke = Spoke(
             create3(
-                generateSalt("spoke"), abi.encodePacked(type(Spoke).creationCode, abi.encode(tokenFactory, batcher))
+                generateSalt("spoke"), abi.encodePacked(type(Spoke).creationCode, abi.encode(tokenFactory, coreBatcher))
             )
         );
 
         balanceSheet = BalanceSheet(
             create3(
                 generateSalt("balanceSheet"),
-                abi.encodePacked(type(BalanceSheet).creationCode, abi.encode(root, batcher))
+                abi.encodePacked(type(BalanceSheet).creationCode, abi.encode(root, coreBatcher))
             )
         );
 
         vaultRegistry = VaultRegistry(
             create3(
-                generateSalt("vaultRegistry"), abi.encodePacked(type(VaultRegistry).creationCode, abi.encode(batcher))
+                generateSalt("vaultRegistry"),
+                abi.encodePacked(type(VaultRegistry).creationCode, abi.encode(coreBatcher))
             )
         );
 
         poolEscrowFactory = PoolEscrowFactory(
             create3(
                 generateSalt("poolEscrowFactory"),
-                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(root, batcher))
+                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(root, coreBatcher))
             )
         );
 
         // Hub
         hubRegistry = HubRegistry(
-            create3(generateSalt("hubRegistry"), abi.encodePacked(type(HubRegistry).creationCode, abi.encode(batcher)))
+            create3(
+                generateSalt("hubRegistry"), abi.encodePacked(type(HubRegistry).creationCode, abi.encode(coreBatcher))
+            )
         );
 
         accounting = Accounting(
-            create3(generateSalt("accounting"), abi.encodePacked(type(Accounting).creationCode, abi.encode(batcher)))
+            create3(
+                generateSalt("accounting"), abi.encodePacked(type(Accounting).creationCode, abi.encode(coreBatcher))
+            )
         );
 
         holdings = Holdings(
             create3(
                 generateSalt("holdings"),
-                abi.encodePacked(type(Holdings).creationCode, abi.encode(hubRegistry, batcher))
+                abi.encodePacked(type(Holdings).creationCode, abi.encode(hubRegistry, coreBatcher))
             )
         );
 
         shareClassManager = ShareClassManager(
             create3(
                 generateSalt("shareClassManager"),
-                abi.encodePacked(type(ShareClassManager).creationCode, abi.encode(hubRegistry, batcher))
+                abi.encodePacked(type(ShareClassManager).creationCode, abi.encode(hubRegistry, coreBatcher))
             )
         );
 
@@ -588,7 +604,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
                 generateSalt("hub"),
                 abi.encodePacked(
                     type(Hub).creationCode,
-                    abi.encode(gateway, holdings, accounting, hubRegistry, multiAdapter, shareClassManager, batcher)
+                    abi.encode(gateway, holdings, accounting, hubRegistry, multiAdapter, shareClassManager, coreBatcher)
                 )
             )
         );
@@ -597,7 +613,8 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
             create3(
                 generateSalt("hubHandler"),
                 abi.encodePacked(
-                    type(HubHandler).creationCode, abi.encode(hub, holdings, hubRegistry, shareClassManager, batcher)
+                    type(HubHandler).creationCode,
+                    abi.encode(hub, holdings, hubRegistry, shareClassManager, coreBatcher)
                 )
             )
         );
@@ -606,7 +623,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
         tokenRecoverer = TokenRecoverer(
             create3(
                 generateSalt("tokenRecoverer"),
-                abi.encodePacked(type(TokenRecoverer).creationCode, abi.encode(root, batcher))
+                abi.encodePacked(type(TokenRecoverer).creationCode, abi.encode(root, coreBatcher))
             )
         );
 
@@ -615,7 +632,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
                 generateSalt("protocolGuardian"),
                 abi.encodePacked(
                     type(ProtocolGuardian).creationCode,
-                    abi.encode(ISafe(address(batcher)), root, gateway, messageDispatcher)
+                    abi.encode(ISafe(address(coreBatcher)), root, gateway, messageDispatcher)
                 )
             )
         );
@@ -623,11 +640,13 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
         opsGuardian = OpsGuardian(
             create3(
                 generateSalt("opsGuardian"),
-                abi.encodePacked(type(OpsGuardian).creationCode, abi.encode(ISafe(address(batcher)), hub, multiAdapter))
+                abi.encodePacked(
+                    type(OpsGuardian).creationCode, abi.encode(ISafe(address(coreBatcher)), hub, multiAdapter)
+                )
             )
         );
 
-        batcher.engageCore(coreReport(), input, address(adapterBatcher));
+        coreBatcher.engageCore(coreReport(), input, address(adapterBatcher), address(nonCoreBatcher));
 
         // Admin
         register("root", address(root));
@@ -717,8 +736,8 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
     }
 
     function removeFullDeployerAccess() public {
-        batcher.revokeCore(coreReport());
-        batcher.revokeFull(fullReport());
+        coreBatcher.revokeCore(coreReport());
+        nonCoreBatcher.revokeFull(fullReport());
         adapterBatcher.revokeAdapters(adaptersReport());
     }
 }

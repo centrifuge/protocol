@@ -69,7 +69,7 @@ contract BaseTest is FullDeployer, Test {
     IHubRequestManager hubRequestManager;
 
     function _mockStuff() private {
-        vm.startPrank(address(batcher));
+        vm.startPrank(address(coreBatcher));
 
         cv = new MockVaults(CHAIN_CV, multiAdapter);
         IAdapter[] memory adapters = new IAdapter[](1);

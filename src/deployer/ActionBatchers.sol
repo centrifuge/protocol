@@ -194,7 +194,10 @@ contract CoreActionBatcher is Constants {
         _;
     }
 
-    function engageCore(CoreReport memory report, CoreInput memory input, address adapterBatcher_) public onlyDeployer {
+    function engageCore(CoreReport memory report, CoreInput memory input, address adapterBatcher_, address fullBatcher_)
+        public
+        onlyDeployer
+    {
         address root = address(report.root);
 
         // Rely root
@@ -346,6 +349,9 @@ contract CoreActionBatcher is Constants {
 
         // Rely adapterBatcher on multiAdapter (needed for adapter connection wiring)
         report.multiAdapter.rely(adapterBatcher_);
+
+        // Rely fullBatcher on root (needed for endorse calls in engageFull)
+        report.root.rely(fullBatcher_);
     }
 
     function revokeCore(CoreReport memory report) public onlyDeployer {
@@ -371,11 +377,24 @@ contract CoreActionBatcher is Constants {
 
         report.root.deny(address(this));
         report.tokenRecoverer.deny(address(this));
+
+        deployer = address(0);
     }
 }
 
-contract FullActionBatcher is CoreActionBatcher {
-    constructor(address deployer_) CoreActionBatcher(deployer_) {}
+contract NonCoreActionBatcher {
+    error NotDeployer();
+
+    address public deployer;
+
+    constructor(address deployer_) {
+        deployer = deployer_;
+    }
+
+    modifier onlyDeployer() {
+        require(msg.sender == deployer, NotDeployer());
+        _;
+    }
 
     function engageFull(FullReport memory report) public onlyDeployer {
         address root = address(report.core.root);
@@ -463,6 +482,8 @@ contract FullActionBatcher is CoreActionBatcher {
         report.redemptionRestrictionsHook.deny(address(this));
 
         report.batchRequestManager.deny(address(this));
+
+        report.core.root.deny(address(this));
 
         deployer = address(0);
     }
