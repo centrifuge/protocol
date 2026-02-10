@@ -3,15 +3,14 @@ pragma solidity 0.8.28;
 
 import {BaseTestData} from "./BaseTestData.s.sol";
 
-import {ERC20} from "../../src/misc/ERC20.sol";
 import {d18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AccountId} from "../../src/core/types/AccountId.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
 import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
-import {ShareClassId, newShareClassId} from "../../src/core/types/ShareClassId.sol";
 
 import "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
@@ -450,16 +449,15 @@ contract TestAdapterGasEstimation is BaseTestData {
 
         bool isCrossChain = targetCentrifugeId != hubCentrifugeId;
         if (isCrossChain) {
-            bool skipAssetReg = vm.envOr("SKIP_ASSET_REGISTRATION", false);
-            if (skipAssetReg) {
-                console.log("[Asset] SKIP_ASSET_REGISTRATION=true, continuing without asset registration...");
-                return;
-            }
-
-            console.log("[Asset] CROSS-CHAIN: Asset registration must happen from spoke chain.");
-            console.log("        Run: NETWORK=arbitrum-sepolia forge script ... --sig 'registerAssetOnly()'");
-            console.log("        Or set SKIP_ASSET_REGISTRATION=true if already registered.");
-            revert("Cross-chain asset registration not supported from hub");
+            // For cross-chain, asset registration happens from spoke. Continue without it.
+            // Pools can still be created - holdings init will be skipped if asset not registered.
+            console.log("[Asset] Not registered on hub. Holdings init will be skipped.");
+            console.log(
+                string.concat(
+                    "        To register: NETWORK=", spokeNetworkName, " forge script ... --sig 'registerAssetOnly()'"
+                )
+            );
+            return;
         }
 
         address usdcAddress = _resolveUsdcAddress(targetCentrifugeId);
@@ -475,7 +473,8 @@ contract TestAdapterGasEstimation is BaseTestData {
         if (centrifugeId == 2) return BASE_SEPOLIA_USDC;
         if (centrifugeId == 3) return ARBITRUM_SEPOLIA_USDC;
 
-        revert("No known USDC for target chain. Set TEST_USDC_ADDRESS env var.");
+        console.log("[Asset] No hardcoded USDC for centrifugeId:", centrifugeId);
+        revert("Set TEST_USDC_ADDRESS env var for this chain.");
     }
 
     /// @notice Register asset from spoke chain (for cross-chain setups)
@@ -494,7 +493,7 @@ contract TestAdapterGasEstimation is BaseTestData {
         console.log("Local CentrifugeId:", localCentrifugeId);
         console.log("Target Hub CentrifugeId:", targetHubCentrifugeId);
 
-        address localUsdc = vm.envAddress("TEST_USDC_ADDRESS");
+        address localUsdc = _resolveUsdcAddress(localCentrifugeId);
         console.log("Local USDC address:", localUsdc);
 
         vm.startBroadcast();
