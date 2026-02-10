@@ -73,7 +73,7 @@ contract LaunchDeployer is FullDeployer {
                     shouldDeploy: config.adapters.layerZero.deploy,
                     endpoint: config.adapters.layerZero.endpoint,
                     delegate: config.network.protocolAdmin,
-                    configParams: config.buildZeroConfigParams()
+                    configParams: config.buildLayerZeroConfigParams()
                 }),
                 wormhole: WormholeInput({
                     shouldDeploy: config.adapters.wormhole.deploy, relayer: config.adapters.wormhole.relayer

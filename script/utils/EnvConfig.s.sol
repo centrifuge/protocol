@@ -301,7 +301,11 @@ library EnvConfigLib {
         return prettyEnvString("ETHERSCAN_API_KEY");
     }
 
-    function buildZeroConfigParams(EnvConfig memory config) internal view returns (SetConfigParam[] memory params) {
+    function buildLayerZeroConfigParams(EnvConfig memory config)
+        internal
+        view
+        returns (SetConfigParam[] memory params)
+    {
         if (!config.adapters.layerZero.deploy) return params;
 
         string[] memory connectsTo = config.network.connectsTo;
