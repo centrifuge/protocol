@@ -133,7 +133,7 @@ abstract contract Constants {
     AssetId public immutable EUR_ID = newAssetId(978);
 }
 
-contract CoreActionBatcher is Constants {
+abstract contract BaseActionBatcher {
     error NotDeployer();
 
     address public deployer;
@@ -146,8 +146,12 @@ contract CoreActionBatcher is Constants {
         require(msg.sender == deployer, NotDeployer());
         _;
     }
+}
 
-    function engageCore(
+contract CoreActionBatcher is BaseActionBatcher, Constants {
+    constructor(address deployer_) BaseActionBatcher(deployer_) {}
+
+    function setupCore(
         CoreReport memory report,
         ISafe protocolSafe,
         ISafe opsSafe,
@@ -306,9 +310,8 @@ contract CoreActionBatcher is Constants {
         // Other batchers
         report.multiAdapter.rely(adapterBatcher_);
         report.root.rely(nonCoreBatcher_);
-    }
 
-    function revokeCore(CoreReport memory report) public onlyDeployer {
+        // Revoke batcher permissions
         report.gateway.deny(address(this));
         report.multiAdapter.deny(address(this));
 
@@ -336,21 +339,10 @@ contract CoreActionBatcher is Constants {
     }
 }
 
-contract NonCoreActionBatcher {
-    error NotDeployer();
+contract NonCoreActionBatcher is BaseActionBatcher {
+    constructor(address deployer_) BaseActionBatcher(deployer_) {}
 
-    address public deployer;
-
-    constructor(address deployer_) {
-        deployer = deployer_;
-    }
-
-    modifier onlyDeployer() {
-        require(msg.sender == deployer, NotDeployer());
-        _;
-    }
-
-    function engageNonCore(NonCoreReport memory report) public onlyDeployer {
+    function setupNonCore(NonCoreReport memory report) public onlyDeployer {
         address root = address(report.core.root);
 
         // Rely Root
@@ -419,9 +411,8 @@ contract NonCoreActionBatcher {
         // Endorse methods
         report.core.root.endorse(address(report.asyncRequestManager));
         report.core.root.endorse(address(report.vaultRouter));
-    }
 
-    function revokeNonCore(NonCoreReport memory report) public onlyDeployer {
+        // Revoke batcher permissions
         report.refundEscrowFactory.deny(address(this));
         report.asyncVaultFactory.deny(address(this));
         report.asyncRequestManager.deny(address(this));
@@ -443,21 +434,10 @@ contract NonCoreActionBatcher {
     }
 }
 
-contract AdapterActionBatcher {
-    error NotDeployer();
+contract AdapterActionBatcher is BaseActionBatcher {
+    constructor(address deployer_) BaseActionBatcher(deployer_) {}
 
-    address public deployer;
-
-    constructor(address deployer_) {
-        deployer = deployer_;
-    }
-
-    modifier onlyDeployer() {
-        require(msg.sender == deployer, NotDeployer());
-        _;
-    }
-
-    function engageAdapters(
+    function setupAdapters(
         AdaptersReport memory report,
         ISafe protocolSafe,
         AdapterConnections[] memory connectionList,
@@ -529,9 +509,8 @@ contract AdapterActionBatcher {
             // Set delegate to the right address after setting the ULN config
             report.layerZeroAdapter.setDelegate(layerZeroDelegate);
         }
-    }
 
-    function revokeAdapters(AdaptersReport memory report) public onlyDeployer {
+        // Revoke batcher permissions
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.deny(address(this));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));

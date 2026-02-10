@@ -9,7 +9,11 @@ import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 
-import {SetConfigParam, UlnConfig, ILayerZeroEndpointV2Like} from "../../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
+import {
+    SetConfigParam,
+    UlnConfig,
+    ILayerZeroEndpointV2Like
+} from "../../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 import {
     CoreInput,
     FullInput,

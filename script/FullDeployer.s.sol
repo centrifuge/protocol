@@ -223,13 +223,13 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
         adapterBatcher = new AdapterActionBatcher(deployer_);
 
         _deployCore(address(coreBatcher), input.core);
-        coreBatcher.engageCore(coreReport(), protocolSafe, opsSafe, address(adapterBatcher), address(nonCoreBatcher));
+        coreBatcher.setupCore(coreReport(), protocolSafe, opsSafe, address(adapterBatcher), address(nonCoreBatcher));
 
         _deployNonCore(address(nonCoreBatcher));
-        nonCoreBatcher.engageNonCore(nonCoreReport());
+        nonCoreBatcher.setupNonCore(nonCoreReport());
 
         _deployAdapters(address(adapterBatcher), input.adapters);
-        adapterBatcher.engageAdapters(
+        adapterBatcher.setupAdapters(
             adaptersReport(),
             protocolSafe,
             input.adapters.connections,
@@ -237,10 +237,6 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
             input.adapters.layerZero.delegate,
             vm.toString(address(axelarAdapter))
         );
-
-        adapterBatcher.revokeAdapters(adaptersReport());
-        nonCoreBatcher.revokeNonCore(nonCoreReport());
-        coreBatcher.revokeCore(coreReport());
     }
 
     function _deployCore(address batcher, CoreInput memory input) internal {
