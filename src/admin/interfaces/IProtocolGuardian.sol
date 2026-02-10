@@ -57,6 +57,15 @@ interface IProtocolGuardian {
     /// @param isBlocked True to block outgoing messages, false to unblock
     function blockOutgoing(uint16 centrifugeId, bool isBlocked) external;
 
+    /// @notice Configure TokenBridge relayer address
+    /// @param relayer The relayer address to set
+    function fileTokenBridgeRelayer(address relayer) external;
+
+    /// @notice Configure TokenBridge chain ID mapping
+    /// @param evmChainId The EVM chain ID
+    /// @param centrifugeId The corresponding Centrifuge chain ID
+    function fileTokenBridgeCentrifugeId(uint256 evmChainId, uint16 centrifugeId) external;
+
     /// @notice Updates a contract parameter
     /// @param what Accepts a bytes32 representation of 'safe', 'gateway', or 'sender'
     /// @param data New value for the parameter

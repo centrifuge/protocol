@@ -733,6 +733,22 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(chainlinkAdapter.ccipRouter()), CHAINLINK_CCIP_ROUTER);
     }
+
+    function testTokenBridge(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(protocolGuardian));
+
+        assertEq(tokenBridge.wards(address(root)), 1);
+        assertEq(tokenBridge.wards(address(protocolGuardian)), 1);
+        assertEq(tokenBridge.wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(address(tokenBridge.spoke()), address(spoke));
+
+        // root endorsements
+        assertEq(root.endorsed(address(tokenBridge)), true);
+    }
 }
 
 contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {

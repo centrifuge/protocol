@@ -39,6 +39,7 @@ import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultF
 
 import "forge-std/Script.sol";
 
+import {TokenBridge} from "../src/bridge/TokenBridge.sol";
 import {SubsidyManager} from "../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
@@ -101,6 +102,7 @@ struct FullReport {
     TokenRecoverer tokenRecoverer;
     ProtocolGuardian protocolGuardian;
     OpsGuardian opsGuardian;
+    TokenBridge tokenBridge;
     SubsidyManager subsidyManager;
     RefundEscrowFactory refundEscrowFactory;
     AsyncVaultFactory asyncVaultFactory;
@@ -141,6 +143,7 @@ contract FullActionBatcher is CoreActionBatcher {
     ) public onlyDeployer {
         // Rely Root
         report.tokenRecoverer.rely(address(report.root));
+        report.tokenBridge.rely(address(report.root));
 
         report.subsidyManager.rely(address(report.root));
         report.refundEscrowFactory.rely(address(report.root));
@@ -157,10 +160,7 @@ contract FullActionBatcher is CoreActionBatcher {
 
         report.batchRequestManager.rely(address(report.root));
 
-        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.root));
-        if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(address(report.root));
-        if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.root));
-        if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(address(report.root));
+        _relyAdapters(report, address(report.root));
 
         // Rely spoke
         report.asyncRequestManager.rely(address(report.core.spoke));
@@ -183,26 +183,15 @@ contract FullActionBatcher is CoreActionBatcher {
         report.core.messageDispatcher.rely(address(report.protocolGuardian));
         report.root.rely(address(report.protocolGuardian));
         report.tokenRecoverer.rely(address(report.protocolGuardian));
+        report.tokenBridge.rely(address(report.protocolGuardian));
         // Permanent ward for ongoing adapter maintenance
-        if (address(report.layerZeroAdapter) != address(0)) {
-            report.layerZeroAdapter.rely(address(report.protocolGuardian));
-        }
-        if (address(report.wormholeAdapter) != address(0)) {
-            report.wormholeAdapter.rely(address(report.protocolGuardian));
-        }
-        if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.protocolGuardian));
-        if (address(report.chainlinkAdapter) != address(0)) {
-            report.chainlinkAdapter.rely(address(report.protocolGuardian));
-        }
+        _relyAdapters(report, address(report.protocolGuardian));
 
         // Rely opsGuardian
         report.core.multiAdapter.rely(address(report.opsGuardian));
         report.core.hub.rely(address(report.opsGuardian));
         // Temporal ward for initial adapter wiring
-        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.opsGuardian));
-        if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(address(report.opsGuardian));
-        if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.opsGuardian));
-        if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(address(report.opsGuardian));
+        _relyAdapters(report, address(report.opsGuardian));
 
         // Rely tokenRecoverer
         report.root.rely(address(report.tokenRecoverer));
@@ -261,10 +250,10 @@ contract FullActionBatcher is CoreActionBatcher {
         report.batchRequestManager.file("hub", address(report.core.hub));
 
         // Endorse methods
-
         report.root.endorse(address(report.core.balanceSheet));
         report.root.endorse(address(report.asyncRequestManager));
         report.root.endorse(address(report.vaultRouter));
+        report.root.endorse(address(report.tokenBridge));
 
         // Connect adapters
         for (uint256 i; i < connectionList.length; i++) {
@@ -326,6 +315,7 @@ contract FullActionBatcher is CoreActionBatcher {
     function revokeFull(FullReport memory report) public onlyDeployer {
         if (report.root.wards(address(this)) == 1) report.root.deny(address(this));
         report.tokenRecoverer.deny(address(this));
+        report.tokenBridge.deny(address(this));
 
         report.refundEscrowFactory.deny(address(this));
         report.asyncVaultFactory.deny(address(this));
@@ -346,6 +336,14 @@ contract FullActionBatcher is CoreActionBatcher {
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
+    }
+
+    /// @dev helper function to save some bytes
+    function _relyAdapters(FullReport memory report, address ward) internal {
+        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(ward);
+        if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(ward);
+        if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(ward);
+        if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(ward);
     }
 
     function _setLayerZeroUlnConfig(LayerZeroAdapter adapter, uint32 eid, SetConfigParam[] memory params) internal {
@@ -375,6 +373,7 @@ contract FullDeployer is CoreDeployer {
     TokenRecoverer public tokenRecoverer;
     ProtocolGuardian public protocolGuardian;
     OpsGuardian public opsGuardian;
+    TokenBridge public tokenBridge;
 
     SubsidyManager public subsidyManager;
     RefundEscrowFactory public refundEscrowFactory;
@@ -426,12 +425,19 @@ contract FullDeployer is CoreDeployer {
             )
         );
 
+        tokenBridge = TokenBridge(
+            create3(
+                generateSalt("tokenBridge"),
+                abi.encodePacked(type(TokenBridge).creationCode, abi.encode(spoke, batcher))
+            )
+        );
+
         protocolGuardian = ProtocolGuardian(
             create3(
                 generateSalt("protocolGuardian"),
                 abi.encodePacked(
                     type(ProtocolGuardian).creationCode,
-                    abi.encode(ISafe(address(batcher)), root, gateway, messageDispatcher)
+                    abi.encode(ISafe(address(batcher)), root, gateway, messageDispatcher, tokenBridge)
                 )
             )
         );
@@ -701,6 +707,7 @@ contract FullDeployer is CoreDeployer {
         register("tokenRecoverer", address(tokenRecoverer));
         register("protocolGuardian", address(protocolGuardian));
         register("opsGuardian", address(opsGuardian));
+        register("tokenBridge", address(tokenBridge));
 
         register("refundEscrowFactory", address(refundEscrowFactory));
         register("subsidyManager", address(subsidyManager));
@@ -751,6 +758,7 @@ contract FullDeployer is CoreDeployer {
             tokenRecoverer,
             protocolGuardian,
             opsGuardian,
+            tokenBridge,
             subsidyManager,
             refundEscrowFactory,
             asyncVaultFactory,

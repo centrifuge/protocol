@@ -15,6 +15,8 @@ import {IProtocolGuardian} from "../../../src/admin/interfaces/IProtocolGuardian
 
 import "forge-std/Test.sol";
 
+import {ITokenBridge} from "../../../src/bridge/interfaces/ITokenBridge.sol";
+
 contract IsContract {}
 
 contract ProtocolGuardianTest is Test {
@@ -24,6 +26,7 @@ contract ProtocolGuardianTest is Test {
     ISafe immutable SAFE = ISafe(address(new IsContract()));
     IGateway immutable gateway = IGateway(address(new IsContract()));
     IScheduleAuthMessageSender immutable sender = IScheduleAuthMessageSender(address(new IsContract()));
+    ITokenBridge immutable tokenBridge = ITokenBridge(address(new IsContract()));
 
     address immutable OWNER = makeAddr("owner");
     address immutable UNAUTHORIZED = makeAddr("unauthorized");
@@ -42,7 +45,7 @@ contract ProtocolGuardianTest is Test {
     ProtocolGuardian protocolGuardian;
 
     function setUp() public {
-        protocolGuardian = new ProtocolGuardian(SAFE, root, gateway, sender);
+        protocolGuardian = new ProtocolGuardian(SAFE, root, gateway, sender, tokenBridge);
         vm.deal(address(SAFE), 1 ether);
     }
 
@@ -51,6 +54,7 @@ contract ProtocolGuardianTest is Test {
         assertEq(address(protocolGuardian.root()), address(root));
         assertEq(address(protocolGuardian.gateway()), address(gateway));
         assertEq(address(protocolGuardian.sender()), address(sender));
+        assertEq(address(protocolGuardian.tokenBridge()), address(tokenBridge));
     }
 }
 
@@ -308,5 +312,52 @@ contract ProtocolGuardianTestFile is ProtocolGuardianTest {
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
         protocolGuardian.file("safe", makeAddr("address"));
+    }
+}
+
+contract ProtocolGuardianTestTokenBridge is ProtocolGuardianTest {
+    function testFileRelayerSuccess() public {
+        address relayer = makeAddr("relayer");
+
+        vm.mockCall(
+            address(tokenBridge),
+            abi.encodeWithSignature("file(bytes32,address)", bytes32("relayer"), relayer),
+            abi.encode()
+        );
+        vm.expectCall(
+            address(tokenBridge), abi.encodeWithSignature("file(bytes32,address)", bytes32("relayer"), relayer)
+        );
+
+        vm.prank(address(SAFE));
+        protocolGuardian.fileTokenBridgeRelayer(relayer);
+    }
+
+    function testFileRelayerRevertWhenNotSafe() public {
+        vm.prank(UNAUTHORIZED);
+        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
+        protocolGuardian.fileTokenBridgeRelayer(makeAddr("relayer"));
+    }
+
+    function testfileCentrifugeIdSuccess() public {
+        uint256 evmChainId = 23;
+
+        vm.mockCall(
+            address(tokenBridge),
+            abi.encodeWithSignature("file(bytes32,uint256,uint16)", bytes32("centrifugeId"), evmChainId, CENTRIFUGE_ID),
+            abi.encode()
+        );
+        vm.expectCall(
+            address(tokenBridge),
+            abi.encodeWithSignature("file(bytes32,uint256,uint16)", bytes32("centrifugeId"), evmChainId, CENTRIFUGE_ID)
+        );
+
+        vm.prank(address(SAFE));
+        protocolGuardian.fileTokenBridgeCentrifugeId(evmChainId, CENTRIFUGE_ID);
+    }
+
+    function testfileCentrifugeIdRevertWhenNotSafe() public {
+        vm.prank(UNAUTHORIZED);
+        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
+        protocolGuardian.fileTokenBridgeCentrifugeId(23, CENTRIFUGE_ID);
     }
 }
