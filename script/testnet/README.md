@@ -82,11 +82,11 @@ Test each cross-chain adapter in isolation by creating pools with per-pool adapt
 
 **Three-Phase Workflow:**
 
-| Phase | Entry Point | Frequency | XC Messages | Cost |
-|-------|-------------|-----------|-------------|------|
-| 1 | `runPoolSetup()` | Once | 0 | Hub gas only |
-| 2 | `runAdapterSetup()` | Once per adapter | 2 (SetPoolAdapters + NotifyPool) | ~0.2 ETH |
-| 3 | `runShareClassTest()` | **Repeatable** | 1 (NotifyShareClass) | ~0.1 ETH |
+| Phase | Entry Point           | Frequency        | XC Messages                      | Cost         |
+| ----- | --------------------- | ---------------- | -------------------------------- | ------------ |
+| 1     | `runPoolSetup()`      | Once             | 0                                | Hub gas only |
+| 2     | `runAdapterSetup()`   | Once per adapter | 2 (SetPoolAdapters + NotifyPool) | ~0.2 ETH     |
+| 3     | `runShareClassTest()` | **Repeatable**   | 1 (NotifyShareClass)             | ~0.1 ETH     |
 
 **Comparison with TestAdapterIsolation.s.sol:**
 - **Old:** 6 pools × (setup + adapter config) = 6 adapter setups per test round
@@ -123,12 +123,14 @@ ADAPTER=layerzero forge script ... --sig "runPoolSetup()"
 ```
 
 **Environment Variables:**
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `GAS_TEST_BASE` | 91000 | Base pool index (different from TestAdapterIsolation) |
-| `ADAPTER` | all | Single adapter: axelar, layerzero, wormhole, chainlink |
-| `XC_GAS_PER_CALL` | 0.1 ether | Gas for each cross-chain call |
-| `SPOKE_NETWORK` | arbitrum-sepolia | Target spoke network |
+| Variable          | Default          | Description                                            |
+| ----------------- | ---------------- | ------------------------------------------------------ |
+| `GAS_TEST_BASE`   | 91000            | Base pool index (different from TestAdapterIsolation)  |
+| `ADAPTER`         | all              | Single adapter: axelar, layerzero, wormhole, chainlink |
+| `XC_GAS_PER_CALL` | 0.1 ether        | Gas for each cross-chain call                          |
+| `SPOKE_NETWORK`   | arbitrum-sepolia | Target spoke network                                   |
+
+**Note:** For cross-chain setups, asset registration is optional. If not registered, pools are created without holdings initialization.
 
 ---
 
@@ -228,12 +230,12 @@ forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
 ```
 
 **Environment Variables:**
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ADAPTER_TEST_BASE` | 90000 | Base pool index (increment by 100 for fresh pools) |
-| `SKIP_ASSET_REGISTRATION` | false | Skip asset registration (set true after Step 0) |
-| `XC_GAS_PER_CALL` | 0.1 ether | Gas for each cross-chain call |
-| `SPOKE_NETWORK` | arbitrum-sepolia | Target spoke network |
+| Variable                  | Default          | Description                                        |
+| ------------------------- | ---------------- | -------------------------------------------------- |
+| `ADAPTER_TEST_BASE`       | 90000            | Base pool index (increment by 100 for fresh pools) |
+| `SKIP_ASSET_REGISTRATION` | false            | Skip asset registration (set true after Step 0)    |
+| `XC_GAS_PER_CALL`         | 0.1 ether        | Gas for each cross-chain call                      |
+| `SPOKE_NETWORK`           | arbitrum-sepolia | Target spoke network                               |
 
 **What happens:**
 1. Creates 6 pools (Axelar/LayerZero/Wormhole × Async/Sync)
@@ -306,14 +308,14 @@ cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953511412 0x0002000
 
 With `ADAPTER_TEST_BASE=90100`:
 
-| Adapter   | Type  | Pool Index | Pool ID (decimal)   | Pool ID (hex)        |
-|-----------|-------|------------|---------------------|----------------------|
-| Axelar    | Async | 90100      | 562949953511412     | 0x0002000000015ff4   |
-| Axelar    | Sync  | 90101      | 562949953511413     | 0x0002000000015ff5   |
-| LayerZero | Async | 90110      | 562949953511422     | 0x0002000000015ffe   |
-| LayerZero | Sync  | 90111      | 562949953511423     | 0x0002000000015fff   |
-| Wormhole  | Async | 90120      | 562949953511432     | 0x0002000000016008   |
-| Wormhole  | Sync  | 90121      | 562949953511433     | 0x0002000000016009   |
+| Adapter   | Type  | Pool Index | Pool ID (decimal) | Pool ID (hex)      |
+| --------- | ----- | ---------- | ----------------- | ------------------ |
+| Axelar    | Async | 90100      | 562949953511412   | 0x0002000000015ff4 |
+| Axelar    | Sync  | 90101      | 562949953511413   | 0x0002000000015ff5 |
+| LayerZero | Async | 90110      | 562949953511422   | 0x0002000000015ffe |
+| LayerZero | Sync  | 90111      | 562949953511423   | 0x0002000000015fff |
+| Wormhole  | Async | 90120      | 562949953511432   | 0x0002000000016008 |
+| Wormhole  | Sync  | 90121      | 562949953511433   | 0x0002000000016009 |
 
 **Formula:** `PoolId = (centrifugeId << 48) | poolIndex`
 
