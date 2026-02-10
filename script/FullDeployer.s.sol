@@ -627,7 +627,7 @@ contract FullDeployer is CoreDeployer {
             require(input.adapters.layerZero.delegate != address(0), "LayerZero delegate address cannot be zero");
             require(
                 input.adapters.layerZero.configParams.length == 0
-                    || input.adapters.layerZero.configParams.length != input.adapters.connections.length,
+                    || input.adapters.layerZero.configParams.length == input.adapters.connections.length,
                 "configParams must mimics connections"
             );
 
