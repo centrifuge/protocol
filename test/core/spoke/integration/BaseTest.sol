@@ -97,10 +97,9 @@ contract BaseTest is FullDeployer, Test {
             address(this)
         );
 
-        // Give permissions to address(this) for most call in these tests.
+        // Give permissions to address(this) for most calls in these tests.
         // NOTE: This can be removed when use cases use the correct pranks
-        vm.startPrank(address(coreBatcher));
-        root.rely(address(this));
+        vm.startPrank(address(root));
         gateway.rely(address(this));
         multiAdapter.rely(address(this));
         messageDispatcher.rely(address(this));
@@ -112,9 +111,6 @@ contract BaseTest is FullDeployer, Test {
         contractUpdater.rely(address(this));
         vaultRegistry.rely(address(this));
         tokenRecoverer.rely(address(this));
-        vm.stopPrank();
-
-        vm.startPrank(address(nonCoreBatcher));
         refundEscrowFactory.rely(address(this));
         asyncVaultFactory.rely(address(this));
         asyncRequestManager.rely(address(this));
@@ -127,7 +123,8 @@ contract BaseTest is FullDeployer, Test {
         redemptionRestrictionsHook.rely(address(this));
         vm.stopPrank();
 
-        removeFullDeployerAccess();
+        vm.prank(address(protocolGuardian));
+        root.rely(address(this));
 
         // Ensure test contract has auth on vaultRegistry for testing
         vaultRegistry.rely(address(this));

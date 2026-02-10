@@ -45,7 +45,6 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
             }),
             address(this)
         );
-        super.removeFullDeployerAccess();
 
         // Extra deployment
         valuation = new MockValuation(hubRegistry);

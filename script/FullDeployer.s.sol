@@ -207,7 +207,9 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
     /// @dev Generates a deterministic salt based on contract name and optional VERSION
     function generateSalt(string memory contractName) internal returns (bytes32 salt) {
         salt = makeSalt(contractName, version, deployer);
-        register(contractName, computeCreate3Address(salt, deployer));
+        if (block.chainid != 31337) {
+            register(contractName, computeCreate3Address(salt, deployer));
+        }
     }
 
     function deployFull(FullInput memory input, address deployer_) public {
@@ -235,12 +237,10 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
             input.adapters.layerZero.delegate,
             vm.toString(address(axelarAdapter))
         );
-    }
 
-    function removeFullDeployerAccess() public {
-        coreBatcher.revokeCore(coreReport());
-        nonCoreBatcher.revokeNonCore(nonCoreReport());
         adapterBatcher.revokeAdapters(adaptersReport());
+        nonCoreBatcher.revokeNonCore(nonCoreReport());
+        coreBatcher.revokeCore(coreReport());
     }
 
     function _deployCore(address batcher, CoreInput memory input) internal {

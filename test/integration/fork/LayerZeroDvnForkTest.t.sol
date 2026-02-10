@@ -161,7 +161,7 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
     function _deployBase() internal {
         deployFull(_fullInput(BASE_CENT_ID, ETH_CENT_ID, ETH_EID, BASE_DVN_1, BASE_DVN_2), address(this));
 
-        vm.prank(address(adapterBatcher));
+        vm.prank(address(protocolGuardian));
         layerZeroAdapter.wire(ETH_CENT_ID, abi.encode(ETH_EID, lzAdapter));
     }
 

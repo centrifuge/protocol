@@ -69,16 +69,13 @@ contract BaseTest is FullDeployer, Test {
     IHubRequestManager hubRequestManager;
 
     function _mockStuff() private {
-        vm.startPrank(address(coreBatcher));
-
         cv = new MockVaults(CHAIN_CV, multiAdapter);
-        IAdapter[] memory adapters = new IAdapter[](1);
-        adapters[0] = cv;
-        multiAdapter.setAdapters(CHAIN_CV, PoolId.wrap(0), adapters, uint8(adapters.length), uint8(adapters.length));
-
         valuation = new MockValuation(hubRegistry);
 
-        vm.stopPrank();
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = cv;
+        vm.prank(address(root));
+        multiAdapter.setAdapters(CHAIN_CV, PoolId.wrap(0), adapters, uint8(adapters.length), uint8(adapters.length));
     }
 
     function setUp() public virtual {
@@ -98,7 +95,6 @@ contract BaseTest is FullDeployer, Test {
             address(this)
         );
         _mockStuff();
-        removeFullDeployerAccess();
         hubRequestManager = new MockHubRequestManager();
 
         // Initialize accounts

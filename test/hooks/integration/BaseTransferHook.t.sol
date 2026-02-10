@@ -54,8 +54,6 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             abi.encode(poolEscrow)
         );
 
-        super.removeFullDeployerAccess();
-
         vm.startPrank(ADMIN);
         correctHook = new FullRestrictions(
             address(root),

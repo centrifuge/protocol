@@ -97,8 +97,6 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
             }),
             address(this)
         );
-
-        removeFullDeployerAccess();
     }
 }
 

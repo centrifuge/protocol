@@ -285,8 +285,6 @@ contract EndToEndDeployment is Test {
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         _setAdapter(deploy, remoteCentrifugeId, adapter);
-
-        deploy.removeFullDeployerAccess();
     }
 
     function _setSpoke(FullDeployer deploy, uint16 centrifugeId, CSpoke storage s_) internal {

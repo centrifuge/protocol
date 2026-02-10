@@ -33,7 +33,6 @@ contract LaunchDeployer is FullDeployer {
 
         FullInput memory input = _buildFullInput(config, version);
         deployFull(input, msg.sender);
-        removeFullDeployerAccess();
 
         // Hardcoded wards to double-check a correct mainnet deployment
         if (config.network.isMainnet()) {
