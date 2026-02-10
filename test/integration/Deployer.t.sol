@@ -8,6 +8,7 @@ import {ILayerZeroEndpointV2Like, SetConfigParam} from "../../script/utils/ILaye
 import {
     FullInput,
     FullActionBatcher,
+    AdapterActionBatcher,
     FullDeployer,
     AdaptersInput,
     WormholeInput,
@@ -73,6 +74,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
 
     function setUp() public virtual {
         FullActionBatcher batcher = new FullActionBatcher(address(this));
+        AdapterActionBatcher adapterBatcher = new AdapterActionBatcher(address(this));
 
         _mockRealWormholeContracts();
         _mockBridgeContracts();
@@ -94,10 +96,11 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
                     connections: new AdapterConnections[](0) // TODO: test this
                 })
             }),
-            batcher
+            batcher,
+            adapterBatcher
         );
 
-        removeFullDeployerAccess(batcher);
+        removeFullDeployerAccess(batcher, adapterBatcher);
     }
 }
 

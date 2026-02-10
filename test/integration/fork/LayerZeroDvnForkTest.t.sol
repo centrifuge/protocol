@@ -14,6 +14,7 @@ import {SetConfigParam, UlnConfig, ILayerZeroEndpointV2Like} from "../../../scri
 import {
     FullInput,
     FullActionBatcher,
+    AdapterActionBatcher,
     FullReport,
     FullDeployer,
     AdaptersInput,
@@ -154,33 +155,40 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
     }
 
     function _deployEthereum() internal returns (FullReport memory) {
-        FullActionBatcher batcher = _createBatcher();
+        (FullActionBatcher batcher, AdapterActionBatcher adapterBatcher) = _createBatchers();
 
-        deployFull(_fullInput(ETH_CENT_ID, BASE_CENT_ID, BASE_EID, ETH_DVN_1, ETH_DVN_2), batcher);
+        deployFull(_fullInput(ETH_CENT_ID, BASE_CENT_ID, BASE_EID, ETH_DVN_1, ETH_DVN_2), batcher, adapterBatcher);
 
         return fullReport();
     }
 
     function _deployBase() internal returns (FullReport memory) {
-        FullActionBatcher batcher = _createBatcher();
+        (FullActionBatcher batcher, AdapterActionBatcher adapterBatcher) = _createBatchers();
 
-        deployFull(_fullInput(BASE_CENT_ID, ETH_CENT_ID, ETH_EID, BASE_DVN_1, BASE_DVN_2), batcher);
+        deployFull(_fullInput(BASE_CENT_ID, ETH_CENT_ID, ETH_EID, BASE_DVN_1, BASE_DVN_2), batcher, adapterBatcher);
 
         FullReport memory fullReport = fullReport();
 
-        vm.prank(address(batcher));
+        vm.prank(address(adapterBatcher));
         fullReport.layerZeroAdapter.wire(ETH_CENT_ID, abi.encode(ETH_EID, lzAdapter));
         return fullReport;
     }
 
-    function _createBatcher() internal returns (FullActionBatcher) {
+    function _createBatchers() internal returns (FullActionBatcher, AdapterActionBatcher) {
         bytes32 version = bytes32("1337");
-        return FullActionBatcher(
+        FullActionBatcher batcher = FullActionBatcher(
             create3(
                 makeSalt("fullActionBatcher", version, address(this)),
                 abi.encodePacked(type(FullActionBatcher).creationCode, abi.encode(address(this)))
             )
         );
+        AdapterActionBatcher adapterBatcher = AdapterActionBatcher(
+            create3(
+                makeSalt("adapterActionBatcher", version, address(this)),
+                abi.encodePacked(type(AdapterActionBatcher).creationCode, abi.encode(address(this)))
+            )
+        );
+        return (batcher, adapterBatcher);
     }
 
     function _fullInput(uint16 localId, uint16 remoteId, uint32 remoteEid, address dvn1, address dvn2)

@@ -8,6 +8,7 @@ import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
 
 import {
     FullActionBatcher,
+    AdapterActionBatcher,
     FullDeployer,
     FullInput,
     noAdaptersInput,
@@ -39,6 +40,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
 
     function setUp() public {
         FullActionBatcher batcher = new FullActionBatcher(address(this));
+        AdapterActionBatcher adapterBatcher = new AdapterActionBatcher(address(this));
         super.labelAddresses("");
         super.deployFull(
             FullInput({
@@ -47,7 +49,8 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
                 opsSafe: protocolSafe,
                 adapters: noAdaptersInput()
             }),
-            batcher
+            batcher,
+            adapterBatcher
         );
 
         MockPoolEscrow mockPoolEscrow = new MockPoolEscrow(TEST_POOL_ID);
@@ -58,7 +61,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             abi.encode(poolEscrow)
         );
 
-        super.removeFullDeployerAccess(batcher);
+        super.removeFullDeployerAccess(batcher, adapterBatcher);
 
         vm.startPrank(ADMIN);
         correctHook = new FullRestrictions(

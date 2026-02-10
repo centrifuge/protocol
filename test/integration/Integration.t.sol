@@ -16,6 +16,7 @@ import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 
 import {
     FullActionBatcher,
+    AdapterActionBatcher,
     FullDeployer,
     FullInput,
     noAdaptersInput,
@@ -39,6 +40,7 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
     function setUp() public virtual {
         // Deployment
         FullActionBatcher batcher = new FullActionBatcher(address(this));
+        AdapterActionBatcher adapterBatcher = new AdapterActionBatcher(address(this));
         super.labelAddresses("");
         super.deployFull(
             FullInput({
@@ -47,9 +49,10 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
                 opsSafe: protocolSafe,
                 adapters: noAdaptersInput()
             }),
-            batcher
+            batcher,
+            adapterBatcher
         );
-        super.removeFullDeployerAccess(batcher);
+        super.removeFullDeployerAccess(batcher, adapterBatcher);
 
         // Extra deployment
         valuation = new MockValuation(hubRegistry);

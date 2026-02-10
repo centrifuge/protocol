@@ -6,6 +6,7 @@ import {EnvConfig, Env, prettyEnvString} from "./utils/EnvConfig.s.sol";
 import {
     FullInput,
     FullActionBatcher,
+    AdapterActionBatcher,
     FullDeployer,
     AdaptersInput,
     WormholeInput,
@@ -42,11 +43,19 @@ contract LaunchDeployer is FullDeployer {
             )
         );
 
-        deployFull(input, batcher);
+        AdapterActionBatcher adapterBatcher = AdapterActionBatcher(
+            create3(
+                makeSalt("adapterActionBatcher", input.core.version, msg.sender),
+                abi.encodePacked(type(AdapterActionBatcher).creationCode, abi.encode(msg.sender))
+            )
+        );
 
-        removeFullDeployerAccess(batcher);
+        deployFull(input, batcher, adapterBatcher);
+
+        removeFullDeployerAccess(batcher, adapterBatcher);
 
         batcher.lock();
+        adapterBatcher.lock();
 
         saveDeploymentOutput();
 

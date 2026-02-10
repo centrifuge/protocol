@@ -63,6 +63,7 @@ import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 
 import {
     FullActionBatcher,
+    AdapterActionBatcher,
     FullDeployer,
     FullInput,
     noAdaptersInput,
@@ -275,6 +276,7 @@ contract EndToEndDeployment is Test {
         returns (LocalAdapter adapter)
     {
         FullActionBatcher batcher = new FullActionBatcher(address(deploy));
+        AdapterActionBatcher adapterBatcher = new AdapterActionBatcher(address(deploy));
 
         deploy.labelAddresses(string(abi.encodePacked(vm.toString(localCentrifugeId), "-")));
         deploy.deployFull(
@@ -288,13 +290,14 @@ contract EndToEndDeployment is Test {
                 opsSafe: protocolSafe,
                 adapters: noAdaptersInput()
             }),
-            batcher
+            batcher,
+            adapterBatcher
         );
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         _setAdapter(deploy, remoteCentrifugeId, adapter);
 
-        deploy.removeFullDeployerAccess(batcher);
+        deploy.removeFullDeployerAccess(batcher, adapterBatcher);
     }
 
     function _setSpoke(FullDeployer deploy, uint16 centrifugeId, CSpoke storage s_) internal {

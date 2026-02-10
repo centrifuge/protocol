@@ -129,124 +129,36 @@ struct FullReport {
     ChainlinkAdapter chainlinkAdapter;
 }
 
-contract FullActionBatcher is CoreActionBatcher {
-    constructor(address deployer_) CoreActionBatcher(deployer_) {}
+contract AdapterActionBatcher {
+    error NotDeployer();
 
-    function engageFull(FullReport memory report, FullInput memory input, string memory remoteAxelarAdapter)
+    address public deployer;
+
+    constructor(address deployer_) {
+        deployer = deployer_;
+    }
+
+    modifier onlyDeployer() {
+        require(msg.sender == deployer, NotDeployer());
+        _;
+    }
+
+    function lock() public onlyDeployer {
+        deployer = address(0);
+    }
+
+    function engageAdapters(FullReport memory report, FullInput memory input, string memory remoteAxelarAdapter)
         public
         onlyDeployer
     {
-        // Rely Root
-        report.tokenRecoverer.rely(address(report.root));
-
-        report.subsidyManager.rely(address(report.root));
-        report.refundEscrowFactory.rely(address(report.root));
-        report.asyncVaultFactory.rely(address(report.root));
-        report.asyncRequestManager.rely(address(report.root));
-        report.syncDepositVaultFactory.rely(address(report.root));
-        report.syncManager.rely(address(report.root));
-        report.vaultRouter.rely(address(report.root));
-
-        report.freezeOnlyHook.rely(address(report.root));
-        report.fullRestrictionsHook.rely(address(report.root));
-        report.freelyTransferableHook.rely(address(report.root));
-        report.redemptionRestrictionsHook.rely(address(report.root));
-
-        report.batchRequestManager.rely(address(report.root));
-
         _relyAdapters(report, address(report.root));
-
-        // Rely spoke
-        report.asyncRequestManager.rely(address(report.core.spoke));
-        report.freezeOnlyHook.rely(address(report.core.spoke));
-        report.fullRestrictionsHook.rely(address(report.core.spoke));
-        report.freelyTransferableHook.rely(address(report.core.spoke));
-        report.redemptionRestrictionsHook.rely(address(report.core.spoke));
-
-        // Rely vaultRegistry
-        report.asyncVaultFactory.rely(address(report.core.vaultRegistry));
-        report.syncDepositVaultFactory.rely(address(report.core.vaultRegistry));
-
-        // Rely contractUpdater
-        report.syncManager.rely(address(report.core.contractUpdater));
-        report.asyncRequestManager.rely(address(report.core.contractUpdater));
-
-        // Rely protocolGuardian
-        report.core.gateway.rely(address(report.protocolGuardian));
-        report.core.multiAdapter.rely(address(report.protocolGuardian));
-        report.core.messageDispatcher.rely(address(report.protocolGuardian));
-        report.root.rely(address(report.protocolGuardian));
-        report.tokenRecoverer.rely(address(report.protocolGuardian));
-        // Permanent ward for ongoing adapter maintenance
         _relyAdapters(report, address(report.protocolGuardian));
-
-        // Rely opsGuardian
-        report.core.multiAdapter.rely(address(report.opsGuardian));
-        report.core.hub.rely(address(report.opsGuardian));
-        // Temporal ward for initial adapter wiring
         _relyAdapters(report, address(report.opsGuardian));
 
-        // Rely tokenRecoverer
-        report.root.rely(address(report.tokenRecoverer));
-
-        // Rely messageDispatcher
-        report.root.rely(address(report.core.messageDispatcher));
-        report.tokenRecoverer.rely(address(report.core.messageDispatcher));
-
-        // Rely messageProcessor
-        report.root.rely(address(report.core.messageProcessor));
-        report.tokenRecoverer.rely(address(report.core.messageProcessor));
-
-        // Rely hub
-        report.batchRequestManager.rely(address(report.core.hub));
-
-        // Rely hubHandler
-        report.batchRequestManager.rely(address(report.core.hubHandler));
-
-        // Rely subsidyManager
-        report.refundEscrowFactory.rely(address(report.subsidyManager));
-
-        // Rely asyncRequestManager
-        report.subsidyManager.rely(address(report.asyncRequestManager));
-
-        // Rely asyncVaultFactory
-        report.asyncRequestManager.rely(address(report.asyncVaultFactory));
-
-        // Rely syncDepositVaultFactory
-        report.syncManager.rely(address(report.syncDepositVaultFactory));
-        report.asyncRequestManager.rely(address(report.syncDepositVaultFactory));
-
-        // Rely protocolSafe
+        // Rely protocolSafe on LayerZero (needed for setDelegate calls)
         if (address(report.layerZeroAdapter) != address(0)) {
-            // Needed for setDelegate calls
             report.layerZeroAdapter.rely(address(input.protocolSafe));
         }
-
-        // File methods
-        report.core.messageDispatcher.file("tokenRecoverer", address(report.tokenRecoverer));
-        report.core.messageProcessor.file("tokenRecoverer", address(report.tokenRecoverer));
-
-        report.opsGuardian.file("opsSafe", address(input.opsSafe));
-
-        report.protocolGuardian.file("safe", address(input.protocolSafe));
-
-        report.refundEscrowFactory.file(bytes32("controller"), address(report.subsidyManager));
-
-        report.asyncRequestManager.file("spoke", address(report.core.spoke));
-        report.asyncRequestManager.file("balanceSheet", address(report.core.balanceSheet));
-        report.asyncRequestManager.file("vaultRegistry", address(report.core.vaultRegistry));
-
-        report.syncManager.file("spoke", address(report.core.spoke));
-        report.syncManager.file("balanceSheet", address(report.core.balanceSheet));
-        report.syncManager.file("vaultRegistry", address(report.core.vaultRegistry));
-
-        report.batchRequestManager.file("hub", address(report.core.hub));
-
-        // Endorse methods
-
-        report.root.endorse(address(report.core.balanceSheet));
-        report.root.endorse(address(report.asyncRequestManager));
-        report.root.endorse(address(report.vaultRouter));
 
         // Connect adapters
         for (uint256 i; i < input.adapters.connections.length; i++) {
@@ -287,7 +199,9 @@ contract FullActionBatcher is CoreActionBatcher {
             }
 
             if (n > 0) {
-                assembly { mstore(adapters, n) }
+                assembly {
+                    mstore(adapters, n)
+                }
                 report.core.multiAdapter
                     .setAdapters(
                         connections.centrifugeId,
@@ -305,25 +219,8 @@ contract FullActionBatcher is CoreActionBatcher {
         }
     }
 
-    function revokeFull(FullReport memory report) public onlyDeployer {
-        if (report.root.wards(address(this)) == 1) report.root.deny(address(this));
-        report.tokenRecoverer.deny(address(this));
-
-        report.refundEscrowFactory.deny(address(this));
-        report.asyncVaultFactory.deny(address(this));
-        report.asyncRequestManager.deny(address(this));
-        report.syncDepositVaultFactory.deny(address(this));
-        report.syncManager.deny(address(this));
-        report.vaultRouter.deny(address(this));
-        report.subsidyManager.deny(address(this));
-
-        report.freezeOnlyHook.deny(address(this));
-        report.fullRestrictionsHook.deny(address(this));
-        report.freelyTransferableHook.deny(address(this));
-        report.redemptionRestrictionsHook.deny(address(this));
-
-        report.batchRequestManager.deny(address(this));
-
+    function revokeAdapters(FullReport memory report) public onlyDeployer {
+        report.core.multiAdapter.deny(address(this));
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.deny(address(this));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
@@ -354,6 +251,135 @@ contract FullActionBatcher is CoreActionBatcher {
 
         endpoint.setConfig(oapp, sendLib, params);
         endpoint.setConfig(oapp, recvLib, params);
+    }
+}
+
+contract FullActionBatcher is CoreActionBatcher {
+    constructor(address deployer_) CoreActionBatcher(deployer_) {}
+
+    function engageFull(FullReport memory report, FullInput memory input, address adapterBatcher_) public onlyDeployer {
+        // Rely adapterBatcher on multiAdapter (needed for adapter connection wiring)
+        report.core.multiAdapter.rely(adapterBatcher_);
+
+        // Rely Root
+        report.tokenRecoverer.rely(address(report.root));
+
+        report.subsidyManager.rely(address(report.root));
+        report.refundEscrowFactory.rely(address(report.root));
+        report.asyncVaultFactory.rely(address(report.root));
+        report.asyncRequestManager.rely(address(report.root));
+        report.syncDepositVaultFactory.rely(address(report.root));
+        report.syncManager.rely(address(report.root));
+        report.vaultRouter.rely(address(report.root));
+
+        report.freezeOnlyHook.rely(address(report.root));
+        report.fullRestrictionsHook.rely(address(report.root));
+        report.freelyTransferableHook.rely(address(report.root));
+        report.redemptionRestrictionsHook.rely(address(report.root));
+
+        report.batchRequestManager.rely(address(report.root));
+
+        // Rely spoke
+        report.asyncRequestManager.rely(address(report.core.spoke));
+        report.freezeOnlyHook.rely(address(report.core.spoke));
+        report.fullRestrictionsHook.rely(address(report.core.spoke));
+        report.freelyTransferableHook.rely(address(report.core.spoke));
+        report.redemptionRestrictionsHook.rely(address(report.core.spoke));
+
+        // Rely vaultRegistry
+        report.asyncVaultFactory.rely(address(report.core.vaultRegistry));
+        report.syncDepositVaultFactory.rely(address(report.core.vaultRegistry));
+
+        // Rely contractUpdater
+        report.syncManager.rely(address(report.core.contractUpdater));
+        report.asyncRequestManager.rely(address(report.core.contractUpdater));
+
+        // Rely protocolGuardian
+        report.core.gateway.rely(address(report.protocolGuardian));
+        report.core.multiAdapter.rely(address(report.protocolGuardian));
+        report.core.messageDispatcher.rely(address(report.protocolGuardian));
+        report.root.rely(address(report.protocolGuardian));
+        report.tokenRecoverer.rely(address(report.protocolGuardian));
+
+        // Rely opsGuardian
+        report.core.multiAdapter.rely(address(report.opsGuardian));
+        report.core.hub.rely(address(report.opsGuardian));
+
+        // Rely tokenRecoverer
+        report.root.rely(address(report.tokenRecoverer));
+
+        // Rely messageDispatcher
+        report.root.rely(address(report.core.messageDispatcher));
+        report.tokenRecoverer.rely(address(report.core.messageDispatcher));
+
+        // Rely messageProcessor
+        report.root.rely(address(report.core.messageProcessor));
+        report.tokenRecoverer.rely(address(report.core.messageProcessor));
+
+        // Rely hub
+        report.batchRequestManager.rely(address(report.core.hub));
+
+        // Rely hubHandler
+        report.batchRequestManager.rely(address(report.core.hubHandler));
+
+        // Rely subsidyManager
+        report.refundEscrowFactory.rely(address(report.subsidyManager));
+
+        // Rely asyncRequestManager
+        report.subsidyManager.rely(address(report.asyncRequestManager));
+
+        // Rely asyncVaultFactory
+        report.asyncRequestManager.rely(address(report.asyncVaultFactory));
+
+        // Rely syncDepositVaultFactory
+        report.syncManager.rely(address(report.syncDepositVaultFactory));
+        report.asyncRequestManager.rely(address(report.syncDepositVaultFactory));
+
+        // File methods
+        report.core.messageDispatcher.file("tokenRecoverer", address(report.tokenRecoverer));
+        report.core.messageProcessor.file("tokenRecoverer", address(report.tokenRecoverer));
+
+        report.opsGuardian.file("opsSafe", address(input.opsSafe));
+
+        report.protocolGuardian.file("safe", address(input.protocolSafe));
+
+        report.refundEscrowFactory.file(bytes32("controller"), address(report.subsidyManager));
+
+        report.asyncRequestManager.file("spoke", address(report.core.spoke));
+        report.asyncRequestManager.file("balanceSheet", address(report.core.balanceSheet));
+        report.asyncRequestManager.file("vaultRegistry", address(report.core.vaultRegistry));
+
+        report.syncManager.file("spoke", address(report.core.spoke));
+        report.syncManager.file("balanceSheet", address(report.core.balanceSheet));
+        report.syncManager.file("vaultRegistry", address(report.core.vaultRegistry));
+
+        report.batchRequestManager.file("hub", address(report.core.hub));
+
+        // Endorse methods
+
+        report.root.endorse(address(report.core.balanceSheet));
+        report.root.endorse(address(report.asyncRequestManager));
+        report.root.endorse(address(report.vaultRouter));
+    }
+
+    function revokeFull(FullReport memory report) public onlyDeployer {
+        if (report.root.wards(address(this)) == 1) report.root.deny(address(this));
+        report.tokenRecoverer.deny(address(this));
+
+        report.refundEscrowFactory.deny(address(this));
+        report.asyncVaultFactory.deny(address(this));
+        report.asyncRequestManager.deny(address(this));
+        report.syncDepositVaultFactory.deny(address(this));
+        report.syncManager.deny(address(this));
+        report.vaultRouter.deny(address(this));
+        report.subsidyManager.deny(address(this));
+
+        report.freezeOnlyHook.deny(address(this));
+        report.fullRestrictionsHook.deny(address(this));
+        report.freelyTransferableHook.deny(address(this));
+        report.redemptionRestrictionsHook.deny(address(this));
+
+        report.batchRequestManager.deny(address(this));
     }
 }
 
@@ -400,7 +426,7 @@ contract FullDeployer is CoreDeployer {
     WormholeAdapter wormholeAdapter;
     LayerZeroAdapter layerZeroAdapter;
 
-    function deployFull(FullInput memory input, FullActionBatcher batcher) public {
+    function deployFull(FullInput memory input, FullActionBatcher batcher, AdapterActionBatcher adapterBatcher) public {
         _init(input.core.version, batcher.deployer());
 
         protocolSafe = input.protocolSafe;
@@ -636,8 +662,8 @@ contract FullDeployer is CoreDeployer {
                     generateSalt("layerZeroAdapter"),
                     abi.encodePacked(
                         type(LayerZeroAdapter).creationCode,
-                        // Set delegate to batcher initially, to be able to set ULN config
-                        abi.encode(multiAdapter, input.adapters.layerZero.endpoint, batcher, batcher)
+                        // Set delegate to adapterBatcher initially, to be able to set ULN config
+                        abi.encode(multiAdapter, input.adapters.layerZero.endpoint, adapterBatcher, adapterBatcher)
                     )
                 )
             );
@@ -652,7 +678,7 @@ contract FullDeployer is CoreDeployer {
                     generateSalt("wormholeAdapter"),
                     abi.encodePacked(
                         type(WormholeAdapter).creationCode,
-                        abi.encode(multiAdapter, input.adapters.wormhole.relayer, batcher)
+                        abi.encode(multiAdapter, input.adapters.wormhole.relayer, adapterBatcher)
                     )
                 )
             );
@@ -670,7 +696,10 @@ contract FullDeployer is CoreDeployer {
                     abi.encodePacked(
                         type(AxelarAdapter).creationCode,
                         abi.encode(
-                            multiAdapter, input.adapters.axelar.gateway, input.adapters.axelar.gasService, batcher
+                            multiAdapter,
+                            input.adapters.axelar.gateway,
+                            input.adapters.axelar.gasService,
+                            adapterBatcher
                         )
                     )
                 )
@@ -688,7 +717,7 @@ contract FullDeployer is CoreDeployer {
                     generateSalt("chainlinkAdapter"),
                     abi.encodePacked(
                         type(ChainlinkAdapter).creationCode,
-                        abi.encode(multiAdapter, input.adapters.chainlink.ccipRouter, batcher)
+                        abi.encode(multiAdapter, input.adapters.chainlink.ccipRouter, adapterBatcher)
                     )
                 )
             );
@@ -731,7 +760,8 @@ contract FullDeployer is CoreDeployer {
         if (input.adapters.layerZero.shouldDeploy) register("layerZeroAdapter", address(layerZeroAdapter));
         if (input.adapters.chainlink.shouldDeploy) register("chainlinkAdapter", address(chainlinkAdapter));
 
-        batcher.engageFull(fullReport(), input, vm.toString(address(axelarAdapter)));
+        batcher.engageFull(fullReport(), input, address(adapterBatcher));
+        adapterBatcher.engageAdapters(fullReport(), input, vm.toString(address(axelarAdapter)));
     }
 
     function fullReport() public view returns (FullReport memory) {
@@ -769,9 +799,10 @@ contract FullDeployer is CoreDeployer {
         );
     }
 
-    function removeFullDeployerAccess(FullActionBatcher batcher) public {
+    function removeFullDeployerAccess(FullActionBatcher batcher, AdapterActionBatcher adapterBatcher) public {
         removeCoreDeployerAccess(batcher);
         batcher.revokeFull(fullReport());
+        adapterBatcher.revokeAdapters(fullReport());
     }
 }
 

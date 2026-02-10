@@ -14,6 +14,7 @@ import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubReques
 
 import {
     FullActionBatcher,
+    AdapterActionBatcher,
     FullDeployer,
     FullInput,
     noAdaptersInput,
@@ -85,6 +86,7 @@ contract BaseTest is FullDeployer, Test {
     function setUp() public virtual {
         // Deployment
         FullActionBatcher batcher = new FullActionBatcher(address(this));
+        AdapterActionBatcher adapterBatcher = new AdapterActionBatcher(address(this));
 
         labelAddresses("");
         deployFull(
@@ -94,10 +96,11 @@ contract BaseTest is FullDeployer, Test {
                 opsSafe: opsSafe,
                 adapters: noAdaptersInput()
             }),
-            batcher
+            batcher,
+            adapterBatcher
         );
         _mockStuff(batcher);
-        removeFullDeployerAccess(batcher);
+        removeFullDeployerAccess(batcher, adapterBatcher);
         hubRequestManager = new MockHubRequestManager();
 
         // Initialize accounts
