@@ -200,9 +200,7 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
         });
 
         return FullInput({
-            core: CoreInput({
-                centrifugeId: localId, version: bytes32("1337"), root: address(0), txLimits: defaultTxLimits()
-            }),
+            core: CoreInput({centrifugeId: localId, version: bytes32("1337"), txLimits: defaultTxLimits()}),
             adminSafe: adminSafe,
             opsSafe: opsSafe,
             adapters: AdaptersInput({

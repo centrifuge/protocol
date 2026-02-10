@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {RPCComposer} from "./utils/RPCComposer.s.sol";
+import {EnvConfig, Env} from "./utils/EnvConfig.s.sol";
 import {GraphQLQuery} from "./utils/GraphQLQuery.s.sol";
-import {GraphQLConstants} from "./utils/GraphQLConstants.sol";
 
 import {IERC20Metadata} from "../src/misc/interfaces/IERC20.sol";
 
@@ -39,22 +38,21 @@ struct VerificationResult {
     VerificationStatus status;
 }
 
-contract ValidateContractsFromFactories is Script, GraphQLQuery, RPCComposer {
+contract ValidateContractsFromFactories is Script, GraphQLQuery {
     using stdJson for string;
 
-    string internal _graphQLUrl;
-    string internal _etherscanKey;
-    string internal _verifier;
-    string internal _verifierUrl;
-    string internal _config;
-    uint16 internal _centrifugeId;
+    EnvConfig config;
+
+    constructor() {
+        config = Env.load(vm.envString("NETWORK"));
+    }
 
     function _graphQLApi() internal view override returns (string memory) {
-        return _graphQLUrl;
+        return config.network.graphQLApi();
     }
 
     function run() public {
-        _configure();
+        vm.createSelectFork(config.network.rpcUrl());
 
         AddressesToVerify memory addr = _fetchAddresses();
 
@@ -72,52 +70,40 @@ contract ValidateContractsFromFactories is Script, GraphQLQuery, RPCComposer {
         _logSummary(results);
     }
 
-    function _configure() internal {
-        string memory network = vm.envString("NETWORK");
-        string memory configFile = string.concat("env/", network, ".json");
-        _config = vm.readFile(configFile);
-
-        string memory environment = _config.readString("$.network.environment");
-        bool isTestnet = keccak256(bytes(environment)) == keccak256("testnet");
-        _graphQLUrl = isTestnet ? GraphQLConstants.TESTNET_API : GraphQLConstants.PRODUCTION_API;
-
-        // Create fork to read from deployed contracts
-        vm.createSelectFork(_getRpcUrl(network));
-
-        _centrifugeId = uint16(_config.readUint("$.network.centrifugeId"));
-        _etherscanKey = vm.envOr("ETHERSCAN_API_KEY", string(""));
-
-        string memory configVerifierUrl = _config.readStringOr("$.network.verifierUrl", "");
-        _verifierUrl = bytes(configVerifierUrl).length > 0
-            ? string.concat(configVerifierUrl, "?")
-            : string.concat("https://api.etherscan.io/v2/api?chainid=", vm.toString(block.chainid), "&");
-        _verifier = _config.readStringOr("$.network.verifier", "");
+    function _urlQuerySeparator(string memory url) internal pure returns (string memory) {
+        bytes memory urlBytes = bytes(url);
+        for (uint256 i = 0; i < urlBytes.length; i++) {
+            if (urlBytes[i] == "?") return "&";
+        }
+        return "?";
     }
 
     function _fetchAddresses() internal returns (AddressesToVerify memory addr) {
         string memory orderBy =
             string.concat("orderBy: ", _jsonString("createdAt"), ", orderDirection: ", _jsonString("desc"));
 
+        string memory centrifugeIdValue = _jsonValue(config.network.centrifugeId);
+
         // forgefmt: disable-next-item
         string memory json = _queryGraphQL(string.concat(
             "onOffRampManagers(limit: 1, ", orderBy, ", where: {",
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", centrifugeIdValue,
             "}) { items { address } }",
             "merkleProofManagers(limit: 1, ", orderBy, ", where: {",
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", centrifugeIdValue,
             "}) { items { address } }",
             "escrows(limit: 1, ", orderBy, ", where: {",
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", centrifugeIdValue,
             "}) { items { address } }",
             "tokenInstances(limit: 1, ", orderBy, ", where: {",
-            "  centrifugeId: ", _jsonValue(_centrifugeId),
+            "  centrifugeId: ", centrifugeIdValue,
             "}) { items { address } }",
             "asyncVaults: vaults(limit: 1, ", orderBy, ", where: {",
-            "  centrifugeId: ", _jsonValue(_centrifugeId), ",",
+            "  centrifugeId: ", centrifugeIdValue, ",",
             "  kind: Async",
             "}) { items { id } }",
             "syncDepositVaults: vaults(limit: 1, ", orderBy, ", where: {",
-            "  centrifugeId: ", _jsonValue(_centrifugeId), ",",
+            "  centrifugeId: ", centrifugeIdValue, ",",
             "  kind: SyncDepositAsyncRedeem",
             "}) { items { id } }"
         ));
@@ -157,9 +143,11 @@ contract ValidateContractsFromFactories is Script, GraphQLQuery, RPCComposer {
             vm.toString(contractAddress),
             " ",
             contractName,
-            (bytes(_verifier).length > 0)
-                ? string.concat(" --verifier ", _verifier, " --verifier-url ", _verifierUrl)
-                : string.concat(" --chain ", vm.toString(block.chainid), " --etherscan-api-key ", _etherscanKey),
+            (bytes(config.network.verifier).length > 0)
+                ? string.concat(" --verifier ", config.network.verifier, " --verifier-url ", config.network.verifierUrl)
+                : string.concat(
+                    " --chain ", vm.toString(block.chainid), " --etherscan-api-key ", config.etherscanApiKey()
+                ),
             " --constructor-args ",
             vm.toString(constructorArgs),
             " --watch",
@@ -183,11 +171,12 @@ contract ValidateContractsFromFactories is Script, GraphQLQuery, RPCComposer {
         cmd[1] = "-c";
         cmd[2] = string.concat(
             "curl -s '",
-            _verifierUrl,
+            config.network.verifierUrl,
+            _urlQuerySeparator(config.network.verifierUrl),
             "module=contract&action=getsourcecode&address=",
             vm.toString(contractAddress),
             "&apikey=",
-            _etherscanKey,
+            config.etherscanApiKey(),
             "'"
         );
 
@@ -256,9 +245,7 @@ contract ValidateContractsFromFactories is Script, GraphQLQuery, RPCComposer {
     }
 
     function _getPoolEscrowArgs(address escrow) internal view returns (bytes memory) {
-        // deployer is the factory address (factory passes address(this) as deployer)
-        address factory = _config.readAddress("$.contracts.poolEscrowFactory.address");
-        return abi.encode(PoolEscrow(escrow).poolId(), factory);
+        return abi.encode(PoolEscrow(escrow).poolId(), config.contracts.poolEscrowFactory);
     }
 
     function _getRefundEscrowArgs() internal pure returns (bytes memory) {
@@ -284,9 +271,9 @@ contract ValidateContractsFromFactories is Script, GraphQLQuery, RPCComposer {
 
     function _logSummary(VerificationResult[] memory results) internal pure {
         console.log("");
-        console.log("========================================");
+        console.log("----------------------------------------");
         console.log("       VERIFICATION SUMMARY");
-        console.log("========================================");
+        console.log("----------------------------------------");
         console.log("");
 
         uint256 verified;
