@@ -27,30 +27,9 @@ contract LaunchDeployer is FullDeployer {
         startDeploymentOutput();
 
         EnvConfig memory config = Env.load(prettyEnvString("NETWORK"));
-        bytes32 version = prettyEnvString("VERSION").toBytes32();
-
-        DeployerInput memory input = _buildDeployerInput(config, version);
-        deployFull(input, msg.sender);
-
-        // Hardcoded wards to double-check a correct mainnet deployment
-        if (config.network.isMainnet()) {
-            require(address(input.protocolSafe) == 0x9711730060C73Ee7Fcfe1890e8A0993858a7D225, "wrong safe admin");
-            require(address(input.opsSafe) == 0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16, "wrong ops admin");
-            require(msg.sender == 0x926702C7f1af679a8f99A40af8917DDd82fD6F6c, "wrong deployer");
-        }
-
-        saveDeploymentOutput();
-        vm.stopBroadcast();
-    }
-
-    function _buildDeployerInput(EnvConfig memory config, bytes32 version)
-        internal
-        view
-        returns (DeployerInput memory)
-    {
-        return DeployerInput({
+        DeployerInput memory input = DeployerInput({
             centrifugeId: config.network.centrifugeId,
-            version: version,
+            version: prettyEnvString("VERSION").toBytes32(),
             txLimits: config.network.buildBatchLimits(),
             protocolSafe: ISafe(config.network.protocolAdmin),
             opsSafe: ISafe(config.network.opsAdmin),
@@ -75,5 +54,17 @@ contract LaunchDeployer is FullDeployer {
                 connections: config.network.buildConnections()
             })
         });
+
+        deployFull(input, msg.sender);
+
+        // Hardcoded wards to double-check a correct mainnet deployment
+        if (config.network.isMainnet()) {
+            require(address(protocolGuardian.safe()) == 0x9711730060C73Ee7Fcfe1890e8A0993858a7D225, "wrong safe admin");
+            require(address(opsGuardian.opsSafe()) == 0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16, "wrong ops admin");
+            require(msg.sender == 0x926702C7f1af679a8f99A40af8917DDd82fD6F6c, "wrong deployer");
+        }
+
+        saveDeploymentOutput();
+        vm.stopBroadcast();
     }
 }

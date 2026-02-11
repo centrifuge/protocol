@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {GraphQLConstants} from "./GraphQLConstants.sol";
 
 import "forge-std/Vm.sol";
-import "forge-std/Script.sol";
 
 import {AdapterConnections} from "../../src/deployment/ActionBatchers.sol";
 import {UlnConfig, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
@@ -423,5 +422,4 @@ library NetworkConfigLib {
 function prettyEnvString(string memory name) view returns (string memory value) {
     value = vm.envOr(name, string(""));
     if (bytes(value).length == 0) revert(string.concat("Missing env var: ", name));
-    else console.log(string.concat("Loaded env var: ", name));
 }
