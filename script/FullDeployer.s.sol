@@ -105,16 +105,12 @@ struct AdaptersInput {
     AdapterConnections[] connections;
 }
 
-struct CoreInput {
+struct DeployerInput {
     uint16 centrifugeId;
     bytes32 version;
     uint8[32] txLimits;
     ISafe protocolSafe;
     ISafe opsSafe;
-}
-
-struct FullInput {
-    CoreInput core;
     AdaptersInput adapters;
 }
 
@@ -130,9 +126,6 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
 
     bytes32 public version;
     address public deployer;
-
-    ISafe public protocolSafe;
-    ISafe public opsSafe;
 
     Root public root;
     TokenRecoverer public tokenRecoverer;
@@ -210,23 +203,20 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
         register(contractName, computeCreate3Address(salt, deployer));
     }
 
-    function deployFull(FullInput memory input, address deployer_) public {
-        _init(input.core.version, deployer_);
-
-        protocolSafe = input.core.protocolSafe;
-        opsSafe = input.core.opsSafe;
+    function deployFull(DeployerInput memory input, address deployer_) public {
+        _init(input.version, deployer_);
 
         address coreBatcherAddr = computeCreate3Address(makeSalt("coreBatcher", version, deployer), deployer);
         address nonCoreBatcherAddr = computeCreate3Address(makeSalt("nonCoreBatcher", version, deployer), deployer);
         address adapterBatcherAddr = computeCreate3Address(makeSalt("adapterBatcher", version, deployer), deployer);
 
-        _deployCore(coreBatcherAddr, input.core);
+        _deployCore(coreBatcherAddr, input);
         coreBatcher = CoreActionBatcher(
             create3(
                 generateSalt("coreBatcher"),
                 abi.encodePacked(
                     type(CoreActionBatcher).creationCode,
-                    abi.encode(coreReport(), protocolSafe, opsSafe, adapterBatcherAddr, nonCoreBatcherAddr)
+                    abi.encode(coreReport(), input.protocolSafe, input.opsSafe, adapterBatcherAddr, nonCoreBatcherAddr)
                 )
             )
         );
@@ -247,7 +237,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
                     type(AdapterActionBatcher).creationCode,
                     abi.encode(
                         adaptersReport(),
-                        protocolSafe,
+                        input.protocolSafe,
                         input.adapters.connections,
                         input.adapters.layerZero.configParams,
                         input.adapters.layerZero.delegate,
@@ -258,7 +248,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
         );
     }
 
-    function _deployCore(address batcher, CoreInput memory input) internal {
+    function _deployCore(address batcher, DeployerInput memory input) internal {
         // Admin
         root =
             Root(create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));

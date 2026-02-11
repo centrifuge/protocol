@@ -10,8 +10,7 @@ import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 
 import {
-    CoreInput,
-    FullInput,
+    DeployerInput,
     NonCoreReport,
     FullDeployer,
     AdaptersInput,
@@ -97,6 +96,9 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
     address constant BASE_DVN_1 = 0x554833698Ae0FB22ECC90B01222903fD62CA4B47; // Canary
     address constant BASE_DVN_2 = 0x9e059a54699a285714207b43B055483E78FAac25; // LayerZero Labs
 
+    ISafe protocolSafe;
+    ISafe opsSafe;
+
     address testToken;
     address lzAdapter;
 
@@ -172,21 +174,19 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
     function _fullInput(uint16 localId, uint16 remoteId, uint32 remoteEid, address dvn1, address dvn2)
         internal
         view
-        returns (FullInput memory)
+        returns (DeployerInput memory)
     {
         AdapterConnections[] memory connections = new AdapterConnections[](1);
         connections[0] = AdapterConnections({
             centrifugeId: remoteId, layerZeroId: remoteEid, wormholeId: 0, axelarId: "", chainlinkId: 0, threshold: 1
         });
 
-        return FullInput({
-            core: CoreInput({
-                centrifugeId: localId,
-                version: bytes32("1337"),
-                txLimits: defaultTxLimits(),
-                protocolSafe: protocolSafe,
-                opsSafe: opsSafe
-            }),
+        return DeployerInput({
+            centrifugeId: localId,
+            version: bytes32("1337"),
+            txLimits: defaultTxLimits(),
+            protocolSafe: protocolSafe,
+            opsSafe: opsSafe,
             adapters: AdaptersInput({
                 wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
                 axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),

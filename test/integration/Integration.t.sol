@@ -12,9 +12,11 @@ import {AssetId} from "../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {MAX_MESSAGE_COST as GAS} from "../../src/core/messaging/interfaces/IGasService.sol";
 
+import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
+
 import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 
-import {CoreInput, FullDeployer, FullInput, noAdaptersInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
+import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -33,14 +35,12 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
         // Deployment
         super.labelAddresses("");
         super.deployFull(
-            FullInput({
-                core: CoreInput({
-                    centrifugeId: LOCAL_CENTRIFUGE_ID,
-                    version: bytes32(0),
-                    txLimits: defaultTxLimits(),
-                    protocolSafe: protocolSafe,
-                    opsSafe: protocolSafe
-                }),
+            DeployerInput({
+                centrifugeId: LOCAL_CENTRIFUGE_ID,
+                version: bytes32(0),
+                txLimits: defaultTxLimits(),
+                protocolSafe: ISafe(makeAddr("ProtocolSafe")),
+                opsSafe: ISafe(makeAddr("OpsSafe")),
                 adapters: noAdaptersInput()
             }),
             address(this)
@@ -73,8 +73,8 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
 
         // Extra deployment
         usdc = new ERC20(6);
-        usdc.rely(address(protocolSafe));
-        vm.startPrank(address(protocolSafe));
+        usdc.rely(address(protocolGuardian.safe()));
+        vm.startPrank(address(protocolGuardian.safe()));
         usdc.file("name", "USD Coin");
         usdc.file("symbol", "USDC");
         vm.stopPrank();
@@ -87,12 +87,12 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
     }
 
     function _mintUSDC(address receiver, uint256 amount) internal {
-        vm.prank(address(protocolSafe));
+        vm.prank(address(protocolGuardian.safe()));
         usdc.mint(receiver, amount);
     }
 
     function _createPool() internal {
-        vm.prank(address(protocolSafe));
+        vm.prank(address(opsGuardian.opsSafe()));
         opsGuardian.createPool(POOL_A, FM, USD_ID);
 
         vm.prank(FM);

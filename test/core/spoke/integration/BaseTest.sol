@@ -23,13 +23,7 @@ import {ISafe} from "../../../../src/admin/interfaces/ISafe.sol";
 import {AsyncVault} from "../../../../src/vaults/AsyncVault.sol";
 import {SyncDepositVault} from "../../../../src/vaults/SyncDepositVault.sol";
 
-import {
-    CoreInput,
-    FullDeployer,
-    FullInput,
-    noAdaptersInput,
-    defaultTxLimits
-} from "../../../../script/FullDeployer.s.sol";
+import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../../../script/FullDeployer.s.sol";
 
 import {MockAdapter} from "../../mocks/MockAdapter.sol";
 import {MockCentrifugeChain} from "../mocks/MockCentrifugeChain.sol";
@@ -51,8 +45,6 @@ contract BaseTest is FullDeployer, Test {
     address investor = makeAddr("investor");
     address nonMember = makeAddr("nonMember");
     address randomUser = makeAddr("randomUser");
-    address immutable ADMIN = address(protocolSafe);
-
     uint128 constant MAX_UINT128 = type(uint128).max;
     uint64 constant MAX_UINT64 = type(uint64).max;
 
@@ -84,14 +76,12 @@ contract BaseTest is FullDeployer, Test {
         labelAddresses("");
 
         deployFull(
-            FullInput({
-                core: CoreInput({
-                    centrifugeId: THIS_CHAIN_ID,
-                    version: bytes32(0),
-                    txLimits: defaultTxLimits(),
-                    protocolSafe: ISafe(ADMIN),
-                    opsSafe: ISafe(ADMIN)
-                }),
+            DeployerInput({
+                centrifugeId: THIS_CHAIN_ID,
+                version: bytes32(0),
+                txLimits: defaultTxLimits(),
+                protocolSafe: ISafe(makeAddr("ProtocolSafe")),
+                opsSafe: ISafe(makeAddr("OpsSafe")),
                 adapters: noAdaptersInput()
             }),
             address(this)

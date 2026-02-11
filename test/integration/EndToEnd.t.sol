@@ -61,8 +61,7 @@ import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 
-import {CoreInput} from "../../script/FullDeployer.s.sol";
-import {FullDeployer, FullInput, noAdaptersInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
+import {FullDeployer, DeployerInput, noAdaptersInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -270,14 +269,12 @@ contract EndToEndDeployment is Test {
     {
         deploy.labelAddresses(string(abi.encodePacked(vm.toString(localCentrifugeId), "-")));
         deploy.deployFull(
-            FullInput({
-                core: CoreInput({
-                    centrifugeId: localCentrifugeId,
-                    version: bytes32(abi.encodePacked(localCentrifugeId)),
-                    txLimits: defaultTxLimits(),
-                    protocolSafe: protocolSafe,
-                    opsSafe: protocolSafe
-                }),
+            DeployerInput({
+                centrifugeId: localCentrifugeId,
+                version: bytes32(abi.encodePacked(localCentrifugeId)),
+                txLimits: defaultTxLimits(),
+                protocolSafe: protocolSafe,
+                opsSafe: protocolSafe,
                 adapters: noAdaptersInput()
             }),
             address(deploy)

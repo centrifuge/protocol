@@ -4,8 +4,7 @@ pragma solidity 0.8.28;
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
 import {
-    CoreInput,
-    FullInput,
+    DeployerInput,
     FullDeployer,
     AdaptersInput,
     WormholeInput,
@@ -74,14 +73,12 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
         _mockRealWormholeContracts();
         _mockBridgeContracts();
         deployFull(
-            FullInput({
-                core: CoreInput({
-                    centrifugeId: CENTRIFUGE_ID,
-                    version: bytes32(0),
-                    txLimits: defaultTxLimits(),
-                    protocolSafe: ADMIN_SAFE,
-                    opsSafe: OPS_SAFE
-                }),
+            DeployerInput({
+                centrifugeId: CENTRIFUGE_ID,
+                version: bytes32(0),
+                txLimits: defaultTxLimits(),
+                protocolSafe: ADMIN_SAFE,
+                opsSafe: OPS_SAFE,
                 adapters: AdaptersInput({
                     wormhole: WormholeInput({shouldDeploy: true, relayer: WORMHOLE_RELAYER}),
                     axelar: AxelarInput({shouldDeploy: true, gateway: AXELAR_GATEWAY, gasService: AXELAR_GAS_SERVICE}),

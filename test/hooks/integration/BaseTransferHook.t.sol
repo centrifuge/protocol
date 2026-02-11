@@ -4,9 +4,11 @@ pragma solidity 0.8.28;
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ESCROW_HOOK_ID} from "../../../src/core/spoke/interfaces/ITransferHook.sol";
 
+import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
+
 import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
 
-import {CoreInput, FullDeployer, FullInput, noAdaptersInput, defaultTxLimits} from "../../../script/FullDeployer.s.sol";
+import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -22,7 +24,6 @@ contract MockPoolEscrow {
 
 contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     uint16 constant LOCAL_CENTRIFUGE_ID = IntegrationConstants.LOCAL_CENTRIFUGE_ID;
-    address immutable ADMIN = address(protocolSafe);
     uint256 constant GAS = IntegrationConstants.INTEGRATION_DEFAULT_SUBSIDY;
     address constant USER = address(0x1234);
     PoolId constant TEST_POOL_ID = PoolId.wrap(999);
@@ -33,14 +34,12 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     function setUp() public {
         super.labelAddresses("");
         super.deployFull(
-            FullInput({
-                core: CoreInput({
-                    centrifugeId: LOCAL_CENTRIFUGE_ID,
-                    version: bytes32(0),
-                    txLimits: defaultTxLimits(),
-                    protocolSafe: protocolSafe,
-                    opsSafe: protocolSafe
-                }),
+            DeployerInput({
+                centrifugeId: LOCAL_CENTRIFUGE_ID,
+                version: bytes32(0),
+                txLimits: defaultTxLimits(),
+                protocolSafe: ISafe(makeAddr("ProtocolSafe")),
+                opsSafe: ISafe(makeAddr("OpsSafe")),
                 adapters: noAdaptersInput()
             }),
             address(this)
@@ -54,13 +53,13 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             abi.encode(poolEscrow)
         );
 
-        vm.startPrank(ADMIN);
+        vm.startPrank(address(protocolGuardian.safe()));
         correctHook = new FullRestrictions(
             address(root),
             address(spoke),
             address(balanceSheet),
             address(spoke),
-            ADMIN,
+            address(protocolGuardian.safe()),
             address(poolEscrowFactory),
             poolEscrow
         );

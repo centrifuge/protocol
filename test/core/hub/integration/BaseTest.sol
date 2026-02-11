@@ -12,13 +12,9 @@ import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {MAX_MESSAGE_COST} from "../../../../src/core/messaging/interfaces/IGasService.sol";
 import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
-import {
-    CoreInput,
-    FullDeployer,
-    FullInput,
-    noAdaptersInput,
-    defaultTxLimits
-} from "../../../../script/FullDeployer.s.sol";
+import {ISafe} from "../../../../src/admin/interfaces/ISafe.sol";
+
+import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../../../script/FullDeployer.s.sol";
 
 import {MockVaults} from "../mocks/MockVaults.sol";
 import {MockValuation} from "../../mocks/MockValuation.sol";
@@ -34,7 +30,6 @@ contract BaseTest is FullDeployer, Test {
     bytes32 constant SC_HOOK = bytes32("ExampleHookData");
     bool constant IS_SNAPSHOT = true;
 
-    address immutable ADMIN = address(protocolSafe);
     address immutable FM = makeAddr("FM");
     address immutable ANY = makeAddr("Anyone");
     bytes32 immutable INVESTOR = bytes32("Investor");
@@ -82,14 +77,12 @@ contract BaseTest is FullDeployer, Test {
         // Deployment
         labelAddresses("");
         deployFull(
-            FullInput({
-                core: CoreInput({
-                    centrifugeId: CHAIN_CP,
-                    version: bytes32(0),
-                    txLimits: defaultTxLimits(),
-                    protocolSafe: protocolSafe,
-                    opsSafe: opsSafe
-                }),
+            DeployerInput({
+                centrifugeId: CHAIN_CP,
+                version: bytes32(0),
+                txLimits: defaultTxLimits(),
+                protocolSafe: ISafe(makeAddr("ProtocolSafe")),
+                opsSafe: ISafe(makeAddr("OpsSafe")),
                 adapters: noAdaptersInput()
             }),
             address(this)
