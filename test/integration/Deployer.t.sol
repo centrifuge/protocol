@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
-import {ILayerZeroEndpointV2Like, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 import {
     CoreInput,
     FullInput,
@@ -20,6 +19,7 @@ import {
 import "forge-std/Test.sol";
 
 import {IWormholeRelayer, IWormholeDeliveryProvider} from "../../src/adapters/interfaces/IWormholeAdapter.sol";
+import {ILayerZeroEndpointV2Like, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
 contract LayerZeroEndpointMock {
     mapping(address oapp => address delegate) public delegates;

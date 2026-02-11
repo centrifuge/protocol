@@ -10,8 +10,7 @@ import {
     WormholeInput,
     AxelarInput,
     LayerZeroInput,
-    ChainlinkInput,
-    AdapterConnections
+    ChainlinkInput
 } from "./FullDeployer.s.sol";
 
 import {CastLib} from "../src/misc/libraries/CastLib.sol";

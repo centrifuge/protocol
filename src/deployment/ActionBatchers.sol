@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {SetConfigParam, ILayerZeroEndpointV2Like} from "./interfaces/ILayerZeroEndpointV2Like.sol";
+
 import {Hub} from "../core/hub/Hub.sol";
 import {Spoke} from "../core/spoke/Spoke.sol";
 import {PoolId} from "../core/types/PoolId.sol";
@@ -51,8 +53,6 @@ import {AsyncRequestManager} from "../vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../vaults/factories/SyncDepositVaultFactory.sol";
-
-import {SetConfigParam, ILayerZeroEndpointV2Like} from "./interfaces/ILayerZeroEndpointV2Like.sol";
 
 import {SubsidyManager} from "../utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../adapters/AxelarAdapter.sol";
@@ -133,31 +133,14 @@ abstract contract Constants {
     AssetId public immutable EUR_ID = newAssetId(978);
 }
 
-abstract contract BaseActionBatcher {
-    error NotDeployer();
-
-    address public deployer;
-
-    constructor(address deployer_) {
-        deployer = deployer_;
-    }
-
-    modifier onlyDeployer() {
-        require(msg.sender == deployer, NotDeployer());
-        _;
-    }
-}
-
-contract CoreActionBatcher is BaseActionBatcher, Constants {
-    constructor(address deployer_) BaseActionBatcher(deployer_) {}
-
-    function setupCore(
+contract CoreActionBatcher is Constants {
+    constructor(
         CoreReport memory report,
         ISafe protocolSafe,
         ISafe opsSafe,
         address adapterBatcher_,
         address nonCoreBatcher_
-    ) public onlyDeployer {
+    ) {
         address root = address(report.root);
 
         // Rely root
@@ -334,15 +317,11 @@ contract CoreActionBatcher is BaseActionBatcher, Constants {
 
         report.root.deny(address(this));
         report.tokenRecoverer.deny(address(this));
-
-        deployer = address(0);
     }
 }
 
-contract NonCoreActionBatcher is BaseActionBatcher {
-    constructor(address deployer_) BaseActionBatcher(deployer_) {}
-
-    function setupNonCore(NonCoreReport memory report) public onlyDeployer {
+contract NonCoreActionBatcher {
+    constructor(NonCoreReport memory report) {
         address root = address(report.core.root);
 
         // Rely Root
@@ -429,22 +408,18 @@ contract NonCoreActionBatcher is BaseActionBatcher {
         report.batchRequestManager.deny(address(this));
 
         report.core.root.deny(address(this));
-
-        deployer = address(0);
     }
 }
 
-contract AdapterActionBatcher is BaseActionBatcher {
-    constructor(address deployer_) BaseActionBatcher(deployer_) {}
-
-    function setupAdapters(
+contract AdapterActionBatcher {
+    constructor(
         AdaptersReport memory report,
         ISafe protocolSafe,
         AdapterConnections[] memory connectionList,
         SetConfigParam[] memory layerZeroConfigParams,
         address layerZeroDelegate,
         string memory remoteAxelarAdapter
-    ) public onlyDeployer {
+    ) {
         _relyAdapters(report, address(report.core.root));
         _relyAdapters(report, address(report.core.protocolGuardian));
         _relyAdapters(report, address(report.core.opsGuardian));
@@ -517,8 +492,6 @@ contract AdapterActionBatcher is BaseActionBatcher {
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
 
         report.core.multiAdapter.deny(address(this));
-
-        deployer = address(0);
     }
 
     function _relyAdapters(AdaptersReport memory report, address ward) internal {

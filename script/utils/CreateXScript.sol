@@ -4,10 +4,10 @@ pragma solidity ^0.8.4;
 // Ref https://github.com/radeksvarz/createx-forge/blob/cef15824154b2a7117bdac60870466b185fba684/script/CreateXScript.sol
 // but without the console.log line
 
-import {Script} from "forge-std/Script.sol";
+import {ICreateX} from "./ICreateX.sol";
 import {CREATEX_ADDRESS, CREATEX_EXTCODEHASH, CREATEX_BYTECODE} from "./CreateX.d.sol";
 
-import {ICreateX} from "./ICreateX.sol";
+import {Script} from "forge-std/Script.sol";
 
 /**
  * @title CreateX Factory - Forge Script base

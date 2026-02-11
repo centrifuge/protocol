@@ -216,24 +216,45 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
         protocolSafe = input.core.protocolSafe;
         opsSafe = input.core.opsSafe;
 
-        coreBatcher = new CoreActionBatcher(deployer_);
-        nonCoreBatcher = new NonCoreActionBatcher(deployer_);
-        adapterBatcher = new AdapterActionBatcher(deployer_);
+        address coreBatcherAddr = computeCreate3Address(makeSalt("coreBatcher", version, deployer), deployer);
+        address nonCoreBatcherAddr = computeCreate3Address(makeSalt("nonCoreBatcher", version, deployer), deployer);
+        address adapterBatcherAddr = computeCreate3Address(makeSalt("adapterBatcher", version, deployer), deployer);
 
-        _deployCore(address(coreBatcher), input.core);
-        coreBatcher.setupCore(coreReport(), protocolSafe, opsSafe, address(adapterBatcher), address(nonCoreBatcher));
+        _deployCore(coreBatcherAddr, input.core);
+        coreBatcher = CoreActionBatcher(
+            create3(
+                generateSalt("coreBatcher"),
+                abi.encodePacked(
+                    type(CoreActionBatcher).creationCode,
+                    abi.encode(coreReport(), protocolSafe, opsSafe, adapterBatcherAddr, nonCoreBatcherAddr)
+                )
+            )
+        );
 
-        _deployNonCore(address(nonCoreBatcher));
-        nonCoreBatcher.setupNonCore(nonCoreReport());
+        _deployNonCore(nonCoreBatcherAddr);
+        nonCoreBatcher = NonCoreActionBatcher(
+            create3(
+                generateSalt("nonCoreBatcher"),
+                abi.encodePacked(type(NonCoreActionBatcher).creationCode, abi.encode(nonCoreReport()))
+            )
+        );
 
-        _deployAdapters(address(adapterBatcher), input.adapters);
-        adapterBatcher.setupAdapters(
-            adaptersReport(),
-            protocolSafe,
-            input.adapters.connections,
-            input.adapters.layerZero.configParams,
-            input.adapters.layerZero.delegate,
-            vm.toString(address(axelarAdapter))
+        _deployAdapters(adapterBatcherAddr, input.adapters);
+        adapterBatcher = AdapterActionBatcher(
+            create3(
+                generateSalt("adapterBatcher"),
+                abi.encodePacked(
+                    type(AdapterActionBatcher).creationCode,
+                    abi.encode(
+                        adaptersReport(),
+                        protocolSafe,
+                        input.adapters.connections,
+                        input.adapters.layerZero.configParams,
+                        input.adapters.layerZero.delegate,
+                        vm.toString(address(axelarAdapter))
+                    )
+                )
+            )
         );
     }
 

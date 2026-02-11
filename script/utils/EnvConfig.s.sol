@@ -2,11 +2,12 @@
 pragma solidity 0.8.28;
 
 import {GraphQLConstants} from "./GraphQLConstants.sol";
-import {UlnConfig, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
-import {AdapterConnections} from "../../src/deployment/ActionBatchers.sol";
 
 import "forge-std/Vm.sol";
 import "forge-std/Script.sol";
+
+import {AdapterConnections} from "../../src/deployment/ActionBatchers.sol";
+import {UlnConfig, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
 Vm constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
