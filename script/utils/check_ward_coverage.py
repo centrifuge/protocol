@@ -22,17 +22,24 @@ from typing import Dict, Set, Tuple, List
 from dataclasses import dataclass, field
 from collections import defaultdict
 
+# Canonical aliases: maps variant names to a single canonical form.
+# Used to match names that refer to the same address across deployment and test code.
+_NAME_ALIASES = {
+    "adminsafe": "protocolsafe",
+}
+
 def normalize_name(name: str) -> str:
     """
-    Normalize variable names for comparison by removing underscores and converting to lowercase.
-    This handles both camelCase (adminSafe) and UPPER_SNAKE_CASE (ADMIN_SAFE) conventions.
+    Normalize variable names for comparison by removing underscores and converting to lowercase,
+    then resolving known aliases.
 
     Examples:
-        adminSafe -> adminsafe
-        ADMIN_SAFE -> adminsafe
-        admin_safe -> adminsafe
+        adminSafe -> protocolsafe
+        ADMIN_SAFE -> protocolsafe
+        protocolSafe -> protocolsafe
     """
-    return name.replace('_', '').lower()
+    n = name.replace('_', '').lower()
+    return _NAME_ALIASES.get(n, n)
 
 @dataclass
 class FileCall:
@@ -151,7 +158,7 @@ class WardCoverageChecker:
         return file_calls
 
     def find_ward_grants(self) -> List[WardGrant]:
-        """Find all rely() calls in deployment scripts"""
+        """Find all rely() calls in deployment action batchers"""
         ward_grants = []
 
         # Pattern: report.targetContract.rely(address(report.granterContract));
@@ -160,10 +167,7 @@ class WardCoverageChecker:
             re.MULTILINE
         )
 
-        for script_file in self.script_path.rglob("*.sol"):
-            if "Deployer" not in script_file.name:
-                continue
-
+        for script_file in self.src_path.glob("deployment/*.sol"):
             content = script_file.read_text()
 
             for match in rely_pattern.finditer(content):
@@ -258,7 +262,7 @@ class WardCoverageChecker:
         return file_parameters
 
     def find_file_initializations(self) -> List[FileInitialization]:
-        """Find all .file() calls in deployment scripts and extract concrete implementation names"""
+        """Find all .file() calls in deployment action batchers and extract concrete implementation names"""
         file_inits = []
 
         # Patterns:
@@ -270,12 +274,7 @@ class WardCoverageChecker:
             re.MULTILINE
         )
 
-        deployer_scripts = [
-            self.script_path / "FullDeployer.s.sol",
-            self.script_path / "LaunchDeployer.s.sol",
-        ]
-
-        for script_file in deployer_scripts:
+        for script_file in self.src_path.glob("deployment/*.sol"):
             if not script_file.exists():
                 continue
 
