@@ -21,8 +21,8 @@ import {
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 
-import {VmSafe} from "forge-std/Vm.sol";
 import "forge-std/Test.sol";
+import {VmSafe} from "forge-std/Vm.sol";
 
 // -----------------------------------------
 //     MESSAGE MOCKING
