@@ -6,7 +6,7 @@ import {BaseValidator, OldContracts} from "./BaseValidator.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 
-import {FullReport} from "../../../../script/FullDeployer.s.sol";
+import {NonCoreReport} from "../../../../script/FullDeployer.s.sol";
 import {MigrationQueries} from "../../../../script/spell/MigrationQueries.sol";
 
 import {Vm} from "forge-std/Vm.sol";
@@ -81,7 +81,7 @@ library ValidationOrchestrator {
     /// @param shouldRevert If false, displays [WARNING]; if true, reverts on errors
     /// @return true if all validations passed
     function runPreValidation(SharedContext memory shared, bool shouldRevert) internal returns (bool) {
-        FullReport memory emptyReport;
+        NonCoreReport memory emptyReport;
         BaseValidator.ValidationContext memory ctx = BaseValidator.ValidationContext({
             phase: BaseValidator.Phase.PRE,
             old: shared.old,
@@ -103,7 +103,7 @@ library ValidationOrchestrator {
     /// @param shared SharedContext built by buildSharedContext()
     /// @param latest The deployed v3.1 contracts
     /// @return true if all validations passed
-    function runPostValidation(SharedContext memory shared, FullReport memory latest) internal returns (bool) {
+    function runPostValidation(SharedContext memory shared, NonCoreReport memory latest) internal returns (bool) {
         BaseValidator.ValidationContext memory ctx = BaseValidator.ValidationContext({
             phase: BaseValidator.Phase.POST,
             old: shared.old,

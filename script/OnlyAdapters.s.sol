@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CoreDeployer} from "./CoreDeployer.s.sol";
-import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
+import {FullDeployer} from "./FullDeployer.s.sol";
 
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
 import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
-
-import "forge-std/Script.sol";
 
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
@@ -16,12 +13,8 @@ import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 
 /// @title OnlyAdapters
 /// @notice Deploys only messaging adapters, reusing existing core addresses from env/<network>.json
-contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
+contract OnlyAdapters is FullDeployer {
     using CastLib for *;
-
-    WormholeAdapter public wormholeAdapter;
-    AxelarAdapter public axelarAdapter;
-    LayerZeroAdapter public layerZeroAdapter;
 
     function _fetchConfig(string memory network) internal view returns (string memory) {
         string memory configFile = string.concat("env/", network, ".json");
@@ -81,7 +74,6 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
             wormholeAdapter.rely(rootAddr);
             wormholeAdapter.rely(protocolGuardianAddr);
             wormholeAdapter.rely(opsGuardianAddr);
-            register("wormholeAdapter", address(wormholeAdapter));
         }
 
         if (deployAxelar) {
@@ -104,7 +96,6 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
             axelarAdapter.rely(rootAddr);
             axelarAdapter.rely(protocolGuardianAddr);
             axelarAdapter.rely(opsGuardianAddr);
-            register("axelarAdapter", address(axelarAdapter));
         }
 
         if (deployLayerZero) {
@@ -126,7 +117,6 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
             layerZeroAdapter.rely(rootAddr);
             layerZeroAdapter.rely(protocolGuardianAddr);
             layerZeroAdapter.rely(opsGuardianAddr);
-            register("layerZeroAdapter", address(layerZeroAdapter));
         }
 
         saveDeploymentOutput();

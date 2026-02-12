@@ -5,7 +5,7 @@ import {GraphQLStore} from "./GraphQLStore.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 
-import {FullReport} from "../../../../script/FullDeployer.s.sol";
+import {NonCoreReport} from "../../../../script/FullDeployer.s.sol";
 import {MigrationQueries} from "../../../../script/spell/MigrationQueries.sol";
 
 import {Test} from "forge-std/Test.sol";
@@ -46,7 +46,7 @@ abstract contract BaseValidator is Test {
     struct ValidationContext {
         Phase phase; // Current validation phase
         OldContracts old; // Old contracts (wrapped with test-only fields)
-        FullReport latest; // Current contracts (address(0) for PRE)
+        NonCoreReport latest; // Current contracts (address(0) for PRE)
         PoolId[] pools; // All pools to migrate
         PoolId[] hubPools; // Pools where this chain is the hub
         uint16 localCentrifugeId; // Current chain's centrifugeId

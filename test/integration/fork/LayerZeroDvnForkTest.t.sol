@@ -9,12 +9,9 @@ import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 
-import {CoreInput, makeSalt} from "../../../script/CoreDeployer.s.sol";
-import {SetConfigParam, UlnConfig, ILayerZeroEndpointV2Like} from "../../../script/utils/ILayerZeroEndpointV2Like.sol";
 import {
-    FullInput,
-    FullActionBatcher,
-    FullReport,
+    DeployerInput,
+    NonCoreReport,
     FullDeployer,
     AdaptersInput,
     WormholeInput,
@@ -29,6 +26,11 @@ import "forge-std/Test.sol";
 
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 import {Origin} from "../../../src/adapters/interfaces/ILayerZeroAdapter.sol";
+import {
+    SetConfigParam,
+    UlnConfig,
+    ILayerZeroEndpointV2Like
+} from "../../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
 library PacketV1Codec {
     uint256 private constant GUID_OFFSET = 81;
@@ -94,6 +96,9 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
     address constant BASE_DVN_1 = 0x554833698Ae0FB22ECC90B01222903fD62CA4B47; // Canary
     address constant BASE_DVN_2 = 0x9e059a54699a285714207b43B055483E78FAac25; // LayerZero Labs
 
+    ISafe protocolSafe;
+    ISafe opsSafe;
+
     address testToken;
     address lzAdapter;
 
@@ -115,12 +120,14 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
 
         testToken = address(new TestToken());
 
-        FullReport memory fullReport = _deployEthereum();
-        lzAdapter = address(fullReport.layerZeroAdapter);
+        _deployEthereum();
+        lzAdapter = address(layerZeroAdapter);
+
+        NonCoreReport memory report = nonCoreReport();
 
         // Record logs to capture PacketSent event
         vm.recordLogs();
-        fullReport.core.spoke.registerAsset{value: 0.1 ether}(BASE_CENT_ID, testToken, 0, address(this));
+        report.core.spoke.registerAsset{value: 0.1 ether}(BASE_CENT_ID, testToken, 0, address(this));
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
         bytes memory encodedPacket;
@@ -153,48 +160,31 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
         message = PacketV1Codec.message(packet);
     }
 
-    function _deployEthereum() internal returns (FullReport memory) {
-        FullActionBatcher batcher = _createBatcher();
-
-        deployFull(_fullInput(ETH_CENT_ID, BASE_CENT_ID, BASE_EID, ETH_DVN_1, ETH_DVN_2), batcher);
-
-        return fullReport();
+    function _deployEthereum() internal {
+        deployFull(_fullInput(ETH_CENT_ID, BASE_CENT_ID, BASE_EID, ETH_DVN_1, ETH_DVN_2), address(this));
     }
 
-    function _deployBase() internal returns (FullReport memory) {
-        FullActionBatcher batcher = _createBatcher();
+    function _deployBase() internal {
+        deployFull(_fullInput(BASE_CENT_ID, ETH_CENT_ID, ETH_EID, BASE_DVN_1, BASE_DVN_2), address(this));
 
-        deployFull(_fullInput(BASE_CENT_ID, ETH_CENT_ID, ETH_EID, BASE_DVN_1, BASE_DVN_2), batcher);
-
-        FullReport memory fullReport = fullReport();
-
-        vm.prank(address(batcher));
-        fullReport.layerZeroAdapter.wire(ETH_CENT_ID, abi.encode(ETH_EID, lzAdapter));
-        return fullReport;
-    }
-
-    function _createBatcher() internal returns (FullActionBatcher) {
-        bytes32 version = bytes32("1337");
-        return FullActionBatcher(
-            create3(
-                makeSalt("fullActionBatcher", version, address(this)),
-                abi.encodePacked(type(FullActionBatcher).creationCode, abi.encode(address(this)))
-            )
-        );
+        vm.prank(address(protocolGuardian));
+        layerZeroAdapter.wire(ETH_CENT_ID, abi.encode(ETH_EID, lzAdapter));
     }
 
     function _fullInput(uint16 localId, uint16 remoteId, uint32 remoteEid, address dvn1, address dvn2)
         internal
         view
-        returns (FullInput memory)
+        returns (DeployerInput memory)
     {
         AdapterConnections[] memory connections = new AdapterConnections[](1);
         connections[0] = AdapterConnections({
             centrifugeId: remoteId, layerZeroId: remoteEid, wormholeId: 0, axelarId: "", chainlinkId: 0, threshold: 1
         });
 
-        return FullInput({
-            core: CoreInput({centrifugeId: localId, version: bytes32("1337"), txLimits: defaultTxLimits()}),
+        return DeployerInput({
+            centrifugeId: localId,
+            version: bytes32("1337"),
+            txLimits: defaultTxLimits(),
             protocolSafe: protocolSafe,
             opsSafe: opsSafe,
             adapters: AdaptersInput({

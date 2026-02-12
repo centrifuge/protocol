@@ -2,10 +2,11 @@
 pragma solidity 0.8.28;
 
 import {GraphQLConstants} from "./GraphQLConstants.sol";
-import {UlnConfig, SetConfigParam} from "./ILayerZeroEndpointV2Like.sol";
 
 import "forge-std/Vm.sol";
-import "forge-std/Script.sol";
+
+import {AdapterConnections} from "../../src/deployment/ActionBatchers.sol";
+import {UlnConfig, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
 Vm constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -355,6 +356,28 @@ library NetworkConfigLib {
         }
     }
 
+    function buildConnections(NetworkConfig memory config)
+        internal
+        view
+        returns (AdapterConnections[] memory connections)
+    {
+        string[] memory connectsTo = config.connectsTo;
+        connections = new AdapterConnections[](connectsTo.length);
+
+        for (uint256 i; i < connectsTo.length; i++) {
+            EnvConfig memory remoteConfig = Env.load(connectsTo[i]);
+
+            connections[i] = AdapterConnections({
+                centrifugeId: remoteConfig.network.centrifugeId,
+                layerZeroId: remoteConfig.adapters.layerZero.layerZeroEid,
+                wormholeId: remoteConfig.adapters.wormhole.wormholeId,
+                axelarId: remoteConfig.adapters.axelar.axelarId,
+                chainlinkId: remoteConfig.adapters.chainlink.chainSelector,
+                threshold: remoteConfig.adapters.threshold
+            });
+        }
+    }
+
     function rpcUrl(NetworkConfig memory config) internal view returns (string memory) {
         string memory apiKey = "";
         if (_contains(config.baseRpcUrl, "alchemy")) apiKey = prettyEnvString("ALCHEMY_API_KEY");
@@ -399,5 +422,4 @@ library NetworkConfigLib {
 function prettyEnvString(string memory name) view returns (string memory value) {
     value = vm.envOr(name, string(""));
     if (bytes(value).length == 0) revert(string.concat("Missing env var: ", name));
-    else console.log(string.concat("Loaded env var: ", name));
 }

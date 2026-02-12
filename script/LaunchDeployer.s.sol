@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CoreInput, makeSalt} from "./CoreDeployer.s.sol";
 import {EnvConfig, Env, prettyEnvString} from "./utils/EnvConfig.s.sol";
 import {
-    FullInput,
-    FullActionBatcher,
+    DeployerInput,
     FullDeployer,
     AdaptersInput,
     WormholeInput,
     AxelarInput,
     LayerZeroInput,
-    ChainlinkInput,
-    AdapterConnections
+    ChainlinkInput
 } from "./FullDeployer.s.sol";
 
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
@@ -27,46 +24,15 @@ contract LaunchDeployer is FullDeployer {
     function run() public virtual {
         vm.startBroadcast();
         captureStartBlock();
-
-        EnvConfig memory config = Env.load(prettyEnvString("NETWORK"));
-        bytes32 version = prettyEnvString("VERSION").toBytes32();
-
         startDeploymentOutput();
 
-        FullInput memory input = _buildFullInput(config, version);
-
-        FullActionBatcher batcher = FullActionBatcher(
-            create3(
-                makeSalt("fullActionBatcher", input.core.version, msg.sender),
-                abi.encodePacked(type(FullActionBatcher).creationCode, abi.encode(msg.sender))
-            )
-        );
-
-        deployFull(input, batcher);
-
-        removeFullDeployerAccess(batcher);
-
-        batcher.lock();
-
-        saveDeploymentOutput();
-
-        // Hardcoded wards to double-check a correct mainnet deployment
-        if (config.network.isMainnet()) {
-            require(address(input.protocolSafe) == 0x9711730060C73Ee7Fcfe1890e8A0993858a7D225, "wrong safe admin");
-            require(address(input.opsSafe) == 0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16, "wrong ops admin");
-            require(msg.sender == 0x926702C7f1af679a8f99A40af8917DDd82fD6F6c, "wrong deployer");
-        }
-
-        vm.stopBroadcast();
-    }
-
-    function _buildFullInput(EnvConfig memory config, bytes32 version) internal view returns (FullInput memory) {
-        return FullInput({
+        EnvConfig memory config = Env.load(prettyEnvString("NETWORK"));
+        DeployerInput memory input = DeployerInput({
+            centrifugeId: config.network.centrifugeId,
+            version: prettyEnvString("VERSION").toBytes32(),
+            txLimits: config.network.buildBatchLimits(),
             protocolSafe: ISafe(config.network.protocolAdmin),
             opsSafe: ISafe(config.network.opsAdmin),
-            core: CoreInput({
-                centrifugeId: config.network.centrifugeId, version: version, txLimits: config.network.buildBatchLimits()
-            }),
             adapters: AdaptersInput({
                 layerZero: LayerZeroInput({
                     shouldDeploy: config.adapters.layerZero.deploy,
@@ -85,30 +51,20 @@ contract LaunchDeployer is FullDeployer {
                 chainlink: ChainlinkInput({
                     shouldDeploy: config.adapters.chainlink.deploy, ccipRouter: config.adapters.chainlink.ccipRouter
                 }),
-                connections: _buildConnections(config)
+                connections: config.network.buildConnections()
             })
         });
-    }
 
-    function _buildConnections(EnvConfig memory config)
-        internal
-        view
-        returns (AdapterConnections[] memory connections)
-    {
-        string[] memory connectsTo = config.network.connectsTo;
-        connections = new AdapterConnections[](connectsTo.length);
+        deployFull(input, msg.sender);
 
-        for (uint256 i; i < connectsTo.length; i++) {
-            EnvConfig memory remoteConfig = Env.load(connectsTo[i]);
-
-            connections[i] = AdapterConnections({
-                centrifugeId: remoteConfig.network.centrifugeId,
-                layerZeroId: remoteConfig.adapters.layerZero.layerZeroEid,
-                wormholeId: remoteConfig.adapters.wormhole.wormholeId,
-                axelarId: remoteConfig.adapters.axelar.axelarId,
-                chainlinkId: remoteConfig.adapters.chainlink.chainSelector,
-                threshold: remoteConfig.adapters.threshold
-            });
+        // Hardcoded wards to double-check a correct mainnet deployment
+        if (config.network.isMainnet()) {
+            require(address(protocolGuardian.safe()) == 0x9711730060C73Ee7Fcfe1890e8A0993858a7D225, "wrong safe admin");
+            require(address(opsGuardian.opsSafe()) == 0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16, "wrong ops admin");
+            require(msg.sender == 0x926702C7f1af679a8f99A40af8917DDd82fD6F6c, "wrong deployer");
         }
+
+        saveDeploymentOutput();
+        vm.stopBroadcast();
     }
 }
