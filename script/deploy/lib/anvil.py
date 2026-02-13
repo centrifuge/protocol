@@ -84,7 +84,7 @@ class AnvilManager:
                 self.is_testnet = True
                 self.config_file = config_path
 
-        return AnvilEnv(self)
+        return AnvilEnv(self, network_name, port, dst_cfg, chain_id)
 
     def _create_anvil_config(self) -> None:
         """Create temporary anvil.json config file for Solidity scripts"""
