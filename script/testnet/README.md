@@ -14,7 +14,39 @@ Test each cross-chain adapter (Axelar, LayerZero, Wormhole, Chainlink) in isolat
 
 ---
 
-## Scripts
+## Automated Orchestration (deploy.py)
+
+A single command runs the full cross-chain adapter isolation test:
+
+```bash
+cd script/deploy
+python3 deploy.py base-sepolia crosschaintest
+```
+
+This executes 4 steps sequentially:
+
+| Step | What it does | XC Messages |
+|------|--------------|-------------|
+| 1. Spoke registration | Runs `registerAssetOnly()` on each spoke in `connectsTo` | 1 per spoke |
+| 2. Hub setup | Runs `runPoolSetup()` + `runAdapterSetup()` on hub | 2 per adapter |
+| 3. Wait for relay | Prints explorer links, waits for user confirmation (~5-10 min) | — |
+| 4. Share class test | Runs `runShareClassTest()` on hub | 1 per adapter |
+
+After the full run, phase 3 can be repeated independently:
+
+```bash
+python3 deploy.py base-sepolia crosschaintest:test
+```
+
+Individual steps are also available for advanced usage: `crosschaintest:hub`, `crosschaintest:spoke`, `crosschaintest:test`.
+
+**CI mode:** When `GITHUB_ACTIONS` is set, step 3 auto-waits instead of prompting (default 600s, override with `XC_RELAY_WAIT`).
+
+All steps read `connectsTo` from the hub's `env/<network>.json` to determine spoke networks.
+
+---
+
+## Scripts (Manual Usage)
 
 ### TestData.s.sol
 

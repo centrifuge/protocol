@@ -61,14 +61,14 @@ class DeploymentRunner:
             hidden_path = self.env_loader.root_dir / "script" / "deploy" / "solidityHelpers" / f"{script_name}.s.sol"
             if hidden_path.exists():
                 self.script_path = hidden_path
-        # Fallback for test scripts moved to test/e2e_testnets/
-        if not self.script_path.exists() and script_name == "TestData":
-            test_path = self.env_loader.root_dir / "script" / "testnet" / f"{script_name}.s.sol"
-            if test_path.exists():
-                self.script_path = test_path
-            else:
-                print_error(f"Script {script_name}.s.sol not found")
-                return False
+        # Fallback for testnet scripts in script/testnet/
+        if not self.script_path.exists():
+            testnet_path = self.env_loader.root_dir / "script" / "testnet" / f"{script_name}.s.sol"
+            if testnet_path.exists():
+                self.script_path = testnet_path
+        if not self.script_path.exists():
+            print_error(f"Script {script_name}.s.sol not found")
+            return False
         print_subsection(f"Deploying {script_name}.s.sol")
         print_step(f"Deployment Info:")
         print_info(f"Script: {script_name}")
