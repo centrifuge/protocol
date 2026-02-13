@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "./GraphQLConstants.sol";
+import {GraphQLConstants} from "./GraphQLConstants.sol";
+import {UlnConfig, SetConfigParam} from "./ILayerZeroEndpointV2Like.sol";
 
 import "forge-std/Vm.sol";
+import "forge-std/Script.sol";
 
 Vm constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -296,7 +298,46 @@ library Env {
 
 library EnvConfigLib {
     function etherscanApiKey(EnvConfig memory) internal view returns (string memory) {
-        return _envString("ETHERSCAN_API_KEY");
+        return prettyEnvString("ETHERSCAN_API_KEY");
+    }
+
+    function buildLayerZeroConfigParams(EnvConfig memory config)
+        internal
+        view
+        returns (SetConfigParam[] memory params)
+    {
+        if (!config.adapters.layerZero.deploy) return params;
+
+        string[] memory connectsTo = config.network.connectsTo;
+        params = new SetConfigParam[](connectsTo.length);
+
+        // UlnConfig is the same for all connections - only eid differs
+        uint32 ULN_CONFIG_TYPE = 2;
+        bytes memory encodedUln = abi.encode(
+            UlnConfig({
+                confirmations: config.adapters.layerZero.blockConfirmations,
+                requiredDVNCount: uint8(config.adapters.layerZero.dvns.length),
+                optionalDVNCount: type(uint8).max,
+                optionalDVNThreshold: 0,
+                requiredDVNs: config.adapters.layerZero.dvns,
+                optionalDVNs: new address[](0)
+            })
+        );
+
+        for (uint256 i; i < connectsTo.length; i++) {
+            EnvConfig memory remoteConfig = Env.load(connectsTo[i]);
+
+            require(
+                config.adapters.layerZero.dvns.length == remoteConfig.adapters.layerZero.dvns.length,
+                "DVNs count mismatch between local and remote config"
+            );
+            require(
+                config.adapters.layerZero.blockConfirmations == remoteConfig.adapters.layerZero.blockConfirmations,
+                "blockConfirmations mismatch between local and remote config"
+            );
+
+            params[i] = SetConfigParam(remoteConfig.adapters.layerZero.layerZeroEid, ULN_CONFIG_TYPE, encodedUln);
+        }
     }
 }
 
@@ -316,9 +357,9 @@ library NetworkConfigLib {
 
     function rpcUrl(NetworkConfig memory config) internal view returns (string memory) {
         string memory apiKey = "";
-        if (_contains(config.baseRpcUrl, "alchemy")) apiKey = _envString("ALCHEMY_API_KEY");
-        else if (_contains(config.baseRpcUrl, "plume")) apiKey = _envString("PLUME_API_KEY");
-        else if (_contains(config.baseRpcUrl, "pharos")) apiKey = _envString("PHAROS_API_KEY");
+        if (_contains(config.baseRpcUrl, "alchemy")) apiKey = prettyEnvString("ALCHEMY_API_KEY");
+        else if (_contains(config.baseRpcUrl, "plume")) apiKey = prettyEnvString("PLUME_API_KEY");
+        else if (_contains(config.baseRpcUrl, "pharos")) apiKey = prettyEnvString("PHAROS_API_KEY");
 
         return string.concat(config.baseRpcUrl, apiKey);
     }
@@ -355,7 +396,8 @@ library NetworkConfigLib {
     }
 }
 
-function _envString(string memory name) view returns (string memory value) {
+function prettyEnvString(string memory name) view returns (string memory value) {
     value = vm.envOr(name, string(""));
     if (bytes(value).length == 0) revert(string.concat("Missing env var: ", name));
+    else console.log(string.concat("Loaded env var: ", name));
 }

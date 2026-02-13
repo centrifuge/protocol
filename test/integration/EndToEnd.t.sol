@@ -270,7 +270,7 @@ contract EndToEndDeployment is Test {
         vm.stopPrank();
     }
 
-    function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe adminSafe)
+    function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe protocolSafe)
         internal
         returns (LocalAdapter adapter)
     {
@@ -284,8 +284,8 @@ contract EndToEndDeployment is Test {
                     version: bytes32(abi.encodePacked(localCentrifugeId)),
                     txLimits: defaultTxLimits()
                 }),
-                adminSafe: adminSafe,
-                opsSafe: adminSafe,
+                protocolSafe: protocolSafe,
+                opsSafe: protocolSafe,
                 adapters: noAdaptersInput()
             }),
             batcher
