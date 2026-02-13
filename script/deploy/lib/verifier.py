@@ -211,6 +211,25 @@ class ContractVerifier:
 
         return True
 
+    def config_has_latest_contracts(self) -> bool:
+        """Fast check: are contracts from env/latest already merged into env/<network>.json?"""
+        try:
+            if not self.latest_deployment.exists():
+                return False
+            with open(self.latest_deployment, 'r') as f:
+                latest = json.load(f)
+            with open(self.env_loader.config_file, 'r') as f:
+                cfg = json.load(f)
+            latest_contracts = latest.get('contracts', {}) or {}
+            config_contracts = cfg.get('contracts', {}) or {}
+            # Require every contract in latest to exist in config with identical address
+            for name, addr in latest_contracts.items():
+                if name not in config_contracts or config_contracts[name].lower() != addr.lower():
+                    return False
+            return True if latest_contracts else False
+        except Exception:
+            return False
+
     def _is_contract_deployed(self, address: str) -> bool:
         """Check if contract has code deployed"""
         payload = {
@@ -350,14 +369,18 @@ class ContractVerifier:
 
             # Determine which deployment info entry to update
             deployment_step = self.args.step
-            if self.args.step == "release:sepolia":
-                # For release:sepolia, update the deploy:protocol entry instead
-                deployment_step = "deploy:protocol"
+            if deployment_step in ["release:sepolia", "deploy:testnets"]:
+                # For release:sepolia and deploy:testnets, update the deploy:full entry instead
+                deployment_step = "deploy:full"
             
-            if "deploy" in self.args.step or self.args.step == "release:sepolia":
+            if "deploy" in deployment_step:
+                # if there's a deploy:adapters, deploy:full overrides them. Delete:
+                if 'deploymentInfo' in config_data and 'deploy:adapters' in config_data['deploymentInfo']:
+                    del config_data['deploymentInfo']['deploy:adapters']
                 config_data['deploymentInfo'][deployment_step] = {
                     'gitCommit': git_commit,
                     'timestamp': deployment_timestamp,
+                    'version': os.environ.get("VERSION", "Null / NotSet")
                 }
 
             # Always include VERSION key in deploymentInfo (may be empty string if not set)
