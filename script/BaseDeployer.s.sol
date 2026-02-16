@@ -18,7 +18,6 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
     address public deployer;
 
     function _init(bytes32 version_, address deployer_) internal {
-        // NOTE: This implementation must be idempotent
         setUpCreateXFactory();
 
         version = version_;
@@ -31,7 +30,7 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
         register(contractName, computeCreate3Address(salt, deployer));
     }
 
-    function previewCreate3Address(string memory contractName) internal returns (address) {
+    function previewCreate3Address(string memory contractName) internal view returns (address) {
         return computeCreate3Address(makeSalt(contractName, version, deployer), deployer);
     }
 }
