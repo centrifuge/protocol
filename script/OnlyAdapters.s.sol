@@ -26,9 +26,6 @@ contract OnlyAdapters is FullDeployer {
         string memory network = vm.envString("NETWORK");
         string memory config = _fetchConfig(network);
 
-        // Set version deterministically like LaunchDeployer
-        version = vm.envOr("VERSION", string("")).toBytes32();
-        setUpCreateXFactory();
         // Load core addresses we need
         address multiAdapterAddr = _readContractAddress(config, "$.contracts.multiAdapter");
         address protocolGuardianAddr = _readContractAddress(config, "$.contracts.protocolGuardian");
@@ -57,6 +54,8 @@ contract OnlyAdapters is FullDeployer {
 
         vm.startBroadcast();
         captureStartBlock();
+
+        _init(vm.envOr("VERSION", string("")).toBytes32(), msg.sender);
 
         if (deployWormhole) {
             address wormholeRelayer = vm.parseJsonAddress(config, "$.adapters.wormhole.relayer");
