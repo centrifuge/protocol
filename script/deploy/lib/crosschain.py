@@ -215,15 +215,8 @@ class CrossChainTestManager:
 
     def _print_explorer_links(self, connects_to: List[str]) -> None:
         print_subsection("Monitor Cross-Chain Messages")
-
-        print_info("Axelar:    https://testnet.axelarscan.io/gmp/search?sourceChain={0}".format(
-            self.env_loader.network_name))
-        print_info("LayerZero: https://testnet.layerzeroscan.com/address/{0}".format(
-            self.env_loader.ops_admin_address))
-        print_info("Chainlink: https://ccip.chain.link/address/{0}".format(
-            self.env_loader.ops_admin_address))
-        print_info("Wormhole:  https://wormholescan.io/#/txs?address={0}&network=Testnet".format(
-            self.env_loader.ops_admin_address))
+        sender = self.env_loader.ops_admin_address
+        hub_axelar_id = self.env_loader.config.get("adapters", {}).get("axelar", {}).get("axelarId", "")
 
         for spoke_network in connects_to:
             cfg_file = self.root_dir / "env" / f"{spoke_network}.json"
@@ -231,13 +224,14 @@ class CrossChainTestManager:
                 continue
             with open(cfg_file, "r") as f:
                 cfg = json.load(f)
-            etherscan = cfg.get("network", {}).get("etherscanUrl", "")
-            contracts = cfg.get("contracts", {})
-            if etherscan and contracts:
-                print_info(f"\n{spoke_network}:")
-                for name in ("gateway", "spoke", "vaultRegistry", "multiAdapter"):
-                    addr = contracts.get(name, {})
-                    if isinstance(addr, dict):
-                        addr = addr.get("address", "")
-                    if addr:
-                        print_info(f"  {name}: {etherscan}address/{addr}")
+            spoke_axelar_id = cfg.get("adapters", {}).get("axelar", {}).get("axelarId", "")
+            if hub_axelar_id and spoke_axelar_id:
+                print_info(
+                    f"Axelar ({spoke_network}): https://testnet.axelarscan.io/gmp/search"
+                    f"?sourceChain={hub_axelar_id}&destinationChain={spoke_axelar_id}"
+                    f"&senderAddress={sender}"
+                )
+
+        print_info(f"LayerZero: https://testnet.layerzeroscan.com/address/{sender}")
+        print_info(f"Chainlink: https://ccip.chain.link/address/{sender}")
+        print_info(f"Wormhole (deprecated): https://wormholescan.io/#/txs?address={sender}&network=Testnet")

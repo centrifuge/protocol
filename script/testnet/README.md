@@ -16,14 +16,15 @@ Test each cross-chain adapter (Axelar, LayerZero, Wormhole, Chainlink) in isolat
 
 ## Automated Orchestration (deploy.py)
 
-A single command runs the full cross-chain adapter isolation test:
+Run from `script/deploy/`. All commands read `connectsTo` from the hub's `env/<network>.json` to determine spoke networks.
+
+### Full sequence (recommended for first run)
 
 ```bash
-cd script/deploy
 python3 deploy.py base-sepolia crosschaintest
 ```
 
-This executes 4 steps sequentially:
+Executes 4 steps sequentially:
 
 | Step | What it does | XC Messages |
 |------|--------------|-------------|
@@ -32,17 +33,17 @@ This executes 4 steps sequentially:
 | 3. Wait for relay | Prints explorer links, waits for user confirmation (~5-10 min) | — |
 | 4. Share class test | Runs `runShareClassTest()` on hub | 1 per adapter |
 
-After the full run, phase 3 can be repeated independently:
+### Individual steps
 
-```bash
-python3 deploy.py base-sepolia crosschaintest:test
-```
+| Command | Description |
+|---------|-------------|
+| `python3 deploy.py base-sepolia crosschaintest:spoke` | Register assets on all connected spokes |
+| `python3 deploy.py base-sepolia crosschaintest:hub` | Run phases 1+2 on hub (pool setup + adapter config) |
+| `python3 deploy.py base-sepolia crosschaintest:test` | Run phase 3 on hub (repeatable share class test) |
 
-Individual steps are also available for advanced usage: `crosschaintest:hub`, `crosschaintest:spoke`, `crosschaintest:test`.
+After the full run, phase 3 can be repeated independently with `crosschaintest:test`.
 
 **CI mode:** When `GITHUB_ACTIONS` is set, step 3 auto-waits instead of prompting (default 600s, override with `XC_RELAY_WAIT`).
-
-All steps read `connectsTo` from the hub's `env/<network>.json` to determine spoke networks.
 
 ---
 
