@@ -64,7 +64,7 @@ contract OnlyAdapters is FullDeployer {
 
             wormholeAdapter = WormholeAdapter(
                 create3(
-                    generateSalt("wormholeAdapter"),
+                    createSalt("wormholeAdapter"),
                     abi.encodePacked(
                         type(WormholeAdapter).creationCode, abi.encode(multiAdapter, wormholeRelayer, deployerEOA)
                     )
@@ -85,7 +85,7 @@ contract OnlyAdapters is FullDeployer {
 
             axelarAdapter = AxelarAdapter(
                 create3(
-                    generateSalt("axelarAdapter"),
+                    createSalt("axelarAdapter"),
                     abi.encodePacked(
                         type(AxelarAdapter).creationCode,
                         abi.encode(multiAdapter, axelarGateway, axelarGasService, deployerEOA)
@@ -106,7 +106,7 @@ contract OnlyAdapters is FullDeployer {
 
             layerZeroAdapter = LayerZeroAdapter(
                 create3(
-                    generateSalt("layerZeroAdapter"),
+                    createSalt("layerZeroAdapter"),
                     abi.encodePacked(
                         type(LayerZeroAdapter).creationCode,
                         abi.encode(multiAdapter, lzEndpoint, lzDelegate, deployerEOA)
