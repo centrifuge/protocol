@@ -177,21 +177,14 @@ Check balance:
 cast balance 0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb --rpc-url https://sepolia.base.org
 ```
 
-### Contract Addresses (Same on All Chains via CREATE3)
+### Contract Addresses
 
-```bash
-export ROOT=0x8a7c1D479Cc77a5458F74C480B9b306BB29b953e
-export MULTI_ADAPTER=0x2C61BC7C5aF7f0Af2888dE9343C3ce4b2fBf5933
-export HUB=0xE5e49CEdB5D3DCD24b25e2886a0c5E27e2e9CBe9
-export HUB_REGISTRY=0x92e78c7680303b04e4CE9d1736c000288e2339E5
-export VAULT_REGISTRY=0x22dB7862f9D903F49CF179C7079E72739f5a3c1D
-export SPOKE=0x7Ac5B65764A8b1A19E832FdE942ce618EeF823aF
+Contract addresses are deterministic across all chains (CREATE3). Look up the latest addresses in the env config files:
 
-# Adapters
-export AXELAR_ADAPTER=0xb324e55F8332748142274FC76De0A8D95d453Ada
-export LAYERZERO_ADAPTER=0x24f3192d46869609F8F6605e662b8146CA4240d3
-export WORMHOLE_ADAPTER=0x5940ad8841C50a57F0464f36BaF488964E86655e
-```
+- **Hub (Base Sepolia)**: `env/base-sepolia.json` → `contracts` section
+- **Spoke (Arbitrum Sepolia)**: `env/arbitrum-sepolia.json` → `contracts` section
+
+Key contracts: `root`, `hub`, `hubRegistry`, `spoke`, `multiAdapter`, `vaultRegistry`, `axelarAdapter`, `layerZeroAdapter`, `wormholeAdapter`, `chainlinkAdapter`, `subsidyManager`.
 
 ---
 
@@ -421,7 +414,8 @@ cast call $AXELAR_ADAPTER "isWired(uint16)(bool)" 3 --rpc-url $RPC_URL
 
 ### Check pool subsidy balance
 ```bash
-cast call 0x85b38b923273A604C3cDbcF407DdBFE549346A9a "subsidies(uint64)(uint256)" 562949953512312 --rpc-url $RPC_URL
+# SUBSIDY_MANAGER address from env/<network>.json → contracts.subsidyManager.address
+cast call $SUBSIDY_MANAGER "subsidies(uint64)(uint256)" 562949953512312 --rpc-url $RPC_URL
 ```
 
 ### Debug transaction
@@ -437,7 +431,7 @@ cast run <tx-hash> --rpc-url $RPC_URL
 ### Check ShareToken existence on Spoke
 
 ```bash
-SPOKE=0x7Ac5B65764A8b1A19E832FdE942ce618EeF823aF
+# SPOKE address from env/arbitrum-sepolia.json → contracts.spoke.address
 ARBITRUM_RPC="https://sepolia-rollup.arbitrum.io/rpc"
 
 # Axelar (91000)
