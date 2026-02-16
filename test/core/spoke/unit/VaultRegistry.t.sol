@@ -37,8 +37,8 @@ contract VaultRegistryTest is Test {
     ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("sc1"));
     ShareClassId constant SC_2 = ShareClassId.wrap(bytes16("sc2"));
 
-    AssetId immutable ASSET_ID_20 = newAssetId(LOCAL_CENTRIFUGE_ID, 1);
-    AssetId immutable ASSET_ID_6909_1 = newAssetId(LOCAL_CENTRIFUGE_ID, 2);
+    AssetId ASSET_ID_20;
+    AssetId ASSET_ID_6909_1;
     address erc20 = address(new IsContract());
     address erc6909 = address(new IsContract());
     uint256 constant TOKEN_1 = 23;
@@ -75,17 +75,17 @@ contract VaultRegistryTest is Test {
         spokeRegistry.addShareClass(POOL_A, SC_1, share);
     }
 
-    function _utilRegisterAsset(address asset, uint256 tokenId, AssetId assetId) internal {
+    function _utilRegisterAsset(address asset, uint256 tokenId) internal returns (AssetId assetId) {
         vm.prank(AUTH);
-        spokeRegistry.registerAsset(assetId, asset, tokenId);
+        assetId = spokeRegistry.createAssetId(LOCAL_CENTRIFUGE_ID, asset, tokenId);
     }
 
     function _utilRegisterERC20() internal {
-        _utilRegisterAsset(erc20, 0, ASSET_ID_20);
+        ASSET_ID_20 = _utilRegisterAsset(erc20, 0);
     }
 
     function _utilRegisterERC6909() internal {
-        _utilRegisterAsset(erc6909, TOKEN_1, ASSET_ID_6909_1);
+        ASSET_ID_6909_1 = _utilRegisterAsset(erc6909, TOKEN_1);
     }
 
     function _mockVaultFactory(address asset, uint256 tokenId) internal {

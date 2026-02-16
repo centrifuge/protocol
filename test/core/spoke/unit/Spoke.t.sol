@@ -128,17 +128,11 @@ contract SpokeTest is Test {
             abi.encodeWithSelector(ISpokeRegistry.assetToId.selector, asset, tokenId),
             abi.encodeWithSelector(ISpokeRegistry.UnknownAsset.selector)
         );
-        // Mock generateAssetId
+        // Mock createAssetId
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.generateAssetId.selector, LOCAL_CENTRIFUGE_ID),
+            abi.encodeWithSelector(ISpokeRegistry.createAssetId.selector, LOCAL_CENTRIFUGE_ID, asset, tokenId),
             abi.encode(assetId)
-        );
-        // Mock registerAsset
-        vm.mockCall(
-            address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.registerAsset.selector, assetId, asset, tokenId),
-            abi.encode()
         );
     }
 

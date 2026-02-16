@@ -105,16 +105,14 @@ interface ISpokeRegistry {
     /// @param manager The request manager contract
     function setRequestManager(PoolId poolId, IRequestManager manager) external;
 
-    /// @notice Registers an asset mapping in the registry
-    /// @param assetId The asset identifier
+    /// @notice Creates a new asset ID and registers the asset mapping in the registry
+    /// @param centrifugeId The centrifuge chain ID
     /// @param asset The asset address
     /// @param tokenId The ERC6909 token id or 0 for ERC20
-    function registerAsset(AssetId assetId, address asset, uint256 tokenId) external;
-
-    /// @notice Generates a new asset ID
-    /// @param centrifugeId The centrifuge chain ID
     /// @return assetId The new asset ID
-    function generateAssetId(uint16 centrifugeId) external returns (AssetId assetId);
+    function createAssetId(uint16 centrifugeId, address asset, uint256 tokenId)
+        external
+        returns (AssetId assetId);
 
     /// @notice Updates the price per share for a given pool and share class
     /// @param poolId The pool id

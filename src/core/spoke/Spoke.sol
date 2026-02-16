@@ -125,8 +125,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke {
             assetId = existingId;
         } catch {
             isInitialization = true;
-            assetId = spokeRegistry.generateAssetId(sender.localCentrifugeId());
-            spokeRegistry.registerAsset(assetId, asset, tokenId);
+            assetId = spokeRegistry.createAssetId(sender.localCentrifugeId(), asset, tokenId);
         }
 
         emit RegisterAsset(centrifugeId, assetId, asset, tokenId, name, symbol, decimals, isInitialization);

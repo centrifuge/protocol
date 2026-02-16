@@ -55,9 +55,9 @@ contract SpokeRegistryTest is Test {
         registry.addShareClass(POOL_A, SC_1, share);
     }
 
-    function _registerAsset() internal {
+    function _createAssetId() internal {
         vm.prank(AUTH);
-        registry.registerAsset(ASSET_ID, erc6909, TOKEN_1);
+        registry.createAssetId(LOCAL_CENTRIFUGE_ID, erc6909, TOKEN_1);
     }
 }
 
@@ -166,38 +166,25 @@ contract SpokeRegistryTestSetRequestManager is SpokeRegistryTest {
     }
 }
 
-contract SpokeRegistryTestRegisterAsset is SpokeRegistryTest {
+contract SpokeRegistryTestCreateAssetId is SpokeRegistryTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.registerAsset(ASSET_ID, erc6909, TOKEN_1);
+        registry.createAssetId(LOCAL_CENTRIFUGE_ID, erc6909, TOKEN_1);
     }
 
-    function testRegisterAsset() public {
-        _registerAsset();
+    function testCreateAssetId() public {
+        vm.prank(AUTH);
+        AssetId id1 = registry.createAssetId(LOCAL_CENTRIFUGE_ID, erc6909, TOKEN_1);
+        assertEq(id1.raw(), newAssetId(LOCAL_CENTRIFUGE_ID, 1).raw());
+        assertEq(registry.assetToId(erc6909, TOKEN_1).raw(), id1.raw());
 
-        assertEq(registry.assetToId(erc6909, TOKEN_1).raw(), ASSET_ID.raw());
-
-        (address asset, uint256 tokenId) = registry.idToAsset(ASSET_ID);
+        (address asset, uint256 tokenId) = registry.idToAsset(id1);
         assertEq(asset, erc6909);
         assertEq(tokenId, TOKEN_1);
-    }
-}
-
-contract SpokeRegistryTestGenerateAssetId is SpokeRegistryTest {
-    function testErrNotAuthorized() public {
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.generateAssetId(LOCAL_CENTRIFUGE_ID);
-    }
-
-    function testGenerateAssetId() public {
-        vm.prank(AUTH);
-        AssetId id1 = registry.generateAssetId(LOCAL_CENTRIFUGE_ID);
-        assertEq(id1.raw(), newAssetId(LOCAL_CENTRIFUGE_ID, 1).raw());
 
         vm.prank(AUTH);
-        AssetId id2 = registry.generateAssetId(LOCAL_CENTRIFUGE_ID);
+        AssetId id2 = registry.createAssetId(LOCAL_CENTRIFUGE_ID, erc20, 0);
         assertEq(id2.raw(), newAssetId(LOCAL_CENTRIFUGE_ID, 2).raw());
     }
 }
@@ -268,7 +255,7 @@ contract SpokeRegistryTestUpdatePricePoolPerAsset is SpokeRegistryTest {
     }
 
     function testErrCannotSetOlderPrice() public {
-        _registerAsset();
+        _createAssetId();
 
         vm.prank(AUTH);
         registry.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID, PRICE, FUTURE);
@@ -279,7 +266,7 @@ contract SpokeRegistryTestUpdatePricePoolPerAsset is SpokeRegistryTest {
     }
 
     function testUpdatePricePoolPerAsset() public {
-        _registerAsset();
+        _createAssetId();
 
         vm.prank(AUTH);
         vm.expectEmit();
@@ -334,7 +321,7 @@ contract SpokeRegistryTestSetMaxAssetPriceAge is SpokeRegistryTest {
     }
 
     function testSetMaxAssetPriceAge() public {
-        _registerAsset();
+        _createAssetId();
 
         vm.prank(AUTH);
         vm.expectEmit();
@@ -390,7 +377,7 @@ contract SpokeRegistryTestPricePoolPerAsset is SpokeRegistryTest {
     }
 
     function testPricePoolPerAssetWithValidity() public {
-        _registerAsset();
+        _createAssetId();
 
         vm.prank(AUTH);
         registry.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID, PRICE, FUTURE);
@@ -407,7 +394,7 @@ contract SpokeRegistryTestPricesPoolPer is SpokeRegistryTest {
     }
 
     function testErrInvalidPrice() public {
-        _registerAsset();
+        _createAssetId();
         _addPoolAndShareClass();
 
         vm.expectRevert(ISpokeRegistry.InvalidPrice.selector);
@@ -415,7 +402,7 @@ contract SpokeRegistryTestPricesPoolPer is SpokeRegistryTest {
     }
 
     function testPricesPoolPerWithValidity() public {
-        _registerAsset();
+        _createAssetId();
         _addPoolAndShareClass();
 
         vm.prank(AUTH);

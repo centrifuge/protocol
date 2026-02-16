@@ -76,15 +76,16 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpokeRegistry
-    function registerAsset(AssetId assetId, address asset, uint256 tokenId) external auth {
-        _idToAsset[assetId] = AssetIdKey(asset, tokenId);
-        _assetToId[asset][tokenId] = assetId;
-    }
-
-    /// @inheritdoc ISpokeRegistry
-    function generateAssetId(uint16 centrifugeId) external auth returns (AssetId assetId) {
+    function createAssetId(uint16 centrifugeId, address asset, uint256 tokenId)
+        external
+        auth
+        returns (AssetId assetId)
+    {
         _assetCounter++;
         assetId = newAssetId(centrifugeId, _assetCounter);
+
+        _idToAsset[assetId] = AssetIdKey(asset, tokenId);
+        _assetToId[asset][tokenId] = assetId;
     }
 
     //----------------------------------------------------------------------------------------------
