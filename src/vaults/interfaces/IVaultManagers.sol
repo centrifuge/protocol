@@ -243,7 +243,7 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
     }
 
     /// @notice Updates contract parameters of type address.
-    /// @param what The bytes32 representation of 'gateway' or 'spoke'.
+    /// @param what The bytes32 representation of 'spokeRegistry', etc.
     /// @param data The new contract address.
     function file(bytes32 what, address data) external;
 

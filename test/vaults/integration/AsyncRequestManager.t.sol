@@ -14,7 +14,7 @@ contract AsyncRequestManagerTest is BaseTest {
         (, address vaultAddress,) = deploySimpleVault(VaultKind.Async);
         IAsyncVault vault = IAsyncVault(vaultAddress);
 
-        uint128 assetId = spoke.assetToId(address(erc20), erc20TokenId).raw();
+        uint128 assetId = spokeRegistry.assetToId(address(erc20), erc20TokenId).raw();
 
         deposit(vaultAddress, investor, depositAmount, false);
 
@@ -70,7 +70,7 @@ contract AsyncRequestManagerTest is BaseTest {
         (, address vaultAddress,) = deploySimpleVault(VaultKind.Async);
         IAsyncVault vault = IAsyncVault(vaultAddress);
 
-        uint128 assetId = spoke.assetToId(address(erc20), erc20TokenId).raw();
+        uint128 assetId = spokeRegistry.assetToId(address(erc20), erc20TokenId).raw();
 
         erc20.mint(investor, depositAmount);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);

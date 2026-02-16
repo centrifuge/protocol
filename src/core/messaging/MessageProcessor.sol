@@ -41,7 +41,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     IGateway public gateway;
     IMultiAdapter public multiAdapter;
-    ISpokeGatewayHandler public spoke;
+    ISpokeGatewayHandler public spokeHandler;
     IHubGatewayHandler public hubHandler;
     ITokenRecoverer public tokenRecoverer;
     IScheduleAuth public immutable scheduleAuth;
@@ -60,7 +60,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageProcessor
     function file(bytes32 what, address data) external auth {
         if (what == "hubHandler") hubHandler = IHubGatewayHandler(data);
-        else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
+        else if (what == "spokeHandler") spokeHandler = ISpokeGatewayHandler(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
@@ -110,10 +110,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
             MessageLib.Request memory m = MessageLib.deserializeRequest(message);
             hubHandler.request(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
         } else if (kind == MessageType.NotifyPool) {
-            spoke.addPool(PoolId.wrap(MessageLib.deserializeNotifyPool(message).poolId));
+            spokeHandler.addPool(PoolId.wrap(MessageLib.deserializeNotifyPool(message).poolId));
         } else if (kind == MessageType.NotifyShareClass) {
             MessageLib.NotifyShareClass memory m = MessageLib.deserializeNotifyShareClass(message);
-            spoke.addShareClass(
+            spokeHandler.addShareClass(
                 PoolId.wrap(m.poolId),
                 ShareClassId.wrap(m.scId),
                 m.name,
@@ -124,12 +124,12 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.NotifyPricePoolPerShare) {
             MessageLib.NotifyPricePoolPerShare memory m = MessageLib.deserializeNotifyPricePoolPerShare(message);
-            spoke.updatePricePoolPerShare(
+            spokeHandler.updatePricePoolPerShare(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), D18.wrap(m.price), m.timestamp
             );
         } else if (kind == MessageType.NotifyPricePoolPerAsset) {
             MessageLib.NotifyPricePoolPerAsset memory m = MessageLib.deserializeNotifyPricePoolPerAsset(message);
-            spoke.updatePricePoolPerAsset(
+            spokeHandler.updatePricePoolPerAsset(
                 PoolId.wrap(m.poolId),
                 ShareClassId.wrap(m.scId),
                 AssetId.wrap(m.assetId),
@@ -138,10 +138,12 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.NotifyShareMetadata) {
             MessageLib.NotifyShareMetadata memory m = MessageLib.deserializeNotifyShareMetadata(message);
-            spoke.updateShareMetadata(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.name, m.symbol.toString());
+            spokeHandler.updateShareMetadata(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.name, m.symbol.toString()
+            );
         } else if (kind == MessageType.UpdateShareHook) {
             MessageLib.UpdateShareHook memory m = MessageLib.deserializeUpdateShareHook(message);
-            spoke.updateShareHook(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.hook.toAddress());
+            spokeHandler.updateShareHook(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.hook.toAddress());
         } else if (kind == MessageType.InitiateTransferShares) {
             MessageLib.InitiateTransferShares memory m = MessageLib.deserializeInitiateTransferShares(message);
             hubHandler.initiateTransferShares(
@@ -156,10 +158,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.ExecuteTransferShares) {
             MessageLib.ExecuteTransferShares memory m = MessageLib.deserializeExecuteTransferShares(message);
-            spoke.executeTransferShares(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.receiver, m.amount);
+            spokeHandler.executeTransferShares(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.receiver, m.amount);
         } else if (kind == MessageType.UpdateRestriction) {
             MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
-            spoke.updateRestriction(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
+            spokeHandler.updateRestriction(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
         } else if (kind == MessageType.TrustedContractUpdate) {
             MessageLib.TrustedContractUpdate memory m = MessageLib.deserializeTrustedContractUpdate(message);
             contractUpdater.trustedCall(
@@ -177,7 +179,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.RequestCallback) {
             MessageLib.RequestCallback memory m = MessageLib.deserializeRequestCallback(message);
-            spoke.requestCallback(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
+            spokeHandler.requestCallback(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload
+            );
         } else if (kind == MessageType.UpdateVault) {
             MessageLib.UpdateVault memory m = MessageLib.deserializeUpdateVault(message);
             vaultRegistry.updateVault(
@@ -189,7 +193,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.SetRequestManager) {
             MessageLib.SetRequestManager memory m = MessageLib.deserializeSetRequestManager(message);
-            spoke.setRequestManager(PoolId.wrap(m.poolId), IRequestManager(m.manager.toAddress()));
+            spokeHandler.setRequestManager(PoolId.wrap(m.poolId), IRequestManager(m.manager.toAddress()));
         } else if (kind == MessageType.UpdateBalanceSheetManager) {
             MessageLib.UpdateBalanceSheetManager memory m = MessageLib.deserializeUpdateBalanceSheetManager(message);
             balanceSheet.updateManager(PoolId.wrap(m.poolId), m.who.toAddress(), m.canManage);
@@ -219,12 +223,12 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.SetMaxAssetPriceAge) {
             MessageLib.SetMaxAssetPriceAge memory m = message.deserializeSetMaxAssetPriceAge();
-            spoke.setMaxAssetPriceAge(
+            spokeHandler.setMaxAssetPriceAge(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.maxPriceAge
             );
         } else if (kind == MessageType.SetMaxSharePriceAge) {
             MessageLib.SetMaxSharePriceAge memory m = message.deserializeSetMaxSharePriceAge();
-            spoke.setMaxSharePriceAge(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.maxPriceAge);
+            spokeHandler.setMaxSharePriceAge(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.maxPriceAge);
         } else if (kind == MessageType.UpdateGatewayManager) {
             MessageLib.UpdateGatewayManager memory m = message.deserializeUpdateGatewayManager();
             gateway.updateManager(PoolId.wrap(m.poolId), m.who.toAddress(), m.canManage);

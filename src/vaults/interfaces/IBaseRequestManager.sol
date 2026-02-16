@@ -9,6 +9,7 @@ import {PoolId} from "../../core/types/PoolId.sol";
 import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {IPoolEscrow} from "../../core/spoke/interfaces/IPoolEscrow.sol";
 import {IRequestManager} from "../../core/interfaces/IRequestManager.sol";
+import {ISpokeRegistry} from "../../core/spoke/interfaces/ISpokeRegistry.sol";
 
 interface IBaseRequestManager is IRequestManager {
     event File(bytes32 indexed what, address data);
@@ -16,7 +17,7 @@ interface IBaseRequestManager is IRequestManager {
     error FileUnrecognizedParam();
 
     /// @notice Updates contract parameters of type address.
-    /// @param what The bytes32 representation of 'gateway' or 'spoke'.
+    /// @param what The bytes32 representation of 'spoke', 'spokeRegistry', etc.
     /// @param data The new contract address.
     function file(bytes32 what, address data) external;
 
@@ -31,6 +32,9 @@ interface IBaseRequestManager is IRequestManager {
 
     /// @notice Returns the Spoke contract address.
     function spoke() external view returns (ISpoke spoke);
+
+    /// @notice Returns the SpokeRegistry contract address.
+    function spokeRegistry() external view returns (ISpokeRegistry spokeRegistry);
 
     /// @notice DEPRECATED: Returns the pool escrow for the calling vault's pool.
     /// NOTE: DEPRECATED IMPLEMENTATION: This function is maintained solely for ABI backward compatibility

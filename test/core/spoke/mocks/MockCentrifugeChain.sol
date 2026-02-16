@@ -4,8 +4,8 @@ pragma solidity 0.8.28;
 import {D18, d18} from "../../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
-import {Spoke} from "../../../../src/core/spoke/Spoke.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
+import {SpokeHandler} from "../../../../src/core/spoke/SpokeHandler.sol";
 import {VaultRegistry} from "../../../../src/core/spoke/VaultRegistry.sol";
 import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {VaultDetails} from "../../../../src/core/spoke/interfaces/IVaultRegistry.sol";
@@ -31,15 +31,20 @@ contract MockCentrifugeChain is Test {
     using RequestCallbackMessageLib for *;
 
     IAdapter[] public adapters;
-    Spoke public spoke;
+    SpokeHandler public spokeHandler;
     VaultRegistry public vaultRegistry;
     SyncManager public syncManager;
 
-    constructor(IAdapter[] memory adapters_, Spoke spoke_, VaultRegistry vaultRegistry_, SyncManager syncManager_) {
+    constructor(
+        IAdapter[] memory adapters_,
+        SpokeHandler spokeHandler_,
+        VaultRegistry vaultRegistry_,
+        SyncManager syncManager_
+    ) {
         for (uint256 i = 0; i < adapters_.length; i++) {
             adapters.push(adapters_[i]);
         }
-        spoke = spoke_;
+        spokeHandler = spokeHandler_;
         vaultRegistry = vaultRegistry_;
         syncManager = syncManager_;
     }
@@ -123,7 +128,7 @@ contract MockCentrifugeChain is Test {
     ///
     /// @dev Implicitly called by addShareClass
     function updateMemberPoolEscrow(uint64 poolId, bytes16 scId) public {
-        address escrow = address(spoke.poolEscrowFactory().escrow(PoolId.wrap(poolId)));
+        address escrow = address(spokeHandler.poolEscrowFactory().escrow(PoolId.wrap(poolId)));
         updateMember(poolId, scId, escrow, type(uint64).max);
     }
 

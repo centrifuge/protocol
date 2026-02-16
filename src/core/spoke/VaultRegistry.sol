@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ISpoke} from "./interfaces/ISpoke.sol";
 import {IShareToken} from "./interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "./interfaces/IVault.sol";
+import {ISpokeRegistry} from "./interfaces/ISpokeRegistry.sol";
 import {IVaultFactory} from "./factories/interfaces/IVaultFactory.sol";
 import {VaultDetails, IVaultRegistry} from "./interfaces/IVaultRegistry.sol";
 
@@ -21,7 +21,7 @@ import {IRequestManager} from "../interfaces/IRequestManager.sol";
 /// @title  VaultRegistry
 /// @notice This contract manages vault deployment, linking, and unlinking operations for pools and share classes
 contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatewayHandler {
-    ISpoke public spoke;
+    ISpokeRegistry public spokeRegistry;
 
     mapping(IVault => VaultDetails) internal _vaultDetails;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(IRequestManager => IVault)))) public vault;
@@ -34,7 +34,7 @@ contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatew
 
     /// @inheritdoc IVaultRegistry
     function file(bytes32 what, address data) external auth {
-        if (what == "spoke") spoke = ISpoke(data);
+        if (what == "spokeRegistry") spokeRegistry = ISpokeRegistry(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -69,14 +69,14 @@ contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatew
         auth
         returns (IVault)
     {
-        (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
-        IShareToken shareToken = spoke.shareToken(poolId, scId);
+        (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
+        IShareToken shareToken = spokeRegistry.shareToken(poolId, scId);
 
         IVault vault_ = factory.newVault(poolId, scId, asset, tokenId, shareToken);
 
         // We need to check if there's a request manager for async vaults
         if (vault_.vaultKind() == VaultKind.Async) {
-            require(address(spoke.requestManager(poolId)) != address(0), InvalidRequestManager());
+            require(address(spokeRegistry.requestManager(poolId)) != address(0), InvalidRequestManager());
         }
 
         registerVault(poolId, scId, assetId, asset, tokenId, factory, vault_);
@@ -107,8 +107,8 @@ contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatew
         require(vault_.poolId() == poolId, InvalidVault());
         require(vault_.scId() == scId, InvalidVault());
 
-        (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
-        IRequestManager requestManager = spoke.requestManager(poolId);
+        (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
+        IRequestManager requestManager = spokeRegistry.requestManager(poolId);
 
         VaultDetails storage vaultDetails_ = _vaultDetails[vault_];
         require(vaultDetails_.asset != address(0), UnknownVault());
@@ -118,7 +118,7 @@ contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatew
         vaultDetails_.isLinked = true;
 
         if (tokenId == 0) {
-            spoke.setShareTokenVault(poolId, scId, asset, address(vault_));
+            spokeRegistry.setShareTokenVault(poolId, scId, asset, address(vault_));
         }
 
         emit LinkVault(poolId, scId, asset, tokenId, vault_);
@@ -129,8 +129,8 @@ contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatew
         require(vault_.poolId() == poolId, InvalidVault());
         require(vault_.scId() == scId, InvalidVault());
 
-        (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
-        IRequestManager requestManager = spoke.requestManager(poolId);
+        (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
+        IRequestManager requestManager = spokeRegistry.requestManager(poolId);
 
         VaultDetails storage vaultDetails_ = _vaultDetails[vault_];
         require(vaultDetails_.asset != address(0), UnknownVault());
@@ -140,7 +140,7 @@ contract VaultRegistry is Auth, Recoverable, IVaultRegistry, IVaultRegistryGatew
         vaultDetails_.isLinked = false;
 
         if (tokenId == 0) {
-            spoke.setShareTokenVault(poolId, scId, asset, address(0));
+            spokeRegistry.setShareTokenVault(poolId, scId, asset, address(0));
         }
 
         emit UnlinkVault(poolId, scId, asset, tokenId, vault_);

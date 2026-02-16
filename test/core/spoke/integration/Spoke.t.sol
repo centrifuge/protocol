@@ -45,8 +45,8 @@ contract SpokeTestHelper is BaseTest {
         tokenSymbol = tokenSymbol_;
         scId = scId_;
 
-        spoke.addPool(poolId);
-        spoke.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, bytes32(0), address(0));
+        spokeHandler.addPool(poolId);
+        spokeHandler.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, bytes32(0), address(0));
     }
 
     function registerAssetErc20() public {
@@ -70,34 +70,34 @@ contract SpokeRestrictionTest is BaseTest, SpokeTestHelper {
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address secondUser = makeAddr("secondUser");
 
-        spoke.updateRestriction(
+        spokeHandler.updateRestriction(
             poolId,
             scId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember(randomUser.toBytes32(), validUntil).serialize()
         );
-        spoke.updateRestriction(
+        spokeHandler.updateRestriction(
             poolId,
             scId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember(secondUser.toBytes32(), validUntil).serialize()
         );
         assertTrue(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
-        spoke.updateRestriction(
+        spokeHandler.updateRestriction(
             poolId, scId, UpdateRestrictionMessageLib.UpdateRestrictionFreeze(randomUser.toBytes32()).serialize()
         );
         assertFalse(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
-        spoke.updateRestriction(
+        spokeHandler.updateRestriction(
             poolId, scId, UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(randomUser.toBytes32()).serialize()
         );
         assertTrue(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
-        spoke.updateRestriction(
+        spokeHandler.updateRestriction(
             poolId, scId, UpdateRestrictionMessageLib.UpdateRestrictionFreeze(secondUser.toBytes32()).serialize()
         );
         assertFalse(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
-        spoke.updateRestriction(
+        spokeHandler.updateRestriction(
             poolId, scId, UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(secondUser.toBytes32()).serialize()
         );
         assertTrue(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
@@ -114,10 +114,10 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         private
         view
     {
-        IShareToken token_ = spoke.shareToken(poolId, scId);
+        IShareToken token_ = spokeRegistry.shareToken(poolId, scId);
         address vault_ = IShareToken(token_).vault(asset);
 
-        assert(spoke.isPoolActive(poolId));
+        assert(spokeRegistry.isPoolActive(poolId));
 
         VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(IBaseVault(vaultAddress));
         assertEq(assetId.raw(), vaultDetails.assetId.raw(), "vault assetId mismatch");
@@ -148,7 +148,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
     }
 
     function _assertShareSetup() private view {
-        IShareToken token_ = spoke.shareToken(poolId, scId);
+        IShareToken token_ = spokeRegistry.shareToken(poolId, scId);
         ShareToken shareToken = ShareToken(address(token_));
 
         assertEq(shareToken.wards(address(spoke)), 1);
@@ -180,7 +180,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
 
         // Check event except for vault address which cannot be known
         AssetId assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, erc20TokenId, address(this));
-        spoke.setRequestManager(poolId, asyncRequestManager);
+        spokeRegistry.setRequestManager(poolId, asyncRequestManager);
         IVault vault = vaultRegistry.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
         _assertDeployedVault(address(vault), assetId, asset, erc20TokenId, false);
@@ -198,7 +198,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         address asset = address(erc20);
 
         AssetId assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, erc20TokenId, address(this));
-        spoke.setRequestManager(poolId, asyncRequestManager);
+        spokeRegistry.setRequestManager(poolId, asyncRequestManager);
         IVault vault = vaultRegistry.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
         vaultRegistry.linkVault(poolId, scId, assetId, vault);

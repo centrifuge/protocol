@@ -10,12 +10,12 @@ import {IERC6909} from "../../../../src/misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
-import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IEndorsements} from "../../../../src/core/spoke/interfaces/IEndorsements.sol";
+import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {ISpokeMessageSender} from "../../../../src/core/messaging/interfaces/IGatewaySenders.sol";
 import {BalanceSheet, IBalanceSheet, WithdrawMode} from "../../../../src/core/spoke/BalanceSheet.sol";
 import {IPoolEscrowProvider} from "../../../../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
@@ -46,7 +46,7 @@ contract BalanceSheetTest is Test {
     using CastLib for *;
 
     IRoot root = IRoot(makeAddr("Root"));
-    ISpoke spoke = ISpoke(makeAddr("Spoke"));
+    ISpokeRegistry spokeRegistry = ISpokeRegistry(makeAddr("SpokeRegistry"));
     IGateway gateway = IGateway(makeAddr("Gateway"));
     ISpokeMessageSender sender = ISpokeMessageSender(address(new IsContract()));
     address erc6909 = address(new IsContract());
@@ -83,26 +83,34 @@ contract BalanceSheetTest is Test {
     BalanceSheetExt balanceSheet = new BalanceSheetExt(root, AUTH);
 
     function setUp() public virtual {
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.assetToId.selector, erc20, 0), abi.encode(ASSET_20));
         vm.mockCall(
-            address(spoke),
-            abi.encodeWithSelector(ISpoke.assetToId.selector, erc6909, TOKEN_ID),
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.assetToId.selector, erc20, 0),
+            abi.encode(ASSET_20)
+        );
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.assetToId.selector, erc6909, TOKEN_ID),
             abi.encode(ASSET_6909_1)
         );
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.shareToken.selector, POOL_A, SC_1), abi.encode(share));
         vm.mockCall(
-            address(spoke),
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_20, true),
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.shareToken.selector, POOL_A, SC_1),
+            abi.encode(share)
+        );
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_20, true),
             abi.encode(ASSET_PRICE)
         );
         vm.mockCall(
-            address(spoke),
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_6909_1, true),
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_6909_1, true),
             abi.encode(ASSET_PRICE)
         );
         vm.mockCall(
-            address(spoke),
-            abi.encodeWithSelector(ISpoke.pricePoolPerShare.selector, POOL_A, SC_1, true),
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerShare.selector, POOL_A, SC_1, true),
             abi.encode(SHARE_PRICE)
         );
         vm.mockCall(
@@ -112,7 +120,7 @@ contract BalanceSheetTest is Test {
         );
 
         vm.startPrank(AUTH);
-        balanceSheet.file("spoke", address(spoke));
+        balanceSheet.file("spokeRegistry", address(spokeRegistry));
         balanceSheet.file("sender", address(sender));
         balanceSheet.file("poolEscrowProvider", address(escrowProvider));
         balanceSheet.file("gateway", address(gateway));
@@ -218,7 +226,7 @@ contract BalanceSheetTestFile is BalanceSheetTest {
 
     function testFile() public view {
         // Data initialized in setUp
-        assertEq(address(balanceSheet.spoke()), address(spoke));
+        assertEq(address(balanceSheet.spokeRegistry()), address(spokeRegistry));
         assertEq(address(balanceSheet.sender()), address(sender));
         assertEq(address(balanceSheet.poolEscrowProvider()), address(escrowProvider));
         assertEq(address(balanceSheet.gateway()), address(gateway));
