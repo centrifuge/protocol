@@ -371,9 +371,9 @@ contract SpokeRegistryTestPricePoolPerAsset is SpokeRegistryTest {
         registry.pricePoolPerAsset(POOL_A, SC_1, ASSET_ID, true);
     }
 
-    function testPricePoolPerAssetWithoutValidity() public {
+    function testPricePoolPerAssetWithoutValidity() public view {
         D18 price = registry.pricePoolPerAsset(POOL_A, SC_1, ASSET_ID, false);
-        assertEq(price.raw(), 0);
+        assert(price.raw() == 0);
     }
 
     function testPricePoolPerAssetWithValidity() public {
