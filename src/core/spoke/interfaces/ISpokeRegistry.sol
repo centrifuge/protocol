@@ -110,9 +110,7 @@ interface ISpokeRegistry {
     /// @param asset The asset address
     /// @param tokenId The ERC6909 token id or 0 for ERC20
     /// @return assetId The new asset ID
-    function createAssetId(uint16 centrifugeId, address asset, uint256 tokenId)
-        external
-        returns (AssetId assetId);
+    function createAssetId(uint16 centrifugeId, address asset, uint256 tokenId) external returns (AssetId assetId);
 
     /// @notice Updates the price per share for a given pool and share class
     /// @param poolId The pool id

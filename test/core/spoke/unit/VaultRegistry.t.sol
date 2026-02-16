@@ -4,8 +4,8 @@ pragma solidity 0.8.28;
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
 import {IRequestManager} from "../../../../src/core/interfaces/IRequestManager.sol";
