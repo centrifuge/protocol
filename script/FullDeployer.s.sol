@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CreateXScript} from "./utils/CreateXScript.sol";
-import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
+import {BaseDeployer} from "./BaseDeployer.s.sol";
 
 import {Hub} from "../src/core/hub/Hub.sol";
 import {Spoke} from "../src/core/spoke/Spoke.sol";
@@ -50,8 +49,6 @@ import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
-
-import "forge-std/Script.sol";
 
 import {SubsidyManager} from "../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
@@ -114,18 +111,8 @@ struct DeployerInput {
     AdaptersInput adapters;
 }
 
-function makeSalt(string memory contractName, bytes32 version, address deployer) pure returns (bytes32) {
-    bytes32 baseHash = keccak256(abi.encodePacked(contractName, version));
-
-    // NOTE: To avoid CreateX InvalidSalt issues, 21st byte needs to be 0
-    return bytes32(abi.encodePacked(bytes20(deployer), bytes1(0x0), bytes11(baseHash)));
-}
-
-contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
+contract FullDeployer is BaseDeployer, Constants {
     uint256 public constant DELAY = 48 hours;
-
-    bytes32 public version;
-    address public deployer;
 
     Root public root;
     TokenRecoverer public tokenRecoverer;
@@ -189,26 +176,12 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
     NonCoreActionBatcher public nonCoreBatcher;
     AdapterActionBatcher public adapterBatcher;
 
-    function _init(bytes32 version_, address deployer_) internal {
-        // NOTE: This implementation must be idempotent
-        setUpCreateXFactory();
-
-        version = version_;
-        deployer = deployer_;
-    }
-
-    /// @dev Generates a deterministic salt based on contract name and optional VERSION
-    function createSalt(string memory contractName) internal returns (bytes32 salt) {
-        salt = makeSalt(contractName, version, deployer);
-        register(contractName, computeCreate3Address(salt, deployer));
-    }
-
     function deployFull(DeployerInput memory input, address deployer_) public {
         _init(input.version, deployer_);
 
-        address coreBatcherAddr = computeCreate3Address(makeSalt("coreBatcher", version, deployer), deployer);
-        address nonCoreBatcherAddr = computeCreate3Address(makeSalt("nonCoreBatcher", version, deployer), deployer);
-        address adapterBatcherAddr = computeCreate3Address(makeSalt("adapterBatcher", version, deployer), deployer);
+        address coreBatcherAddr = previewCreate3Address("coreBatcher");
+        address nonCoreBatcherAddr = previewCreate3Address("nonCoreBatcher");
+        address adapterBatcherAddr = previewCreate3Address("adapterBatcher");
 
         _deployCore(coreBatcherAddr, input);
         coreBatcher = CoreActionBatcher(
@@ -250,8 +223,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
 
     function _deployCore(address batcher, DeployerInput memory input) internal {
         // Admin
-        root =
-            Root(create3(createSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));
+        root = Root(create3(createSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));
 
         // Core
         gateway = Gateway(
@@ -270,8 +242,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
 
         contractUpdater = ContractUpdater(
             create3(
-                createSalt("contractUpdater"),
-                abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(batcher))
+                createSalt("contractUpdater"), abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(batcher))
             )
         );
 
@@ -301,21 +272,17 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
         // Spoke
         tokenFactory = TokenFactory(
             create3(
-                createSalt("tokenFactory"),
-                abi.encodePacked(type(TokenFactory).creationCode, abi.encode(root, batcher))
+                createSalt("tokenFactory"), abi.encodePacked(type(TokenFactory).creationCode, abi.encode(root, batcher))
             )
         );
 
         spoke = Spoke(
-            create3(
-                createSalt("spoke"), abi.encodePacked(type(Spoke).creationCode, abi.encode(tokenFactory, batcher))
-            )
+            create3(createSalt("spoke"), abi.encodePacked(type(Spoke).creationCode, abi.encode(tokenFactory, batcher)))
         );
 
         balanceSheet = BalanceSheet(
             create3(
-                createSalt("balanceSheet"),
-                abi.encodePacked(type(BalanceSheet).creationCode, abi.encode(root, batcher))
+                createSalt("balanceSheet"), abi.encodePacked(type(BalanceSheet).creationCode, abi.encode(root, batcher))
             )
         );
 
@@ -343,8 +310,7 @@ contract FullDeployer is Script, JsonRegistry, CreateXScript, Constants {
 
         holdings = Holdings(
             create3(
-                createSalt("holdings"),
-                abi.encodePacked(type(Holdings).creationCode, abi.encode(hubRegistry, batcher))
+                createSalt("holdings"), abi.encodePacked(type(Holdings).creationCode, abi.encode(hubRegistry, batcher))
             )
         );
 

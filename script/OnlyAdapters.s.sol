@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {FullDeployer} from "./FullDeployer.s.sol";
+import {BaseDeployer} from "./BaseDeployer.s.sol";
 
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
@@ -13,8 +13,13 @@ import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 
 /// @title OnlyAdapters
 /// @notice Deploys only messaging adapters, reusing existing core addresses from env/<network>.json
-contract OnlyAdapters is FullDeployer {
+contract OnlyAdapters is BaseDeployer {
     using CastLib for *;
+
+    MultiAdapter multiAdapter;
+    WormholeAdapter wormholeAdapter;
+    AxelarAdapter axelarAdapter;
+    LayerZeroAdapter layerZeroAdapter;
 
     function _fetchConfig(string memory network) internal view returns (string memory) {
         string memory configFile = string.concat("env/", network, ".json");
