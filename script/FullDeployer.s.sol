@@ -68,6 +68,8 @@ import {
     SetConfigParam
 } from "../src/deployment/ActionBatchers.sol";
 
+import {VmSafe} from "forge-std/Vm.sol";
+
 struct WormholeInput {
     bool shouldDeploy;
     address relayer;
@@ -219,6 +221,18 @@ contract FullDeployer is BaseDeployer, Constants {
                 )
             )
         );
+
+        // NOTE. Coverage compiles without optimizations.
+        // This means that the gas costs are higher than the calibrated gasService limits,
+        // causing message processing to silently fail (e.g. PoolEscrow creation via CREATE).
+        // We mock messageProcessingGasLimit with a higher value large enough for unoptimized code.
+        if (vm.isContext(VmSafe.ForgeContext.Coverage)) {
+            vm.mockCall(
+                address(gasService),
+                abi.encodeWithSelector(GasService.messageProcessingGasLimit.selector),
+                abi.encode(uint128(30_000_000))
+            );
+        }
     }
 
     function _deployCore(address batcher, DeployerInput memory input) internal {
