@@ -14,7 +14,6 @@
     ],
     "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
-    "safeAdmin": "0xb6642fEd2221e177dD29581BB6d1959Bd1c54185",
     "batchLimit": 10,
     "baseRpcUrl": "https://avax-mainnet.g.alchemy.com/v2/"
   },

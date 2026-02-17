@@ -17,7 +17,7 @@ library ChainConfigs {
         uint32 layerZeroEid;
         address usdc;
         address poolAdmin;
-        address adminSafe;
+        address protocolSafe;
         bool hasAxelar;
         bool hasLayerZero;
     }
@@ -34,7 +34,7 @@ library ChainConfigs {
                 layerZeroEid: IntegrationConstants.ETH_LAYERZERO_EID,
                 usdc: IntegrationConstants.ETH_USDC,
                 poolAdmin: IntegrationConstants.ETH_DEFAULT_POOL_ADMIN,
-                adminSafe: IntegrationConstants.ETH_ADMIN_SAFE,
+                protocolSafe: IntegrationConstants.ETH_ADMIN_SAFE,
                 hasAxelar: true,
                 hasLayerZero: true
             }),
@@ -47,7 +47,7 @@ library ChainConfigs {
                 layerZeroEid: IntegrationConstants.BASE_LAYERZERO_EID,
                 usdc: IntegrationConstants.BASE_USDC,
                 poolAdmin: IntegrationConstants.ETH_DEFAULT_POOL_ADMIN,
-                adminSafe: IntegrationConstants.BASE_ADMIN_SAFE,
+                protocolSafe: IntegrationConstants.BASE_ADMIN_SAFE,
                 hasAxelar: true,
                 hasLayerZero: true
             }),
@@ -60,7 +60,7 @@ library ChainConfigs {
                 layerZeroEid: IntegrationConstants.ARBITRUM_LAYERZERO_EID,
                 usdc: IntegrationConstants.ARBITRUM_USDC,
                 poolAdmin: IntegrationConstants.ETH_DEFAULT_POOL_ADMIN,
-                adminSafe: IntegrationConstants.ARBITRUM_ADMIN_SAFE,
+                protocolSafe: IntegrationConstants.ARBITRUM_ADMIN_SAFE,
                 hasAxelar: true,
                 hasLayerZero: true
             }),
@@ -73,7 +73,7 @@ library ChainConfigs {
                 layerZeroEid: IntegrationConstants.AVAX_LAYERZERO_EID,
                 usdc: IntegrationConstants.AVAX_USDC,
                 poolAdmin: IntegrationConstants.ETH_DEFAULT_POOL_ADMIN,
-                adminSafe: IntegrationConstants.AVAX_ADMIN_SAFE,
+                protocolSafe: IntegrationConstants.AVAX_ADMIN_SAFE,
                 hasAxelar: true,
                 hasLayerZero: true
             }),
@@ -86,7 +86,7 @@ library ChainConfigs {
                 layerZeroEid: IntegrationConstants.BNB_LAYERZERO_EID,
                 usdc: IntegrationConstants.BNB_USDC,
                 poolAdmin: IntegrationConstants.ETH_DEFAULT_POOL_ADMIN,
-                adminSafe: IntegrationConstants.BNB_ADMIN_SAFE,
+                protocolSafe: IntegrationConstants.BNB_ADMIN_SAFE,
                 hasAxelar: true,
                 hasLayerZero: true
             }),
@@ -99,7 +99,7 @@ library ChainConfigs {
                 layerZeroEid: 0, // Plume doesn't support LayerZero
                 usdc: IntegrationConstants.PLUME_PUSD, // pUSD instead of USDC until USDC exists
                 poolAdmin: IntegrationConstants.PLUME_POOL_ADMIN,
-                adminSafe: IntegrationConstants.PLUME_ADMIN_SAFE,
+                protocolSafe: IntegrationConstants.PLUME_ADMIN_SAFE,
                 hasAxelar: false,
                 hasLayerZero: false
             })

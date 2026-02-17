@@ -52,7 +52,7 @@ contract BaseTest is FullDeployer, Test {
     address investor = makeAddr("investor");
     address nonMember = makeAddr("nonMember");
     address randomUser = makeAddr("randomUser");
-    address immutable ADMIN = address(adminSafe);
+    address immutable ADMIN = address(protocolSafe);
 
     uint128 constant MAX_UINT128 = type(uint128).max;
     uint64 constant MAX_UINT64 = type(uint64).max;
@@ -88,10 +88,8 @@ contract BaseTest is FullDeployer, Test {
 
         deployFull(
             FullInput({
-                core: CoreInput({
-                    centrifugeId: THIS_CHAIN_ID, version: bytes32(0), root: address(0), txLimits: defaultTxLimits()
-                }),
-                adminSafe: ISafe(ADMIN),
+                core: CoreInput({centrifugeId: THIS_CHAIN_ID, version: bytes32(0), txLimits: defaultTxLimits()}),
+                protocolSafe: ISafe(ADMIN),
                 opsSafe: ISafe(ADMIN),
                 adapters: noAdaptersInput()
             }),

@@ -28,7 +28,6 @@ import "forge-std/Script.sol";
 struct CoreInput {
     uint16 centrifugeId;
     bytes32 version;
-    address root;
     uint8[32] txLimits;
 }
 
@@ -76,7 +75,7 @@ contract CoreActionBatcher is Constants {
         deployer = address(0);
     }
 
-    function engageCore(CoreReport memory report, address root, bool newRoot) public onlyDeployer {
+    function engageCore(CoreReport memory report, address root) public onlyDeployer {
         // Rely root
         report.gateway.rely(root);
         report.multiAdapter.rely(root);
@@ -174,7 +173,7 @@ contract CoreActionBatcher is Constants {
 
         report.spoke.file("gateway", address(report.gateway));
         report.spoke.file("poolEscrowFactory", address(report.poolEscrowFactory));
-        if (newRoot) report.spoke.file("sender", address(report.messageDispatcher));
+        report.spoke.file("sender", address(report.messageDispatcher));
 
         report.balanceSheet.file("spoke", address(report.spoke));
         report.balanceSheet.file("gateway", address(report.gateway));
@@ -265,14 +264,14 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
         return makeSalt(contractName, version, deployer);
     }
 
-    function deployCore(CoreInput memory input, CoreActionBatcher batcher, bool newRoot) public {
+    function deployCore(CoreInput memory input, CoreActionBatcher batcher, address root) public {
         _init(input.version, batcher.deployer());
 
         // Core
         gateway = Gateway(
             create3(
                 generateSalt("gateway"),
-                abi.encodePacked(type(Gateway).creationCode, abi.encode(input.centrifugeId, input.root, batcher))
+                abi.encodePacked(type(Gateway).creationCode, abi.encode(input.centrifugeId, root, batcher))
             )
         );
 
@@ -300,7 +299,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
         messageProcessor = MessageProcessor(
             create3(
                 generateSalt("messageProcessor"),
-                abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(input.root, batcher))
+                abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, batcher))
             )
         );
 
@@ -308,7 +307,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
             create3(
                 generateSalt("messageDispatcher"),
                 abi.encodePacked(
-                    type(MessageDispatcher).creationCode, abi.encode(input.centrifugeId, input.root, gateway, batcher)
+                    type(MessageDispatcher).creationCode, abi.encode(input.centrifugeId, root, gateway, batcher)
                 )
             )
         );
@@ -317,7 +316,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
         tokenFactory = TokenFactory(
             create3(
                 generateSalt("tokenFactory"),
-                abi.encodePacked(type(TokenFactory).creationCode, abi.encode(input.root, batcher))
+                abi.encodePacked(type(TokenFactory).creationCode, abi.encode(root, batcher))
             )
         );
 
@@ -330,7 +329,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
         balanceSheet = BalanceSheet(
             create3(
                 generateSalt("balanceSheet"),
-                abi.encodePacked(type(BalanceSheet).creationCode, abi.encode(input.root, batcher))
+                abi.encodePacked(type(BalanceSheet).creationCode, abi.encode(root, batcher))
             )
         );
 
@@ -343,7 +342,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
         poolEscrowFactory = PoolEscrowFactory(
             create3(
                 generateSalt("poolEscrowFactory"),
-                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(input.root, batcher))
+                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(root, batcher))
             )
         );
 
@@ -389,7 +388,7 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
             )
         );
 
-        batcher.engageCore(coreReport(), input.root, newRoot);
+        batcher.engageCore(coreReport(), root);
 
         // Core
         register("gateway", address(gateway));

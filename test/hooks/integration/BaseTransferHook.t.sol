@@ -29,7 +29,7 @@ contract MockPoolEscrow {
 
 contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     uint16 constant LOCAL_CENTRIFUGE_ID = IntegrationConstants.LOCAL_CENTRIFUGE_ID;
-    address immutable ADMIN = address(adminSafe);
+    address immutable ADMIN = address(protocolSafe);
     uint256 constant GAS = IntegrationConstants.INTEGRATION_DEFAULT_SUBSIDY;
     address constant USER = address(0x1234);
     PoolId constant TEST_POOL_ID = PoolId.wrap(999);
@@ -42,14 +42,9 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         super.labelAddresses("");
         super.deployFull(
             FullInput({
-                core: CoreInput({
-                    centrifugeId: LOCAL_CENTRIFUGE_ID,
-                    version: bytes32(0),
-                    root: address(0),
-                    txLimits: defaultTxLimits()
-                }),
-                adminSafe: adminSafe,
-                opsSafe: adminSafe,
+                core: CoreInput({centrifugeId: LOCAL_CENTRIFUGE_ID, version: bytes32(0), txLimits: defaultTxLimits()}),
+                protocolSafe: protocolSafe,
+                opsSafe: protocolSafe,
                 adapters: noAdaptersInput()
             }),
             batcher

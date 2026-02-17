@@ -141,7 +141,8 @@ interface ChainConfig {
   network: {
     chainId: number;
     centrifugeId: number;       // Internal Centrifuge chain identifier
-    safeAdmin?: string;         // Safe multisig admin address (mainnet only)
+    protocolAdmin?: string;     // multisig safe admin address
+    opsAdmin?: string;          // multisig safe admin address
   };
   adapters: {
     wormhole?: {

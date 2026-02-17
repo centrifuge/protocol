@@ -42,14 +42,9 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
         super.labelAddresses("");
         super.deployFull(
             FullInput({
-                core: CoreInput({
-                    centrifugeId: LOCAL_CENTRIFUGE_ID,
-                    version: bytes32(0),
-                    root: address(0),
-                    txLimits: defaultTxLimits()
-                }),
-                adminSafe: adminSafe,
-                opsSafe: adminSafe,
+                core: CoreInput({centrifugeId: LOCAL_CENTRIFUGE_ID, version: bytes32(0), txLimits: defaultTxLimits()}),
+                protocolSafe: protocolSafe,
+                opsSafe: protocolSafe,
                 adapters: noAdaptersInput()
             }),
             batcher
@@ -83,8 +78,8 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
 
         // Extra deployment
         usdc = new ERC20(6);
-        usdc.rely(address(adminSafe));
-        vm.startPrank(address(adminSafe));
+        usdc.rely(address(protocolSafe));
+        vm.startPrank(address(protocolSafe));
         usdc.file("name", "USD Coin");
         usdc.file("symbol", "USDC");
         vm.stopPrank();
@@ -97,12 +92,12 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
     }
 
     function _mintUSDC(address receiver, uint256 amount) internal {
-        vm.prank(address(adminSafe));
+        vm.prank(address(protocolSafe));
         usdc.mint(receiver, amount);
     }
 
     function _createPool() internal {
-        vm.prank(address(adminSafe));
+        vm.prank(address(protocolSafe));
         opsGuardian.createPool(POOL_A, FM, USD_ID);
 
         vm.prank(FM);

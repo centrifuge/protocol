@@ -65,9 +65,9 @@ class AnvilManager:
                 "environment": "testnet",
                 "connectsTo": [],
                 "protocolAdmin": self.protocol_admin_address,
-                "opsAdmin": self.ops_admin_address
+                "opsAdmin": self.ops_admin_address,
+                "baseRpcUrl": "http://localhost:8545"
             },
-            "contracts": {},  # Will be populated after LaunchDeployer runs
             "adapters": {
                 "wormhole": {
                 "wormholeId": "10002",
