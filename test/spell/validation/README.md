@@ -5,14 +5,16 @@ Validates Centrifuge protocol state before and after executing governance spells
 ## Architecture
 
 ```
-test/spell/validation/
-├── BaseValidator.sol            # Abstract base with ValidationContext + helpers
-├── ValidationExecutor.sol       # Runs validators and displays report
-├── ValidationSuite.sol          # Registers PRE/POST validators
-├── TestContracts.sol            # TestContracts struct + factory functions
-├── InvestmentFlowExecutor.sol   # Investment flow execution for fork tests
-└── validators/
-    └── Validate_Example.sol     # Example: PRE query, cache, POST read
+test/spell/
+├── validation/                          # Framework (shared)
+│   ├── BaseValidator.sol                # Abstract base with ValidationContext + helpers
+│   ├── ValidationExecutor.sol           # Runs validators and displays report
+│   ├── TestContracts.sol                # TestContracts struct + factory functions
+│   └── InvestmentFlowExecutor.sol       # Investment flow execution for fork tests
+└── example-spell/                       # Example usage
+    ├── ExampleTest.t.sol                # Example test wiring PRE/cache/POST phases
+    └── validators/
+        └── Validate_Example.sol         # Example: PRE query, cache, POST read
 ```
 
 ## Validation Flow
@@ -20,23 +22,36 @@ test/spell/validation/
 ### PRE/POST Pattern
 
 ```solidity
-contract MySpellTest is ValidationSuite {
-    ValidationSuite suite = new ValidationSuite("ethereum");
+contract MySpellTest {
+    BaseValidator[] pre;
+    BaseValidator[] cache;
+    BaseValidator[] post;
+
+    constructor() {
+        pre.push(new Validate_YourPreCheck());
+        cache.push(new Validate_YourCacheCheck());
+        post.push(new Validate_YourPostCheck());
+    }
 
     function testSpell() public {
-        // 1. PRE validation (soft failures = warnings)
-        suite.runPreValidation(false);
+        ValidationExecutor executor = new ValidationExecutor("ethereum");
 
-        // 2. Execute spell
+        // 1. PRE validation (soft failures = warnings)
+        executor.runPreValidation(pre, false);
+
+        // 2. Cache validation (silent, no report)
+        executor.runCacheValidation(cache);
+
+        // 3. Execute spell
         spell.execute();
 
-        // 3. POST validation (hard failures = reverts)
-        suite.runPostValidation(testContractsfromDeployer(deployer));
+        // 4. POST validation (hard failures = reverts)
+        executor.runPostValidation(post, testContractsFromConfig(Env.load("ethereum")));
     }
 }
 ```
 
-PRE validators query live state and cache results. POST validators read cached data and compare with the newly deployed contracts.
+PRE validators query live state and cache results. Cache validators run silently to store data without reporting. POST validators read cached data and compare with the newly deployed contracts.
 
 ### ValidationContext
 
@@ -55,14 +70,14 @@ Every validator receives a `ValidationContext` with:
 
 ### 1. Create Validator Contract
 
-Create `test/spell/validation/validators/Validate_YourCheck.sol`:
+Create a validator contract (e.g., `test/spell/your-spell/validators/Validate_YourCheck.sol`):
 
 ```solidity
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
 import {stdJson} from "forge-std/StdJson.sol";
-import {BaseValidator, ValidationContext} from "../BaseValidator.sol";
+import {BaseValidator, ValidationContext} from "../../validation/BaseValidator.sol";
 
 contract Validate_YourCheck is BaseValidator("YourCheck") {
     using stdJson for string;
@@ -90,18 +105,17 @@ contract Validate_YourCheck is BaseValidator("YourCheck") {
 }
 ```
 
-### 2. Register in ValidationSuite
+### 2. Register in Your Test
 
-Edit `ValidationSuite.sol`:
+Add validators to the appropriate phase array in your test contract:
 
 ```solidity
 import {Validate_YourCheck} from "./validators/Validate_YourCheck.sol";
 
-// In runPreValidation():
-executor.add(new Validate_YourCheck());
-
-// Or in runPostValidation():
-executor.add(new Validate_YourCheck());
+// In the constructor:
+pre.push(new Validate_YourCheck());   // for pre-spell checks
+cache.push(new Validate_YourCheck()); // for silent caching
+post.push(new Validate_YourCheck());  // for post-spell checks
 ```
 
 ## Caching Data Between Phases
@@ -143,8 +157,8 @@ for (uint256 i = 0; i < totalCount; i++) {
 
 ```solidity
 // From a FullDeployer instance (test deployments)
-TestContracts memory tc = testContractsfromDeployer(deployer);
+TestContracts memory tc = testContractsFromDeployer(deployer);
 
 // From an EnvConfig (existing on-chain addresses)
-TestContracts memory tc = testContractsfromConfig(config);
+TestContracts memory tc = testContractsFromConfig(config);
 ```

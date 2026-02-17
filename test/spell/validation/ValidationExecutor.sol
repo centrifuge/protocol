@@ -20,13 +20,13 @@ contract ValidationExecutor is Script {
     event log_string(string);
 
     ValidationContext ctx;
-    BaseValidator[] validators;
 
-    constructor(string memory network, TestContracts memory latest) {
+    constructor(string memory network) {
         EnvConfig memory config = Env.load(network);
 
+        TestContracts memory empty;
         ctx = ValidationContext({
-            contracts: Contracts(config.contracts, latest),
+            contracts: Contracts(config.contracts, empty),
             localCentrifugeId: config.network.centrifugeId,
             indexer: new GraphQLQuery(config.network.graphQLApi()),
             cache: new CacheStore(string.concat("spell-cache/validation/", network)),
@@ -34,15 +34,24 @@ contract ValidationExecutor is Script {
         });
     }
 
-    function cleanCache() external {
+    function runPreValidation(BaseValidator[] memory validators, bool shouldRevert) external {
+        _execute(validators, "PRE-SPELL", shouldRevert);
+    }
+
+    function runCacheValidation(BaseValidator[] memory validators) external {
         ctx.cache.cleanAndCreateCacheDir();
+        _execute(validators, "", false);
     }
 
-    function add(BaseValidator validator) external {
-        validators.push(validator);
+    function runPostValidation(BaseValidator[] memory validators, TestContracts memory latest) external {
+        ctx.contracts.latest = latest;
+        _execute(validators, "POST-SPELL", true);
     }
 
-    function execute(string memory phaseName, bool shouldRevert) external returns (bool) {
+    function _execute(BaseValidator[] memory validators, string memory phaseName, bool shouldRevert)
+        internal
+        returns (bool)
+    {
         ValidationResult[] memory results = new ValidationResult[](validators.length);
         uint256 totalErrors = 0;
 
@@ -55,7 +64,9 @@ contract ValidationExecutor is Script {
             totalErrors += results[i].errors.length;
         }
 
-        _displayReport(results, totalErrors, phaseName, shouldRevert);
+        if (bytes(phaseName).length != 0) {
+            _displayReport(results, totalErrors, phaseName, shouldRevert);
+        }
 
         if (totalErrors > 0) {
             if (shouldRevert) {
