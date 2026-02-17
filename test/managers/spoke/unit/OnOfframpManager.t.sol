@@ -10,8 +10,8 @@ import {IERC7751} from "../../../../src/misc/interfaces/IERC7751.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
-import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {IBalanceSheet, WithdrawMode} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 
 import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
@@ -27,7 +27,7 @@ contract OnOfframpManagerTest is Test {
     using CastLib for *;
 
     IBalanceSheet balanceSheet = IBalanceSheet(address(new IsContract()));
-    ISpoke spoke = ISpoke(address(new IsContract()));
+    ISpokeRegistry spokeRegistry = ISpokeRegistry(address(new IsContract()));
     IERC20 erc20 = IERC20(address(new IsContract()));
 
     PoolId constant POOL_A = PoolId.wrap(1);
@@ -55,13 +55,17 @@ contract OnOfframpManagerTest is Test {
     }
 
     function _setupMocks() internal {
-        // Mock balanceSheet.spoke() to return our spoke mock
-        vm.mockCall(address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.spoke.selector), abi.encode(spoke));
-
-        // Mock spoke.idToAsset() to return asset address and tokenId
+        // Mock balanceSheet.spokeRegistry() to return our spoke mock
         vm.mockCall(
-            address(spoke),
-            abi.encodeWithSelector(ISpoke.idToAsset.selector, ASSET_ID),
+            address(balanceSheet),
+            abi.encodeWithSelector(IBalanceSheet.spokeRegistry.selector),
+            abi.encode(spokeRegistry)
+        );
+
+        // Mock spokeRegistry.idToAsset() to return asset address and tokenId
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.idToAsset.selector, ASSET_ID),
             abi.encode(address(erc20), ERC20_TOKEN_ID)
         );
 
@@ -75,10 +79,10 @@ contract OnOfframpManagerTest is Test {
     function _deployManager() internal {
         factory = new OnOfframpManagerFactory(contractUpdater, balanceSheet);
 
-        // Mock balanceSheet.spoke().shareToken() to prevent revert during deployment
+        // Mock balanceSheet.spokeRegistry().shareToken() to prevent revert during deployment
         vm.mockCall(
-            address(spoke),
-            abi.encodeWithSelector(ISpoke.shareToken.selector, POOL_A, SC_1),
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.shareToken.selector, POOL_A, SC_1),
             abi.encode(address(new IsContract()))
         );
 
@@ -194,9 +198,11 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
     }
 
     function testERC6909NotSupportedOnramp() public {
-        // Mock spoke.idToAsset() to return non-zero tokenId
+        // Mock spokeRegistry.idToAsset() to return non-zero tokenId
         vm.mockCall(
-            address(spoke), abi.encodeWithSelector(ISpoke.idToAsset.selector, ASSET_ID), abi.encode(address(erc20), 1)
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.idToAsset.selector, ASSET_ID),
+            abi.encode(address(erc20), 1)
         );
 
         vm.expectRevert(IOnOfframpManager.ERC6909NotSupported.selector);
@@ -207,9 +213,11 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
     }
 
     function testERC6909NotSupportedOfframp() public {
-        // Mock spoke.idToAsset() to return non-zero tokenId for offramp
+        // Mock spokeRegistry.idToAsset() to return non-zero tokenId for offramp
         vm.mockCall(
-            address(spoke), abi.encodeWithSelector(ISpoke.idToAsset.selector, ASSET_ID), abi.encode(address(erc20), 1)
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.idToAsset.selector, ASSET_ID),
+            abi.encode(address(erc20), 1)
         );
 
         vm.expectRevert(IOnOfframpManager.ERC6909NotSupported.selector);

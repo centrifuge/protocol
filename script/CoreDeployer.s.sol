@@ -13,7 +13,9 @@ import {HubHandler} from "../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
 import {GasService} from "../src/core/messaging/GasService.sol";
+import {SpokeHandler} from "../src/core/spoke/SpokeHandler.sol";
 import {AssetId, newAssetId} from "../src/core/types/AssetId.sol";
+import {SpokeRegistry} from "../src/core/spoke/SpokeRegistry.sol";
 import {VaultRegistry} from "../src/core/spoke/VaultRegistry.sol";
 import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
 import {ContractUpdater} from "../src/core/utils/ContractUpdater.sol";
@@ -38,6 +40,8 @@ struct CoreReport {
     MessageProcessor messageProcessor;
     MessageDispatcher messageDispatcher;
     PoolEscrowFactory poolEscrowFactory;
+    SpokeRegistry spokeRegistry;
+    SpokeHandler spokeHandler;
     Spoke spoke;
     BalanceSheet balanceSheet;
     TokenFactory tokenFactory;
@@ -85,6 +89,8 @@ contract CoreActionBatcher is Constants {
 
         report.poolEscrowFactory.rely(root);
         report.tokenFactory.rely(root);
+        report.spokeRegistry.rely(root);
+        report.spokeHandler.rely(root);
         report.spoke.rely(root);
         report.balanceSheet.rely(root);
         report.contractUpdater.rely(root);
@@ -106,7 +112,7 @@ contract CoreActionBatcher is Constants {
 
         // Rely messageDispatcher
         report.gateway.rely(address(report.messageDispatcher));
-        report.spoke.rely(address(report.messageDispatcher));
+        report.spokeHandler.rely(address(report.messageDispatcher));
         report.balanceSheet.rely(address(report.messageDispatcher));
         report.contractUpdater.rely(address(report.messageDispatcher));
         report.vaultRegistry.rely(address(report.messageDispatcher));
@@ -115,23 +121,26 @@ contract CoreActionBatcher is Constants {
         // Rely messageProcessor
         report.gateway.rely(address(report.messageProcessor));
         report.multiAdapter.rely(address(report.messageProcessor));
-        report.spoke.rely(address(report.messageProcessor));
+        report.spokeHandler.rely(address(report.messageProcessor));
         report.balanceSheet.rely(address(report.messageProcessor));
         report.contractUpdater.rely(address(report.messageProcessor));
         report.vaultRegistry.rely(address(report.messageProcessor));
         report.hubHandler.rely(address(report.messageProcessor));
 
+        // Rely spokeHandler
+        report.spokeRegistry.rely(address(report.spokeHandler));
+        report.tokenFactory.rely(address(report.spokeHandler));
+        report.poolEscrowFactory.rely(address(report.spokeHandler));
+
         // Rely spoke
-        report.gateway.rely(address(report.spoke));
+        report.spokeRegistry.rely(address(report.spoke));
         report.messageDispatcher.rely(address(report.spoke));
-        report.tokenFactory.rely(address(report.spoke));
-        report.poolEscrowFactory.rely(address(report.spoke));
 
         // Rely balanceSheet
         report.messageDispatcher.rely(address(report.balanceSheet));
 
         // Rely vaultRegistry
-        report.spoke.rely(address(report.vaultRegistry));
+        report.spokeRegistry.rely(address(report.vaultRegistry));
 
         // Rely hub
         report.multiAdapter.rely(address(report.hub));
@@ -155,7 +164,7 @@ contract CoreActionBatcher is Constants {
 
         report.multiAdapter.file("messageProperties", address(report.gasService));
 
-        report.messageDispatcher.file("spoke", address(report.spoke));
+        report.messageDispatcher.file("spokeHandler", address(report.spokeHandler));
         report.messageDispatcher.file("balanceSheet", address(report.balanceSheet));
         report.messageDispatcher.file("contractUpdater", address(report.contractUpdater));
         report.messageDispatcher.file("vaultRegistry", address(report.vaultRegistry));
@@ -163,7 +172,7 @@ contract CoreActionBatcher is Constants {
 
         report.messageProcessor.file("multiAdapter", address(report.multiAdapter));
         report.messageProcessor.file("gateway", address(report.gateway));
-        report.messageProcessor.file("spoke", address(report.spoke));
+        report.messageProcessor.file("spokeHandler", address(report.spokeHandler));
         report.messageProcessor.file("balanceSheet", address(report.balanceSheet));
         report.messageProcessor.file("contractUpdater", address(report.contractUpdater));
         report.messageProcessor.file("vaultRegistry", address(report.vaultRegistry));
@@ -171,24 +180,25 @@ contract CoreActionBatcher is Constants {
 
         report.poolEscrowFactory.file("balanceSheet", address(report.balanceSheet));
 
-        report.spoke.file("gateway", address(report.gateway));
-        report.spoke.file("poolEscrowFactory", address(report.poolEscrowFactory));
+        report.spoke.file("spokeRegistry", address(report.spokeRegistry));
         report.spoke.file("sender", address(report.messageDispatcher));
 
-        report.balanceSheet.file("spoke", address(report.spoke));
+        report.balanceSheet.file("spokeRegistry", address(report.spokeRegistry));
         report.balanceSheet.file("gateway", address(report.gateway));
         report.balanceSheet.file("poolEscrowProvider", address(report.poolEscrowFactory));
         report.balanceSheet.file("sender", address(report.messageDispatcher));
 
-        report.vaultRegistry.file("spoke", address(report.spoke));
+        report.vaultRegistry.file("spokeRegistry", address(report.spokeRegistry));
 
         report.hub.file("sender", address(report.messageDispatcher));
 
         report.hubHandler.file("sender", address(report.messageDispatcher));
 
-        address[] memory tokenWards = new address[](2);
-        tokenWards[0] = address(report.spoke);
-        tokenWards[1] = address(report.balanceSheet);
+        address[] memory tokenWards = new address[](4);
+        tokenWards[0] = address(report.spokeHandler);
+        tokenWards[1] = address(report.spoke);
+        tokenWards[2] = address(report.balanceSheet);
+        tokenWards[3] = address(report.spokeRegistry);
         report.tokenFactory.file("wards", tokenWards);
 
         // Init configuration
@@ -203,6 +213,8 @@ contract CoreActionBatcher is Constants {
         report.messageProcessor.deny(address(this));
         report.messageDispatcher.deny(address(this));
 
+        report.spokeRegistry.deny(address(this));
+        report.spokeHandler.deny(address(this));
         report.spoke.deny(address(this));
         report.balanceSheet.deny(address(this));
         report.tokenFactory.deny(address(this));
@@ -237,6 +249,8 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
 
+    SpokeRegistry public spokeRegistry;
+    SpokeHandler public spokeHandler;
     Spoke public spoke;
     BalanceSheet public balanceSheet;
     TokenFactory public tokenFactory;
@@ -320,11 +334,29 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
             )
         );
 
-        spoke = Spoke(
+        poolEscrowFactory = PoolEscrowFactory(
             create3(
-                generateSalt("spoke"), abi.encodePacked(type(Spoke).creationCode, abi.encode(tokenFactory, batcher))
+                generateSalt("poolEscrowFactory"),
+                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(root, batcher))
             )
         );
+
+        spokeRegistry = SpokeRegistry(
+            create3(
+                generateSalt("spokeRegistry"), abi.encodePacked(type(SpokeRegistry).creationCode, abi.encode(batcher))
+            )
+        );
+
+        spokeHandler = SpokeHandler(
+            create3(
+                generateSalt("spokeHandler"),
+                abi.encodePacked(
+                    type(SpokeHandler).creationCode, abi.encode(spokeRegistry, tokenFactory, poolEscrowFactory, batcher)
+                )
+            )
+        );
+
+        spoke = Spoke(create3(generateSalt("spoke"), abi.encodePacked(type(Spoke).creationCode, abi.encode(batcher))));
 
         balanceSheet = BalanceSheet(
             create3(
@@ -336,13 +368,6 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
         vaultRegistry = VaultRegistry(
             create3(
                 generateSalt("vaultRegistry"), abi.encodePacked(type(VaultRegistry).creationCode, abi.encode(batcher))
-            )
-        );
-
-        poolEscrowFactory = PoolEscrowFactory(
-            create3(
-                generateSalt("poolEscrowFactory"),
-                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(root, batcher))
             )
         );
 
@@ -402,10 +427,12 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
 
         // Spoke
         register("tokenFactory", address(tokenFactory));
+        register("poolEscrowFactory", address(poolEscrowFactory));
+        register("spokeRegistry", address(spokeRegistry));
+        register("spokeHandler", address(spokeHandler));
         register("spoke", address(spoke));
         register("balanceSheet", address(balanceSheet));
         register("vaultRegistry", address(vaultRegistry));
-        register("poolEscrowFactory", address(poolEscrowFactory));
 
         // Hub
         register("hubRegistry", address(hubRegistry));
@@ -428,6 +455,8 @@ abstract contract CoreDeployer is Script, JsonRegistry, CreateXScript, Constants
             messageProcessor,
             messageDispatcher,
             poolEscrowFactory,
+            spokeRegistry,
+            spokeHandler,
             spoke,
             balanceSheet,
             tokenFactory,

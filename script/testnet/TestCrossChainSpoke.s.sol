@@ -116,8 +116,8 @@ contract TestCrossChainSpoke is BaseTestData {
         console.log("  Sync ShareClassId:", vm.toString(abi.encode(syncScId)));
 
         // Try to get share tokens to verify pools exist
-        address asyncShareToken = address(spoke.shareToken(asyncPoolId, asyncScId));
-        address syncShareToken = address(spoke.shareToken(syncPoolId, syncScId));
+        address asyncShareToken = address(spokeRegistry.shareToken(asyncPoolId, asyncScId));
+        address syncShareToken = address(spokeRegistry.shareToken(syncPoolId, syncScId));
 
         if (asyncShareToken != address(0)) {
             console.log("\n[SUCCESS] Async pool found!");
@@ -151,7 +151,7 @@ contract TestCrossChainSpoke is BaseTestData {
         AssetId assetId = newAssetId(spokeCentrifugeId, 1);
 
         // Get USDC address - it should have been registered on this spoke
-        (address usdcAddress,) = spoke.idToAsset(assetId);
+        (address usdcAddress,) = spokeRegistry.idToAsset(assetId);
 
         if (usdcAddress == address(0)) {
             console.log("[ERROR] USDC not registered on spoke chain for assetId:", assetId.raw());
@@ -201,7 +201,7 @@ contract TestCrossChainSpoke is BaseTestData {
         AssetId assetId = newAssetId(spokeCentrifugeId, 1);
 
         // Get USDC address
-        (address usdcAddress,) = spoke.idToAsset(assetId);
+        (address usdcAddress,) = spokeRegistry.idToAsset(assetId);
 
         if (usdcAddress == address(0)) {
             console.log("[ERROR] USDC not registered on spoke chain for assetId:", assetId.raw());

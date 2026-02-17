@@ -127,7 +127,7 @@ contract MerkleProofManagerFactory is IMerkleProofManagerFactory {
 
     /// @inheritdoc IMerkleProofManagerFactory
     function newManager(PoolId poolId) external returns (IMerkleProofManager) {
-        require(balanceSheet.spoke().isPoolActive(poolId), InvalidPoolId());
+        require(balanceSheet.spokeRegistry().isPoolActive(poolId), InvalidPoolId());
 
         MerkleProofManager manager =
             new MerkleProofManager{salt: bytes32(uint256(poolId.raw()))}(poolId, contractUpdater);

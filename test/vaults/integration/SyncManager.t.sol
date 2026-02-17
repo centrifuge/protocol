@@ -49,12 +49,12 @@ contract SyncManagerTest is SyncManagerBaseTest {
         vm.expectRevert(IBaseRequestManager.FileUnrecognizedParam.selector);
         syncManager.file("random", self);
 
-        assertEq(address(syncManager.spoke()), address(spoke));
+        assertEq(address(syncManager.spokeRegistry()), address(spokeRegistry));
         assertEq(address(syncManager.balanceSheet()), address(balanceSheet));
 
         // success
-        syncManager.file("spoke", randomUser);
-        assertEq(address(syncManager.spoke()), randomUser);
+        syncManager.file("spokeRegistry", randomUser);
+        assertEq(address(syncManager.spokeRegistry()), randomUser);
         syncManager.file("balanceSheet", randomUser);
         assertEq(address(syncManager.balanceSheet()), randomUser);
 
@@ -158,7 +158,7 @@ contract SyncManagerTrustedCallTest is SyncManagerBaseTest {
         (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(1), d18(1));
         uint128 newMaxReserve = 1_000_000e6;
 
-        (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(assetId));
+        (address asset, uint256 tokenId) = spokeRegistry.idToAsset(AssetId.wrap(assetId));
 
         bytes memory payload = abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), assetId, newMaxReserve);
 
@@ -206,7 +206,8 @@ contract SyncManagerUpdateValuation is SyncManagerBaseTest {
         uint128 assetId
     ) internal view {
         D18 poolPerShare = syncManager.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
-        D18 poolPerAsset = spoke.pricePoolPerAsset(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), true);
+        D18 poolPerAsset =
+            spokeRegistry.pricePoolPerAsset(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), true);
 
         assertNotEq(prePoolPerShare.raw(), expectedPoolPerShare.raw(), "Price should be changed by valuation");
         assertEq(poolPerShare.raw(), expectedPoolPerShare.raw(), "poolPerShare mismatch");

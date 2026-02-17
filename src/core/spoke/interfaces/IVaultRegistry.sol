@@ -59,7 +59,7 @@ interface IVaultRegistry {
     //----------------------------------------------------------------------------------------------
 
     /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'spoke'
+    /// @param what Accepts a bytes32 representation of 'spokeRegistry'
     function file(bytes32 what, address data) external;
 
     //----------------------------------------------------------------------------------------------

@@ -156,12 +156,12 @@ contract FullActionBatcher is CoreActionBatcher {
 
         _relyAdapters(report, address(report.root));
 
-        // Rely spoke
-        report.asyncRequestManager.rely(address(report.core.spoke));
-        report.freezeOnlyHook.rely(address(report.core.spoke));
-        report.fullRestrictionsHook.rely(address(report.core.spoke));
-        report.freelyTransferableHook.rely(address(report.core.spoke));
-        report.redemptionRestrictionsHook.rely(address(report.core.spoke));
+        // Rely spokeHandler
+        report.asyncRequestManager.rely(address(report.core.spokeHandler));
+        report.freezeOnlyHook.rely(address(report.core.spokeHandler));
+        report.fullRestrictionsHook.rely(address(report.core.spokeHandler));
+        report.freelyTransferableHook.rely(address(report.core.spokeHandler));
+        report.redemptionRestrictionsHook.rely(address(report.core.spokeHandler));
 
         // Rely vaultRegistry
         report.asyncVaultFactory.rely(address(report.core.vaultRegistry));
@@ -233,10 +233,11 @@ contract FullActionBatcher is CoreActionBatcher {
         report.refundEscrowFactory.file(bytes32("controller"), address(report.subsidyManager));
 
         report.asyncRequestManager.file("spoke", address(report.core.spoke));
+        report.asyncRequestManager.file("spokeRegistry", address(report.core.spokeRegistry));
         report.asyncRequestManager.file("balanceSheet", address(report.core.balanceSheet));
         report.asyncRequestManager.file("vaultRegistry", address(report.core.vaultRegistry));
 
-        report.syncManager.file("spoke", address(report.core.spoke));
+        report.syncManager.file("spokeRegistry", address(report.core.spokeRegistry));
         report.syncManager.file("balanceSheet", address(report.core.balanceSheet));
         report.syncManager.file("vaultRegistry", address(report.core.vaultRegistry));
 
@@ -463,7 +464,9 @@ contract FullDeployer is CoreDeployer {
         vaultRouter = VaultRouter(
             create3(
                 generateSalt("vaultRouter"),
-                abi.encodePacked(type(VaultRouter).creationCode, abi.encode(gateway, spoke, vaultRegistry, batcher))
+                abi.encodePacked(
+                    type(VaultRouter).creationCode, abi.encode(gateway, spoke, spokeRegistry, vaultRegistry, batcher)
+                )
             )
         );
 
@@ -493,9 +496,9 @@ contract FullDeployer is CoreDeployer {
                     type(FreezeOnly).creationCode,
                     abi.encode(
                         address(root),
-                        address(spoke),
+                        address(spokeRegistry),
                         address(balanceSheet),
-                        address(spoke),
+                        address(spokeHandler),
                         batcher,
                         address(poolEscrowFactory),
                         address(0)
@@ -511,9 +514,9 @@ contract FullDeployer is CoreDeployer {
                     type(FullRestrictions).creationCode,
                     abi.encode(
                         address(root),
-                        address(spoke),
+                        address(spokeRegistry),
                         address(balanceSheet),
-                        address(spoke),
+                        address(spokeHandler),
                         batcher,
                         address(poolEscrowFactory),
                         address(0)
@@ -529,9 +532,9 @@ contract FullDeployer is CoreDeployer {
                     type(FreelyTransferable).creationCode,
                     abi.encode(
                         address(root),
-                        address(spoke),
+                        address(spokeRegistry),
                         address(balanceSheet),
-                        address(spoke),
+                        address(spokeHandler),
                         batcher,
                         address(poolEscrowFactory),
                         address(0)
@@ -547,9 +550,9 @@ contract FullDeployer is CoreDeployer {
                     type(RedemptionRestrictions).creationCode,
                     abi.encode(
                         address(root),
-                        address(spoke),
+                        address(spokeRegistry),
                         address(balanceSheet),
-                        address(spoke),
+                        address(spokeHandler),
                         batcher,
                         address(poolEscrowFactory),
                         address(0)

@@ -314,7 +314,7 @@ abstract contract BaseTestData is LaunchDeployer {
         );
 
         // Test async redemption path for sync vaults
-        IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
+        IShareToken shareToken = IShareToken(spokeRegistry.shareToken(poolId, scId));
         SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(params.token)));
 
         uint128 testDepositAmount = 1_000e6;
@@ -339,7 +339,7 @@ abstract contract BaseTestData is LaunchDeployer {
         uint16 targetCentrifugeId
     ) internal {
         // Get vault
-        IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
+        IShareToken shareToken = IShareToken(spokeRegistry.shareToken(poolId, scId));
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
 
         // Submit deposit request
@@ -413,7 +413,7 @@ abstract contract BaseTestData is LaunchDeployer {
      * @dev This is the sync vault test flow from TestData.s.sol
      */
     function testSyncVaultFlow(PoolId poolId, ShareClassId scId, ERC20 token, uint128 investAmount) internal {
-        IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
+        IShareToken shareToken = IShareToken(spokeRegistry.shareToken(poolId, scId));
         SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(token)));
 
         token.approve(address(vault), investAmount);

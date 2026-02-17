@@ -23,7 +23,7 @@ contract AsyncVaultTest is BaseTest {
         // values set correctly
         assertEq(vault.asset(), address(erc20));
         assertEq(vault.scId().raw(), scId);
-        IShareToken token = spoke.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId));
+        IShareToken token = spokeRegistry.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId));
         assertEq(address(vault.share()), address(token));
 
         // permissions set correctly

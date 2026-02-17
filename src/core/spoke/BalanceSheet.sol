@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ISpoke} from "./interfaces/ISpoke.sol";
 import {IPoolEscrow} from "./interfaces/IPoolEscrow.sol";
 import {IShareToken} from "./interfaces/IShareToken.sol";
 import {IEndorsements} from "./interfaces/IEndorsements.sol";
+import {ISpokeRegistry} from "./interfaces/ISpokeRegistry.sol";
 import {IPoolEscrowProvider} from "./factories/interfaces/IPoolEscrowFactory.sol";
 import {IBalanceSheet, ShareQueueAmount, AssetQueueAmount, WithdrawMode} from "./interfaces/IBalanceSheet.sol";
 
@@ -39,7 +39,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     using MathLib for *;
     using CastLib for bytes32;
 
-    ISpoke public spoke;
+    ISpokeRegistry public spokeRegistry;
     ISpokeMessageSender public sender;
     IEndorsements public immutable endorsements;
     IPoolEscrowProvider public poolEscrowProvider;
@@ -64,7 +64,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
 
     /// @inheritdoc IBalanceSheet
     function file(bytes32 what, address data) external auth {
-        if (what == "spoke") spoke = ISpoke(data);
+        if (what == "spokeRegistry") spokeRegistry = ISpokeRegistry(data);
         else if (what == "sender") sender = ISpokeMessageSender(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
@@ -148,7 +148,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
             shareQueue.isPositive = true;
         }
 
-        IShareToken token = spoke.shareToken(poolId, scId);
+        IShareToken token = spokeRegistry.shareToken(poolId, scId);
         token.mint(to, shares);
     }
 
@@ -166,7 +166,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
             shareQueue.isPositive = false;
         }
 
-        IShareToken token = spoke.shareToken(poolId, scId);
+        IShareToken token = spokeRegistry.shareToken(poolId, scId);
         token.authTransferFrom(msgSender(), msgSender(), address(this), shares);
         token.burn(address(this), shares);
     }
@@ -238,7 +238,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         uint256 amount
     ) external payable isManager(poolId) {
         require(!endorsements.endorsed(from), CannotTransferFromEndorsedContract());
-        IShareToken token = spoke.shareToken(poolId, scId);
+        IShareToken token = spokeRegistry.shareToken(poolId, scId);
         token.authTransferFrom(sender_, from, to, amount);
         emit TransferSharesFrom(poolId, scId, sender_, from, to, amount);
     }
@@ -296,7 +296,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         uint128 amount,
         bool updateEscrow
     ) public payable isManager(poolId) returns (D18 pricePoolPerAsset_) {
-        AssetId assetId = spoke.assetToId(asset, tokenId);
+        AssetId assetId = spokeRegistry.assetToId(asset, tokenId);
 
         if (updateEscrow) {
             escrow(poolId).deposit(scId, asset, tokenId, amount);
@@ -326,7 +326,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
             emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset_);
         } else if (mode == WithdrawMode.EscrowAndTransfer) {
             escrow_.withdraw(scId, asset, tokenId, receiver, amount);
-            AssetId assetId = spoke.assetToId(asset, tokenId);
+            AssetId assetId = spokeRegistry.assetToId(asset, tokenId);
             pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId, assetId);
             emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset_);
         }
@@ -354,7 +354,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         uint128 amount,
         bool updateEscrow
     ) public payable isManager(poolId) returns (D18 pricePoolPerAsset_) {
-        AssetId assetId = spoke.assetToId(asset, tokenId);
+        AssetId assetId = spokeRegistry.assetToId(asset, tokenId);
 
         if (updateEscrow) {
             escrow(poolId).withdraw(scId, asset, tokenId, receiver, amount);
@@ -415,7 +415,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
             );
         }
 
-        D18 pricePoolPerAsset = spoke.pricePoolPerAsset(poolId, scId, assetId, true);
+        D18 pricePoolPerAsset = spokeRegistry.pricePoolPerAsset(poolId, scId, assetId, true);
         return pricePoolPerAsset;
     }
 
@@ -424,7 +424,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
             return d18(TransientStorageLib.tloadUint128(keccak256(abi.encode("pricePoolPerShare", poolId, scId))));
         }
 
-        D18 pricePoolPerShare = spoke.pricePoolPerShare(poolId, scId, true);
+        D18 pricePoolPerShare = spokeRegistry.pricePoolPerShare(poolId, scId, true);
         return pricePoolPerShare;
     }
 }

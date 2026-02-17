@@ -10,8 +10,8 @@ import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 
 import "../../core/spoke/integration/BaseTest.sol";
 
-import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
+import {IVaultRegistry} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
 
 import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
@@ -205,8 +205,8 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit(vault2, amount2, self, self);
 
         // trigger - deposit order fulfillment
-        AssetId assetId1 = spoke.assetToId(address(erc20X), erc20TokenId);
-        AssetId assetId2 = spoke.assetToId(address(erc20Y), erc20TokenId);
+        AssetId assetId1 = spokeRegistry.assetToId(address(erc20X), erc20TokenId);
+        AssetId assetId2 = spokeRegistry.assetToId(address(erc20Y), erc20TokenId);
         (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, 0, self);
         (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, 0, self);
 
@@ -243,8 +243,8 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit(vault1, amount1, self, self);
         vaultRouter.requestDeposit(vault2, amount2, self, self);
 
-        AssetId assetId1 = spoke.assetToId(address(erc20X), erc20TokenId);
-        AssetId assetId2 = spoke.assetToId(address(erc20Y), erc20TokenId);
+        AssetId assetId1 = spokeRegistry.assetToId(address(erc20X), erc20TokenId);
+        AssetId assetId2 = spokeRegistry.assetToId(address(erc20Y), erc20TokenId);
         (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, 0, self);
         (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, 0, self);
         vaultRouter.claimDeposit(vault1, self, self);
@@ -329,8 +329,8 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.multicall{value: GAS}(calls);
 
         // trigger - deposit order fulfillment
-        AssetId assetId1 = spoke.assetToId(address(erc20X), erc20TokenId);
-        AssetId assetId2 = spoke.assetToId(address(erc20Y), erc20TokenId);
+        AssetId assetId1 = spokeRegistry.assetToId(address(erc20X), erc20TokenId);
+        AssetId assetId2 = spokeRegistry.assetToId(address(erc20Y), erc20TokenId);
         (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, 0, self);
         (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, 0, self);
 
@@ -358,7 +358,7 @@ contract VaultRouterTest is BaseTest {
         erc20.approve(vault_, amount);
         vaultRouter.enable(vault);
 
-        vm.expectRevert(ISpoke.UnknownVault.selector);
+        vm.expectRevert(IVaultRegistry.UnknownVault.selector);
         vaultRouter.requestDeposit(IAsyncVault(makeAddr("maliciousVault")), amount, self, self);
 
         bytes[] memory calls = new bytes[](2);
@@ -468,7 +468,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
     function testInitialization() public {
         // redeploying within test to increase coverage
-        new VaultRouter(gateway, spoke, vaultRegistry, address(this));
+        new VaultRouter(gateway, spoke, spokeRegistry, vaultRegistry, address(this));
 
         assertEq(address(vaultRouter.gateway()), address(gateway));
         assertEq(address(vaultRouter.spoke()), address(spoke));

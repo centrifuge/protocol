@@ -16,11 +16,11 @@ import {Accounting} from "../../../src/core/hub/Accounting.sol";
 import {Gateway} from "../../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../../../src/core/hub/HubRegistry.sol";
-import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {BalanceSheet} from "../../../src/core/spoke/BalanceSheet.sol";
 import {GasService} from "../../../src/core/messaging/GasService.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {SpokeHandler} from "../../../src/core/spoke/SpokeHandler.sol";
 import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
 import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
 import {ContractUpdater} from "../../../src/core/utils/ContractUpdater.sol";
@@ -32,6 +32,7 @@ import {IRequestManager} from "../../../src/core/interfaces/IRequestManager.sol"
 import {MessageProcessor} from "../../../src/core/messaging/MessageProcessor.sol";
 import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.sol";
+import {ISpokeRegistry} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {IVaultRegistry} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
 import {PoolEscrowFactory} from "../../../src/core/spoke/factories/PoolEscrowFactory.sol";
 
@@ -92,6 +93,8 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     address public tokenFactory;
     address public balanceSheet;
     address public spoke;
+    address public spokeRegistry;
+    address public spokeHandler;
     address public vaultRegistry;
     address public contractUpdater;
     address public poolEscrowFactory;
@@ -800,7 +803,11 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             "MultiAdapter messageProperties mismatch"
         );
 
-        assertEq(address(MessageDispatcher(messageDispatcher).spoke()), spoke, "MessageDispatcher spoke mismatch");
+        assertEq(
+            address(MessageDispatcher(messageDispatcher).spokeHandler()),
+            spokeHandler,
+            "MessageDispatcher spokeHandler mismatch"
+        );
         assertEq(
             address(MessageDispatcher(messageDispatcher).balanceSheet()),
             balanceSheet,
@@ -837,7 +844,11 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             "MessageProcessor multiAdapter mismatch"
         );
         assertEq(address(MessageProcessor(messageProcessor).gateway()), gateway, "MessageProcessor gateway mismatch");
-        assertEq(address(MessageProcessor(messageProcessor).spoke()), spoke, "MessageProcessor spoke mismatch");
+        assertEq(
+            address(MessageProcessor(messageProcessor).spokeHandler()),
+            spokeHandler,
+            "MessageProcessor spokeHandler mismatch"
+        );
         assertEq(
             address(MessageProcessor(messageProcessor).balanceSheet()),
             balanceSheet,
@@ -870,14 +881,25 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         // ==================== SPOKE SIDE (CoreDeployer) ====================
 
-        assertEq(address(Spoke(spoke).gateway()), gateway, "Spoke gateway mismatch");
-        assertEq(address(Spoke(spoke).poolEscrowFactory()), poolEscrowFactory, "Spoke poolEscrowFactory mismatch");
+        assertEq(address(Spoke(spoke).spokeRegistry()), spokeRegistry, "Spoke spokeRegistry mismatch");
         // NOTE: spoke.sender is set by MigrationSpell, not CoreDeployer (when reusing existing Root)
         if (!preMigration) {
             assertEq(address(Spoke(spoke).sender()), messageDispatcher, "Spoke sender mismatch");
         }
 
-        assertEq(address(BalanceSheet(balanceSheet).spoke()), spoke, "BalanceSheet spoke mismatch");
+        assertEq(
+            address(SpokeHandler(spokeHandler).spokeRegistry()), spokeRegistry, "SpokeHandler spokeRegistry mismatch"
+        );
+        assertEq(address(SpokeHandler(spokeHandler).tokenFactory()), tokenFactory, "SpokeHandler tokenFactory mismatch");
+        assertEq(
+            address(SpokeHandler(spokeHandler).poolEscrowFactory()),
+            poolEscrowFactory,
+            "SpokeHandler poolEscrowFactory mismatch"
+        );
+
+        assertEq(
+            address(BalanceSheet(balanceSheet).spokeRegistry()), spokeRegistry, "BalanceSheet spokeRegistry mismatch"
+        );
         assertEq(address(BalanceSheet(balanceSheet).gateway()), gateway, "BalanceSheet gateway mismatch");
         assertEq(
             address(BalanceSheet(balanceSheet).poolEscrowProvider()),
@@ -887,7 +909,11 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         assertEq(address(BalanceSheet(balanceSheet).sender()), messageDispatcher, "BalanceSheet sender mismatch");
 
         if (vaultRegistry != address(0)) {
-            assertEq(address(VaultRegistry(vaultRegistry).spoke()), spoke, "VaultRegistry spoke mismatch");
+            assertEq(
+                address(VaultRegistry(vaultRegistry).spokeRegistry()),
+                spokeRegistry,
+                "VaultRegistry spokeRegistry mismatch"
+            );
         }
 
         // ==================== HUB SIDE (CoreDeployer) ====================
@@ -926,7 +952,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             );
         }
 
-        assertEq(address(SyncManager(syncManager).spoke()), spoke, "SyncManager spoke mismatch");
+        assertEq(address(SyncManager(syncManager).spokeRegistry()), spokeRegistry, "SyncManager spokeRegistry mismatch");
         assertEq(address(SyncManager(syncManager).balanceSheet()), balanceSheet, "SyncManager balanceSheet mismatch");
         if (vaultRegistry != address(0)) {
             assertEq(
@@ -1291,7 +1317,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         string memory tokenName
     ) internal view virtual {
         if (isV3_1()) {
-            IShareToken linkedShareToken = ISpoke(spoke).shareToken(poolId, shareClassId);
+            IShareToken linkedShareToken = ISpokeRegistry(spokeRegistry).shareToken(poolId, shareClassId);
             assertEq(
                 address(linkedShareToken),
                 address(shareToken),
@@ -1308,7 +1334,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         if (isV3_1()) {
             assertTrue(
-                ISpoke(spoke).isPoolActive(poolId),
+                ISpokeRegistry(spokeRegistry).isPoolActive(poolId),
                 string(abi.encodePacked(tokenName, " pool should be active on spoke"))
             );
         } else {
@@ -1374,7 +1400,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         address assetAddress;
 
         if (isV3_1()) {
-            (assetAddress,) = ISpoke(spoke).idToAsset(assetId);
+            (assetAddress,) = ISpokeRegistry(spokeRegistry).idToAsset(assetId);
         } else {
             (assetAddress,) = IV3_0_1_Spoke(spoke).idToAsset(assetId);
         }
@@ -1409,7 +1435,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         address assetAddress;
 
         if (isV3_1()) {
-            (assetAddress,) = ISpoke(spoke).idToAsset(assetId);
+            (assetAddress,) = ISpokeRegistry(spokeRegistry).idToAsset(assetId);
         } else {
             (assetAddress,) = IV3_0_1_Spoke(spoke).idToAsset(assetId);
         }
@@ -1490,9 +1516,9 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         AssetId jtrsyAssetId;
         AssetId jaaaAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpoke(spoke).assetToId(IntegrationConstants.ETH_USDC, 0);
-            jtrsyAssetId = ISpoke(spoke).assetToId(IntegrationConstants.ETH_JTRSY_SHARE_TOKEN, 0);
-            jaaaAssetId = ISpoke(spoke).assetToId(IntegrationConstants.ETH_JAAA_SHARE_TOKEN, 0);
+            usdcAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.ETH_USDC, 0);
+            jtrsyAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.ETH_JTRSY_SHARE_TOKEN, 0);
+            jaaaAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.ETH_JAAA_SHARE_TOKEN, 0);
         } else {
             usdcAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.ETH_USDC, 0);
             jtrsyAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.ETH_JTRSY_SHARE_TOKEN, 0);
@@ -1592,7 +1618,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     function _validateBaseVaults() internal view {
         AssetId usdcAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpoke(spoke).assetToId(IntegrationConstants.BASE_USDC, 0);
+            usdcAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.BASE_USDC, 0);
         } else {
             usdcAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.BASE_USDC, 0);
         }
@@ -1637,7 +1663,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     function _validateAvalancheVaults() internal view {
         AssetId usdcAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpoke(spoke).assetToId(IntegrationConstants.AVAX_USDC, 0);
+            usdcAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.AVAX_USDC, 0);
         } else {
             usdcAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.AVAX_USDC, 0);
         }
@@ -1699,7 +1725,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         AssetId usdcAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpoke(spoke).assetToId(IntegrationConstants.ARBITRUM_USDC, 0);
+            usdcAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.ARBITRUM_USDC, 0);
         } else {
             usdcAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.ARBITRUM_USDC, 0);
         }
@@ -1727,7 +1753,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         AssetId usdcAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpoke(spoke).assetToId(IntegrationConstants.BNB_USDC, 0);
+            usdcAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.BNB_USDC, 0);
         } else {
             usdcAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.BNB_USDC, 0);
         }
@@ -1749,8 +1775,8 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         AssetId usdcAssetId;
         AssetId pusdAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpoke(spoke).assetToId(IntegrationConstants.PLUME_USDC, 0);
-            pusdAssetId = ISpoke(spoke).assetToId(IntegrationConstants.PLUME_PUSD, 0);
+            usdcAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.PLUME_USDC, 0);
+            pusdAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.PLUME_PUSD, 0);
         } else {
             usdcAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.PLUME_USDC, 0);
             pusdAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.PLUME_PUSD, 0);

@@ -13,6 +13,7 @@ import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
 import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
 import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
 import {MessageLib} from "../../src/core/messaging/libraries/MessageLib.sol";
+import {ISpokeHandler} from "../../src/core/spoke/interfaces/ISpokeHandler.sol";
 
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
@@ -90,7 +91,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
 
         // B: Mint shares
         vm.startPrank(BSM);
-        IShareToken shareTokenB = IShareToken(origin.spoke.shareToken(POOL_A, SC_1));
+        IShareToken shareTokenB = IShareToken(origin.spokeRegistry.shareToken(POOL_A, SC_1));
         origin.balanceSheet.issue(POOL_A, SC_1, INVESTOR_A, AMOUNT);
         origin.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, 0, REFUND);
         vm.stopPrank();
@@ -110,7 +111,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
             emit IGateway.UnderpaidBatch(dest.centrifugeId, bytes(""), bytes32(0));
         } else {
             vm.expectEmit();
-            emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, AMOUNT);
+            emit ISpokeHandler.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, AMOUNT);
         }
 
         vm.prank(INVESTOR_A);
@@ -125,7 +126,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         );
 
         // C: Transfer expected to be pending on A due to message being unpaid
-        IShareToken shareTokenC = IShareToken(dest.spoke.shareToken(POOL_A, SC_1));
+        IShareToken shareTokenC = IShareToken(dest.spokeRegistry.shareToken(POOL_A, SC_1));
 
         // If hub is not source, then message will be pending as unpaid on hub until repaid
         if (direction == CrossChainDirection.WithIntermediaryHub) {
@@ -133,7 +134,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
 
             vm.prank(ANY);
             vm.expectEmit();
-            emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, AMOUNT);
+            emit ISpokeHandler.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, AMOUNT);
             h.gateway.repay{value: GAS}(dest.centrifugeId, _getLastUnpaidMessage(), REFUND);
         }
 
