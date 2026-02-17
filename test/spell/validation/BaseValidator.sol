@@ -13,11 +13,6 @@ import {ContractsConfig as LiveContracts} from "../../../script/utils/EnvConfig.
 import {Test} from "forge-std/Test.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 
-import {
-    NonCoreReport as MainContracts,
-    AdaptersReport as AdaptersContract
-} from "../../../src/deployment/ActionBatchers.sol";
-
 struct Contracts {
     /// @notice Always from the indexer, will represent the previous deployed version
     LiveContracts live;

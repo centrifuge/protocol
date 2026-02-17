@@ -79,9 +79,8 @@ contract ValidateContractsFromFactories is Script {
     }
 
     function _fetchAddresses() internal returns (AddressesToVerify memory addr) {
-        string memory orderBy = string.concat(
-            "orderBy: ", "createdAt".asJsonString(), ", orderDirection: ", "desc".asJsonString()
-        );
+        string memory orderBy =
+            string.concat("orderBy: ", "createdAt".asJsonString(), ", orderDirection: ", "desc".asJsonString());
 
         string memory centrifugeIdValue = vm.toString(config.network.centrifugeId);
 
