@@ -50,6 +50,8 @@ import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
+import {VmSafe} from "forge-std/Vm.sol";
+
 import {SubsidyManager} from "../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
@@ -67,8 +69,6 @@ import {
     AdapterConnections,
     SetConfigParam
 } from "../src/deployment/ActionBatchers.sol";
-
-import {VmSafe} from "forge-std/Vm.sol";
 
 struct WormholeInput {
     bool shouldDeploy;
