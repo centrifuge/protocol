@@ -38,6 +38,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
 
     error InvalidInputs();
     error ShareTokenDoesNotExist();
+    error EscrowDoesNotExist();
 
     /// @dev Least significant bit
     uint8 public constant FREEZE_BIT = 0;
@@ -50,6 +51,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
     IPoolEscrowProvider public immutable poolEscrowProvider;
 
     mapping(address token => mapping(address => bool)) public manager;
+    mapping(address poolEscrow => bool) public isAPoolEscrow;
 
     constructor(
         address root_,
@@ -122,14 +124,10 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
         // Fast path: single-pool optimization
         if (poolEscrow != address(0)) return addr == poolEscrow;
 
-        // Multi-pool path: dynamic verification
+        // Multi-pool path: no code shortcut
         if (addr.code.length == 0) return false;
 
-        (bool success, bytes memory data) = addr.staticcall(abi.encodeWithSignature("poolId()"));
-        if (!success || data.length != 32) return false;
-
-        PoolId poolId = abi.decode(data, (PoolId));
-        return address(poolEscrowProvider.escrow(poolId)) == addr;
+        return isAPoolEscrow[addr];
     }
 
     function isDepositRequestOrIssuance(address from, address to) public view returns (bool) {
@@ -195,6 +193,14 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
             manager[token][manager_.toAddress()] = canManage;
             emit UpdateHookManager(token, manager_.toAddress(), canManage);
         }
+    }
+
+    function registerPoolEscrow(PoolId poolId) external auth {
+        address escrow = address(poolEscrowProvider.escrow(poolId));
+        require(escrow != address(0), EscrowDoesNotExist());
+
+        isAPoolEscrow[escrow] = true;
+        emit RegisterPoolEscrow(escrow);
     }
 
     //----------------------------------------------------------------------------------------------

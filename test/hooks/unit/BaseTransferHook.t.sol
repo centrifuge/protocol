@@ -144,6 +144,10 @@ contract BaseTransferHookTestBase is Test {
 
         mockShareToken = new MockShareToken();
 
+        // Register pool escrow in multi-pool mode
+        vm.prank(deployer);
+        hook.registerPoolEscrow(TEST_POOL_ID);
+
         pastTimestamp = uint64(block.timestamp - 1);
 
         _setEndorsedUsers();
@@ -760,16 +764,22 @@ contract BaseTransferHookTestPoolEscrowOptimization is BaseTransferHookTestBase 
         assertFalse(hookWithFastPath.isPoolEscrow(otherEscrowAddr), "fast path should otherEscrowAddr");
     }
 
-    function testMultiPoolRecognizesFactoryEscrow() public view {
-        assertTrue(hook.isPoolEscrow(poolEscrow), "multi-pool mode should recognize escrow via poolEscrowProvider");
+    function testMultiPoolRecognizesRegisteredEscrow() public view {
+        assertTrue(hook.isPoolEscrow(poolEscrow), "multi-pool mode should recognize registered escrow");
     }
 
-    function testMultiPoolRejectsNonFactoryEscrow(address random) public view {
-        vm.assume(random != address(poolEscrow) && random != otherEscrowAddr);
+    function testMultiPoolRecognizesNewlyRegisteredEscrow() public {
+        assertFalse(hook.isPoolEscrow(otherEscrowAddr), "should not recognize unregistered escrow");
 
-        assertFalse(
-            hook.isPoolEscrow(random), "multi-pool mode should reject escrow not registered in poolEscrowProvider"
-        );
-        assertTrue(hook.isPoolEscrow(otherEscrowAddr), "multi-pool mode should not reject otherEscrowAddr");
+        vm.prank(deployer);
+        hook.registerPoolEscrow(PoolId.wrap(2));
+
+        assertTrue(hook.isPoolEscrow(otherEscrowAddr), "should recognize escrow after registration");
+    }
+
+    function testMultiPoolRejectsUnregisteredEscrow(address random) public view {
+        vm.assume(random != address(poolEscrow));
+
+        assertFalse(hook.isPoolEscrow(random), "multi-pool mode should reject unregistered address");
     }
 }

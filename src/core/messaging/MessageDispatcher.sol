@@ -26,6 +26,7 @@ import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
+import {IBaseTransferHook} from "../../hooks/interfaces/IBaseTransferHook.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
 /// @title  MessageDispatcher
@@ -104,6 +105,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             spoke.addShareClass(poolId, scId, name, symbol, decimals, salt, hook.toAddress());
+            if (hook.toAddress() != address(0)) {
+                try IBaseTransferHook(hook.toAddress()).registerPoolEscrow(poolId) {} catch {}
+            }
             _refund(refund);
         } else {
             _send(
@@ -155,6 +159,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     {
         if (centrifugeId == localCentrifugeId) {
             spoke.updateShareHook(poolId, scId, hook.toAddress());
+            if (hook.toAddress() != address(0)) {
+                try IBaseTransferHook(hook.toAddress()).registerPoolEscrow(poolId) {} catch {}
+            }
             _refund(refund);
         } else {
             _send(

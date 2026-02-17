@@ -26,6 +26,7 @@ import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
+import {IBaseTransferHook} from "../../hooks/interfaces/IBaseTransferHook.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
 /// @title  MessageProcessor
@@ -122,6 +123,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 m.salt,
                 m.hook.toAddress()
             );
+            if (m.hook.toAddress() != address(0)) {
+                try IBaseTransferHook(m.hook.toAddress()).registerPoolEscrow(PoolId.wrap(m.poolId)) {} catch {}
+            }
         } else if (kind == MessageType.NotifyPricePoolPerShare) {
             MessageLib.NotifyPricePoolPerShare memory m = MessageLib.deserializeNotifyPricePoolPerShare(message);
             spoke.updatePricePoolPerShare(
@@ -142,6 +146,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateShareHook) {
             MessageLib.UpdateShareHook memory m = MessageLib.deserializeUpdateShareHook(message);
             spoke.updateShareHook(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.hook.toAddress());
+            if (m.hook.toAddress() != address(0)) {
+                try IBaseTransferHook(m.hook.toAddress()).registerPoolEscrow(PoolId.wrap(m.poolId)) {} catch {}
+            }
         } else if (kind == MessageType.InitiateTransferShares) {
             MessageLib.InitiateTransferShares memory m = MessageLib.deserializeInitiateTransferShares(message);
             hubHandler.initiateTransferShares(
