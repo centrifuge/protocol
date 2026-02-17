@@ -370,10 +370,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
             batchRequestManager.redeemRequest(poolId, scId, assetId, _getActor().toBytes32());
 
         vm.prank(_getActor());
-        try _getVault()
-            .redeem(
-                redeemAmount, _getActor(), _getActor()
-            ) returns (
+        try _getVault().redeem(redeemAmount, _getActor(), _getActor()) returns (
             uint256 /* assets */
         ) {
             uint256 maxRedeemAfter = _getVault().maxRedeem(_getActor());

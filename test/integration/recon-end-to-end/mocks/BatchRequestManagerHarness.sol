@@ -56,9 +56,7 @@ contract BatchRequestManagerHarness is BatchRequestManager {
 
         // Send callback if there were any claims or cancellations
         if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
-            hub.requestCallback{
-                value: msg.value
-            }(
+            hub.requestCallback{value: msg.value}(
                 poolId,
                 scId,
                 assetId,
@@ -116,9 +114,7 @@ contract BatchRequestManagerHarness is BatchRequestManager {
 
         // Send callback if there were any claims or cancellations
         if (totalPaymentShareAmount > 0 || cancelledShareAmount > 0) {
-            hub.requestCallback{
-                value: msg.value
-            }(
+            hub.requestCallback{value: msg.value}(
                 poolId,
                 scId,
                 assetId,

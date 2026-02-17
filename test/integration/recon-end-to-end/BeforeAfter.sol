@@ -154,11 +154,11 @@ abstract contract BeforeAfter is Setup {
 
         // Conditionally Update max | Always works on zero
         _after.investorsGlobals[vault][actor].maxDepositPrice = depositPrice
-                > _after.investorsGlobals[vault][actor].maxDepositPrice
+            > _after.investorsGlobals[vault][actor].maxDepositPrice
             ? depositPrice
             : _after.investorsGlobals[vault][actor].maxDepositPrice;
         _after.investorsGlobals[vault][actor].maxRedeemPrice = redeemPrice
-                > _after.investorsGlobals[vault][actor].maxRedeemPrice
+            > _after.investorsGlobals[vault][actor].maxRedeemPrice
             ? redeemPrice
             : _after.investorsGlobals[vault][actor].maxRedeemPrice;
 
@@ -173,11 +173,11 @@ abstract contract BeforeAfter is Setup {
 
         // Conditional update after zero
         _after.investorsGlobals[vault][actor].minDepositPrice = depositPrice
-                < _after.investorsGlobals[vault][actor].minDepositPrice
+            < _after.investorsGlobals[vault][actor].minDepositPrice
             ? depositPrice
             : _after.investorsGlobals[vault][actor].minDepositPrice;
         _after.investorsGlobals[vault][actor].minRedeemPrice = redeemPrice
-                < _after.investorsGlobals[vault][actor].minRedeemPrice
+            < _after.investorsGlobals[vault][actor].minRedeemPrice
             ? redeemPrice
             : _after.investorsGlobals[vault][actor].minRedeemPrice;
     }

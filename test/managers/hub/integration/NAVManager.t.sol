@@ -173,9 +173,9 @@ contract NAVManagerIntegrationTest is BaseTest {
         uint128 sharesTransferred = 130e18;
 
         vm.prank(address(root));
-        hubHandler.initiateTransferShares{
-            value: 0.1 ether
-        }(CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32("receiver"), sharesTransferred, 0, manager);
+        hubHandler.initiateTransferShares{value: 0.1 ether}(
+            CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32("receiver"), sharesTransferred, 0, manager
+        );
 
         (uint128 navHub2, uint128 issuanceHub, uint128 transferredInHub, uint128 transferredOutHub,,) =
             simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
@@ -356,9 +356,9 @@ contract NAVManagerIntegrationTest is BaseTest {
         hubHandler.updateShares(CHAIN_CV, POOL_A, scId, 200e18, true, true, 0);
 
         vm.prank(address(root));
-        hubHandler.initiateTransferShares{
-            value: 0.1 ether
-        }(CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32("receiver"), 100e18, 0, manager);
+        hubHandler.initiateTransferShares{value: 0.1 ether}(
+            CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32("receiver"), 100e18, 0, manager
+        );
 
         // issuance is -100 on source network after transfer
         // calling ShareClassManager.issuance in onUpdate will revert

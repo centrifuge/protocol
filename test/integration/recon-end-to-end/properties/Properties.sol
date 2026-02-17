@@ -129,14 +129,20 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     /// @dev Property (inductive): Sum of assets received on claimCancelDepositRequest <= sum of
     /// fulfillCancelDepositRequest.assets
     function property_sum_of_assets_received_on_claim_cancel_deposit_request_inductive() public tokenIsSet {
+        // changing vault messes up tracking so vault must have not changed
+        if (_before.vault != _after.vault) {
+            return;
+        }
+
         // we only care about the case where the claimableCancelDepositRequest is decreasing because it indicates that a
         // cancel deposit request was fulfilled
         if (
             _before.investments[address(_getVault())][_getActor()].claimableCancelDepositRequest
                 > _after.investments[address(_getVault())][_getActor()].claimableCancelDepositRequest
         ) {
-            uint256 claimableCancelDepositRequestDelta =
-                _before.investments[address(_getVault())][_getActor()].claimableCancelDepositRequest
+            uint256 claimableCancelDepositRequestDelta = _before.investments[address(
+                        _getVault()
+                    )][_getActor()].claimableCancelDepositRequest
                 - _after.investments[address(_getVault())][_getActor()].claimableCancelDepositRequest;
             // claiming a cancel deposit request means that the globalEscrow token balance decreases
             uint256 escrowAssetBalanceDelta =
@@ -152,14 +158,20 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     /// @dev Property (inductive): Sum of share class tokens received on claimCancelRedeemRequest <= sum of
     /// fulfillCancelRedeemRequest.shares
     function property_sum_of_received_leq_fulfilled_inductive() public tokenIsSet {
+        // changing vault messes up tracking so vault must have not changed
+        if (_before.vault != _after.vault) {
+            return;
+        }
+
         // we only care about the case where the claimableCancelRedeemRequest is decreasing because it indicates that a
         // cancel redeem request was fulfilled
         if (
             _before.investments[address(_getVault())][_getActor()].claimableCancelRedeemRequest
                 > _after.investments[address(_getVault())][_getActor()].claimableCancelRedeemRequest
         ) {
-            uint256 claimableCancelRedeemRequestDelta =
-                _before.investments[address(_getVault())][_getActor()].claimableCancelRedeemRequest
+            uint256 claimableCancelRedeemRequestDelta = _before.investments[address(
+                        _getVault()
+                    )][_getActor()].claimableCancelRedeemRequest
                 - _after.investments[address(_getVault())][_getActor()].claimableCancelRedeemRequest;
             // claiming a cancel redeem request means that the globalEscrow tranche token balance decreases
             uint256 escrowTrancheTokenBalanceDelta = _before.escrowShareTokenBalance - _after.escrowShareTokenBalance;
@@ -319,11 +331,20 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
             return;
         }
 
+        // changing vault messes up tracking so vault must have not changed
+        if (_before.vault != _after.vault) {
+            return;
+        }
+
         // Get actor data
         {
             (uint256 depositPrice,) = _getDepositAndRedeemPrice();
 
-            // NOTE: Specification | Obv this breaks when you switch pools etc..
+            // Skip if no notify has been observed for this vault/actor pair
+            if (_after.investorsGlobals[address(_getVault())][_getActor()].maxDepositPrice == 0) {
+                return;
+            }
+
             // after a call to notifyDeposit the deposit price of the pool is set, so this checks that no other
             // functions can modify the deposit price outside of the bounds
             lte(
@@ -451,6 +472,11 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
     /// @dev Property: difference between totalAssets and actualAssets only increases
     function property_totalAssets_insolvency_only_increases() public {
+        // changing vault messes up tracking so vault must have not changed
+        if (_before.vault != _after.vault) {
+            return;
+        }
+
         uint256 differenceBefore = _before.totalAssets - _before.actualAssets;
         uint256 differenceAfter = _after.totalAssets - _after.actualAssets;
 
@@ -1754,9 +1780,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
         if (!poolHasShareClass) return;
 
-        try spoke.shareToken(
-            poolId, scId
-        ) returns (
+        try spoke.shareToken(poolId, scId) returns (
             IShareToken /* shareToken */
         ) {}
         catch Error(string memory reason) {
@@ -1892,7 +1916,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
                                 // Calculate theoretical bounds only if prices are non-zero
                                 uint256 maxTheoreticalAssets = (D18.unwrap(pricePerShare) == 0
-                                            || D18.unwrap(pricePerAsset) == 0)
+                                        || D18.unwrap(pricePerAsset) == 0)
                                     ? 0
                                     : PricingLib.shareToAssetAmount(
                                         shareToken,
@@ -1904,7 +1928,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                                         MathLib.Rounding.Up
                                     );
                                 uint256 minTheoreticalAssets = (D18.unwrap(pricePerShare) == 0
-                                            || D18.unwrap(pricePerAsset) == 0)
+                                        || D18.unwrap(pricePerAsset) == 0)
                                     ? 0
                                     : PricingLib.shareToAssetAmount(
                                         shareToken,

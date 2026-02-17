@@ -273,9 +273,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         public
         asAdmin
     {
-        hub.setRequestManager{
-            value: GAS
-        }(
+        hub.setRequestManager{value: GAS}(
             PoolId.wrap(poolId),
             CENTRIFUGE_CHAIN_ID,
             IHubRequestManager(address(batchRequestManager)),
@@ -285,9 +283,9 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     }
 
     function hub_updateBalanceSheetManager(uint16 chainId, uint64 poolId, address manager, bool enable) public asAdmin {
-        hub.updateBalanceSheetManager{
-            value: GAS
-        }(PoolId.wrap(poolId), chainId, CastLib.toBytes32(manager), enable, address(this));
+        hub.updateBalanceSheetManager{value: GAS}(
+            PoolId.wrap(poolId), chainId, CastLib.toBytes32(manager), enable, address(this)
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════

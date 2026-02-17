@@ -70,9 +70,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         asAdmin
         returns (uint128 assetId)
     {
-        assetId = spoke.registerAsset{
-            value: 0.1 ether
-        }(
+        assetId = spoke.registerAsset{value: 0.1 ether}(
                 DEFAULT_DESTINATION_CHAIN,
                 assetAddress,
                 erc6909TokenId,

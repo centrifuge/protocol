@@ -146,13 +146,10 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
     }
 
     /// @inheritdoc IBatchRequestManager
-    function requestDeposit(
-        PoolId poolId,
-        ShareClassId scId_,
-        uint128 amount,
-        bytes32 investor,
-        AssetId depositAssetId
-    ) public auth {
+    function requestDeposit(PoolId poolId, ShareClassId scId_, uint128 amount, bytes32 investor, AssetId depositAssetId)
+        public
+        auth
+    {
         // NOTE: Vaults ensure amount > 0
         _updatePending(poolId, scId_, amount, true, investor, depositAssetId, RequestType.Deposit);
     }
@@ -477,9 +474,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         }
 
         if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
-            hub.requestCallback{
-                value: msgValue()
-            }(
+            hub.requestCallback{value: msgValue()}(
                 poolId,
                 scId,
                 assetId,
@@ -590,9 +585,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
             }
         }
         if (totalPaymentShareAmount > 0 || cancelledShareAmount > 0) {
-            hub.requestCallback{
-                value: msgValue()
-            }(
+            hub.requestCallback{value: msgValue()}(
                 poolId,
                 scId,
                 assetId,

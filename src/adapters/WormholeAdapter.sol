@@ -91,9 +91,9 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         WormholeDestination memory destination = destinations[centrifugeId];
         require(destination.wormholeId != 0, UnknownChainId());
 
-        uint64 sequence = relayer.sendPayloadToEvm{
-            value: msg.value
-        }(destination.wormholeId, destination.addr, payload, 0, gasLimit + RECEIVE_COST, localWormholeId, refund);
+        uint64 sequence = relayer.sendPayloadToEvm{value: msg.value}(
+            destination.wormholeId, destination.addr, payload, 0, gasLimit + RECEIVE_COST, localWormholeId, refund
+        );
 
         adapterData = bytes32(bytes8(sequence));
     }

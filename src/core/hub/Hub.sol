@@ -113,9 +113,9 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         uint8 decimals = hubRegistry.decimals(poolId);
 
         emit NotifyShareClass(centrifugeId, poolId, scId);
-        sender.sendNotifyShareClass{
-            value: msgValue()
-        }(centrifugeId, poolId, scId, name, symbol, decimals, salt, hook, refund);
+        sender.sendNotifyShareClass{value: msgValue()}(
+            centrifugeId, poolId, scId, name, symbol, decimals, salt, hook, refund
+        );
     }
 
     /// @inheritdoc IHub
@@ -146,9 +146,9 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         (D18 pricePoolPerShare, uint64 computedAt) = shareClassManager.pricePoolPerShare(poolId, scId);
 
         emit NotifySharePrice(centrifugeId, poolId, scId, pricePoolPerShare, computedAt);
-        sender.sendNotifyPricePoolPerShare{
-            value: msgValue()
-        }(centrifugeId, poolId, scId, pricePoolPerShare, computedAt, refund);
+        sender.sendNotifyPricePoolPerShare{value: msgValue()}(
+            centrifugeId, poolId, scId, pricePoolPerShare, computedAt, refund
+        );
     }
 
     /// @inheritdoc IHub
@@ -305,9 +305,9 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         emit UpdateContract(centrifugeId, poolId, scId, target, payload);
-        sender.sendTrustedContractUpdate{
-            value: msgValue()
-        }(centrifugeId, poolId, scId, target, payload, extraGasLimit, refund);
+        sender.sendTrustedContractUpdate{value: msgValue()}(
+            centrifugeId, poolId, scId, target, payload, extraGasLimit, refund
+        );
     }
 
     /// @inheritdoc IHub
@@ -465,9 +465,9 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         multiAdapter.setAdapters(centrifugeId, poolId, localAdapters, threshold, recoveryIndex);
 
-        sender.sendSetPoolAdapters{
-            value: msgValue()
-        }(centrifugeId, poolId, remoteAdapters, threshold, recoveryIndex, refund);
+        sender.sendSetPoolAdapters{value: msgValue()}(
+            centrifugeId, poolId, remoteAdapters, threshold, recoveryIndex, refund
+        );
     }
 
     /// @inheritdoc IHub

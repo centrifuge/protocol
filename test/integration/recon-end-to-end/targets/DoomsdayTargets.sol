@@ -268,9 +268,9 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
 
         // === SHARE CLASS MANAGER OPERATIONS === //
         uint32 nowIssueEpoch = batchRequestManager.nowIssueEpoch(poolId, scId, assetId);
-        try batchRequestManager.issueShares{
-            value: 0.1 ether
-        }(poolId, scId, assetId, nowIssueEpoch, D18.wrap(0), SHARE_HOOK_GAS, address(this)) {
+        try batchRequestManager.issueShares{value: 0.1 ether}(
+            poolId, scId, assetId, nowIssueEpoch, D18.wrap(0), SHARE_HOOK_GAS, address(this)
+        ) {
             (uint128 approvedPool,,,,,) = batchRequestManager.epochInvestAmounts(poolId, scId, assetId, nowIssueEpoch);
             eq(approvedPool, 0, "approved pool amount should return 0 at zero price");
         } catch (bytes memory reason) {

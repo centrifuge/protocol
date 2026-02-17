@@ -592,7 +592,7 @@ abstract contract Setup is
         // Auto-sync share token with the new share class to maintain consistency
         // This prevents ghost variable tracking bugs where _getShareToken() returns a token that doesn't match current (pool, shareClass)
         address newShareToken = address(spoke.shareToken(_getPool(), newShareClassId));
-        
+
         if (newShareToken != address(0)) {
             _setShareToken(newShareToken);
         }

@@ -438,9 +438,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address refund
     ) external payable auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hubHandler.initiateTransferShares{
-                value: msg.value
-            }(localCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit, refund);
+            hubHandler.initiateTransferShares{value: msg.value}(
+                localCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit, refund
+            );
         } else {
             _send(
                 poolId.centrifugeId(),

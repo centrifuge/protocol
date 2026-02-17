@@ -108,9 +108,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         AssetId paymentAssetId = _getAssetId();
         uint128 pendingDepositBefore = batchRequestManager.pendingDeposit(poolId, scId, paymentAssetId);
 
-        batchRequestManager.approveDeposits{
-            value: MAX_MESSAGE_COST
-        }(
+        batchRequestManager.approveDeposits{value: MAX_MESSAGE_COST}(
             poolId,
             scId,
             paymentAssetId,
@@ -132,9 +130,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         AssetId payoutAssetId = _getAssetId();
         uint128 pendingRedeemBefore = batchRequestManager.pendingRedeem(poolId, scId, payoutAssetId);
 
-        batchRequestManager.approveRedeems{
-            value: MAX_MESSAGE_COST
-        }(
+        batchRequestManager.approveRedeems{value: MAX_MESSAGE_COST}(
             poolId,
             scId,
             payoutAssetId,
@@ -251,9 +247,9 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         address shareToken = address(spoke.shareToken(poolId, scId));
         uint256 escrowSharesBefore = IShareToken(shareToken).balanceOf(address(globalEscrow));
 
-        batchRequestManager.issueShares{
-            value: MAX_MESSAGE_COST
-        }(poolId, scId, assetId, nowIssueEpochId, D18.wrap(navPerShare), SHARE_HOOK_GAS, _getActor());
+        batchRequestManager.issueShares{value: MAX_MESSAGE_COST}(
+            poolId, scId, assetId, nowIssueEpochId, D18.wrap(navPerShare), SHARE_HOOK_GAS, _getActor()
+        );
 
         // Calculate issued amount in separate function to avoid stack depth
         uint128 issuedShareAmount = _calculateIssuedShares(poolId, scId, assetId, nowIssueEpochId, navPerShare);
@@ -338,9 +334,9 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         address shareToken = address(spoke.shareToken(poolId, scId));
         uint256 sharesBefore = IShareToken(shareToken).balanceOf(address(globalEscrow));
 
-        batchRequestManager.revokeShares{
-            value: MAX_MESSAGE_COST
-        }(poolId, scId, payoutAssetId, nowRevokeEpochId, D18.wrap(navPerShare), SHARE_HOOK_GAS, _getActor());
+        batchRequestManager.revokeShares{value: MAX_MESSAGE_COST}(
+            poolId, scId, payoutAssetId, nowRevokeEpochId, D18.wrap(navPerShare), SHARE_HOOK_GAS, _getActor()
+        );
 
         // Get and process epoch data in separate function to avoid stack depth
         uint128 revokedShareAmount = _calculateRevokedShares(poolId, scId, payoutAssetId, nowRevokeEpochId);
@@ -493,9 +489,9 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         bytes32 investor = _getActor().toBytes32();
         AssetId depositAssetId = _getAssetId();
 
-        batchRequestManager.forceCancelDepositRequest{
-            value: MAX_MESSAGE_COST
-        }(poolId, scId, investor, depositAssetId, _getActor());
+        batchRequestManager.forceCancelDepositRequest{value: MAX_MESSAGE_COST}(
+            poolId, scId, investor, depositAssetId, _getActor()
+        );
     }
 
     function hub_forceCancelRedeemRequest() public updateGhosts {
@@ -505,9 +501,9 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         bytes32 investor = _getActor().toBytes32();
         AssetId payoutAssetId = _getAssetId();
 
-        batchRequestManager.forceCancelRedeemRequest{
-            value: MAX_MESSAGE_COST
-        }(poolId, scId, investor, payoutAssetId, _getActor());
+        batchRequestManager.forceCancelRedeemRequest{value: MAX_MESSAGE_COST}(
+            poolId, scId, investor, payoutAssetId, _getActor()
+        );
     }
 
     function hub_setMaxAssetPriceAge(uint32 maxAge) public updateGhosts {
