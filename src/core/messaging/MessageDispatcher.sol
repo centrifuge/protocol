@@ -26,6 +26,7 @@ import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
+import {IBaseTransferHook} from "../../hooks/interfaces/IBaseTransferHook.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
 /// @title  MessageDispatcher
@@ -49,6 +50,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     IBalanceSheetGatewayHandler public balanceSheet;
     IVaultRegistryGatewayHandler public vaultRegistry;
     IContractUpdateGatewayHandler public contractUpdater;
+    IBaseTransferHook[] public transferHooks;
 
     constructor(uint16 localCentrifugeId_, IScheduleAuth scheduleAuth_, IGateway gateway_, address deployer)
         Auth(deployer)
@@ -76,6 +78,20 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         emit File(what, data);
     }
 
+    /// @notice Set the list of transfer hooks to register pool escrows on
+    function file(bytes32 what, address[] calldata data) external auth {
+        if (what == "transferHooks") {
+            delete transferHooks;
+            for (uint256 i; i < data.length; i++) {
+                transferHooks.push(IBaseTransferHook(data[i]));
+            }
+        } else {
+            revert FileUnrecognizedParam();
+        }
+
+        emit File(what, data[0]);
+    }
+
     //----------------------------------------------------------------------------------------------
     // Outgoing
     //----------------------------------------------------------------------------------------------
@@ -84,6 +100,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function sendNotifyPool(uint16 centrifugeId, PoolId poolId, address refund) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             spoke.addPool(poolId);
+            for (uint256 i; i < transferHooks.length; i++) {
+                transferHooks[i].registerPoolEscrow(poolId);
+            }
             _refund(refund);
         } else {
             _send(centrifugeId, MessageLib.NotifyPool({poolId: poolId.raw()}).serialize(), false, refund);

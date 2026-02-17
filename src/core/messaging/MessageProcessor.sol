@@ -26,6 +26,7 @@ import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
+import {IBaseTransferHook} from "../../hooks/interfaces/IBaseTransferHook.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
 /// @title  MessageProcessor
@@ -48,6 +49,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IBalanceSheetGatewayHandler public balanceSheet;
     IVaultRegistryGatewayHandler public vaultRegistry;
     IContractUpdateGatewayHandler public contractUpdater;
+    IBaseTransferHook[] public transferHooks;
 
     constructor(IScheduleAuth scheduleAuth_, address deployer) Auth(deployer) {
         scheduleAuth = scheduleAuth_;
@@ -70,6 +72,20 @@ contract MessageProcessor is Auth, IMessageProcessor {
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
+    }
+
+    /// @notice Set the list of transfer hooks to register pool escrows on
+    function file(bytes32 what, address[] calldata data) external auth {
+        if (what == "transferHooks") {
+            delete transferHooks;
+            for (uint256 i; i < data.length; i++) {
+                transferHooks.push(IBaseTransferHook(data[i]));
+            }
+        } else {
+            revert FileUnrecognizedParam();
+        }
+
+        emit File(what, data[0]);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -110,7 +126,11 @@ contract MessageProcessor is Auth, IMessageProcessor {
             MessageLib.Request memory m = MessageLib.deserializeRequest(message);
             hubHandler.request(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
         } else if (kind == MessageType.NotifyPool) {
-            spoke.addPool(PoolId.wrap(MessageLib.deserializeNotifyPool(message).poolId));
+            PoolId poolId = PoolId.wrap(MessageLib.deserializeNotifyPool(message).poolId);
+            spoke.addPool(poolId);
+            for (uint256 i; i < transferHooks.length; i++) {
+                transferHooks[i].registerPoolEscrow(poolId);
+            }
         } else if (kind == MessageType.NotifyShareClass) {
             MessageLib.NotifyShareClass memory m = MessageLib.deserializeNotifyShareClass(message);
             spoke.addShareClass(

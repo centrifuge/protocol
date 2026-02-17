@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {PoolId} from "../../core/types/PoolId.sol";
 import {ITransferHook} from "../../core/spoke/interfaces/ITransferHook.sol";
 
 /// @title  IBaseTransferHook
@@ -19,10 +20,17 @@ interface IBaseTransferHook is ITransferHook {
     //----------------------------------------------------------------------------------------------
 
     event UpdateHookManager(address indexed token, address indexed manager, bool canManage);
+    event RegisterPoolEscrow(address indexed poolEscrow);
 
     //----------------------------------------------------------------------------------------------
     // Errors
     //----------------------------------------------------------------------------------------------
 
     error UnknownTrustedCall();
+
+    //----------------------------------------------------------------------------------------------
+    // External functions
+    //----------------------------------------------------------------------------------------------
+
+    function registerPoolEscrow(PoolId poolId) external;
 }
