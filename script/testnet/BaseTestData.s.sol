@@ -13,6 +13,7 @@ import {AccountId} from "../../src/core/types/AccountId.sol";
 import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {MultiAdapter} from "../../src/core/messaging/MultiAdapter.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
 import {WithdrawMode} from "../../src/core/spoke/interfaces/IBalanceSheet.sol";
@@ -40,6 +41,10 @@ import "forge-std/Script.sol";
 
 import {LaunchDeployer} from "../LaunchDeployer.s.sol";
 import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
+import {AxelarAdapter} from "../../src/adapters/AxelarAdapter.sol";
+import {WormholeAdapter} from "../../src/adapters/WormholeAdapter.sol";
+import {ChainlinkAdapter} from "../../src/adapters/ChainlinkAdapter.sol";
+import {LayerZeroAdapter} from "../../src/adapters/LayerZeroAdapter.sol";
 
 /**
  * @title BaseTestData
@@ -52,34 +57,22 @@ abstract contract BaseTestData is LaunchDeployer {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
 
-    uint128 constant DEFAULT_EXTRA_GAS = uint128(2_000_000);
-    uint256 internal constant DEFAULT_XC_GAS_PER_CALL = 0.1 ether; // default per-message native payment
-    uint256 internal xcGasPerCall; // optional per-message native payment for cross-chain sends
+    //----------------------------------------------------------------------------------------------
+    // CONSTANTS
+    //----------------------------------------------------------------------------------------------
 
-    /**
-     * @notice Load contract addresses from config JSON
-     * @dev Used by all test scripts to initialize contract references
-     */
-    function loadContractsFromConfig(string memory config) internal {
-        spoke = Spoke(_readContractAddress(config, "$.contracts.spoke"));
-        hub = Hub(_readContractAddress(config, "$.contracts.hub"));
-        shareClassManager = ShareClassManager(_readContractAddress(config, "$.contracts.shareClassManager"));
-        redemptionRestrictionsHook =
-            RedemptionRestrictions(_readContractAddress(config, "$.contracts.redemptionRestrictionsHook"));
-        identityValuation = IdentityValuation(_readContractAddress(config, "$.contracts.identityValuation"));
-        asyncVaultFactory = AsyncVaultFactory(_readContractAddress(config, "$.contracts.asyncVaultFactory"));
-        syncDepositVaultFactory =
-            SyncDepositVaultFactory(_readContractAddress(config, "$.contracts.syncDepositVaultFactory"));
-        balanceSheet = BalanceSheet(_readContractAddress(config, "$.contracts.balanceSheet"));
-        hubRegistry = HubRegistry(_readContractAddress(config, "$.contracts.hubRegistry"));
-        asyncRequestManager =
-            AsyncRequestManager(payable(_readContractAddress(config, "$.contracts.asyncRequestManager")));
-        batchRequestManager = BatchRequestManager(_readContractAddress(config, "$.contracts.batchRequestManager"));
-        syncManager = SyncManager(_readContractAddress(config, "$.contracts.syncManager"));
-        protocolGuardian = ProtocolGuardian(_readContractAddress(config, "$.contracts.protocolGuardian"));
-        opsGuardian = OpsGuardian(_readContractAddress(config, "$.contracts.opsGuardian"));
-        subsidyManager = SubsidyManager(_readContractAddress(config, "$.contracts.subsidyManager"));
-    }
+    uint128 constant DEFAULT_EXTRA_GAS = uint128(2_000_000);
+    uint256 internal constant DEFAULT_XC_GAS_PER_CALL = 0.1 ether;
+
+    //----------------------------------------------------------------------------------------------
+    // STORAGE
+    //----------------------------------------------------------------------------------------------
+
+    uint256 internal xcGasPerCall;
+
+    //----------------------------------------------------------------------------------------------
+    // STRUCTS
+    //----------------------------------------------------------------------------------------------
 
     struct AsyncVaultParams {
         uint16 targetCentrifugeId; // centrifugeId where the vault will be deployed
@@ -105,32 +98,45 @@ abstract contract BaseTestData is LaunchDeployer {
         bytes32 shareClassMeta; // share class metadata
     }
 
-    // Cross-chain variants for hub-side scripts (PoolId uses hubCentrifugeId)
-    struct XcAsyncVaultParams {
-        uint16 hubCentrifugeId; // hub centrifugeId (where pool lives)
-        uint16 targetCentrifugeId; // spoke centrifugeId (where vault is deployed)
-        uint48 poolIndex;
-        ERC20 token;
-        AssetId assetId;
-        address admin;
-        string poolMetadata;
-        string shareClassName;
-        string shareClassSymbol;
-        bytes32 shareClassMeta;
+    //----------------------------------------------------------------------------------------------
+    // CONFIGURATION
+    //----------------------------------------------------------------------------------------------
+
+    /**
+     * @notice Load contract addresses from config JSON
+     * @dev Used by all test scripts to initialize contract references
+     */
+    function loadContractsFromConfig(string memory config) internal {
+        spoke = Spoke(_readContractAddress(config, "$.contracts.spoke"));
+        hub = Hub(_readContractAddress(config, "$.contracts.hub"));
+        shareClassManager = ShareClassManager(_readContractAddress(config, "$.contracts.shareClassManager"));
+        redemptionRestrictionsHook =
+            RedemptionRestrictions(_readContractAddress(config, "$.contracts.redemptionRestrictionsHook"));
+        identityValuation = IdentityValuation(_readContractAddress(config, "$.contracts.identityValuation"));
+        asyncVaultFactory = AsyncVaultFactory(_readContractAddress(config, "$.contracts.asyncVaultFactory"));
+        syncDepositVaultFactory =
+            SyncDepositVaultFactory(_readContractAddress(config, "$.contracts.syncDepositVaultFactory"));
+        balanceSheet = BalanceSheet(_readContractAddress(config, "$.contracts.balanceSheet"));
+        hubRegistry = HubRegistry(_readContractAddress(config, "$.contracts.hubRegistry"));
+        asyncRequestManager =
+            AsyncRequestManager(payable(_readContractAddress(config, "$.contracts.asyncRequestManager")));
+        batchRequestManager = BatchRequestManager(_readContractAddress(config, "$.contracts.batchRequestManager"));
+        syncManager = SyncManager(_readContractAddress(config, "$.contracts.syncManager"));
+        protocolGuardian = ProtocolGuardian(_readContractAddress(config, "$.contracts.protocolGuardian"));
+        opsGuardian = OpsGuardian(_readContractAddress(config, "$.contracts.opsGuardian"));
+        subsidyManager = SubsidyManager(_readContractAddress(config, "$.contracts.subsidyManager"));
+
+        // Load adapter addresses
+        multiAdapter = MultiAdapter(_readContractAddress(config, "$.contracts.multiAdapter"));
+        axelarAdapter = AxelarAdapter(_readContractAddress(config, "$.contracts.axelarAdapter"));
+        layerZeroAdapter = LayerZeroAdapter(_readContractAddress(config, "$.contracts.layerZeroAdapter"));
+        wormholeAdapter = WormholeAdapter(_readContractAddress(config, "$.contracts.wormholeAdapter"));
+        chainlinkAdapter = ChainlinkAdapter(_readContractAddress(config, "$.contracts.chainlinkAdapter"));
     }
 
-    struct XcSyncVaultParams {
-        uint16 hubCentrifugeId; // hub centrifugeId (where pool lives)
-        uint16 targetCentrifugeId; // spoke centrifugeId (where vault is deployed)
-        uint48 poolIndex;
-        ERC20 token;
-        AssetId assetId;
-        address admin;
-        string poolMetadata;
-        string shareClassName;
-        string shareClassSymbol;
-        bytes32 shareClassMeta;
-    }
+    //----------------------------------------------------------------------------------------------
+    // ASYNC VAULT DEPLOYMENT
+    //----------------------------------------------------------------------------------------------
 
     /**
      * @notice Deploy an async vault with the given parameters
@@ -183,7 +189,7 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
         hub.createAccount(poolId, AccountId.wrap(0x04), true);
 
-        // Initialize holding (single-chain semantics)
+        // Initialize holding
         hub.initializeHolding(
             poolId,
             scId,
@@ -211,6 +217,10 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.notifySharePrice(poolId, scId, params.targetCentrifugeId, msg.sender);
         hub.notifyAssetPrice(poolId, scId, params.assetId, msg.sender);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // SYNC VAULT DEPLOYMENT
+    //----------------------------------------------------------------------------------------------
 
     /**
      * @notice Deploy a sync deposit vault with the given parameters
@@ -327,6 +337,10 @@ abstract contract BaseTestData is LaunchDeployer {
         }
     }
 
+    //----------------------------------------------------------------------------------------------
+    // TEST FLOWS
+    //----------------------------------------------------------------------------------------------
+
     /**
      * @notice Perform full async vault test flow (deposit, withdraw, issue, redeem, etc.)
      * @dev This is the full test flow from TestData.s.sol, extracted for reuse
@@ -418,140 +432,5 @@ abstract contract BaseTestData is LaunchDeployer {
 
         token.approve(address(vault), investAmount);
         vault.deposit(investAmount, msg.sender);
-    }
-
-    // Cross-chain helpers (use hubCentrifugeId for poolId and fund XC calls)
-    function deployAsyncVaultXc(XcAsyncVaultParams memory params) internal returns (PoolId poolId, ShareClassId scId) {
-        if (xcGasPerCall == 0) {
-            xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
-        }
-        poolId = hubRegistry.poolId(params.hubCentrifugeId, params.poolIndex);
-        subsidyManager.deposit{value: 0.5 ether}(poolId);
-
-        opsGuardian.createPool(poolId, msg.sender, USD_ID);
-        hub.updateHubManager(poolId, params.admin, true);
-        scId = shareClassManager.previewNextShareClassId(poolId);
-
-        D18 pricePoolPerShare = d18(1, 1);
-        hub.setPoolMetadata(poolId, bytes(params.poolMetadata));
-        hub.addShareClass(poolId, params.shareClassName, params.shareClassSymbol, params.shareClassMeta);
-        hub.notifyPool{value: xcGasPerCall}(poolId, params.targetCentrifugeId, msg.sender);
-        hub.notifyShareClass{value: xcGasPerCall}(
-            poolId, scId, params.targetCentrifugeId, address(redemptionRestrictionsHook).toBytes32(), msg.sender
-        );
-        hub.setRequestManager{value: xcGasPerCall}(
-            poolId,
-            params.targetCentrifugeId,
-            IHubRequestManager(batchRequestManager),
-            address(asyncRequestManager).toBytes32(),
-            msg.sender
-        );
-        hub.updateBalanceSheetManager{value: xcGasPerCall}(
-            poolId, params.targetCentrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender
-        );
-        hub.updateBalanceSheetManager{value: xcGasPerCall}(
-            poolId, params.targetCentrifugeId, address(params.admin).toBytes32(), true, msg.sender
-        );
-        hub.createAccount(poolId, AccountId.wrap(0x01), true);
-        hub.createAccount(poolId, AccountId.wrap(0x02), false);
-        hub.createAccount(poolId, AccountId.wrap(0x03), false);
-        hub.createAccount(poolId, AccountId.wrap(0x04), true);
-        if (hubRegistry.isRegistered(params.assetId)) {
-            hub.initializeHolding(
-                poolId,
-                scId,
-                params.assetId,
-                identityValuation,
-                AccountId.wrap(0x01),
-                AccountId.wrap(0x02),
-                AccountId.wrap(0x03),
-                AccountId.wrap(0x04)
-            );
-        }
-        hub.updateVault{value: xcGasPerCall}(
-            poolId,
-            scId,
-            params.assetId,
-            address(asyncVaultFactory).toBytes32(),
-            VaultUpdateKind.DeployAndLink,
-            0,
-            msg.sender
-        );
-        hub.updateSharePrice(poolId, scId, pricePoolPerShare, uint64(block.timestamp));
-        hub.notifySharePrice{value: xcGasPerCall}(poolId, scId, params.targetCentrifugeId, msg.sender);
-        hub.notifyAssetPrice{value: xcGasPerCall}(poolId, scId, params.assetId, msg.sender);
-    }
-
-    function deploySyncDepositVaultXc(XcSyncVaultParams memory params)
-        internal
-        returns (PoolId poolId, ShareClassId scId)
-    {
-        if (xcGasPerCall == 0) {
-            xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
-        }
-        poolId = hubRegistry.poolId(params.hubCentrifugeId, params.poolIndex);
-        subsidyManager.deposit(poolId);
-
-        opsGuardian.createPool(poolId, msg.sender, USD_ID);
-        hub.updateHubManager(poolId, params.admin, true);
-        scId = shareClassManager.previewNextShareClassId(poolId);
-
-        D18 pricePoolPerShare = d18(1, 1);
-        hub.setPoolMetadata(poolId, bytes(params.poolMetadata));
-        hub.addShareClass(poolId, params.shareClassName, params.shareClassSymbol, params.shareClassMeta);
-        hub.notifyPool{value: xcGasPerCall}(poolId, params.targetCentrifugeId, msg.sender);
-        hub.notifyShareClass{value: xcGasPerCall}(
-            poolId, scId, params.targetCentrifugeId, address(redemptionRestrictionsHook).toBytes32(), msg.sender
-        );
-        hub.setRequestManager{value: xcGasPerCall}(
-            poolId,
-            params.targetCentrifugeId,
-            IHubRequestManager(batchRequestManager),
-            address(asyncRequestManager).toBytes32(),
-            msg.sender
-        );
-        hub.updateBalanceSheetManager{value: xcGasPerCall}(
-            poolId, params.targetCentrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender
-        );
-        hub.updateBalanceSheetManager{value: xcGasPerCall}(
-            poolId, params.targetCentrifugeId, address(syncManager).toBytes32(), true, msg.sender
-        );
-        hub.createAccount(poolId, AccountId.wrap(0x01), true);
-        hub.createAccount(poolId, AccountId.wrap(0x02), false);
-        hub.createAccount(poolId, AccountId.wrap(0x03), false);
-        hub.createAccount(poolId, AccountId.wrap(0x04), true);
-        if (hubRegistry.isRegistered(params.assetId)) {
-            hub.initializeHolding(
-                poolId,
-                scId,
-                params.assetId,
-                identityValuation,
-                AccountId.wrap(0x01),
-                AccountId.wrap(0x02),
-                AccountId.wrap(0x03),
-                AccountId.wrap(0x04)
-            );
-        }
-        hub.updateVault{value: xcGasPerCall}(
-            poolId,
-            scId,
-            params.assetId,
-            address(syncDepositVaultFactory).toBytes32(),
-            VaultUpdateKind.DeployAndLink,
-            0,
-            msg.sender
-        );
-        hub.updateSharePrice(poolId, scId, pricePoolPerShare, uint64(block.timestamp));
-        hub.notifySharePrice{value: xcGasPerCall}(poolId, scId, params.targetCentrifugeId, msg.sender);
-        hub.notifyAssetPrice{value: xcGasPerCall}(poolId, scId, params.assetId, msg.sender);
-        hub.updateContract{value: xcGasPerCall}(
-            poolId,
-            scId,
-            params.targetCentrifugeId,
-            address(syncManager).toBytes32(),
-            abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), params.assetId.raw(), type(uint128).max),
-            0,
-            msg.sender
-        );
     }
 }

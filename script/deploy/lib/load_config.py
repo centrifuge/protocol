@@ -25,8 +25,11 @@ class EnvironmentLoader:
         self._etherscan_api_key = None
         self._protocol_admin_address = None
         self._ops_admin_address = None
+        self._env_network_validated = False
         print_subsection("Loading network configuration")
         self._load_config()
+        # Validate network early - if mismatch, don't load any .env values
+        self._validate_network_early()
         self.args = args
 
     def dump_config(self):
@@ -76,8 +79,8 @@ class EnvironmentLoader:
                 f.write(f"{k}={v}\n")
         print_success("Config written to .env")
 
-    def validate_network(self):
-        """Check if existing .env file is for the correct network"""
+    def _validate_network_early(self):
+        """Validate network early and set flag - if mismatch, .env values will be ignored"""
         if not os.path.exists(".env"):
             return True
 
@@ -101,13 +104,16 @@ class EnvironmentLoader:
         return True
 
     def _check_env_file(self, variable_name: str):
+        """Check .env file for a variable, but only if network matches"""
+        if not self._env_network_validated:
+            # Network mismatch - don't load any .env values
+            return None
         if os.path.exists(".env"):
             with open(".env", "r") as f:
                 for line in f:
                     if line.startswith(f"{variable_name}="):
                         print_warning(f"Using {variable_name} from .env")
                         return line.split("=")[1].strip()
-
     def _load_config(self):
         if not self.config_file.exists():
             raise FileNotFoundError(f"Network config file {self.config_file} not found")

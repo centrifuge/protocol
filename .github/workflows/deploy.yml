@@ -6,18 +6,9 @@ on:
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
     inputs:
-      network:
-        description: "Select the testnet to deploy to"
-        required: true
-        type: choice
-        options:
-          - "sepolia"
-          - "arbitrum-sepolia"
-          - "base-sepolia"
-
       version:
-        description: "Deployment version (optional, helps avoid create3 collisions)"
-        required: true
+        description: "Deployment version (e.g. v3.1.5) - if not provided, the job will generate a unique version number"
+        required: false
         type: string
         default: "TEST"
 
@@ -45,7 +36,8 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: v1.4.1
-      #Make sure all tools are installed and with proper versions
+
+      # Make sure all tools are installed and with proper versions
       - name: Setup deployer tools
         env:
           CI_MODE: true
@@ -58,28 +50,18 @@ jobs:
         id: set-vars
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "network=sepolia" >> $GITHUB_OUTPUT
             echo "version=PR-${{ github.run_number }}-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "dry=--dry-run" >> $GITHUB_OUTPUT
           else
-            echo "network=${{ github.event.inputs.network }}" >> $GITHUB_OUTPUT
             if [ "${{ github.event.inputs.version }}" = "TEST" ]; then
               echo "version=TEST-${{ github.run_number }}-${{ github.sha }}" >> $GITHUB_OUTPUT
             else
               echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
             fi
+            echo "dry=" >> $GITHUB_OUTPUT
           fi
-      - name: Deploy protocol to ${{ steps.set-vars.outputs.network }}
+      - name: Deploying all testnets
         env:
           VERSION: ${{ steps.set-vars.outputs.version }}
         run: |
-          python3 script/deploy/deploy.py ${{ steps.set-vars.outputs.network }} deploy:protocol
-      - name: Wire adapters to ${{ steps.set-vars.outputs.network }}
-        env:
-          VERSION: ${{ steps.set-vars.outputs.version }}
-        run: |
-          python3 script/deploy/deploy.py ${{ steps.set-vars.outputs.network }} wire:adapters
-      - name: Deploy Test data for ${{ steps.set-vars.outputs.network }}
-        env:
-          VERSION: ${{ steps.set-vars.outputs.version }}
-        run: |
-          python3 script/deploy/deploy.py ${{ steps.set-vars.outputs.network }} deploy:test
+          python3 script/deploy/deploy.py ${{ steps.set-vars.outputs.dry }} deploy:testnets
