@@ -22,14 +22,14 @@ contract ValidationExecutor is Script {
     ValidationContext ctx;
     TestContracts empty;
 
-    constructor(string memory network) {
+    constructor(string memory network, string memory executorName) {
         EnvConfig memory config = Env.load(network);
 
         ctx = ValidationContext({
             contracts: Contracts(config.contracts, empty),
             localCentrifugeId: config.network.centrifugeId,
             indexer: new GraphQLQuery(config.network.graphQLApi()),
-            cache: new CacheStore(string.concat("spell-cache/validation/", network)),
+            cache: new CacheStore(string.concat("spell-cache/validation/", executorName, "/", network)),
             isMainnet: config.network.isMainnet()
         });
     }

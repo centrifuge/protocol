@@ -25,12 +25,13 @@ contract ExampleTest {
     }
 
     function testSuite() external {
-        ValidationExecutor executor = new ValidationExecutor(chainName);
+        ValidationExecutor executor = new ValidationExecutor(chainName, "example");
         executor.runPreValidation(pre, false);
         executor.runCacheValidation(cache);
 
         // Here goes the spell
 
         executor.runPostValidation(post, testContractsFromConfig(Env.load(chainName)));
+        // You can also use testContractsFromConfig(fullDeployer)
     }
 }
