@@ -25,7 +25,7 @@ import {ISyncManager} from "../../../../src/vaults/interfaces/IVaultManagers.sol
 import {IAsyncRedeemVault} from "../../../../src/vaults/interfaces/IAsyncVault.sol";
 import {RequestCallbackMessageLib} from "../../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
-import {FullReport} from "../../../../script/FullDeployer.s.sol";
+import {NonCoreReport} from "../../../../script/FullDeployer.s.sol";
 import {VaultGraphQLData} from "../../../../script/spell/MigrationQueries.sol";
 
 import {Test} from "forge-std/Test.sol";
@@ -60,7 +60,7 @@ struct InvestmentFlowResult {
 }
 
 struct InvestmentFlowContext {
-    FullReport report;
+    NonCoreReport report;
     VaultGraphQLData gql;
     uint16 localCentrifugeId;
     PoolId poolId;
@@ -98,7 +98,7 @@ contract InvestmentFlowExecutor is Test {
     // Entry Points
     // ============================================
 
-    function executeAllFlows(FullReport memory report, VaultGraphQLData[] memory vaults, uint16 localCentrifugeId)
+    function executeAllFlows(NonCoreReport memory report, VaultGraphQLData[] memory vaults, uint16 localCentrifugeId)
         external
         returns (InvestmentFlowResult[] memory results)
     {
@@ -113,7 +113,7 @@ contract InvestmentFlowExecutor is Test {
     }
 
     function _executeSingleVault(
-        FullReport memory report,
+        NonCoreReport memory report,
         VaultGraphQLData memory gql,
         uint16 localCentrifugeId,
         uint256 index
@@ -142,7 +142,7 @@ contract InvestmentFlowExecutor is Test {
             console.log("LINKING for validation: %s [%s]", gql.vault, tokenName);
             PoolId poolId = PoolId.wrap(gql.poolIdRaw);
             ShareClassId scId = ShareClassId.wrap(gql.tokenIdRaw);
-            vm.prank(address(report.root));
+            vm.prank(address(report.core.root));
             report.core.vaultRegistry.linkVault(poolId, scId, assetId, IVault(gql.vault));
         }
 
@@ -161,7 +161,7 @@ contract InvestmentFlowExecutor is Test {
         }
     }
 
-    function _buildContext(FullReport memory report, VaultGraphQLData memory gql, uint16 localCentrifugeId)
+    function _buildContext(NonCoreReport memory report, VaultGraphQLData memory gql, uint16 localCentrifugeId)
         internal
         view
         returns (InvestmentFlowContext memory ctx)
@@ -468,7 +468,7 @@ contract InvestmentFlowExecutor is Test {
     // ============================================
 
     function _configurePrices(
-        FullReport memory report,
+        NonCoreReport memory report,
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
@@ -483,7 +483,7 @@ contract InvestmentFlowExecutor is Test {
     }
 
     function _whitelistInvestor(
-        FullReport memory report,
+        NonCoreReport memory report,
         PoolId poolId,
         ShareClassId scId,
         address investor,
@@ -624,7 +624,7 @@ contract InvestmentFlowExecutor is Test {
         // This fixes cross-chain pools where manager registration is missing from on-chain state
         // Only register if pool exists in local Hub (Ethereum mainnet has pools, spoke chains don't)
         if (ctx.report.core.hubRegistry.exists(ctx.poolId)) {
-            vm.startPrank(address(ctx.report.root));
+            vm.startPrank(address(ctx.report.core.root));
             ctx.report.core.balanceSheet.updateManager(ctx.poolId, address(ctx.report.asyncRequestManager), true);
             vm.stopPrank();
         }
@@ -667,7 +667,7 @@ contract InvestmentFlowExecutor is Test {
         address escrowAddr = address(ctx.report.refundEscrowFactory.get(ctx.poolId));
 
         if (escrowAddr.code.length == 0) {
-            vm.startPrank(address(ctx.report.root));
+            vm.startPrank(address(ctx.report.core.root));
             ctx.report.refundEscrowFactory.newEscrow(ctx.poolId);
             vm.stopPrank();
         }
@@ -690,7 +690,7 @@ contract InvestmentFlowExecutor is Test {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = IAdapter(address(hubAdapter));
 
-        vm.startPrank(address(ctx.report.protocolGuardian));
+        vm.startPrank(address(ctx.report.core.protocolGuardian));
         ctx.report.core.multiAdapter
             .setAdapters(hubCentrifugeId, ctx.poolId, adapters, uint8(adapters.length), uint8(adapters.length));
         vm.stopPrank();

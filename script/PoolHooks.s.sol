@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {makeSalt} from "./CoreDeployer.s.sol";
+import {makeSalt} from "./BaseDeployer.s.sol";
 import {CreateXScript} from "./utils/CreateXScript.sol";
 import {GraphQLQuery} from "./utils/GraphQLQuery.s.sol";
 import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
@@ -110,7 +110,7 @@ contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
             "  totalCount"
             "  items {"
             "    tokenId"
-            "    address"            
+            "    address"
             "    token {"
             "      poolId"
             "    }"

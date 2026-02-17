@@ -3,11 +3,8 @@ pragma solidity 0.8.28;
 
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
-import {CoreInput} from "../../script/CoreDeployer.s.sol";
-import {ILayerZeroEndpointV2Like, SetConfigParam} from "../../script/utils/ILayerZeroEndpointV2Like.sol";
 import {
-    FullInput,
-    FullActionBatcher,
+    DeployerInput,
     FullDeployer,
     AdaptersInput,
     WormholeInput,
@@ -21,6 +18,7 @@ import {
 import "forge-std/Test.sol";
 
 import {IWormholeRelayer, IWormholeDeliveryProvider} from "../../src/adapters/interfaces/IWormholeAdapter.sol";
+import {ILayerZeroEndpointV2Like, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
 contract LayerZeroEndpointMock {
     mapping(address oapp => address delegate) public delegates;
@@ -72,13 +70,13 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
     }
 
     function setUp() public virtual {
-        FullActionBatcher batcher = new FullActionBatcher(address(this));
-
         _mockRealWormholeContracts();
         _mockBridgeContracts();
         deployFull(
-            FullInput({
-                core: CoreInput({centrifugeId: CENTRIFUGE_ID, version: bytes32(0), txLimits: defaultTxLimits()}),
+            DeployerInput({
+                centrifugeId: CENTRIFUGE_ID,
+                version: bytes32(0),
+                txLimits: defaultTxLimits(),
                 protocolSafe: ADMIN_SAFE,
                 opsSafe: OPS_SAFE,
                 adapters: AdaptersInput({
@@ -94,10 +92,8 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
                     connections: new AdapterConnections[](0) // TODO: test this
                 })
             }),
-            batcher
+            address(this)
         );
-
-        removeFullDeployerAccess(batcher);
     }
 }
 
@@ -397,7 +393,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
     }
 }
 
-contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
+contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
     function testRoot(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(protocolGuardian));
@@ -661,7 +657,9 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         assertEq(batchRequestManager.wards(address(hubHandler)), 1);
         assertEq(batchRequestManager.wards(nonWard), 0);
     }
+}
 
+contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
     function testWormholeAdapter(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
