@@ -20,11 +20,11 @@ contract ValidationExecutor is Script {
     event log_string(string);
 
     ValidationContext ctx;
+    TestContracts empty;
 
     constructor(string memory network) {
         EnvConfig memory config = Env.load(network);
 
-        TestContracts memory empty;
         ctx = ValidationContext({
             contracts: Contracts(config.contracts, empty),
             localCentrifugeId: config.network.centrifugeId,
@@ -35,11 +35,13 @@ contract ValidationExecutor is Script {
     }
 
     function runPreValidation(BaseValidator[] memory validators, bool shouldRevert) external {
+        ctx.contracts.latest = empty;
         _execute(validators, "PRE-SPELL", shouldRevert);
     }
 
     function runCacheValidation(BaseValidator[] memory validators) external {
         ctx.cache.cleanAndCreateCacheDir();
+        ctx.contracts.latest = empty;
         _execute(validators, "", false);
     }
 
