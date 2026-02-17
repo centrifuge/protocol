@@ -148,9 +148,13 @@ class AnvilManager:
         sepolia_loader = EnvironmentLoader("sepolia", self.root_dir, args)
         api_key = sepolia_loader._get_secret("alchemy_api")
 
+        # Create both anvil env files up front so Forge scripts can read them when
+        # loading hub config (e.g. LaunchDeployer reads connectsTo and calls Env.load
+        # for each spoke, which requires env/anvil/<spoke>.json to exist).
+        sep_env = self._create_anvil_env("sepolia")
+        arb_env = self._create_anvil_env("arbitrum-sepolia")
 
         # SEPOLIA
-        sep_env = self._create_anvil_env("sepolia")
         # Start Sepolia fork
         self._setup_anvil(sep_env, api_key)
         if not self._deploy_fork(sep_env, args):
@@ -159,9 +163,6 @@ class AnvilManager:
         verifier.update_network_config("script/LaunchDeployer.s.sol")
 
         # ARBITRUM SEPOLIA
-        # Create env for Arbitrum Sepolia
-        arb_env = self._create_anvil_env("arbitrum-sepolia")
-        # Start Arbitrum Sepolia fork
         self._setup_anvil(arb_env, api_key, kill_existing=False)
         if not self._deploy_fork(arb_env, args):
             return False
