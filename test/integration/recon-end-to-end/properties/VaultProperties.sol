@@ -253,7 +253,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
                 // For sync vaults, validate PoolEscrow changes due to immediate mint
                 _updatePoolEscrowStateAfter(escrowState);
                 _validateSyncMaxValueChange(maxMintBefore, maxMintAfter, assets, "Mint", escrowState);
-                // TODO: Investigate checking with maxDeposit as done for asyncVault
+                _validateSyncMaxValueChange(maxDepositBefore, maxDepositAfter, assets, "Deposit", escrowState);
 
                 _logPoolEscrowAnalysis("Mint", maxMintBefore, maxMintAfter, mintAmount, escrowState);
             }
@@ -736,7 +736,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
     // Although they don't hurt
     // NOTE: We could also change the entire properties to handlers and we would be ok as well
     function _canCheckProperties() internal view returns (bool) {
-        if (TODO_RECON_SKIP_ERC7540) {
+        if (RECON_SKIP_ERC7540) {
             return false;
         }
         if (address(_getVault()) == address(0)) {

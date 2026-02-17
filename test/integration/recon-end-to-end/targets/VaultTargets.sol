@@ -441,11 +441,11 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 shareUserAfter = IShareToken(vault.share()).balanceOf(_getActor());
         uint256 shareEscrowAfter = IShareToken(vault.share()).balanceOf(address(globalEscrow));
 
-        // Extra check | // TODO: This math will prob overflow
-        // NOTE: Unchecked so we get broken property and debug faster
+        // NOTE: Intentionally unchecked - underflow indicates property violation (fuzzer debugging)
+        // Might overflow
         unchecked {
-            uint256 deltaUser = shareUserAfter - shareUserB4; // B4 - after -> They pay
-            uint256 deltaEscrow = shareEscrowB4 - shareEscrowAfter; // After - B4 -> They gain
+            uint256 deltaUser = shareUserAfter - shareUserB4;
+            uint256 deltaEscrow = shareEscrowB4 - shareEscrowAfter;
             emit DebugNumber(deltaUser);
             emit DebugNumber(assets);
             emit DebugNumber(deltaEscrow);
@@ -466,11 +466,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     // Given a random value, see if the other one would yield more shares or lower cost
     // Not only check view
     // Also do it and test it via revert test
-    // TODO: Mint Deposit Arb Test
-    // TODO: Withdraw Redeem Arb Test
-
-    // TODO: See how these go
-    // TODO: Receiver -> Not this
+    // TODO: {Mint Deposit, Withdraw Redeem} Arb Test
     function vault_mint(uint256 shares) public updateGhostsWithType(OpType.ADD) {
         address to = _getActor();
 
@@ -568,12 +564,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // E-1
         sumOfClaimedRedemptions[_getVault().asset()] += assets;
 
-        // Extra check | // TODO: This math will prob overflow
-        // NOTE: Unchecked so we get broken property and debug faster
+        // NOTE: Intentionally unchecked - underflow indicates property violation (fuzzer debugging)
+        // Might overflow
         unchecked {
             uint256 deltaUser = tokenUserAfter - tokenUserB4;
 
-            // TODO: NOTE FOT extra, verifies the transfer amount matches the returned amount
+            // NOTE: FoT check - verifies actual transfer matches returned amount
             eq(deltaUser, assets, "FoT-1");
 
             uint256 deltaEscrow = tokenEscrowB4 - tokenEscrowAfter;

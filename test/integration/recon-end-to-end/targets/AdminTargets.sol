@@ -571,12 +571,11 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     }
 
     // === RestrictedTransfers === ///
+    // NOTE: Basic version uses current actor; Generic version allows arbitrary user
     function restrictedTransfers_updateMemberBasic(uint64 validUntil) public asAdmin {
         fullRestrictions.updateMember(_getShareToken(), _getActor(), validUntil);
     }
 
-    // TODO: We prob want to keep one generic
-    // And one with limited actors
     function restrictedTransfers_updateMember(address user, uint64 validUntil) public asAdmin {
         fullRestrictions.updateMember(_getShareToken(), user, validUntil);
     }

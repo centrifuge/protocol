@@ -423,8 +423,6 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     //     );
     // }
 
-    // TODO(maybe): Multi Assets -> Iterate over all existing combinations
-
     /// @dev Property: The sum of max claimable shares is always <= the share balance of the escrow
     function property_sum_of_possible_account_balances_leq_escrow() public vaultIsSet {
         // only check for async vaults because sync vaults claim minted shares immediately
@@ -886,6 +884,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         for (uint32 i = 0; i < epochId; i++) {
             (uint128 pendingAssetAmount,,,,,) = batchRequestManager.epochInvestAmounts(poolId, scId, assetId, i);
             totalDepositAssets += pendingAssetAmount;
+            // NOTE: Uses current price for conservative bound. Actual shares may differ per-epoch.
             // TODO: confirm if this share calculation is correct
             totalDepositShares += uint128(vault.convertToShares(pendingAssetAmount));
         }

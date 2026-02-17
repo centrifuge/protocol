@@ -16,8 +16,13 @@ import {Asserts} from "@chimera/Asserts.sol";
 /// @dev These properties test compliance with the ERC-7540 Asynchronous Tokenized Vault standard
 /// @dev See https://eips.ethereum.org/EIPS/eip-7540 for the complete specification
 abstract contract ERC7540Properties is Setup, Asserts {
-    // TODO: change to 10 ** max(MockERC20(_getAsset()).decimals(), IShareToken(_getShareToken()).decimals())
-    uint256 MAX_ROUNDING_ERROR = 10 ** 18;
+    /// @dev Returns max rounding error based on vault's asset and share decimals
+    function _getMaxRoundingError(address vault) internal view returns (uint256) {
+        uint8 assetDecimals = IERC20Metadata(IAsyncVault(vault).asset()).decimals();
+        uint8 shareDecimals = IERC20Metadata(IAsyncVault(vault).share()).decimals();
+        uint8 maxDecimals = assetDecimals > shareDecimals ? assetDecimals : shareDecimals;
+        return 10 ** maxDecimals;
+    }
 
     /// @dev Property: 7540-3 convertToAssets(totalSupply) == totalAssets unless price is 0.0
     function erc7540_3(address asyncVaultTarget) public virtual {
@@ -43,12 +48,12 @@ abstract contract ERC7540Properties is Setup, Asserts {
         ) return;
 
         // convertToShares(totalAssets) == totalSupply
-        eq(
+        lte(
             _diff(
                 IAsyncVault(asyncVaultTarget).convertToShares(IAsyncVault(asyncVaultTarget).totalAssets()),
                 IERC20Metadata(IAsyncVault(asyncVaultTarget).share()).totalSupply()
             ),
-            MAX_ROUNDING_ERROR,
+            _getMaxRoundingError(asyncVaultTarget),
             "Property: 7540-4"
         );
     }
@@ -84,7 +89,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
 
         uint256 maxDep = IAsyncVault(asyncVaultTarget).maxDeposit(_getActor());
 
-        /// @audit No Revert is proven by erc7540_5
+        // @audit NOTE: No Revert is proven by erc7540_5
 
         uint256 sum = maxDep + amt;
         if (sum == 0) {

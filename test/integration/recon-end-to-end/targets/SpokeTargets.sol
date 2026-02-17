@@ -28,7 +28,6 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
 
     // NOTE: These introduce many false positives because they're used for cross-chain transfers but our test
     // environment only allows tracking state on one chain so they were removed
-    // TODO: Overflow stuff
     // function spoke_handleTransferShares(uint128 amount, uint256 investorEntropy) public updateGhosts asActor {
     //     address investor = _getRandomActor(investorEntropy);
     //     spoke.handleTransferShares(poolId, scId, investor, amount);

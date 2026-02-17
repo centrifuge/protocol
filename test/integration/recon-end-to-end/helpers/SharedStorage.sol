@@ -18,10 +18,10 @@ abstract contract SharedStorage {
     bool RECON_SKIPPED_PROPERTY = true;
 
     // NOTE: This is to not clog up the logs
-    bool TODO_RECON_SKIP_ERC7540 = false;
+    bool RECON_SKIP_ERC7540 = false;
 
     // Prevent flagging of properties that have been acknowledged
-    bool TODO_RECON_SKIP_ACKNOWLEDGED_CASES = true;
+    bool RECON_SKIP_ACKNOWLEDGED_CASES = true;
 
     // Disable them by setting this to false
     bool RECON_USE_SENTINEL_TESTS = false;
@@ -33,8 +33,8 @@ abstract contract SharedStorage {
 
     /**
      * @notice Enable exact balance checking for liquidity pool operations
-     * @dev Currently disabled due to precision issues in pool balance calculations
-     *      TODO: Fix rounding errors in PoolEscrow balance tracking before enabling
+     * @dev Disabled due to rounding errors in PoolEscrow balance tracking.
+     *      Enabling requires precision fixes in pool balance calculations.
      */
     bool RECON_EXACT_BAL_CHECK = false;
 
@@ -52,10 +52,8 @@ abstract contract SharedStorage {
 
     /**
      * @notice Bidirectional mapping between asset addresses and AssetId
-     * @dev Used for asset ID resolution during deployment and handler operations
-     *
-     * TODO: Evaluate if this can be replaced with spoke.assetToId() calls
-     *       to reduce storage redundancy and simplify asset tracking
+     * @dev Used for asset ID resolution during deployment and handler operations.
+     *      Duplicates spoke.assetToId() but provides faster lookups for handlers.
      */
     mapping(address => uint128) assetAddressToAssetId;
     mapping(uint128 => address) assetIdToAssetAddress;

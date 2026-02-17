@@ -529,8 +529,7 @@ abstract contract TargetFunctions is
 
     /// @dev Set price to realistic range for testing normal operations
     function hub_setPriceRealistic_clamped(uint256 price) public asAdmin {
-        // Clamp to realistic DeFi price range (0.001 to 1,000,000)
-        // TODO: @Reviewer, is this range too restrictive?
+        // NOTE: Realistic DeFi price range (0.001 to 1M). Use hub_setPrice for extreme cases.
         if (price < 1e15) price = 1e15;
         if (price > 1e24) price = 1e24;
 
