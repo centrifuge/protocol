@@ -48,7 +48,7 @@ class AnvilManager:
         dst_cfg: Path = anvil_dir / f"{network_name}.json"
         shutil.copyfile(src_cfg, dst_cfg)
 
-        # Rewrite connectsTo to point to anvil/* configs
+        # Rewrite config for anvil: connectsTo and admin addresses
         try:
             with open(dst_cfg, "r") as f:
                 cfg = json.load(f)
@@ -57,10 +57,14 @@ class AnvilManager:
                 allowed = {"sepolia", "arbitrum-sepolia"}
                 filtered = [n for n in connects if n in allowed]
                 cfg["network"]["connectsTo"] = [f"anvil/{n}" for n in filtered]
+            # Override admin addresses with anvil accounts so that
+            # OpsGuardian/ProtocolGuardian accept calls from the anvil deployer
+            cfg["network"]["protocolAdmin"] = self.protocol_admin_address
+            cfg["network"]["opsAdmin"] = self.ops_admin_address
             with open(dst_cfg, "w") as f:
                 json.dump(cfg, f, indent=2)
         except Exception as e:
-            print_warning(f"Failed to rewrite connectsTo for {dst_cfg}: {e}")
+            print_warning(f"Failed to rewrite config for {dst_cfg}: {e}")
 
         if network_name == "sepolia":
             port, chain_id = (8545, "31337")
@@ -159,28 +163,13 @@ class AnvilManager:
         self._setup_anvil(sep_env, api_key)
         if not self._deploy_fork(sep_env, args):
             return False
-        args.step = "deploy:protocol"
-        verifier.update_network_config("script/LaunchDeployer.s.sol")
 
         # ARBITRUM SEPOLIA
         self._setup_anvil(arb_env, api_key, kill_existing=False)
         if not self._deploy_fork(arb_env, args):
             return False
         print_success("Arbitrum Sepolia fork deployed")
-
-        # Wiring after both forks have deployed and configs are merged
-        print_subsection("Wiring adapters on both forks")
-        for net_env in [sep_env, arb_env]:
-            try:
-                args.step = "wire:adapters"
-                wire_runner = DeploymentRunner(net_env, args)
-                if not wire_runner.run_deploy("WireAdapters"):
-                    return False
-            except Exception as e:
-                print_error(f"Wiring failed on {net_env.network_name}: {e}")
-                return False
-
-        print_success("Dual-fork deploy and bidirectional wiring completed (8545: sepolia, 8546: arbitrum-sepolia)")
+        print_success("Dual-fork deploy completed (8545: sepolia, 8546: arbitrum-sepolia)")
         # Auto-stop anvil in CI for cleanliness
         try:
             if os.environ.get("GITHUB_ACTIONS"):
@@ -243,7 +232,7 @@ class AnvilManager:
         cmd = [
             "anvil",
             "--chain-id", net_env.chain_id,
-            "--gas-limit", "50000000",
+            "--disable-block-gas-limit",
             "--code-size-limit", "50000",
             "--fork-url", fork_url,
             "--port", str(port)
@@ -285,12 +274,13 @@ class AnvilManager:
                 return False
 
             verified_count = 0
-            for name, address in contracts.items():
-                if self._has_contract_code(net_env, address):
-                    print_success(f"{name}: {address} ✓")
+            for name, entry in contracts.items():
+                addr = entry["address"] if isinstance(entry, dict) else entry
+                if self._has_contract_code(net_env, addr):
+                    print_success(f"{name}: {addr} ✓")
                     verified_count += 1
                 else:
-                    print_error(f"{name}: {address} ✗ (no code)")
+                    print_error(f"{name}: {addr} ✗ (no code)")
 
             print_info(f"Verified {verified_count}/{len(contracts)} contracts")
             return verified_count == len(contracts)
