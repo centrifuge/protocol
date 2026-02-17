@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {GraphQLConstants} from "./GraphQLConstants.sol";
-
 import "forge-std/Vm.sol";
 
 import {AdapterConnections} from "../../src/deployment/ActionBatchers.sol";
 import {UlnConfig, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
 Vm constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
+
+library GraphQLConstants {
+    string internal constant MAINNET_API = "https://api.centrifuge.io";
+    string internal constant TESTNET_API = "https://api-v3-test.cfg.embrio.tech";
+}
 
 struct NetworkConfig {
     uint256 chainId;
@@ -392,7 +395,7 @@ library NetworkConfigLib {
     }
 
     function graphQLApi(NetworkConfig memory config) internal pure returns (string memory) {
-        return config.isMainnet() ? GraphQLConstants.PRODUCTION_API : GraphQLConstants.TESTNET_API;
+        return config.isMainnet() ? GraphQLConstants.MAINNET_API : GraphQLConstants.TESTNET_API;
     }
 
     function _contains(string memory str, string memory substr) private pure returns (bool) {

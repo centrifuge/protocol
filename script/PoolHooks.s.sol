@@ -5,7 +5,8 @@ import {makeSalt} from "./BaseDeployer.s.sol";
 import {CreateXScript} from "./utils/CreateXScript.sol";
 import {GraphQLQuery} from "./utils/GraphQLQuery.s.sol";
 import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
-import {GraphQLConstants} from "./utils/GraphQLConstants.sol";
+import {GraphQLConstants} from "./utils/EnvConfig.s.sol";
+import {JsonUtils} from "./utils/JsonUtils.s.sol";
 
 import {Spoke} from "../src/core/spoke/Spoke.sol";
 import {PoolId} from "../src/core/types/PoolId.sol";
@@ -31,10 +32,13 @@ struct TokenInstanceData {
 
 /// @title PoolHooks
 /// @notice Script to deploy pool-specific hooks with pool escrow addresses
-contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
+contract PoolHooks is JsonRegistry, CreateXScript {
     using stdJson for string;
+    using JsonUtils for *;
 
     bytes32 constant VERSION = "v3.1";
+
+    GraphQLQuery graphQL = new GraphQLQuery(GraphQLConstants.MAINNET_API);
 
     uint16 public centrifugeId;
 
@@ -46,10 +50,6 @@ contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
     IPoolEscrowProvider public poolEscrowFactory;
 
     address public deployer;
-
-    function _graphQLApi() internal pure override returns (string memory) {
-        return GraphQLConstants.PRODUCTION_API;
-    }
 
     function run() external {
         string memory network = vm.envString("NETWORK");
@@ -100,12 +100,12 @@ contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(centrifugeId),
+            "  centrifugeId: ", centrifugeId.asJsonString(),
             "}"
         );
 
         // forgefmt: disable-next-item
-        string memory json = _queryGraphQL(string.concat(
+        string memory json = graphQL.queryGraphQL(string.concat(
             "tokenInstances(", params, ") {",
             "  totalCount"
             "  items {"
@@ -123,10 +123,10 @@ contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
         tokens = new TokenInstanceData[](totalCount);
         for (uint256 i = 0; i < totalCount; i++) {
             tokens[i].poolId =
-                PoolId.wrap(uint64(json.readUint(_buildJsonPath(".data.tokenInstances.items", i, "token.poolId"))));
+                PoolId.wrap(uint64(json.readUint(".data.tokenInstances.items".asJsonPath(i, "token.poolId"))));
             tokens[i].scId =
-                ShareClassId.wrap(_parseBytes16(json, _buildJsonPath(".data.tokenInstances.items", i, "tokenId")));
-            tokens[i].tokenAddress = json.readAddress(_buildJsonPath(".data.tokenInstances.items", i, "address"));
+                ShareClassId.wrap(_parseBytes16(json, ".data.tokenInstances.items".asJsonPath(i, "tokenId")));
+            tokens[i].tokenAddress = json.readAddress(".data.tokenInstances.items".asJsonPath(i, "address"));
         }
     }
 

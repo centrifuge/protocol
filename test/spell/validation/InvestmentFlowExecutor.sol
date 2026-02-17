@@ -1,37 +1,47 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {ERC20} from "../../../../src/misc/ERC20.sol";
-import {D18} from "../../../../src/misc/types/D18.sol";
-import {IERC20} from "../../../../src/misc/interfaces/IERC20.sol";
-import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
-import {IERC165} from "../../../../src/misc/interfaces/IERC165.sol";
-import {IERC7575Share} from "../../../../src/misc/interfaces/IERC7575.sol";
+import {ERC20} from "../../../src/misc/ERC20.sol";
+import {D18} from "../../../src/misc/types/D18.sol";
+import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+import {IERC165} from "../../../src/misc/interfaces/IERC165.sol";
+import {IERC7575Share} from "../../../src/misc/interfaces/IERC7575.sol";
 
-import {Hub} from "../../../../src/core/hub/Hub.sol";
-import {PoolId} from "../../../../src/core/types/PoolId.sol";
-import {AssetId} from "../../../../src/core/types/AssetId.sol";
-import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
-import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
-import {IVault, VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
-import {MessageLib} from "../../../../src/core/messaging/libraries/MessageLib.sol";
+import {Hub} from "../../../src/core/hub/Hub.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
+import {IVault, VaultKind} from "../../../src/core/spoke/interfaces/IVault.sol";
+import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "../../../../src/vaults/interfaces/IAsyncVault.sol";
-import {ISyncManager} from "../../../../src/vaults/interfaces/IVaultManagers.sol";
-import {IAsyncRedeemVault} from "../../../../src/vaults/interfaces/IAsyncVault.sol";
-import {RequestCallbackMessageLib} from "../../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
+import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
+import {ISyncManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncRedeemVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
+import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
-import {NonCoreReport} from "../../../../script/FullDeployer.s.sol";
-import {VaultGraphQLData} from "../../../../script/spell/MigrationQueries.sol";
-
+import {NonCoreReport} from "../../../script/FullDeployer.s.sol";
 import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
 
-import {IntegrationConstants} from "../../../integration/utils/IntegrationConstants.sol";
+import {IntegrationConstants} from "../../integration/utils/IntegrationConstants.sol";
+
+struct VaultGraphQLData {
+    address vault;
+    uint64 poolIdRaw;
+    bytes16 tokenIdRaw;
+    string kind;
+    address assetAddress;
+    uint8 assetDecimals;
+    string assetSymbol;
+    address hubManager;
+    uint16 hubCentrifugeId;
+}
 
 /// @notice Simple adapter that accepts outgoing messages without delivering them
 /// @dev Used for cross-chain fork tests where we don't want immediate loop-back delivery

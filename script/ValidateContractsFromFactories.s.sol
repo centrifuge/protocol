@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {JsonUtils} from "./utils/JsonUtils.s.sol";
 import {EnvConfig, Env} from "./utils/EnvConfig.s.sol";
 import {GraphQLQuery} from "./utils/GraphQLQuery.s.sol";
 
@@ -38,17 +39,16 @@ struct VerificationResult {
     VerificationStatus status;
 }
 
-contract ValidateContractsFromFactories is Script, GraphQLQuery {
+contract ValidateContractsFromFactories is Script {
     using stdJson for string;
+    using JsonUtils for *;
 
     EnvConfig config;
+    GraphQLQuery indexer;
 
     constructor() {
         config = Env.load(vm.envString("NETWORK"));
-    }
-
-    function _graphQLApi() internal view override returns (string memory) {
-        return config.network.graphQLApi();
+        indexer = new GraphQLQuery(config.network.graphQLApi());
     }
 
     function run() public {
@@ -79,13 +79,14 @@ contract ValidateContractsFromFactories is Script, GraphQLQuery {
     }
 
     function _fetchAddresses() internal returns (AddressesToVerify memory addr) {
-        string memory orderBy =
-            string.concat("orderBy: ", _jsonString("createdAt"), ", orderDirection: ", _jsonString("desc"));
+        string memory orderBy = string.concat(
+            "orderBy: ", "createdAt".asJsonString(), ", orderDirection: ", "desc".asJsonString()
+        );
 
-        string memory centrifugeIdValue = _jsonValue(config.network.centrifugeId);
+        string memory centrifugeIdValue = uint256(config.network.centrifugeId).asJsonString();
 
         // forgefmt: disable-next-item
-        string memory json = _queryGraphQL(string.concat(
+        string memory json = indexer.queryGraphQL(string.concat(
             "onOffRampManagers(limit: 1, ", orderBy, ", where: {",
             "  centrifugeId: ", centrifugeIdValue,
             "}) { items { address } }",
