@@ -11,7 +11,8 @@ interface IBaseTransferHook is ITransferHook {
     //----------------------------------------------------------------------------------------------
 
     enum TrustedCall {
-        UpdateHookManager
+        UpdateHookManager,
+        RegisterPoolEscrow
     }
 
     //----------------------------------------------------------------------------------------------
@@ -19,6 +20,7 @@ interface IBaseTransferHook is ITransferHook {
     //----------------------------------------------------------------------------------------------
 
     event UpdateHookManager(address indexed token, address indexed manager, bool canManage);
+    event RegisterPoolEscrow(address indexed poolEscrow);
 
     //----------------------------------------------------------------------------------------------
     // Errors
