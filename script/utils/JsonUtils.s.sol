@@ -15,11 +15,6 @@ library JsonUtils {
         return string.concat(basePath, "[", vm.toString(index), "].", fieldName);
     }
 
-    /// @notice Wrap uint256 in escaped quotes for JSON/GraphQL queries
-    function asJsonString(uint256 value) internal pure returns (string memory) {
-        return string.concat("\\\"", vm.toString(value), "\\\"");
-    }
-
     /// @notice Wrap string in escaped quotes for JSON/GraphQL queries
     function asJsonString(string memory value) internal pure returns (string memory) {
         return string.concat("\\\"", value, "\\\"");

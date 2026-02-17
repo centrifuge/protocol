@@ -89,7 +89,7 @@ contract Validate_YourCheck is BaseValidator("YourCheck") {
         uint256 totalCount = json.readUint(".data.yourEntity.totalCount");
 
         for (uint256 i = 0; i < totalCount; i++) {
-            uint256 field1 = json.readUint(_buildJsonPath(".data.yourEntity.items", i, "field1"));
+            uint256 field1 = json.readUint(".data.yourEntity.items".asJsonPath(i, "field1"));
 
             if (field1 != 0) {
                 _errors.push(_buildError({
@@ -146,8 +146,8 @@ Use `stdJson` helpers per field. Do **not** use `vm.parseJson` + `abi.decode` wh
 // Parse fields individually
 uint256 totalCount = json.readUint(".data.items.totalCount");
 for (uint256 i = 0; i < totalCount; i++) {
-    items[i].field1 = json.readUint(_buildJsonPath(".data.items", i, "field1"));
-    items[i].field2 = json.readString(_buildJsonPath(".data.items", i, "field2"));
+    items[i].field1 = json.readUint(".data.items".asJsonPath(i, "field1"));
+    items[i].field2 = json.readString(".data.items".asJsonPath(i, "field2"));
 }
 ```
 

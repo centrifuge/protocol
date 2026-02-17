@@ -83,7 +83,7 @@ contract ValidateContractsFromFactories is Script {
             "orderBy: ", "createdAt".asJsonString(), ", orderDirection: ", "desc".asJsonString()
         );
 
-        string memory centrifugeIdValue = uint256(config.network.centrifugeId).asJsonString();
+        string memory centrifugeIdValue = vm.toString(config.network.centrifugeId);
 
         // forgefmt: disable-next-item
         string memory json = indexer.queryGraphQL(string.concat(

@@ -6,6 +6,7 @@ import {TestContracts} from "./TestContracts.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 
 import {CacheStore} from "../../../script/utils/CacheStore.sol";
+import {JsonUtils} from "../../../script/utils/JsonUtils.s.sol";
 import {GraphQLQuery} from "../../../script/utils/GraphQLQuery.s.sol";
 import {ContractsConfig as LiveContracts} from "../../../script/utils/EnvConfig.s.sol";
 
@@ -40,6 +41,7 @@ struct ValidationContext {
 ///      vm.parseJson + abi.decode, which fails silently with mixed-type structs.
 abstract contract BaseValidator is Test {
     using stdJson for string;
+    using JsonUtils for *;
 
     string public name;
     ValidationError[] _errors; // Array of all errors found (empty if passed)
@@ -88,30 +90,11 @@ abstract contract BaseValidator is Test {
         return ValidationError({field: field, value: value, expected: expected, actual: actual, message: message});
     }
 
-    /// @notice Wrap string in escaped quotes for JSON
-    function _jsonString(string memory value) internal pure returns (string memory) {
-        return string.concat("\\\"", value, "\\\"");
-    }
-
-    /// @notice Wrap uint256 in escaped quotes for JSON
-    function _jsonValue(uint256 value) internal pure returns (string memory) {
-        return _jsonString(vm.toString(value));
-    }
-
-    /// @notice Build JSON path for array element field (e.g. ".data.items[0].fieldName")
-    function _buildJsonPath(string memory basePath, uint256 index, string memory fieldName)
-        internal
-        pure
-        returns (string memory)
-    {
-        return string.concat(basePath, "[", vm.toString(index), "].", fieldName);
-    }
-
     /// @notice Build JSON array string from PoolId array for GraphQL queries
     function _buildPoolIdsJson(PoolId[] memory pools) internal pure returns (string memory) {
         string memory json = "[";
         for (uint256 i = 0; i < pools.length; i++) {
-            json = string.concat(json, _jsonValue(PoolId.unwrap(pools[i])));
+            json = string.concat(json, vm.toString(PoolId.unwrap(pools[i])));
             if (i < pools.length - 1) {
                 json = string.concat(json, ", ");
             }
