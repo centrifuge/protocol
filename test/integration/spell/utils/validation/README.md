@@ -5,12 +5,13 @@ Validates Centrifuge protocol state before and after executing governance spells
 ## Architecture
 
 ```
-test/spell/
-├── validation/                          # Framework (shared)
-│   ├── BaseValidator.sol                # Abstract base with ValidationContext + helpers
-│   ├── ValidationExecutor.sol           # Runs validators and displays report
-│   ├── TestContracts.sol                # TestContracts struct + factory functions
-│   └── InvestmentFlowExecutor.sol       # Investment flow execution for fork tests
+test/integration/spell/
+├── utils/
+│   └── validation/                      # Framework (shared)
+│       ├── BaseValidator.sol            # Abstract base with ValidationContext + helpers
+│       ├── ValidationExecutor.sol       # Runs validators and displays report
+│       ├── TestContracts.sol            # TestContracts struct + factory functions
+│       └── InvestmentFlowExecutor.sol   # Investment flow execution for fork tests
 └── example-spell/                       # Example usage
     ├── ExampleTest.t.sol                # Example test wiring PRE/cache/POST phases
     └── validators/
@@ -70,7 +71,7 @@ Every validator receives a `ValidationContext` with:
 
 ### 1. Create Validator Contract
 
-Create a validator contract (e.g., `test/spell/your-spell/validators/Validate_YourCheck.sol`):
+Create a validator contract (e.g., `test/integration/spell/your-spell/validators/Validate_YourCheck.sol`):
 
 ```solidity
 // SPDX-License-Identifier: AGPL-3.0-only

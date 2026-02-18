@@ -3,11 +3,11 @@ pragma solidity 0.8.28;
 
 import {Validate_PreExample, Validate_CacheExample, Validate_PostExample} from "./validators/Validate_Example.sol";
 
-import {Env} from "../../../script/utils/EnvConfig.s.sol";
+import {Env} from "../../../../script/utils/EnvConfig.s.sol";
 
-import {BaseValidator} from "../validation/BaseValidator.sol";
-import {ValidationExecutor} from "../validation/ValidationExecutor.sol";
-import {testContractsFromConfig} from "../validation/TestContracts.sol";
+import {BaseValidator} from "../utils/validation/BaseValidator.sol";
+import {ValidationExecutor} from "../utils/validation/ValidationExecutor.sol";
+import {testContractsFromConfig} from "../utils/validation/TestContracts.sol";
 
 contract ExampleTest {
     string chainName = "ethereum";

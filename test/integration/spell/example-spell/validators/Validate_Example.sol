@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {stdJson} from "forge-std/StdJson.sol";
 
-import {BaseValidator, ValidationContext} from "../../validation/BaseValidator.sol";
+import {BaseValidator, ValidationContext} from "../../utils/validation/BaseValidator.sol";
 
 /// @title Validate_PreExample
 /// @notice Pre-migration validator: checks that at least one pool exists in the indexer

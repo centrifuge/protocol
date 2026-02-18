@@ -4,9 +4,9 @@ pragma solidity 0.8.28;
 import {TestContracts} from "./TestContracts.sol";
 import {BaseValidator, Contracts, ValidationContext} from "./BaseValidator.sol";
 
-import {CacheStore} from "../../../script/utils/CacheStore.sol";
-import {EnvConfig, Env} from "../../../script/utils/EnvConfig.s.sol";
-import {GraphQLQuery} from "../../../script/utils/GraphQLQuery.s.sol";
+import {CacheStore} from "../../../../../script/utils/CacheStore.sol";
+import {EnvConfig, Env} from "../../../../../script/utils/EnvConfig.s.sol";
+import {GraphQLQuery} from "../../../../../script/utils/GraphQLQuery.s.sol";
 
 import {Script} from "forge-std/Script.sol";
 

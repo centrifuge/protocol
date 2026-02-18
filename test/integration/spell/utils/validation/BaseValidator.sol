@@ -3,12 +3,12 @@ pragma solidity 0.8.28;
 
 import {TestContracts} from "./TestContracts.sol";
 
-import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {PoolId} from "../../../../../src/core/types/PoolId.sol";
 
-import {CacheStore} from "../../../script/utils/CacheStore.sol";
-import {JsonUtils} from "../../../script/utils/JsonUtils.s.sol";
-import {GraphQLQuery} from "../../../script/utils/GraphQLQuery.s.sol";
-import {ContractsConfig as LiveContracts} from "../../../script/utils/EnvConfig.s.sol";
+import {CacheStore} from "../../../../../script/utils/CacheStore.sol";
+import {JsonUtils} from "../../../../../script/utils/JsonUtils.s.sol";
+import {GraphQLQuery} from "../../../../../script/utils/GraphQLQuery.s.sol";
+import {ContractsConfig as LiveContracts} from "../../../../../script/utils/EnvConfig.s.sol";
 
 import {Test} from "forge-std/Test.sol";
 import {stdJson} from "forge-std/StdJson.sol";
