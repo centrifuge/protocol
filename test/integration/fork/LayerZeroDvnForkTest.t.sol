@@ -24,7 +24,7 @@ import {
 
 import "forge-std/Test.sol";
 
-import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
+import {Env, EnvConfig} from "../../../script/utils/EnvConfig.s.sol";
 import {Origin} from "../../../src/adapters/interfaces/ILayerZeroAdapter.sol";
 import {
     SetConfigParam,
@@ -83,21 +83,19 @@ interface IReceiveUln {
 contract LayerZeroDvnForkTest is Test, FullDeployer {
     using CastLib for *;
 
-    ILayerZeroEndpointV2Ext immutable lzEndpoint = ILayerZeroEndpointV2Ext(0x1a44076050125825900e736c501f859c50fE728c);
-    uint16 constant ETH_CENT_ID = IntegrationConstants.ETH_CENTRIFUGE_ID;
-    uint16 constant BASE_CENT_ID = IntegrationConstants.BASE_CENTRIFUGE_ID;
-
-    uint32 constant ETH_EID = IntegrationConstants.ETH_LAYERZERO_EID;
-    uint32 constant BASE_EID = IntegrationConstants.BASE_LAYERZERO_EID;
     uint32 constant ULN_CONFIG_TYPE = 2;
 
-    address constant ETH_DVN_1 = 0x589dEDbD617e0CBcB916A9223F4d1300c294236b; // LayerZero Labs
-    address constant ETH_DVN_2 = 0xa4fE5A5B9A846458a70Cd0748228aED3bF65c2cd; // Canary
-    address constant BASE_DVN_1 = 0x554833698Ae0FB22ECC90B01222903fD62CA4B47; // Canary
-    address constant BASE_DVN_2 = 0x9e059a54699a285714207b43B055483E78FAac25; // LayerZero Labs
+    EnvConfig ethConfig = Env.load("ethereum");
+    EnvConfig baseConfig = Env.load("base");
 
-    ISafe protocolSafe;
-    ISafe opsSafe;
+    ILayerZeroEndpointV2Ext immutable lzEndpoint = ILayerZeroEndpointV2Ext(ethConfig.adapters.layerZero.endpoint);
+    uint16 immutable ETH_CENT_ID = ethConfig.network.centrifugeId;
+    uint16 immutable BASE_CENT_ID = baseConfig.network.centrifugeId;
+    uint32 immutable ETH_EID = ethConfig.adapters.layerZero.layerZeroEid;
+    uint32 immutable BASE_EID = baseConfig.adapters.layerZero.layerZeroEid;
+
+    ISafe immutable protocolSafe = ISafe(ethConfig.network.protocolAdmin);
+    ISafe immutable opsSafe = ISafe(ethConfig.network.opsAdmin);
 
     address testToken;
     address lzAdapter;
@@ -107,16 +105,11 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
     bytes32 guid;
     bytes message;
 
-    function setUp() public {
-        protocolSafe = ISafe(makeAddr("AdminSafe"));
-        opsSafe = ISafe(makeAddr("OpsSafe"));
-    }
-
     receive() external payable {}
 
     function test_sendMessageWithDvnConfig() public {
         // Deploy on Ethereum and send message
-        vm.createSelectFork(IntegrationConstants.RPC_ETHEREUM);
+        vm.createSelectFork(ethConfig.network.rpcUrl());
 
         testToken = address(new TestToken());
 
@@ -140,7 +133,7 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
         this.decodePacket(encodedPacket);
 
         // Deploy on Base and receive the message
-        vm.createSelectFork(IntegrationConstants.RPC_BASE);
+        vm.createSelectFork(baseConfig.network.rpcUrl());
 
         _deployBase();
 
@@ -161,17 +154,17 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
     }
 
     function _deployEthereum() internal {
-        deployFull(_fullInput(ETH_CENT_ID, BASE_CENT_ID, BASE_EID, ETH_DVN_1, ETH_DVN_2), address(this));
+        deployFull(_fullInput(ETH_CENT_ID, BASE_CENT_ID, BASE_EID, ethConfig.adapters.layerZero.dvns), address(this));
     }
 
     function _deployBase() internal {
-        deployFull(_fullInput(BASE_CENT_ID, ETH_CENT_ID, ETH_EID, BASE_DVN_1, BASE_DVN_2), address(this));
+        deployFull(_fullInput(BASE_CENT_ID, ETH_CENT_ID, ETH_EID, baseConfig.adapters.layerZero.dvns), address(this));
 
         vm.prank(address(protocolGuardian));
         layerZeroAdapter.wire(ETH_CENT_ID, abi.encode(ETH_EID, lzAdapter));
     }
 
-    function _fullInput(uint16 localId, uint16 remoteId, uint32 remoteEid, address dvn1, address dvn2)
+    function _fullInput(uint16 localId, uint16 remoteId, uint32 remoteEid, address[] memory dvns)
         internal
         view
         returns (DeployerInput memory)
@@ -194,7 +187,7 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
                     shouldDeploy: true,
                     endpoint: address(lzEndpoint),
                     delegate: address(protocolSafe),
-                    configParams: _ulnConfig(dvn1, dvn2, remoteEid)
+                    configParams: _ulnConfig(dvns, remoteEid)
                 }),
                 chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
                 connections: connections
@@ -202,19 +195,15 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
         });
     }
 
-    function _ulnConfig(address dvn1, address dvn2, uint32 destEid) internal pure returns (SetConfigParam[] memory) {
-        address[] memory dvns = new address[](2);
-        dvns[0] = dvn1;
-        dvns[1] = dvn2;
-
+    function _ulnConfig(address[] memory dvns, uint32 destEid) internal view returns (SetConfigParam[] memory) {
         SetConfigParam[] memory params = new SetConfigParam[](1);
         params[0] = SetConfigParam({
             eid: destEid,
             configType: ULN_CONFIG_TYPE,
             config: abi.encode(
                 UlnConfig({
-                    confirmations: 15,
-                    requiredDVNCount: 2,
+                    confirmations: ethConfig.adapters.layerZero.blockConfirmations,
+                    requiredDVNCount: uint8(dvns.length),
                     optionalDVNCount: 0,
                     optionalDVNThreshold: 0,
                     requiredDVNs: dvns,
@@ -227,13 +216,13 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
 
     function _processPacket() internal {
         IReceiveUln receiveLib = IReceiveUln(lzEndpoint.defaultReceiveLibrary(ETH_EID));
-        uint64 confirmations = 15;
+        uint64 confirmations = ethConfig.adapters.layerZero.blockConfirmations;
 
-        vm.prank(BASE_DVN_1);
-        receiveLib.verify(packetHeader, payloadHash, confirmations);
-
-        vm.prank(BASE_DVN_2);
-        receiveLib.verify(packetHeader, payloadHash, confirmations);
+        address[] memory dvns = baseConfig.adapters.layerZero.dvns;
+        for (uint256 i = 0; i < dvns.length; i++) {
+            vm.prank(dvns[i]);
+            receiveLib.verify(packetHeader, payloadHash, confirmations);
+        }
 
         receiveLib.commitVerification(packetHeader, payloadHash);
     }
