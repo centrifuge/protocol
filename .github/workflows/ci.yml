@@ -21,7 +21,37 @@ jobs:
           version: v1.4.4
 
       - name: Run tests
-        run: forge test --deny warnings --nmp "test/spell/**/*.sol"
+        run: forge test --deny warnings --nmp "test/integration/{fork,spell}/**/*.sol"
+        env:
+          FOUNDRY_PROFILE: ci
+
+  fork-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: actions/checkout@v3
+      - id: "auth"
+        uses: "google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f" # v2.1.7
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIP }}
+          service_account: ${{ secrets.GCP_SA }}
+          create_credentials_file: true
+          cleanup_credentials: true
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@6189d56e4096ee891640bb02ac264be376592d6a" # v2.1.2
+        with:
+          version: ">= 363.0.0"
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.4
+      - name: Load secrets
+        run: python3 script/deploy/load_secrets.py
+      - name: Run fork and spell tests
+        run: forge test --match-path "test/integration/{fork,spell}/**/*.sol" -vv
         env:
           FOUNDRY_PROFILE: ci
 
@@ -195,7 +225,7 @@ jobs:
           version: v1.4.4
 
       - name: Run coverage
-        run: forge coverage --report summary --report lcov --nmp "test/spell/**/*.sol"
+        run: forge coverage --report summary --report lcov --nmp "test/integration/{fork,spell}/**/*.sol"
         env:
           FOUNDRY_PROFILE: ci-coverage
           FORGE_SNAPSHOT_CHECK: false
