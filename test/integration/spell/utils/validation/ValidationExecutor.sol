@@ -21,6 +21,7 @@ contract ValidationExecutor is Script {
 
     ValidationContext ctx;
     TestContracts empty;
+    mapping(BaseValidator => bool) executed;
 
     constructor(string memory network, string memory executorName) {
         EnvConfig memory config = Env.load(network);
@@ -39,6 +40,7 @@ contract ValidationExecutor is Script {
         _execute(validators, "PRE-SPELL", shouldRevert);
     }
 
+    /// @notice cleans old cache and runs the cache-related validators
     function runCacheValidation(BaseValidator[] memory validators) external {
         ctx.cache.cleanAndCreateCacheDir();
         ctx.contracts.latest = empty;
@@ -58,6 +60,11 @@ contract ValidationExecutor is Script {
         uint256 totalErrors = 0;
 
         for (uint256 i = 0; i < validators.length; i++) {
+            require(
+                !executed[validators[i]], string.concat("The validator", validators[i].name(), "was already executed")
+            );
+            executed[validators[i]] = true;
+
             validators[i].validate(ctx);
 
             results[i].name = validators[i].name();

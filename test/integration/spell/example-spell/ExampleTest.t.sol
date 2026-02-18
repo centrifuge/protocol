@@ -26,7 +26,7 @@ contract ExampleTest {
         post.push(new Validate_PostExample());
     }
 
-    function testSuite() external {
+    function testExample() external {
         ValidationExecutor executor = new ValidationExecutor(chainName, "example");
         executor.runPreValidation(pre, false);
         executor.runCacheValidation(cache);
