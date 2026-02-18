@@ -19,7 +19,6 @@ import time
 import json
 from lib.formatter import *
 from lib.load_config import EnvironmentLoader
-from lib.secrets import dump_secrets_to_env
 from lib.runner import DeploymentRunner
 from lib.verifier import ContractVerifier
 from lib.anvil import AnvilManager
@@ -54,7 +53,7 @@ Examples:
     parser.add_argument("network", nargs="?", help="Network name (must match env/<network>.json)")
     parser.add_argument("step", nargs="?", help="Deployment step", choices=[
         "deploy:protocol", "deploy:full", "deploy:adapters", "wire:adapters",
-        "deploy:test", "verify:protocol", "verify:contracts", "dump:secrets", "release:sepolia",
+        "deploy:test", "verify:protocol", "verify:contracts", "release:sepolia",
         "crosschaintest", "crosschaintest:hub", "crosschaintest:spoke", "crosschaintest:test"
     ])
     parser.add_argument("--catapulta", action="store_true", help="Use Catapulta for deployment")
@@ -139,19 +138,9 @@ def main():
     if args.step is None and args.network == "deploy:testnets":
         args.step = "deploy:testnets"
         args.network = None
-    # Example: python3 deploy.py dump:secrets
-    if args.step is None and args.network == "dump:secrets":
-        args.step = "dump:secrets"
-        args.network = None
-
     # Get root directory early for validation
     script_dir = pathlib.Path(__file__).parent
     root_dir = script_dir.parent.parent
-
-    # Handle dump:secrets early — no network required
-    if args.step == "dump:secrets":
-        dump_secrets_to_env(root_dir)
-        sys.exit(0)
 
     # Validate arguments
     if args.network != "anvil" and args.step != "deploy:testnets":
