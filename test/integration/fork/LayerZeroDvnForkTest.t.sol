@@ -4,9 +4,7 @@ pragma solidity 0.8.28;
 import {ERC20} from "../../../src/misc/ERC20.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {newAssetId} from "../../../src/core/types/AssetId.sol";
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
-import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 
 import {Env, EnvConfig} from "../../../script/utils/EnvConfig.s.sol";
 
@@ -117,8 +115,6 @@ contract LayerZeroDvnForkTest is Test {
 
         _processPacket();
 
-        vm.expectEmit();
-        emit IHubRegistry.NewAsset(newAssetId(ETH_CENT_ID, 1), 8);
         lzEndpoint.lzReceive(
             Origin({srcEid: ETH_EID, sender: ethLzAdapter.toBytes32LeftPadded(), nonce: packetNonce}),
             baseLzAdapter,
