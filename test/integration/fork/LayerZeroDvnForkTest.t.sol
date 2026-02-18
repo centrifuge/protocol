@@ -6,35 +6,22 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {newAssetId} from "../../../src/core/types/AssetId.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
-
-import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
-
-import {
-    DeployerInput,
-    NonCoreReport,
-    FullDeployer,
-    AdaptersInput,
-    WormholeInput,
-    AxelarInput,
-    LayerZeroInput,
-    ChainlinkInput,
-    AdapterConnections,
-    defaultTxLimits
-} from "../../../script/FullDeployer.s.sol";
+import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 
 import "forge-std/Test.sol";
 
 import {Env, EnvConfig} from "../../../script/utils/EnvConfig.s.sol";
 import {Origin} from "../../../src/adapters/interfaces/ILayerZeroAdapter.sol";
-import {
-    SetConfigParam,
-    UlnConfig,
-    ILayerZeroEndpointV2Like
-} from "../../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
+import {ILayerZeroEndpointV2Like} from "../../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
 library PacketV1Codec {
+    uint256 private constant NONCE_OFFSET = 1;
     uint256 private constant GUID_OFFSET = 81;
     uint256 private constant MESSAGE_OFFSET = 113;
+
+    function nonce(bytes calldata _packet) internal pure returns (uint64) {
+        return uint64(bytes8(_packet[NONCE_OFFSET:NONCE_OFFSET + 8]));
+    }
 
     function header(bytes calldata _packet) internal pure returns (bytes calldata) {
         return _packet[0:GUID_OFFSET];
@@ -79,11 +66,9 @@ interface IReceiveUln {
 }
 
 /// @title LayerZeroDvnForkTest
-/// @notice Deploy on ETH and BASE with DVN config and send a message end to end
-contract LayerZeroDvnForkTest is Test, FullDeployer {
+/// @notice Send a message end-to-end through the deployed ETH ↔ BASE LayerZero adapters
+contract LayerZeroDvnForkTest is Test {
     using CastLib for *;
-
-    uint32 constant ULN_CONFIG_TYPE = 2;
 
     EnvConfig ethConfig = Env.load("ethereum");
     EnvConfig baseConfig = Env.load("base");
@@ -94,33 +79,27 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
     uint32 immutable ETH_EID = ethConfig.adapters.layerZero.layerZeroEid;
     uint32 immutable BASE_EID = baseConfig.adapters.layerZero.layerZeroEid;
 
-    ISafe immutable protocolSafe = ISafe(ethConfig.network.protocolAdmin);
-    ISafe immutable opsSafe = ISafe(ethConfig.network.opsAdmin);
-
-    address testToken;
-    address lzAdapter;
+    ISpoke immutable spoke = ISpoke(ethConfig.contracts.spoke);
+    address immutable ethLzAdapter = ethConfig.contracts.layerZeroAdapter;
+    address immutable baseLzAdapter = baseConfig.contracts.layerZeroAdapter;
 
     bytes packetHeader;
     bytes32 payloadHash;
     bytes32 guid;
     bytes message;
+    uint64 packetNonce;
 
     receive() external payable {}
 
     function test_sendMessageWithDvnConfig() public {
-        // Deploy on Ethereum and send message
+        // --- Ethereum: send a cross-chain message through the deployed spoke ---
         vm.createSelectFork(ethConfig.network.rpcUrl());
 
-        testToken = address(new TestToken());
+        address testToken = address(new TestToken());
 
-        _deployEthereum();
-        lzAdapter = address(layerZeroAdapter);
-
-        NonCoreReport memory report = nonCoreReport();
-
-        // Record logs to capture PacketSent event
+        vm.deal(address(this), 1 ether);
         vm.recordLogs();
-        report.core.spoke.registerAsset{value: 0.1 ether}(BASE_CENT_ID, testToken, 0, address(this));
+        spoke.registerAsset{value: 0.1 ether}(BASE_CENT_ID, testToken, 0, address(this));
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
         bytes memory encodedPacket;
@@ -132,86 +111,28 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
         }
         this.decodePacket(encodedPacket);
 
-        // Deploy on Base and receive the message
+        // --- Base: verify DVNs and deliver the message to the deployed adapter ---
         vm.createSelectFork(baseConfig.network.rpcUrl());
-
-        _deployBase();
 
         _processPacket();
 
         vm.expectEmit();
         emit IHubRegistry.NewAsset(newAssetId(ETH_CENT_ID, 1), 8);
         lzEndpoint.lzReceive(
-            Origin({srcEid: ETH_EID, sender: lzAdapter.toBytes32LeftPadded(), nonce: 1}), lzAdapter, guid, message, ""
+            Origin({srcEid: ETH_EID, sender: ethLzAdapter.toBytes32LeftPadded(), nonce: packetNonce}),
+            baseLzAdapter,
+            guid,
+            message,
+            ""
         );
     }
 
     function decodePacket(bytes calldata packet) external {
+        packetNonce = PacketV1Codec.nonce(packet);
         packetHeader = PacketV1Codec.header(packet);
         payloadHash = PacketV1Codec.payloadHash(packet);
         guid = PacketV1Codec.guid(packet);
         message = PacketV1Codec.message(packet);
-    }
-
-    function _deployEthereum() internal {
-        deployFull(_fullInput(ETH_CENT_ID, BASE_CENT_ID, BASE_EID, ethConfig.adapters.layerZero.dvns), address(this));
-    }
-
-    function _deployBase() internal {
-        deployFull(_fullInput(BASE_CENT_ID, ETH_CENT_ID, ETH_EID, baseConfig.adapters.layerZero.dvns), address(this));
-
-        vm.prank(address(protocolGuardian));
-        layerZeroAdapter.wire(ETH_CENT_ID, abi.encode(ETH_EID, lzAdapter));
-    }
-
-    function _fullInput(uint16 localId, uint16 remoteId, uint32 remoteEid, address[] memory dvns)
-        internal
-        view
-        returns (DeployerInput memory)
-    {
-        AdapterConnections[] memory connections = new AdapterConnections[](1);
-        connections[0] = AdapterConnections({
-            centrifugeId: remoteId, layerZeroId: remoteEid, wormholeId: 0, axelarId: "", chainlinkId: 0, threshold: 1
-        });
-
-        return DeployerInput({
-            centrifugeId: localId,
-            version: bytes32("1337"),
-            txLimits: defaultTxLimits(),
-            protocolSafe: protocolSafe,
-            opsSafe: opsSafe,
-            adapters: AdaptersInput({
-                wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
-                axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-                layerZero: LayerZeroInput({
-                    shouldDeploy: true,
-                    endpoint: address(lzEndpoint),
-                    delegate: address(protocolSafe),
-                    configParams: _ulnConfig(dvns, remoteEid)
-                }),
-                chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
-                connections: connections
-            })
-        });
-    }
-
-    function _ulnConfig(address[] memory dvns, uint32 destEid) internal view returns (SetConfigParam[] memory) {
-        SetConfigParam[] memory params = new SetConfigParam[](1);
-        params[0] = SetConfigParam({
-            eid: destEid,
-            configType: ULN_CONFIG_TYPE,
-            config: abi.encode(
-                UlnConfig({
-                    confirmations: ethConfig.adapters.layerZero.blockConfirmations,
-                    requiredDVNCount: uint8(dvns.length),
-                    optionalDVNCount: 0,
-                    optionalDVNThreshold: 0,
-                    requiredDVNs: dvns,
-                    optionalDVNs: new address[](0)
-                })
-            )
-        });
-        return params;
     }
 
     function _processPacket() internal {
