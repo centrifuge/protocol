@@ -96,11 +96,11 @@ def dump_secrets_to_env(root_dir: pathlib.Path):
 
     # Secrets to fetch: env-var-name → GCP secret name
     secrets = {
-        "ETHERSCAN_API_KEY": "etherscan_api",
-        "ALCHEMY_API_KEY": "alchemy_api",
-        "PLUME_API_KEY": "plume_api",
-        "PHAROS_API_KEY": "pharos_api",
-        "PRIVATE_KEY": "testnet-private-key",
+        "ETHERSCAN_API_KEY": "protocol-etherscan-api",
+        "PRIVATE_KEY": "protocol-testnet-private-key",
+        "ALCHEMY_API_KEY": "protocol-alchemy-api",
+        "PLUME_API_KEY": "protocol-plume-api",
+        "PHAROS_API_KEY": "protocol-pharos-api",
     }
 
     for env_key, gcp_name in secrets.items():
