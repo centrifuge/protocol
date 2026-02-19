@@ -100,4 +100,4 @@ jobs:
       - name: Verify ${{ matrix.network }}
         env:
           NETWORK: ${{ matrix.network }}
-        run: forge script script/VerifyFactoryContracts.s.sol -vv --skip test
+        run: forge script script/VerifyFactoryContracts.s.sol --skip test
