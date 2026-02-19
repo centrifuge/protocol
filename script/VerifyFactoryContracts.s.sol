@@ -30,7 +30,8 @@ struct AddressesToVerify {
 enum VerificationStatus {
     NotDeployed,
     NotVerified,
-    Verified
+    AlreadyVerified,
+    NewlyVerified
 }
 
 struct VerificationResult {
@@ -130,8 +131,8 @@ contract VerifyFactoryContracts is Script, GraphQLQuery {
         }
 
         VerificationStatus status = _verificationStatus(contractAddress);
-        if (status == VerificationStatus.Verified) {
-            result.status = VerificationStatus.Verified;
+        if (status == VerificationStatus.AlreadyVerified) {
+            result.status = VerificationStatus.AlreadyVerified;
             return result;
         }
 
@@ -159,7 +160,7 @@ contract VerifyFactoryContracts is Script, GraphQLQuery {
         bytes memory output = vm.ffi(cmd);
         // forge verify-contract prints "OK" on success
         if (_containsOK(output)) {
-            result.status = VerificationStatus.Verified;
+            result.status = VerificationStatus.NewlyVerified;
         } else {
             result.status = VerificationStatus.NotVerified;
         }
@@ -196,7 +197,7 @@ contract VerifyFactoryContracts is Script, GraphQLQuery {
             return VerificationStatus.NotVerified;
         }
 
-        return VerificationStatus.Verified;
+        return VerificationStatus.AlreadyVerified;
     }
 
     /// @notice Get constructor args by reading from contract storage
@@ -282,7 +283,7 @@ contract VerifyFactoryContracts is Script, GraphQLQuery {
     string constant YELLOW = "\x1b[33m";
     string constant RESET = "\x1b[0m";
 
-    function _logSummary(VerificationResult[] memory results) internal view {
+    function _logSummary(VerificationResult[] memory results) internal pure {
         console.log("");
         console.log("----------------------------------------");
         console.log("       VERIFICATION SUMMARY");
@@ -295,7 +296,10 @@ contract VerifyFactoryContracts is Script, GraphQLQuery {
 
         for (uint256 i = 0; i < results.length; i++) {
             string memory statusStr;
-            if (results[i].status == VerificationStatus.Verified) {
+            if (results[i].status == VerificationStatus.NewlyVerified) {
+                statusStr = string.concat(GREEN, "[OK]", RESET, " Verified (new)");
+                verified++;
+            } else if (results[i].status == VerificationStatus.AlreadyVerified) {
                 statusStr = string.concat(GREEN, "[OK]", RESET, " Verified");
                 verified++;
             } else if (results[i].status == VerificationStatus.NotVerified) {
