@@ -158,9 +158,10 @@ contract VerifyFactoryContracts is Script, GraphQLQuery {
         );
 
         bytes memory output = vm.ffi(cmd);
-        // forge verify-contract prints "successfully verified" on success
-        if (_isVerificationSuccess(output)) {
+        if (_containsSubstring(output, "successfully verified")) {
             result.status = VerificationStatus.NewlyVerified;
+        } else if (_containsSubstring(output, "already verified")) {
+            result.status = VerificationStatus.AlreadyVerified;
         } else {
             result.status = VerificationStatus.NotVerified;
         }
@@ -271,9 +272,7 @@ contract VerifyFactoryContracts is Script, GraphQLQuery {
         return abi.encode(m.poolId(), m.contractUpdater());
     }
 
-    /// @dev Check if ffi output contains "successfully verified" (forge verify-contract success marker)
-    function _isVerificationSuccess(bytes memory data) internal pure returns (bool) {
-        bytes memory needle = "successfully verified";
+    function _containsSubstring(bytes memory data, bytes memory needle) internal pure returns (bool) {
         if (data.length < needle.length) return false;
         for (uint256 i = 0; i <= data.length - needle.length; i++) {
             bool found = true;
