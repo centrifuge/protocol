@@ -171,6 +171,9 @@ contract VerifyFactoryContracts is Script, GraphQLQuery {
             return VerificationStatus.NotDeployed;
         }
 
+        // Rate-limit Etherscan API calls to avoid 3/sec limit
+        vm.sleep(400);
+
         string[] memory cmd = new string[](3);
         cmd[0] = "bash";
         cmd[1] = "-c";
@@ -276,6 +279,8 @@ contract VerifyFactoryContracts is Script, GraphQLQuery {
         }
         return false;
     }
+
+
 
     // ANSI color codes
     string constant GREEN = "\x1b[32m";
