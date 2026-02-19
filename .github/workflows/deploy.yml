@@ -6,8 +6,8 @@ on:
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
     inputs:
-      version:
-        description: "Deployment version (e.g. v3.1.5) - if not provided, the job will generate a unique version number"
+      prefix:
+        description: "Salt prefix for isolated deployments (e.g. PR-123). Leave empty for canonical versioned addresses."
         required: false
         type: string
         default: "TEST"
@@ -50,18 +50,18 @@ jobs:
         id: set-vars
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "version=PR-${{ github.run_number }}-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "prefix=PR-${{ github.run_number }}-${{ github.sha }}" >> $GITHUB_OUTPUT
             echo "dry=--dry-run" >> $GITHUB_OUTPUT
           else
-            if [ "${{ github.event.inputs.version }}" = "TEST" ]; then
-              echo "version=TEST-${{ github.run_number }}-${{ github.sha }}" >> $GITHUB_OUTPUT
+            if [ "${{ github.event.inputs.prefix }}" = "TEST" ]; then
+              echo "prefix=TEST-${{ github.run_number }}-${{ github.sha }}" >> $GITHUB_OUTPUT
             else
-              echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+              echo "prefix=${{ github.event.inputs.prefix }}" >> $GITHUB_OUTPUT
             fi
             echo "dry=" >> $GITHUB_OUTPUT
           fi
       - name: Deploying all testnets
         env:
-          VERSION: ${{ steps.set-vars.outputs.version }}
+          PREFIX: ${{ steps.set-vars.outputs.prefix }}
         run: |
           python3 script/deploy/deploy.py ${{ steps.set-vars.outputs.dry }} deploy:testnets

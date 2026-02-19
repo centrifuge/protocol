@@ -14,23 +14,31 @@ function makeSalt(string memory contractName, bytes32 version, address deployer)
 }
 
 contract BaseDeployer is Script, JsonRegistry, CreateXScript {
-    bytes32 public version;
+    string internal prefix;
     address public deployer;
 
-    function _init(bytes32 version_, address deployer_) internal {
+    function _init(string memory prefix_, address deployer_) internal {
         setUpCreateXFactory();
 
-        version = version_;
+        prefix = prefix_;
         deployer = deployer_;
     }
 
-    /// @dev Generates a deterministic salt and registers the predicted address
-    function createSalt(string memory contractName) internal returns (bytes32 salt) {
-        salt = makeSalt(contractName, version, deployer);
+    /// @dev Generates a deterministic salt and registers the predicted address.
+    ///      The version must match the one used at initial deployment to reuse existing addresses.
+    ///      Use the PREFIX envvar (instead of changing the version) to create isolated fresh deployments.
+    function createSalt(string memory contractName, string memory contractVersion) internal returns (bytes32 salt) {
+        string memory saltKey = bytes(prefix).length > 0 ? string.concat(prefix, contractName) : contractName;
+        salt = makeSalt(saltKey, bytes32(bytes(contractVersion)), deployer);
         register(contractName, computeCreate3Address(salt, deployer));
     }
 
-    function previewCreate3Address(string memory contractName) internal view returns (address) {
-        return computeCreate3Address(makeSalt(contractName, version, deployer), deployer);
+    function previewCreate3Address(string memory contractName, string memory contractVersion)
+        internal
+        view
+        returns (address)
+    {
+        string memory saltKey = bytes(prefix).length > 0 ? string.concat(prefix, contractName) : contractName;
+        return computeCreate3Address(makeSalt(saltKey, bytes32(bytes(contractVersion)), deployer), deployer);
     }
 }

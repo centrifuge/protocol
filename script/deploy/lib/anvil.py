@@ -143,10 +143,10 @@ class AnvilManager:
 
         args = Args()
         
-        # Generate a random 8-character string for VERSION to avoid collisions on running Anvil multiple times
-        random_version = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
-        environ["VERSION"] = random_version
-        print_info(f"Using random VERSION for Anvil: {random_version}")
+        # Generate a random 8-character prefix to avoid collisions on running Anvil multiple times
+        random_prefix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+        environ["PREFIX"] = random_prefix
+        print_info(f"Using random PREFIX for Anvil: {random_prefix}")
 
         # Prepare API keys
         sepolia_loader = EnvironmentLoader("sepolia", self.root_dir, args)

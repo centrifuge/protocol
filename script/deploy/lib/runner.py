@@ -37,7 +37,7 @@ class DeploymentRunner:
     def _setup_env(self):
         env = os.environ.copy()
         env["NETWORK"] = self.env_loader.network_name
-        env["VERSION"] = os.environ.get("VERSION", "")
+        env["PREFIX"] = os.environ.get("PREFIX", "")
         if self.env_loader.etherscan_api_key is not None:
             env["ETHERSCAN_API_KEY"] = self.env_loader.etherscan_api_key
         # Also add the vars in .env (if .env is there)
@@ -74,8 +74,8 @@ class DeploymentRunner:
         print_info(f"Script: {script_name}")
         print_info(f"Network: {self.env_loader.network_name}")
         print_info(f"Chain ID: {self.env_loader.chain_id}")
-        if os.environ.get("VERSION"):
-            print_info(f"Version (for salt): {os.environ.get("VERSION")}")
+        if os.environ.get("PREFIX"):
+            print_info(f"Prefix (for salt): {os.environ.get('PREFIX')}")
         print_info(f"Protocol Admin: {format_account(self.env_loader.protocol_admin_address)}")
         print_info(f"Ops Admin: {format_account(self.env_loader.ops_admin_address)}")
         base_cmd = self._build_command(script_name)
