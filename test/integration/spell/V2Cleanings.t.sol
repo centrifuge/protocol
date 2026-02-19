@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
-import {IERC20} from "../../src/misc/interfaces/IERC20.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
+import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 
 import "forge-std/Test.sol";
 
-import {V2CleaningsSpell} from "../../src/spell/V2CleaningsSpell.sol";
+import {V2CleaningsSpell} from "../../../src/spell/V2CleaningsSpell.sol";
 import {
     V2CleaningsSpell,
     ROOT_V2,
@@ -27,7 +27,7 @@ import {
     USDC_ETHEREUM,
     USDC_BASE,
     USDC_ARBITRUM
-} from "../../src/spell/V2CleaningsSpell.sol";
+} from "../../../src/spell/V2CleaningsSpell.sol";
 
 contract V2CleaningsSpellTest is Test {
     address constant PROTOCOL_GUARDIAN_V3_1 = 0xCEb7eD5d5B3bAD3088f6A1697738B60d829635c6;
