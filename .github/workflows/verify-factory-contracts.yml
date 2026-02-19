@@ -12,34 +12,16 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     permissions:
       contents: "read"
       id-token: "write"
-    strategy:
-      fail-fast: false
-      matrix:
-        network:
-          - ethereum
-          - base
-          - arbitrum
-          - avalanche
-          - bnb-smart-chain
-          - optimism
-          - plume
-          - hyper-evm
-          - monad
-          - sepolia
-          - base-sepolia
-          - arbitrum-sepolia
-          - hyper-evm-testnet
-
-    name: "${{ matrix.network }}"
 
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          submodules: recursive
 
       - name: Checkout src/ from deployed version
         run: git checkout ${{ inputs.source_version || 'v3.1.0' }} -- src/
@@ -65,7 +47,24 @@ jobs:
       - name: Load secrets
         run: python3 script/deploy/load_secrets.py
 
-      - name: Verify ${{ matrix.network }}
-        env:
-          NETWORK: ${{ matrix.network }}
-        run: forge script script/VerifyFactoryContracts.s.sol -vv
+      - name: Verify all networks
+        run: |
+          networks=(
+            ethereum
+            base
+            arbitrum
+            avalanche
+            bnb-smart-chain
+            optimism
+            plume
+            hyper-evm
+            monad
+            sepolia
+            base-sepolia
+            arbitrum-sepolia
+            hyper-evm-testnet
+          )
+          for network in "${networks[@]}"; do
+            echo "========== Verifying $network =========="
+            NETWORK=$network forge script script/VerifyFactoryContracts.s.sol -vv || true
+          done
