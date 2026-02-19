@@ -114,12 +114,6 @@ def dump_secrets_to_env(root_dir: pathlib.Path):
         except Exception as e:
             print_warning(f"Could not fetch {env_key}: {e}")
 
-    # Remove stale keys that are no longer written by this tool
-    for stale_key in ("NETWORK", "RPC_URL"):
-        if stale_key in env_vars:
-            print_info(f"Removing stale {stale_key} from .env")
-            del env_vars[stale_key]
-
     with open(env_file, "w") as f:
         for k, v in env_vars.items():
             f.write(f"{k}={v}\n")
