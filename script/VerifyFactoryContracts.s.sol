@@ -153,12 +153,14 @@ contract VerifyFactoryContracts is Script, GraphQLQuery {
             " --constructor-args ",
             vm.toString(constructorArgs),
             " --watch",
-            " >/dev/tty 2>&1" //Redirect to terminal directly
+            " 2>&1 || true" // Capture output; exit 0 so ffi doesn't revert
         );
 
-        try vm.ffi(cmd) returns (bytes memory) {
+        bytes memory output = vm.ffi(cmd);
+        // forge verify-contract prints "OK" on success
+        if (_containsOK(output)) {
             result.status = VerificationStatus.Verified;
-        } catch {
+        } else {
             result.status = VerificationStatus.NotVerified;
         }
     }
@@ -265,13 +267,22 @@ contract VerifyFactoryContracts is Script, GraphQLQuery {
         return abi.encode(m.poolId(), m.contractUpdater());
     }
 
+    /// @dev Check if ffi output contains "OK" (forge verify-contract success marker)
+    function _containsOK(bytes memory data) internal pure returns (bool) {
+        if (data.length < 2) return false;
+        for (uint256 i = 0; i <= data.length - 2; i++) {
+            if (data[i] == "O" && data[i + 1] == "K") return true;
+        }
+        return false;
+    }
+
     // ANSI color codes
     string constant GREEN = "\x1b[32m";
     string constant RED = "\x1b[31m";
     string constant YELLOW = "\x1b[33m";
     string constant RESET = "\x1b[0m";
 
-    function _logSummary(VerificationResult[] memory results) internal pure {
+    function _logSummary(VerificationResult[] memory results) internal view {
         console.log("");
         console.log("----------------------------------------");
         console.log("       VERIFICATION SUMMARY");
