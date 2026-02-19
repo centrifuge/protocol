@@ -13,7 +13,7 @@
     "opsAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb"
   },
   "adapters": {
-    "threshold": 2,
+    "threshold": 1,
     "wormhole": {
       "wormholeId": 10003,
       "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",

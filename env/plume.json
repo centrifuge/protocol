@@ -18,7 +18,7 @@
     "batchLimit": 15
   },
   "adapters": {
-    "threshold": 2,
+    "threshold": 1,
     "layerZero": {
       "endpoint": "0xC1b15d3B262bEeC0e3565C11C9e0F6134BdaCB36",
       "layerZeroEid": 30370,
