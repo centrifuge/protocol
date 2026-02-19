@@ -47,6 +47,13 @@ jobs:
       - name: Load secrets
         run: python3 script/deploy/load_secrets.py
 
+      - name: Mask secrets
+        run: |
+          while IFS='=' read -r key value; do
+            [[ -z "$key" || "$key" == \#* || -z "$value" ]] && continue
+            echo "::add-mask::$value"
+          done < .env
+
       - name: Verify all networks
         run: |
           networks=(
