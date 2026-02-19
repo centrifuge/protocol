@@ -157,6 +157,9 @@ contract VerifyFactoryContracts is Script, GraphQLQuery {
             " 2>&1 || true" // Capture output; exit 0 so ffi doesn't revert
         );
 
+        // Wait before hitting the Etherscan API again via forge verify-contract
+        vm.sleep(400);
+
         bytes memory output = vm.ffi(cmd);
         if (_containsSubstring(output, "successfully verified")) {
             result.status = VerificationStatus.NewlyVerified;
