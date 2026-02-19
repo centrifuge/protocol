@@ -55,7 +55,7 @@ jobs:
           version: v1.4.4
 
       - name: Compile contracts
-        run: forge build
+        run: forge build --skip test
 
       - name: Package workspace
         run: tar czf /tmp/workspace.tar.gz --exclude=.git .
