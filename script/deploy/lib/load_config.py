@@ -144,16 +144,15 @@ class EnvironmentLoader:
         if "alchemy" in base_url:
             api_key = os.environ.get("ALCHEMY_API_KEY", "")
             if not api_key:
-                raise ValueError(
-                    "ALCHEMY_API_KEY env var is required for Alchemy RPC. "
-                    "Run `deploy.py dump:secrets` first."
-                )
+                raise ValueError("ALCHEMY_API_KEY env var is required")
             print_info("Using Alchemy RPC endpoint")
         elif "plume" in base_url:
             api_key = os.environ.get("PLUME_API_KEY", "")
             print_info("Using Plume RPC endpoint")
         elif "pharos" in base_url:
             api_key = os.environ.get("PHAROS_API_KEY", "")
+            if not api_key:
+                raise ValueError("PHAROS_API_KEY env var is required. ")
             print_info("Using Pharos RPC endpoint")
         else:
             print_info(f"Using RPC endpoint: {base_url}")

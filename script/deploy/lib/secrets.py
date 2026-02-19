@@ -99,6 +99,7 @@ def dump_secrets_to_env(root_dir: pathlib.Path):
         "ETHERSCAN_API_KEY": "etherscan_api",
         "ALCHEMY_API_KEY": "alchemy_api",
         "PLUME_API_KEY": "plume_api",
+        "PHAROS_API_KEY": "pharos_api",
         "PRIVATE_KEY": "testnet-private-key",
     }
 
