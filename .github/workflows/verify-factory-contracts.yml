@@ -10,35 +10,13 @@ on:
         default: "v3.1.0"
 
 jobs:
-  discover-networks:
+  setup:
     runs-on: ubuntu-latest
-    outputs:
-      networks: ${{ steps.list.outputs.networks }}
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: List networks from env/*.json
-        id: list
-        run: |
-          networks=$(ls env/*.json | xargs -n1 basename | sed 's/.json//' | grep -v anvil | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          echo "networks=$networks" >> "$GITHUB_OUTPUT"
-          echo "Discovered networks: $networks"
-
-  verify:
-    needs: discover-networks
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
     permissions:
       contents: "read"
       id-token: "write"
-    strategy:
-      fail-fast: false
-      max-parallel: 3
-      matrix:
-        network: ${{ fromJson(needs.discover-networks.outputs.networks) }}
-
-    name: "${{ matrix.network }}"
-
+    outputs:
+      networks: ${{ steps.list.outputs.networks }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -47,6 +25,13 @@ jobs:
 
       - name: Checkout src/ from deployed version
         run: git checkout ${{ inputs.source_version || 'v3.1.0' }} -- src/
+
+      - name: List networks from env/*.json
+        id: list
+        run: |
+          networks=$(ls env/*.json | xargs -n1 basename | sed 's/.json//' | grep -v anvil | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "networks=$networks" >> "$GITHUB_OUTPUT"
+          echo "Discovered networks: $networks"
 
       - id: "auth"
         uses: "google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f" # v2.1.7
@@ -61,13 +46,47 @@ jobs:
         with:
           version: ">= 363.0.0"
 
+      - name: Load secrets
+        run: python3 script/deploy/load_secrets.py
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: v1.4.4
 
-      - name: Load secrets
-        run: python3 script/deploy/load_secrets.py
+      - name: Compile contracts
+        run: forge build
+
+      - name: Package workspace
+        run: tar czf /tmp/workspace.tar.gz --exclude=.git .
+
+      - name: Upload workspace
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace
+          path: /tmp/workspace.tar.gz
+          retention-days: 1
+
+  verify:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        network: ${{ fromJson(needs.setup.outputs.networks) }}
+
+    name: "${{ matrix.network }}"
+
+    steps:
+      - name: Download workspace
+        uses: actions/download-artifact@v4
+        with:
+          name: workspace
+
+      - name: Extract workspace
+        run: tar xzf workspace.tar.gz && rm workspace.tar.gz
 
       - name: Mask secrets
         run: |
@@ -75,6 +94,11 @@ jobs:
             [[ -z "$key" || "$key" == \#* || -z "$value" ]] && continue
             echo "::add-mask::$value"
           done < .env
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.4
 
       - name: Verify ${{ matrix.network }}
         env:
