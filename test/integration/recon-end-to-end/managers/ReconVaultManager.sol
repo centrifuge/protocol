@@ -59,6 +59,15 @@ abstract contract ReconVaultManager {
         _vaults.remove(vault);
     }
 
+    /// @notice Clamps an arbitrary address to one of the deployed vaults
+    /// @param entropy The address used as entropy to select a vault
+    /// @return The address of a deployed vault
+    function _clampVault(address entropy) internal view returns (address) {
+        address[] memory vaults = _vaults.values();
+        require(vaults.length > 0);
+        return vaults[uint256(uint160(entropy)) % vaults.length];
+    }
+
     /// @notice Switches the current vault based on the entropy
     /// @param entropy The entropy to choose a random vault in the array for switching
     function _switchVault(uint256 entropy) internal {

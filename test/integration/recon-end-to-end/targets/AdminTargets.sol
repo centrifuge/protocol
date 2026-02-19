@@ -82,16 +82,17 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     }
 
     /// === SyncManager === ///
-    function syncManager_setValuation(address valuation) public updateGhosts {
-        PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
-        syncManager.setValuation(poolId, scId, valuation);
-    }
-
-    function syncManager_setValuation_clamped(bool isIdentityValuation) public {
-        address valuation = isIdentityValuation ? address(identityValuation) : address(transientValuation);
-        syncManager_setValuation(valuation);
-    }
+    // NOTE: Disabled — MockValuation and IdentityValuation implement IValuation (getPrice/getQuote)
+    // but NOT ISyncDepositValuation (pricePoolPerShare). SyncManager.pricePoolPerShare() calls
+    // valuation_.pricePoolPerShare() when a non-zero valuation is set, causing a revert on any
+    // downstream view function (maxDeposit, maxMint, convertToShares, etc.).
+    // To re-enable: create a mock implementing ISyncDepositValuation, or use the real OracleValuation.
+    // function syncManager_setValuation(bool isIdentityValuation) public updateGhosts {
+    //     PoolId poolId = _getPool();
+    //     ShareClassId scId = _getShareClassId();
+    //     address valuation = isIdentityValuation ? address(identityValuation) : address(transientValuation);
+    //     syncManager.setValuation(poolId, scId, valuation);
+    // }
 
     // === Hub === ///
     function hub_addShareClass(uint256 salt) public updateGhosts {

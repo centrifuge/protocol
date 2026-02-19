@@ -63,5 +63,41 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     //     property_price_on_fulfillment();
     // }
 
+    /// === Echidna Run 2026-02-17 (30min local) === ///
+
+    // forge test --match-test test_doomsday_zeroPrice_noPanics_6 -vvvv
+    // Reproducer: echidna/reproducers/5176345492421397535.txt (October)
+    function test_doomsday_zeroPrice_noPanics_6() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        doomsday_zeroPrice_noPanics();
+    }
+
+    // Removed: test_doomsday_zeroPrice_noPanics_7 — false positive from unclamped setValuation(0xdeadbeef)
+
+    // NOTE: Acknowledged — async vault rounding dust (property scope limitation)
+    // deposit(maxDeposit) leaves maxMint > 0 due to shares↔assets round-trip precision loss.
+    // Protocol recommends mint(maxMint) instead. See: .claude/docs/recon/13-acknowledged-risks.md
+    // Reproducer: echidna/reproducers/5155428733752326224.txt
+    // function test_vault_maxDeposit_8() public {
+    //     shortcut_deployNewTokenPoolAndShare(0, 16848, false, false, true, false);
+    //     shortcut_deposit_queue_cancel(0, 0, 952217297734242722496, 2, 3, 904772406170181);
+    //     hub_notifyDeposit(1);
+    //     vault_maxDeposit(0, 0, 0);
+    // }
+
+    // forge test --match-test test_property_authorizationBypass_9 -vvvv
+    // NOTE: Acknowledged - Issue #10 (admin operational mistake)
+    // Reproducer: echidna/reproducers/6835817918927048585.txt
+    // function test_property_authorizationBypass_9() public {
+    //     shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+    //     switch_actor(1);
+
+    //     balanceSheet_overridePricePoolPerAsset(0);
+
+    //     property_authorizationBypass();
+    // }
+
     /// === Categorized Issues === ///
 }

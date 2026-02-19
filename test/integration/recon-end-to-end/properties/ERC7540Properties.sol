@@ -13,6 +13,14 @@ import {Asserts} from "@chimera/Asserts.sol";
 /// @notice ERC-7540 standard properties - reusable for any ERC-7540 compliant vault
 /// @dev These properties test compliance with the ERC-7540 Asynchronous Tokenized Vault standard
 /// @dev See https://eips.ethereum.org/EIPS/eip-7540 for the complete specification
+///
+/// @dev All functions are `internal` — exposed to fuzzers only via the `vault_*` wrappers in
+///      VaultProperties.sol, which clamp the `asyncVaultTarget` address to a deployed vault.
+///      Without clamping, the fuzzer wastes ~100% of cycles on random addresses (EOAs, unrelated
+///      contracts) that always revert — producing false positives with zero signal about protocol
+///      correctness. Clamping via modular arithmetic should increase effective coverage: the
+///      fuzzer uniformly explores all deployed vaults (sync, async, different states) without
+///      needing to guess their exact addresses in a 160-bit space.
 abstract contract ERC7540Properties is Setup, Asserts {
     /// @dev Returns max rounding error based on vault's asset and share decimals
     function _getMaxRoundingError(address vault) internal view returns (uint256) {
@@ -23,7 +31,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
     }
 
     /// @dev Property: 7540-3 convertToAssets(totalSupply) == totalAssets unless price is 0.0
-    function erc7540_3(address asyncVaultTarget) public virtual {
+    function erc7540_3(address asyncVaultTarget) internal virtual {
         // Doesn't hold on zero price
         if (
             IAsyncVault(asyncVaultTarget)
@@ -39,7 +47,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
     }
 
     /// @dev Property: 7540-4 convertToShares(totalAssets) == totalSupply unless price is 0.0
-    function erc7540_4(address asyncVaultTarget) public virtual {
+    function erc7540_4(address asyncVaultTarget) internal virtual {
         if (
             IAsyncVault(asyncVaultTarget)
                     .convertToAssets(10 ** IERC20Metadata(IAsyncVault(asyncVaultTarget).share()).decimals()) == 0
@@ -57,7 +65,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
     }
 
     /// @dev Property: 7540-5 max* never reverts
-    function erc7540_5(address asyncVaultTarget) public virtual {
+    function erc7540_5(address asyncVaultTarget) internal virtual {
         // max* never reverts
         try IAsyncVault(asyncVaultTarget).maxDeposit(_getActor()) {}
         catch {
@@ -79,7 +87,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
 
     /// == erc7540_6 == //
     /// @dev Property: 7540-6 claiming more than max always reverts
-    function erc7540_6_deposit(address asyncVaultTarget, uint256 amt) public virtual {
+    function erc7540_6_deposit(address asyncVaultTarget, uint256 amt) internal virtual {
         // Skip 0
         if (amt == 0) {
             return; // Skip
@@ -105,7 +113,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
         t(false, "Property: 7540-6 depositing more than max does not revert");
     }
 
-    function erc7540_6_mint(address asyncVaultTarget, uint256 amt) public virtual {
+    function erc7540_6_mint(address asyncVaultTarget, uint256 amt) internal virtual {
         // Skip 0
         if (amt == 0) {
             return;
@@ -129,7 +137,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
         t(false, "Property: 7540-6 minting more than max does not revert");
     }
 
-    function erc7540_6_withdraw(address asyncVaultTarget, uint256 amt) public virtual {
+    function erc7540_6_withdraw(address asyncVaultTarget, uint256 amt) internal virtual {
         // Skip 0
         if (amt == 0) {
             return;
@@ -153,7 +161,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
         t(false, "Property: 7540-6 withdrawing more than max does not revert");
     }
 
-    function erc7540_6_redeem(address asyncVaultTarget, uint256 amt) public virtual {
+    function erc7540_6_redeem(address asyncVaultTarget, uint256 amt) internal virtual {
         // Skip 0
         if (amt == 0) {
             return;
@@ -179,7 +187,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
     /// == END erc7540_6 == //
 
     /// @dev Property: 7540-7 requestRedeem reverts if the share balance is less than amount
-    function erc7540_7(address asyncVaultTarget, uint256 shares) public virtual {
+    function erc7540_7(address asyncVaultTarget, uint256 shares) internal virtual {
         if (shares == 0) {
             return; // Skip
         }
@@ -208,7 +216,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
     }
 
     /// @dev Property: 7540-8 preview* always reverts
-    function erc7540_8(address asyncVaultTarget) public virtual {
+    function erc7540_8(address asyncVaultTarget) internal virtual {
         // preview* always reverts
         try IAsyncVault(asyncVaultTarget).previewDeposit(0) {
             t(false, "Property: 7540-8 previewDeposit does not revert");
@@ -226,7 +234,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
 
     /// == erc7540_9 == //
     /// @dev Property: 7540-9 if max[method] > 0, then [method] (max) should not revert
-    function erc7540_9_deposit(address asyncVaultTarget) public virtual {
+    function erc7540_9_deposit(address asyncVaultTarget) internal virtual {
         // Per erc7540_5
         uint256 maxDeposit = IAsyncVault(asyncVaultTarget).maxDeposit(_getActor());
 
@@ -242,7 +250,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
         }
     }
 
-    function erc7540_9_mint(address asyncVaultTarget) public virtual {
+    function erc7540_9_mint(address asyncVaultTarget) internal virtual {
         uint256 maxMint = IAsyncVault(asyncVaultTarget).maxMint(_getActor());
 
         if (maxMint == 0) {
@@ -257,7 +265,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
         }
     }
 
-    function erc7540_9_withdraw(address asyncVaultTarget) public virtual {
+    function erc7540_9_withdraw(address asyncVaultTarget) internal virtual {
         uint256 maxWithdraw = IAsyncVault(asyncVaultTarget).maxWithdraw(_getActor());
 
         if (maxWithdraw == 0) {
@@ -273,7 +281,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
         }
     }
 
-    function erc7540_9_redeem(address asyncVaultTarget) public virtual {
+    function erc7540_9_redeem(address asyncVaultTarget) internal virtual {
         // Per erc7540_5
         uint256 maxRedeem = IAsyncVault(asyncVaultTarget).maxRedeem(_getActor());
 

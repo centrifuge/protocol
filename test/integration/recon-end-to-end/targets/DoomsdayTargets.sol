@@ -240,6 +240,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         }
 
         // === VAULT OPERATION TESTS === //
+        // console2.log("SyncDepositManager:", vault.syncDepositManager());
         try vault.maxDeposit(_getActor()) returns (uint256 max) {
             console2.log("DEBUG: maxDeposit returned:", max);
             console2.log("DEBUG: pool per share:", D18.unwrap(spoke.pricePoolPerShare(poolId, scId, false)));
