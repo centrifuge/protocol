@@ -41,6 +41,8 @@ struct VerificationResult {
 contract VerifyFactoryContracts is Script, GraphQLQuery {
     using stdJson for string;
 
+    error VerificationFailed(uint256 notVerified);
+
     EnvConfig config;
 
     constructor() {
@@ -66,7 +68,7 @@ contract VerifyFactoryContracts is Script, GraphQLQuery {
         results[5] = _verifyContract(addr.onOfframpManager, "OnOfframpManager");
         results[6] = _verifyContract(addr.merkleProofManager, "MerkleProofManager");
 
-        // Log summary
+        // Log summary and revert if any contract failed verification
         _logSummary(results);
     }
 
@@ -303,5 +305,9 @@ contract VerifyFactoryContracts is Script, GraphQLQuery {
         console.log(string.concat("Not Deployed: ", vm.toString(notDeployed)));
         console.log("----------------------------------------");
         console.log("");
+
+        if (notVerified > 0) {
+            revert VerificationFailed(notVerified);
+        }
     }
 }

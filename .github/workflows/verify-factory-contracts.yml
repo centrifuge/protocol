@@ -10,12 +10,33 @@ on:
         default: "v3.1.0"
 
 jobs:
-  verify:
+  discover-networks:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    outputs:
+      networks: ${{ steps.list.outputs.networks }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: List networks from env/*.json
+        id: list
+        run: |
+          networks=$(ls env/*.json | xargs -n1 basename | sed 's/.json//' | grep -v anvil | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "networks=$networks" >> "$GITHUB_OUTPUT"
+          echo "Discovered networks: $networks"
+
+  verify:
+    needs: discover-networks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: "read"
       id-token: "write"
+    strategy:
+      fail-fast: false
+      matrix:
+        network: ${{ fromJson(needs.discover-networks.outputs.networks) }}
+
+    name: "${{ matrix.network }}"
 
     steps:
       - uses: actions/checkout@v3
@@ -54,24 +75,7 @@ jobs:
             echo "::add-mask::$value"
           done < .env
 
-      - name: Verify all networks
-        run: |
-          networks=(
-            ethereum
-            base
-            arbitrum
-            avalanche
-            bnb-smart-chain
-            optimism
-            plume
-            hyper-evm
-            monad
-            sepolia
-            base-sepolia
-            arbitrum-sepolia
-            hyper-evm-testnet
-          )
-          for network in "${networks[@]}"; do
-            echo "========== Verifying $network =========="
-            NETWORK=$network forge script script/VerifyFactoryContracts.s.sol -vv || true
-          done
+      - name: Verify ${{ matrix.network }}
+        env:
+          NETWORK: ${{ matrix.network }}
+        run: forge script script/VerifyFactoryContracts.s.sol -vv
