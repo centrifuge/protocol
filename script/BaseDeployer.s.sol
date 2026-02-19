@@ -6,8 +6,11 @@ import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 
 import "forge-std/Script.sol";
 
-function makeSalt(string memory contractName, bytes32 version, address deployer) pure returns (bytes32) {
-    bytes32 baseHash = keccak256(abi.encodePacked(contractName, version));
+function makeSalt(string memory prefix, string memory contractName, string memory version, address deployer)
+    pure
+    returns (bytes32)
+{
+    bytes32 baseHash = keccak256(abi.encodePacked(prefix, contractName, version));
 
     // NOTE: To avoid CreateX InvalidSalt issues, 21st byte needs to be 0
     return bytes32(abi.encodePacked(bytes20(deployer), bytes1(0x0), bytes11(baseHash)));
@@ -28,8 +31,7 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
     ///      The version must match the one used at initial deployment to reuse existing addresses.
     ///      Use the PREFIX envvar (instead of changing the version) to create isolated fresh deployments.
     function createSalt(string memory contractName, string memory contractVersion) internal returns (bytes32 salt) {
-        string memory saltKey = bytes(prefix).length > 0 ? string.concat(prefix, contractName) : contractName;
-        salt = makeSalt(saltKey, bytes32(bytes(contractVersion)), deployer);
+        salt = makeSalt(prefix, contractName, contractVersion, deployer);
         register(contractName, computeCreate3Address(salt, deployer));
     }
 
@@ -38,7 +40,6 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
         view
         returns (address)
     {
-        string memory saltKey = bytes(prefix).length > 0 ? string.concat(prefix, contractName) : contractName;
-        return computeCreate3Address(makeSalt(saltKey, bytes32(bytes(contractVersion)), deployer), deployer);
+        return computeCreate3Address(makeSalt(prefix, contractName, contractVersion, deployer), deployer);
     }
 }
