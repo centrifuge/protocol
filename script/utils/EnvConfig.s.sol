@@ -59,15 +59,18 @@ struct AdaptersConfig {
 }
 
 struct ContractsConfig {
-    // Core
+    // Admin
     address root;
+    address tokenRecoverer;
+    address protocolGuardian;
+    address opsGuardian;
+    // Core
     address gasService;
     address gateway;
     address multiAdapter;
     address messageProcessor;
     address messageDispatcher;
     address poolEscrowFactory;
-    address tokenRecoverer;
     address hubRegistry;
     address accounting;
     address holdings;
@@ -79,9 +82,6 @@ struct ContractsConfig {
     address contractUpdater;
     address vaultRegistry;
     address hubHandler;
-    // Admin
-    address protocolGuardian;
-    address opsGuardian;
     // Vaults
     address asyncRequestManager;
     address syncManager;
@@ -219,15 +219,19 @@ library Env {
             return config;
         }
 
-        // Core
+        // Admin
         config.root = _parseContractAddress(json, "root");
+        config.tokenRecoverer = _parseContractAddress(json, "tokenRecoverer");
+        config.protocolGuardian = _parseContractAddress(json, "protocolGuardian");
+        config.opsGuardian = _parseContractAddress(json, "opsGuardian");
+
+        // Core
         config.gasService = _parseContractAddress(json, "gasService");
         config.gateway = _parseContractAddress(json, "gateway");
         config.multiAdapter = _parseContractAddress(json, "multiAdapter");
         config.messageProcessor = _parseContractAddress(json, "messageProcessor");
         config.messageDispatcher = _parseContractAddress(json, "messageDispatcher");
         config.poolEscrowFactory = _parseContractAddress(json, "poolEscrowFactory");
-        config.tokenRecoverer = _parseContractAddress(json, "tokenRecoverer");
         config.hubRegistry = _parseContractAddress(json, "hubRegistry");
         config.accounting = _parseContractAddress(json, "accounting");
         config.holdings = _parseContractAddress(json, "holdings");
@@ -239,10 +243,6 @@ library Env {
         config.contractUpdater = _parseContractAddress(json, "contractUpdater");
         config.vaultRegistry = _parseContractAddress(json, "vaultRegistry");
         config.hubHandler = _parseContractAddress(json, "hubHandler");
-
-        // Admin
-        config.protocolGuardian = _parseContractAddress(json, "protocolGuardian");
-        config.opsGuardian = _parseContractAddress(json, "opsGuardian");
 
         // Vaults
         config.asyncRequestManager = _parseContractAddress(json, "asyncRequestManager");

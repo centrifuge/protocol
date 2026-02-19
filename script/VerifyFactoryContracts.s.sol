@@ -38,7 +38,7 @@ struct VerificationResult {
     VerificationStatus status;
 }
 
-contract ValidateContractsFromFactories is Script, GraphQLQuery {
+contract VerifyFactoryContracts is Script, GraphQLQuery {
     using stdJson for string;
 
     EnvConfig config;
