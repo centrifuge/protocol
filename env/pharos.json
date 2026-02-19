@@ -3,7 +3,17 @@
     "chainId": 1672,
     "environment": "mainnet",
     "centrifugeId": 12,
-    "connectsTo": [],
+    "connectsTo": [
+      "ethereum",
+      "base",
+      "arbitrum",
+      "plume",
+      "avalanche",
+      "bnb-smart-chain",
+      "hyper-evm",
+      "optimism",
+      "monad"
+    ],
     "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "batchLimit": 15,
