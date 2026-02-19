@@ -17,7 +17,8 @@
       "deploy": true,
       "blockConfirmations": 15,
       "DVNs": [
-        "0x282b3386571f7f794450d5789911a9804fa346b4"
+        "0x282b3386571f7f794450d5789911a9804fa346b4",
+        "0xa83c79e69117eefb888592a23bc02cb6029ada3a"
       ]
     },
     "chainlink": {
