@@ -1,6 +1,7 @@
 name: Verify Factory Contracts
 
 on:
+  push:  # TODO: remove before merging
   workflow_dispatch:
     inputs:
       source_version:
@@ -41,7 +42,7 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout src/ from deployed version
-        run: git checkout ${{ inputs.source_version }} -- src/
+        run: git checkout ${{ inputs.source_version || 'v3.1.0' }} -- src/
 
       - id: "auth"
         uses: "google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f" # v2.1.7
