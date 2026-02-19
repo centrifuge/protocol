@@ -1,7 +1,6 @@
 name: Verify Factory Contracts
 
 on:
-  push:  # TODO: remove before merging
   workflow_dispatch:
     inputs:
       source_version:
@@ -24,7 +23,7 @@ jobs:
           submodules: recursive
 
       - name: Checkout src/ from deployed version
-        run: git checkout ${{ inputs.source_version || 'v3.1.0' }} -- src/
+        run: git checkout ${{ inputs.source_version }} -- src/
 
       - name: List networks from env/*.json
         id: list
