@@ -66,10 +66,7 @@ contract LaunchDeployer is FullDeployer {
             adminSafe: ISafe(protocolAdmin),
             opsSafe: ISafe(vm.parseJsonAddress(config, "$.network.opsAdmin")),
             core: CoreInput({
-                centrifugeId: centrifugeId,
-                version: version,
-                root: vm.envOr("ROOT", address(0)),
-                txLimits: _parseBatchLimits(config)
+                centrifugeId: centrifugeId, version: version, root: address(0), txLimits: _parseBatchLimits(config)
             }),
             adapters: AdaptersInput({
                 layerZero: LayerZeroInput({
