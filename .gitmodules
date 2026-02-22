@@ -7,3 +7,6 @@
 [submodule "lib/safe-utils"]
 	path = lib/safe-utils
 	url = https://github.com/Recon-Fuzz/safe-utils
+[submodule "lib/halmos-cheatcodes"]
+	path = lib/halmos-cheatcodes
+	url = https://github.com/a16z/halmos-cheatcodes

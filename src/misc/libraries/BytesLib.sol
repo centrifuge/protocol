@@ -186,4 +186,9 @@ library BytesLib {
         require(_bytes.length > _start, SliceOutOfBounds());
         return _bytes[_start] != 0;
     }
+
+    /// @dev Round up to the nearest 32-byte boundary.
+    function align32(uint256 n) internal pure returns (uint256) {
+        return (n + 31) & ~uint256(31);
+    }
 }

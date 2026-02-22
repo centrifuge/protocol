@@ -1,4 +1,5 @@
 forge-std/=lib/forge-std/src/
+halmos-cheatcodes/=lib/halmos-cheatcodes/src/
 @chimera/=lib/chimera/src/
 safe-utils/=lib/safe-utils/src/
 safe-smart-account/=lib/safe-utils/lib/safe-smart-account/contracts/
