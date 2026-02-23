@@ -151,7 +151,7 @@ contract PoolHooks is JsonRegistry, CreateXScript {
 
     function _deployFreelyTransferable(PoolId poolId, ShareClassId scId, address poolEscrow) internal {
         string memory saltName = string.concat("freelyTransferable-", vm.toString(PoolId.unwrap(poolId)));
-        bytes32 salt = makeSalt("", saltName, VERSION, deployer);
+        bytes32 salt = makeSalt(saltName, VERSION, "", deployer);
 
         address expectedAddr = computeCreate3Address(salt, deployer);
         if (expectedAddr.code.length > 0) {
@@ -196,7 +196,7 @@ contract PoolHooks is JsonRegistry, CreateXScript {
 
     function _deployFullRestrictions(PoolId poolId, ShareClassId scId, address poolEscrow) internal {
         string memory saltName = string.concat("fullRestrictions-", vm.toString(PoolId.unwrap(poolId)));
-        bytes32 salt = makeSalt("", saltName, VERSION, deployer);
+        bytes32 salt = makeSalt(saltName, VERSION, "", deployer);
 
         address expectedAddr = computeCreate3Address(salt, deployer);
         if (expectedAddr.code.length > 0) {

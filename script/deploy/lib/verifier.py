@@ -380,13 +380,13 @@ class ContractVerifier:
                 config_data['deploymentInfo'][deployment_step] = {
                     'gitCommit': git_commit,
                     'timestamp': deployment_timestamp,
-                    'prefix': os.environ.get("PREFIX", "")
+                    'suffix': os.environ.get("SUFFIX", "")
                 }
 
-            # Always include prefix key in deploymentInfo
+            # Always include suffix key in deploymentInfo
             if deployment_step not in config_data['deploymentInfo']:
                 config_data['deploymentInfo'][deployment_step] = {}
-            config_data['deploymentInfo'][deployment_step]['prefix'] = os.environ.get("PREFIX", "")
+            config_data['deploymentInfo'][deployment_step]['suffix'] = os.environ.get("SUFFIX", "")
             
             # Get startBlock from deployment mechanism (-latest.json file) if available
             # Only calculate from contract block numbers if not provided by deployment

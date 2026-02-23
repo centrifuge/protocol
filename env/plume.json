@@ -287,11 +287,11 @@
     "deploy:protocol": {
       "gitCommit": "9706a86",
       "timestamp": "2025-07-15T14:23:38Z",
-      "version": "3",
+      "suffix": "3",
       "startBlock": 11931870
     },
     "verify:protocol": {
-      "version": "v3.1",
+      "suffix": "v3.1",
       "startBlock": 48512844
     }
   }

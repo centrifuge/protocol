@@ -271,7 +271,7 @@ contract EndToEndDeployment is Test {
         deploy.deployFull(
             DeployerInput({
                 centrifugeId: localCentrifugeId,
-                prefix: string(abi.encodePacked(localCentrifugeId)),
+                suffix: string(abi.encodePacked(localCentrifugeId)),
                 txLimits: defaultTxLimits(),
                 protocolSafe: protocolSafe,
                 opsSafe: protocolSafe,

@@ -272,7 +272,7 @@
     "deploy:protocol": {
       "gitCommit": "d9db839cc",
       "timestamp": "2026-01-28T15:19:10Z",
-      "version": "v3.1",
+      "suffix": "v3.1",
       "startBlock": 25782262
     }
   }

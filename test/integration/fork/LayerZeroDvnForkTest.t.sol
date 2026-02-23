@@ -183,7 +183,7 @@ contract LayerZeroDvnForkTest is Test, FullDeployer {
 
         return DeployerInput({
             centrifugeId: localId,
-            prefix: "",
+            suffix: "",
             txLimits: defaultTxLimits(),
             protocolSafe: protocolSafe,
             opsSafe: opsSafe,

@@ -79,7 +79,7 @@ contract BaseTest is FullDeployer, Test {
         deployFull(
             DeployerInput({
                 centrifugeId: CHAIN_CP,
-                prefix: "",
+                suffix: "",
                 txLimits: defaultTxLimits(),
                 protocolSafe: ISafe(makeAddr("ProtocolSafe")),
                 opsSafe: ISafe(makeAddr("OpsSafe")),

@@ -25,7 +25,7 @@ contract LaunchDeployer is FullDeployer {
         EnvConfig memory config = Env.load(prettyEnvString("NETWORK"));
         DeployerInput memory input = DeployerInput({
             centrifugeId: config.network.centrifugeId,
-            prefix: config.network.isMainnet() ? "" : vm.envOr("PREFIX", string("")),
+            suffix: config.network.isMainnet() ? "" : vm.envOr("SUFFIX", string("")),
             txLimits: config.network.buildBatchLimits(),
             protocolSafe: ISafe(config.network.protocolAdmin),
             opsSafe: ISafe(config.network.opsAdmin),

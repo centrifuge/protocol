@@ -34,19 +34,19 @@ def create_parser() -> argparse.ArgumentParser:
 IMPORTANT:
   - This script is designed to be run from the root directory of the project.
   - The network name must match the name of the network in the env/<network>.json file.
-  - For mainnet deployments, omit PREFIX (contracts reuse their canonical versioned addresses).
-  - Set PREFIX=XYZ to create an isolated fresh deployment (e.g. for testnet CI runs).
+  - For mainnet deployments, omit SUFFIX (contracts reuse their canonical versioned addresses).
+  - Set SUFFIX=XYZ to create an isolated fresh deployment (e.g. for testnet CI runs).
 
 Examples:
   python3 deploy.py sepolia deploy:full
-  PREFIX=PR-123 python3 deploy.py sepolia deploy:full
+  SUFFIX=PR-123 python3 deploy.py sepolia deploy:full
   python3 deploy.py base-sepolia deploy:full --catapulta --priority-gas-price 2
   python3 deploy.py sepolia deploy:adapters
   python3 deploy.py sepolia deploy:adapters --resume
   python3 deploy.py sepolia verify:protocol
   python3 deploy.py sepolia verify:contracts  # Verify & merge all contracts from latest deployment
   python3 deploy.py arbitrum-sepolia verify:protocol
-  PREFIX=vXYZ python3 deploy.py deploy:testnets  # Deploy all Sepolia testnets (auto-resumes)
+  SUFFIX=vXYZ python3 deploy.py deploy:testnets  # Deploy all Sepolia testnets (auto-resumes)
   python3 deploy.py base-sepolia crosschaintest         # Full 4-step cross-chain test
   python3 deploy.py base-sepolia crosschaintest:test   # Repeat phase 3 (share class test)
         """
@@ -79,7 +79,7 @@ def validate_arguments(args, root_dir: pathlib.Path):
         print_info(f"Ledger: {args.ledger}")
         if args.forge_args:
             print_info(f"Forge args: {' '.join(args.forge_args)}")
-        print_info(f"PREFIX env: {os.environ.get('PREFIX', 'Not set (mainnet addresses)')}")
+        print_info(f"SUFFIX env: {os.environ.get('SUFFIX', 'Not set (mainnet addresses)')}")
 
     # Check for required arguments
     if not args.step:
@@ -114,10 +114,10 @@ def validate_arguments(args, root_dir: pathlib.Path):
 
     # Inform about PREFIX usage for deployment steps
     if args.step.startswith("deploy:") and not args.dry_run:
-        if os.environ.get("PREFIX"):
-            print_info(f"Using PREFIX='{os.environ.get('PREFIX')}' for isolated deployment addresses")
+        if os.environ.get("SUFFIX"):
+            print_info(f"Using SUFFIX='{os.environ.get('SUFFIX')}' for isolated deployment addresses")
         else:
-            print_info("No PREFIX set - deploying to canonical versioned addresses (mainnet mode)")
+            print_info("No SUFFIX set - deploying to canonical versioned addresses (mainnet mode)")
 
     # Validate forge arguments don't conflict with script defaults
     if args.forge_args:
@@ -152,10 +152,10 @@ def main():
         validate_arguments(args, root_dir)
     elif args.step == "deploy:testnets":
         # Warn if no PREFIX is set for deploy:testnets (likely unintentional without isolation)
-        if not os.environ.get("PREFIX") and not args.dry_run:
-            print_warning("PREFIX environment variable is not set for deploy:testnets")
+        if not os.environ.get("SUFFIX") and not args.dry_run:
+            print_warning("SUFFIX environment variable is not set for deploy:testnets")
             print_info("This will deploy to canonical versioned addresses (may collide with existing deployments)")
-            print_info("Consider: PREFIX=vXYZ python3 script/deploy/deploy.py deploy:testnets")
+            print_info("Consider: SUFFIX=vXYZ python3 script/deploy/deploy.py deploy:testnets")
 
     try:
         # Handle Anvil deployment specially - it's completely self-contained

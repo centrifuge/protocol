@@ -6,32 +6,32 @@ import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 
 import "forge-std/Script.sol";
 
-function makeSalt(string memory prefix, string memory contractName, string memory version, address deployer)
+function makeSalt(string memory contractName, string memory version, string memory suffix, address deployer)
     pure
     returns (bytes32)
 {
-    bytes32 baseHash = keccak256(abi.encodePacked(prefix, contractName, version));
+    bytes32 baseHash = keccak256(abi.encodePacked(contractName, version, suffix));
 
     // NOTE: To avoid CreateX InvalidSalt issues, 21st byte needs to be 0
     return bytes32(abi.encodePacked(bytes20(deployer), bytes1(0x0), bytes11(baseHash)));
 }
 
 contract BaseDeployer is Script, JsonRegistry, CreateXScript {
-    string internal prefix;
+    string internal suffix;
     address public deployer;
 
-    function _init(string memory prefix_, address deployer_) internal {
+    function _init(string memory suffix_, address deployer_) internal {
         setUpCreateXFactory();
 
-        prefix = prefix_;
+        suffix = suffix_;
         deployer = deployer_;
     }
 
     /// @dev Generates a deterministic salt and registers the predicted address.
     ///      The version must match the one used at initial deployment to reuse existing addresses.
-    ///      Use the PREFIX envvar (instead of changing the version) to create isolated fresh deployments.
+    ///      Use the SUFFIX envvar (instead of changing the version) to create isolated fresh deployments.
     function createSalt(string memory contractName, string memory contractVersion) internal returns (bytes32 salt) {
-        salt = makeSalt(prefix, contractName, contractVersion, deployer);
+        salt = makeSalt(contractName, contractVersion, suffix, deployer);
         register(contractName, computeCreate3Address(salt, deployer));
     }
 
@@ -40,6 +40,6 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
         view
         returns (address)
     {
-        return computeCreate3Address(makeSalt(prefix, contractName, contractVersion, deployer), deployer);
+        return computeCreate3Address(makeSalt(contractName, contractVersion, suffix, deployer), deployer);
     }
 }

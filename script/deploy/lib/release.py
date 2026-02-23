@@ -42,12 +42,12 @@ class ReleaseManager:
         # Load existing state or initialize new
         self._load_state()
 
-        # Check if prefix changed - if so, clear state and start fresh
-        current_prefix = os.environ.get("PREFIX", "")
-        saved_prefix = self.deployment_summary.get("prefix")
+        # Check if suffix changed - if so, clear state and start fresh
+        current_suffix = os.environ.get("SUFFIX", "")
+        saved_suffix = self.deployment_summary.get("suffix")
 
-        if saved_prefix is not None and saved_prefix != current_prefix:
-            print_warning(f"PREFIX changed from '{saved_prefix}' to '{current_prefix}'")
+        if saved_suffix is not None and saved_suffix != current_suffix:
+            print_warning(f"SUFFIX changed from '{saved_suffix}' to '{current_suffix}'")
             print_info("🔄 Clearing state and starting fresh deployment...")
             self.clear_state()
         elif self.deployment_summary.get("networks"):
@@ -64,7 +64,7 @@ class ReleaseManager:
         # Initialize deployment summary if new
         if not self.deployment_summary.get("networks"):
             self.deployment_summary = {
-                "prefix": os.environ.get("PREFIX", ""),
+                "suffix": os.environ.get("SUFFIX", ""),
                 "networks": {},
                 "started_at": time.strftime("%Y-%m-%d %H:%M:%S")
             }
@@ -171,8 +171,8 @@ class ReleaseManager:
     def _print_summary(self):
         """Print a formatted summary of the deployment results"""
         print_section("📊 Deployment Summary")
-        prefix = self.deployment_summary.get('prefix', '')
-        print_info(f"Prefix: {prefix if prefix else '(none - canonical addresses)'}")
+        suffix = self.deployment_summary.get('suffix', '')
+        print_info(f"Suffix: {suffix if suffix else '(none - canonical addresses)'}")
         print_info(f"Started: {self.deployment_summary.get('started_at', 'N/A')}")
         
         if "completed_at" in self.deployment_summary:

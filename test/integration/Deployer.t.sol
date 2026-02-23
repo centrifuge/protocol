@@ -75,7 +75,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
         deployFull(
             DeployerInput({
                 centrifugeId: CENTRIFUGE_ID,
-                prefix: "",
+                suffix: "",
                 txLimits: defaultTxLimits(),
                 protocolSafe: ADMIN_SAFE,
                 opsSafe: OPS_SAFE,

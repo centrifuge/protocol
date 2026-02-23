@@ -104,7 +104,7 @@ struct AdaptersInput {
 
 struct DeployerInput {
     uint16 centrifugeId;
-    string prefix;
+    string suffix;
     uint8[32] txLimits;
     ISafe protocolSafe;
     ISafe opsSafe;
@@ -177,7 +177,7 @@ contract FullDeployer is BaseDeployer, Constants {
     AdapterActionBatcher public adapterBatcher;
 
     function deployFull(DeployerInput memory input, address deployer_) public {
-        _init(input.prefix, deployer_);
+        _init(input.suffix, deployer_);
 
         address coreBatcherAddr = previewCreate3Address("coreBatcher", "v3.1");
         address nonCoreBatcherAddr = previewCreate3Address("nonCoreBatcher", "v3.1");
@@ -223,7 +223,9 @@ contract FullDeployer is BaseDeployer, Constants {
 
     function _deployCore(address batcher, DeployerInput memory input) internal {
         // Admin
-        root = Root(create3(createSalt("root", "v3.1"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));
+        root = Root(
+            create3(createSalt("root", "v3.1"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher)))
+        );
 
         // Core
         gateway = Gateway(
@@ -242,14 +244,16 @@ contract FullDeployer is BaseDeployer, Constants {
 
         contractUpdater = ContractUpdater(
             create3(
-                createSalt("contractUpdater", "v3.1"), abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(batcher))
+                createSalt("contractUpdater", "v3.1"),
+                abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(batcher))
             )
         );
 
         // Messaging
         gasService = GasService(
             create3(
-                createSalt("gasService", "v3.1"), abi.encodePacked(type(GasService).creationCode, abi.encode(input.txLimits))
+                createSalt("gasService", "v3.1"),
+                abi.encodePacked(type(GasService).creationCode, abi.encode(input.txLimits))
             )
         );
 
@@ -272,23 +276,29 @@ contract FullDeployer is BaseDeployer, Constants {
         // Spoke
         tokenFactory = TokenFactory(
             create3(
-                createSalt("tokenFactory", "v3.1"), abi.encodePacked(type(TokenFactory).creationCode, abi.encode(root, batcher))
+                createSalt("tokenFactory", "v3.1"),
+                abi.encodePacked(type(TokenFactory).creationCode, abi.encode(root, batcher))
             )
         );
 
         spoke = Spoke(
-            create3(createSalt("spoke", "v3.1"), abi.encodePacked(type(Spoke).creationCode, abi.encode(tokenFactory, batcher)))
+            create3(
+                createSalt("spoke", "v3.1"),
+                abi.encodePacked(type(Spoke).creationCode, abi.encode(tokenFactory, batcher))
+            )
         );
 
         balanceSheet = BalanceSheet(
             create3(
-                createSalt("balanceSheet", "v3.1"), abi.encodePacked(type(BalanceSheet).creationCode, abi.encode(root, batcher))
+                createSalt("balanceSheet", "v3.1"),
+                abi.encodePacked(type(BalanceSheet).creationCode, abi.encode(root, batcher))
             )
         );
 
         vaultRegistry = VaultRegistry(
             create3(
-                createSalt("vaultRegistry", "v3.1"), abi.encodePacked(type(VaultRegistry).creationCode, abi.encode(batcher))
+                createSalt("vaultRegistry", "v3.1"),
+                abi.encodePacked(type(VaultRegistry).creationCode, abi.encode(batcher))
             )
         );
 
@@ -301,16 +311,21 @@ contract FullDeployer is BaseDeployer, Constants {
 
         // Hub
         hubRegistry = HubRegistry(
-            create3(createSalt("hubRegistry", "v3.1"), abi.encodePacked(type(HubRegistry).creationCode, abi.encode(batcher)))
+            create3(
+                createSalt("hubRegistry", "v3.1"), abi.encodePacked(type(HubRegistry).creationCode, abi.encode(batcher))
+            )
         );
 
         accounting = Accounting(
-            create3(createSalt("accounting", "v3.1"), abi.encodePacked(type(Accounting).creationCode, abi.encode(batcher)))
+            create3(
+                createSalt("accounting", "v3.1"), abi.encodePacked(type(Accounting).creationCode, abi.encode(batcher))
+            )
         );
 
         holdings = Holdings(
             create3(
-                createSalt("holdings", "v3.1"), abi.encodePacked(type(Holdings).creationCode, abi.encode(hubRegistry, batcher))
+                createSalt("holdings", "v3.1"),
+                abi.encodePacked(type(Holdings).creationCode, abi.encode(hubRegistry, batcher))
             )
         );
 
@@ -389,7 +404,9 @@ contract FullDeployer is BaseDeployer, Constants {
         );
 
         syncManager = SyncManager(
-            create3(createSalt("syncManager", "v3.1"), abi.encodePacked(type(SyncManager).creationCode, abi.encode(batcher)))
+            create3(
+                createSalt("syncManager", "v3.1"), abi.encodePacked(type(SyncManager).creationCode, abi.encode(batcher))
+            )
         );
 
         vaultRouter = VaultRouter(
@@ -515,11 +532,13 @@ contract FullDeployer is BaseDeployer, Constants {
             )
         );
 
-        vaultDecoder =
-            VaultDecoder(create3(createSalt("vaultDecoder", "v3.1"), abi.encodePacked(type(VaultDecoder).creationCode)));
+        vaultDecoder = VaultDecoder(
+            create3(createSalt("vaultDecoder", "v3.1"), abi.encodePacked(type(VaultDecoder).creationCode))
+        );
 
-        circleDecoder =
-            CircleDecoder(create3(createSalt("circleDecoder", "v3.1"), abi.encodePacked(type(CircleDecoder).creationCode)));
+        circleDecoder = CircleDecoder(
+            create3(createSalt("circleDecoder", "v3.1"), abi.encodePacked(type(CircleDecoder).creationCode))
+        );
 
         batchRequestManager = BatchRequestManager(
             create3(

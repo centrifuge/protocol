@@ -12,7 +12,6 @@ import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 /// @title OnlyAdapters
 /// @notice Deploys only messaging adapters, reusing existing core addresses from env/<network>.json
 contract OnlyAdapters is BaseDeployer {
-
     MultiAdapter multiAdapter;
     WormholeAdapter wormholeAdapter;
     AxelarAdapter axelarAdapter;
@@ -57,7 +56,7 @@ contract OnlyAdapters is BaseDeployer {
         vm.startBroadcast();
         captureStartBlock();
 
-        _init(vm.envOr("PREFIX", string("")), msg.sender);
+        _init(vm.envOr("SUFFIX", string("")), msg.sender);
 
         if (deployWormhole) {
             address wormholeRelayer = vm.parseJsonAddress(config, "$.adapters.wormhole.relayer");

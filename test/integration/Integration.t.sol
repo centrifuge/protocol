@@ -37,7 +37,7 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
         super.deployFull(
             DeployerInput({
                 centrifugeId: LOCAL_CENTRIFUGE_ID,
-                prefix: "",
+                suffix: "",
                 txLimits: defaultTxLimits(),
                 protocolSafe: ISafe(makeAddr("ProtocolSafe")),
                 opsSafe: ISafe(makeAddr("OpsSafe")),

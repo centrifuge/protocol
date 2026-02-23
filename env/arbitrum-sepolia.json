@@ -282,13 +282,13 @@
     "deploy:protocol": {
       "gitCommit": "24032569",
       "timestamp": "2026-01-28T15:42:39Z",
-      "version": "v3.1-rev2",
+      "suffix": "v3.1-rev2",
       "startBlock": 10142334
     },
     "deploy:adapters": {
       "gitCommit": "e54f27b1",
       "timestamp": "2025-10-16T08:28:21Z",
-      "version": "test-v3.0.1"
+      "suffix": "test-v3.0.1"
     }
   }
 }

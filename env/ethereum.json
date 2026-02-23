@@ -285,7 +285,7 @@
     "deploy:protocol": {
       "gitCommit": "c89c55ff6",
       "timestamp": "2026-01-26T13:27:30Z",
-      "version": "v3.1",
+      "suffix": "v3.1",
       "startBlock": 24319298
     }
   }
