@@ -32,7 +32,7 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
     ///      Use the SUFFIX envvar (instead of changing the version) to create isolated fresh deployments.
     function createSalt(string memory contractName, string memory contractVersion) internal returns (bytes32 salt) {
         salt = makeSalt(contractName, contractVersion, suffix, deployer);
-        register(contractName, computeCreate3Address(salt, deployer));
+        register(contractName, computeCreate3Address(salt, deployer), contractVersion);
     }
 
     function previewCreate3Address(string memory contractName, string memory contractVersion)
