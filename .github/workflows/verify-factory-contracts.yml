@@ -13,7 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: "read"
-      id-token: "write"
     outputs:
       networks: ${{ steps.list.outputs.networks }}
     steps:
@@ -31,22 +30,6 @@ jobs:
           networks=$(ls env/*.json | xargs -n1 basename | sed 's/.json//' | grep -v anvil | jq -R -s -c 'split("\n") | map(select(length > 0))')
           echo "networks=$networks" >> "$GITHUB_OUTPUT"
           echo "Discovered networks: $networks"
-
-      - id: "auth"
-        uses: "google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f" # v2.1.7
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WIP }}
-          service_account: ${{ secrets.GCP_SA }}
-          create_credentials_file: true
-          cleanup_credentials: true
-
-      - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@6189d56e4096ee891640bb02ac264be376592d6a" # v2.1.2
-        with:
-          version: ">= 363.0.0"
-
-      - name: Load secrets
-        run: python3 script/deploy/load_secrets.py
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -67,6 +50,9 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: "read"
+      id-token: "write"
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -83,6 +69,22 @@ jobs:
 
       - name: Extract workspace
         run: tar xzf workspace.tar.gz && rm workspace.tar.gz
+
+      - id: "auth"
+        uses: "google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f" # v2.1.7
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIP }}
+          service_account: ${{ secrets.GCP_SA }}
+          create_credentials_file: true
+          cleanup_credentials: true
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@6189d56e4096ee891640bb02ac264be376592d6a" # v2.1.2
+        with:
+          version: ">= 363.0.0"
+
+      - name: Load secrets
+        run: python3 script/deploy/load_secrets.py
 
       - name: Mask secrets
         run: |
