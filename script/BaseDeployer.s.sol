@@ -10,9 +10,13 @@ function makeSalt(string memory contractName, string memory version, string memo
     pure
     returns (bytes32)
 {
-    bytes32 versionHash = bytes(suffix).length > 0
-        ? bytes32(bytes(string.concat(version, "-", suffix)))
-        : bytes32(bytes(version));
+    // Legacy contracts had a different salt computation (i.e: root in some chains)
+    if (keccak256(abi.encodePacked(version)) == keccak256(abi.encodePacked("3"))) {
+        return keccak256(abi.encodePacked(contractName, keccak256(abi.encodePacked(version))));
+    }
+
+    bytes32 versionHash =
+        bytes(suffix).length > 0 ? bytes32(bytes(string.concat(version, "-", suffix))) : bytes32(bytes(version));
     bytes32 baseHash = keccak256(abi.encodePacked(contractName, versionHash));
 
     // NOTE: To avoid CreateX InvalidSalt issues, 21st byte needs to be 0

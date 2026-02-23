@@ -51,7 +51,7 @@
       "address": "0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f",
       "blockNumber": 357982308,
       "txHash": "0x81e74c2bd4b5b8c80c46291b7cb7512f1e66eaa832b35b82e478a589f4a557ef",
-      "version": "3 <different-salt-computation>"
+      "version": "3"
     },
     "gasService": {
       "address": "0xbEbef21D686a957decECCe6a58455fA0F16754Be",
