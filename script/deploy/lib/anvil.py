@@ -17,7 +17,7 @@ import random
 import string
 from .formatter import *
 from .runner import DeploymentRunner
-from .load_config import EnvironmentLoader
+from .secrets import get_secret
 from .verifier import ContractVerifier
 
 class AnvilManager:
@@ -149,8 +149,7 @@ class AnvilManager:
         print_info(f"Using random VERSION for Anvil: {random_version}")
 
         # Prepare API keys
-        sepolia_loader = EnvironmentLoader("sepolia", self.root_dir, args)
-        api_key = sepolia_loader._get_secret("alchemy_api")
+        api_key = get_secret("alchemy_api")
 
         # Create both anvil env files up front so Forge scripts can read them when
         # loading hub config (e.g. LaunchDeployer reads connectsTo and calls Env.load

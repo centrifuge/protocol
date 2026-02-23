@@ -130,10 +130,11 @@ class Formatter:
             if env_loader.private_key:
                 debug_cmd = debug_cmd.replace(env_loader.private_key, "$PRIVATE_KEY")
             
-            # Mask Alchemy API key in RPC URL
+            # Mask API key in RPC URL (last path segment is always the key)
             if env_loader.rpc_url:
-                alchemy_key = env_loader.rpc_url.split("/")[-1]
-                debug_cmd = debug_cmd.replace(alchemy_key, "$ALCHEMY_API_KEY")
+                api_key = env_loader.rpc_url.split("/")[-1]
+                if api_key:
+                    debug_cmd = debug_cmd.replace(api_key, "$API_KEY")
             
             # Mask Etherscan API key
             if env_loader.etherscan_api_key:
