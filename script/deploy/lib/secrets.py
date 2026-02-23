@@ -96,10 +96,18 @@ def dump_secrets_to_env(root_dir: pathlib.Path):
 
     # Secrets to fetch: env-var-name → GCP secret name
     secrets = {
+<<<<<<< HEAD
         "ETHERSCAN_API_KEY": "etherscan_api",
         "ALCHEMY_API_KEY": "alchemy_api",
         "PLUME_API_KEY": "plume_api",
         "PRIVATE_KEY": "testnet-private-key",
+=======
+        "ETHERSCAN_API_KEY": "protocol-etherscan-api",
+        "PRIVATE_KEY": "protocol-testnet-private-key",
+        "ALCHEMY_API_KEY": "protocol-alchemy-api",
+        "PLUME_API_KEY": "protocol-plume-api",
+        "PHAROS_API_KEY": "protocol-pharos-api",
+>>>>>>> origin/main
     }
 
     for env_key, gcp_name in secrets.items():
@@ -113,12 +121,15 @@ def dump_secrets_to_env(root_dir: pathlib.Path):
         except Exception as e:
             print_warning(f"Could not fetch {env_key}: {e}")
 
+<<<<<<< HEAD
     # Remove stale keys that are no longer written by this tool
     for stale_key in ("NETWORK", "RPC_URL"):
         if stale_key in env_vars:
             print_info(f"Removing stale {stale_key} from .env")
             del env_vars[stale_key]
 
+=======
+>>>>>>> origin/main
     with open(env_file, "w") as f:
         for k, v in env_vars.items():
             f.write(f"{k}={v}\n")
