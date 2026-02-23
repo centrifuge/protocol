@@ -40,16 +40,6 @@ class DeploymentRunner:
         env["SUFFIX"] = os.environ.get("SUFFIX", "")
         if self.env_loader.etherscan_api_key is not None:
             env["ETHERSCAN_API_KEY"] = self.env_loader.etherscan_api_key
-        # Also add the vars in .env (if .env is there)
-        env_file = ".env"
-        if os.path.exists(env_file):
-            with open(env_file, "r") as f:
-                for line in f:
-                    if "=" in line and not line.strip().startswith("#"):
-                        k, v = line.strip().split("=", 1)
-                        # Only set if not already set in env (env file has lower priority)
-                        if k not in env:
-                            env[k] = v
         return env
 
     def run_deploy(self, script_name: str) -> bool:
