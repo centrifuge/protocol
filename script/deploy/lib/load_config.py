@@ -9,8 +9,8 @@ and environment variable setup for different deployment networks.
 import json
 import subprocess
 import pathlib
-import shutil
 from .formatter import *
+from .secrets import get_secret
 import os
 import argparse
 
@@ -19,114 +19,34 @@ class EnvironmentLoader:
         self.network_name = network_name
         self.root_dir = root_dir
         self.config_file = root_dir / "env" / f"{network_name}.json"
-        # Initialize private attributes that will be set during loading
         self._rpc_url = None
         self._private_key = None
         self._etherscan_api_key = None
         self._protocol_admin_address = None
         self._ops_admin_address = None
-        self._env_network_validated = False
+        self.args = args
         print_subsection("Loading network configuration")
         self._load_config()
-        # Validate network early - if mismatch, don't load any .env values
-        self._validate_network_early()
-        self.args = args
 
-    def dump_config(self):
-        print_info("Dumping config to .env")
-        import os
-
-        env_file = ".env"
-        backup_file = ".env.back"
-
-        # Backup existing .env if it exists
-        if os.path.exists(env_file):
-            print_warning("Existing .env found, backing up to .env.back")
-            shutil.copy(env_file, backup_file)
-            # Load existing .env into a dict
-            with open(env_file, "r") as f:
-                lines = f.readlines()
-            env_vars = {}
-            for line in lines:
-                if "=" in line:
-                    k, v = line.strip().split("=", 1)
-                    env_vars[k] = v
-            os.remove(env_file)
-            # Reload the config now that .env is removed
-            self._load_config()
-        else:
-            env_vars = {}
-
-        # Update or add the relevant keys
-        env_vars["NETWORK"] = self.network_name
-        env_vars["ETHERSCAN_API_KEY"] = self.etherscan_api_key
-        # For mainnet, leave PRIVATE_KEY blank (should use Ledger or external signing)
-        # For testnet, try to get the private key if available
-        if self.is_testnet:
-            try:
-                env_vars["PRIVATE_KEY"] = self.private_key or ""
-            except (ValueError, RuntimeError):
-                # If loading fails (e.g., GCP not configured), leave blank
-                env_vars["PRIVATE_KEY"] = ""
-        else:
-            # Mainnet: leave PRIVATE_KEY blank (should use Ledger or external signing)
-            env_vars["PRIVATE_KEY"] = ""
-        env_vars["RPC_URL"] = self.rpc_url
-
-        # Write back to .env (preserving order if possible, otherwise sorted)
-        with open(env_file, "w") as f:
-            for k, v in env_vars.items():
-                f.write(f"{k}={v}\n")
-        print_success("Config written to .env")
-
-    def _validate_network_early(self):
-        """Validate network early and set flag - if mismatch, .env values will be ignored"""
-        if not os.path.exists(".env"):
-            return True
-
-        with open(".env", "r") as f:
-            for line in f:
-                if line.startswith("NETWORK="):
-                    existing_network = line.split("=", 1)[1].strip()
-                    if existing_network != self.network_name:
-                        print_warning(f"Existing .env file is configured for network '{existing_network}'")
-                        print_warning(f"Current deployment is for network '{self.network_name}'")
-                        print_info("This could lead to deploying to the wrong network or using wrong credentials.")
-
-                        response = input("Do you want to continue? [y/N]: ").strip().lower()
-                        if response not in ("y", "yes"):
-                            print_info("Please run 'python3 script/deploy/deploy.py {network} dump:config' to update .env for the correct network")
-                            print_error("Aborted by user.")
-                            raise SystemExit(1)
-                        else:
-                            print_warning("Continuing with mismatched network configuration...")
-                    return True
-        return True
-
-    def _check_env_file(self, variable_name: str):
-        """Check .env file for a variable, but only if network matches"""
-        if not self._env_network_validated:
-            # Network mismatch - don't load any .env values
-            return None
-        if os.path.exists(".env"):
-            with open(".env", "r") as f:
-                for line in f:
-                    if line.startswith(f"{variable_name}="):
-                        print_warning(f"Using {variable_name} from .env")
-                        return line.split("=")[1].strip()
     def _load_config(self):
         if not self.config_file.exists():
             raise FileNotFoundError(f"Network config file {self.config_file} not found")
-        else:
-            with open(self.config_file, 'r') as f:
-                self.config = json.load(f)
+        with open(self.config_file, 'r') as f:
+            self.config = json.load(f)
+
+    # -- Properties ----------------------------------------------------------
+
     @property
     def etherscan_api_key(self) -> str:
         if self.args.catapulta or "--verifier-url" in self.args.forge_args:
             return None
         if self._etherscan_api_key is None:
-            print_info("Loading Etherscan API Key")
-            self._etherscan_api_key = self._get_secret("etherscan_api")
+            env_val = os.environ.get("ETHERSCAN_API_KEY")
+            if env_val:
+                self._etherscan_api_key = env_val
+            else:
+                print_info("Loading Etherscan API Key from GCP")
+                self._etherscan_api_key = get_secret("etherscan_api")
             print_success("Etherscan API key loaded")
         return self._etherscan_api_key
 
@@ -135,36 +55,35 @@ class EnvironmentLoader:
         if self.args.catapulta:
             return None
         if self._rpc_url is None:
-            if not self._check_env_file("RPC_URL"):
-                self._rpc_url = self._setup_rpc()
-            else:
-                self._rpc_url = self._check_env_file("RPC_URL")
+            self._rpc_url = self._setup_rpc()
         return self._rpc_url
 
     @property
     def private_key(self) -> str:
-        if  self._private_key is None:
-            # If it's ledger property.private_key==null
+        if self._private_key is None:
             if self.args.ledger:
                 self._private_key = None
-            # Otherwise try to load from .env
-            elif private_key := self._check_env_file("PRIVATE_KEY"):
-                if not self.is_testnet and not "tenderly" in self.rpc_url:
-                    print_warning("Are you sure you want to deploy to mainnet with the PRIVATE_KEY from .env?")
-                    response = input("Do you want to continue? [y/N]: ").strip().lower()
-                    if response not in ("y", "yes"):
-                        print_info("Please remove the PRIVATE_KEY from .env and try again.")
-                        print_error("Aborted by user.")
-                        raise SystemExit(1)
-                self._private_key = private_key
-            # Finally load from GCP secrets
             else:
-                if not self.is_testnet:
-                    print_error("Aborting deployment. Testnet private key cannot be used for mainnet")
-                    raise ValueError(f"Tried to access testnet private key. This should not happen when deploying to {self.network_name}")
-                print_step("Loading Testnet Private Key")
-                self._private_key = self._get_secret("testnet-private-key")
-                print_success("Private key loaded")
+                env_val = os.environ.get("PRIVATE_KEY")
+                if env_val:
+                    if not self.is_testnet and "tenderly" not in self.rpc_url:
+                        print_warning("Are you sure you want to deploy to mainnet with the PRIVATE_KEY from env?")
+                        response = input("Do you want to continue? [y/N]: ").strip().lower()
+                        if response not in ("y", "yes"):
+                            print_info("Please remove the PRIVATE_KEY and try again.")
+                            print_error("Aborted by user.")
+                            raise SystemExit(1)
+                    self._private_key = env_val
+                else:
+                    if not self.is_testnet:
+                        print_error("Aborting deployment. Testnet private key cannot be used for mainnet")
+                        raise ValueError(
+                            f"Tried to access testnet private key. "
+                            f"This should not happen when deploying to {self.network_name}"
+                        )
+                    print_step("Loading Testnet Private Key from GCP")
+                    self._private_key = get_secret("testnet-private-key")
+                    print_success("Private key loaded")
         return self._private_key
 
     @property
@@ -187,6 +106,8 @@ class EnvironmentLoader:
     def is_testnet(self) -> bool:
         return self.config["network"]["environment"] == "testnet"
 
+    # -- Internals -----------------------------------------------------------
+
     def _get_protocol_admin_address(self) -> str:
         """Get protocol admin address based on network type"""
         print_step("Loading Protocol Admin Address")
@@ -208,82 +129,42 @@ class EnvironmentLoader:
         return ops_admin_address
 
     def _setup_rpc(self) -> str:
-        """Setup and test RPC URL"""
-        if rpc_url := self._check_env_file("RPC_URL"):
-            return rpc_url
+        """Setup and test RPC URL.
 
+        Mirrors the logic in EnvConfig.s.sol: read baseRpcUrl from the
+        network config and append the appropriate API key from env vars.
+        """
         print_step("Setting up RPC URL")
 
         base_url = self.config["network"].get("baseRpcUrl")
         if not base_url:
             raise ValueError(f"No baseRpcUrl found in config for {self.network_name}")
 
-        if "alchemy.com" in base_url:
-            api_key = self._get_secret("alchemy_api")
-            rpc_url = f"{base_url}{api_key}"
+        api_key = ""
+        if "alchemy" in base_url:
+            api_key = os.environ.get("ALCHEMY_API_KEY", "")
+            if not api_key:
+                raise ValueError("ALCHEMY_API_KEY env var is required")
             print_info("Using Alchemy RPC endpoint")
+        elif "plume" in base_url:
+            api_key = os.environ.get("PLUME_API_KEY", "")
+            print_info("Using Plume RPC endpoint")
+        elif "pharos" in base_url:
+            api_key = os.environ.get("PHAROS_API_KEY", "")
+            if not api_key:
+                raise ValueError("PHAROS_API_KEY env var is required. ")
+            print_info("Using Pharos RPC endpoint")
         else:
-            rpc_url = base_url
             print_info(f"Using RPC endpoint: {base_url}")
+
+        rpc_url = f"{base_url}{api_key}"
 
         # Test the connection
         try:
             subprocess.run([
                 "cast", "block", "latest", "--rpc-url", rpc_url
             ], capture_output=True, check=True, timeout=10)
-            print_success(f"RPC connection verified")
+            print_success("RPC connection verified")
             return rpc_url
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             raise RuntimeError(f"RPC connection failed. URL: {rpc_url}.")
-
-    def _get_secret(self, secret_name: str) -> str:
-        """Get secret from GCP Secret Manager"""
-        # Try to import gcloud library, fall back to subprocess if not available
-        try:
-            from google.cloud import secretmanager
-            use_gcloud_library = True
-        except ImportError:
-            use_gcloud_library = False
-
-        if use_gcloud_library:
-            return self._get_secret_with_library(secret_name)
-        else:
-            return self._get_secret_with_cli(secret_name)
-
-    def _get_secret_with_library(self, gcp_secret: str) -> str:
-        """Get secret using Google Cloud Secret Manager library"""
-        print_info(f"Retrieving {gcp_secret} from Google Secrets using Gcloud library")
-        try:
-            from google.cloud import secretmanager
-            client = secretmanager.SecretManagerServiceClient()
-            name = f"projects/centrifuge-production-x/secrets/{gcp_secret}/versions/latest"
-            response = client.access_secret_version(request={"name": name})
-            secret_value = response.payload.data.decode("UTF-8")
-            # Clean the secret value to remove any newlines or extra whitespace
-            secret_value = secret_value.replace('\n', '').replace('\r', '').strip()
-            return secret_value
-        except Exception as e:
-            raise RuntimeError(f"Could not fetch {gcp_secret} from Secret Manager: {e}")
-
-    def _get_secret_with_cli(self, gcp_secret: str) -> str:
-        """Get secret using gcloud CLI"""
-        try:
-            subprocess.run(["gcloud", "auth", "list"],
-                         capture_output=True, check=True)
-            print_info(f"Loading {gcp_secret} from Google Secrets using gcloud CLI")
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            print_error("GCP CLI not configured or not available")
-            raise
-        try:
-            result = subprocess.run([
-                "gcloud", "secrets", "versions", "access", "latest",
-                "--project", "centrifuge-production-x",
-                "--secret", gcp_secret
-            ], capture_output=True, check=True, text=True)
-            # More robust cleaning of the output
-            secret_value = result.stdout.strip()
-            # Remove any remaining newlines, carriage returns, and extra whitespace
-            secret_value = secret_value.replace('\n', '').replace('\r', '').strip()
-            return secret_value
-        except subprocess.CalledProcessError:
-            raise RuntimeError(f"Could not fetch {gcp_secret} from Secret Manager")
