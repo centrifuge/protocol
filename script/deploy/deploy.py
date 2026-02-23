@@ -178,23 +178,23 @@ def main():
         verify_success = True
         deploy_success = True
 
-        if args.step == "deploy:full":
+        if args.step in ("deploy:protocol", "deploy:full"):
             print_section("Running Protocol Deployment")
             already_deployed = False
             if "--resume" in args.forge_args and not args.dry_run:
                 already_deployed = verifier.config_has_latest_contracts()
-            
+
             # Why did we need to build before running forge script?
             # if "--resume" not in args.forge_args and not already_deployed:
             #     runner.build_contracts()
 
             if already_deployed:
-                print_info("Protocol contracts deployed and verified. Running TestData...")
+                print_info("Protocol contracts already deployed and verified.")
                 deploy_success = True
             else:
                 print_subsection(f"Deploying core protocol contracts for {args.network}")
                 deploy_success = runner.run_deploy("LaunchDeployer")
-            
+
             # Skip verification in dry-run mode
             if not args.dry_run:
                 print_section(f"Verifying deployment for {args.network}")
@@ -220,8 +220,8 @@ def main():
                 print_info("Dry-run mode: skipping verification")
                 verify_success = True
 
-            # Auto-run TestData on testnets (skip in dry-run)
-            if verify_success and env_loader.is_testnet and not args.dry_run:
+            # Auto-run TestData on testnets (deploy:full only, skip in dry-run)
+            if args.step == "deploy:full" and verify_success and env_loader.is_testnet and not args.dry_run:
                 print_info("Auto-running TestData for testnet")
                 if "--resume" in args.forge_args and not already_deployed:
                     # User triggered command with --resume, probably because the protocol deployment failed
@@ -234,7 +234,7 @@ def main():
                 print_success("TestData deployment completed successfully")
                 # Restore forge args
                 args.forge_args = original_forge_args
-            elif args.dry_run:
+            elif args.step == "deploy:full" and args.dry_run:
                 print_info("Dry-run mode: skipping TestData deployment")
         
         elif args.step == "verify":
