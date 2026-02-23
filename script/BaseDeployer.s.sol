@@ -23,11 +23,7 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
         return keccak256(abi.encodePacked(version)) == keccak256(abi.encodePacked("3"));
     }
 
-    function _makeSalt(string memory contractName, string memory version, string memory suffix, address deployer)
-        private
-        pure
-        returns (bytes32)
-    {
+    function _makeSalt(string memory contractName, string memory version) private view returns (bytes32) {
         // Legacy contracts had a different salt computation (i.e: root in some chains)
         if (_isLegacyVersion(version)) {
             return keccak256(abi.encodePacked(contractName, keccak256(abi.encodePacked(version))));
@@ -45,7 +41,7 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
     ///      The version must match the one used at initial deployment to reuse existing addresses.
     ///      Use the suffix (instead of changing the version) to create isolated fresh deployments.
     function createSalt(string memory contractName, string memory contractVersion) internal returns (bytes32) {
-        bytes32 salt = _makeSalt(contractName, contractVersion, suffix, deployer);
+        bytes32 salt = _makeSalt(contractName, contractVersion);
 
         register(contractName, previewCreate3Address(contractName, contractVersion), contractVersion);
 
@@ -58,7 +54,7 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
         view
         returns (address)
     {
-        bytes32 salt = _makeSalt(contractName, contractVersion, suffix, deployer);
+        bytes32 salt = _makeSalt(contractName, contractVersion);
 
         // Legacy salts don't embed the deployer address, so CreateX guards them with keccak256(salt).
         return _isLegacyVersion(contractVersion)
