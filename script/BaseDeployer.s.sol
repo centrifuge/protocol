@@ -2,6 +2,8 @@
 pragma solidity 0.8.28;
 
 import {CreateXScript} from "./utils/CreateXScript.sol";
+import {CREATEX_ADDRESS} from "./utils/CreateX.d.sol";
+import {ICreateX} from "./utils/ICreateX.sol";
 import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 
 import "forge-std/Script.sol";
@@ -23,6 +25,13 @@ function makeSalt(string memory contractName, string memory version, string memo
     return bytes32(abi.encodePacked(bytes20(deployer), bytes1(0x0), bytes11(baseHash)));
 }
 
+/// @dev Legacy salts don't embed the deployer address, so CreateX guards them with keccak256(salt).
+///      New salts embed the deployer in the first 20 bytes and use keccak256(deployer || salt).
+function legacyCreate3Address(bytes32 salt) pure returns (address) {
+    bytes32 guardedSalt = keccak256(abi.encodePacked(salt));
+    return ICreateX(CREATEX_ADDRESS).computeCreate3Address(guardedSalt, CREATEX_ADDRESS);
+}
+
 contract BaseDeployer is Script, JsonRegistry, CreateXScript {
     string internal suffix;
     address public deployer;
@@ -39,7 +48,10 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
     ///      Use the SUFFIX envvar (instead of changing the version) to create isolated fresh deployments.
     function createSalt(string memory contractName, string memory contractVersion) internal returns (bytes32 salt) {
         salt = makeSalt(contractName, contractVersion, suffix, deployer);
-        register(contractName, computeCreate3Address(salt, deployer), contractVersion);
+        address predicted = _isLegacyVersion(contractVersion)
+            ? legacyCreate3Address(salt)
+            : computeCreate3Address(salt, deployer);
+        register(contractName, predicted, contractVersion);
     }
 
     function previewCreate3Address(string memory contractName, string memory contractVersion)
@@ -47,6 +59,13 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
         view
         returns (address)
     {
-        return computeCreate3Address(makeSalt(contractName, contractVersion, suffix, deployer), deployer);
+        bytes32 salt = makeSalt(contractName, contractVersion, suffix, deployer);
+        return _isLegacyVersion(contractVersion)
+            ? legacyCreate3Address(salt)
+            : computeCreate3Address(salt, deployer);
+    }
+
+    function _isLegacyVersion(string memory version) internal pure returns (bool) {
+        return keccak256(abi.encodePacked(version)) == keccak256(abi.encodePacked("3"));
     }
 }
