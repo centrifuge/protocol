@@ -51,8 +51,6 @@ contract PoolHooks is BaseDeployer {
         string memory network = vm.envString("NETWORK");
         string memory config = _loadConfig(network);
 
-        _init("", msg.sender);
-
         root = Root(_readContractAddress(config, "$.contracts.root"));
         spoke = Spoke(_readContractAddress(config, "$.contracts.spoke"));
         balanceSheet = BalanceSheet(_readContractAddress(config, "$.contracts.balanceSheet"));
@@ -72,6 +70,8 @@ contract PoolHooks is BaseDeployer {
         console.log("Deployer:", deployer);
 
         vm.startBroadcast();
+
+        _init("", msg.sender);
 
         TokenInstanceData[] memory tokens = _tokenInstances();
 

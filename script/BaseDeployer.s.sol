@@ -24,6 +24,8 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
     }
 
     function _makeSalt(string memory contractName, string memory version) private view returns (bytes32) {
+        require(deployer != address(0), "BaseDeployer::_init() must be called!");
+
         // Legacy contracts had a different salt computation (i.e: root in some chains)
         if (_isLegacyVersion(version)) {
             return keccak256(abi.encodePacked(contractName, keccak256(abi.encodePacked(version))));
