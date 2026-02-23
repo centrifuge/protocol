@@ -10,7 +10,10 @@ function makeSalt(string memory contractName, string memory version, string memo
     pure
     returns (bytes32)
 {
-    bytes32 baseHash = keccak256(abi.encodePacked(contractName, version, bytes(suffix).length > 0 ? "-" : "", suffix));
+    bytes32 versionHash = bytes(suffix).length > 0
+        ? bytes32(bytes(string.concat(version, "-", suffix)))
+        : bytes32(bytes(version));
+    bytes32 baseHash = keccak256(abi.encodePacked(contractName, versionHash));
 
     // NOTE: To avoid CreateX InvalidSalt issues, 21st byte needs to be 0
     return bytes32(abi.encodePacked(bytes20(deployer), bytes1(0x0), bytes11(baseHash)));
