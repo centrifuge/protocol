@@ -104,31 +104,26 @@ library ABICodecLib {
             return value.data;
         }
 
-        if (tree.t == Type.Composite) {
-            return _encodeComposite(value.children, tree.children);
-        }
-
-        // Dynamic: 0 children = bytes/string, 1 child = array
-        if (tree.children.length == 0) {
+        // Dynamic with 0 children = raw bytes/string
+        if (tree.t == Type.Dynamic && tree.children.length == 0) {
             uint256 padLen = BytesLib.align32(value.data.length) - value.data.length;
             return bytes.concat(abi.encode(value.data.length), value.data, new bytes(padLen));
         }
-        uint256 n = value.children.length;
-        Tree[] memory elemTrees = new Tree[](n);
-        for (uint256 i; i < n; i++) {
-            elemTrees[i] = tree.children[0];
-        }
-        return bytes.concat(abi.encode(n), _encodeComposite(value.children, elemTrees));
+
+        // Dynamic array or Composite — both have ordered children
+        bytes memory body = _encodeFields(value.children, tree);
+        return tree.t == Type.Dynamic ? bytes.concat(abi.encode(value.children.length), body) : body;
     }
 
-    /// @dev Encode tuple fields into head (static values / offsets) and tail (dynamic values).
-    function _encodeComposite(Value[] memory values, Tree[] memory children) private pure returns (bytes memory) {
-        uint256 n = children.length;
+    /// @dev Encode ordered fields into head (static values / offsets) and tail (dynamic values).
+    function _encodeFields(Value[] memory values, Tree memory tree) private pure returns (bytes memory) {
+        uint256 n = values.length;
 
         // Calculate head size
         uint256 headSize;
         for (uint256 i; i < n; i++) {
-            headSize += children[i].isDynamic() ? 32 : children[i].staticSize();
+            Tree memory child = _childTree(tree, i);
+            headSize += child.isDynamic() ? 32 : child.staticSize();
         }
 
         // Encode children and build head + tail in one pass
@@ -137,8 +132,9 @@ library ABICodecLib {
         uint256 tailOffset = headSize;
 
         for (uint256 i; i < n; i++) {
-            bytes memory part = encode(values[i], children[i]);
-            if (children[i].isDynamic()) {
+            Tree memory child = _childTree(tree, i);
+            bytes memory part = encode(values[i], child);
+            if (child.isDynamic()) {
                 head = bytes.concat(head, abi.encode(tailOffset));
                 tail = bytes.concat(tail, part);
                 tailOffset += part.length;
@@ -165,45 +161,46 @@ library ABICodecLib {
             return Value(BytesLib.slice(data, base, 32), new Value[](0));
         }
 
-        if (tree.t == Type.Composite) {
-            return Value("", _decodeComposite(data, base, tree.children));
-        }
-
-        // Dynamic: 0 children = bytes/string, 1 child = array
-        if (tree.children.length == 0) {
+        // Dynamic with 0 children = raw bytes/string
+        if (tree.t == Type.Dynamic && tree.children.length == 0) {
             uint256 len = BytesLib.toUint256(data, base);
             return Value(BytesLib.slice(data, base + 32, len), new Value[](0));
         }
-        uint256 arrLen = BytesLib.toUint256(data, base);
-        Tree[] memory elemTrees = new Tree[](arrLen);
-        for (uint256 i; i < arrLen; i++) {
-            elemTrees[i] = tree.children[0];
-        }
-        return Value("", _decodeComposite(data, base + 32, elemTrees));
+
+        // Dynamic array or Composite — both have ordered children
+        uint256 n = tree.t == Type.Dynamic ? BytesLib.toUint256(data, base) : tree.children.length;
+        uint256 fieldsBase = tree.t == Type.Dynamic ? base + 32 : base;
+        return Value("", _decodeFields(data, fieldsBase, tree, n));
     }
 
-    /// @dev Decode sequential tuple fields, resolving offsets for dynamic children.
-    function _decodeComposite(bytes memory data, uint256 base, Tree[] memory children)
+    /// @dev Decode sequential fields, resolving offsets for dynamic children.
+    function _decodeFields(bytes memory data, uint256 base, Tree memory tree, uint256 n)
         private
         pure
         returns (Value[] memory)
     {
-        uint256 n = children.length;
         Value[] memory values = new Value[](n);
         uint256 headPos = base;
 
         for (uint256 i; i < n; i++) {
-            if (children[i].isDynamic()) {
+            Tree memory child = _childTree(tree, i);
+            if (child.isDynamic()) {
                 uint256 offset = BytesLib.toUint256(data, headPos);
-                values[i] = _decodeAt(data, base + offset, children[i]);
+                values[i] = _decodeAt(data, base + offset, child);
                 headPos += 32;
             } else {
-                values[i] = _decodeAt(data, headPos, children[i]);
-                headPos += children[i].staticSize();
+                values[i] = _decodeAt(data, headPos, child);
+                headPos += child.staticSize();
             }
         }
 
         return values;
+    }
+
+    /// @dev Arrays (Dynamic with 1 child) repeat the same element type for every index.
+    ///      Composites (structs, tuples) have a distinct type per field, so each index maps to its own child tree.
+    function _childTree(Tree memory tree, uint256 i) private pure returns (Tree memory) {
+        return tree.t == Type.Dynamic ? tree.children[0] : tree.children[i];
     }
 
     //----------------------------------------------------------------------------------------------
