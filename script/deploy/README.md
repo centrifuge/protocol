@@ -48,14 +48,17 @@ ls env/*.json
 | Step | Description |
 |------|-------------|
 | **deploy:protocol** | Deploy core protocol contracts (LaunchDeployer), then verify on Etherscan. Use `--resume` to continue after a partial run. |
-| **deploy:full** | Full deployment: build, deploy protocol, verify, then deploy test data on testnets. Retries up to 3 times with `--resume` on failure. |
+| **deploy:full** | Full deployment: deploy protocol (LaunchDeployer), verify on Etherscan, then auto-deploy test data on testnets. Use `--resume` to continue after a partial run. |
 | **deploy:adapters** | Deploy only adapter contracts (OnlyAdapters script), then verify and merge into network config. |
 | **wire:adapters** | Wire adapters (WireAdapters script) for the given network. |
 | **deploy:test** | Deploy test data (TestData script) on testnets. |
 | **verify:protocol** | Verify core protocol contracts from the latest deployment (LaunchDeployer). |
 | **verify:contracts** | Verify and merge all contracts from the latest deployment (no specific script). |
-| **dump:config** | Write current network config to `.env` (RPC_URL, ETHERSCAN_API_KEY, PRIVATE_KEY for testnets, etc.). |
 | **release:sepolia** | Deploy to all Sepolia testnets (sepolia, base-sepolia, arbitrum-sepolia): protocol, verify, wire, test data. Requires `VERSION`. Resumable. |
+| **crosschaintest** | Full 4-step cross-chain adapter isolation test: register assets on spokes, hub setup, wait for relay, share class test. |
+| **crosschaintest:hub** | Hub-side only: pool creation + adapter config (sends cross-chain messages). |
+| **crosschaintest:spoke** | Spoke-side only: register assets on each spoke. |
+| **crosschaintest:test** | Repeatable share class test (phase 3 of cross-chain test). |
 
 ### Options
 
@@ -81,11 +84,14 @@ python3 script/deploy/deploy.py sepolia deploy:test --resume
 python3 script/deploy/deploy.py sepolia verify:protocol
 python3 script/deploy/deploy.py arbitrum-sepolia verify:contracts
 
-# Release to all Sepolia testnets
-VERSION=v3.1.4 python3 script/deploy/deploy.py release:sepolia
+# Release to all Sepolia testnets (network arg required but ignored; deploys to all three)
+VERSION=v3.1.4 python3 script/deploy/deploy.py sepolia release:sepolia
 
-# Dump config to .env for a network
-python3 script/deploy/deploy.py sepolia dump:config
+# Cross-chain adapter isolation test (full sequence)
+python3 script/deploy/deploy.py base-sepolia crosschaintest
+
+# Repeat only the share class test (phase 3)
+python3 script/deploy/deploy.py base-sepolia crosschaintest:test
 
 # Local Anvil (self-contained; no GCP secrets needed)
 python3 script/deploy/deploy.py anvil deploy:full
@@ -105,6 +111,14 @@ python3 script/deploy/update_network_config.py <network_name> [--script PATH]
 
 - `network_name` – e.g. `sepolia`, `plume`.
 - `--script` – Optional path to the deployment script (e.g. `script/LaunchDeployer.s.sol`) to derive block numbers from broadcast artifacts.
+
+### `load_secrets.py`
+
+Fetches all secrets from GCP Secret Manager and writes them to a `.env` file in the repo root. Preserves existing `.env` values (only fetches missing ones). No network argument required.
+
+```bash
+python3 script/deploy/load_secrets.py
+```
 
 ### `add-gcp-secret.sh`
 
@@ -165,9 +179,11 @@ After adding `plume_api` and `pharos_api`, deployments to networks that use Plum
 | Module | Role |
 |--------|------|
 | **load_config.py** | Loads `env/<network>.json`, builds RPC URL (including Alchemy/Plume/Pharos API keys from GCP), loads Etherscan key and testnet private key from GCP or `.env`. |
+| **secrets.py** | GCP Secret Manager integration: fetches secrets via Python library or `gcloud` CLI fallback, can dump all secrets to `.env`. |
 | **runner.py** | Runs Forge/Catapulta deploy scripts: build, auth (private key or Ledger), execution, and optional verification. |
 | **verifier.py** | Compares deployed contracts to `env/<network>.json`, updates config from broadcast artifacts, and verifies contracts on Etherscan. |
 | **release.py** | Orchestrates multi-network releases (e.g. `release:sepolia`): deploy, verify, wire, test data, with resumable state. |
+| **crosschain.py** | Orchestrates cross-chain adapter isolation testing (`TestAdapterIsolation.s.sol`): asset registration, hub setup, relay wait, share class test. |
 | **anvil.py** | Local Anvil deployment: starts Anvil, creates `env/anvil.json`, runs full protocol deploy and verification. |
 | **ledger.py** | Ledger device detection and account selection for signing. |
 | **formatter.py** | Terminal formatting and secret masking for deploy output. |
