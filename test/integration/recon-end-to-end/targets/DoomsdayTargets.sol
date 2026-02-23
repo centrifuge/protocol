@@ -240,31 +240,43 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         }
 
         // === VAULT OPERATION TESTS === //
-        // console2.log("SyncDepositManager:", vault.syncDepositManager());
+        // At zero price, max* functions should return 0 when no async claims are outstanding.
+        // During fuzzing, the fuzzer may reach intermediate states where hub_notifyRedeem/hub_notifyDeposit
+        // has set maxWithdraw/maxMint > 0 but the user hasn't claimed yet. In those states, max* functions
+        // legitimately return non-zero (claims use historical fulfillment price, not current zero price).
+        (uint128 pendingMaxMint, uint128 pendingMaxWithdraw,,,,,,,,) =
+            asyncRequestManager.investments(vault, _getActor());
+
         try vault.maxDeposit(_getActor()) returns (uint256 max) {
-            console2.log("DEBUG: maxDeposit returned:", max);
-            console2.log("DEBUG: pool per share:", D18.unwrap(spoke.pricePoolPerShare(poolId, scId, false)));
-            eq(max, 0, "maxDeposit handled zero price");
+            if (pendingMaxMint == 0) {
+                eq(max, 0, "maxDeposit should return 0 at zero price (no pending claims)");
+            }
         } catch {
             t(false, "maxDeposit should not revert at zero price");
         }
 
         try vault.maxMint(_getActor()) returns (uint256 max) {
-            eq(max, 0, "maxMint should return 0 at zero price");
+            if (pendingMaxMint == 0) {
+                eq(max, 0, "maxMint should return 0 at zero price (no pending claims)");
+            }
         } catch {
-            t(false, "maxMint shout not revert at zero price");
+            t(false, "maxMint should not revert at zero price");
         }
 
         try vault.maxRedeem(_getActor()) returns (uint256 max) {
-            eq(max, 0, "maxRedeem should return 0 at zero price");
+            if (pendingMaxWithdraw == 0) {
+                eq(max, 0, "maxRedeem should return 0 at zero price (no pending claims)");
+            }
         } catch {
-            t(false, "maxRedeem shout not revert at zero price");
+            t(false, "maxRedeem should not revert at zero price");
         }
 
         try vault.maxWithdraw(_getActor()) returns (uint256 max) {
-            eq(max, 0, "maxWithdraw should return 0 at zero price");
+            if (pendingMaxWithdraw == 0) {
+                eq(max, 0, "maxWithdraw should return 0 at zero price (no pending claims)");
+            }
         } catch {
-            t(false, "maxWithdraw shout not revert at zero price");
+            t(false, "maxWithdraw should not revert at zero price");
         }
 
         // === SHARE CLASS MANAGER OPERATIONS === //

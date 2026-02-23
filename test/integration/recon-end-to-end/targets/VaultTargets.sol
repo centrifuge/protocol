@@ -585,30 +585,42 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    function vault_withdraw(
-        uint256,
-        /* assets */
-        uint256 /* toEntropy */
-    )
-        public
-        updateGhostsWithType(OpType.REMOVE)
-    {
+    function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhostsWithType(OpType.REMOVE) {
         IBaseVault vault = _getVault();
         _captureShareQueueState(vault.poolId(), vault.scId());
 
-        // address to = _getRandomActor(toEntropy); // Unused
+        address to = _getRandomActor(toEntropy);
         address escrow = address(poolEscrowFactory.escrow(vault.poolId()));
 
         // Bal b4
+        uint256 tokenUserB4 = MockERC20(_getVault().asset()).balanceOf(_getActor());
         uint256 tokenEscrowB4 = MockERC20(_getVault().asset()).balanceOf(escrow);
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
+        uint256 shares = _getVault().withdraw(assets, to, _getActor());
 
+        // Bal after
+        uint256 tokenUserAfter = MockERC20(_getVault().asset()).balanceOf(_getActor());
         uint256 tokenEscrowAfter = MockERC20(_getVault().asset()).balanceOf(escrow);
 
         // E-1
-        sumOfClaimedRedemptions[_getVault().asset()] += (tokenEscrowB4 - tokenEscrowAfter);
+        sumOfClaimedRedemptions[_getVault().asset()] += assets;
+
+        // NOTE: Intentionally unchecked - underflow indicates property violation
+        unchecked {
+            uint256 deltaUser = tokenUserAfter - tokenUserB4;
+
+            // NOTE: FoT check - verifies actual transfer matches returned amount
+            eq(deltaUser, assets, "FoT-withdraw-1");
+
+            uint256 deltaEscrow = tokenEscrowB4 - tokenEscrowAfter;
+            emit DebugNumber(deltaUser);
+            emit DebugNumber(shares);
+            emit DebugNumber(deltaEscrow);
+
+            eq(deltaUser, deltaEscrow, "7540-withdraw-14");
+        }
     }
 
     /// Helpers

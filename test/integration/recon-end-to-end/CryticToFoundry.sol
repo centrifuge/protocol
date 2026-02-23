@@ -100,4 +100,64 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     // }
 
     /// === Categorized Issues === ///
+
+    // forge test --match-test test_property_sum_of_pending_redeem_request_0 -vvv
+    // NOTE: Acknowledged - property scope limitation (multi-vault scId ghost variable mismatch)
+    // sumOfClaimedRedemptions[asset] is GLOBAL but userRedemptionsProcessed[scId] is PER share class.
+    // Adding a new share class + vault after redemptions on the original breaks the cross-reference.
+    // See: .claude/docs/recon/13-acknowledged-risks.md
+    // function test_property_sum_of_pending_redeem_request_0() public {
+    //     shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+    //     shortcut_deposit_sync(414483, 1);
+
+    //     shortcut_redeem_and_claim_clamped(710866642581474852887358001780444458098994817, 5, 0);
+
+    //     spoke_addShareClass(0, 2);
+
+    //     spoke_deployVault_clamped();
+
+    //     property_sum_of_pending_redeem_request();
+    // }
+
+    // forge test --match-test test_property_authorizationBypass_1 -vvv
+    // NOTE: Acknowledged - Issue #10 variant (admin operational mistake via balanceSheet_unreserve)
+    // function test_property_authorizationBypass_1() public {
+    //     shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+    //     switch_actor(1);
+
+    //     balanceSheet_unreserve(0, 0);
+
+    //     property_authorizationBypass();
+    // }
+
+    // forge test --match-test test_doomsday_zeroPrice_noPanics_2 -vvv
+    function test_doomsday_zeroPrice_noPanics_2() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        shortcut_deposit_sync(1, 1);
+
+        shortcut_withdraw_and_claim_clamped(3485682314928408474477641317869550809542076924060871, 1001654, 0);
+
+        doomsday_zeroPrice_noPanics();
+    }
+
+    // forge test --match-test test_vault_maxMint_3 -vvv
+    function test_vault_maxMint_3() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        shortcut_mint_sync(1, 1);
+
+        vault_maxMint(0, 0, 1000016798233);
+    }
+
+    // forge test --match-test test_vault_maxDeposit_4 -vvv
+    function test_vault_maxDeposit_4() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        shortcut_deposit_sync(1, 1);
+
+        vault_maxDeposit(0, 0, 2);
+    }
 }
