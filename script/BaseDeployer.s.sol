@@ -1,33 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CreateXScript} from "./utils/CreateXScript.sol";
-import {CREATEX_ADDRESS} from "./utils/CreateX.d.sol";
 import {ICreateX} from "./utils/ICreateX.sol";
+import {CREATEX_ADDRESS} from "./utils/CreateX.d.sol";
+import {CreateXScript} from "./utils/CreateXScript.sol";
 import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 
 import "forge-std/Script.sol";
-
-function _isLegacyVersion(string memory version) pure returns (bool) {
-    return keccak256(abi.encodePacked(version)) == keccak256(abi.encodePacked("3"));
-}
-
-function makeSalt(string memory contractName, string memory version, string memory suffix, address deployer)
-    pure
-    returns (bytes32)
-{
-    // Legacy contracts had a different salt computation (i.e: root in some chains)
-    if (_isLegacyVersion(version)) {
-        return keccak256(abi.encodePacked(contractName, keccak256(abi.encodePacked(version))));
-    }
-
-    bytes32 versionHash =
-        bytes(suffix).length > 0 ? bytes32(bytes(string.concat(version, "-", suffix))) : bytes32(bytes(version));
-    bytes32 baseHash = keccak256(abi.encodePacked(contractName, versionHash));
-
-    // NOTE: To avoid CreateX InvalidSalt issues, 21st byte needs to be 0
-    return bytes32(abi.encodePacked(bytes20(deployer), bytes1(0x0), bytes11(baseHash)));
-}
 
 contract BaseDeployer is Script, JsonRegistry, CreateXScript {
     string internal suffix;
@@ -40,12 +19,36 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
         deployer = deployer_;
     }
 
+    function _isLegacyVersion(string memory version) private pure returns (bool) {
+        return keccak256(abi.encodePacked(version)) == keccak256(abi.encodePacked("3"));
+    }
+
+    function _makeSalt(string memory contractName, string memory version, string memory suffix, address deployer)
+        private
+        pure
+        returns (bytes32)
+    {
+        // Legacy contracts had a different salt computation (i.e: root in some chains)
+        if (_isLegacyVersion(version)) {
+            return keccak256(abi.encodePacked(contractName, keccak256(abi.encodePacked(version))));
+        }
+
+        bytes32 versionHash =
+            bytes(suffix).length > 0 ? bytes32(bytes(string.concat(version, "-", suffix))) : bytes32(bytes(version));
+        bytes32 baseHash = keccak256(abi.encodePacked(contractName, versionHash));
+
+        // NOTE: To avoid CreateX InvalidSalt issues, 21st byte needs to be 0
+        return bytes32(abi.encodePacked(bytes20(deployer), bytes1(0x0), bytes11(baseHash)));
+    }
+
     /// @dev Generates a deterministic salt and registers the predicted address.
     ///      The version must match the one used at initial deployment to reuse existing addresses.
     ///      Use the suffix (instead of changing the version) to create isolated fresh deployments.
     function createSalt(string memory contractName, string memory contractVersion) internal returns (bytes32) {
-        bytes32 salt = makeSalt(contractName, contractVersion, suffix, deployer);
+        bytes32 salt = _makeSalt(contractName, contractVersion, suffix, deployer);
+
         register(contractName, previewCreate3Address(contractName, contractVersion), contractVersion);
+
         return salt;
     }
 
@@ -55,7 +58,7 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
         view
         returns (address)
     {
-        bytes32 salt = makeSalt(contractName, contractVersion, suffix, deployer);
+        bytes32 salt = _makeSalt(contractName, contractVersion, suffix, deployer);
 
         // Legacy salts don't embed the deployer address, so CreateX guards them with keccak256(salt).
         return _isLegacyVersion(contractVersion)
