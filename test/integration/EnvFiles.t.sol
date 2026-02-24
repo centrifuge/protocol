@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {EnvConfig, Env, Connection} from "../../script/utils/EnvConfig.s.sol";
+import {EnvConnections, EnvConnectionsConfig} from "../../script/utils/EnvConnectionsConfig.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -104,13 +105,12 @@ contract EnvConnectionsTest is Test {
     }
 
     function _validateConnectionsHasDeployedAdapters(string memory environment) private view {
-        string memory json = vm.readFile(string.concat("env/connections/", environment, ".json"));
-        string[] memory networks = vm.parseJsonStringArray(json, ".networks");
+        EnvConnectionsConfig memory connConfig = EnvConnections.load(environment);
 
-        for (uint256 i; i < networks.length; i++) {
-            string memory networkName = networks[i];
+        for (uint256 i; i < connConfig.networks.length; i++) {
+            string memory networkName = connConfig.networks[i];
             EnvConfig memory chain1 = Env.load(networkName);
-            Connection[] memory connections = chain1.network.connections;
+            Connection[] memory connections = chain1.network.connections();
 
             for (uint256 j; j < connections.length; j++) {
                 EnvConfig memory chain2 = Env.load(connections[j].network);

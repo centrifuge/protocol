@@ -52,7 +52,7 @@ contract LaunchDeployer is FullDeployer {
                 chainlink: ChainlinkInput({
                     shouldDeploy: config.adapters.chainlink.deploy, ccipRouter: config.adapters.chainlink.ccipRouter
                 }),
-                connections: config.network.buildConnections()
+                connections: config.adapterConnections()
             })
         });
 
