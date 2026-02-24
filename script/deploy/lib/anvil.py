@@ -48,15 +48,10 @@ class AnvilManager:
         dst_cfg: Path = anvil_dir / f"{network_name}.json"
         shutil.copyfile(src_cfg, dst_cfg)
 
-        # Rewrite config for anvil: connectsTo and admin addresses
+        # Rewrite config for anvil: admin addresses
         try:
             with open(dst_cfg, "r") as f:
                 cfg = json.load(f)
-            connects = cfg.get("network", {}).get("connectsTo", [])
-            if isinstance(connects, list):
-                allowed = {"sepolia", "arbitrum-sepolia"}
-                filtered = [n for n in connects if n in allowed]
-                cfg["network"]["connectsTo"] = [f"anvil/{n}" for n in filtered]
             # Override admin addresses with anvil accounts so that
             # OpsGuardian/ProtocolGuardian accept calls from the anvil deployer
             cfg["network"]["protocolAdmin"] = self.protocol_admin_address
@@ -100,7 +95,6 @@ class AnvilManager:
                 "chainId": int(self.chain_id),
                 "centrifugeId": 9,  # Anvil's centrifuge ID
                 "environment": "testnet",
-                "connectsTo": [],
                 "protocolAdmin": self.protocol_admin_address,
                 "opsAdmin": self.ops_admin_address,
                 "baseRpcUrl": "http://localhost:8545"
@@ -152,8 +146,8 @@ class AnvilManager:
         api_key = get_secret("alchemy_api")
 
         # Create both anvil env files up front so Forge scripts can read them when
-        # loading hub config (e.g. LaunchDeployer reads connectsTo and calls Env.load
-        # for each spoke, which requires env/anvil/<spoke>.json to exist).
+        # loading hub config (e.g. LaunchDeployer calls Env.load for each spoke,
+        # which requires env/anvil/<spoke>.json to exist).
         sep_env = self._create_anvil_env("sepolia")
         arb_env = self._create_anvil_env("arbitrum-sepolia")
 

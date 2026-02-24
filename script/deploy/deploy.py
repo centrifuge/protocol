@@ -278,15 +278,7 @@ def main():
         
         elif args.step == "wire:all":
             print_section("Wiring adapters across connected networks")
-            # Load current network config
-            connects = []
-            try:
-                with open(env_loader.config_file, 'r') as f:
-                    cfg = json.load(f)
-                    connects = cfg.get('network', {}).get('connectsTo', []) or []
-            except Exception as e:
-                print_error(f"Failed to read network config: {e}")
-                sys.exit(1)
+            connects = env_loader.connected_networks
 
             all_networks = [args.network] + connects
             unique_networks = []

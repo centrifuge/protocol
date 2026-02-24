@@ -24,6 +24,7 @@ class EnvironmentLoader:
         self._etherscan_api_key = None
         self._protocol_admin_address = None
         self._ops_admin_address = None
+        self._connected_networks = None
         self.args = args
         print_subsection("Loading network configuration")
         self._load_config()
@@ -106,6 +107,18 @@ class EnvironmentLoader:
     def is_testnet(self) -> bool:
         return self.config["network"]["environment"] == "testnet"
 
+    @property
+    def environment(self) -> str:
+        return self.config["network"]["environment"]
+
+    @property
+    def connected_networks(self) -> list:
+        if self._connected_networks is None:
+            self._connected_networks = load_connected_networks(
+                self.network_name, self.environment, self.root_dir
+            )
+        return self._connected_networks
+
     # -- Internals -----------------------------------------------------------
 
     def _get_protocol_admin_address(self) -> str:
@@ -168,3 +181,57 @@ class EnvironmentLoader:
             return rpc_url
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             raise RuntimeError(f"RPC connection failed. URL: {rpc_url}.")
+
+
+def load_connected_networks(network_name: str, environment: str, root_dir: pathlib.Path) -> list:
+    """Load connected networks from env/connections/<environment>.json.
+
+    Mirrors the Solidity EnvConnections.connectionsWith logic:
+    - Resolves aliases and literal arrays in chain pairs
+    - Last matching rule wins
+    - Only returns networks where the final matching rule has non-empty adapters
+    """
+    conn_file = root_dir / "env" / "connections" / f"{environment}.json"
+    with open(conn_file, "r") as f:
+        conn_config = json.load(f)
+
+    aliases = conn_config.get("aliases", {})
+
+    def resolve_side(side):
+        if isinstance(side, list):
+            return side
+        if side in aliases:
+            return aliases[side]
+        return [side]
+
+    # Parse rules
+    rules = []
+    for conn in conn_config["connections"]:
+        chains = conn["chains"]
+        rules.append({
+            "left": resolve_side(chains[0]),
+            "right": resolve_side(chains[1]),
+            "adapters": conn["adapters"],
+        })
+
+    # Collect all unique networks from resolved rule sides
+    all_networks = []
+    for rule in rules:
+        for name in rule["left"] + rule["right"]:
+            if name not in all_networks:
+                all_networks.append(name)
+
+    # Find connections: last matching rule wins
+    connected = []
+    for other in all_networks:
+        if other == network_name:
+            continue
+        matched_adapters = None
+        for rule in rules:
+            left, right = rule["left"], rule["right"]
+            if (network_name in left and other in right) or (other in left and network_name in right):
+                matched_adapters = rule["adapters"]
+        if matched_adapters is not None and len(matched_adapters) > 0:
+            connected.append(other)
+
+    return connected
