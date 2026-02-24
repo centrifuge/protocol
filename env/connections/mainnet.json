@@ -6,7 +6,7 @@
                 "left": "ALL",
                 "right": "ALL"
             },
-            "adapters": ["axelar", "layerzero"],
+            "adapters": ["axelar", "layerZero"],
             "threshold": 2
         },
         {
@@ -14,7 +14,7 @@
                 "left": "pharos",
                 "right": "ALL"
             },
-            "adapters": ["layerzero"],
+            "adapters": ["layerZero"],
             "threshold": 1
         }
     ]

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {EnvConfig, Env} from "../../script/utils/EnvConfig.s.sol";
+import {EnvConfig, Env, Connection} from "../../script/utils/EnvConfig.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -60,6 +60,12 @@ contract EnvMainnetFilesTest is Test {
         assertEq(config.network.centrifugeId, 11);
         config.network.buildBatchLimits();
     }
+
+    function test_parsePharos() public view {
+        EnvConfig memory config = Env.load("pharos");
+        assertEq(config.network.centrifugeId, 12);
+        config.network.buildBatchLimits();
+    }
 }
 
 contract EnvTestnetFilesTest is Test {
@@ -87,3 +93,51 @@ contract EnvTestnetFilesTest is Test {
         config.network.buildBatchLimits();
     }
 }
+
+contract EnvConnectionsTest is Test {
+    function test_mainnetConnectionsRequireDeployedAdapters() public view {
+        _validateConnectionsHasDeployedAdapters("mainnet");
+    }
+
+    function test_testnetConnectionsRequireDeployedAdapters() public view {
+        _validateConnectionsHasDeployedAdapters("testnet");
+    }
+
+    function _validateConnectionsHasDeployedAdapters(string memory environment) private view {
+        string memory json = vm.readFile(string.concat("env/connections/", environment, ".json"));
+        string[] memory networks = vm.parseJsonStringArray(json, ".networks");
+
+        for (uint256 i; i < networks.length; i++) {
+            string memory networkName = networks[i];
+            EnvConfig memory chain1 = Env.load(networkName);
+            Connection[] memory connections = chain1.network.connections;
+
+            for (uint256 j; j < connections.length; j++) {
+                EnvConfig memory chain2 = Env.load(connections[j].network);
+                string memory pair = string.concat(networkName, " <-> ", connections[j].network);
+
+                if (connections[j].layerZero) {
+                    assertTrue(chain1.adapters.layerZero.deploy, _err(pair, "layerZero"));
+                    assertTrue(chain2.adapters.layerZero.deploy, _err(pair, "layerZero"));
+                }
+                if (connections[j].wormhole) {
+                    assertTrue(chain1.adapters.wormhole.deploy, _err(pair, "wormhole"));
+                    assertTrue(chain2.adapters.wormhole.deploy, _err(pair, "wormhole"));
+                }
+                if (connections[j].axelar) {
+                    assertTrue(chain1.adapters.axelar.deploy, _err(pair, "axelar"));
+                    assertTrue(chain2.adapters.axelar.deploy, _err(pair, "axelar"));
+                }
+                if (connections[j].chainlink) {
+                    assertTrue(chain1.adapters.layerZero.deploy, _err(pair, "layerZero"));
+                    assertTrue(chain2.adapters.layerZero.deploy, _err(pair, "layerZero"));
+                }
+            }
+        }
+    }
+
+    function _err(string memory pair, string memory adapter) private pure returns (string memory) {
+        return string.concat(pair, ": ", adapter, " not deployed in one of the chains");
+    }
+}
+

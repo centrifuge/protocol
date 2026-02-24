@@ -24,6 +24,7 @@ struct NetworkConfig {
     string baseRpcUrl;
     string verifier;
     string verifierUrl;
+    Connection[] connections;
 }
 
 struct LayerZeroConfig {
@@ -160,26 +161,7 @@ library Env {
         config.contracts = _parseContractsConfig(json);
     }
 
-    function loadConnections(string memory environment) internal view returns (ConnectionsConfig memory config) {
-        string memory json = vm.readFile(string.concat("env/connections/", environment, ".json"));
-        config.networks = vm.parseJsonStringArray(json, ".networks");
-
-        uint256 ruleCount;
-        while (vm.keyExistsJson(json, string.concat(".connections[", vm.toString(ruleCount), "]"))) {
-            ruleCount++;
-        }
-
-        config.rules = new ConnectionRuleJson[](ruleCount);
-        for (uint256 i; i < ruleCount; i++) {
-            string memory prefix = string.concat(".connections[", vm.toString(i), "]");
-            config.rules[i].left = vm.parseJsonString(json, string.concat(prefix, ".chains.left"));
-            config.rules[i].right = vm.parseJsonString(json, string.concat(prefix, ".chains.right"));
-            config.rules[i].adapters = vm.parseJsonStringArray(json, string.concat(prefix, ".adapters"));
-            config.rules[i].threshold = vm.parseJsonUint(json, string.concat(prefix, ".threshold"));
-        }
-    }
-
-    function _parseNetworkConfig(string memory json) private pure returns (NetworkConfig memory config) {
+    function _parseNetworkConfig(string memory json) private view returns (NetworkConfig memory config) {
         config.chainId = vm.parseJsonUint(json, ".network.chainId");
         config.environment = vm.parseJsonString(json, ".network.environment");
         config.centrifugeId = uint16(vm.parseJsonUint(json, ".network.centrifugeId"));
@@ -200,6 +182,8 @@ library Env {
         } catch {
             config.verifierUrl = string.concat("https://api.etherscan.io/v2/api?chainid=", vm.toString(config.chainId));
         }
+
+        config.connections = _loadConnections(config.environment).connectionsWith(config.name);
     }
 
     function _parseAdaptersConfig(string memory json) private pure returns (AdaptersConfig memory config) {
@@ -331,6 +315,25 @@ library Env {
             return address(0);
         }
     }
+
+    function _loadConnections(string memory environment) private view returns (ConnectionsConfig memory config) {
+        string memory json = vm.readFile(string.concat("env/connections/", environment, ".json"));
+        config.networks = vm.parseJsonStringArray(json, ".networks");
+
+        uint256 ruleCount;
+        while (vm.keyExistsJson(json, string.concat(".connections[", vm.toString(ruleCount), "]"))) {
+            ruleCount++;
+        }
+
+        config.rules = new ConnectionRuleJson[](ruleCount);
+        for (uint256 i; i < ruleCount; i++) {
+            string memory prefix = string.concat(".connections[", vm.toString(i), "]");
+            config.rules[i].left = vm.parseJsonString(json, string.concat(prefix, ".chains.left"));
+            config.rules[i].right = vm.parseJsonString(json, string.concat(prefix, ".chains.right"));
+            config.rules[i].adapters = vm.parseJsonStringArray(json, string.concat(prefix, ".adapters"));
+            config.rules[i].threshold = vm.parseJsonUint(json, string.concat(prefix, ".threshold"));
+        }
+    }
 }
 
 library EnvConfigLib {
@@ -345,8 +348,13 @@ library EnvConfigLib {
     {
         if (!config.adapters.layerZero.deploy) return params;
 
-        ConnectionsConfig memory connConfig = Env.loadConnections(config.network.environment);
-        Connection[] memory connections = connConfig.connectionsWith(config.network.name);
+        // Count LZ-enabled connections
+        uint256 count;
+        for (uint256 i; i < config.network.connections.length; i++) {
+            if (config.network.connections[i].layerZero) count++;
+        }
+
+        params = new SetConfigParam[](count);
 
         // UlnConfig is the same for all connections - only eid differs
         uint32 ULN_CONFIG_TYPE = 2;
@@ -361,8 +369,11 @@ library EnvConfigLib {
             })
         );
 
-        for (uint256 i; i < connections.length; i++) {
-            EnvConfig memory remoteConfig = Env.load(connections[i].network);
+        uint256 idx;
+        for (uint256 i; i < config.network.connections.length; i++) {
+            if (!config.network.connections[i].layerZero) continue;
+
+            EnvConfig memory remoteConfig = Env.load(config.network.connections[i].network);
 
             require(
                 config.adapters.layerZero.dvns.length == remoteConfig.adapters.layerZero.dvns.length,
@@ -373,18 +384,15 @@ library EnvConfigLib {
                 "blockConfirmations mismatch between local and remote config"
             );
 
-            params[i] = SetConfigParam(remoteConfig.adapters.layerZero.layerZeroEid, ULN_CONFIG_TYPE, encodedUln);
+            params[idx++] = SetConfigParam(remoteConfig.adapters.layerZero.layerZeroEid, ULN_CONFIG_TYPE, encodedUln);
         }
     }
 }
 
 library NetworkConfigLib {
     function buildBatchLimits(NetworkConfig memory config) internal view returns (uint8[32] memory batchLimits) {
-        ConnectionsConfig memory connConfig = Env.loadConnections(config.environment);
-        Connection[] memory connections = connConfig.connectionsWith(config.name);
-
-        for (uint256 i; i < connections.length; i++) {
-            EnvConfig memory remoteConfig = Env.load(connections[i].network);
+        for (uint256 i; i < config.connections.length; i++) {
+            EnvConfig memory remoteConfig = Env.load(config.connections[i].network);
 
             uint16 centrifugeId = remoteConfig.network.centrifugeId;
             require(centrifugeId <= 31, "centrifugeId value higher than 31");
@@ -398,21 +406,18 @@ library NetworkConfigLib {
         view
         returns (AdapterConnections[] memory adapterConnections)
     {
-        ConnectionsConfig memory connConfig = Env.loadConnections(config.environment);
-        Connection[] memory connections = connConfig.connectionsWith(config.name);
+        adapterConnections = new AdapterConnections[](config.connections.length);
 
-        adapterConnections = new AdapterConnections[](connections.length);
-
-        for (uint256 i; i < connections.length; i++) {
-            EnvConfig memory remoteConfig = Env.load(connections[i].network);
+        for (uint256 i; i < config.connections.length; i++) {
+            EnvConfig memory remoteConfig = Env.load(config.connections[i].network);
 
             adapterConnections[i] = AdapterConnections({
                 centrifugeId: remoteConfig.network.centrifugeId,
-                layerZeroId: connections[i].layerZero ? remoteConfig.adapters.layerZero.layerZeroEid : 0,
-                wormholeId: connections[i].wormhole ? remoteConfig.adapters.wormhole.wormholeId : 0,
-                axelarId: connections[i].axelar ? remoteConfig.adapters.axelar.axelarId : "",
-                chainlinkId: connections[i].chainlink ? remoteConfig.adapters.chainlink.chainSelector : 0,
-                threshold: connections[i].threshold
+                layerZeroId: config.connections[i].layerZero ? remoteConfig.adapters.layerZero.layerZeroEid : 0,
+                wormholeId: config.connections[i].wormhole ? remoteConfig.adapters.wormhole.wormholeId : 0,
+                axelarId: config.connections[i].axelar ? remoteConfig.adapters.axelar.axelarId : "",
+                chainlinkId: config.connections[i].chainlink ? remoteConfig.adapters.chainlink.chainSelector : 0,
+                threshold: config.connections[i].threshold
             });
         }
     }
@@ -464,7 +469,64 @@ library ConnectionsConfigLib {
         pure
         returns (Connection[] memory connections)
     {
-        // TODO
+        // Count matches first
+        uint256 count;
+        for (uint256 i; i < config.networks.length; i++) {
+            if (_strEq(config.networks[i], network)) continue;
+            (string[] memory adapters,) = _findMatchingRule(config.rules, network, config.networks[i]);
+            if (adapters.length > 0) count++;
+        }
+
+        connections = new Connection[](count);
+        uint256 idx;
+        for (uint256 i; i < config.networks.length; i++) {
+            if (_strEq(config.networks[i], network)) continue;
+            (string[] memory adapters, uint256 threshold) = _findMatchingRule(config.rules, network, config.networks[i]);
+            if (adapters.length > 0) {
+                connections[idx++] = Connection({
+                    network: config.networks[i],
+                    layerZero: _includesAdapter(adapters, "layerZero"),
+                    wormhole: _includesAdapter(adapters, "wormhole"),
+                    axelar: _includesAdapter(adapters, "axelar"),
+                    chainlink: _includesAdapter(adapters, "chainlink"),
+                    threshold: uint8(threshold)
+                });
+            }
+        }
+    }
+
+    /// @dev Returns the adapters and threshold from the last matching rule (last match wins).
+    function _findMatchingRule(ConnectionRuleJson[] memory rules, string memory a, string memory b)
+        private
+        pure
+        returns (string[] memory adapters, uint256 threshold)
+    {
+        for (uint256 i; i < rules.length; i++) {
+            if (_matches(rules[i], a, b)) {
+                adapters = rules[i].adapters;
+                threshold = rules[i].threshold;
+            }
+        }
+    }
+
+    function _matches(ConnectionRuleJson memory rule, string memory a, string memory b) private pure returns (bool) {
+        return (_matchesSide(rule.left, a) && _matchesSide(rule.right, b))
+            || (_matchesSide(rule.left, b) && _matchesSide(rule.right, a));
+    }
+
+    function _matchesSide(string memory side, string memory name) private pure returns (bool) {
+        return _strEq(side, "ALL") || _strEq(side, name);
+    }
+
+    function _includesAdapter(string[] memory adapters, string memory name) private pure returns (bool) {
+        for (uint256 i; i < adapters.length; i++) {
+            if (_strEq(adapters[i], name)) return true;
+        }
+        return false;
+    }
+
+    function _strEq(string memory a, string memory b) private pure returns (bool) {
+        return keccak256(bytes(a)) == keccak256(bytes(b));
     }
 }
 
