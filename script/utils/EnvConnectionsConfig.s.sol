@@ -32,6 +32,7 @@ using EnvConnectionsConfigLib for EnvConnectionsConfig global;
 library EnvConnections {
     function load(string memory environment) public view returns (EnvConnectionsConfig memory config) {
         string memory json = vm.readFile(string.concat("env/connections/", environment, ".json"));
+        config.networks = _collectNetworks(json);
 
         uint256 ruleCount;
         while (vm.keyExistsJson(json, string.concat(".connections[", vm.toString(ruleCount), "]"))) {
@@ -46,24 +47,35 @@ library EnvConnections {
             config.rules[i].adapters = vm.parseJsonStringArray(json, string.concat(prefix, ".adapters"));
             config.rules[i].threshold = vm.parseJsonUint(json, string.concat(prefix, ".threshold"));
         }
-
-        config.networks = _collectNetworks(config.rules);
     }
 
-    /// @dev Collects the unique set of network names from all resolved rule sides.
-    function _collectNetworks(ConnectionRuleJson[] memory rules) private pure returns (string[] memory) {
-        // Upper bound on total names
+    /// @dev Collects the unique set of networks from all alias values.
+    function _collectNetworks(string memory json) private pure returns (string[] memory) {
+        string[] memory aliasKeys = vm.parseJsonKeys(json, ".aliases");
+
+        // Upper bound: sum of all alias array lengths
         uint256 maxNames;
-        for (uint256 i; i < rules.length; i++) {
-            maxNames += rules[i].left.length + rules[i].right.length;
+        string[] memory aliasPath = new string[](aliasKeys.length);
+        for (uint256 i; i < aliasKeys.length; i++) {
+            aliasPath[i] = string.concat(".aliases.", aliasKeys[i]);
+            string[] memory values = vm.parseJsonStringArray(json, aliasPath[i]);
+            maxNames += values.length;
         }
 
         string[] memory buf = new string[](maxNames);
         uint256 count;
-
-        for (uint256 i; i < rules.length; i++) {
-            count = _addUnique(buf, count, rules[i].left);
-            count = _addUnique(buf, count, rules[i].right);
+        for (uint256 i; i < aliasKeys.length; i++) {
+            string[] memory values = vm.parseJsonStringArray(json, aliasPath[i]);
+            for (uint256 j; j < values.length; j++) {
+                bool found;
+                for (uint256 k; k < count; k++) {
+                    if (keccak256(bytes(buf[k])) == keccak256(bytes(values[j]))) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) buf[count++] = values[j];
+            }
         }
 
         // Trim to actual size
@@ -72,26 +84,6 @@ library EnvConnections {
             result[i] = buf[i];
         }
         return result;
-    }
-
-    function _addUnique(string[] memory buf, uint256 count, string[] memory names)
-        private
-        pure
-        returns (uint256 newCount)
-    {
-        newCount = count;
-        for (uint256 i; i < names.length; i++) {
-            bool found;
-            for (uint256 j; j < newCount; j++) {
-                if (keccak256(bytes(buf[j])) == keccak256(bytes(names[i]))) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                buf[newCount++] = names[i];
-            }
-        }
     }
 
     /// @dev Parses a side value that can be either a string (alias or literal) or an array of strings.
