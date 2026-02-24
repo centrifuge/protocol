@@ -153,10 +153,11 @@ library EnvConnectionsConfigLib {
         pure
         returns (string[] memory adapters, uint256 threshold)
     {
-        for (uint256 i; i < rules.length; i++) {
-            if (_matches(rules[i], a, b)) {
-                adapters = rules[i].adapters;
-                threshold = rules[i].threshold;
+        for (uint256 i = rules.length; i > 0; i--) {
+            if (_matches(rules[i - 1], a, b)) {
+                adapters = rules[i - 1].adapters;
+                threshold = rules[i - 1].threshold;
+                return (adapters, threshold);
             }
         }
     }

@@ -226,12 +226,11 @@ def load_connected_networks(network_name: str, environment: str, root_dir: pathl
     for other in all_networks:
         if other == network_name:
             continue
-        matched_adapters = None
-        for rule in rules:
+        for rule in reversed(rules):
             left, right = rule["left"], rule["right"]
             if (network_name in left and other in right) or (other in left and network_name in right):
-                matched_adapters = rule["adapters"]
-        if matched_adapters is not None and len(matched_adapters) > 0:
-            connected.append(other)
+                if len(rule["adapters"]) > 0:
+                    connected.append(other)
+                break
 
     return connected
