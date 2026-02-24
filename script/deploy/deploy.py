@@ -86,7 +86,7 @@ def validate_arguments(args, root_dir: pathlib.Path):
         print_error("Deployment step is required.")
         print_info("Run python3 deploy.py --help for available steps")
         raise SystemExit(1)
-    
+
     if not args.network:
         print_error("Network name is required")
         print_info("Available networks:")
@@ -96,7 +96,7 @@ def validate_arguments(args, root_dir: pathlib.Path):
                 if config_file.name != "latest":
                     print_info(f"  - {config_file.stem}")
         raise SystemExit(1)
-    
+
     network_config = root_dir / "env" / f"{args.network}.json"
     if not network_config.exists():
         print_error(f"Network config file not found: {network_config}")
@@ -112,7 +112,7 @@ def validate_arguments(args, root_dir: pathlib.Path):
                 print_info("  - anvil (local)")
         raise SystemExit(1)
 
-    # Inform about PREFIX usage for deployment steps
+    # Inform about SUFFIX usage for deployment steps
     if args.step.startswith("deploy:") and not args.dry_run:
         if os.environ.get("SUFFIX"):
             print_info(f"Using SUFFIX='{os.environ.get('SUFFIX')}' for isolated deployment addresses")
@@ -187,7 +187,7 @@ def main():
             already_deployed = False
             if "--resume" in args.forge_args and not args.dry_run:
                 already_deployed = verifier.config_has_latest_contracts()
-            
+
             # Why did we need to build before running forge script?
             # if "--resume" not in args.forge_args and not already_deployed:
             #     runner.build_contracts()
@@ -198,7 +198,7 @@ def main():
             else:
                 print_subsection(f"Deploying core protocol contracts for {args.network}")
                 deploy_success = runner.run_deploy("LaunchDeployer")
-            
+
             # Skip verification in dry-run mode
             if not args.dry_run:
                 print_section(f"Verifying deployment for {args.network}")
@@ -240,7 +240,7 @@ def main():
                 args.forge_args = original_forge_args
             elif args.dry_run:
                 print_info("Dry-run mode: skipping TestData deployment")
-        
+
         elif args.step == "verify":
             print_section(f"Verifying core protocol contracts for {args.network}")
             verify_success = verifier.verify_contracts("LaunchDeployer")
@@ -279,7 +279,7 @@ def main():
         elif args.step == "wire":
             print_step(f"Wiring adapters for {args.network}")
             deploy_success = runner.run_deploy("WireAdapters")
-        
+
         elif args.step == "wire:all":
             print_section("Wiring adapters across connected networks")
             # Load current network config
@@ -343,7 +343,7 @@ def main():
             crosschain_manager.run_share_class_test()
             sys.exit(0)
             print_success("Cross-chain spoke tests completed")
-            sys.exit(0)            
+            sys.exit(0)
 
         # Handle errors
         if not verify_success:
