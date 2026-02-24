@@ -1,0 +1,21 @@
+{
+    "networks": ["ethereum", "base", "arbitrum", "plume", "avalanche", "bnb-smart-chain", "hyper-evm", "optimism", "monad", "pharos"],
+    "connections": [
+        {
+            "chains": {
+                "left": "ALL",
+                "right": "ALL"
+            },
+            "adapters": ["axelar", "layerzero"],
+            "threshold": 2
+        },
+        {
+            "chains": {
+                "left": "pharos",
+                "right": "ALL"
+            },
+            "adapters": ["layerzero"],
+            "threshold": 1
+        }
+    ]
+}

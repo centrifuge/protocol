@@ -3,22 +3,12 @@
     "chainId": 43114,
     "environment": "mainnet",
     "centrifugeId": 5,
-    "connectsTo": [
-      "ethereum",
-      "base",
-      "arbitrum",
-      "plume",
-      "bnb-smart-chain",
-      "hyper-evm",
-      "optimism"
-    ],
     "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "batchLimit": 10,
     "baseRpcUrl": "https://avax-mainnet.g.alchemy.com/v2/"
   },
   "adapters": {
-    "threshold": 1,
     "layerZero": {
       "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
       "layerZeroEid": 30106,

@@ -1,0 +1,13 @@
+{
+    "networks": ["sepolia", "arbitrum-sepolia", "base-sepolia"],
+    "connections": [
+        {
+            "chains": {
+                "left": "ALL",
+                "right": "ALL"
+            },
+            "adapters": ["axelar", "wormhole", "layerZero", "chainlink"],
+            "threshold": 1
+        }
+    ]
+}

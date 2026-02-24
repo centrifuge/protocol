@@ -3,22 +3,12 @@
     "chainId": 999,
     "environment": "mainnet",
     "centrifugeId": 9,
-    "connectsTo": [
-      "ethereum",
-      "base",
-      "arbitrum",
-      "avalanche",
-      "bnb-smart-chain",
-      "plume",
-      "optimism"
-    ],
     "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "batchLimit": 15,
     "baseRpcUrl": "https://hyperliquid-mainnet.g.alchemy.com/v2/"
   },
   "adapters": {
-    "threshold": 1,
     "layerZero": {
       "endpoint": "0x3a73033C0B1407574C76BDbAC67F126F6b4a9Aa9",
       "layerZeroEid": 30367,

@@ -3,15 +3,6 @@
     "chainId": 98866,
     "environment": "mainnet",
     "centrifugeId": 4,
-    "connectsTo": [
-      "ethereum",
-      "base",
-      "arbitrum",
-      "avalanche",
-      "bnb-smart-chain",
-      "hyper-evm",
-      "optimism"
-    ],
     "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "batchLimit": 15,
@@ -20,7 +11,6 @@
     "verifierUrl": "https://explorer.plume.org/api/"
   },
   "adapters": {
-    "threshold": 1,
     "layerZero": {
       "endpoint": "0xC1b15d3B262bEeC0e3565C11C9e0F6134BdaCB36",
       "layerZeroEid": 30370,

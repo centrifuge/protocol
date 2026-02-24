@@ -27,6 +27,7 @@ contract LaunchDeployer is FullDeployer {
         startDeploymentOutput();
 
         EnvConfig memory config = Env.load(prettyEnvString("NETWORK"));
+
         DeployerInput memory input = DeployerInput({
             centrifugeId: config.network.centrifugeId,
             version: prettyEnvString("VERSION").toBytes32(),

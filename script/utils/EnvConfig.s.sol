@@ -16,8 +16,8 @@ library GraphQLConstants {
 struct NetworkConfig {
     uint256 chainId;
     string environment;
+    string name;
     uint16 centrifugeId;
-    string[] connectsTo;
     address protocolAdmin;
     address opsAdmin;
     uint8 batchLimit;
@@ -54,7 +54,6 @@ struct ChainlinkConfig {
 }
 
 struct AdaptersConfig {
-    uint8 threshold;
     LayerZeroConfig layerZero;
     WormholeConfig wormhole;
     AxelarConfig axelar;
@@ -125,8 +124,30 @@ struct EnvConfig {
     ContractsConfig contracts;
 }
 
+struct Connection {
+    string network;
+    bool layerZero;
+    bool wormhole;
+    bool axelar;
+    bool chainlink;
+    uint8 threshold;
+}
+
+struct ConnectionRuleJson {
+    string left;
+    string right;
+    string[] adapters;
+    uint256 threshold;
+}
+
+struct ConnectionsConfig {
+    string[] networks;
+    ConnectionRuleJson[] rules;
+}
+
 using NetworkConfigLib for NetworkConfig global;
 using EnvConfigLib for EnvConfig global;
+using ConnectionsConfigLib for ConnectionsConfig global;
 
 /// @notice loads an env/<network>.json file
 library Env {
@@ -134,8 +155,28 @@ library Env {
         string memory json = vm.readFile(string.concat("env/", network, ".json"));
 
         config.network = _parseNetworkConfig(json);
+        config.network.name = network;
         config.adapters = _parseAdaptersConfig(json);
         config.contracts = _parseContractsConfig(json);
+    }
+
+    function loadConnections(string memory environment) internal view returns (ConnectionsConfig memory config) {
+        string memory json = vm.readFile(string.concat("env/connections/", environment, ".json"));
+        config.networks = vm.parseJsonStringArray(json, ".networks");
+
+        uint256 ruleCount;
+        while (vm.keyExistsJson(json, string.concat(".connections[", vm.toString(ruleCount), "]"))) {
+            ruleCount++;
+        }
+
+        config.rules = new ConnectionRuleJson[](ruleCount);
+        for (uint256 i; i < ruleCount; i++) {
+            string memory prefix = string.concat(".connections[", vm.toString(i), "]");
+            config.rules[i].left = vm.parseJsonString(json, string.concat(prefix, ".chains.left"));
+            config.rules[i].right = vm.parseJsonString(json, string.concat(prefix, ".chains.right"));
+            config.rules[i].adapters = vm.parseJsonStringArray(json, string.concat(prefix, ".adapters"));
+            config.rules[i].threshold = vm.parseJsonUint(json, string.concat(prefix, ".threshold"));
+        }
     }
 
     function _parseNetworkConfig(string memory json) private pure returns (NetworkConfig memory config) {
@@ -150,10 +191,6 @@ library Env {
             config.batchLimit = uint8(val);
         } catch {}
 
-        try vm.parseJsonStringArray(json, ".network.connectsTo") returns (string[] memory arr) {
-            config.connectsTo = arr;
-        } catch {}
-
         try vm.parseJsonString(json, ".network.verifier") returns (string memory val) {
             config.verifier = val;
         } catch {}
@@ -166,10 +203,6 @@ library Env {
     }
 
     function _parseAdaptersConfig(string memory json) private pure returns (AdaptersConfig memory config) {
-        try vm.parseJsonUint(json, ".adapters.threshold") returns (uint256 val) {
-            config.threshold = uint8(val);
-        } catch {}
-
         try vm.parseJsonBool(json, ".adapters.layerZero.deploy") returns (bool val) {
             config.layerZero.deploy = val;
         } catch {}
@@ -312,8 +345,8 @@ library EnvConfigLib {
     {
         if (!config.adapters.layerZero.deploy) return params;
 
-        string[] memory connectsTo = config.network.connectsTo;
-        params = new SetConfigParam[](connectsTo.length);
+        ConnectionsConfig memory connConfig = Env.loadConnections(config.network.environment);
+        Connection[] memory connections = connConfig.connectionsWith(config.network.name);
 
         // UlnConfig is the same for all connections - only eid differs
         uint32 ULN_CONFIG_TYPE = 2;
@@ -328,8 +361,8 @@ library EnvConfigLib {
             })
         );
 
-        for (uint256 i; i < connectsTo.length; i++) {
-            EnvConfig memory remoteConfig = Env.load(connectsTo[i]);
+        for (uint256 i; i < connections.length; i++) {
+            EnvConfig memory remoteConfig = Env.load(connections[i].network);
 
             require(
                 config.adapters.layerZero.dvns.length == remoteConfig.adapters.layerZero.dvns.length,
@@ -347,10 +380,11 @@ library EnvConfigLib {
 
 library NetworkConfigLib {
     function buildBatchLimits(NetworkConfig memory config) internal view returns (uint8[32] memory batchLimits) {
-        string[] memory connectsTo = config.connectsTo;
+        ConnectionsConfig memory connConfig = Env.loadConnections(config.environment);
+        Connection[] memory connections = connConfig.connectionsWith(config.name);
 
-        for (uint256 i; i < connectsTo.length; i++) {
-            EnvConfig memory remoteConfig = Env.load(connectsTo[i]);
+        for (uint256 i; i < connections.length; i++) {
+            EnvConfig memory remoteConfig = Env.load(connections[i].network);
 
             uint16 centrifugeId = remoteConfig.network.centrifugeId;
             require(centrifugeId <= 31, "centrifugeId value higher than 31");
@@ -362,21 +396,23 @@ library NetworkConfigLib {
     function buildConnections(NetworkConfig memory config)
         internal
         view
-        returns (AdapterConnections[] memory connections)
+        returns (AdapterConnections[] memory adapterConnections)
     {
-        string[] memory connectsTo = config.connectsTo;
-        connections = new AdapterConnections[](connectsTo.length);
+        ConnectionsConfig memory connConfig = Env.loadConnections(config.environment);
+        Connection[] memory connections = connConfig.connectionsWith(config.name);
 
-        for (uint256 i; i < connectsTo.length; i++) {
-            EnvConfig memory remoteConfig = Env.load(connectsTo[i]);
+        adapterConnections = new AdapterConnections[](connections.length);
 
-            connections[i] = AdapterConnections({
+        for (uint256 i; i < connections.length; i++) {
+            EnvConfig memory remoteConfig = Env.load(connections[i].network);
+
+            adapterConnections[i] = AdapterConnections({
                 centrifugeId: remoteConfig.network.centrifugeId,
-                layerZeroId: remoteConfig.adapters.layerZero.layerZeroEid,
-                wormholeId: remoteConfig.adapters.wormhole.wormholeId,
-                axelarId: remoteConfig.adapters.axelar.axelarId,
-                chainlinkId: remoteConfig.adapters.chainlink.chainSelector,
-                threshold: remoteConfig.adapters.threshold
+                layerZeroId: connections[i].layerZero ? remoteConfig.adapters.layerZero.layerZeroEid : 0,
+                wormholeId: connections[i].wormhole ? remoteConfig.adapters.wormhole.wormholeId : 0,
+                axelarId: connections[i].axelar ? remoteConfig.adapters.axelar.axelarId : "",
+                chainlinkId: connections[i].chainlink ? remoteConfig.adapters.chainlink.chainSelector : 0,
+                threshold: connections[i].threshold
             });
         }
     }
@@ -419,6 +455,16 @@ library NetworkConfigLib {
             if (found) return i;
         }
         return type(uint256).max;
+    }
+}
+
+library ConnectionsConfigLib {
+    function connectionsWith(ConnectionsConfig memory config, string memory network)
+        internal
+        pure
+        returns (Connection[] memory connections)
+    {
+        // TODO
     }
 }
 

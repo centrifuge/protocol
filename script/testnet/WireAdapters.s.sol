@@ -7,6 +7,7 @@ import {IOpsGuardian} from "../../src/admin/interfaces/IOpsGuardian.sol";
 
 import {console} from "forge-std/console.sol";
 
+import {Connections} from "../utils/EnvConfig.s.sol";
 import {JsonRegistry} from "../utils/JsonRegistry.s.sol";
 
 /// @title WireAdapters
@@ -105,7 +106,8 @@ contract WireAdapters is JsonRegistry {
         sourceAxelarAddr = _maybeAddAdapter(sourceConfig, "AxelarAdapter", sourceNetwork);
 
         // Get list of destination networks to connect to
-        string[] memory connectsTo = vm.parseJsonStringArray(sourceConfig, "$.network.connectsTo");
+        string memory environment = vm.parseJsonString(sourceConfig, "$.network.environment");
+        string[] memory connectsTo = Connections.deriveConnectsTo(environment, sourceNetwork);
 
         IOpsGuardian opsGuardian = IOpsGuardian(_readContractAddress(sourceConfig, "$.contracts.opsGuardian"));
 
