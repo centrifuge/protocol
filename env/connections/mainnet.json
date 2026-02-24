@@ -1,19 +1,15 @@
 {
-    "networks": ["ethereum", "base", "arbitrum", "plume", "avalanche", "bnb-smart-chain", "hyper-evm", "optimism", "monad", "pharos"],
+    "aliases": {
+        "ALL": ["ethereum", "base", "arbitrum", "plume", "avalanche", "bnb-smart-chain", "hyper-evm", "optimism", "monad", "pharos"]
+    },
     "connections": [
         {
-            "chains": {
-                "left": "ALL",
-                "right": "ALL"
-            },
+            "chains": ["ALL", "ALL"],
             "adapters": ["axelar", "layerZero"],
             "threshold": 2
         },
         {
-            "chains": {
-                "left": "pharos",
-                "right": "ALL"
-            },
+            "chains": [["pharos"], "ALL"],
             "adapters": ["layerZero"],
             "threshold": 1
         }

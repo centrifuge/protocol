@@ -1,13 +1,17 @@
 {
-    "networks": ["sepolia", "arbitrum-sepolia", "base-sepolia"],
+    "aliases": {
+        "ALL": ["sepolia", "arbitrum-sepolia", "base-sepolia", "hyper-evm-testnet"]
+    },
     "connections": [
         {
-            "chains": {
-                "left": "ALL",
-                "right": "ALL"
-            },
+            "chains": ["ALL", "ALL"],
             "adapters": ["axelar", "wormhole", "layerZero", "chainlink"],
             "threshold": 1
+        },
+        {
+            "chains": [["hyper-evm-testnet"], "ALL"],
+            "adapters": [],
+            "threshold": 0
         }
     ]
 }
