@@ -31,8 +31,10 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
             return keccak256(abi.encodePacked(contractName, keccak256(abi.encodePacked(version))));
         }
 
-        bytes32 versionHash =
-            bytes(suffix).length > 0 ? bytes32(bytes(string.concat(version, "-", suffix))) : bytes32(bytes(version));
+        bytes memory compoundedVersion = bytes(string.concat(version, "-", suffix));
+        require(compoundedVersion.length <= 32, "Version + suffix is too large");
+
+        bytes32 versionHash = bytes(suffix).length > 0 ? bytes32(compoundedVersion) : bytes32(bytes(version));
         bytes32 baseHash = keccak256(abi.encodePacked(contractName, versionHash));
 
         // NOTE: To avoid CreateX InvalidSalt issues, 21st byte needs to be 0
