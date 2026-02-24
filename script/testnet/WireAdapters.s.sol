@@ -32,46 +32,58 @@ contract WireAdapters is Script {
         vm.startBroadcast();
 
         for (uint256 i = 0; i < connections.length; i++) {
-            Connection memory conn = connections[i];
-            EnvConfig memory remote = Env.load(conn.network);
+            Connection memory connection = connections[i];
+            EnvConfig memory remote = Env.load(connection.network);
 
-            if (conn.wormhole) {
+            if (connection.wormhole) {
                 adapters.push(IAdapter(source.contracts.wormholeAdapter));
                 opsGuardian.wire(
                     source.contracts.wormholeAdapter,
                     remote.network.centrifugeId,
                     abi.encode(remote.adapters.wormhole.wormholeId, remote.contracts.wormholeAdapter)
                 );
-                console.log("Wired WormholeAdapter from source", source.network.name, "to destination", conn.network);
+                console.log("Wired Wormhole from source", source.network.name, "to destination", connection.network);
             }
 
-            if (conn.layerZero) {
+            if (connection.layerZero) {
                 adapters.push(IAdapter(source.contracts.layerZeroAdapter));
                 opsGuardian.wire(
                     source.contracts.layerZeroAdapter,
                     remote.network.centrifugeId,
                     abi.encode(remote.adapters.layerZero.layerZeroEid, remote.contracts.layerZeroAdapter)
                 );
-                console.log("Wired LayerZeroAdapter from source", source.network.name, "to destination", conn.network);
+                console.log("Wired LayerZero from source", source.network.name, "to destination", connection.network);
             }
 
-            if (conn.axelar) {
+            if (connection.axelar) {
                 adapters.push(IAdapter(source.contracts.axelarAdapter));
                 opsGuardian.wire(
                     source.contracts.axelarAdapter,
                     remote.network.centrifugeId,
                     abi.encode(remote.adapters.axelar.axelarId, vm.toString(remote.contracts.axelarAdapter))
                 );
-                console.log("Wired AxelarAdapter from source", source.network.name, "to destination", conn.network);
+                console.log("Wired Axelar from source", source.network.name, "to destination", connection.network);
+            }
+
+            if (connection.chainlink) {
+                adapters.push(IAdapter(source.contracts.chainlinkAdapter));
+                opsGuardian.wire(
+                    source.contracts.chainlinkAdapter,
+                    remote.network.centrifugeId,
+                    abi.encode(remote.adapters.chainlink.chainSelector, remote.contracts.chainlinkAdapter)
+                );
+                console.log("Wired Chainlink from source", source.network.name, "to destination", connection.network);
             }
 
             if (adapters.length == 0) {
-                console.log("Skipping registration for", conn.network, ": no compatible adapters");
+                console.log("Skipping registration for", connection.network, ": no compatible adapters");
                 continue;
             }
 
-            opsGuardian.initAdapters(remote.network.centrifugeId, adapters, conn.threshold, uint8(adapters.length));
-            console.log("Registered", adapters.length, "source adapters for destination", conn.network);
+            opsGuardian.initAdapters(
+                remote.network.centrifugeId, adapters, connection.threshold, uint8(adapters.length)
+            );
+            console.log("Registered", adapters.length, "source adapters for destination", connection.network);
         }
 
         vm.stopBroadcast();
