@@ -28,7 +28,7 @@ struct EnvConnectionsConfig {
 
 using EnvConnectionsConfigLib for EnvConnectionsConfig global;
 
-/// @notice loads an env/<network>.json file
+/// @notice loads an env/connections/<environment>.json file
 library EnvConnections {
     function load(string memory environment) public view returns (EnvConnectionsConfig memory config) {
         string memory json = vm.readFile(string.concat("env/connections/", environment, ".json"));
