@@ -12,6 +12,8 @@ import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
 import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 
+import {Env, EnvConfig} from "../utils/EnvConfig.s.sol";
+
 import "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
@@ -184,15 +186,14 @@ contract TestAdapterIsolation is BaseTestData {
     //----------------------------------------------------------------------------------------------
 
     function _loadConfig() internal {
-        string memory network = vm.envString("NETWORK");
-        string memory config = vm.readFile(string.concat("env/", network, ".json"));
+        EnvConfig memory config = Env.load(vm.envString("NETWORK"));
 
-        hubCentrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
+        hubCentrifugeId = config.network.centrifugeId;
         xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
 
         spokeNetworkName = vm.envOr("SPOKE_NETWORK", string("arbitrum-sepolia"));
-        string memory spokeConfig = vm.readFile(string.concat("env/", spokeNetworkName, ".json"));
-        spokeCentrifugeId = uint16(vm.parseJsonUint(spokeConfig, "$.network.centrifugeId"));
+        EnvConfig memory spokeConfig = Env.load(spokeNetworkName);
+        spokeCentrifugeId = spokeConfig.network.centrifugeId;
 
         try vm.envAddress("PROTOCOL_ADMIN") returns (address a) {
             admin = a;
@@ -430,15 +431,14 @@ contract TestAdapterIsolation is BaseTestData {
 
     /// @notice Register asset from spoke chain (for cross-chain setups)
     function registerAssetOnly() public {
-        string memory network = vm.envString("NETWORK");
-        string memory config = vm.readFile(string.concat("env/", network, ".json"));
-        uint16 localCentrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
+        EnvConfig memory config = Env.load(vm.envString("NETWORK"));
+        uint16 localCentrifugeId = config.network.centrifugeId;
         loadContractsFromConfig(config);
         xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
 
         string memory hubNetwork = vm.envOr("HUB_NETWORK", string("base-sepolia"));
-        string memory hubConfig = vm.readFile(string.concat("env/", hubNetwork, ".json"));
-        uint16 targetHubCentrifugeId = uint16(vm.parseJsonUint(hubConfig, "$.network.centrifugeId"));
+        EnvConfig memory hubConfig = Env.load(hubNetwork);
+        uint16 targetHubCentrifugeId = hubConfig.network.centrifugeId;
 
         console.log("=== Asset Registration (run on SPOKE chain) ===");
         console.log("Local CentrifugeId:", localCentrifugeId);

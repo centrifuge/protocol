@@ -12,6 +12,8 @@ import {PoolId, newPoolId} from "../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
 
+import {Env, EnvConfig} from "../utils/EnvConfig.s.sol";
+
 import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import "forge-std/Script.sol";
@@ -22,13 +24,10 @@ contract TestData is BaseTestData {
     using UpdateRestrictionMessageLib for *;
 
     function run() public override {
-        string memory network = vm.envString("NETWORK");
-        string memory configFile = string.concat("env/", network, ".json");
-        string memory config = vm.readFile(configFile);
+        EnvConfig memory config = Env.load(vm.envString("NETWORK"));
 
-        uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
-
-        address admin = vm.parseJsonAddress(config, "$.network.protocolAdmin");
+        uint16 centrifugeId = config.network.centrifugeId;
+        address admin = config.network.protocolAdmin;
         loadContractsFromConfig(config);
 
         vm.startBroadcast();
