@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {BaseDeployer} from "./BaseDeployer.s.sol";
 import {JsonUtils} from "./utils/JsonUtils.s.sol";
 import {GraphQLQuery} from "./utils/GraphQLQuery.s.sol";
-import {GraphQLConstants} from "./utils/EnvConfig.s.sol";
+import {Env, EnvConfig} from "./utils/EnvConfig.s.sol";
 
 import {Spoke} from "../src/core/spoke/Spoke.sol";
 import {PoolId} from "../src/core/types/PoolId.sol";
@@ -36,8 +36,6 @@ contract PoolHooks is BaseDeployer {
 
     string constant VERSION = "v3.1";
 
-    GraphQLQuery graphQL = new GraphQLQuery(GraphQLConstants.MAINNET_API);
-
     uint16 public centrifugeId;
 
     address public freelyTransferableHook;
@@ -48,19 +46,20 @@ contract PoolHooks is BaseDeployer {
     IPoolEscrowProvider public poolEscrowFactory;
 
     function run() external {
-        string memory network = vm.envString("NETWORK");
-        string memory config = _loadConfig(network);
+        EnvConfig memory config = Env.load(vm.envString("NETWORK"));
 
-        root = Root(_readContractAddress(config, "$.contracts.root"));
-        spoke = Spoke(_readContractAddress(config, "$.contracts.spoke"));
-        balanceSheet = BalanceSheet(_readContractAddress(config, "$.contracts.balanceSheet"));
-        poolEscrowFactory = IPoolEscrowProvider(_readContractAddress(config, "$.contracts.poolEscrowFactory"));
-        freelyTransferableHook = _readContractAddress(config, "$.contracts.freelyTransferableHook");
-        fullRestrictionsHook = _readContractAddress(config, "$.contracts.fullRestrictionsHook");
+        root = Root(config.contracts.root);
+        spoke = Spoke(config.contracts.spoke);
+        balanceSheet = BalanceSheet(config.contracts.balanceSheet);
+        poolEscrowFactory = IPoolEscrowProvider(config.contracts.poolEscrowFactory);
+        freelyTransferableHook = config.contracts.freelyTransferableHook;
+        fullRestrictionsHook = config.contracts.fullRestrictionsHook;
 
-        centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
+        centrifugeId = config.network.centrifugeId;
 
-        console.log("Network:", network);
+        GraphQLQuery graphQL = new GraphQLQuery(config.network.graphQLApi());
+
+        console.log("Network:", config.network.name);
         console.log("CentrifugeId:", centrifugeId);
         console.log("Root:", address(root));
         console.log("Spoke:", address(spoke));
@@ -73,7 +72,7 @@ contract PoolHooks is BaseDeployer {
 
         _init("", msg.sender);
 
-        TokenInstanceData[] memory tokens = _tokenInstances();
+        TokenInstanceData[] memory tokens = _tokenInstances(graphQL);
 
         console.log("Found %d token instances on chain %d", tokens.length, centrifugeId);
 
@@ -84,12 +83,7 @@ contract PoolHooks is BaseDeployer {
         vm.stopBroadcast();
     }
 
-    function _loadConfig(string memory network) internal view returns (string memory) {
-        string memory configFile = string.concat("env/", network, ".json");
-        return vm.readFile(configFile);
-    }
-
-    function _tokenInstances() internal returns (TokenInstanceData[] memory tokens) {
+    function _tokenInstances(GraphQLQuery graphQL) internal returns (TokenInstanceData[] memory tokens) {
         // forgefmt: disable-next-item
         string memory params = string.concat(
             "limit: 1000,"
