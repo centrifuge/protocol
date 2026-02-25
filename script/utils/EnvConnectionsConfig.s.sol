@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {StringSet, createStringSet} from "./StringSet.s.sol";
+
 import "forge-std/Vm.sol";
 
 Vm constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
@@ -50,47 +52,6 @@ library EnvConnections {
         config.networks = _collectNetworks(config.rules);
     }
 
-    /// @dev Collects the unique set of networks from all resolved rule sides.
-    function _collectNetworks(ConnectionRuleJson[] memory rules) private pure returns (string[] memory) {
-        // Upper bound: sum of all side lengths
-        uint256 maxNames;
-        for (uint256 i; i < rules.length; i++) {
-            maxNames += rules[i].left.length + rules[i].right.length;
-        }
-
-        string[] memory buf = new string[](maxNames);
-        uint256 count;
-        for (uint256 i; i < rules.length; i++) {
-            count = _addUnique(buf, count, rules[i].left);
-            count = _addUnique(buf, count, rules[i].right);
-        }
-
-        // Trim to actual size
-        string[] memory result = new string[](count);
-        for (uint256 i; i < count; i++) {
-            result[i] = buf[i];
-        }
-        return result;
-    }
-
-    function _addUnique(string[] memory buf, uint256 count, string[] memory names)
-        private
-        pure
-        returns (uint256)
-    {
-        for (uint256 i; i < names.length; i++) {
-            bool found;
-            for (uint256 j; j < count; j++) {
-                if (keccak256(bytes(buf[j])) == keccak256(bytes(names[i]))) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) buf[count++] = names[i];
-        }
-        return count;
-    }
-
     /// @dev Parses a side value that can be either a string (alias or literal) or an array of strings.
     function _parseSide(string memory json, string memory path) private view returns (string[] memory) {
         // Check if value is an array by testing for the first element
@@ -109,6 +70,21 @@ library EnvConnections {
         string[] memory result = new string[](1);
         result[0] = value;
         return result;
+    }
+
+    /// @dev Collects the unique set of networks from all resolved rule sides.
+    function _collectNetworks(ConnectionRuleJson[] memory rules) private pure returns (string[] memory) {
+        uint256 maxNames;
+        for (uint256 i; i < rules.length; i++) {
+            maxNames += rules[i].left.length + rules[i].right.length;
+        }
+
+        StringSet memory networks = createStringSet(maxNames);
+        for (uint256 i; i < rules.length; i++) {
+            networks.addAll(rules[i].left);
+            networks.addAll(rules[i].right);
+        }
+        return networks.values();
     }
 }
 
@@ -134,10 +110,10 @@ library EnvConnectionsConfigLib {
             if (adapters.length > 0) {
                 connections[idx++] = Connection({
                     network: config.networks[i],
-                    layerZero: _includesAdapter(adapters, "layerZero"),
-                    wormhole: _includesAdapter(adapters, "wormhole"),
-                    axelar: _includesAdapter(adapters, "axelar"),
-                    chainlink: _includesAdapter(adapters, "chainlink"),
+                    layerZero: _arrayContains(adapters, "layerZero"),
+                    wormhole: _arrayContains(adapters, "wormhole"),
+                    axelar: _arrayContains(adapters, "axelar"),
+                    chainlink: _arrayContains(adapters, "chainlink"),
                     threshold: uint8(threshold)
                 });
             }
@@ -160,20 +136,13 @@ library EnvConnectionsConfigLib {
     }
 
     function _matches(ConnectionRuleJson memory rule, string memory a, string memory b) private pure returns (bool) {
-        return (_matchesSide(rule.left, a) && _matchesSide(rule.right, b))
-            || (_matchesSide(rule.left, b) && _matchesSide(rule.right, a));
+        return (_arrayContains(rule.left, a) && _arrayContains(rule.right, b))
+            || (_arrayContains(rule.left, b) && _arrayContains(rule.right, a));
     }
 
-    function _matchesSide(string[] memory side, string memory name) private pure returns (bool) {
-        for (uint256 i; i < side.length; i++) {
-            if (_strEq(side[i], name)) return true;
-        }
-        return false;
-    }
-
-    function _includesAdapter(string[] memory adapters, string memory name) private pure returns (bool) {
-        for (uint256 i; i < adapters.length; i++) {
-            if (_strEq(adapters[i], name)) return true;
+    function _arrayContains(string[] memory arr, string memory value) private pure returns (bool) {
+        for (uint256 i; i < arr.length; i++) {
+            if (_strEq(arr[i], value)) return true;
         }
         return false;
     }
