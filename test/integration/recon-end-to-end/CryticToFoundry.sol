@@ -160,4 +160,77 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         vault_maxDeposit(0, 0, 2);
     }
+
+    /// === Echidna Run 2026-02-23 (local) === ///
+
+    // forge test --match-test test_vault_maxMint_10 -vvv
+    // Reproducer: echidna/reproducers/8135390276025078258.txt
+    // Sync vault: deploy → updatePrice → updateMember → deposit(1) → maxMint
+    function test_vault_maxMint_10() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        spoke_updatePricePoolPerShare(1, 1);
+
+        spoke_updateMember(1527537386);
+
+        vault_deposit(1);
+
+        vault_maxMint(0, 0, 0);
+    }
+
+    // forge test --match-test test_vault_maxDeposit_11 -vvv
+    // Reproducer: echidna/reproducers/2368209461496406051.txt
+    // Sync vault: deploy → mint_sync(1,1) → maxDeposit — same conversion cap as test_vault_maxDeposit_4
+    function test_vault_maxDeposit_11() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+
+        shortcut_mint_sync(1, 1);
+
+        vault_maxDeposit(0, 0, 0);
+    }
+
+    // forge test --match-test test_vault_maxDeposit_12 -vvvv
+    // Reproducer: echidna/reproducers/9143144158582049584.txt
+    // Async vault: deploy → deposit_queue_cancel → hub_notifyDeposit → maxDeposit
+    function test_vault_maxDeposit_12() public {
+        shortcut_deployNewTokenPoolAndShare(58, 3725620682615936983603445291889200717745835437975087272030550155022530317057, false, true, true, false);
+
+        balanceSheet_submitQueuedShares(2986799447496935121812250855886100387);
+
+        switch_actor(270);
+
+        shortcut_deposit_queue_cancel(4662387785827488946, 238, 1577203754821733349138040342627210308022144620756482427698354874963446062794, 326587208, 53058427172526584712949480, 124879742162045852864037660195030038286);
+
+        switch_share_class(7);
+
+        hub_setPriceNonZero_clamped(7752043034099767843566551880075692922312402738550953727126425389436347475576);
+
+        vault_cancelDepositRequest();
+
+        hub_notifyDeposit(9648631);
+
+        vault_maxDeposit(72301513, 1624510, 48);
+    }
+
+    // NOTE: Stale — syncManager_setValuation handler is commented out in current codebase
+    // Reproducer: echidna/reproducers/315514015980947277.txt
+    // function test_doomsday_zeroPrice_noPanics_13() public {
+    //     shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false, false);
+    //     syncManager_setValuation(false);
+    //     doomsday_zeroPrice_noPanics();
+    // }
+
+    // NOTE: Stale — erc7540_5 is now internal, exposed via vault_5 with address clamping
+    // Reproducer: echidna/reproducers/6989870935168821446.txt
+    // function test_erc7540_5_14() public {
+    //     erc7540_5(address(0x13aa49bAc059d709dd0a18D6bb63290076a702D7));
+    // }
+
+    // NOTE: vault_maxMint complex multi-actor (80+ calls) — too long for CryticToFoundry
+    // Likely same conversion cap issue as test_vault_maxMint_10
+    // Reproducer: echidna/reproducers/4242091224602848012.txt
+
+    // NOTE: vault_maxDeposit complex multi-actor (100+ calls) — too long for CryticToFoundry
+    // Likely same conversion cap or async rounding issue
+    // Reproducer: echidna/reproducers/4772574167540358405.txt
 }

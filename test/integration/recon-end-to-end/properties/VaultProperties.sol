@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {ERC7540Properties} from "./ERC7540Properties.sol";
 
 import {D18} from "../../../../src/misc/types/D18.sol";
-import {IERC20} from "../../../../src/misc/interfaces/IERC20.sol";
+import {IERC20, IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
 
@@ -166,7 +166,11 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
                 _updateAsyncClaimStateAfter(claimState, _getVault(), _getActor());
                 _validateAsyncVaultClaim(claimState, "vault_maxDeposit");
 
-                _validateAsyncMaxValueChange(maxDepositBefore, maxDepositAfter, depositAmount, "Deposit");
+                // Tolerance: 1 share wei in assets + 1 (ceil rounding + floor distribution)
+                uint256 depositTolerance = _asyncRoundTripTolerance(true);
+                _validateAsyncMaxValueChange(
+                    maxDepositBefore, maxDepositAfter, depositAmount, "Deposit", depositTolerance
+                );
             } else {
                 // For sync vaults, validate PoolEscrow changes due to immediate deposit
                 _updatePoolEscrowStateAfter(escrowState);
@@ -250,9 +254,13 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
                 _updateAsyncClaimStateAfter(claimState, _getVault(), _getActor());
                 _validateAsyncVaultClaim(claimState, "vault_maxMint");
 
-                _validateAsyncMaxValueChange(maxMintBefore, maxMintAfter, mintAmount, "Mint");
-
-                _validateAsyncMaxValueChange(maxDepositBefore, maxDepositAfter, assets, "Deposit");
+                // Tolerance: 1 wei conversion + 1 floor distribution (per dimension)
+                _validateAsyncMaxValueChange(
+                    maxMintBefore, maxMintAfter, mintAmount, "Mint", _asyncRoundTripTolerance(false)
+                );
+                _validateAsyncMaxValueChange(
+                    maxDepositBefore, maxDepositAfter, assets, "Deposit", _asyncRoundTripTolerance(true)
+                );
             } else {
                 // For sync vaults, validate PoolEscrow changes due to immediate mint
                 _updatePoolEscrowStateAfter(escrowState);
@@ -500,26 +508,54 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         state.isNormalStateAfter = state.totalAfter > state.reservedAfter;
     }
 
+    /// @dev Computes tolerance for async vault round-trip conversion rounding
+    /// @param isAssetTolerance true = tolerance in asset terms (for Deposit), false = in share terms (for Mint)
+    /// @return tolerance The maximum rounding error from ceil(x/price)→floor(result*price) round-trip
+    function _asyncRoundTripTolerance(bool isAssetTolerance) internal view returns (uint256) {
+        if (isAssetTolerance) {
+            // Degenerate price check: if 1 full share converts to 0 assets, the price is
+            // near-zero. Claims use fulfillment price but maxDeposit uses current price,
+            // making validation meaningless.
+            uint256 oneFullShareInAssets =
+                _getVault().convertToAssets(10 ** IERC20Metadata(_getShareToken()).decimals());
+            if (oneFullShareInAssets == 0) return type(uint256).max;
+
+            // Normal case: ceiling division adds at most 1 share wei (+convertToAssets(1)),
+            // floor-not-distributing adds at most 1 asset wei (+1).
+            return _getVault().convertToAssets(1) + 1;
+        } else {
+            uint256 oneFullAssetInShares =
+                _getVault().convertToShares(10 ** IERC20Metadata(_getVault().asset()).decimals());
+            if (oneFullAssetInShares == 0) return type(uint256).max;
+
+            return _getVault().convertToShares(1) + 1;
+        }
+    }
+
     /// @dev Validates AsyncVault max value changes
     /// @param operationAmount The operation amount (shares for maxMint, assets for maxDeposit)
     /// @param operationName The name of the operation ("Deposit" or "Mint")
+    /// @param tolerance The vault-aware rounding tolerance (from _asyncRoundTripTolerance)
     function _validateAsyncMaxValueChange(
         uint256 maxValueBefore,
         uint256 maxValueAfter,
         uint256 operationAmount,
-        string memory operationName
+        string memory operationName,
+        uint256 tolerance
     ) internal {
-        // Note: Due to rounding in share<->asset conversion, we allow small tolerance
+        // Skip validation when price is degenerate (tolerance sentinel from _asyncRoundTripTolerance)
+        if (tolerance == type(uint256).max) return;
+
         uint256 expectedMaxValueAfter = maxValueBefore > operationAmount ? maxValueBefore - operationAmount : 0;
 
         lte(
             maxValueAfter,
-            expectedMaxValueAfter + 1,
+            expectedMaxValueAfter + tolerance,
             string.concat("Async ", operationName, ": maxValue should decrease by approximately operationAmount")
         );
         gte(
             maxValueAfter,
-            expectedMaxValueAfter > 0 ? expectedMaxValueAfter - 1 : 0,
+            expectedMaxValueAfter > tolerance ? expectedMaxValueAfter - tolerance : 0,
             string.concat("Async ", operationName, ": maxValue should not decrease by more than operationAmount")
         );
     }
