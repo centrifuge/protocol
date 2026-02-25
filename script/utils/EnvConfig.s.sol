@@ -358,7 +358,7 @@ library EnvConfigLib {
 
         for (uint256 i; i < connections.length; i++) {
             EnvConfig memory remoteConfig = Env.load(connections[i].network);
-            Connection memory connection = config.network.connections()[i];
+            Connection memory connection = connections[i];
 
             adapterConnections_[i] = AdapterConnections({
                 centrifugeId: remoteConfig.network.centrifugeId,

@@ -129,8 +129,8 @@ contract EnvConnectionsTest is Test {
                     assertTrue(chain2.adapters.axelar.deploy, _err(pair, "axelar"));
                 }
                 if (connections[j].chainlink) {
-                    assertTrue(chain1.adapters.layerZero.deploy, _err(pair, "layerZero"));
-                    assertTrue(chain2.adapters.layerZero.deploy, _err(pair, "layerZero"));
+                    assertTrue(chain1.adapters.chainlink.deploy, _err(pair, "chainlink"));
+                    assertTrue(chain2.adapters.chainlink.deploy, _err(pair, "chainlink"));
                 }
             }
         }

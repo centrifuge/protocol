@@ -35,6 +35,8 @@ contract WireAdapters is Script {
         vm.startBroadcast();
 
         for (uint256 i = 0; i < connections.length; i++) {
+            delete adapters;
+
             Connection memory connection = connections[i];
             EnvConfig memory remote = Env.load(connection.network);
 
