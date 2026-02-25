@@ -22,7 +22,7 @@
     "wormhole": {
       "wormholeId": 30,
       "relayer": "0x706f82e9bb5b0813501714ab5974216704980e31",
-      "deploy": false
+      "deploy": true
     },
     "axelar": {
       "axelarId": "base",
@@ -33,7 +33,7 @@
     "chainlink": {
       "chainSelector": 15971525489660198786,
       "ccipRouter": "0x881e3A65B4d4a04dD529061dd0071cf975F58bCD",
-      "deploy": false
+      "deploy": true
     }
   },
   "contracts": {
