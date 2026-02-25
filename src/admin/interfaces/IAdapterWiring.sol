@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-/// @title IAdapterWiring
+/// @title  IAdapterWiring
 /// @notice Interface for cross-chain bridge adapters that support wiring configuration
-/// @dev Only bridge adapters (Axelar, LayerZero, Wormhole) implement this interface.
-///      Local adapters (Recovery, Local) do not support wiring operations.
+/// @dev    Only bridge adapters implement this interface.
+///         Local adapters (e.g. RecoveryAdapter) do not support wiring operations.
 interface IAdapterWiring {
     /// @notice Wire the adapter to a remote chain
     /// @dev    If this is rewiring a previously wired centrifugeId, it might be necessary

@@ -14,12 +14,14 @@ interface IOnOfframpManager is IDepositManager, IWithdrawManager, ITrustedContra
     enum TrustedCall {
         Onramp,
         Relayer,
-        Offramp
+        Offramp,
+        Withdraw
     }
 
     event UpdateOnramp(address indexed asset, bool isEnabled);
     event UpdateRelayer(address indexed relayer, bool isEnabled);
     event UpdateOfframp(address indexed asset, address receiver, bool isEnabled);
+    event TrustedWithdraw(address indexed asset, uint256 amount, address receiver);
 
     error NotAllowedOnrampAsset();
     error InvalidAmount();

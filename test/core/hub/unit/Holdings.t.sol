@@ -145,6 +145,51 @@ contract TestDecrease is TestCommon {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         holdings.decrease(POOL_A, SC_1, ASSET_A, d18(1, 1), 0);
     }
+
+    function testDecreaseAmountMoreThanHolding() public {
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
+
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(10, 1), 10_000_000);
+
+        (uint128 amount, uint128 amountValue,,) = holdings.holding(POOL_A, SC_1, ASSET_A);
+        assertEq(amount, 10_000_000);
+        assertEq(amountValue, 100_00);
+
+        // Decrease by more than what we have - should clamp amount to 0 instead of underflowing
+        // Should emit the original unclamped amount and value
+        vm.expectEmit();
+        emit IHoldings.Decrease(POOL_A, SC_1, ASSET_A, d18(4, 1), 20_000_000, 80_00);
+        uint128 value = holdings.decrease(POOL_A, SC_1, ASSET_A, d18(4, 1), 20_000_000);
+
+        assertEq(value, 80_00);
+
+        (uint128 finalAmount, uint128 finalAmountValue,,) = holdings.holding(POOL_A, SC_1, ASSET_A);
+        assertEq(finalAmount, 0);
+        assertEq(finalAmountValue, 20_00);
+    }
+
+    function testDecreaseValueMoreThanHolding() public {
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
+
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(10, 1), 10_000_000);
+
+        (uint128 amount, uint128 amountValue,,) = holdings.holding(POOL_A, SC_1, ASSET_A);
+        assertEq(amount, 10_000_000);
+        assertEq(amountValue, 100_00);
+
+        // Decrease with a higher price, creating more value than we have - should clamp value to 0
+        // Should emit the original unclamped amount and value
+        // And return the unclamped value
+        vm.expectEmit();
+        emit IHoldings.Decrease(POOL_A, SC_1, ASSET_A, d18(20, 1), 6_000_000, 120_00);
+        uint128 value = holdings.decrease(POOL_A, SC_1, ASSET_A, d18(20, 1), 6_000_000);
+
+        assertEq(value, 120_00);
+
+        (uint128 finalAmount, uint128 finalAmountValue,,) = holdings.holding(POOL_A, SC_1, ASSET_A);
+        assertEq(finalAmount, 4_000_000);
+        assertEq(finalAmountValue, 0);
+    }
 }
 
 contract TestUpdate is TestCommon {
@@ -269,6 +314,36 @@ contract TestUpdateIsLiability is TestCommon {
 
         vm.expectRevert(IHoldings.HoldingNotZero.selector);
         holdings.updateIsLiability(POOL_A, SC_1, ASSET_A, true);
+    }
+
+    function testRemainingValueAfterDecreaseBlocksUpdate() public {
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
+
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(10, 1), 10_000_000);
+
+        (uint128 amount, uint128 amountValue,,) = holdings.holding(POOL_A, SC_1, ASSET_A);
+        assertEq(amount, 10_000_000);
+        assertEq(amountValue, 100_00);
+
+        // Decrease to 0 with a lower price, which will leave remaining value
+        holdings.decrease(POOL_A, SC_1, ASSET_A, d18(5, 1), 10_000_000);
+
+        (uint128 finalAmount, uint128 finalAmountValue,,) = holdings.holding(POOL_A, SC_1, ASSET_A);
+        assertEq(finalAmount, 0);
+        assertEq(finalAmountValue, 50_00);
+
+        // updateIsLiability should fail because value is not zero
+        vm.expectRevert(IHoldings.HoldingNotZero.selector);
+        holdings.updateIsLiability(POOL_A, SC_1, ASSET_A, true);
+
+        mockGetQuote(itemValuation, 0, 0);
+        holdings.update(POOL_A, SC_1, ASSET_A);
+
+        (, uint128 syncedValue,,) = holdings.holding(POOL_A, SC_1, ASSET_A);
+        assertEq(syncedValue, 0);
+
+        holdings.updateIsLiability(POOL_A, SC_1, ASSET_A, true);
+        assertEq(holdings.isLiability(POOL_A, SC_1, ASSET_A), true);
     }
 }
 

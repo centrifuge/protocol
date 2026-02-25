@@ -1,3 +1,7 @@
+safe-utils/=lib/safe-utils/src/
+safe-smart-account/=lib/safe-utils/lib/safe-smart-account/contracts/
+solidity-http/=lib/safe-utils/lib/solidity-http/src/
+solidity-stringutils/=lib/safe-utils/lib/solidity-stringutils/src/
 forge-std/=lib/forge-std/src/
 @recon/=lib/setup-helpers/src/
 @chimera/=lib/chimera/src/

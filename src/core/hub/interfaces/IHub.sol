@@ -23,17 +23,17 @@ import {IBatchedMulticall} from "../../utils/interfaces/IBatchedMulticall.sol";
 
 /// @notice Account types used by Hub
 enum AccountType {
-    /// @notice Debit normal account for tracking assets
+    /// @notice Account for tracking assets
     Asset,
-    /// @notice Credit normal account for tracking equities
+    /// @notice Account for tracking equities
     Equity,
-    /// @notice Credit normal account for tracking losses
+    /// @notice Account for tracking losses
     Loss,
-    /// @notice Credit normal account for tracking profits
+    /// @notice Account for tracking profits
     Gain,
-    /// @notice Debit normal account for tracking expenses
+    /// @notice Account for tracking expenses
     Expense,
-    /// @notice Credit normal account for tracking liabilities
+    /// @notice Account for tracking liabilities
     Liability
 }
 
@@ -425,7 +425,18 @@ interface IHub is IBatchedMulticall {
     /// @param credits Array of credit journal entries
     function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external payable;
 
-    /// @notice Set adapters for a pool in another chain
+    /// @notice Set adapters for a pool in another chain.
+    /// @dev    Changing adapters increments the session ID, which invalidates any messages that were sent
+    ///         before the update but not yet delivered. To avoid failed deliveries, block outgoing messages on all
+    ///         affected chains before calling this function, and unblock after the new configuration has been delivered:
+    ///
+    ///         1. Grant gateway manager role on each affected chain via `updateGatewayManager`
+    ///         2. Call `gateway.blockOutgoing(canSend=false)` on each affected chain to pause outgoing messages
+    ///         3. Wait for all pending message deliveries to complete
+    ///         4. Call `setAdapters` with the new configuration
+    ///         5. Wait for the adapter update to be delivered
+    ///         6. Call `gateway.blockOutgoing(canSend=true)` on each affected chain to resume
+    ///
     /// @param poolId Pool associated to this configuration
     /// @param centrifugeId Chain where to perform the adapter configuration
     /// @param localAdapters Adapter addresses in this chain

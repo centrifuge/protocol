@@ -12,7 +12,7 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {IBalanceSheet, WithdrawMode} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 
 import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
 import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
@@ -37,6 +37,10 @@ contract OnOfframpManagerTest is Test {
     uint128 constant DEFAULT_AMOUNT = 100;
     uint128 constant DEFAULT_ASSET_ID = 100;
     uint256 constant ERC20_TOKEN_ID = 0;
+
+    // Selector for the withdraw function with WithdrawMode
+    bytes4 constant WITHDRAW_SELECTOR =
+        bytes4(keccak256("withdraw(uint64,bytes16,address,uint256,address,uint128,uint8)"));
 
     address contractUpdater = makeAddr("contractUpdater");
     address relayer = makeAddr("relayer");
@@ -100,7 +104,7 @@ contract OnOfframpManagerTest is Test {
         internal
     {
         bytes memory callData = abi.encodeWithSelector(
-            IBalanceSheet.withdraw.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver_, amount
+            WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver_, amount, WithdrawMode.Full
         );
 
         if (shouldRevert) {
@@ -365,12 +369,243 @@ contract OnOfframpManagerWithdrawSuccessTests is OnOfframpManagerTest {
         vm.expectCall(
             address(balanceSheet),
             abi.encodeWithSelector(
-                IBalanceSheet.withdraw.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount
+                WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount, WithdrawMode.Full
             )
         );
 
         vm.prank(relayer);
         manager.withdraw(address(erc20), ERC20_TOKEN_ID, amount, receiver);
+    }
+}
+
+contract OnOfframpManagerTrustedWithdrawFailureTests is OnOfframpManagerTest {
+    using CastLib for *;
+
+    function testWithdrawTrustedCallZeroAddressReceiver(uint128 amount) public {
+        amount = uint128(bound(amount, 1, type(uint128).max));
+
+        vm.expectRevert(IOnOfframpManager.InvalidOfframpDestination.selector);
+        vm.prank(contractUpdater);
+        manager.trustedCall(
+            POOL_A,
+            SC_1,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, bytes32(0))
+        );
+    }
+
+    function testWithdrawTrustedCallInvalidDestination(uint128 amount) public {
+        amount = uint128(bound(amount, 1, type(uint128).max));
+
+        // Don't enable offramp for receiver
+        vm.expectRevert(IOnOfframpManager.InvalidOfframpDestination.selector);
+        vm.prank(contractUpdater);
+        manager.trustedCall(
+            POOL_A,
+            SC_1,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+        );
+    }
+
+    function testWithdrawTrustedCallDisabledDestination(uint128 amount) public {
+        amount = uint128(bound(amount, 1, type(uint128).max));
+
+        // Enable then disable offramp
+        _enableOfframp(receiver);
+        _disableOfframp(receiver);
+
+        vm.expectRevert(IOnOfframpManager.InvalidOfframpDestination.selector);
+        vm.prank(contractUpdater);
+        manager.trustedCall(
+            POOL_A,
+            SC_1,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+        );
+    }
+
+    function testWithdrawTrustedCallNotContractUpdater(uint128 amount, address notContractUpdater) public {
+        vm.assume(notContractUpdater != contractUpdater);
+        amount = uint128(bound(amount, 1, type(uint128).max));
+
+        _enableOfframp(receiver);
+
+        vm.expectRevert(IOnOfframpManager.NotContractUpdater.selector);
+        vm.prank(notContractUpdater);
+        manager.trustedCall(
+            POOL_A,
+            SC_1,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+        );
+    }
+
+    function testWithdrawTrustedCallInvalidPoolId(uint128 amount) public {
+        amount = uint128(bound(amount, 1, type(uint128).max));
+
+        _enableOfframp(receiver);
+
+        vm.expectRevert(IOnOfframpManager.InvalidPoolId.selector);
+        vm.prank(contractUpdater);
+        manager.trustedCall(
+            POOL_B,
+            SC_1,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+        );
+    }
+
+    function testWithdrawTrustedCallInvalidShareClassId(uint128 amount) public {
+        amount = uint128(bound(amount, 1, type(uint128).max));
+        ShareClassId wrongScId = ShareClassId.wrap(bytes16("wrong_sc"));
+
+        _enableOfframp(receiver);
+
+        vm.expectRevert(IOnOfframpManager.InvalidShareClassId.selector);
+        vm.prank(contractUpdater);
+        manager.trustedCall(
+            POOL_A,
+            wrongScId,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+        );
+    }
+
+    function testWithdrawTrustedCallNotBalanceSheetManager(uint128 amount) public {
+        amount = uint128(bound(amount, 1, type(uint128).max));
+
+        _enableOfframp(receiver);
+        _mockManagerPermissions(false);
+        _mockBalanceSheetWithdraw(amount, receiver, true, abi.encodeWithSelector(IAuth.NotAuthorized.selector));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(contractUpdater);
+        manager.trustedCall(
+            POOL_A,
+            SC_1,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+        );
+    }
+
+    function testWithdrawTrustedCallInsufficientBalance(uint128 amount) public {
+        amount = uint128(bound(amount, 1, type(uint128).max));
+
+        _enableOfframp(receiver);
+        _mockManagerPermissions(true);
+        _mockBalanceSheetWithdraw(amount, receiver, true, abi.encodeWithSelector(IEscrow.InsufficientBalance.selector));
+
+        vm.expectRevert(IEscrow.InsufficientBalance.selector);
+        vm.prank(contractUpdater);
+        manager.trustedCall(
+            POOL_A,
+            SC_1,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+        );
+    }
+}
+
+contract OnOfframpManagerTrustedWithdrawSuccessTests is OnOfframpManagerTest {
+    using CastLib for *;
+
+    function testWithdrawTrustedCall(uint128 amount) public {
+        amount = uint128(bound(amount, 1, type(uint128).max));
+
+        _enableOfframp(receiver);
+        _mockManagerPermissions(true);
+        _mockBalanceSheetWithdraw(amount, receiver, false, "");
+
+        // Expect balance sheet withdraw to be called with correct parameters
+        vm.expectCall(
+            address(balanceSheet),
+            abi.encodeWithSelector(
+                WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount, WithdrawMode.Full
+            )
+        );
+
+        vm.prank(contractUpdater);
+        manager.trustedCall(
+            POOL_A,
+            SC_1,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+        );
+    }
+
+    function testWithdrawTrustedCallMultipleReceivers(uint128 amount1, uint128 amount2) public {
+        amount1 = uint128(bound(amount1, 1, type(uint128).max / 2));
+        amount2 = uint128(bound(amount2, 1, type(uint128).max / 2));
+
+        address receiver2 = makeAddr("receiver2");
+
+        _enableOfframp(receiver);
+        _enableOfframp(receiver2);
+        _mockManagerPermissions(true);
+
+        // First withdrawal to receiver
+        _mockBalanceSheetWithdraw(amount1, receiver, false, "");
+        vm.expectCall(
+            address(balanceSheet),
+            abi.encodeWithSelector(
+                WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount1, WithdrawMode.Full
+            )
+        );
+
+        vm.prank(contractUpdater);
+        manager.trustedCall(
+            POOL_A,
+            SC_1,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount1, receiver.toBytes32())
+        );
+
+        // Second withdrawal to receiver2
+        _mockBalanceSheetWithdraw(amount2, receiver2, false, "");
+        vm.expectCall(
+            address(balanceSheet),
+            abi.encodeWithSelector(
+                WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver2, amount2, WithdrawMode.Full
+            )
+        );
+
+        vm.prank(contractUpdater);
+        manager.trustedCall(
+            POOL_A,
+            SC_1,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount2, receiver2.toBytes32())
+        );
+    }
+
+    function testWithdrawTrustedCallDoesNotRequireRelayer() public {
+        uint128 amount = 100;
+
+        // Enable offramp but NOT relayer
+        _enableOfframp(receiver);
+        _mockManagerPermissions(true);
+        _mockBalanceSheetWithdraw(amount, receiver, false, "");
+
+        // Should succeed without enabling relayer (since this is a trusted call)
+        vm.prank(contractUpdater);
+        manager.trustedCall(
+            POOL_A,
+            SC_1,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+        );
+    }
+
+    function testWithdrawTrustedCallZeroAmount() public {
+        uint128 amount = 0;
+
+        _enableOfframp(receiver);
+        _mockManagerPermissions(true);
+        _mockBalanceSheetWithdraw(amount, receiver, false, "");
+
+        // Should allow zero amount withdrawal
+        vm.expectCall(
+            address(balanceSheet),
+            abi.encodeWithSelector(
+                WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount, WithdrawMode.Full
+            )
+        );
+
+        vm.prank(contractUpdater);
+        manager.trustedCall(
+            POOL_A,
+            SC_1,
+            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+        );
     }
 }
 

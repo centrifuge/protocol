@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
-import {RefundEscrow, IRefundEscrow} from "../../../src/vaults/RefundEscrow.sol";
-
 import "forge-std/Test.sol";
+
+import {RefundEscrow, IRefundEscrow} from "../../../src/utils/RefundEscrow.sol";
 
 contract NoReceivable {}
 

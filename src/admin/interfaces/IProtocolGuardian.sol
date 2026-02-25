@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IBaseGuardian} from "./IBaseGuardian.sol";
-
-import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
-
-interface IProtocolGuardian is IBaseGuardian {
+interface IProtocolGuardian {
+    error NotTheAuthorizedSafe();
+    error FileUnrecognizedParam();
     error NotTheAuthorizedSafeOrItsOwner();
+
+    event File(bytes32 indexed what, address data);
 
     /// @notice Pause the protocol
     /// @dev callable by both safe and owners
@@ -51,18 +51,14 @@ interface IProtocolGuardian is IBaseGuardian {
         address refund
     ) external payable;
 
-    /// @notice Set adapters locally for global pool
-    /// @dev Local-only operation, does not send cross-chain message
-    /// @param centrifugeId Target chain ID to configure adapters on
-    /// @param adapters Array of adapter contract addresses
-    /// @param threshold Minimum number of adapters that must agree
-    /// @param recoveryIndex Index of the recovery adapter in the array
-    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
-        external;
-
     /// @notice Block or unblock outgoing messages for global pool
     /// @dev Local-only operation for fast emergency response
     /// @param centrifugeId Target chain ID to block/unblock
     /// @param isBlocked True to block outgoing messages, false to unblock
     function blockOutgoing(uint16 centrifugeId, bool isBlocked) external;
+
+    /// @notice Updates a contract parameter
+    /// @param what Accepts a bytes32 representation of 'safe', 'gateway', or 'sender'
+    /// @param data New value for the parameter
+    function file(bytes32 what, address data) external;
 }

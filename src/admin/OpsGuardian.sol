@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {ISafe} from "./interfaces/ISafe.sol";
 import {ICreatePool} from "./interfaces/ICreatePool.sol";
 import {IOpsGuardian} from "./interfaces/IOpsGuardian.sol";
-import {IBaseGuardian} from "./interfaces/IBaseGuardian.sol";
 import {IAdapterWiring} from "./interfaces/IAdapterWiring.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
@@ -37,7 +36,7 @@ contract OpsGuardian is IOpsGuardian {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IBaseGuardian
+    /// @inheritdoc IOpsGuardian
     function file(bytes32 what, address data) external onlySafe {
         if (what == "opsSafe") opsSafe = ISafe(data);
         else if (what == "hub") hub = ICreatePool(data);
@@ -59,7 +58,7 @@ contract OpsGuardian is IOpsGuardian {
         multiAdapter.setAdapters(centrifugeId, GLOBAL_POOL, adapters, threshold, recoveryIndex);
     }
 
-    /// @inheritdoc IBaseGuardian
+    /// @inheritdoc IOpsGuardian
     function wire(address adapter, uint16 centrifugeId, bytes memory data) external onlySafe {
         require(!IAdapterWiring(adapter).isWired(centrifugeId), AdapterAlreadyWired());
         IAdapterWiring(adapter).wire(centrifugeId, data);

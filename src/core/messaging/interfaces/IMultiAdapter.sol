@@ -14,7 +14,7 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     // Structs
     //----------------------------------------------------------------------------------------------
 
-    /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
+    /// @dev Each adapter struct is packed with the quorum, threshold and recoveryIndex to reduce SLOADs on handle
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
         uint8 id;
@@ -25,7 +25,7 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
         /// @notice Index in the adapter array to start consider the adapter as recovery adapter
         uint8 recoveryIndex;
         /// @notice Each time the quorum is decreased, a new session starts which invalidates old votes
-        uint64 activeSessionId;
+        uint128 activeSessionId;
     }
 
     struct Inbound {
@@ -35,7 +35,7 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
         ///      Max int16 = 32,767 so at most 32,767 duplicate messages can be processed in parallel
         int16[MAX_ADAPTER_COUNT] votes;
         /// @notice Each time adapters are updated, a new session starts which invalidates old votes
-        uint64 sessionId;
+        uint128 sessionId;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -95,6 +95,7 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @param  centrifugeId Chain where the adapters are associated to.
     /// @param  poolId PoolId associated to the adapters
     /// @param  adapters New adapter addresses already deployed.
+    ///         If the array is empty, it disables the usage for messages of that pool.
     /// @param  threshold Minimum number of adapters required to process the messages
     ///         If not wanted a threshold set `adapters.length` value
     /// @param  recoveryIndex Index in adapters array from where consider the adapter as recovery adapter.
@@ -144,7 +145,7 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @param centrifugeId Chain where the adapters are configured for
     /// @param poolId PoolId associated to the adapters
     /// @return The active session id
-    function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint64);
+    function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint128);
 
     /// @notice Counts how many times each incoming messages has been received per adapter.
     /// @dev    It supports parallel messages ( duplicates ). That means that the incoming messages could be
@@ -161,10 +162,4 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @param id The adapter id
     /// @return The adapter at the specified id
     function adapters(uint16 centrifugeId, PoolId poolId, uint256 id) external view returns (IAdapter);
-
-    /// @notice Returns the list of adapters that will be used for a pool
-    /// @param centrifugeId Chain where the adapters are configured for
-    /// @param poolId PoolId associated to the adapters
-    /// @return Pool adapters or global adapters if they were not configured
-    function poolAdapters(uint16 centrifugeId, PoolId poolId) external view returns (IAdapter[] memory);
 }

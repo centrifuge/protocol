@@ -9,15 +9,18 @@ import {ITransferHook, HookData} from "../core/spoke/interfaces/ITransferHook.so
 /// @notice Hook implementation that:
 ///         * Requires adding accounts to the memberlist before they can receive tokens
 ///         * Supports freezing accounts which blocks transfers both to and from them
+/// @dev    To enable cross-chain transfers to a target chain, `address(uint160(centrifugeId))`
+///         must be whitelisted as a member on the source chain's share token.
 contract FullRestrictions is BaseTransferHook {
     constructor(
         address root_,
         address spoke_,
-        address redeemSource_,
-        address depositTarget_,
+        address balanceSheet_,
         address crosschainSource_,
-        address deployer
-    ) BaseTransferHook(root_, spoke_, redeemSource_, depositTarget_, crosschainSource_, deployer) {}
+        address deployer,
+        address poolEscrowProvider_,
+        address poolEscrow_
+    ) BaseTransferHook(root_, spoke_, balanceSheet_, crosschainSource_, deployer, poolEscrowProvider_, poolEscrow_) {}
 
     /// @inheritdoc ITransferHook
     function checkERC20Transfer(

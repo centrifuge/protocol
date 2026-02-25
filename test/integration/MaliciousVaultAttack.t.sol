@@ -24,14 +24,10 @@ contract MaliciousFactory {
         manager = manager_;
     }
 
-    function newVault(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        address shareToken,
-        address[] calldata
-    ) public returns (address) {
+    function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address shareToken)
+        public
+        returns (address)
+    {
         vault = new MaliciousVault(poolId, scId, asset, tokenId, shareToken, manager);
         return address(vault);
     }

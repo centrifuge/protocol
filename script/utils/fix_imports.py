@@ -704,7 +704,12 @@ def convert_to_relative_path(current_file: str, import_path: str) -> str:
             return f"./{subdir}/{target_filename}"
 
         # Check if current is in a subdirectory of target
-        if current_dir_rel.startswith(target_dir_rel + '/'):
+        # Special case: if target_dir_rel is empty (base directory) and current_dir_rel is not empty
+        if target_dir_rel == "" and current_dir_rel != "":
+            # Current file is in a subdirectory, target is at base directory
+            levels_up = current_dir_rel.count('/') + 1
+            return f"{'../' * levels_up}{target_filename}"
+        elif current_dir_rel.startswith(target_dir_rel + '/'):
             levels_up = current_dir_rel[len(target_dir_rel):].count('/')
             return f"{'../' * levels_up}{target_filename}"
 

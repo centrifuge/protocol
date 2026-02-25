@@ -18,10 +18,56 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.4.1
+          version: v1.4.4
 
       - name: Run tests
-        run: forge test --deny-warnings
+        run: forge test --deny warnings --nmp "test/integration/{fork,spell}/**/*.sol"
+        env:
+          FOUNDRY_PROFILE: ci
+
+  fork-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: actions/checkout@v3
+      - id: "auth"
+        uses: "google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f" # v2.1.7
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIP }}
+          service_account: ${{ secrets.GCP_SA }}
+          create_credentials_file: true
+          cleanup_credentials: true
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@6189d56e4096ee891640bb02ac264be376592d6a" # v2.1.2
+        with:
+          version: ">= 363.0.0"
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.4
+      - name: Load secrets
+        run: python3 script/deploy/load_secrets.py
+      - name: Run fork and spell tests
+        run: forge test --match-path "test/integration/{fork,spell}/**/*.sol" -vv
+        env:
+          FOUNDRY_PROFILE: ci
+
+  pre-migration-validation:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.4
+
+      - name: Run pre-migration validation
+        run: forge test --match-contract PreMigrationValidation --ffi -vv
         env:
           FOUNDRY_PROFILE: ci
 
@@ -33,12 +79,12 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.4.1
+          version: v1.4.4
 
       - name: Build contracts
         run: |
           forge --version
-          forge build --sizes --skip test --deny-warnings
+          forge build --sizes --skip test --deny warnings
 
       - name: Check formatting
         run: forge fmt --check
@@ -151,7 +197,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.4.1
+          version: v1.4.4
       #Make sure all tools are installed and with proper versions
       - name: Setup deployer tools
         env:
@@ -176,10 +222,10 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.4.1
+          version: v1.4.4
 
       - name: Run coverage
-        run: forge coverage --report summary --report lcov
+        run: forge coverage --report summary --report lcov --nmp "test/integration/{fork,spell}/**/*.sol"
         env:
           FOUNDRY_PROFILE: ci-coverage
           FORGE_SNAPSHOT_CHECK: false
@@ -225,6 +271,8 @@ jobs:
         uses: codespell-project/actions-codespell@v2
         with:
           skip: ./docs
+          ignore_words_list: embrio
+
 
   check-benchmarks:
     runs-on: ubuntu-latest
@@ -245,6 +293,19 @@ jobs:
         run: ./script/utils/benchmarks.sh check
         env:
           FOUNDRY_PROFILE: ci
+
+  claude-md-tree:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Check CLAUDE.md directory tree
+        run: python3 script/utils/check_claude_tree.py
 
   ward-coverage:
     runs-on: ubuntu-latest

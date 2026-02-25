@@ -14,10 +14,14 @@ contract TestBatchingAndPayment is BaseTest {
     /// forge-config: default.isolate = true
     function testMultipleMulticallSamePool() public {
         PoolId poolA = hubRegistry.poolId(CHAIN_CP, 1);
-        vm.startPrank(ADMIN);
+        vm.startPrank(address(opsGuardian.opsSafe()));
         opsGuardian.createPool(poolA, FM, USD_ID);
 
         vm.startPrank(FM);
+
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = cv;
+        hub.setAdapters{value: GAS}(poolA, CHAIN_CV, adapters, new bytes32[](0), 1, 1, REFUND);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
         cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, CHAIN_CV, REFUND);
@@ -36,7 +40,7 @@ contract TestBatchingAndPayment is BaseTest {
     ///
     /// forge-config: default.isolate = true
     function testMultipleMulticallDifferentPools() public {
-        vm.startPrank(ADMIN);
+        vm.startPrank(address(opsGuardian.opsSafe()));
 
         PoolId poolA = hubRegistry.poolId(CHAIN_CP, 1);
         PoolId poolB = hubRegistry.poolId(CHAIN_CP, 2);
@@ -44,6 +48,11 @@ contract TestBatchingAndPayment is BaseTest {
         opsGuardian.createPool(poolB, FM, USD_ID);
 
         vm.startPrank(FM);
+
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = cv;
+        hub.setAdapters{value: GAS}(poolA, CHAIN_CV, adapters, new bytes32[](0), 1, 1, REFUND);
+        hub.setAdapters{value: GAS}(poolB, CHAIN_CV, adapters, new bytes32[](0), 1, 1, REFUND);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
         cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, CHAIN_CV, REFUND);

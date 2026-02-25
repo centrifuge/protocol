@@ -10,7 +10,6 @@ import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
 import {ICreatePool} from "../../../src/admin/interfaces/ICreatePool.sol";
 import {IOpsGuardian} from "../../../src/admin/interfaces/IOpsGuardian.sol";
-import {IBaseGuardian} from "../../../src/admin/interfaces/IBaseGuardian.sol";
 import {IAdapterWiring} from "../../../src/admin/interfaces/IAdapterWiring.sol";
 
 import "forge-std/Test.sol";
@@ -96,7 +95,7 @@ contract OpsGuardianTestInitAdapters is OpsGuardianTest {
         adapters[0] = ADAPTER;
 
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
+        vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
         opsGuardian.initAdapters(CENTRIFUGE_ID, adapters, 1, 2);
     }
 }
@@ -114,7 +113,7 @@ contract OpsGuardianTestCreatePool is OpsGuardianTest {
 
     function testCreatePoolRevertWhenNotSafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
+        vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
         opsGuardian.createPool(POOL_1, ADMIN, CURRENCY);
     }
 }
@@ -124,7 +123,7 @@ contract OpsGuardianTestFile is OpsGuardianTest {
         address newOpsSafe = makeAddr("newOpsSafe");
 
         vm.expectEmit();
-        emit IBaseGuardian.File("opsSafe", newOpsSafe);
+        emit IOpsGuardian.File("opsSafe", newOpsSafe);
 
         vm.prank(address(SAFE));
         opsGuardian.file("opsSafe", newOpsSafe);
@@ -136,7 +135,7 @@ contract OpsGuardianTestFile is OpsGuardianTest {
         address newHub = makeAddr("newHub");
 
         vm.expectEmit();
-        emit IBaseGuardian.File("hub", newHub);
+        emit IOpsGuardian.File("hub", newHub);
 
         vm.prank(address(SAFE));
         opsGuardian.file("hub", newHub);
@@ -148,7 +147,7 @@ contract OpsGuardianTestFile is OpsGuardianTest {
         address newMultiAdapter = makeAddr("newMultiAdapter");
 
         vm.expectEmit();
-        emit IBaseGuardian.File("multiAdapter", newMultiAdapter);
+        emit IOpsGuardian.File("multiAdapter", newMultiAdapter);
 
         vm.prank(address(SAFE));
         opsGuardian.file("multiAdapter", newMultiAdapter);
@@ -158,25 +157,25 @@ contract OpsGuardianTestFile is OpsGuardianTest {
 
     function testFileRevertWhenUnrecognizedParam() public {
         vm.prank(address(SAFE));
-        vm.expectRevert(IBaseGuardian.FileUnrecognizedParam.selector);
+        vm.expectRevert(IOpsGuardian.FileUnrecognizedParam.selector);
         opsGuardian.file("invalid", makeAddr("address"));
     }
 
     function testFileRevertWhenProtocolSpecificParam() public {
         vm.prank(address(SAFE));
-        vm.expectRevert(IBaseGuardian.FileUnrecognizedParam.selector);
+        vm.expectRevert(IOpsGuardian.FileUnrecognizedParam.selector);
         opsGuardian.file("gateway", makeAddr("address"));
     }
 
     function testFileRevertWhenSafeParam() public {
         vm.prank(address(SAFE));
-        vm.expectRevert(IBaseGuardian.FileUnrecognizedParam.selector);
+        vm.expectRevert(IOpsGuardian.FileUnrecognizedParam.selector);
         opsGuardian.file("safe", makeAddr("address"));
     }
 
     function testFileRevertWhenNotSafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
+        vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
         opsGuardian.file("opsSafe", makeAddr("address"));
     }
 }
@@ -215,7 +214,7 @@ contract OpsGuardianTestWire is OpsGuardianTest {
         bytes memory data = abi.encode("some", "data");
 
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IBaseGuardian.NotTheAuthorizedSafe.selector);
+        vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
         opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
     }
 }

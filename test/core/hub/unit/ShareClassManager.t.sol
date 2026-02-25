@@ -34,8 +34,8 @@ uint128 constant MIN_REQUEST_AMOUNT_SHARES = DENO_POOL;
 uint128 constant MAX_REQUEST_AMOUNT_SHARES = type(uint128).max / 1e10;
 string constant SC_NAME = "ExampleName";
 string constant SC_SYMBOL = "ExampleSymbol";
-bytes32 constant SC_SALT = bytes32("ExampleSalt");
-bytes32 constant SC_SECOND_SALT = bytes32("AnotherExampleSalt");
+bytes32 constant SC_SALT = bytes32(uint256(bytes32(bytes8(POOL_ID))) + 1); // 0x<POOL_ID>..1
+bytes32 constant SC_SECOND_SALT = bytes32(uint256(bytes32(bytes8(POOL_ID))) + 2); // 0x<POOL_ID>..2
 uint32 constant STORAGE_INDEX_METRICS = 3;
 
 contract HubRegistryMock {
@@ -167,10 +167,10 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         assertEq(ShareClassId.unwrap(preview), ShareClassId.unwrap(calc));
     }
 
-    function testAddShareClass(string memory name, string memory symbol, bytes32 salt) public {
+    function testAddShareClass(string memory name, string memory symbol, bytes24 freeSalt) public {
         vm.assume(bytes(name).length > 0 && bytes(name).length <= 128);
         vm.assume(bytes(symbol).length > 0 && bytes(symbol).length <= 32);
-        vm.assume(salt != bytes32(0));
+        bytes32 salt = bytes32(abi.encodePacked(poolId, freeSalt));
         vm.assume(salt != SC_SALT);
 
         ShareClassId nextScId = shareClass.previewNextShareClassId(poolId);
@@ -298,11 +298,6 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
     function testAddShareClassInvalidSymbolExcess() public {
         vm.expectRevert(IShareClassManager.InvalidMetadataSymbol.selector);
         shareClass.addShareClass(poolId, SC_NAME, string(abi.encodePacked(new bytes(33))), SC_SECOND_SALT);
-    }
-
-    function testAddShareClassEmptySalt() public {
-        vm.expectRevert(IShareClassManager.InvalidSalt.selector);
-        shareClass.addShareClass(poolId, SC_NAME, SC_SYMBOL, bytes32(0));
     }
 
     function testAddShareClassSaltAlreadyUsed() public {

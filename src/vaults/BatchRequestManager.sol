@@ -94,6 +94,12 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         _;
     }
 
+    /// @dev used only for migrations
+    function setEpochIds(PoolId poolId, ShareClassId scId, AssetId assetId, EpochId memory epochIdData) external auth {
+        epochId[poolId][scId][assetId] = epochIdData;
+        emit EpochIdModified(poolId, scId, assetId, epochIdData);
+    }
+
     //----------------------------------------------------------------------------------------------
     // Incoming requests
     //----------------------------------------------------------------------------------------------
@@ -121,6 +127,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
                     RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount)
                         .serialize(),
                     0,
+                    true,
                     address(0) // Refund is not used because we're in unpaid mode with no payment
                 );
             }
@@ -137,6 +144,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
                     RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount)
                         .serialize(),
                     0,
+                    true,
                     address(0) // Refund is not used because we're in unpaid mode with no payment
                 );
             }
@@ -239,7 +247,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
 
         bytes memory callback =
             RequestCallbackMessageLib.ApprovedDeposits(approvedAssetAmount, pricePoolPerAsset.raw()).serialize();
-        hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, 0, refund);
+        hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, 0, false, refund);
     }
 
     /// @inheritdoc IBatchRequestManager
@@ -321,7 +329,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
 
         bytes memory callback =
             RequestCallbackMessageLib.IssuedShares(issuedShareAmount, pricePoolPerShare.raw()).serialize();
-        hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, extraGasLimit, refund);
+        hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, extraGasLimit, false, refund);
     }
 
     /// @inheritdoc IBatchRequestManager
@@ -340,7 +348,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         bytes memory callback = RequestCallbackMessageLib.RevokedShares(
                 payoutAssetAmount, revokedShareAmount, pricePoolPerShare.raw()
             ).serialize();
-        hub.requestCallback{value: msgValue()}(poolId, scId_, payoutAssetId, callback, extraGasLimit, refund);
+        hub.requestCallback{value: msgValue()}(poolId, scId_, payoutAssetId, callback, extraGasLimit, false, refund);
     }
 
     function _revokeShares(
@@ -411,7 +419,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         if (cancelledAssetAmount > 0) {
             bytes memory callback =
                 RequestCallbackMessageLib.FulfilledDepositRequest(investor, 0, 0, cancelledAssetAmount).serialize();
-            hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, 0, refund);
+            hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, 0, false, refund);
         }
     }
 
@@ -433,7 +441,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         if (cancelledShareAmount > 0) {
             bytes memory callback =
                 RequestCallbackMessageLib.FulfilledRedeemRequest(investor, 0, 0, cancelledShareAmount).serialize();
-            hub.requestCallback{value: msgValue()}(poolId, scId_, payoutAssetId, callback, 0, refund);
+            hub.requestCallback{value: msgValue()}(poolId, scId_, payoutAssetId, callback, 0, false, refund);
         }
     }
 
@@ -482,6 +490,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
                         investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
                     ).serialize(),
                 0,
+                false,
                 refund
             );
         }
@@ -503,24 +512,34 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         EpochInvestAmounts storage epochAmounts =
             epochInvestAmounts[poolId][scId_][depositAssetId][userOrder.lastUpdate];
 
+        // Calculate ceiling for pending reduction (ensures sum(user.pending) <= pendingTotal)
         paymentAssetAmount = epochAmounts.approvedAssetAmount == 0
             ? 0
-            : userOrder.pending.mulDiv(epochAmounts.approvedAssetAmount, epochAmounts.pendingAssetAmount).toUint128();
+            : userOrder.pending
+                .mulDiv(epochAmounts.approvedAssetAmount, epochAmounts.pendingAssetAmount, MathLib.Rounding.Up)
+                .toUint128();
 
-        // NOTE: Due to precision loss, the sum of claimable user amounts is leq than the amount of minted share class
-        // tokens corresponding to the approved share amount (instead of equality). I.e., it is possible for an epoch to
-        // have an excess of a share class tokens which cannot be claimed by anyone.
+        // NOTE: To ensure sum(user.pending) <= pendingTotal, we reduce pending by ceiling of the
+        // proportional share. Payout amounts use floor to ensure sum(claimed) <= sum(issued).
+        // This means users may lose up to 1 wei per claim, but prevents unbounded drift.
         if (paymentAssetAmount > 0) {
-            payoutShareAmount = epochAmounts.pricePoolPerShare.isNotZero()
-                ? PricingLib.assetToShareAmount(
-                    paymentAssetAmount,
-                    hubRegistry.decimals(depositAssetId),
-                    hubRegistry.decimals(poolId),
-                    epochAmounts.pricePoolPerAsset,
-                    epochAmounts.pricePoolPerShare,
-                    MathLib.Rounding.Down
-                )
-                : 0;
+            // Calculate floor for share payout (ensures sum(shares claimed) <= shares issued)
+            uint128 paymentAssetFloor = userOrder.pending
+                .mulDiv(epochAmounts.approvedAssetAmount, epochAmounts.pendingAssetAmount, MathLib.Rounding.Down)
+                .toUint128();
+
+            if (paymentAssetFloor > 0) {
+                payoutShareAmount = epochAmounts.pricePoolPerShare.isNotZero()
+                    ? PricingLib.assetToShareAmount(
+                        paymentAssetFloor,
+                        hubRegistry.decimals(depositAssetId),
+                        hubRegistry.decimals(poolId),
+                        epochAmounts.pricePoolPerAsset,
+                        epochAmounts.pricePoolPerShare,
+                        MathLib.Rounding.Down
+                    )
+                    : 0;
+            }
 
             userOrder.pending -= paymentAssetAmount;
         }
@@ -593,6 +612,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
                         investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
                     ).serialize(),
                 0,
+                false,
                 refund
             );
         }
@@ -614,24 +634,34 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
 
         EpochRedeemAmounts storage epochAmounts = epochRedeemAmounts[poolId][scId_][payoutAssetId][userOrder.lastUpdate];
 
+        // Calculate ceiling for pending reduction (ensures sum(user.pending) <= pendingTotal)
         paymentShareAmount = epochAmounts.approvedShareAmount == 0
             ? 0
-            : userOrder.pending.mulDiv(epochAmounts.approvedShareAmount, epochAmounts.pendingShareAmount).toUint128();
+            : userOrder.pending
+                .mulDiv(epochAmounts.approvedShareAmount, epochAmounts.pendingShareAmount, MathLib.Rounding.Up)
+                .toUint128();
 
-        // NOTE: Due to precision loss, the sum of claimable user amounts is leq than the amount of payout asset
-        // corresponding to the approved share class (instead of equality). I.e., it is possible for an epoch to
-        // have an excess of payout assets which cannot be claimed by anyone.
+        // NOTE: To ensure sum(user.pending) <= pendingTotal, we reduce pending by ceiling of the
+        // proportional share. Payout amounts use floor to ensure sum(claimed) <= sum(issued).
+        // This means users may lose up to 1 wei per claim, but prevents unbounded drift.
         if (paymentShareAmount > 0) {
-            payoutAssetAmount = epochAmounts.pricePoolPerAsset.isNotZero()
-                ? PricingLib.shareToAssetAmount(
-                    paymentShareAmount,
-                    hubRegistry.decimals(poolId),
-                    hubRegistry.decimals(payoutAssetId),
-                    epochAmounts.pricePoolPerShare,
-                    epochAmounts.pricePoolPerAsset,
-                    MathLib.Rounding.Down
-                )
-                : 0;
+            // Calculate floor for asset payout (ensures sum(assets claimed) <= assets available)
+            uint128 paymentShareFloor = userOrder.pending
+                .mulDiv(epochAmounts.approvedShareAmount, epochAmounts.pendingShareAmount, MathLib.Rounding.Down)
+                .toUint128();
+
+            if (paymentShareFloor > 0) {
+                payoutAssetAmount = epochAmounts.pricePoolPerAsset.isNotZero()
+                    ? PricingLib.shareToAssetAmount(
+                        paymentShareFloor,
+                        hubRegistry.decimals(poolId),
+                        hubRegistry.decimals(payoutAssetId),
+                        epochAmounts.pricePoolPerShare,
+                        epochAmounts.pricePoolPerAsset,
+                        MathLib.Rounding.Down
+                    )
+                    : 0;
+            }
 
             userOrder.pending -= paymentShareAmount;
         }
@@ -916,7 +946,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         QueuedOrder memory queued
     ) internal {
         uint128 pendingTotal = pendingDeposit[poolId][scId_][assetId];
-        pendingTotal = isIncrement ? pendingTotal + amount : pendingTotal - amount;
+        pendingTotal = isIncrement ? pendingTotal + amount : amount > pendingTotal ? 0 : pendingTotal - amount;
         pendingDeposit[poolId][scId_][assetId] = pendingTotal;
 
         emit UpdateDepositRequest(
@@ -943,7 +973,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         QueuedOrder memory queued
     ) internal {
         uint128 pendingTotal = pendingRedeem[poolId][scId_][assetId];
-        pendingTotal = isIncrement ? pendingTotal + amount : pendingTotal - amount;
+        pendingTotal = isIncrement ? pendingTotal + amount : amount > pendingTotal ? 0 : pendingTotal - amount;
         pendingRedeem[poolId][scId_][assetId] = pendingTotal;
 
         emit UpdateRedeemRequest(

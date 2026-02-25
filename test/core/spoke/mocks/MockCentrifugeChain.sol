@@ -57,7 +57,8 @@ contract MockCentrifugeChain is Test {
                     scId: scId,
                     assetId: vaultDetails.assetId.raw(),
                     vaultOrFactory: bytes32(bytes20(vault)),
-                    kind: uint8(VaultUpdateKind.Unlink)
+                    kind: uint8(VaultUpdateKind.Unlink),
+                    extraGasLimit: 0
                 }).serialize()
         );
     }
@@ -71,7 +72,8 @@ contract MockCentrifugeChain is Test {
                     scId: scId,
                     vaultOrFactory: bytes32(bytes20(vault)),
                     assetId: vaultDetails.assetId.raw(),
-                    kind: uint8(VaultUpdateKind.Link)
+                    kind: uint8(VaultUpdateKind.Link),
+                    extraGasLimit: 0
                 }).serialize()
         );
     }
@@ -86,7 +88,8 @@ contract MockCentrifugeChain is Test {
                     target: bytes32(bytes20(address(syncManager))),
                     payload: abi.encode(
                         uint8(ISyncManager.TrustedCall.MaxReserve), vaultDetails.assetId.raw(), maxReserve
-                    )
+                    ),
+                    extraGasLimit: 0
                 }).serialize()
         );
     }
@@ -154,7 +157,8 @@ contract MockCentrifugeChain is Test {
                     poolId: poolId,
                     scId: scId,
                     payload: UpdateRestrictionMessageLib.UpdateRestrictionMember(user.toBytes32(), validUntil)
-                        .serialize()
+                        .serialize(),
+                    extraGasLimit: 0
                 }).serialize()
         );
     }
@@ -203,7 +207,8 @@ contract MockCentrifugeChain is Test {
             MessageLib.UpdateRestriction({
                     poolId: poolId,
                     scId: scId,
-                    payload: UpdateRestrictionMessageLib.UpdateRestrictionFreeze(user.toBytes32()).serialize()
+                    payload: UpdateRestrictionMessageLib.UpdateRestrictionFreeze(user.toBytes32()).serialize(),
+                    extraGasLimit: 0
                 }).serialize()
         );
     }
@@ -213,7 +218,8 @@ contract MockCentrifugeChain is Test {
             MessageLib.UpdateRestriction({
                     poolId: poolId,
                     scId: scId,
-                    payload: UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(user.toBytes32()).serialize()
+                    payload: UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(user.toBytes32()).serialize(),
+                    extraGasLimit: 0
                 }).serialize()
         );
     }
@@ -249,6 +255,7 @@ contract MockCentrifugeChain is Test {
                     poolId,
                     scId,
                     assetId,
+                    0,
                     RequestCallbackMessageLib.FulfilledDepositRequest({
                             investor: investor,
                             fulfilledAssetAmount: fulfilledAssetAmount,
@@ -276,6 +283,7 @@ contract MockCentrifugeChain is Test {
                     poolId,
                     scId,
                     assetId,
+                    0,
                     RequestCallbackMessageLib.FulfilledRedeemRequest({
                             investor: investor,
                             fulfilledAssetAmount: fulfilledAssetAmount,
@@ -295,6 +303,7 @@ contract MockCentrifugeChain is Test {
                     poolId,
                     scId,
                     assetId,
+                    0,
                     RequestCallbackMessageLib.ApprovedDeposits({
                             assetAmount: assets, pricePoolPerAsset: pricePoolPerAsset.raw()
                         }).serialize()
@@ -311,6 +320,7 @@ contract MockCentrifugeChain is Test {
                     poolId,
                     scId,
                     assetId,
+                    0,
                     RequestCallbackMessageLib.IssuedShares({
                             shareAmount: shares, pricePoolPerShare: pricePoolPerShare.raw()
                         }).serialize()
@@ -332,6 +342,7 @@ contract MockCentrifugeChain is Test {
                     poolId,
                     scId,
                     assetId,
+                    0,
                     RequestCallbackMessageLib.RevokedShares({
                             assetAmount: assets, shareAmount: shareAmount, pricePoolPerShare: pricePoolPerShare.raw()
                         }).serialize()

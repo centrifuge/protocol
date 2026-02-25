@@ -23,7 +23,7 @@ src/
 - **[`core/spoke`](./core/spoke)** - Spoke module for local pool operations, share tokens, balance sheets, vault registry, and pool escrows
 - **[`core/messaging`](./core/messaging)** - Message serialization, dispatching, processing, and gas service for cross-chain communication
 - **[`libraries`](./libraries)** - Shared utility libraries for message encoding, contract updates, and protocol operations
-- **[`adapters`](./adapters)** - Cross-chain messaging adapters integrating with LayerZero, Wormhole, Axelar, and recovery mechanisms
+- **[`adapters`](./adapters)** - Cross-chain messaging adapters integrating with Wormhole, LayerZero, Axelar, and Chainlink
 - **[`admin`](./admin)** - Protocol governance with Root, ProtocolGuardian, OpsGuardian, and TokenRecoverer for timelocked permissions and emergency controls
 - **[`hooks`](./hooks)** - Transfer hook implementations (FreezeOnly, RedemptionRestrictions, FullRestrictions, FreelyTransferable)
 - **[`managers/hub`](./managers/hub)** - NAVManager for net asset value tracking and SimplePriceManager for single-share-class pool pricing

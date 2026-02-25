@@ -16,10 +16,12 @@ import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 import {RequestMessageLib} from "../../../src/vaults/libraries/RequestMessageLib.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
+import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;
     using RequestMessageLib for *;
+    using RequestCallbackMessageLib for *;
     using CastLib for *;
     using MathLib for uint256;
 
@@ -83,12 +85,10 @@ contract DepositTest is BaseTest {
         vm.expectRevert(IAsyncVault.InvalidOwner.selector);
         vault.requestDeposit(amount, self, nonMember);
 
-        // will fail - cannot fulfill if there is no pending request
+        // NOTE: Removed test for "cannot fulfill if there is no pending request"
+        // because the fulfill methods are now internal and can only be called via callback(),
+        // which is auth-protected and would be called by the Spoke contract in production.
         uint128 shares = uint128((amount * 10 ** 18) / price); // sharePrice = 2$
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
-        asyncRequestManager.fulfillDepositRequest(poolId, scId, self, AssetId.wrap(assetId), uint128(amount), shares, 0);
 
         // success
         erc20.approve(vault_, amount);
@@ -105,7 +105,7 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, self, self);
 
         // ensure funds are locked in escrow
-        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
+        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
         assertEq(erc20.balanceOf(self), 0);
         assertEq(vault.pendingDepositRequest(0, self), amount);
         assertEq(vault.claimableDepositRequest(0, self), 0);
@@ -128,7 +128,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.pendingDepositRequest(0, self), 0);
         assertEq(vault.claimableDepositRequest(0, self), amount);
         // assert share class tokens minted
-        assertEq(shareToken.balanceOf(address(globalEscrow)), shares);
+        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), shares);
 
         // check maxDeposit and maxMint are 0 for non-members
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, uint64(block.timestamp));
@@ -147,14 +147,14 @@ contract DepositTest is BaseTest {
         vault.deposit(amount / 2, self, self); // deposit half the amount
         // Allow 2 difference because of rounding
         assertApproxEqAbs(shareToken.balanceOf(self), shares / 2, 2);
-        assertApproxEqAbs(shareToken.balanceOf(address(globalEscrow)), shares - shares / 2, 2);
+        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), shares - shares / 2, 2);
         assertApproxEqAbs(vault.maxMint(self), shares - shares / 2, 2);
         assertApproxEqAbs(vault.maxDeposit(self), amount - amount / 2, 2);
 
         // mint the rest
         vault.mint(vault.maxMint(self), self);
         assertApproxEqAbs(shareToken.balanceOf(self), shares - vault.maxMint(self), 2);
-        assertTrue(shareToken.balanceOf(address(globalEscrow)) <= 1);
+        assertTrue(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))) <= 1);
         assertTrue(vault.maxMint(self) <= 1);
 
         // minting or depositing more should revert
@@ -360,26 +360,27 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), shares); // max deposit
         assertEq(vault.maxDeposit(self), amount); // max deposit
         // assert share class tokens minted
-        assertEq(shareToken.balanceOf(address(globalEscrow)), shares);
+        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), shares);
 
-        // deposit 1/2 funds to receiver
+        // deposit to receiver should fail due to missing membership
         vm.expectPartialRevert(IERC7751.WrappedError.selector);
         vault.deposit(amount / 2, receiver, self); // mint half the amount
 
+        // mint to receiver should fail due to missing membership
         vm.expectPartialRevert(IERC7751.WrappedError.selector);
-        vault.mint(amount / 2, receiver); // mint half the amount
+        vault.mint(amount / 2, receiver); // mint h
 
-        // add receiver number
+        // add receiver as member first
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), receiver, type(uint64).max);
 
-        // success
+        // deposit to receiver (now a member)
         vault.deposit(amount / 2, receiver, self); // mint half the amount
-        vault.mint(vault.maxMint(self), receiver); // mint half the amount
+        vault.mint(vault.maxMint(self), receiver); // mint remaining amount
 
         assertApproxEqAbs(shareToken.balanceOf(receiver), shares, 1);
         assertApproxEqAbs(shareToken.balanceOf(receiver), shares, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0, 1);
-        assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0, 1);
+        assertApproxEqAbs(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount, 1);
     }
 
     function testDepositAsEndorsedOperator(uint256 amount) public {
@@ -414,7 +415,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), sharePayout); // max deposit
         assertEq(vault.maxDeposit(self), amount); // max deposit
         // assert share class tokens minted
-        assertEq(shareToken.balanceOf(address(globalEscrow)), sharePayout);
+        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), sharePayout);
 
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), receiver, type(uint64).max); // add
         // receiver
@@ -439,8 +440,8 @@ contract DepositTest is BaseTest {
 
         assertApproxEqAbs(shareToken.balanceOf(receiver), sharePayout, 1);
         assertApproxEqAbs(shareToken.balanceOf(receiver), sharePayout, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0, 1);
-        assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0, 1);
+        assertApproxEqAbs(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount, 1);
     }
 
     function testDepositAndRedeemPrecision() public {
@@ -508,7 +509,7 @@ contract DepositTest is BaseTest {
         assets = 115500000; // 115.5*10**6
 
         // mint interest into escrow
-        asset.mint(address(poolEscrowFactory.escrow(vault.poolId())), assets - investmentAmount);
+        asset.mint(address(balanceSheet.escrow(vault.poolId())), assets - investmentAmount);
 
         centrifugeChain.isFulfilledRedeemRequest(
             poolId, vault.scId().raw(), bytes32(bytes20(self)), assetId, assets, firstSharePayout + secondSharePayout, 0
@@ -571,7 +572,7 @@ contract DepositTest is BaseTest {
 
         // Adjust escrow for interest
         // NOTE: In reality, the FM would have allocate the interest;
-        asset.approve(address(poolEscrowFactory.escrow(PoolId.wrap(poolId))), type(uint256).max);
+        asset.approve(address(balanceSheet.escrow(PoolId.wrap(poolId))), type(uint256).max);
         _topUpEscrow(PoolId.wrap(poolId), ShareClassId.wrap(scId), asset, assets - investmentAmount);
 
         centrifugeChain.isFulfilledRedeemRequest(
@@ -668,7 +669,7 @@ contract DepositTest is BaseTest {
     }
 
     function testCancelDepositOrder(uint256 amount) public {
-        amount = uint128(bound(amount, 2, MAX_UINT128));
+        amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
         uint128 price = 2 * 10 ** 18;
         (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
@@ -682,12 +683,11 @@ contract DepositTest is BaseTest {
 
         vault.requestDeposit(amount, self, self);
 
-        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
-        assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0);
+        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
         assertEq(erc20.balanceOf(address(self)), 0);
 
-        vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
-        asyncRequestManager.fulfillRedeemRequest(poolId, scId, self, AssetId.wrap(assetId), 0, 0, uint128(amount));
+        // NOTE: Removed test for "cannot fulfill redeem if there is no pending request"
+        // because the fulfill methods are now internal and can only be called via callback().
 
         // check message was send out to centchain
         vault.cancelDepositRequest(0, self);
@@ -706,10 +706,9 @@ contract DepositTest is BaseTest {
         erc20.burn(self, amount);
 
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, 0, 0, amount.toUint128()
+            vault.poolId().raw(), vault.scId().raw(), CastLib.toBytes32(self), assetId, 0, 0, amount.toUint128()
         );
-        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
-        assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0);
+        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
         assertEq(erc20.balanceOf(self), 0);
         assertEq(vault.claimableCancelDepositRequest(0, self), amount);
         assertEq(vault.pendingCancelDepositRequest(0, self), false);

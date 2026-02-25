@@ -23,20 +23,14 @@ import {ISafe} from "../../../../src/admin/interfaces/ISafe.sol";
 import {AsyncVault} from "../../../../src/vaults/AsyncVault.sol";
 import {SyncDepositVault} from "../../../../src/vaults/SyncDepositVault.sol";
 
-import {
-    FullActionBatcher,
-    FullDeployer,
-    FullInput,
-    noAdaptersInput,
-    CoreInput
-} from "../../../../script/FullDeployer.s.sol";
+import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../../../script/FullDeployer.s.sol";
 
 import {MockAdapter} from "../../mocks/MockAdapter.sol";
 import {MockCentrifugeChain} from "../mocks/MockCentrifugeChain.sol";
 
 import "forge-std/Test.sol";
 
-contract BaseTest is FullDeployer, Test, FullActionBatcher {
+contract BaseTest is FullDeployer, Test {
     using MessageLib for *;
 
     MockCentrifugeChain centrifugeChain;
@@ -51,8 +45,6 @@ contract BaseTest is FullDeployer, Test, FullActionBatcher {
     address investor = makeAddr("investor");
     address nonMember = makeAddr("nonMember");
     address randomUser = makeAddr("randomUser");
-    address immutable ADMIN = address(adminSafe);
-
     uint128 constant MAX_UINT128 = type(uint128).max;
     uint64 constant MAX_UINT64 = type(uint64).max;
 
@@ -81,19 +73,48 @@ contract BaseTest is FullDeployer, Test, FullActionBatcher {
     }
 
     function setUp() public virtual {
-        setDeployer(address(this));
         labelAddresses("");
 
         deployFull(
-            FullInput({
-                core: CoreInput({centrifugeId: THIS_CHAIN_ID, version: bytes32(0), root: address(0)}),
-                adminSafe: ISafe(ADMIN),
-                opsSafe: ISafe(ADMIN),
+            DeployerInput({
+                centrifugeId: THIS_CHAIN_ID,
+                version: bytes32(0),
+                txLimits: defaultTxLimits(),
+                protocolSafe: ISafe(makeAddr("ProtocolSafe")),
+                opsSafe: ISafe(makeAddr("OpsSafe")),
                 adapters: noAdaptersInput()
             }),
-            this
+            address(this)
         );
-        // removeExtendedSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
+
+        // Give permissions to address(this) for most calls in these tests.
+        // NOTE: This can be removed when use cases use the correct pranks
+        vm.startPrank(address(root));
+        gateway.rely(address(this));
+        multiAdapter.rely(address(this));
+        messageDispatcher.rely(address(this));
+        messageProcessor.rely(address(this));
+        poolEscrowFactory.rely(address(this));
+        tokenFactory.rely(address(this));
+        spoke.rely(address(this));
+        balanceSheet.rely(address(this));
+        contractUpdater.rely(address(this));
+        vaultRegistry.rely(address(this));
+        tokenRecoverer.rely(address(this));
+        refundEscrowFactory.rely(address(this));
+        asyncVaultFactory.rely(address(this));
+        asyncRequestManager.rely(address(this));
+        syncDepositVaultFactory.rely(address(this));
+        syncManager.rely(address(this));
+        vaultRouter.rely(address(this));
+        freezeOnlyHook.rely(address(this));
+        fullRestrictionsHook.rely(address(this));
+        freelyTransferableHook.rely(address(this));
+        redemptionRestrictionsHook.rely(address(this));
+        vm.stopPrank();
+
+        vm.prank(address(protocolGuardian));
+        root.rely(address(this));
 
         // Ensure test contract has auth on vaultRegistry for testing
         vaultRegistry.rely(address(this));
@@ -119,7 +140,11 @@ contract BaseTest is FullDeployer, Test, FullActionBatcher {
             OTHER_CHAIN_ID, PoolId.wrap(0), testAdapters, uint8(testAdapters.length), uint8(testAdapters.length)
         );
 
-        asyncRequestManager.depositSubsidy{value: 0.5 ether}(POOL_A);
+        multiAdapter.setAdapters(
+            OTHER_CHAIN_ID, POOL_A, testAdapters, uint8(testAdapters.length), uint8(testAdapters.length)
+        );
+
+        subsidyManager.deposit{value: 0.5 ether}(POOL_A);
         balanceSheet.updateManager(POOL_A, address(this), true);
 
         // We should not use the block ChainID

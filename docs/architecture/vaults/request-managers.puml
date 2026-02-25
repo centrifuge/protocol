@@ -5,19 +5,18 @@ hide empty members
 skinparam linetype ortho
 
 package misc {
-    class "Escrow" as GlobalEscrow<<global>>
+    class "Escrow" as PoolEscrow<<pool>>
     class "Escrow" as RouterEscrow<<router>>
 }
 
 package spoke {
     class Spoke
     class BalanceSheet
-    interface ITrustedContractUpdate
     interface IRequestManager
+    interface ITrustedContractUpdate
 }
 
 interface IBaseRequestManager
-
 interface IAsyncRequestManager
 interface ISyncManager
 
@@ -26,9 +25,9 @@ IBaseRequestManager -up-|> IRequestManager
 IAsyncRequestManager -up-|> IBaseRequestManager
 ISyncManager -up-|> ITrustedContractUpdate
 
-AsyncRequestManager -up--> GlobalEscrow
-AsyncRequestManager -up--> BalanceSheet
+AsyncRequestManager -up-> BalanceSheet
 AsyncRequestManager -up-|> IAsyncRequestManager
+BalanceSheet -up-> PoolEscrow
 
 SyncManager -up-|> ISyncManager
 SyncManager -up--> BalanceSheet

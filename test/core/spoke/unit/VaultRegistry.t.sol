@@ -92,10 +92,6 @@ contract VaultRegistryTest is Test {
         vm.stopPrank();
         vm.warp(MAX_AGE);
 
-        // Mock gateway calls
-        vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.setUnpaidMode.selector, true), abi.encode());
-        vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.setUnpaidMode.selector, false), abi.encode());
-
         // Mock sender calls
         vm.mockCall(
             address(sender),
@@ -161,10 +157,9 @@ contract VaultRegistryTest is Test {
     }
 
     function _mockVaultFactory(address asset, uint256 tokenId) internal {
-        address[] memory emptyArray = new address[](0);
         vm.mockCall(
             address(vaultFactory),
-            abi.encodeWithSelector(IVaultFactory.newVault.selector, POOL_A, SC_1, asset, tokenId, share, emptyArray),
+            abi.encodeWithSelector(IVaultFactory.newVault.selector, POOL_A, SC_1, asset, tokenId, share),
             abi.encode(vault)
         );
 

@@ -20,7 +20,6 @@ import {Gateway} from "../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
 import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
-import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
 import {GasService} from "../../src/core/messaging/GasService.sol";
 import {PricingLib} from "../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
@@ -29,6 +28,7 @@ import {VaultRegistry} from "../../src/core/spoke/VaultRegistry.sol";
 import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
+import {BalanceSheet, WithdrawMode} from "../../src/core/spoke/BalanceSheet.sol";
 import {MAX_MESSAGE_COST} from "../../src/core/messaging/interfaces/IGasService.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 import {IMessageHandler} from "../../src/core/messaging/interfaces/IMessageHandler.sol";
@@ -60,13 +60,14 @@ import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
-import {RefundEscrowFactory} from "../../src/vaults/factories/RefundEscrowFactory.sol";
 
-import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} from "../../script/FullDeployer.s.sol";
+import {FullDeployer, DeployerInput, noAdaptersInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
+import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
 import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
+import {RefundEscrowFactory} from "../../src/utils/RefundEscrowFactory.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///
@@ -128,6 +129,7 @@ contract EndToEndDeployment is Test {
         VaultRegistry vaultRegistry;
         // Vaults
         VaultRouter router;
+        SubsidyManager subsidyManager;
         bytes32 asyncVaultFactory;
         bytes32 syncDepositVaultFactory;
         AsyncRequestManager asyncRequestManager;
@@ -179,8 +181,8 @@ contract EndToEndDeployment is Test {
     LocalAdapter adapterAToB;
     LocalAdapter adapterBToA;
 
-    LocalAdapter poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
-    LocalAdapter poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
+    LocalAdapter poolAdapterHToS;
+    LocalAdapter poolAdapterSToH;
 
     CHub h;
     CSpoke s;
@@ -261,37 +263,28 @@ contract EndToEndDeployment is Test {
         vm.stopPrank();
     }
 
-    function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe adminSafe)
+    function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe protocolSafe)
         internal
         returns (LocalAdapter adapter)
     {
-        FullActionBatcher batcher = new FullActionBatcher();
-        batcher.setDeployer(address(deploy));
-
-        deploy.labelAddresses(string(abi.encodePacked(localCentrifugeId, "-")));
+        deploy.labelAddresses(string(abi.encodePacked(vm.toString(localCentrifugeId), "-")));
         deploy.deployFull(
-            FullInput({
-                core: CoreInput({
-                    centrifugeId: localCentrifugeId,
-                    version: bytes32(abi.encodePacked(localCentrifugeId)),
-                    root: address(0)
-                }),
-                adminSafe: adminSafe,
-                opsSafe: adminSafe,
+            DeployerInput({
+                centrifugeId: localCentrifugeId,
+                version: bytes32(abi.encodePacked(localCentrifugeId)),
+                txLimits: defaultTxLimits(),
+                protocolSafe: protocolSafe,
+                opsSafe: protocolSafe,
                 adapters: noAdaptersInput()
             }),
-            batcher
+            address(deploy)
         );
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         _setAdapter(deploy, remoteCentrifugeId, adapter);
-
-        deploy.removeFullDeployerAccess(batcher);
     }
 
     function _setSpoke(FullDeployer deploy, uint16 centrifugeId, CSpoke storage s_) internal {
-        if (s_.centrifugeId != 0) return; // Already set
-
         s_.centrifugeId = centrifugeId;
         s_.root = deploy.root();
         s_.protocolGuardian = deploy.protocolGuardian();
@@ -305,6 +298,7 @@ contract EndToEndDeployment is Test {
         s_.freezeOnlyHook = deploy.freezeOnlyHook();
         s_.fullRestrictionsHook = deploy.fullRestrictionsHook();
         s_.redemptionRestrictionsHook = deploy.redemptionRestrictionsHook();
+        s_.subsidyManager = deploy.subsidyManager();
         s_.asyncVaultFactory = address(deploy.asyncVaultFactory()).toBytes32();
         s_.syncDepositVaultFactory = address(deploy.syncDepositVaultFactory()).toBytes32();
         s_.asyncRequestManager = deploy.asyncRequestManager();
@@ -317,7 +311,7 @@ contract EndToEndDeployment is Test {
         s_.usdc.file("name", "USD Coin");
         s_.usdc.file("symbol", "USDC");
 
-        s_.asyncRequestManager.depositSubsidy{value: 0.5 ether}(POOL_A);
+        s_.subsidyManager.deposit{value: 0.5 ether}(POOL_A);
     }
 
     function _setSpoke(bool sameChain) internal {
@@ -416,7 +410,7 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         h.hub.setPoolMetadata(POOL_A, bytes("Testing pool"));
-        h.hub.addShareClass(POOL_A, "Tokenized MMF", "MMF", bytes32("salt"));
+        h.hub.addShareClass(POOL_A, "Tokenized MMF", "MMF", bytes32(bytes8(POOL_A.raw())));
 
         _createPoolAccounts();
     }
@@ -429,12 +423,12 @@ contract EndToEndFlows is EndToEndUtils {
         s_.spoke.registerAsset{value: GAS}(h.centrifugeId, address(s_.usdc), 0, ANY);
     }
 
-    function _configurePool(CSpoke memory s_) internal {
-        _configureAsset(s_);
-
-        if (!h.hubRegistry.exists(POOL_A)) {
-            _createPool();
+    function _configurePoolInSpoke(CSpoke memory s_) internal {
+        if (h.centrifugeId != s_.centrifugeId) {
+            _configureBasePoolWithCustomAdapters(s_);
         }
+
+        _configureAsset(s_);
 
         vm.startPrank(FM);
         h.hub.notifyPool{value: GAS}(POOL_A, s_.centrifugeId, REFUND);
@@ -471,32 +465,30 @@ contract EndToEndFlows is EndToEndUtils {
         vm.stopPrank();
     }
 
-    function _configurePool(bool sameChain) internal {
-        _setSpoke(sameChain);
-        _configurePool(s);
-    }
-
-    function _configureBasePoolWithCustomAdapters() internal {
-        _setSpoke(IN_DIFFERENT_CHAINS);
-        _createPool();
-
+    function _configureBasePoolWithCustomAdapters(CSpoke memory s_) internal {
         // Wire pool adapters
-        poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
-        poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
+        poolAdapterHToS = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
+        poolAdapterSToH = new LocalAdapter(s_.centrifugeId, s_.multiAdapter, FM);
 
-        poolAdapterAToB.setEndpoint(poolAdapterBToA);
-        poolAdapterBToA.setEndpoint(poolAdapterAToB);
+        poolAdapterHToS.setEndpoint(poolAdapterSToH);
+        poolAdapterSToH.setEndpoint(poolAdapterHToS);
 
         IAdapter[] memory localAdapters = new IAdapter[](1);
-        localAdapters[0] = poolAdapterAToB;
+        localAdapters[0] = poolAdapterHToS;
 
         bytes32[] memory remoteAdapters = new bytes32[](1);
-        remoteAdapters[0] = address(poolAdapterBToA).toBytes32();
+        remoteAdapters[0] = address(poolAdapterSToH).toBytes32();
 
         vm.startPrank(FM);
-        h.hub.setAdapters{value: GAS}(POOL_A, s.centrifugeId, localAdapters, remoteAdapters, 1, 1, REFUND);
+        h.hub.setAdapters{value: GAS}(POOL_A, s_.centrifugeId, localAdapters, remoteAdapters, 1, 1, REFUND);
         h.hub.updateGatewayManager{value: GAS}(POOL_A, h.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
-        h.hub.updateGatewayManager{value: GAS}(POOL_A, s.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
+        h.hub.updateGatewayManager{value: GAS}(POOL_A, s_.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
+    }
+
+    function _configurePool(bool sameChain) internal {
+        _setSpoke(sameChain);
+        _createPool();
+        _configurePoolInSpoke(s);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -650,6 +642,14 @@ contract EndToEndFlows is EndToEndUtils {
         vault.withdraw(vault.maxWithdraw(INVESTOR_A), INVESTOR_A, INVESTOR_A);
 
         assertEq(s.usdc.balanceOf(INVESTOR_A), shareToAsset(shares), "expected assets");
+
+        if (nonZeroPrices) {
+            assertEq(
+                s.balanceSheet.availableBalanceOf(POOL_A, SC_1, address(s.usdc), 0),
+                0,
+                "escrow balance should be zero after full redemption"
+            );
+        }
     }
 
     //----------------------------------------------------------------------------------------------
@@ -827,7 +827,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.startPrank(BSM);
         s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
         s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
-        s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5);
+        s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5, WithdrawMode.Full);
         s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
 
         // CHECKS
@@ -945,14 +945,16 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
     /// forge-config: default.isolate = true
     function testAdaptersPerPool() public {
-        _configureBasePoolWithCustomAdapters();
+        _setSpoke(IN_DIFFERENT_CHAINS);
+        _createPool();
+        _configureBasePoolWithCustomAdapters(s);
 
         vm.startPrank(FM);
         h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId, REFUND);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
 
         // Hub -> Spoke message went through the pool adapter
-        assertEq(uint8(poolAdapterAToB.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
+        assertEq(uint8(poolAdapterHToS.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
         assertEq(s.spoke.pool(POOL_A), block.timestamp); // Message received and processed
 
         h.hub.updateBalanceSheetManager{value: GAS}(POOL_A, s.centrifugeId, BSM.toBytes32(), true, REFUND);
@@ -961,7 +963,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         s.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
 
         // Spoke -> Hub message went through the pool adapter
-        assertEq(uint8(poolAdapterBToA.lastReceivedPayload().messageType()), uint8(MessageType.UpdateShares));
+        assertEq(uint8(poolAdapterSToH.lastReceivedPayload().messageType()), uint8(MessageType.UpdateShares));
 
         assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 1); // Message received and processed
     }
@@ -1011,8 +1013,8 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         _createPool();
 
         // Wire pool adapters
-        poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
-        poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
+        LocalAdapter poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
+        LocalAdapter poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
 
         poolAdapterAToB.setEndpoint(poolAdapterBToA);
         poolAdapterBToA.setEndpoint(poolAdapterAToB);
@@ -1069,7 +1071,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
     /// forge-config: default.isolate = true
     function testUntrustedContractUpdate(bool sameChain) public {
-        _setSpoke(sameChain);
+        _configurePool(sameChain);
 
         address hubContract = address(new IsContract());
         address spokeSender = makeAddr("SpokeSender");

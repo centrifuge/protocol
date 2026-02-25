@@ -8,7 +8,6 @@ import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
-import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {MessageType, MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 import {
     ISpokeGatewayHandler,
@@ -80,10 +79,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes calldata message) external auth {
         MessageType kind = message.messageType();
-        gateway.setUnpaidMode(true);
-
-        uint16 sourceCentrifugeId = message.messageSourceCentrifugeId();
-        require(sourceCentrifugeId == 0 || sourceCentrifugeId == centrifugeId, InvalidSourceChain());
 
         if (kind == MessageType.ScheduleUpgrade) {
             require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
@@ -101,9 +96,11 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
+            require(centrifugeId == AssetId.wrap(m.assetId).centrifugeId(), OnlyFromSource());
             hubHandler.registerAsset(AssetId.wrap(m.assetId), m.decimals);
         } else if (kind == MessageType.SetPoolAdapters) {
             MessageLib.SetPoolAdapters memory m = message.deserializeSetPoolAdapters();
+            require(centrifugeId == PoolId.wrap(m.poolId).centrifugeId(), OnlyFromSource());
             IAdapter[] memory adapters = new IAdapter[](m.adapterList.length);
             for (uint256 i; i < adapters.length; i++) {
                 adapters[i] = IAdapter(m.adapterList[i].toAddress());
@@ -154,7 +151,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 ShareClassId.wrap(m.scId),
                 m.receiver,
                 m.amount,
-                m.extraGasLimit,
+                m.remoteExtraGasLimit,
                 address(0) // Refund is not used because we're in unpaid mode with no payment
             );
         } else if (kind == MessageType.ExecuteTransferShares) {
@@ -234,17 +231,5 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else {
             revert InvalidMessage(uint8(kind));
         }
-
-        gateway.setUnpaidMode(false);
-    }
-
-    /// @inheritdoc IMessageProperties
-    function messageLength(bytes calldata message) external pure returns (uint16) {
-        return message.messageLength();
-    }
-
-    /// @inheritdoc IMessageProperties
-    function messagePoolId(bytes calldata message) external pure returns (PoolId) {
-        return message.messagePoolId();
     }
 }

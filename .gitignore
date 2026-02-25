@@ -1,10 +1,9 @@
 cache/
 out/
 broadcast/
-.env
+.env*
 .idea/
 .DS_Store
-.env.back
 lcov.info
 .vscode
 **/latest
@@ -18,7 +17,15 @@ recon.json
 **/anvil/*.json
 **/env/anvil.json
 **/anvil
+**/*.bak
 ## Recon Separate Configs
 /medusa-core
 /medusa-aggregator
-/.cursor
+/registry/**/*.json
+.cursor
+
+## Spell validation cache
+spell-cache/
+
+script/registry/node_modules
+script/registry/package-lock.json

@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CoreDeployer} from "./CoreDeployer.s.sol";
-import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
+import {BaseDeployer} from "./BaseDeployer.s.sol";
 
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
 import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
-
-import "forge-std/Script.sol";
 
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
@@ -16,12 +13,13 @@ import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 
 /// @title OnlyAdapters
 /// @notice Deploys only messaging adapters, reusing existing core addresses from env/<network>.json
-contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
+contract OnlyAdapters is BaseDeployer {
     using CastLib for *;
 
-    WormholeAdapter public wormholeAdapter;
-    AxelarAdapter public axelarAdapter;
-    LayerZeroAdapter public layerZeroAdapter;
+    MultiAdapter multiAdapter;
+    WormholeAdapter wormholeAdapter;
+    AxelarAdapter axelarAdapter;
+    LayerZeroAdapter layerZeroAdapter;
 
     function _fetchConfig(string memory network) internal view returns (string memory) {
         string memory configFile = string.concat("env/", network, ".json");
@@ -33,14 +31,11 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
         string memory network = vm.envString("NETWORK");
         string memory config = _fetchConfig(network);
 
-        // Set version deterministically like LaunchDeployer
-        version = vm.envOr("VERSION", string("")).toBytes32();
-        setUpCreateXFactory();
         // Load core addresses we need
-        address multiAdapterAddr = vm.parseJsonAddress(config, "$.contracts.multiAdapter");
-        address protocolGuardianAddr = vm.parseJsonAddress(config, "$.contracts.protocolGuardian");
-        address opsGuardianAddr = vm.parseJsonAddress(config, "$.contracts.opsGuardian");
-        address rootAddr = vm.parseJsonAddress(config, "$.contracts.root");
+        address multiAdapterAddr = _readContractAddress(config, "$.contracts.multiAdapter");
+        address protocolGuardianAddr = _readContractAddress(config, "$.contracts.protocolGuardian");
+        address opsGuardianAddr = _readContractAddress(config, "$.contracts.opsGuardian");
+        address rootAddr = _readContractAddress(config, "$.contracts.root");
 
         multiAdapter = MultiAdapter(multiAdapterAddr);
 
@@ -63,6 +58,9 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
         startDeploymentOutput();
 
         vm.startBroadcast();
+        captureStartBlock();
+
+        _init(vm.envOr("VERSION", string("")).toBytes32(), msg.sender);
 
         if (deployWormhole) {
             address wormholeRelayer = vm.parseJsonAddress(config, "$.adapters.wormhole.relayer");
@@ -71,7 +69,7 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
 
             wormholeAdapter = WormholeAdapter(
                 create3(
-                    generateSalt("wormholeAdapter"),
+                    createSalt("wormholeAdapter"),
                     abi.encodePacked(
                         type(WormholeAdapter).creationCode, abi.encode(multiAdapter, wormholeRelayer, deployerEOA)
                     )
@@ -80,7 +78,6 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
             wormholeAdapter.rely(rootAddr);
             wormholeAdapter.rely(protocolGuardianAddr);
             wormholeAdapter.rely(opsGuardianAddr);
-            register("wormholeAdapter", address(wormholeAdapter));
         }
 
         if (deployAxelar) {
@@ -93,7 +90,7 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
 
             axelarAdapter = AxelarAdapter(
                 create3(
-                    generateSalt("axelarAdapter"),
+                    createSalt("axelarAdapter"),
                     abi.encodePacked(
                         type(AxelarAdapter).creationCode,
                         abi.encode(multiAdapter, axelarGateway, axelarGasService, deployerEOA)
@@ -103,19 +100,18 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
             axelarAdapter.rely(rootAddr);
             axelarAdapter.rely(protocolGuardianAddr);
             axelarAdapter.rely(opsGuardianAddr);
-            register("axelarAdapter", address(axelarAdapter));
         }
 
         if (deployLayerZero) {
             address lzEndpoint = vm.parseJsonAddress(config, "$.adapters.layerZero.endpoint");
-            address lzDelegate = vm.envAddress("PROTOCOL_ADMIN");
+            address lzDelegate = vm.parseJsonAddress(config, "$.network.protocolAdmin");
             require(lzEndpoint != address(0), "LayerZero endpoint address cannot be zero");
             require(lzEndpoint.code.length > 0, "LayerZero endpoint must be a deployed contract");
             require(lzDelegate != address(0), "LayerZero delegate address cannot be zero");
 
             layerZeroAdapter = LayerZeroAdapter(
                 create3(
-                    generateSalt("layerZeroAdapter"),
+                    createSalt("layerZeroAdapter"),
                     abi.encodePacked(
                         type(LayerZeroAdapter).creationCode,
                         abi.encode(multiAdapter, lzEndpoint, lzDelegate, deployerEOA)
@@ -125,7 +121,6 @@ contract OnlyAdapters is Script, JsonRegistry, CoreDeployer {
             layerZeroAdapter.rely(rootAddr);
             layerZeroAdapter.rely(protocolGuardianAddr);
             layerZeroAdapter.rely(opsGuardianAddr);
-            register("layerZeroAdapter", address(layerZeroAdapter));
         }
 
         saveDeploymentOutput();

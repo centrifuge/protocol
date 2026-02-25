@@ -31,6 +31,16 @@ struct AssetQueueAmount {
     uint128 withdrawals;
 }
 
+/// @notice Withdrawal operation modes for BalanceSheet.withdraw()
+enum WithdrawMode {
+    /// @dev No escrow accounting, no Hub queue (ARM cancel flows)
+    TransferOnly,
+    /// @dev Escrow accounting + transfer, skip Hub queue (ARM after noteWithdraw)
+    EscrowAndTransfer,
+    /// @dev Full accounting (Default): escrow + Hub queue + transfer (OnOfframpManager)
+    Full
+}
+
 interface IBalanceSheet is IBatchedMulticall {
     //----------------------------------------------------------------------------------------------
     // Events
@@ -47,8 +57,7 @@ interface IBalanceSheet is IBatchedMulticall {
         uint128 amount,
         D18 pricePoolPerAsset
     );
-    event Deposit(PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 amount);
-    event NoteDeposit(
+    event NoteWithdraw(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         address asset,
@@ -56,8 +65,35 @@ interface IBalanceSheet is IBatchedMulticall {
         uint128 amount,
         D18 pricePoolPerAsset
     );
-    event Issue(PoolId indexed poolId, ShareClassId indexed scId, address to, D18 pricePoolPerShare, uint128 shares);
-    event Revoke(PoolId indexed poolId, ShareClassId indexed scId, address from, D18 pricePoolPerShare, uint128 shares);
+    event Deposit(
+        PoolId indexed poolId, ShareClassId indexed scId, address sender, address asset, uint256 tokenId, uint128 amount
+    );
+    event NoteDeposit(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        address sender,
+        address asset,
+        uint256 tokenId,
+        uint128 amount,
+        D18 pricePoolPerAsset
+    );
+    event Issue(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        address sender,
+        address to,
+        D18 pricePoolPerShare,
+        uint128 shares
+    );
+    event Revoke(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        address sender,
+        address from,
+        D18 pricePoolPerShare,
+        uint128 shares
+    );
+
     event TransferSharesFrom(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -92,7 +128,7 @@ interface IBalanceSheet is IBatchedMulticall {
     function file(bytes32 what, address data) external;
 
     //----------------------------------------------------------------------------------------------
-    // Management functions
+    // Management functions (standard operations)
     //----------------------------------------------------------------------------------------------
 
     /// @notice Deposit assets into the escrow of the pool
@@ -103,19 +139,9 @@ interface IBalanceSheet is IBatchedMulticall {
     /// @param amount The amount to deposit
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external payable;
 
-    /// @notice Note a deposit of assets into the escrow of the pool.
-    /// @dev    Must be followed by a transfer of the equivalent amount of assets to `IBalanceSheet.escrow(poolId)`
-    ///         This function is mostly useful to keep higher level integrations CEI adherent.
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param asset The asset address
-    /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
-    /// @param amount The amount to deposit
-    function noteDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
-        external
-        payable;
-
-    /// @notice Withdraw assets from the escrow of the pool
+    /// @notice Withdraw assets from the escrow of the pool (standard operation)
+    /// @dev    Full withdrawal with escrow accounting, Hub queue, and transfer.
+    ///         Delegates to withdraw(7-param) with WithdrawMode.Full.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param asset The asset address
@@ -133,24 +159,44 @@ interface IBalanceSheet is IBatchedMulticall {
 
     /// @notice Increase the reserved balance of the pool
     /// @dev These assets are removed from the available balance and cannot be withdrawn before they are unreserved.
-    ///      It is possible to reserve more than the current balance, to lock future expected assets
+    ///      It is possible to reserve more than the current balance, to lock future expected assets.
+    ///      Any manager can reserve on behalf of any address, enabling recovery of stuck funds.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param asset The asset address
     /// @param tokenId The token ID
     /// @param amount The amount to reserve
-    function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external payable;
+    /// @param reserver The address that will own the reservation (tracked in PoolEscrow)
+    /// @param reason The reason code (1=DEPOSIT, 2=REDEEM)
+    function reserve(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        uint128 amount,
+        address reserver,
+        uint32 reason
+    ) external payable;
 
     /// @notice Decrease the reserved balance of the pool
-    /// @dev These assets are re-added to the available balance
+    /// @dev These assets are re-added to the available balance.
+    ///      Any manager can unreserve any reserver's funds, enabling recovery of stuck funds.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param asset The asset address
     /// @param tokenId The token ID
     /// @param amount The amount to unreserve
-    function unreserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
-        external
-        payable;
+    /// @param reserver The address that owns the reservation to be unreserved
+    /// @param reason The reason code that was used when reserving
+    function unreserve(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        uint128 amount,
+        address reserver,
+        uint32 reason
+    ) external payable;
 
     /// @notice Issue new share tokens
     /// @dev Increases the total issuance
@@ -233,6 +279,104 @@ interface IBalanceSheet is IBatchedMulticall {
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external payable;
+
+    //----------------------------------------------------------------------------------------------
+    // Management functions (manual operations)
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Note a deposit of assets into the escrow of the pool.
+    /// @dev    Must be followed by a transfer of the equivalent amount of assets to `IBalanceSheet.escrow(poolId)`
+    ///         Delegates to noteDeposit(6-param) with updateEscrow=true.
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param asset The asset address
+    /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
+    /// @param amount The amount to deposit
+    /// @return pricePoolPerAsset The price used for queueing the asset increase
+    function noteDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
+        external
+        payable
+        returns (D18 pricePoolPerAsset);
+
+    /// @notice Note a deposit with configurable escrow update (manual operation)
+    /// @dev    When updateEscrow=true, calls escrow.deposit() to increase holding.total.
+    ///         When updateEscrow=false, only queues asset increase for Hub notification.
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param asset The asset address
+    /// @param tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
+    /// @param amount The amount to deposit
+    /// @param updateEscrow If true, calls escrow.deposit() to increase holding.total
+    /// @return pricePoolPerAsset The price used for queueing the asset increase
+    function noteDeposit(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        uint128 amount,
+        bool updateEscrow
+    ) external payable returns (D18 pricePoolPerAsset);
+
+    /// @notice Withdraw assets from the escrow of the pool (manual operation)
+    /// @dev Behavior depends on WithdrawMode:
+    ///      - TransferOnly: Transfer only, no escrow accounting, no Hub queue (ARM cancel flows)
+    ///      - EscrowAndTransfer: Escrow accounting + transfer, skip Hub queue (ARM after noteWithdraw)
+    ///      - Full: Full accounting - escrow + Hub queue + transfer (OnOfframpManager)
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param asset The asset address
+    /// @param tokenId The token ID (SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported)
+    /// @param receiver The address to receive the withdrawn assets
+    /// @param amount The amount to withdraw
+    /// @param mode The withdrawal operation mode
+    function withdraw(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address receiver,
+        uint128 amount,
+        WithdrawMode mode
+    ) external payable;
+
+    /// @notice Note a withdrawal of assets from the escrow of the pool without performing the actual transfer.
+    /// @dev    Queues asset decrease for Hub without escrow accounting update.
+    ///         Delegates to noteWithdraw(7-param) with receiver=address(0), updateEscrow=false.
+    ///         Must be followed by withdraw(..., EscrowAndTransfer) to perform the escrow
+    ///         accounting update and actual transfer when user claims.
+    ///         Used in revokedShares() to atomically queue asset and share updates to prevent share price
+    ///         inflation during the async window.
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param asset The asset address
+    /// @param tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
+    /// @param amount The amount to note as withdrawn
+    /// @return pricePoolPerAsset The price used for queueing the asset decrease
+    function noteWithdraw(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
+        external
+        payable
+        returns (D18 pricePoolPerAsset);
+
+    /// @notice Note a withdrawal with configurable escrow update (manual operation)
+    /// @dev    When updateEscrow=true, calls escrow.withdraw() to decrease holding.total.
+    ///         When updateEscrow=false, only queues asset decrease for Hub notification.
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param asset The asset address
+    /// @param tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
+    /// @param receiver The address to receive the withdrawn assets (for escrow.withdraw event)
+    /// @param amount The amount to note as withdrawn
+    /// @param updateEscrow If true, calls escrow.withdraw() to decrease holding.total
+    /// @return pricePoolPerAsset The price used for queueing the asset decrease
+    function noteWithdraw(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address receiver,
+        uint128 amount,
+        bool updateEscrow
+    ) external payable returns (D18 pricePoolPerAsset);
 
     //----------------------------------------------------------------------------------------------
     // View methods

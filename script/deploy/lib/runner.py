@@ -13,7 +13,7 @@ This module coordinates the deployment process by:
 If you want to modify the command arguments you need to search in this order:
 1. _build_command -> basic arguments for our CMD options
 2. _setup_auth_args -> wallet arguments (--ledger --private-key, etc)
-3. run_deploy -> additional arguments to deal with corner cases 
+3. run_deploy -> additional arguments to deal with corner cases
    (search for .append and .extend)
 """
 
@@ -33,15 +33,13 @@ class DeploymentRunner:
         self.args = args
         self.env = self._setup_env()
         self.script_path = None # initialize
-    
+
     def _setup_env(self):
         env = os.environ.copy()
         env["NETWORK"] = self.env_loader.network_name
         env["VERSION"] = os.environ.get("VERSION", "")
         if self.env_loader.etherscan_api_key is not None:
             env["ETHERSCAN_API_KEY"] = self.env_loader.etherscan_api_key
-        env["PROTOCOL_ADMIN"] = self.env_loader.protocol_admin_address
-        env["OPS_ADMIN"] = self.env_loader.ops_admin_address
         # Also add the vars in .env (if .env is there)
         env_file = ".env"
         if os.path.exists(env_file):
@@ -63,11 +61,14 @@ class DeploymentRunner:
             hidden_path = self.env_loader.root_dir / "script" / "deploy" / "solidityHelpers" / f"{script_name}.s.sol"
             if hidden_path.exists():
                 self.script_path = hidden_path
-        # Fallback for test scripts moved to test/e2e_testnets/
-        if not self.script_path.exists() and script_name == "TestData":
-            test_path = self.env_loader.root_dir / "test" / "e2e_testnets" / f"{script_name}.s.sol"
-            if test_path.exists():
-                self.script_path = test_path
+        # Fallback for testnet scripts in script/testnet/
+        if not self.script_path.exists():
+            testnet_path = self.env_loader.root_dir / "script" / "testnet" / f"{script_name}.s.sol"
+            if testnet_path.exists():
+                self.script_path = testnet_path
+        if not self.script_path.exists():
+            print_error(f"Script {script_name}.s.sol not found")
+            return False
         print_subsection(f"Deploying {script_name}.s.sol")
         print_step(f"Deployment Info:")
         print_info(f"Script: {script_name}")
@@ -90,32 +91,36 @@ class DeploymentRunner:
             print_info("Check catapulta dashboard: https://catapulta.sh/project/68317077d1b8de690e3569e9")
         else:
             print_step(f"Running forge script")
-            
+
             # 1. Deploy without verification
-            print_info(f"Deploying scripts (without verification)...")            
+            print_info(f"Deploying scripts (without verification)...")
             if not self._run_command(base_cmd):
                 return False
             print_success("Forge contracts deployed successfully")
-            # 2. Verify (only for protocol and adapter scripts, skip for anvil environments)
-            if not  "localhost" in self.env_loader.rpc_url and script_name not in ["TestData"]:
+            # 2. Verify (only for protocol and adapter scripts, and NOT in dry-run mode)
+            if (not self.args.dry_run and 
+                not self.env_loader.network_name.startswith("anvil") and 
+                "Test" not in script_name and "Wire" not in script_name):
                 cmd = base_cmd.copy()
                 cmd.append("--verify")
                 if "--resume" not in cmd:
-                    cmd.append("--resume")            
+                    cmd.append("--resume")
                 # This doesn't really work:
                 # cmd.extend(["--skip", "FullActionBatcher", "--skip", "HubActionBatcher", "--skip", "ExtendedSpokeActionBatcher"])
                 print_step(f"Verifying contracts with forge")
                 if not self._run_command(cmd):
                     return False
                 print_success("Forge contracts verified successfully")
+            elif self.args.dry_run:
+                print_info("⏭️  Dry-run mode: skipping verification (would broadcast transactions)")
             
         return True
 
-        
+
     def _setup_auth_args(self) -> List[str]:
         """Setup authentication arguments for forge/catapulta"""
         is_testnet = self.env_loader.is_testnet
-        
+
         if self.args.ledger:
             ledger = LedgerManager(self.args)
             print_info(f"Deployer address (Ledger): {format_account(ledger.get_ledger_account)}")
@@ -125,38 +130,14 @@ class DeploymentRunner:
         elif (is_testnet and not self.args.ledger) or "tenderly" in self.env_loader.rpc_url:
             # Only access private_key when actually needed (not using ledger)
             private_key = self.env_loader.private_key
-            # On local anvil, skip address derivation via cast (not reliable in some environments)
-            if "localhost" in (self.env_loader.rpc_url or ""):
-                print_info("Anvil detected (localhost RPC). Using known Anvil sender address.")
-                # Map well-known Anvil test private keys to their corresponding addresses
-                known_senders = {
-                    # 1st Anvil account
-                    "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-                    # 2nd Anvil account
-                    "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-                }
-                sender = known_senders.get(private_key)
-                if sender:
-                    print_info(f"Deploying address (Anvil known): {format_account(sender)}")
-                    return ["--private-key", private_key, "--sender", sender]
-                # Fallback if unknown key: proceed without deriving the sender
-                print_warning("Unknown Anvil private key; proceeding without explicit --sender.")
+            if self.args.catapulta:
+                public_key = subprocess.run(["cast", "wallet", "address", "--private-key", private_key],
+                capture_output=True, text=True, check=True)
+                #--sender Optional, specify the sender address (required when using --private-key)
+                return ["--private-key", private_key, "--sender", public_key.stdout.strip()]
+            else:
                 return ["--private-key", private_key]
-            # Otherwise derive the public address from the private key using 'cast'
-            try:
-                result = subprocess.run(["cast", "wallet", "address", "--private-key", private_key],
-                    capture_output=True, text=True, check=True)
-                derived_address = result.stdout.strip()
-                print_info(f"Deploying address (Testnet shared account): {format_account(derived_address)}")
-                if self.args.catapulta:
-                    #--sender Optional, specify the sender address (required when using --private-key)
-                    return ["--private-key", private_key, "--sender", derived_address]
-                else:
-                    return ["--private-key", private_key]
-            except subprocess.CalledProcessError:
-                print_warning("Failed to derive deployer address with 'cast'. Proceeding without address printout.")
-                return ["--private-key", private_key]
-            
+
         elif not is_testnet and not self.args.ledger:
             raise ValueError("No authentication method specified. Use --ledger for mainnet.")
 
@@ -193,7 +174,7 @@ class DeploymentRunner:
                 *self.args.forge_args
             ]
         return base_cmd
-    
+
     def _run_command(self, cmd: List[str]) -> bool:
         """Run a command"""
         print_info("Deployment Command")
@@ -218,14 +199,14 @@ class DeploymentRunner:
                 print("==== FORGE LOGS ====\n")
                 result = subprocess.run(cmd, env=self.env, text=True)
                 print("\n==== END OF LOGS ====\n")
-                
+
                 if result.returncode == 0:
                     print_success("Verification completed successfully")
                     return True
                 else:
                     print_error(f"Verification failed with exit code: {result.returncode}")
                     return False
-                
+
         except subprocess.CalledProcessError as e:
             print_error(f"Command failed:")
             # Use print_command to ensure secrets are masked
@@ -256,13 +237,13 @@ class DeploymentRunner:
     def build_contracts(self):
         """Build contracts with forge"""
         print_subsection("Building contracts")
-        
-        
+
+
         # Build with parallel jobs
         cpu_count = multiprocessing.cpu_count()
-        cmd = ["forge", "build", "--threads", str(cpu_count), "--skip", "test", "--deny-warnings"]
+        cmd = ["forge", "build", "--threads", str(cpu_count), "--skip", "test", "--deny", "warnings"]
         print_command(cmd)
-        
+
         if not self.args.dry_run:
             if subprocess.run(cmd, check=True):
                 print_success("Contracts built successfully")

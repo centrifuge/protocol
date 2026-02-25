@@ -1,9 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CoreInput, CoreReport, CoreDeployer, CoreActionBatcher} from "./CoreDeployer.s.sol";
+import {BaseDeployer} from "./BaseDeployer.s.sol";
 
-import {Escrow} from "../src/misc/Escrow.sol";
+import {Hub} from "../src/core/hub/Hub.sol";
+import {Spoke} from "../src/core/spoke/Spoke.sol";
+import {Holdings} from "../src/core/hub/Holdings.sol";
+import {Accounting} from "../src/core/hub/Accounting.sol";
+import {Gateway} from "../src/core/messaging/Gateway.sol";
+import {HubHandler} from "../src/core/hub/HubHandler.sol";
+import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
+import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
+import {GasService} from "../src/core/messaging/GasService.sol";
+import {VaultRegistry} from "../src/core/spoke/VaultRegistry.sol";
+import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
+import {ContractUpdater} from "../src/core/utils/ContractUpdater.sol";
+import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
+import {TokenFactory} from "../src/core/spoke/factories/TokenFactory.sol";
+import {MessageProcessor} from "../src/core/messaging/MessageProcessor.sol";
+import {MessageDispatcher} from "../src/core/messaging/MessageDispatcher.sol";
+import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
 
 import {Root} from "../src/admin/Root.sol";
 import {ISafe} from "../src/admin/interfaces/ISafe.sol";
@@ -32,14 +48,27 @@ import {VaultRouter} from "../src/vaults/VaultRouter.sol";
 import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
-import {RefundEscrowFactory} from "../src/vaults/factories/RefundEscrowFactory.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
-import "forge-std/Script.sol";
+import {VmSafe} from "forge-std/Vm.sol";
 
+import {SubsidyManager} from "../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
+import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
+import {RefundEscrowFactory} from "../src/utils/RefundEscrowFactory.sol";
+import {
+    Constants,
+    CoreReport,
+    CoreActionBatcher,
+    NonCoreActionBatcher,
+    AdapterActionBatcher,
+    NonCoreReport,
+    AdaptersReport,
+    AdapterConnections,
+    SetConfigParam
+} from "../src/deployment/ActionBatchers.sol";
 
 struct WormholeInput {
     bool shouldDeploy;
@@ -56,220 +85,64 @@ struct LayerZeroInput {
     bool shouldDeploy;
     address endpoint;
     address delegate;
+    // Pre-computed LayerZero ULN config
+    // Should contain SetConfigParam[] for both send and receive libraries
+    // The order of this array must be the same as the connections
+    SetConfigParam[] configParams;
+}
+
+struct ChainlinkInput {
+    bool shouldDeploy;
+    address ccipRouter;
 }
 
 struct AdaptersInput {
+    LayerZeroInput layerZero;
     WormholeInput wormhole;
     AxelarInput axelar;
-    LayerZeroInput layerZero;
+    ChainlinkInput chainlink;
+    AdapterConnections[] connections;
 }
 
-struct FullInput {
-    ISafe adminSafe;
+struct DeployerInput {
+    uint16 centrifugeId;
+    bytes32 version;
+    uint8[32] txLimits;
+    ISafe protocolSafe;
     ISafe opsSafe;
-    CoreInput core;
     AdaptersInput adapters;
 }
 
-struct FullReport {
-    CoreReport core;
-    Root root;
-    TokenRecoverer tokenRecoverer;
-    ProtocolGuardian protocolGuardian;
-    OpsGuardian opsGuardian;
-    Escrow routerEscrow;
-    Escrow globalEscrow;
-    RefundEscrowFactory refundEscrowFactory;
-    AsyncVaultFactory asyncVaultFactory;
-    AsyncRequestManager asyncRequestManager;
-    SyncDepositVaultFactory syncDepositVaultFactory;
-    SyncManager syncManager;
-    VaultRouter vaultRouter;
-    FreezeOnly freezeOnlyHook;
-    FullRestrictions fullRestrictionsHook;
-    FreelyTransferable freelyTransferableHook;
-    RedemptionRestrictions redemptionRestrictionsHook;
-    QueueManager queueManager;
-    OnOfframpManagerFactory onOfframpManagerFactory;
-    MerkleProofManagerFactory merkleProofManagerFactory;
-    VaultDecoder vaultDecoder;
-    CircleDecoder circleDecoder;
-    BatchRequestManager batchRequestManager;
-    IdentityValuation identityValuation;
-    OracleValuation oracleValuation;
-    NAVManager navManager;
-    SimplePriceManager simplePriceManager;
-    WormholeAdapter wormholeAdapter;
-    AxelarAdapter axelarAdapter;
-    LayerZeroAdapter layerZeroAdapter;
-}
-
-contract FullActionBatcher is CoreActionBatcher {
-    function engageFull(FullReport memory report, ISafe adminSafe, ISafe opsSafe) public onlyDeployer {
-        // Rely Root
-        report.tokenRecoverer.rely(address(report.root));
-
-        report.routerEscrow.rely(address(report.root));
-        report.globalEscrow.rely(address(report.root));
-        report.refundEscrowFactory.rely(address(report.root));
-        report.asyncVaultFactory.rely(address(report.root));
-        report.asyncRequestManager.rely(address(report.root));
-        report.syncDepositVaultFactory.rely(address(report.root));
-        report.syncManager.rely(address(report.root));
-        report.vaultRouter.rely(address(report.root));
-
-        report.freezeOnlyHook.rely(address(report.root));
-        report.fullRestrictionsHook.rely(address(report.root));
-        report.freelyTransferableHook.rely(address(report.root));
-        report.redemptionRestrictionsHook.rely(address(report.root));
-
-        report.batchRequestManager.rely(address(report.root));
-
-        if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(address(report.root));
-        if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.root));
-        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.root));
-
-        // Rely spoke
-        report.asyncRequestManager.rely(address(report.core.spoke));
-        report.freezeOnlyHook.rely(address(report.core.spoke));
-        report.fullRestrictionsHook.rely(address(report.core.spoke));
-        report.freelyTransferableHook.rely(address(report.core.spoke));
-        report.redemptionRestrictionsHook.rely(address(report.core.spoke));
-
-        // Rely vaultRegistry
-        report.asyncVaultFactory.rely(address(report.core.vaultRegistry));
-        report.syncDepositVaultFactory.rely(address(report.core.vaultRegistry));
-
-        // Rely contractUpdater
-        report.syncManager.rely(address(report.core.contractUpdater));
-        report.asyncRequestManager.rely(address(report.core.contractUpdater));
-
-        // Rely protocolGuardian
-        report.core.gateway.rely(address(report.protocolGuardian));
-        report.core.multiAdapter.rely(address(report.protocolGuardian));
-        report.core.messageDispatcher.rely(address(report.protocolGuardian));
-        report.root.rely(address(report.protocolGuardian));
-        report.tokenRecoverer.rely(address(report.protocolGuardian));
-        // Permanent ward for ongoing adapter maintenance
-        if (address(report.wormholeAdapter) != address(0)) {
-            report.wormholeAdapter.rely(address(report.protocolGuardian));
-        }
-        if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.protocolGuardian));
-        if (address(report.layerZeroAdapter) != address(0)) {
-            report.layerZeroAdapter.rely(address(report.protocolGuardian));
-        }
-
-        // Rely opsGuardian
-        report.core.multiAdapter.rely(address(report.opsGuardian));
-        report.core.hub.rely(address(report.opsGuardian));
-        // Temporal ward for initial adapter wiring
-        if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(address(report.opsGuardian));
-        if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.opsGuardian));
-        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(address(report.opsGuardian));
-
-        // Rely tokenRecoverer
-        report.root.rely(address(report.tokenRecoverer));
-
-        // Rely messageDispatcher
-        report.root.rely(address(report.core.messageDispatcher));
-        report.tokenRecoverer.rely(address(report.core.messageDispatcher));
-
-        // Rely messageProcessor
-        report.root.rely(address(report.core.messageProcessor));
-        report.tokenRecoverer.rely(address(report.core.messageProcessor));
-
-        // Rely hub
-        report.batchRequestManager.rely(address(report.core.hub));
-
-        // Rely hubHandler
-        report.batchRequestManager.rely(address(report.core.hubHandler));
-
-        // Rely asyncRequestManager
-        report.globalEscrow.rely(address(report.asyncRequestManager));
-        report.refundEscrowFactory.rely(address(report.asyncRequestManager));
-
-        // Rely asyncVaultFactory
-        report.asyncRequestManager.rely(address(report.asyncVaultFactory));
-
-        // Rely syncDepositVaultFactory
-        report.syncManager.rely(address(report.syncDepositVaultFactory));
-        report.asyncRequestManager.rely(address(report.syncDepositVaultFactory));
-
-        // Rely vaultRouter
-        report.routerEscrow.rely(address(report.vaultRouter));
-
-        // Rely adminSafe
-        if (address(report.layerZeroAdapter) != address(0)) {
-            // Needed for setDelegate calls
-            report.layerZeroAdapter.rely(address(adminSafe));
-        }
-
-        // File methods
-        report.core.messageDispatcher.file("tokenRecoverer", address(report.tokenRecoverer));
-        report.core.messageProcessor.file("tokenRecoverer", address(report.tokenRecoverer));
-
-        report.opsGuardian.file("opsSafe", address(opsSafe));
-
-        report.protocolGuardian.file("safe", address(adminSafe));
-
-        report.refundEscrowFactory.file(bytes32("controller"), address(report.asyncRequestManager));
-
-        report.asyncRequestManager.file("spoke", address(report.core.spoke));
-        report.asyncRequestManager.file("balanceSheet", address(report.core.balanceSheet));
-        report.asyncRequestManager.file("vaultRegistry", address(report.core.vaultRegistry));
-
-        report.syncManager.file("spoke", address(report.core.spoke));
-        report.syncManager.file("balanceSheet", address(report.core.balanceSheet));
-        report.syncManager.file("vaultRegistry", address(report.core.vaultRegistry));
-
-        report.batchRequestManager.file("hub", address(report.core.hub));
-
-        // Endorse methods
-        report.root.endorse(address(report.core.balanceSheet));
-        report.root.endorse(address(report.asyncRequestManager));
-        report.root.endorse(address(report.globalEscrow));
-        report.root.endorse(address(report.vaultRouter));
-    }
-
-    function revokeFull(FullReport memory report) public onlyDeployer {
-        report.root.deny(address(this));
-        report.tokenRecoverer.deny(address(this));
-
-        report.routerEscrow.deny(address(this));
-        report.globalEscrow.deny(address(this));
-        report.refundEscrowFactory.deny(address(this));
-        report.asyncVaultFactory.deny(address(this));
-        report.asyncRequestManager.deny(address(this));
-        report.syncDepositVaultFactory.deny(address(this));
-        report.syncManager.deny(address(this));
-        report.vaultRouter.deny(address(this));
-
-        report.freezeOnlyHook.deny(address(this));
-        report.fullRestrictionsHook.deny(address(this));
-        report.freelyTransferableHook.deny(address(this));
-        report.redemptionRestrictionsHook.deny(address(this));
-
-        report.batchRequestManager.deny(address(this));
-
-        if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.deny(address(this));
-        if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
-        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
-    }
-}
-
-contract FullDeployer is CoreDeployer {
+contract FullDeployer is BaseDeployer, Constants {
     uint256 public constant DELAY = 48 hours;
-
-    ISafe public adminSafe;
-    ISafe public opsSafe;
 
     Root public root;
     TokenRecoverer public tokenRecoverer;
     ProtocolGuardian public protocolGuardian;
     OpsGuardian public opsGuardian;
 
-    Escrow public routerEscrow;
-    Escrow public globalEscrow;
+    Gateway public gateway;
+    MultiAdapter public multiAdapter;
+
+    GasService public gasService;
+    MessageProcessor public messageProcessor;
+    MessageDispatcher public messageDispatcher;
+
+    Spoke public spoke;
+    BalanceSheet public balanceSheet;
+    TokenFactory public tokenFactory;
+    ContractUpdater public contractUpdater;
+    VaultRegistry public vaultRegistry;
+    PoolEscrowFactory public poolEscrowFactory;
+
+    HubRegistry public hubRegistry;
+    Accounting public accounting;
+    Holdings public holdings;
+    ShareClassManager public shareClassManager;
+    HubHandler public hubHandler;
+    Hub public hub;
+
+    SubsidyManager public subsidyManager;
     RefundEscrowFactory public refundEscrowFactory;
     AsyncVaultFactory public asyncVaultFactory;
     AsyncRequestManager public asyncRequestManager;
@@ -296,91 +169,253 @@ contract FullDeployer is CoreDeployer {
     NAVManager public navManager;
     SimplePriceManager public simplePriceManager;
 
-    WormholeAdapter wormholeAdapter;
+    ChainlinkAdapter chainlinkAdapter;
     AxelarAdapter axelarAdapter;
+    WormholeAdapter wormholeAdapter;
     LayerZeroAdapter layerZeroAdapter;
 
-    function deployFull(FullInput memory input, FullActionBatcher batcher) public {
-        adminSafe = input.adminSafe;
-        opsSafe = input.opsSafe;
+    CoreActionBatcher public coreBatcher;
+    NonCoreActionBatcher public nonCoreBatcher;
+    AdapterActionBatcher public adapterBatcher;
 
-        // Ensure salts incorporate the intended version for ALL contracts, including root which is deployed first
-        version = input.core.version;
+    function deployFull(DeployerInput memory input, address deployer_) public {
+        _init(input.version, deployer_);
 
-        if (input.core.root == address(0)) {
-            root = Root(
-                create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher)))
+        address coreBatcherAddr = previewCreate3Address("coreBatcher");
+        address nonCoreBatcherAddr = previewCreate3Address("nonCoreBatcher");
+        address adapterBatcherAddr = previewCreate3Address("adapterBatcher");
+
+        _deployCore(coreBatcherAddr, input);
+        coreBatcher = CoreActionBatcher(
+            create3(
+                createSalt("coreBatcher"),
+                abi.encodePacked(
+                    type(CoreActionBatcher).creationCode,
+                    abi.encode(coreReport(), input.protocolSafe, input.opsSafe, adapterBatcherAddr, nonCoreBatcherAddr)
+                )
+            )
+        );
+
+        _deployNonCore(nonCoreBatcherAddr);
+        nonCoreBatcher = NonCoreActionBatcher(
+            create3(
+                createSalt("nonCoreBatcher"),
+                abi.encodePacked(type(NonCoreActionBatcher).creationCode, abi.encode(nonCoreReport()))
+            )
+        );
+
+        _deployAdapters(adapterBatcherAddr, input.adapters);
+        adapterBatcher = AdapterActionBatcher(
+            create3(
+                createSalt("adapterBatcher"),
+                abi.encodePacked(
+                    type(AdapterActionBatcher).creationCode,
+                    abi.encode(
+                        adaptersReport(),
+                        input.protocolSafe,
+                        input.adapters.connections,
+                        input.adapters.layerZero.configParams,
+                        input.adapters.layerZero.delegate,
+                        vm.toString(address(axelarAdapter))
+                    )
+                )
+            )
+        );
+
+        // NOTE. Coverage compiles without optimizations.
+        // This means that the gas costs are higher than the calibrated gasService limits,
+        // causing message processing to silently fail (e.g. PoolEscrow creation via CREATE).
+        // We mock messageProcessingGasLimit with a higher value large enough for unoptimized code.
+        if (vm.isContext(VmSafe.ForgeContext.Coverage)) {
+            vm.mockCall(
+                address(gasService),
+                abi.encodeWithSelector(GasService.messageProcessingGasLimit.selector),
+                abi.encode(uint128(30_000_000))
             );
-            input.core.root = address(root);
         }
+    }
 
-        deployCore(input.core, batcher);
+    function _deployCore(address batcher, DeployerInput memory input) internal {
+        // Admin
+        root = Root(create3(createSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));
 
+        // Core
+        gateway = Gateway(
+            create3(
+                createSalt("gateway"),
+                abi.encodePacked(type(Gateway).creationCode, abi.encode(input.centrifugeId, root, batcher))
+            )
+        );
+
+        multiAdapter = MultiAdapter(
+            create3(
+                createSalt("multiAdapter"),
+                abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, batcher))
+            )
+        );
+
+        contractUpdater = ContractUpdater(
+            create3(
+                createSalt("contractUpdater"), abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(batcher))
+            )
+        );
+
+        // Messaging
+        gasService = GasService(
+            create3(
+                createSalt("gasService"), abi.encodePacked(type(GasService).creationCode, abi.encode(input.txLimits))
+            )
+        );
+
+        messageProcessor = MessageProcessor(
+            create3(
+                createSalt("messageProcessor"),
+                abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, batcher))
+            )
+        );
+
+        messageDispatcher = MessageDispatcher(
+            create3(
+                createSalt("messageDispatcher"),
+                abi.encodePacked(
+                    type(MessageDispatcher).creationCode, abi.encode(input.centrifugeId, root, gateway, batcher)
+                )
+            )
+        );
+
+        // Spoke
+        tokenFactory = TokenFactory(
+            create3(
+                createSalt("tokenFactory"), abi.encodePacked(type(TokenFactory).creationCode, abi.encode(root, batcher))
+            )
+        );
+
+        spoke = Spoke(
+            create3(createSalt("spoke"), abi.encodePacked(type(Spoke).creationCode, abi.encode(tokenFactory, batcher)))
+        );
+
+        balanceSheet = BalanceSheet(
+            create3(
+                createSalt("balanceSheet"), abi.encodePacked(type(BalanceSheet).creationCode, abi.encode(root, batcher))
+            )
+        );
+
+        vaultRegistry = VaultRegistry(
+            create3(
+                createSalt("vaultRegistry"), abi.encodePacked(type(VaultRegistry).creationCode, abi.encode(batcher))
+            )
+        );
+
+        poolEscrowFactory = PoolEscrowFactory(
+            create3(
+                createSalt("poolEscrowFactory"),
+                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(root, batcher))
+            )
+        );
+
+        // Hub
+        hubRegistry = HubRegistry(
+            create3(createSalt("hubRegistry"), abi.encodePacked(type(HubRegistry).creationCode, abi.encode(batcher)))
+        );
+
+        accounting = Accounting(
+            create3(createSalt("accounting"), abi.encodePacked(type(Accounting).creationCode, abi.encode(batcher)))
+        );
+
+        holdings = Holdings(
+            create3(
+                createSalt("holdings"), abi.encodePacked(type(Holdings).creationCode, abi.encode(hubRegistry, batcher))
+            )
+        );
+
+        shareClassManager = ShareClassManager(
+            create3(
+                createSalt("shareClassManager"),
+                abi.encodePacked(type(ShareClassManager).creationCode, abi.encode(hubRegistry, batcher))
+            )
+        );
+
+        hub = Hub(
+            create3(
+                createSalt("hub"),
+                abi.encodePacked(
+                    type(Hub).creationCode,
+                    abi.encode(gateway, holdings, accounting, hubRegistry, multiAdapter, shareClassManager, batcher)
+                )
+            )
+        );
+
+        hubHandler = HubHandler(
+            create3(
+                createSalt("hubHandler"),
+                abi.encodePacked(
+                    type(HubHandler).creationCode, abi.encode(hub, holdings, hubRegistry, shareClassManager, batcher)
+                )
+            )
+        );
+
+        // Admin (depends on core contracts)
         tokenRecoverer = TokenRecoverer(
             create3(
-                generateSalt("tokenRecoverer"),
+                createSalt("tokenRecoverer"),
                 abi.encodePacked(type(TokenRecoverer).creationCode, abi.encode(root, batcher))
             )
         );
 
         protocolGuardian = ProtocolGuardian(
             create3(
-                generateSalt("protocolGuardian"),
+                createSalt("protocolGuardian"),
                 abi.encodePacked(
                     type(ProtocolGuardian).creationCode,
-                    abi.encode(ISafe(address(batcher)), root, gateway, multiAdapter, messageDispatcher)
+                    abi.encode(ISafe(address(batcher)), root, gateway, messageDispatcher)
                 )
             )
         );
 
         opsGuardian = OpsGuardian(
             create3(
-                generateSalt("opsGuardian"),
+                createSalt("opsGuardian"),
                 abi.encodePacked(type(OpsGuardian).creationCode, abi.encode(ISafe(address(batcher)), hub, multiAdapter))
             )
         );
+    }
 
-        routerEscrow = Escrow(
-            create3(generateSalt("routerEscrow"), abi.encodePacked(type(Escrow).creationCode, abi.encode(batcher)))
-        );
-
-        globalEscrow = Escrow(
-            create3(generateSalt("globalEscrow"), abi.encodePacked(type(Escrow).creationCode, abi.encode(batcher)))
-        );
-
+    function _deployNonCore(address batcher) internal {
         refundEscrowFactory = RefundEscrowFactory(
             create3(
-                generateSalt("refundEscrowFactory"),
+                createSalt("refundEscrowFactory"),
                 abi.encodePacked(type(RefundEscrowFactory).creationCode, abi.encode(batcher))
+            )
+        );
+
+        subsidyManager = SubsidyManager(
+            create3(
+                createSalt("subsidyManager"),
+                abi.encodePacked(type(SubsidyManager).creationCode, abi.encode(refundEscrowFactory, batcher))
             )
         );
 
         asyncRequestManager = AsyncRequestManager(
             payable(create3(
-                    generateSalt("asyncRequestManager-2"),
-                    abi.encodePacked(
-                        type(AsyncRequestManager).creationCode, abi.encode(globalEscrow, refundEscrowFactory, batcher)
-                    )
+                    createSalt("asyncRequestManager"),
+                    abi.encodePacked(type(AsyncRequestManager).creationCode, abi.encode(subsidyManager, batcher))
                 ))
         );
 
         syncManager = SyncManager(
-            create3(generateSalt("syncManager"), abi.encodePacked(type(SyncManager).creationCode, abi.encode(batcher)))
+            create3(createSalt("syncManager"), abi.encodePacked(type(SyncManager).creationCode, abi.encode(batcher)))
         );
 
         vaultRouter = VaultRouter(
             create3(
-                generateSalt("vaultRouter"),
-                abi.encodePacked(
-                    type(VaultRouter).creationCode,
-                    abi.encode(address(routerEscrow), gateway, spoke, vaultRegistry, batcher)
-                )
+                createSalt("vaultRouter"),
+                abi.encodePacked(type(VaultRouter).creationCode, abi.encode(gateway, spoke, vaultRegistry, batcher))
             )
         );
 
         asyncVaultFactory = AsyncVaultFactory(
             create3(
-                generateSalt("asyncVaultFactory-3"),
+                createSalt("asyncVaultFactory"),
                 abi.encodePacked(
                     type(AsyncVaultFactory).creationCode, abi.encode(address(root), asyncRequestManager, batcher)
                 )
@@ -389,7 +424,7 @@ contract FullDeployer is CoreDeployer {
 
         syncDepositVaultFactory = SyncDepositVaultFactory(
             create3(
-                generateSalt("syncDepositVaultFactory-3"),
+                createSalt("syncDepositVaultFactory"),
                 abi.encodePacked(
                     type(SyncDepositVaultFactory).creationCode,
                     abi.encode(address(root), syncManager, asyncRequestManager, batcher)
@@ -399,16 +434,17 @@ contract FullDeployer is CoreDeployer {
 
         freezeOnlyHook = FreezeOnly(
             create3(
-                generateSalt("freezeOnlyHook-2"),
+                createSalt("freezeOnlyHook"),
                 abi.encodePacked(
                     type(FreezeOnly).creationCode,
                     abi.encode(
                         address(root),
                         address(spoke),
                         address(balanceSheet),
-                        address(globalEscrow),
                         address(spoke),
-                        batcher
+                        batcher,
+                        address(poolEscrowFactory),
+                        address(0)
                     )
                 )
             )
@@ -416,16 +452,17 @@ contract FullDeployer is CoreDeployer {
 
         fullRestrictionsHook = FullRestrictions(
             create3(
-                generateSalt("fullRestrictionsHook-2"),
+                createSalt("fullRestrictionsHook"),
                 abi.encodePacked(
                     type(FullRestrictions).creationCode,
                     abi.encode(
                         address(root),
                         address(spoke),
                         address(balanceSheet),
-                        address(globalEscrow),
                         address(spoke),
-                        batcher
+                        batcher,
+                        address(poolEscrowFactory),
+                        address(0)
                     )
                 )
             )
@@ -433,16 +470,17 @@ contract FullDeployer is CoreDeployer {
 
         freelyTransferableHook = FreelyTransferable(
             create3(
-                generateSalt("freelyTransferableHook-2"),
+                createSalt("freelyTransferableHook"),
                 abi.encodePacked(
                     type(FreelyTransferable).creationCode,
                     abi.encode(
                         address(root),
                         address(spoke),
                         address(balanceSheet),
-                        address(globalEscrow),
                         address(spoke),
-                        batcher
+                        batcher,
+                        address(poolEscrowFactory),
+                        address(0)
                     )
                 )
             )
@@ -450,16 +488,17 @@ contract FullDeployer is CoreDeployer {
 
         redemptionRestrictionsHook = RedemptionRestrictions(
             create3(
-                generateSalt("redemptionRestrictionsHook-2"),
+                createSalt("redemptionRestrictionsHook"),
                 abi.encodePacked(
                     type(RedemptionRestrictions).creationCode,
                     abi.encode(
                         address(root),
                         address(spoke),
                         address(balanceSheet),
-                        address(globalEscrow),
                         address(spoke),
-                        batcher
+                        batcher,
+                        address(poolEscrowFactory),
+                        address(0)
                     )
                 )
             )
@@ -467,7 +506,7 @@ contract FullDeployer is CoreDeployer {
 
         queueManager = QueueManager(
             create3(
-                generateSalt("queueManager"),
+                createSalt("queueManager"),
                 abi.encodePacked(
                     type(QueueManager).creationCode, abi.encode(contractUpdater, balanceSheet, address(batcher))
                 )
@@ -476,14 +515,14 @@ contract FullDeployer is CoreDeployer {
 
         onOfframpManagerFactory = OnOfframpManagerFactory(
             create3(
-                generateSalt("onOfframpManagerFactory"),
+                createSalt("onOfframpManagerFactory"),
                 abi.encodePacked(type(OnOfframpManagerFactory).creationCode, abi.encode(contractUpdater, balanceSheet))
             )
         );
 
         merkleProofManagerFactory = MerkleProofManagerFactory(
             create3(
-                generateSalt("merkleProofManagerFactory"),
+                createSalt("merkleProofManagerFactory"),
                 abi.encodePacked(
                     type(MerkleProofManagerFactory).creationCode, abi.encode(contractUpdater, balanceSheet)
                 )
@@ -491,144 +530,144 @@ contract FullDeployer is CoreDeployer {
         );
 
         vaultDecoder =
-            VaultDecoder(create3(generateSalt("vaultDecoder"), abi.encodePacked(type(VaultDecoder).creationCode)));
+            VaultDecoder(create3(createSalt("vaultDecoder"), abi.encodePacked(type(VaultDecoder).creationCode)));
 
         circleDecoder =
-            CircleDecoder(create3(generateSalt("circleDecoder"), abi.encodePacked(type(CircleDecoder).creationCode)));
+            CircleDecoder(create3(createSalt("circleDecoder"), abi.encodePacked(type(CircleDecoder).creationCode)));
 
         batchRequestManager = BatchRequestManager(
             create3(
-                generateSalt("batchRequestManager"),
+                createSalt("batchRequestManager"),
                 abi.encodePacked(type(BatchRequestManager).creationCode, abi.encode(hubRegistry, gateway, batcher))
             )
         );
 
         identityValuation = IdentityValuation(
             create3(
-                generateSalt("identityValuation"),
+                createSalt("identityValuation"),
                 abi.encodePacked(type(IdentityValuation).creationCode, abi.encode(hubRegistry))
             )
         );
 
         oracleValuation = OracleValuation(
             create3(
-                generateSalt("oracleValuation"),
+                createSalt("oracleValuation"),
                 abi.encodePacked(type(OracleValuation).creationCode, abi.encode(hub, hubRegistry))
             )
         );
 
         navManager = NAVManager(
-            create3(generateSalt("navManager"), abi.encodePacked(type(NAVManager).creationCode, abi.encode(hub)))
+            create3(createSalt("navManager"), abi.encodePacked(type(NAVManager).creationCode, abi.encode(hub)))
         );
 
         simplePriceManager = SimplePriceManager(
             create3(
-                generateSalt("simplePriceManager"),
+                createSalt("simplePriceManager"),
                 abi.encodePacked(type(SimplePriceManager).creationCode, abi.encode(hub, address(navManager)))
             )
         );
+    }
 
-        if (input.adapters.wormhole.shouldDeploy) {
-            require(input.adapters.wormhole.relayer != address(0), "Wormhole relayer address cannot be zero");
-            require(input.adapters.wormhole.relayer.code.length > 0, "Wormhole relayer must be a deployed contract");
-
-            wormholeAdapter = WormholeAdapter(
-                create3(
-                    generateSalt("wormholeAdapter"),
-                    abi.encodePacked(
-                        type(WormholeAdapter).creationCode,
-                        abi.encode(multiAdapter, input.adapters.wormhole.relayer, batcher)
-                    )
-                )
+    function _deployAdapters(address batcher, AdaptersInput memory input) internal {
+        if (input.layerZero.shouldDeploy) {
+            require(input.layerZero.endpoint != address(0), "LayerZero endpoint address cannot be zero");
+            require(input.layerZero.endpoint.code.length > 0, "LayerZero endpoint must be a deployed contract");
+            require(input.layerZero.delegate != address(0), "LayerZero delegate address cannot be zero");
+            require(
+                input.layerZero.configParams.length == 0
+                    || input.layerZero.configParams.length == input.connections.length,
+                "configParams must mimics connections"
             );
-        }
-
-        if (input.adapters.axelar.shouldDeploy) {
-            require(input.adapters.axelar.gateway != address(0), "Axelar gateway address cannot be zero");
-            require(input.adapters.axelar.gasService != address(0), "Axelar gas service address cannot be zero");
-            require(input.adapters.axelar.gateway.code.length > 0, "Axelar gateway must be a deployed contract");
-            require(input.adapters.axelar.gasService.code.length > 0, "Axelar gas service must be a deployed contract");
-
-            axelarAdapter = AxelarAdapter(
-                create3(
-                    generateSalt("axelarAdapter"),
-                    abi.encodePacked(
-                        type(AxelarAdapter).creationCode,
-                        abi.encode(
-                            multiAdapter, input.adapters.axelar.gateway, input.adapters.axelar.gasService, batcher
-                        )
-                    )
-                )
-            );
-        }
-
-        if (input.adapters.layerZero.shouldDeploy) {
-            require(input.adapters.layerZero.endpoint != address(0), "LayerZero endpoint address cannot be zero");
-            require(input.adapters.layerZero.endpoint.code.length > 0, "LayerZero endpoint must be a deployed contract");
-            require(input.adapters.layerZero.delegate != address(0), "LayerZero delegate address cannot be zero");
 
             layerZeroAdapter = LayerZeroAdapter(
                 create3(
-                    generateSalt("layerZeroAdapter"),
+                    createSalt("layerZeroAdapter"),
                     abi.encodePacked(
                         type(LayerZeroAdapter).creationCode,
-                        abi.encode(
-                            multiAdapter, input.adapters.layerZero.endpoint, input.adapters.layerZero.delegate, batcher
-                        )
+                        // Set delegate to adapterBatcher initially, to be able to set ULN config
+                        abi.encode(multiAdapter, input.layerZero.endpoint, batcher, batcher)
                     )
                 )
             );
         }
 
-        register("root", address(root));
-        register("tokenRecoverer", address(tokenRecoverer));
-        register("protocolGuardian", address(protocolGuardian));
-        register("opsGuardian", address(opsGuardian));
+        if (input.wormhole.shouldDeploy) {
+            require(input.wormhole.relayer != address(0), "Wormhole relayer address cannot be zero");
+            require(input.wormhole.relayer.code.length > 0, "Wormhole relayer must be a deployed contract");
 
-        register("routerEscrow", address(routerEscrow));
-        register("globalEscrow", address(globalEscrow));
-        register("refundEscrowFactory", address(refundEscrowFactory));
-        register("asyncVaultFactory", address(asyncVaultFactory));
-        register("asyncRequestManager", address(asyncRequestManager));
-        register("syncDepositVaultFactory", address(syncDepositVaultFactory));
-        register("syncManager", address(syncManager));
-        register("vaultRouter", address(vaultRouter));
+            wormholeAdapter = WormholeAdapter(
+                create3(
+                    createSalt("wormholeAdapter"),
+                    abi.encodePacked(
+                        type(WormholeAdapter).creationCode, abi.encode(multiAdapter, input.wormhole.relayer, batcher)
+                    )
+                )
+            );
+        }
 
-        register("freezeOnlyHook", address(freezeOnlyHook));
-        register("fullRestrictionsHook", address(fullRestrictionsHook));
-        register("freelyTransferableHook", address(freelyTransferableHook));
-        register("redemptionRestrictionsHook", address(redemptionRestrictionsHook));
+        if (input.axelar.shouldDeploy) {
+            require(input.axelar.gateway != address(0), "Axelar gateway address cannot be zero");
+            require(input.axelar.gasService != address(0), "Axelar gas service address cannot be zero");
+            require(input.axelar.gateway.code.length > 0, "Axelar gateway must be a deployed contract");
+            require(input.axelar.gasService.code.length > 0, "Axelar gas service must be a deployed contract");
 
-        register("queueManager", address(queueManager));
-        register("onOfframpManagerFactory", address(onOfframpManagerFactory));
-        register("merkleProofManagerFactory", address(merkleProofManagerFactory));
-        register("vaultDecoder", address(vaultDecoder));
-        register("circleDecoder", address(circleDecoder));
+            axelarAdapter = AxelarAdapter(
+                create3(
+                    createSalt("axelarAdapter"),
+                    abi.encodePacked(
+                        type(AxelarAdapter).creationCode,
+                        abi.encode(multiAdapter, input.axelar.gateway, input.axelar.gasService, batcher)
+                    )
+                )
+            );
+        }
 
-        register("batchRequestManager", address(batchRequestManager));
+        if (input.chainlink.shouldDeploy) {
+            require(input.chainlink.ccipRouter != address(0), "Chainlink ccipRouter address cannot be zero");
+            require(input.chainlink.ccipRouter.code.length > 0, "Chainlink ccipRouter must be a deployed contract");
 
-        register("identityValuation", address(identityValuation));
-        register("oracleValuation", address(oracleValuation));
-
-        register("navManager", address(navManager));
-        register("simplePriceManager", address(simplePriceManager));
-
-        if (input.adapters.wormhole.shouldDeploy) register("wormholeAdapter", address(wormholeAdapter));
-        if (input.adapters.axelar.shouldDeploy) register("axelarAdapter", address(axelarAdapter));
-        if (input.adapters.layerZero.shouldDeploy) register("layerZeroAdapter", address(layerZeroAdapter));
-
-        batcher.engageFull(_fullReport(), input.adminSafe, input.opsSafe);
+            chainlinkAdapter = ChainlinkAdapter(
+                create3(
+                    createSalt("chainlinkAdapter"),
+                    abi.encodePacked(
+                        type(ChainlinkAdapter).creationCode,
+                        abi.encode(multiAdapter, input.chainlink.ccipRouter, batcher)
+                    )
+                )
+            );
+        }
     }
 
-    function _fullReport() internal view returns (FullReport memory) {
-        return FullReport(
-            _coreReport(),
+    function coreReport() public view returns (CoreReport memory) {
+        return CoreReport(
+            gateway,
+            multiAdapter,
+            gasService,
+            messageProcessor,
+            messageDispatcher,
+            poolEscrowFactory,
+            spoke,
+            balanceSheet,
+            tokenFactory,
+            contractUpdater,
+            vaultRegistry,
+            hubRegistry,
+            accounting,
+            holdings,
+            shareClassManager,
+            hubHandler,
+            hub,
             root,
             tokenRecoverer,
             protocolGuardian,
-            opsGuardian,
-            routerEscrow,
-            globalEscrow,
+            opsGuardian
+        );
+    }
+
+    function nonCoreReport() public view returns (NonCoreReport memory) {
+        return NonCoreReport(
+            coreReport(),
+            subsidyManager,
             refundEscrowFactory,
             asyncVaultFactory,
             asyncRequestManager,
@@ -648,16 +687,12 @@ contract FullDeployer is CoreDeployer {
             identityValuation,
             oracleValuation,
             navManager,
-            simplePriceManager,
-            wormholeAdapter,
-            axelarAdapter,
-            layerZeroAdapter
+            simplePriceManager
         );
     }
 
-    function removeFullDeployerAccess(FullActionBatcher batcher) public {
-        removeCoreDeployerAccess(batcher);
-        batcher.revokeFull(_fullReport());
+    function adaptersReport() public view returns (AdaptersReport memory) {
+        return AdaptersReport(coreReport(), layerZeroAdapter, wormholeAdapter, axelarAdapter, chainlinkAdapter);
     }
 }
 
@@ -665,6 +700,12 @@ function noAdaptersInput() pure returns (AdaptersInput memory) {
     return AdaptersInput({
         wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
         axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
-        layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
+        layerZero: LayerZeroInput({
+            shouldDeploy: false, endpoint: address(0), delegate: address(0), configParams: new SetConfigParam[](0)
+        }),
+        chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
+        connections: new AdapterConnections[](0)
     });
 }
+
+function defaultTxLimits() pure returns (uint8[32] memory) {}

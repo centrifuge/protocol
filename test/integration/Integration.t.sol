@@ -12,9 +12,11 @@ import {AssetId} from "../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {MAX_MESSAGE_COST as GAS} from "../../src/core/messaging/interfaces/IGasService.sol";
 
+import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
+
 import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 
-import {FullActionBatcher, FullDeployer, FullInput, noAdaptersInput, CoreInput} from "../../script/FullDeployer.s.sol";
+import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -31,18 +33,18 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
 
     function setUp() public virtual {
         // Deployment
-        FullActionBatcher batcher = new FullActionBatcher();
         super.labelAddresses("");
         super.deployFull(
-            FullInput({
-                core: CoreInput({centrifugeId: LOCAL_CENTRIFUGE_ID, version: bytes32(0), root: address(0)}),
-                adminSafe: adminSafe,
-                opsSafe: adminSafe,
+            DeployerInput({
+                centrifugeId: LOCAL_CENTRIFUGE_ID,
+                version: bytes32(0),
+                txLimits: defaultTxLimits(),
+                protocolSafe: ISafe(makeAddr("ProtocolSafe")),
+                opsSafe: ISafe(makeAddr("OpsSafe")),
                 adapters: noAdaptersInput()
             }),
-            batcher
+            address(this)
         );
-        super.removeFullDeployerAccess(batcher);
 
         // Extra deployment
         valuation = new MockValuation(hubRegistry);
@@ -71,8 +73,8 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
 
         // Extra deployment
         usdc = new ERC20(6);
-        usdc.rely(address(adminSafe));
-        vm.startPrank(address(adminSafe));
+        usdc.rely(address(protocolGuardian.safe()));
+        vm.startPrank(address(protocolGuardian.safe()));
         usdc.file("name", "USD Coin");
         usdc.file("symbol", "USDC");
         vm.stopPrank();
@@ -85,16 +87,16 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
     }
 
     function _mintUSDC(address receiver, uint256 amount) internal {
-        vm.prank(address(adminSafe));
+        vm.prank(address(protocolGuardian.safe()));
         usdc.mint(receiver, amount);
     }
 
     function _createPool() internal {
-        vm.prank(address(adminSafe));
+        vm.prank(address(opsGuardian.opsSafe()));
         opsGuardian.createPool(POOL_A, FM, USD_ID);
 
         vm.prank(FM);
-        hub.addShareClass(POOL_A, "ShareClass1", "sc1", bytes32("salt"));
+        hub.addShareClass(POOL_A, "ShareClass1", "sc1", bytes32(bytes8(POOL_A.raw())));
     }
 
     function _updateContractSyncDepositMaxReserveMsg(AssetId assetId, uint128 maxReserve)

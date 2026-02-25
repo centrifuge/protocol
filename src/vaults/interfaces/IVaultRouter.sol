@@ -29,10 +29,6 @@ interface IVaultRouter is IBatchedMulticall {
     error NonSyncDepositVault();
     error NonAsyncVault();
 
-    /// @notice Check how much of the `vault`'s asset is locked for the current `controller`.
-    /// @dev    This is a getter method
-    function lockedRequests(address controller, IBaseVault vault) external view returns (uint256 amount);
-
     //----------------------------------------------------------------------------------------------
     // Manage permissionless claiming
     //----------------------------------------------------------------------------------------------
@@ -69,59 +65,6 @@ interface IVaultRouter is IBatchedMulticall {
     /// @param  receiver Check @param IERC4626.deposit.receiver
     /// @param  owner User from which to transfer the assets, either msg.sender or the VaultRouter
     function deposit(BaseSyncDepositVault vault, uint256 assets, address receiver, address owner) external payable;
-
-    /// @notice Locks `amount` of `vault`'s asset in an escrow before actually sending a deposit LockDepositRequest
-    ///         There are users that would like to interact with the protocol but don't have permissions yet. They can
-    ///         lock the funds they would like to deposit beforehand.
-    ///         Once permissions are granted, anyone can deposit on
-    ///         their behalf by calling `executeLockedDepositRequest`.
-    ///
-    ///         Example: DAO with onchain governance, that wants to invest their treasury
-    ///             The process that doesn't include calling this method is as follows:
-    ///
-    ///                 1. The DAO signs the legal agreements for the pool => no onchain action,
-    ///                    but only after this the issuer can call update_member to add them as a whitelisted investor
-    ///                 2. Call `requestDeposit` to lock funds
-    ///                 3. After the pool has fulfilled their request, call `deposit` to claim their share class tokens
-    ///
-    ///
-    ///             With the new router function the steps are as follows:
-    ///
-    ///                 1. DAO signs the legal agreement + calls  `openLockDepositRequest`  in 1 governance proposal
-    ///
-    ///                 2. Issuer then gives them permissions, then calls `executeLockDepositFunds` for them,
-    ///                    then fulfills the request, then calls `claimDeposit` for them
-    ///
-    /// @dev    For initial interaction better use `openLockDepositRequest` which includes some of the message calls
-    ///         that the caller must do execute before calling `lockDepositRequest`
-    ///
-    /// @param  vault The address of the vault to invest in
-    /// @param  amount Amount to invest
-    /// @param  controller Address of the owner of the position
-    /// @param  owner Where the  funds to be deposited will be take from
-    function lockDepositRequest(IBaseVault vault, uint256 amount, address controller, address owner) external payable;
-
-    /// @notice Helper method to lock a deposit request, and enable permissionless claiming of that vault in 1 call.
-    /// @dev    It starts interaction with the vault by calling `open`.
-    ///         Vaults support assets that are wrapped one. When user calls this method
-    ///         and the vault's asset is a wrapped one, first the balance of the wrapped asset is checked.
-    ///         If balance >= `amount`, then this asset is used
-    ///         else  amount is treat as an underlying asset one and it is wrapped.
-    /// @param  vault Address of the vault
-    /// @param  amount Amount to be deposited
-    function enableLockDepositRequest(IBaseVault vault, uint256 amount) external payable;
-
-    /// @notice Unlocks all deposited assets of the current caller for a given vault
-    ///
-    /// @param  vault Address of the vault for which funds were locked
-    /// @param  receiver Address of the received of the unlocked funds
-    function unlockDepositRequest(IBaseVault vault, address receiver) external payable;
-
-    /// @notice After the controller is given permissions, anyone can call this method and
-    ///         actually request a deposit with the locked funds on the behalf of the `controller`
-    /// @param  vault The vault for which funds are locked
-    /// @param  controller Owner of the deposit position
-    function executeLockedDepositRequest(IAsyncVault vault, address controller) external payable;
 
     /// @notice Check IERC7540Deposit.mint
     /// @param  vault Address of the vault
