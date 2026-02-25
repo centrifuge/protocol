@@ -143,10 +143,10 @@ class AnvilManager:
 
         args = Args()
         
-        # Generate a random 8-character string for VERSION to avoid collisions on running Anvil multiple times
-        random_version = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
-        environ["VERSION"] = random_version
-        print_info(f"Using random VERSION for Anvil: {random_version}")
+        # Generate a random 8-character suffix to avoid collisions on running Anvil multiple times
+        random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+        environ["SUFFIX"] = random_suffix
+        print_info(f"Using random SUFFIX for Anvil: {random_suffix}")
 
         # Prepare API keys
         api_key = get_secret("alchemy_api")

@@ -25,8 +25,21 @@ class EnvironmentLoader:
         self._protocol_admin_address = None
         self._ops_admin_address = None
         self.args = args
+        self._load_env_file(root_dir / ".env")
         print_subsection("Loading network configuration")
         self._load_config()
+
+    @staticmethod
+    def _load_env_file(env_file: pathlib.Path):
+        """Load .env file into os.environ (does not override existing vars)."""
+        if not env_file.exists():
+            return
+        with open(env_file, "r") as f:
+            for line in f:
+                if "=" in line and not line.strip().startswith("#"):
+                    k, v = line.strip().split("=", 1)
+                    if k not in os.environ:
+                        os.environ[k] = v
 
     def _load_config(self):
         if not self.config_file.exists():

@@ -36,7 +36,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         super.deployFull(
             DeployerInput({
                 centrifugeId: LOCAL_CENTRIFUGE_ID,
-                version: bytes32(0),
+                suffix: "",
                 txLimits: defaultTxLimits(),
                 protocolSafe: ISafe(makeAddr("ProtocolSafe")),
                 opsSafe: ISafe(makeAddr("OpsSafe")),
