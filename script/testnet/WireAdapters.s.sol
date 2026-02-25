@@ -2,9 +2,12 @@
 pragma solidity 0.8.28;
 
 import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
+
 import {IOpsGuardian} from "../../src/admin/interfaces/IOpsGuardian.sol";
-import {console} from "forge-std/console.sol";
+
 import {Script} from "forge-std/Script.sol";
+import {console} from "forge-std/console.sol";
+
 import {Env, EnvConfig, Connection} from "../utils/EnvConfig.s.sol";
 
 /// @title WireAdapters

@@ -140,4 +140,3 @@ contract EnvConnectionsTest is Test {
         return string.concat(pair, ": ", adapter, " not deployed in one of the chains");
     }
 }
-
