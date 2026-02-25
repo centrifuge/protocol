@@ -193,7 +193,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 pendingCancelBefore = IAsyncVault(address(vault)).claimableCancelDepositRequest(REQUEST_ID, controller);
 
         // Capture escrow share balance before cancellation
-        uint256 escrowSharesBefore = IShareToken(vault.share()).balanceOf(address(globalEscrow));
+        uint256 escrowSharesBefore = IShareToken(vault.share()).balanceOf(_getPoolEscrowForVault(vault));
 
         vm.prank(controller);
         // REQUEST_ID is always passed as 0 (unused in the function)
@@ -233,7 +233,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // Capture escrow share balance after cancellation and update ghost if shares were removed
         {
-            uint256 escrowSharesAfter = IShareToken(vault.share()).balanceOf(address(globalEscrow));
+            uint256 escrowSharesAfter = IShareToken(vault.share()).balanceOf(_getPoolEscrowForVault(vault));
 
             // If shares were removed from escrow during the cancellation, decrement sumOfFulfilledDeposits
             if (escrowSharesBefore > escrowSharesAfter) {
@@ -375,7 +375,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         _captureShareQueueState(vault.poolId(), vault.scId());
 
         uint256 shareUserB4 = IShareToken(vault.share()).balanceOf(_getActor());
-        uint256 shareEscrowB4 = IShareToken(vault.share()).balanceOf(address(globalEscrow));
+        uint256 shareEscrowB4 = IShareToken(vault.share()).balanceOf(_getPoolEscrowForVault(vault));
         (uint128 pendingBefore,) = batchRequestManager.depositRequest(
             vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId, _getActor().toBytes32()
         );
@@ -439,7 +439,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // Bal after
         uint256 shareUserAfter = IShareToken(vault.share()).balanceOf(_getActor());
-        uint256 shareEscrowAfter = IShareToken(vault.share()).balanceOf(address(globalEscrow));
+        uint256 shareEscrowAfter = IShareToken(vault.share()).balanceOf(_getPoolEscrowForVault(vault));
 
         // NOTE: Intentionally unchecked - underflow indicates property violation (fuzzer debugging)
         // Might overflow

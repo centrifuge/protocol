@@ -13,7 +13,6 @@ import {ReconAssetIdManager} from "./managers/ReconAssetIdManager.sol";
 import {ReconShareClassManager} from "./managers/ReconShareClassManager.sol";
 import {BatchRequestManagerHarness} from "./mocks/BatchRequestManagerHarness.sol";
 
-import {Escrow} from "../../../src/misc/Escrow.sol";
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 
 import {MockAdapter} from "../../core/mocks/MockAdapter.sol";
@@ -54,9 +53,9 @@ import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
 import {IdentityValuation} from "../../../src/valuations/IdentityValuation.sol";
 
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
+import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 import {AsyncVaultFactory} from "../../../src/vaults/factories/AsyncVaultFactory.sol";
-import {RefundEscrowFactory} from "../../../src/vaults/factories/RefundEscrowFactory.sol";
 import {SyncDepositVaultFactory} from "../../../src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import {vm} from "@chimera/Hevm.sol";
@@ -64,6 +63,8 @@ import {Utils} from "@recon/Utils.sol";
 import {BaseSetup} from "@chimera/BaseSetup.sol";
 import {ActorManager} from "@recon/ActorManager.sol";
 import {AssetManager} from "@recon/AssetManager.sol";
+import {SubsidyManager} from "../../../src/utils/SubsidyManager.sol";
+import {RefundEscrowFactory} from "../../../src/utils/RefundEscrowFactory.sol";
 
 // Hub
 
@@ -99,7 +100,7 @@ abstract contract Setup is
     FullRestrictions fullRestrictions;
     IRoot root;
     BalanceSheet balanceSheet;
-    Escrow globalEscrow;
+    SubsidyManager subsidyManager;
 
     // Mocks
     MessageDispatcher messageDispatcher;
@@ -192,15 +193,11 @@ abstract contract Setup is
         // Dependencies
         root = new Root(48 hours, address(this));
         gateway = new MockGateway();
-        globalEscrow = new Escrow(address(this));
-        root.endorse(address(globalEscrow));
 
         balanceSheet = new BalanceSheet(root, address(this));
-        fullRestrictions = new FullRestrictions(
-            address(root), address(spoke), address(balanceSheet), address(globalEscrow), address(spoke), address(this)
-        );
         refundEscrowFactory = new RefundEscrowFactory(address(this));
-        asyncRequestManager = new AsyncRequestManager(globalEscrow, refundEscrowFactory, address(this));
+        subsidyManager = new SubsidyManager(refundEscrowFactory, address(this));
+        asyncRequestManager = new AsyncRequestManager(subsidyManager, address(this));
         syncManager = new SyncManager(address(this));
         asyncVaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
         syncVaultFactory = new SyncDepositVaultFactory(address(root), syncManager, asyncRequestManager, address(this));
@@ -208,6 +205,15 @@ abstract contract Setup is
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
         vaultRegistry = new VaultRegistry(address(this));
         spoke = new Spoke(tokenFactory, address(this));
+        fullRestrictions = new FullRestrictions(
+            address(root),
+            address(spoke),
+            address(balanceSheet),
+            address(spoke), // crosschainSource_ (same chain = spoke)
+            address(this),
+            address(poolEscrowFactory),
+            address(0) // poolEscrow_
+        );
 
         tokenRecoverer = new TokenRecoverer(IRoot(address(root)), address(this));
         Root(address(root)).rely(address(tokenRecoverer));
@@ -238,7 +244,6 @@ abstract contract Setup is
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
 
         balanceSheet.file("gateway", address(gateway));
-        poolEscrowFactory.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
         address[] memory tokenWards = new address[](2);
         tokenWards[0] = address(spoke);
@@ -347,6 +352,16 @@ abstract contract Setup is
 
     /// === Helper Functions === ///
 
+    /// @dev Returns the PoolEscrow address for the current pool
+    function _getPoolEscrowAddress() internal view returns (address) {
+        return address(poolEscrowFactory.escrow(_getPool()));
+    }
+
+    /// @dev Returns the PoolEscrow address for a specific vault's pool
+    function _getPoolEscrowForVault(IBaseVault vault) internal view returns (address) {
+        return address(poolEscrowFactory.escrow(vault.poolId()));
+    }
+
     /// @dev Returns a random actor from the list of actors
     /// @dev This is useful for cases where we want to have caller and recipient be different actors
     /// @param entropy The determines which actor is chosen from the array
@@ -367,7 +382,6 @@ abstract contract Setup is
         // Root endorsements (from CommonDeployer and SpokeDeployer)
         root.endorse(address(balanceSheet));
         root.endorse(address(asyncRequestManager));
-        root.endorse(address(globalEscrow));
 
         // Rely Spoke (from SpokeDeployer)
         asyncVaultFactory.rely(address(spoke));
@@ -383,7 +397,6 @@ abstract contract Setup is
         vaultRegistry.rely(address(spoke));
 
         // Rely async requests manager
-        globalEscrow.rely(address(asyncRequestManager));
         asyncRequestManager.rely(address(asyncVaultFactory));
         asyncRequestManager.rely(address(syncVaultFactory));
         asyncRequestManager.rely(address(messageDispatcher));
@@ -408,11 +421,13 @@ abstract contract Setup is
         balanceSheet.rely(address(syncManager));
         balanceSheet.rely(address(messageDispatcher));
         balanceSheet.rely(address(gateway));
-        // Rely global escrow
-        globalEscrow.rely(address(asyncRequestManager));
-        globalEscrow.rely(address(syncManager));
-        globalEscrow.rely(address(spoke));
-        globalEscrow.rely(address(balanceSheet));
+
+        // Rely SubsidyManager and RefundEscrowFactory
+        subsidyManager.rely(address(root));
+        subsidyManager.rely(address(asyncRequestManager));
+        refundEscrowFactory.rely(address(subsidyManager));
+        refundEscrowFactory.file("controller", address(asyncRequestManager));
+        refundEscrowFactory.file("root", address(root));
 
         // Rely Root (from all deployers)
         spoke.rely(address(root));
@@ -420,7 +435,6 @@ abstract contract Setup is
         asyncRequestManager.rely(address(root));
         syncManager.rely(address(root));
         balanceSheet.rely(address(root));
-        globalEscrow.rely(address(root));
         asyncVaultFactory.rely(address(root));
         syncVaultFactory.rely(address(root));
         tokenFactory.rely(address(root));

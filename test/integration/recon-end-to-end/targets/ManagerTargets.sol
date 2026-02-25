@@ -73,7 +73,7 @@ abstract contract ManagerTargets is BaseTargetFunctions, Properties {
         // PoolId poolId = _getVault().poolId();
         address poolEscrow = address(poolEscrowFactory.escrow(_getVault().poolId()));
 
-        require(to != address(globalEscrow) && to != poolEscrow, "Cannot mint to globalEscrow or poolEscrow");
+        require(to != poolEscrow, "Cannot mint to poolEscrow");
         console2.log("asset_mint to", to);
         console2.log("asset_mint asset", _getAsset());
         MockERC20(_getAsset()).mint(to, amt);

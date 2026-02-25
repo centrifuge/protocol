@@ -69,6 +69,7 @@ contract BatchRequestManagerHarness is BatchRequestManager {
                     })
                 ),
                 0, // extraGasLimit
+                false, // unpaidMode
                 refund
             );
         }
@@ -127,6 +128,7 @@ contract BatchRequestManagerHarness is BatchRequestManager {
                     })
                 ),
                 0, // extraGasLimit
+                false, // unpaidMode
                 refund
             );
         }

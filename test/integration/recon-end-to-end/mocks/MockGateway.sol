@@ -35,16 +35,26 @@ contract MockGateway {
     function rely(address user) public {}
 
     // Mock implementation of repay
-    function repay(uint16 centrifugeId, bytes memory batch) public payable {}
+    function repay(uint16 centrifugeId, bytes memory batch, address refund) public payable {}
 
     // Mock implementation of retry
     function retry(uint16 centrifugeId, bytes memory message) public {}
 
     // Mock implementation of send
-    function send(uint16 centrifugeId, bytes memory message) public {}
+    function send(uint16 centrifugeId, bytes memory message, bool unpaidMode, address refund) public payable {}
 
-    // Mock implementation of setUnpaidMode
-    function setUnpaidMode(bool enabled) public {}
+    // Mock implementation of withBatch
+    function withBatch(bytes memory callbackData, uint256 callbackValue, address refund) external payable {}
+    function withBatch(bytes memory callbackData, address refund) external payable {}
+
+    // Mock implementation of lockCallback
+    function lockCallback() external {}
+
+    // Mock implementation of updateManager
+    function updateManager(uint64 poolId, address who, bool canManage) external {}
+
+    // Mock implementation of blockOutgoing
+    function blockOutgoing(uint16 centrifugeId, uint64 poolId, bool canSend) external {}
 
     // Mock implementation of setRefundAddress
     function setRefundAddress(uint64 poolId, address refund) public {}

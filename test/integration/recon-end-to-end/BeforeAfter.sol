@@ -291,13 +291,13 @@ abstract contract BeforeAfter is Setup {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
         if (_getShareToken() != address(0)) {
-            _structToUpdate.escrowShareTokenBalance = MockERC20(_getShareToken()).balanceOf(address(globalEscrow));
+            _structToUpdate.escrowShareTokenBalance = MockERC20(_getShareToken()).balanceOf(_getPoolEscrowAddress());
             _structToUpdate.totalShareSupply = MockERC20(_getShareToken()).totalSupply();
         }
 
         if (address(_getVault()) != address(0)) {
             _structToUpdate.escrowAssetBalance[address(_getVault())] =
-                MockERC20(_getVault().asset()).balanceOf(address(globalEscrow));
+                MockERC20(_getVault().asset()).balanceOf(_getPoolEscrowForVault(_getVault()));
             _structToUpdate.poolEscrowAssetBalance =
                 MockERC20(_getVault().asset()).balanceOf(address(poolEscrowFactory.escrow(_getVault().poolId())));
             _structToUpdate.actualAssets = MockERC20(_getVault().asset()).balanceOf(address(_getVault()));

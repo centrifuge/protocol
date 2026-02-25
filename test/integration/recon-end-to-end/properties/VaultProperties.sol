@@ -4,9 +4,9 @@ pragma solidity 0.8.28;
 import {ERC7540Properties} from "./ERC7540Properties.sol";
 
 import {D18} from "../../../../src/misc/types/D18.sol";
-import {IERC20, IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
+import {IERC20, IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
@@ -119,7 +119,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
     /// @dev Property: depositing maxDeposit blocks the user from depositing more
     /// @dev Property: depositing maxDeposit does not increase the pendingDeposit
     /// @dev Property: depositing maxDeposit doesn't mint more than maxMint shares
-    /// @dev Property: For async vaults, validates globalEscrow share transfers
+    /// @dev Property: For async vaults, validates PoolEscrow share transfers
     /// @dev Property: For sync vaults, validates PoolEscrow state changes
     function vault_maxDeposit(
         uint64,
@@ -161,7 +161,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
             uint256 maxDepositAfter = _getVault().maxDeposit(_getActor());
 
             if (isAsyncVault) {
-                // For async vaults, validate globalEscrow share transfers instead of poolEscrow
+                // For async vaults, validate PoolEscrow share transfers
                 claimState.sharesReturned = shares;
                 _updateAsyncClaimStateAfter(claimState, _getVault(), _getActor());
                 _validateAsyncVaultClaim(claimState, "vault_maxDeposit");
@@ -455,11 +455,10 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
     }
 
     /// @notice Tracks share balances for async vault claim operations
-    /// @dev During claim operations (vault.deposit/mint), shares transfer from globalEscrow to receiver
-    /// @dev PoolEscrow does NOT change during claims
+    /// @dev During claim operations (vault.deposit/mint), shares transfer from PoolEscrow to receiver
     struct AsyncClaimState {
-        uint256 globalEscrowSharesBefore;
-        uint256 globalEscrowSharesAfter;
+        uint256 poolEscrowSharesBefore;
+        uint256 poolEscrowSharesAfter;
         uint256 receiverSharesBefore;
         uint256 receiverSharesAfter;
         uint256 sharesReturned;
@@ -723,16 +722,16 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
     }
 
     /// @dev Captures async claim state before vault.deposit() operation
-    /// @notice Tracks globalEscrow and receiver share balances
+    /// @notice Tracks PoolEscrow and receiver share balances
     function _captureAsyncClaimStateBefore(IBaseVault vault, address receiver)
         internal
         view
         returns (AsyncClaimState memory state)
     {
         address shareToken = vault.share();
-        address globalEscrowAddr = address(asyncRequestManager.globalEscrow());
+        address poolEscrowAddr = _getPoolEscrowForVault(vault);
 
-        state.globalEscrowSharesBefore = IERC20(shareToken).balanceOf(globalEscrowAddr);
+        state.poolEscrowSharesBefore = IERC20(shareToken).balanceOf(poolEscrowAddr);
         state.receiverSharesBefore = IERC20(shareToken).balanceOf(receiver);
 
         (state.maxMintBefore,,,,,,,,,) = asyncRequestManager.investments(vault, _getActor());
@@ -746,24 +745,24 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         view
     {
         address shareToken = vault.share();
-        address globalEscrowAddr = address(asyncRequestManager.globalEscrow());
+        address poolEscrowAddr = _getPoolEscrowForVault(vault);
 
-        state.globalEscrowSharesAfter = IERC20(shareToken).balanceOf(globalEscrowAddr);
+        state.poolEscrowSharesAfter = IERC20(shareToken).balanceOf(poolEscrowAddr);
         state.receiverSharesAfter = IERC20(shareToken).balanceOf(receiver);
 
         (state.maxMintAfter,,,,,,,,,) = asyncRequestManager.investments(vault, _getActor());
     }
 
     /// @dev Validates async vault claim operations
-    /// @notice During claims, globalEscrow shares transfer to receiver, PoolEscrow does NOT change
+    /// @notice During claims, PoolEscrow shares transfer to receiver
     /// @notice This validation works for all cases including when sharesReturned == 0
     function _validateAsyncVaultClaim(AsyncClaimState memory state, string memory operationName) internal {
-        uint256 globalEscrowDecrease = state.globalEscrowSharesBefore - state.globalEscrowSharesAfter;
+        uint256 poolEscrowDecrease = state.poolEscrowSharesBefore - state.poolEscrowSharesAfter;
         uint256 receiverIncrease = state.receiverSharesAfter - state.receiverSharesBefore;
         eq(
-            globalEscrowDecrease,
+            poolEscrowDecrease,
             state.sharesReturned,
-            string.concat(operationName, ": globalEscrow must decrease by exact shares returned")
+            string.concat(operationName, ": PoolEscrow must decrease by exact shares returned")
         );
         eq(
             receiverIncrease,
@@ -771,9 +770,9 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
             string.concat(operationName, ": receiver must receive exact shares returned")
         );
         eq(
-            globalEscrowDecrease,
+            poolEscrowDecrease,
             receiverIncrease,
-            string.concat(operationName, ": shares leaving globalEscrow must equal shares received")
+            string.concat(operationName, ": shares leaving PoolEscrow must equal shares received")
         );
 
         uint128 maxMintDecrease = state.maxMintBefore - state.maxMintAfter;

@@ -11,6 +11,7 @@ import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
+import {REASON_DEPOSIT} from "../../../../src/vaults/interfaces/IVaultManagers.sol";
 
 import {Panic} from "@recon/Panic.sol";
 import {Properties} from "../properties/Properties.sol";
@@ -372,7 +373,10 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track reserve operations
         ghost_totalReserveOperations[key]++;
 
-        try balanceSheet.reserve(poolId, scId, vault.asset(), tokenId, amount) {
+        // TODO: Investigate adding handlers for both reasons, use hardcoded deposit for now
+        try balanceSheet.reserve(
+            poolId, scId, vault.asset(), tokenId, amount, address(asyncRequestManager), REASON_DEPOSIT
+        ) {
             if (ghost_netReserved[key] <= type(uint256).max - amount) {
                 ghost_netReserved[key] += amount;
             }
@@ -407,7 +411,10 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track unreserve operations
         ghost_totalUnreserveOperations[key]++;
 
-        try balanceSheet.unreserve(poolId, scId, vault.asset(), tokenId, amount) {
+        // TODO: Investigate adding handlers for both reasons, use hardcoded deposit for now
+        try balanceSheet.unreserve(
+            poolId, scId, vault.asset(), tokenId, amount, address(asyncRequestManager), REASON_DEPOSIT
+        ) {
             if (ghost_netReserved[key] >= amount) {
                 ghost_netReserved[key] -= amount;
             }

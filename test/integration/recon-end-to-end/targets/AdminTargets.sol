@@ -100,7 +100,9 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
 
-        hub.addShareClass(poolId, name, symbol, bytes32(salt));
+        // Salt must have poolId as first 8 bytes (new validation on main)
+        bytes32 prefixedSalt = bytes32(uint256(poolId.raw()) << 192) | bytes32(salt & type(uint192).max);
+        hub.addShareClass(poolId, name, symbol, prefixedSalt);
     }
 
     function hub_approveDeposits(uint32 nowDepositEpochId, uint128 maxApproval) public updateGhosts {
@@ -246,7 +248,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         AssetId assetId = _getAssetId();
 
         address shareToken = address(spoke.shareToken(poolId, scId));
-        uint256 escrowSharesBefore = IShareToken(shareToken).balanceOf(address(globalEscrow));
+        uint256 escrowSharesBefore = IShareToken(shareToken).balanceOf(_getPoolEscrowAddress());
 
         batchRequestManager.issueShares{value: MAX_MESSAGE_COST}(
             poolId, scId, assetId, nowIssueEpochId, D18.wrap(navPerShare), SHARE_HOOK_GAS, _getActor()
@@ -255,7 +257,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         // Calculate issued amount in separate function to avoid stack depth
         uint128 issuedShareAmount = _calculateIssuedShares(poolId, scId, assetId, nowIssueEpochId, navPerShare);
 
-        uint256 escrowSharesAfter = IShareToken(shareToken).balanceOf(address(globalEscrow));
+        uint256 escrowSharesAfter = IShareToken(shareToken).balanceOf(_getPoolEscrowAddress());
 
         uint256 escrowShareDelta = escrowSharesAfter - escrowSharesBefore;
         executedInvestments[shareToken] += escrowShareDelta;
@@ -333,7 +335,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         AssetId payoutAssetId = _getAssetId();
 
         address shareToken = address(spoke.shareToken(poolId, scId));
-        uint256 sharesBefore = IShareToken(shareToken).balanceOf(address(globalEscrow));
+        uint256 sharesBefore = IShareToken(shareToken).balanceOf(_getPoolEscrowAddress());
 
         batchRequestManager.revokeShares{value: MAX_MESSAGE_COST}(
             poolId, scId, payoutAssetId, nowRevokeEpochId, D18.wrap(navPerShare), SHARE_HOOK_GAS, _getActor()
@@ -342,7 +344,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         // Get and process epoch data in separate function to avoid stack depth
         uint128 revokedShareAmount = _calculateRevokedShares(poolId, scId, payoutAssetId, nowRevokeEpochId);
 
-        uint256 sharesAfter = IShareToken(shareToken).balanceOf(address(globalEscrow));
+        uint256 sharesAfter = IShareToken(shareToken).balanceOf(_getPoolEscrowAddress());
         uint256 burnedShares = sharesBefore - sharesAfter;
 
         // NOTE: shares are burned on revoke

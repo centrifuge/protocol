@@ -193,13 +193,22 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     // Reproducer: echidna/reproducers/9143144158582049584.txt
     // Async vault: deploy → deposit_queue_cancel → hub_notifyDeposit → maxDeposit
     function test_vault_maxDeposit_12() public {
-        shortcut_deployNewTokenPoolAndShare(58, 3725620682615936983603445291889200717745835437975087272030550155022530317057, false, true, true, false);
+        shortcut_deployNewTokenPoolAndShare(
+            58, 3725620682615936983603445291889200717745835437975087272030550155022530317057, false, true, true, false
+        );
 
         balanceSheet_submitQueuedShares(2986799447496935121812250855886100387);
 
         switch_actor(270);
 
-        shortcut_deposit_queue_cancel(4662387785827488946, 238, 1577203754821733349138040342627210308022144620756482427698354874963446062794, 326587208, 53058427172526584712949480, 124879742162045852864037660195030038286);
+        shortcut_deposit_queue_cancel(
+            4662387785827488946,
+            238,
+            1577203754821733349138040342627210308022144620756482427698354874963446062794,
+            326587208,
+            53058427172526584712949480,
+            124879742162045852864037660195030038286
+        );
 
         switch_share_class(7);
 

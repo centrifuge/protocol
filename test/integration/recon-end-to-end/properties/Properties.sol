@@ -144,7 +144,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                         _getVault()
                     )][_getActor()].claimableCancelDepositRequest
                 - _after.investments[address(_getVault())][_getActor()].claimableCancelDepositRequest;
-            // claiming a cancel deposit request means that the globalEscrow token balance decreases
+            // claiming a cancel deposit request means that the PoolEscrow token balance decreases
             uint256 escrowAssetBalanceDelta =
                 _before.escrowAssetBalance[address(_getVault())] - _after.escrowAssetBalance[address(_getVault())];
             eq(
@@ -173,7 +173,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                         _getVault()
                     )][_getActor()].claimableCancelRedeemRequest
                 - _after.investments[address(_getVault())][_getActor()].claimableCancelRedeemRequest;
-            // claiming a cancel redeem request means that the globalEscrow tranche token balance decreases
+            // claiming a cancel redeem request means that the PoolEscrow tranche token balance decreases
             uint256 escrowTrancheTokenBalanceDelta = _before.escrowShareTokenBalance - _after.escrowShareTokenBalance;
             eq(
                 claimableCancelRedeemRequestDelta,
@@ -452,7 +452,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         }
 
         IBaseVault vault = _getVault();
-        uint256 max = IShareToken(vault.share()).balanceOf(address(globalEscrow));
+        uint256 max = IShareToken(vault.share()).balanceOf(_getPoolEscrowForVault(vault));
         address[] memory actors = _getActors();
 
         uint256 acc; // Use acc to get maxMint for each actor
@@ -1090,7 +1090,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     /// @dev Can we donate to this address?
     /// We explicitly preventing donations since we check for exact balances
     function _canDonate(address to) internal view returns (bool) {
-        if (to == address(globalEscrow)) {
+        if (to == _getPoolEscrowAddress()) {
             return false;
         }
 
@@ -1749,7 +1749,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         try spoke.shareToken(poolId, scId) returns (IShareToken shareToken) {
             uint256 actualSupply = shareToken.totalSupply();
             // escrow holds tokens that have been redeemed
-            uint256 balancesSummed = shareToken.balanceOf(address(asyncRequestManager.globalEscrow()));
+            uint256 balancesSummed = shareToken.balanceOf(_getPoolEscrowAddress());
             // Check 2: Sum of balances equals total supply
             address[] memory actors = _getActors();
             for (uint256 k = 0; k < actors.length; k++) {
