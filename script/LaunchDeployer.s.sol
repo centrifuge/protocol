@@ -12,15 +12,11 @@ import {
     ChainlinkInput
 } from "./FullDeployer.s.sol";
 
-import {CastLib} from "../src/misc/libraries/CastLib.sol";
-
 import {ISafe} from "../src/admin/interfaces/ISafe.sol";
 
 import "forge-std/Script.sol";
 
 contract LaunchDeployer is FullDeployer {
-    using CastLib for *;
-
     function run() public virtual {
         vm.startBroadcast();
         captureStartBlock();
@@ -30,7 +26,7 @@ contract LaunchDeployer is FullDeployer {
 
         DeployerInput memory input = DeployerInput({
             centrifugeId: config.network.centrifugeId,
-            version: prettyEnvString("VERSION").toBytes32(),
+            suffix: config.network.isMainnet() ? "" : vm.envOr("SUFFIX", string("")),
             txLimits: config.network.buildBatchLimits(),
             protocolSafe: ISafe(config.network.protocolAdmin),
             opsSafe: ISafe(config.network.opsAdmin),

@@ -14,7 +14,19 @@ contract JsonRegistry is Script {
     function register(string memory name, address target) public {
         // Note: Real block numbers are extracted from broadcast artifacts by verifier.py
         // block.number here would be the script execution block, not the actual deployment block
-        string memory contractJson = string(abi.encodePacked('    "', name, '": "', vm.toString(target), '"'));
+        _register(name, target, string(abi.encodePacked('"', vm.toString(target), '"')));
+    }
+
+    function register(string memory name, address target, string memory version) public {
+        _register(
+            name,
+            target,
+            string(abi.encodePacked('{ "address": "', vm.toString(target), '", "version": "', version, '" }'))
+        );
+    }
+
+    function _register(string memory name, address target, string memory value) internal {
+        string memory contractJson = string(abi.encodePacked('    "', name, '": ', value));
 
         deploymentOutput = (registeredContracts == 0)
             ? string(abi.encodePacked(deploymentOutput, contractJson))
