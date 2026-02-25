@@ -39,8 +39,8 @@ import {SyncDepositVaultFactory} from "../../src/vaults/factories/SyncDepositVau
 
 import "forge-std/Script.sol";
 
-import {LaunchDeployer} from "../LaunchDeployer.s.sol";
 import {EnvConfig} from "../utils/EnvConfig.s.sol";
+import {LaunchDeployer} from "../LaunchDeployer.s.sol";
 import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../../src/adapters/WormholeAdapter.sol";

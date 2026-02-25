@@ -6,11 +6,9 @@ import {Env, EnvConfig} from "./utils/EnvConfig.s.sol";
 
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
-import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
-
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
-import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
+import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 
 string constant V3_1 = "v3.1";

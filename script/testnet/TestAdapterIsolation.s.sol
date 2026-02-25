@@ -1,21 +1,28 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseTestData} from "./BaseTestData.s.sol";
-
 import {d18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
+import {Hub} from "../../src/core/hub/Hub.sol";
+import {Spoke} from "../../src/core/spoke/Spoke.sol";
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AccountId} from "../../src/core/types/AccountId.sol";
+import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
 import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
+import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
+
+import {OpsGuardian} from "../../src/admin/OpsGuardian.sol";
+
+import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
+
+import {Script} from "forge-std/Script.sol";
+import {console} from "forge-std/console.sol";
 
 import {Env, EnvConfig} from "../utils/EnvConfig.s.sol";
-
-import "forge-std/Script.sol";
-import {console} from "forge-std/console.sol";
+import {Constants} from "../../src/deployment/ActionBatchers.sol";
 
 /**
  * @title TestAdapterIsolation
@@ -23,14 +30,14 @@ import {console} from "forge-std/console.sol";
  *         Separates pool setup from adapter setup, allowing repeated NotifyShareClass tests.
  * @dev See script/testnet/README.md for three-phase workflow and usage examples.
  */
-contract TestAdapterIsolation is BaseTestData {
+contract TestAdapterIsolation is Script, Constants {
     using CastLib for address;
 
     //----------------------------------------------------------------------------------------------
     // CONSTANTS
     //----------------------------------------------------------------------------------------------
 
-    uint256 constant POOL_SUBSIDY = 0.1 ether;
+    uint256 constant DEFAULT_XC_GAS_PER_CALL = 0.1 ether;
     uint48 constant DEFAULT_GAS_TEST_BASE = 91000;
 
     address constant ARBITRUM_SEPOLIA_USDC = 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d;
@@ -53,11 +60,11 @@ contract TestAdapterIsolation is BaseTestData {
     // STORAGE
     //----------------------------------------------------------------------------------------------
 
-    address public admin;
-    uint16 public hubCentrifugeId;
-    uint16 public spokeCentrifugeId;
-    string public spokeNetworkName;
+    EnvConfig h; // hub config
+    EnvConfig s; // spoke config
+
     uint48 public gasTestBase;
+    uint256 internal xcGasPerCall;
 
     uint8 internal selectedAdapter = 255; // 255 = all adapters
 
@@ -65,7 +72,7 @@ contract TestAdapterIsolation is BaseTestData {
     // ENTRY POINTS
     //----------------------------------------------------------------------------------------------
 
-    function run() public override {
+    function run() public {
         runPoolSetup();
     }
 
@@ -186,32 +193,19 @@ contract TestAdapterIsolation is BaseTestData {
     //----------------------------------------------------------------------------------------------
 
     function _loadConfig() internal {
-        EnvConfig memory config = Env.load(vm.envString("NETWORK"));
+        h = Env.load(vm.envString("NETWORK"));
+        s = Env.load(vm.envOr("SPOKE_NETWORK", string("arbitrum-sepolia")));
 
-        hubCentrifugeId = config.network.centrifugeId;
         xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
-
-        spokeNetworkName = vm.envOr("SPOKE_NETWORK", string("arbitrum-sepolia"));
-        EnvConfig memory spokeConfig = Env.load(spokeNetworkName);
-        spokeCentrifugeId = spokeConfig.network.centrifugeId;
-
-        try vm.envAddress("PROTOCOL_ADMIN") returns (address a) {
-            admin = a;
-        } catch {
-            admin = msg.sender;
-        }
-
         gasTestBase = uint48(vm.envOr("GAS_TEST_BASE", uint256(DEFAULT_GAS_TEST_BASE)));
-
-        loadContractsFromConfig(config);
     }
 
     function _logConfig() internal view {
         console.log("=== Gas Estimation Test Configuration ===");
-        console.log("Hub CentrifugeId:", hubCentrifugeId);
-        console.log("Spoke CentrifugeId:", spokeCentrifugeId);
-        console.log("Spoke Network:", spokeNetworkName);
-        console.log("Admin:", admin);
+        console.log("Hub CentrifugeId:", h.network.centrifugeId);
+        console.log("Spoke CentrifugeId:", s.network.centrifugeId);
+        console.log("Spoke Network:", s.network.name);
+        console.log("Admin:", h.network.protocolAdmin);
         console.log("XC Gas Per Call:", xcGasPerCall);
         console.log("Gas Test Base:", gasTestBase);
         console.log("==========================================\n");
@@ -252,8 +246,8 @@ contract TestAdapterIsolation is BaseTestData {
     //----------------------------------------------------------------------------------------------
 
     function _phase1_CreatePools() internal {
-        AssetId assetId = newAssetId(spokeCentrifugeId, 1);
-        _ensureAssetRegistered(spokeCentrifugeId, assetId);
+        AssetId assetId = newAssetId(s.network.centrifugeId, 1);
+        _ensureAssetRegistered(s.network.centrifugeId, assetId);
 
         for (uint8 adapterIdx = 0; adapterIdx < ADAPTER_COUNT; adapterIdx++) {
             if (!_shouldTestAdapter(adapterIdx)) continue;
@@ -263,9 +257,9 @@ contract TestAdapterIsolation is BaseTestData {
 
     function _createPoolOnHub(AdapterType adapter, AssetId assetId) internal {
         uint48 poolIndex = _poolIndex(uint8(adapter));
-        PoolId poolId = hubRegistry.poolId(hubCentrifugeId, poolIndex);
+        PoolId poolId = HubRegistry(h.contracts.hubRegistry).poolId(h.network.centrifugeId, poolIndex);
 
-        if (hubRegistry.exists(poolId)) {
+        if (HubRegistry(h.contracts.hubRegistry).exists(poolId)) {
             console.log("Pool already exists, skipping:", _adapterName(adapter));
             return;
         }
@@ -273,36 +267,36 @@ contract TestAdapterIsolation is BaseTestData {
         console.log("\n--- Creating pool for:", _adapterName(adapter));
         console.log("    Pool Index:", poolIndex);
 
-        subsidyManager.deposit{value: POOL_SUBSIDY}(poolId);
-        opsGuardian.createPool(poolId, msg.sender, USD_ID);
+        OpsGuardian(h.contracts.opsGuardian).createPool(poolId, msg.sender, USD_ID);
 
-        hub.createAccount(poolId, AccountId.wrap(0x01), true);
-        hub.createAccount(poolId, AccountId.wrap(0x02), false);
-        hub.createAccount(poolId, AccountId.wrap(0x03), false);
-        hub.createAccount(poolId, AccountId.wrap(0x04), true);
+        Hub(h.contracts.hub).createAccount(poolId, AccountId.wrap(0x01), true);
+        Hub(h.contracts.hub).createAccount(poolId, AccountId.wrap(0x02), false);
+        Hub(h.contracts.hub).createAccount(poolId, AccountId.wrap(0x03), false);
+        Hub(h.contracts.hub).createAccount(poolId, AccountId.wrap(0x04), true);
 
-        ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
+        ShareClassId scId = ShareClassManager(h.contracts.shareClassManager).previewNextShareClassId(poolId);
         string memory shareName = string.concat("GasTest-", _adapterName(adapter), "-SC0");
         string memory shareSymbol = string.concat("GT", _adapterSymbol(adapter), "0");
         bytes32 shareClassMeta = bytes32(abi.encodePacked(bytes8(poolId.raw()), bytes24(keccak256(bytes(shareName)))));
-        hub.addShareClass(poolId, shareName, shareSymbol, shareClassMeta);
+        Hub(h.contracts.hub).addShareClass(poolId, shareName, shareSymbol, shareClassMeta);
 
-        if (hubRegistry.isRegistered(assetId)) {
-            hub.initializeHolding(
-                poolId,
-                scId,
-                assetId,
-                identityValuation,
-                AccountId.wrap(0x01),
-                AccountId.wrap(0x02),
-                AccountId.wrap(0x03),
-                AccountId.wrap(0x04)
-            );
+        if (HubRegistry(h.contracts.hubRegistry).isRegistered(assetId)) {
+            Hub(h.contracts.hub)
+                .initializeHolding(
+                    poolId,
+                    scId,
+                    assetId,
+                    IdentityValuation(h.contracts.identityValuation),
+                    AccountId.wrap(0x01),
+                    AccountId.wrap(0x02),
+                    AccountId.wrap(0x03),
+                    AccountId.wrap(0x04)
+                );
         }
-        hub.updateSharePrice(poolId, scId, d18(1, 1), uint64(block.timestamp));
+        Hub(h.contracts.hub).updateSharePrice(poolId, scId, d18(1, 1), uint64(block.timestamp));
 
         string memory poolMeta = string.concat("GasTest-", _adapterName(adapter));
-        hub.setPoolMetadata(poolId, bytes(poolMeta));
+        Hub(h.contracts.hub).setPoolMetadata(poolId, bytes(poolMeta));
 
         console.log("    PoolId:", vm.toString(abi.encode(poolId)));
         console.log("    ShareClassId:", vm.toString(abi.encode(scId)));
@@ -322,9 +316,9 @@ contract TestAdapterIsolation is BaseTestData {
 
     function _configureAdapterAndNotifyPool(AdapterType adapter) internal {
         uint48 poolIndex = _poolIndex(uint8(adapter));
-        PoolId poolId = hubRegistry.poolId(hubCentrifugeId, poolIndex);
+        PoolId poolId = HubRegistry(h.contracts.hubRegistry).poolId(h.network.centrifugeId, poolIndex);
 
-        if (!hubRegistry.exists(poolId)) {
+        if (!HubRegistry(h.contracts.hubRegistry).exists(poolId)) {
             console.log("Pool does not exist, run runPoolSetup() first:", _adapterName(adapter));
             return;
         }
@@ -339,10 +333,12 @@ contract TestAdapterIsolation is BaseTestData {
         bytes32[] memory remoteAdapters = new bytes32[](1);
         remoteAdapters[0] = address(adapterInstance).toBytes32();
 
-        hub.setAdapters{value: xcGasPerCall}(poolId, spokeCentrifugeId, localAdapters, remoteAdapters, 1, 0, msg.sender);
+        Hub(h.contracts.hub).setAdapters{value: xcGasPerCall}(
+            poolId, s.network.centrifugeId, localAdapters, remoteAdapters, 1, 0, msg.sender
+        );
         console.log("    SetPoolAdapters sent via", _adapterName(adapter));
 
-        hub.notifyPool{value: xcGasPerCall}(poolId, spokeCentrifugeId, msg.sender);
+        Hub(h.contracts.hub).notifyPool{value: xcGasPerCall}(poolId, s.network.centrifugeId, msg.sender);
         console.log("    NotifyPool sent via", _adapterName(adapter));
 
         console.log("    Total XC messages: 2");
@@ -361,16 +357,16 @@ contract TestAdapterIsolation is BaseTestData {
 
     function _addShareClassAndNotify(AdapterType adapter) internal {
         uint48 poolIndex = _poolIndex(uint8(adapter));
-        PoolId poolId = hubRegistry.poolId(hubCentrifugeId, poolIndex);
+        PoolId poolId = HubRegistry(h.contracts.hubRegistry).poolId(h.network.centrifugeId, poolIndex);
 
-        if (!hubRegistry.exists(poolId)) {
+        if (!HubRegistry(h.contracts.hubRegistry).exists(poolId)) {
             console.log("Pool does not exist, run runPoolSetup() first:", _adapterName(adapter));
             return;
         }
 
         console.log("\n--- Adding share class for:", _adapterName(adapter));
 
-        ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
+        ShareClassId scId = ShareClassManager(h.contracts.shareClassManager).previewNextShareClassId(poolId);
         uint32 scIndex = scId.index();
 
         console.log("    Share class index:", scIndex);
@@ -378,12 +374,12 @@ contract TestAdapterIsolation is BaseTestData {
         string memory shareName = string.concat("GasTest-", _adapterName(adapter), "-SC", vm.toString(scIndex));
         string memory shareSymbol = string.concat("GT", _adapterSymbol(adapter), vm.toString(scIndex));
         bytes32 shareClassMeta = bytes32(abi.encodePacked(bytes8(poolId.raw()), bytes24(keccak256(bytes(shareName)))));
-        hub.addShareClass(poolId, shareName, shareSymbol, shareClassMeta);
+        Hub(h.contracts.hub).addShareClass(poolId, shareName, shareSymbol, shareClassMeta);
 
         console.log("    Added share class on hub:", shareName);
 
-        hub.notifyShareClass{value: xcGasPerCall}(
-            poolId, scId, spokeCentrifugeId, address(redemptionRestrictionsHook).toBytes32(), msg.sender
+        Hub(h.contracts.hub).notifyShareClass{value: xcGasPerCall}(
+            poolId, scId, s.network.centrifugeId, h.contracts.redemptionRestrictionsHook.toBytes32(), msg.sender
         );
 
         console.log("    NotifyShareClass sent via", _adapterName(adapter));
@@ -395,25 +391,24 @@ contract TestAdapterIsolation is BaseTestData {
     //----------------------------------------------------------------------------------------------
 
     function _ensureAssetRegistered(uint16 targetCentrifugeId, AssetId assetId) internal {
-        if (hubRegistry.isRegistered(assetId)) {
+        if (HubRegistry(h.contracts.hubRegistry).isRegistered(assetId)) {
             console.log("[Asset] Already registered on Hub, assetId:", assetId.raw());
             return;
         }
 
-        bool isCrossChain = targetCentrifugeId != hubCentrifugeId;
+        bool isCrossChain = targetCentrifugeId != h.network.centrifugeId;
         if (isCrossChain) {
-            // Pools can still be created - holdings init will be skipped if asset not registered.
             console.log("[Asset] Not registered on hub. Holdings init will be skipped.");
             console.log(
                 string.concat(
-                    "        To register: NETWORK=", spokeNetworkName, " forge script ... --sig 'registerAssetOnly()'"
+                    "        To register: NETWORK=", s.network.name, " forge script ... --sig 'registerAssetOnly()'"
                 )
             );
             return;
         }
 
         address usdcAddress = _resolveUsdcAddress(targetCentrifugeId);
-        spoke.registerAsset{value: xcGasPerCall}(targetCentrifugeId, usdcAddress, 0, msg.sender);
+        Spoke(h.contracts.spoke).registerAsset{value: xcGasPerCall}(targetCentrifugeId, usdcAddress, 0, msg.sender);
         console.log("[Asset] Registered asset locally:", usdcAddress);
     }
 
@@ -431,24 +426,19 @@ contract TestAdapterIsolation is BaseTestData {
 
     /// @notice Register asset from spoke chain (for cross-chain setups)
     function registerAssetOnly() public {
-        EnvConfig memory config = Env.load(vm.envString("NETWORK"));
-        uint16 localCentrifugeId = config.network.centrifugeId;
-        loadContractsFromConfig(config);
+        s = Env.load(vm.envString("NETWORK"));
+        h = Env.load(vm.envOr("HUB_NETWORK", string("base-sepolia")));
         xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
 
-        string memory hubNetwork = vm.envOr("HUB_NETWORK", string("base-sepolia"));
-        EnvConfig memory hubConfig = Env.load(hubNetwork);
-        uint16 targetHubCentrifugeId = hubConfig.network.centrifugeId;
-
         console.log("=== Asset Registration (run on SPOKE chain) ===");
-        console.log("Local CentrifugeId:", localCentrifugeId);
-        console.log("Target Hub CentrifugeId:", targetHubCentrifugeId);
+        console.log("Local CentrifugeId:", s.network.centrifugeId);
+        console.log("Target Hub CentrifugeId:", h.network.centrifugeId);
 
-        address localUsdc = _resolveUsdcAddress(localCentrifugeId);
+        address localUsdc = _resolveUsdcAddress(s.network.centrifugeId);
         console.log("Local USDC address:", localUsdc);
 
         vm.startBroadcast();
-        spoke.registerAsset{value: xcGasPerCall}(targetHubCentrifugeId, localUsdc, 0, msg.sender);
+        Spoke(s.contracts.spoke).registerAsset{value: xcGasPerCall}(h.network.centrifugeId, localUsdc, 0, msg.sender);
         vm.stopBroadcast();
 
         console.log("\n[Asset] Registration XC message sent to hub!");
@@ -459,19 +449,14 @@ contract TestAdapterIsolation is BaseTestData {
     //----------------------------------------------------------------------------------------------
 
     function _getAdapter(AdapterType adapter) internal view returns (IAdapter) {
-        if (adapter == AdapterType.Axelar) return axelarAdapter;
-        if (adapter == AdapterType.LayerZero) return layerZeroAdapter;
-        if (adapter == AdapterType.Wormhole) return wormholeAdapter;
-        return chainlinkAdapter;
+        if (adapter == AdapterType.Axelar) return IAdapter(h.contracts.axelarAdapter);
+        if (adapter == AdapterType.LayerZero) return IAdapter(h.contracts.layerZeroAdapter);
+        if (adapter == AdapterType.Wormhole) return IAdapter(h.contracts.wormholeAdapter);
+        return IAdapter(h.contracts.chainlinkAdapter);
     }
 
     function _poolIndex(uint8 adapterIdx) internal view returns (uint48) {
         return gasTestBase + uint48(adapterIdx);
-    }
-
-    function _poolId(uint16 centrifugeId, uint8 adapterIdx) internal view returns (PoolId) {
-        uint48 poolIndex = _poolIndex(adapterIdx);
-        return PoolId.wrap(uint64(centrifugeId) << 48 | poolIndex);
     }
 
     function _adapterName(AdapterType adapter) internal pure returns (string memory) {
@@ -516,7 +501,7 @@ contract TestAdapterIsolation is BaseTestData {
         console.log("\n2. Verify pool exists on spoke:");
         console.log(
             string.concat(
-                "   cast call $SPOKE 'isPoolActive(uint64)(bool)' <POOL_ID> --rpc-url $", _envRpcName(spokeNetworkName)
+                "   cast call $SPOKE 'isPoolActive(uint64)(bool)' <POOL_ID> --rpc-url $", _envRpcName(s.network.name)
             )
         );
         console.log("\n3. Run runShareClassTest() to test NotifyShareClass:");
@@ -546,7 +531,7 @@ contract TestAdapterIsolation is BaseTestData {
         for (uint8 i = 0; i < ADAPTER_COUNT; i++) {
             if (!_shouldTestAdapter(i)) continue;
             uint48 poolIndex = _poolIndex(i);
-            PoolId poolId = _poolId(hubCentrifugeId, i);
+            PoolId poolId = HubRegistry(h.contracts.hubRegistry).poolId(h.network.centrifugeId, poolIndex);
             console.log(
                 string.concat("  - ", adapterNames[i], ": poolIndex=", vm.toString(poolIndex)),
                 "poolId=",
@@ -556,9 +541,9 @@ contract TestAdapterIsolation is BaseTestData {
     }
 
     function _envRpcName(string memory networkName) internal pure returns (string memory) {
-        bytes32 h = keccak256(bytes(networkName));
-        if (h == keccak256("arbitrum-sepolia")) return "ARBITRUM_SEPOLIA_RPC";
-        if (h == keccak256("base-sepolia")) return "BASE_SEPOLIA_RPC";
+        bytes32 nameHash = keccak256(bytes(networkName));
+        if (nameHash == keccak256("arbitrum-sepolia")) return "ARBITRUM_SEPOLIA_RPC";
+        if (nameHash == keccak256("base-sepolia")) return "BASE_SEPOLIA_RPC";
         return "RPC_URL";
     }
 }

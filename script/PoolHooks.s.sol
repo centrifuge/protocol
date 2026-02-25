@@ -3,8 +3,8 @@ pragma solidity 0.8.28;
 
 import {BaseDeployer} from "./BaseDeployer.s.sol";
 import {JsonUtils} from "./utils/JsonUtils.s.sol";
-import {GraphQLQuery} from "./utils/GraphQLQuery.s.sol";
 import {Env, EnvConfig} from "./utils/EnvConfig.s.sol";
+import {GraphQLQuery} from "./utils/GraphQLQuery.s.sol";
 
 import {Spoke} from "../src/core/spoke/Spoke.sol";
 import {PoolId} from "../src/core/types/PoolId.sol";

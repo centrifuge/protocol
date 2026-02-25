@@ -12,11 +12,11 @@ import {PoolId, newPoolId} from "../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
 
-import {Env, EnvConfig} from "../utils/EnvConfig.s.sol";
-
 import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import "forge-std/Script.sol";
+
+import {Env, EnvConfig} from "../utils/EnvConfig.s.sol";
 
 // Script to deploy Hub and Vaults with a Localhost Adapter.
 contract TestData is BaseTestData {
@@ -25,9 +25,7 @@ contract TestData is BaseTestData {
 
     function run() public override {
         EnvConfig memory config = Env.load(vm.envString("NETWORK"));
-
         uint16 centrifugeId = config.network.centrifugeId;
-        address admin = config.network.protocolAdmin;
         loadContractsFromConfig(config);
 
         vm.startBroadcast();
@@ -47,7 +45,7 @@ contract TestData is BaseTestData {
                 poolIndex: 1,
                 token: token,
                 assetId: assetId,
-                admin: admin,
+                admin: config.network.protocolAdmin,
                 poolMetadata: "Testing pool",
                 shareClassName: "Tokenized MMF",
                 shareClassSymbol: "MMF",
@@ -98,7 +96,7 @@ contract TestData is BaseTestData {
                 poolIndex: 2,
                 token: token,
                 assetId: assetId,
-                admin: admin,
+                admin: config.network.protocolAdmin,
                 poolMetadata: "Testing pool",
                 shareClassName: "RWA Portfolio",
                 shareClassSymbol: "RWA",
