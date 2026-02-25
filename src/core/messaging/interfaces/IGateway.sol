@@ -119,7 +119,9 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @param canManage If enabled as manager
     function updateManager(PoolId poolId, address who, bool canManage) external;
 
-    /// @notice Indicates if the gateway for a determined pool can send messages or not
+    /// @notice Block or unblock outgoing messages for a pool on a specific chain.
+    /// @dev    Used during adapter migrations to ensure no messages are in-flight while the adapter
+    ///         configuration is being updated. See `IHub.setAdapters` for the full procedure.
     /// @param centrifugeId Centrifuge ID associated to this block
     /// @param poolId PoolId associated to this block
     /// @param canSend If can send messages or not
