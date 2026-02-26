@@ -267,7 +267,6 @@ contract EndToEndDeployment is Test {
         internal
         returns (LocalAdapter adapter)
     {
-        deploy.labelAddresses(string(abi.encodePacked(vm.toString(localCentrifugeId), "-")));
         deploy.deployFull(
             DeployerInput({
                 centrifugeId: localCentrifugeId,

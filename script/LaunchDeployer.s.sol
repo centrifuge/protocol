@@ -19,7 +19,6 @@ import "forge-std/Script.sol";
 contract LaunchDeployer is FullDeployer {
     function run() public virtual {
         vm.startBroadcast();
-        captureStartBlock();
         startDeploymentOutput();
 
         EnvConfig memory config = Env.load(prettyEnvString("NETWORK"));

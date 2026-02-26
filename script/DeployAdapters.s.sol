@@ -23,7 +23,6 @@ contract DeployAdapters is BaseDeployer {
 
         vm.startBroadcast();
         startDeploymentOutput();
-        captureStartBlock();
 
         _init(vm.envOr("SUFFIX", string("")), msg.sender);
 
