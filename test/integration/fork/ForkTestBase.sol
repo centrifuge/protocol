@@ -15,10 +15,11 @@ import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRe
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 
+import {Env, EnvConfig} from "../../../script/utils/EnvConfig.s.sol";
+
 import "forge-std/Test.sol";
 
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
-import {Env, EnvConfig} from "../../../script/utils/EnvConfig.s.sol";
 
 /// @title ForkTestBase
 /// @notice Base contract for all fork tests, providing common setup and utilities
@@ -34,7 +35,7 @@ contract ForkTestBase is Test {
     EnvConfig config;
 
     function setUp() public virtual {
-        config = Env.load(vm.envString("NETWORK"));
+        config = Env.load("ethereum");
         vm.createSelectFork(config.network.rpcUrl());
         vm.deal(_poolAdmin(), 10 ether);
     }
