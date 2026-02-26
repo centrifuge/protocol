@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IRefundEscrowFactory} from "./IRefundEscrowFactory.sol";
+
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
@@ -12,6 +14,9 @@ interface ISubsidyManager is ITrustedContractUpdate {
     error FileUnrecognizedParam();
     error RefundEscrowNotDeployed();
     error NotEnoughToWithdraw();
+
+    /// @notice Factory that deploys per-pool refund escrows for holding subsidy deposits
+    function refundEscrowFactory() external view returns (IRefundEscrowFactory);
 
     /// @notice Updates contract parameters of type address.
     /// @param what The bytes32 representation of 'refundEscrowFactory'.

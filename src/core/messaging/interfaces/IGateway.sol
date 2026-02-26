@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IAdapter} from "./IAdapter.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
+import {IProtocolPauser} from "./IProtocolPauser.sol";
+import {IMessageProperties} from "./IMessageProperties.sol";
 
 import {IRecoverable} from "../../../misc/interfaces/IRecoverable.sol";
 
@@ -192,6 +195,46 @@ interface IGateway is IMessageHandler, IRecoverable {
     //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
+
+    /// @notice Protocol's internal chain identifier for this network, distinct from the EVM chain ID
+    function localCentrifugeId() external view returns (uint16);
+
+    /// @notice MultiAdapter used for outbound message dispatch and inbound quorum verification
+    function adapter() external view returns (IAdapter);
+
+    /// @notice Handler that routes confirmed inbound cross-chain messages to their target contracts
+    function processor() external view returns (IMessageHandler);
+
+    /// @notice Provides gas cost estimates and message type metadata for cross-chain messages
+    function messageProperties() external view returns (IMessageProperties);
+
+    /// @notice ProtocolGuardian that can pause/unpause all cross-chain messaging
+    function pauser() external view returns (IProtocolPauser);
+
+    /// @notice Returns whether an address is a manager for a given pool
+    /// @param poolId The pool identifier
+    /// @param who The address to check
+    /// @return Whether the address is a manager
+    function manager(PoolId poolId, address who) external view returns (bool);
+
+    /// @notice Returns whether outgoing messages are blocked for a pool on a specific chain
+    /// @param centrifugeId The destination chain identifier
+    /// @param poolId The pool identifier
+    /// @return Whether outgoing is blocked
+    function isOutgoingBlocked(uint16 centrifugeId, PoolId poolId) external view returns (bool);
+
+    /// @notice Returns the underpaid batch info for a given chain and batch hash
+    /// @param centrifugeId The destination chain identifier
+    /// @param batchHash The hash of the underpaid batch
+    /// @return gasLimit The gas limit for the batch
+    /// @return counter The number of underpaid instances
+    function underpaid(uint16 centrifugeId, bytes32 batchHash) external view returns (uint128 gasLimit, uint64 counter);
+
+    /// @notice Returns the number of failed message instances for a given chain and message hash
+    /// @param centrifugeId The source chain identifier
+    /// @param messageHash The hash of the failed message
+    /// @return The count of failed instances
+    function failedMessages(uint16 centrifugeId, bytes32 messageHash) external view returns (uint256);
 
     /// @notice Returns the current gateway batching level
     /// @return Whether the gateway is currently batching
