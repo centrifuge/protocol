@@ -25,9 +25,16 @@ IERC20 constant USDC_ETHEREUM = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB4
 IERC20 constant USDC_BASE = IERC20(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913);
 IERC20 constant USDC_ARBITRUM = IERC20(0xaf88d065e77c8cC2239327C5EDb3A432268e5831);
 
+address constant CNF_TREASURY_WALLET = 0xD052A46b8e0C89fAcB393805E1917AfD20f293Cb;
+uint256 constant CENTRIFUGE_CHAIN_CFG_AMOUNT = 0; // TODO: Set exact amount before deployment
+
 uint256 constant ETHEREUM_CHAIN_ID = 1;
 uint256 constant BASE_CHAIN_ID = 8453;
 uint256 constant ARBITRUM_CHAIN_ID = 42161;
+
+interface CFGTokenLike {
+    function mint(address to, uint256 value) external;
+}
 
 interface EscrowV2Like is IAuth {
     function approveMax(address token, address spender) external;
@@ -44,6 +51,7 @@ contract V2CleaningsSpell {
         _updateCFGWards();
         _disableRootV2FromShareTokensV2();
         _moveFundsFromEscrowToTreasury();
+        _mintCFGToTreasury();
 
         ROOT_V2.deny(address(this));
         ROOT_V3.deny(address(this));
@@ -111,6 +119,15 @@ contract V2CleaningsSpell {
             usdc.transferFrom(ESCROW_V2, TREASURY, usdc.balanceOf(ESCROW_V2));
 
             ROOT_V2.denyContract(address(ESCROW_V2), address(this));
+        }
+    }
+
+    function _mintCFGToTreasury() internal {
+        if (block.chainid == ETHEREUM_CHAIN_ID) {
+            uint256 amount = IERC20(WCFG).totalSupply() + CENTRIFUGE_CHAIN_CFG_AMOUNT;
+            ROOT_V3.relyContract(CFG, address(this));
+            CFGTokenLike(CFG).mint(CNF_TREASURY_WALLET, amount);
+            ROOT_V3.denyContract(CFG, address(this));
         }
     }
 }

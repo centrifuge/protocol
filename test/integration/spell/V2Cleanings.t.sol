@@ -26,7 +26,9 @@ import {
     ESCROW_V2,
     USDC_ETHEREUM,
     USDC_BASE,
-    USDC_ARBITRUM
+    USDC_ARBITRUM,
+    CNF_TREASURY_WALLET,
+    CENTRIFUGE_CHAIN_CFG_AMOUNT
 } from "../../../src/spell/V2CleaningsSpell.sol";
 
 contract V2CleaningsSpellTest is Test {
@@ -45,6 +47,9 @@ contract V2CleaningsSpellTest is Test {
 
         uint256 preTreasuryValue = _usdc().balanceOf(TREASURY);
         uint256 preEscrowValue = _usdc().balanceOf(ESCROW_V2);
+        uint256 preCfgTotalSupply = IERC20(CFG).totalSupply();
+        uint256 preCfgMintTreasuryBalance = IERC20(CFG).balanceOf(CNF_TREASURY_WALLET);
+        uint256 preWcfgTotalSupply = block.chainid == ETHEREUM_CHAIN_ID ? IERC20(WCFG).totalSupply() : 0;
 
         // ----- REQUIRED RELIES -----
 
@@ -74,6 +79,12 @@ contract V2CleaningsSpellTest is Test {
 
             assertEq(IAuth(CFG).wards(address(ROOT_V2)), 0);
             assertEq(IAuth(CFG).wards(IOU_CFG), 0);
+
+            // CFG minting assertions
+            uint256 expectedMintAmount = preWcfgTotalSupply + CENTRIFUGE_CHAIN_CFG_AMOUNT;
+            assertEq(IERC20(CFG).totalSupply(), preCfgTotalSupply + expectedMintAmount);
+            assertEq(IERC20(CFG).balanceOf(CNF_TREASURY_WALLET), preCfgMintTreasuryBalance + expectedMintAmount);
+            assertEq(IAuth(CFG).wards(address(spell)), 0);
         }
 
         assertEq(IAuth(TRANCHE_JTRSY).wards(address(ROOT_V3)), 1);
