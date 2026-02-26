@@ -102,7 +102,7 @@ contract PoolHooks is JsonRegistry, CreateXScript {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", vm.toString(centrifugeId),
+            "  centrifugeId: ", vm.toString(centrifugeId).asJsonString(),
             "}"
         );
 
