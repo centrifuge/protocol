@@ -82,10 +82,108 @@ def parse_import_statement(import_stmt: str) -> Tuple[List[str], str]:
 
     return [], path
 
+def find_duplicate_imports(imports: List[str]) -> List[str]:
+    """Find duplicate imports: multiple imports from the same path where one is a subset of another"""
+    duplicates = []
+
+    # Group imports by path
+    path_to_imports: Dict[str, List[Tuple[int, List[str], str]]] = {}
+    for idx, import_stmt in enumerate(imports):
+        symbols, path = parse_import_statement(import_stmt)
+        if path:
+            if path not in path_to_imports:
+                path_to_imports[path] = []
+            path_to_imports[path].append((idx, symbols, import_stmt))
+
+    for path, import_group in path_to_imports.items():
+        if len(import_group) <= 1:
+            continue
+
+        # Multiple imports from the same path - find redundant ones
+        for i, (idx_i, symbols_i, stmt_i) in enumerate(import_group):
+            symbols_set_i = set(symbols_i) if symbols_i else set()
+            for j, (idx_j, symbols_j, stmt_j) in enumerate(import_group):
+                if i >= j:
+                    continue
+                symbols_set_j = set(symbols_j) if symbols_j else set()
+
+                # If i's symbols are a subset of j's, i is redundant
+                if symbols_set_i and symbols_set_j and symbols_set_i <= symbols_set_j:
+                    duplicates.append(f"Duplicate import '{stmt_i}' (all symbols already in '{stmt_j}')")
+                # If j's symbols are a subset of i's, j is redundant
+                elif symbols_set_i and symbols_set_j and symbols_set_j <= symbols_set_i:
+                    duplicates.append(f"Duplicate import '{stmt_j}' (all symbols already in '{stmt_i}')")
+
+    return duplicates
+
+
+def merge_duplicate_imports(imports: List[str]) -> Tuple[List[str], int]:
+    """Merge duplicate imports from the same path, returning merged list and count of removed imports"""
+    # Group imports by path
+    path_to_imports: Dict[str, List[Tuple[int, List[str], str]]] = {}
+    path_order: List[str] = []  # Track first occurrence order
+    non_path_imports: List[Tuple[int, str]] = []
+
+    for idx, import_stmt in enumerate(imports):
+        symbols, path = parse_import_statement(import_stmt)
+        if path:
+            if path not in path_to_imports:
+                path_to_imports[path] = []
+                path_order.append(path)
+            path_to_imports[path].append((idx, symbols, import_stmt))
+        else:
+            non_path_imports.append((idx, import_stmt))
+
+    merged = []
+    removed_count = 0
+
+    for path in path_order:
+        import_group = path_to_imports[path]
+        if len(import_group) == 1:
+            merged.append(import_group[0][2])
+            continue
+
+        # Multiple imports from same path - merge symbols
+        all_symbols: List[str] = []
+        seen_symbols: Set[str] = set()
+        has_direct_import = False
+
+        for _, symbols, stmt in import_group:
+            if not symbols:
+                has_direct_import = True
+            for s in symbols:
+                if s not in seen_symbols:
+                    all_symbols.append(s)
+                    seen_symbols.add(s)
+
+        if has_direct_import and not all_symbols:
+            # Only direct imports (no symbols) - keep just one
+            merged.append(import_group[0][2])
+            removed_count += len(import_group) - 1
+        elif all_symbols:
+            # Reconstruct a single merged import with all symbols
+            symbols_str = ", ".join(all_symbols)
+            merged.append(f'import {{{symbols_str}}} from "{path}";')
+            removed_count += len(import_group) - 1
+        else:
+            merged.append(import_group[0][2])
+            removed_count += len(import_group) - 1
+
+    # Add non-path imports
+    for _, stmt in non_path_imports:
+        merged.append(stmt)
+
+    return merged, removed_count
+
+
 def find_unused_imports(file_path: str, content: str) -> List[str]:
     """Find unused imports in a Solidity file"""
     imports = extract_imports(content)
     unused_imports = []
+
+    # Check for duplicate imports first
+    duplicates = find_duplicate_imports(imports)
+    unused_imports.extend(duplicates)
 
     # Remove import statements from content for analysis
     content_without_imports = content
@@ -141,17 +239,20 @@ def fix_unused_imports_in_file(file_path: str) -> Tuple[bool, int]:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
 
-        imports = extract_imports(content)
-        if not imports:
+        original_imports = extract_imports(content)
+        if not original_imports:
             return False, 0
 
-        # Remove import statements from content for analysis
+        # Remove import statements from content for analysis (using originals)
         content_without_imports = content
-        for import_stmt in imports:
+        for import_stmt in original_imports:
             content_without_imports = content_without_imports.replace(import_stmt, '')
 
+        # Merge duplicate imports from the same path
+        imports, merge_removed = merge_duplicate_imports(original_imports)
+
         new_imports = []
-        removed_count = 0
+        removed_count = merge_removed
 
         for import_stmt in imports:
             symbols, path = parse_import_statement(import_stmt)
@@ -183,11 +284,10 @@ def fix_unused_imports_in_file(file_path: str) -> Tuple[bool, int]:
                 # No unused symbols, keep import as is
                 new_imports.append(import_stmt)
 
-        # Replace old imports with new ones
-        new_content = content
-        for old_import in imports:
-            new_content = new_content.replace(old_import + '\n', '')
-            new_content = new_content.replace(old_import, '')
+        # Remove all original import statements from content using regex
+        # (string replacement fails on multi-line imports due to whitespace normalization)
+        import_removal_pattern = r'import\s+.*?;'
+        new_content = re.sub(import_removal_pattern, '', content, flags=re.MULTILINE | re.DOTALL)
 
         # Add new imports back
         if new_imports:
@@ -396,6 +496,9 @@ def fix_file_imports(file_path: str, convert_to_relative: bool = True) -> bool:
         imports = extract_imports(content)
         if not imports:
             return False  # No imports to fix
+
+        # Merge duplicate imports from the same path
+        imports, _ = merge_duplicate_imports(imports)
 
         # Remove all imports using regex pattern (handles both single-line and multi-line)
         import_removal_pattern = r'import\s+.*?;'
