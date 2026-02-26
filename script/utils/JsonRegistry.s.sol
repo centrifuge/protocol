@@ -78,19 +78,4 @@ contract JsonRegistry is Script {
         vm.writeFile(latestPath, fullOutput);
         console.log("Contract addresses also saved to: %s", latestPath);
     }
-
-    /// @notice Read a contract address from JSON config, supporting both nested and flat formats
-    /// @dev Tries to read from "pointer.address" first, falls back to "pointer" directly
-    /// @param config The JSON configuration string
-    /// @param pointer The JSON path to the contract address (e.g., "$.contracts.hub")
-    /// @return The contract address
-    function _readContractAddress(string memory config, string memory pointer) internal pure returns (address) {
-        string memory nestedPointer = string.concat(pointer, ".address");
-        try vm.parseJsonAddress(config, nestedPointer) returns (address addr) {
-            if (addr != address(0)) {
-                return addr;
-            }
-        } catch {}
-        return vm.parseJsonAddress(config, pointer);
-    }
 }
