@@ -34,17 +34,9 @@ contract ForkTestBase is Test {
     EnvConfig config;
 
     function setUp() public virtual {
-        config = Env.load(_network());
-        vm.createSelectFork(_rpcEndpoint());
+        config = Env.load(vm.envString("NETWORK"));
+        vm.createSelectFork(config.network.rpcUrl());
         vm.deal(_poolAdmin(), 10 ether);
-    }
-
-    function _network() internal view virtual returns (string memory) {
-        return vm.envOr("NETWORK", string("ethereum"));
-    }
-
-    function _rpcEndpoint() internal view virtual returns (string memory) {
-        return IntegrationConstants.RPC_ETHEREUM;
     }
 
     function _poolAdmin() internal view virtual returns (address) {
