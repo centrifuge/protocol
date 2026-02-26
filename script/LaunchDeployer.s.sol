@@ -23,6 +23,7 @@ contract LaunchDeployer is FullDeployer {
         startDeploymentOutput();
 
         EnvConfig memory config = Env.load(prettyEnvString("NETWORK"));
+
         DeployerInput memory input = DeployerInput({
             centrifugeId: config.network.centrifugeId,
             suffix: config.network.isMainnet() ? "" : vm.envOr("SUFFIX", string("")),
@@ -47,7 +48,7 @@ contract LaunchDeployer is FullDeployer {
                 chainlink: ChainlinkInput({
                     shouldDeploy: config.adapters.chainlink.deploy, ccipRouter: config.adapters.chainlink.ccipRouter
                 }),
-                connections: config.network.buildConnections()
+                connections: config.adapterConnections()
             })
         });
 
