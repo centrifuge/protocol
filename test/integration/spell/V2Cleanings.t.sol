@@ -10,7 +10,6 @@ import {EnvConfig, Env} from "../../../script/utils/EnvConfig.s.sol";
 
 import "forge-std/Test.sol";
 
-import {V2CleaningsSpell} from "../../../src/spell/V2CleaningsSpell.sol";
 import {
     V2CleaningsSpell,
     ROOT_V2,
@@ -63,8 +62,8 @@ contract V2CleaningsSpellTest is Test {
         uint256 preTreasuryValue;
         uint256 preEscrowValue;
         if (address(usdc) != address(0)) {
-            preTreasuryValue = _usdc().balanceOf(TREASURY);
-            preEscrowValue = _usdc().balanceOf(ESCROW_V2);
+            preTreasuryValue = usdc.balanceOf(TREASURY);
+            preEscrowValue = usdc.balanceOf(ESCROW_V2);
         }
 
         // ----- REQUIRED RELIES -----

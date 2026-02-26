@@ -42,8 +42,9 @@ contract PoolHooks is JsonRegistry, CreateXScript {
 
     uint16 public centrifugeId;
 
-    address public freelyTransferableHook;
+    address public contractUpdater;
     address public fullRestrictionsHook;
+    address public freelyTransferableHook;
     Root public root;
     Spoke public spoke;
     BalanceSheet public balanceSheet;
@@ -63,6 +64,7 @@ contract PoolHooks is JsonRegistry, CreateXScript {
         spoke = Spoke(_readContractAddress(config, "$.contracts.spoke"));
         balanceSheet = BalanceSheet(_readContractAddress(config, "$.contracts.balanceSheet"));
         poolEscrowFactory = IPoolEscrowProvider(_readContractAddress(config, "$.contracts.poolEscrowFactory"));
+        contractUpdater = _readContractAddress(config, "$.contracts.contractUpdater");
         freelyTransferableHook = _readContractAddress(config, "$.contracts.freelyTransferableHook");
         fullRestrictionsHook = _readContractAddress(config, "$.contracts.fullRestrictionsHook");
 
@@ -236,6 +238,7 @@ contract PoolHooks is JsonRegistry, CreateXScript {
 
         hook.rely(address(root));
         hook.rely(address(spoke));
+        hook.rely(address(contractUpdater));
         hook.deny(msg.sender);
     }
 
