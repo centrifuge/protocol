@@ -5,16 +5,11 @@
     "centrifugeId": 2,
     "catapultaNetwork": "baseSepolia",
     "etherscanUrl": "https://api-sepolia.basescan.org/api",
-    "connectsTo": [
-      "sepolia",
-      "arbitrum-sepolia"
-    ],
     "protocolAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
     "opsAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
     "baseRpcUrl": "https://base-sepolia.g.alchemy.com/v2/"
   },
   "adapters": {
-    "threshold": 1,
     "wormhole": {
       "wormholeId": 10004,
       "relayer": "0x93BAD53DDfB6132b0aC8E37f6029163E63372cEE",

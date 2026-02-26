@@ -198,9 +198,9 @@ class CrossChainTestManager:
         return success
 
     def _get_connected_networks(self) -> List[str]:
-        connects_to = self.env_loader.config.get("network", {}).get("connectsTo", [])
+        connects_to = self.env_loader.connected_networks
         if not connects_to:
-            print_error("No connected networks found in config. Add 'connectsTo' to network config.")
+            print_error("No connected networks found in connections config.")
             raise SystemExit(1)
         return connects_to
 

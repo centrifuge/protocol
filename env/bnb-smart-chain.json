@@ -3,22 +3,12 @@
     "chainId": 56,
     "environment": "mainnet",
     "centrifugeId": 6,
-    "connectsTo": [
-      "ethereum",
-      "base",
-      "arbitrum",
-      "plume",
-      "avalanche",
-      "hyper-evm",
-      "optimism"
-    ],
     "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "batchLimit": 15,
     "baseRpcUrl": "https://bnb-mainnet.g.alchemy.com/v2/"
   },
   "adapters": {
-    "threshold": 1,
     "layerZero": {
       "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
       "layerZeroEid": 30102,
@@ -30,7 +20,7 @@
       ]
     },
     "wormhole": {
-      "wormholeId": 0,
+      "wormholeId": 4,
       "relayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
       "deploy": true
     },
@@ -41,7 +31,7 @@
       "deploy": true
     },
     "chainlink": {
-      "chainSelector": 0,
+      "chainSelector": 11344663589394136015,
       "ccipRouter": "0x34B03Cb9086d7D758AC55af71584F81A598759FE",
       "deploy": true
     }
