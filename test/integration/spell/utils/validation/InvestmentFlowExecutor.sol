@@ -20,9 +20,8 @@ import {MessageLib} from "../../../../../src/core/messaging/libraries/MessageLib
 import {UpdateRestrictionMessageLib} from "../../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {IBaseVault} from "../../../../../src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "../../../../../src/vaults/interfaces/IAsyncVault.sol";
 import {ISyncManager} from "../../../../../src/vaults/interfaces/IVaultManagers.sol";
-import {IAsyncRedeemVault} from "../../../../../src/vaults/interfaces/IAsyncVault.sol";
+import {IAsyncVault, IAsyncRedeemVault} from "../../../../../src/vaults/interfaces/IAsyncVault.sol";
 import {RequestCallbackMessageLib} from "../../../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
 import {NonCoreReport} from "../../../../../script/FullDeployer.s.sol";

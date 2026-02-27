@@ -1,12 +1,27 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "../../../src/misc/interfaces/IERC7540.sol";
-import "../../../src/misc/interfaces/IERC7575.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
+import {IERC165, IERC7575} from "../../../src/misc/interfaces/IERC7575.sol";
+import {
+    IERC7540Deposit,
+    IERC7540Operator,
+    IERC7540Redeem,
+    IERC7714,
+    IERC7741,
+    IERC7887Deposit,
+    IERC7887Redeem
+} from "../../../src/misc/interfaces/IERC7540.sol";
 
-import "../../core/spoke/integration/BaseTest.sol";
+import {
+    AsyncVault,
+    BaseTest,
+    IShareToken,
+    PoolId,
+    ShareClassId,
+    VaultKind
+} from "../../core/spoke/integration/BaseTest.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
