@@ -25,15 +25,15 @@ You can then copy and paste the unit test into the `CryticToFoundry` contract to
 
 For info on the general structure of the test suite, refer to the section of the Recon docs on the [Chimera Framework](https://book.getrecon.xyz/writing_invariant_tests/chimera_framework.html).
 
-This tester connects the Vaults and Hub sides of the system via the `MockMessageDispatcher` (which simulates the functionality of the `MessageDispatcher` but removes any cross-chain message sending) allowing full testing of the logic by the fuzzer end-to-end. 
+This tester deploys the Hub and Spoke on the same chain (using a `MockGateway` that stubs out cross-chain message sending) allowing full testing of the logic by the fuzzer end-to-end.
 
-The primary contracts with target functions exposed in this tester are `AsyncVault`, `SyncDepositVault`, `Spoke`, `ShareToken`, `RestrictedTransfers`, `Hub`, `BalanceSheet` and `SyncRequestManager`.
+The primary contracts with target functions exposed in this tester are `AsyncVault`, `SyncDepositVault`, `Spoke`, `ShareToken`, `FullRestrictions`, `Hub`, `BalanceSheet`, `SyncManager`, `DoomsdayTargets` and `ManagerTargets`.
 
 > Note: cross-chain interactions are not tested. 
 
 The core system components are deployed in the `Setup` contract but to introduce additional randomness and test all possible configurations the `TargetFunctions::shortcut_deployNewTokenPoolAndShare` is used to deploy an instance of the pool, shareClass, `ShareToken` and a `SyncDepositVault` or `AsyncVault`.
 
-The `poolId`, `scId`, `assetId`, `shareToken`, `vault` currently being used by the system are handled by the managers in the [managers](https://github.com/centrifuge/protocol-v3/tree/feat/recon-invariants/test/integration/recon-end-to-end/managers) directory. This allows ensuring the same values are used across target functions and properties. See the [recon book](https://book.getrecon.xyz/extra/advanced.html#programmatic-deployment) for more details on how/why this is done.
+The `poolId`, `scId`, `assetId`, `shareToken`, `vault` currently being used by the system are handled by the managers in the [managers](managers/) directory. This allows ensuring the same values are used across target functions and properties. See the [recon book](https://book.getrecon.xyz/extra/advanced.html#programmatic-deployment) for more details on how/why this is done.
 
 The primary entrypoint for the fuzzer is via the `VaultTargets` for the Vault side and via the `HubTargets` on the Hub side. Because many of the `Hub` functions are privileged, they are executed using the admin actor in the `AdminTargets`. 
 
@@ -45,4 +45,4 @@ The additional shortcut functions (prefixed with `shortcut_`) in the `TargetFunc
 
 ### Properties
 
-Properties have been implemented in the `Properties` contract as well as in target functions handlers in contracts in the `targets/` folder and are all listed in the [properties table](https://github.com/centrifuge/protocol-v3/blob/feat/recon-invariants/test/integration/recon-end-to-end/properties-table.md). 
+Properties have been implemented in the `Properties` contract as well as in target functions handlers in contracts in the `targets/` folder and are all listed in the [properties table](properties-table.md).
