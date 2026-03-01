@@ -34,17 +34,19 @@ def create_parser() -> argparse.ArgumentParser:
 IMPORTANT:
   - This script is designed to be run from the root directory of the project.
   - The network name must match the name of the network in the env/<network>.json file.
-  - Run with VERSION=XYZ preceding the python3 command to avoid create3 collisions.
+  - For mainnet deployments, omit SUFFIX (contracts reuse their canonical versioned addresses).
+  - Set SUFFIX=XYZ to create an isolated fresh deployment (e.g. for testnet CI runs).
 
 Examples:
-  VERSION=vXYZ python3 deploy.py sepolia deploy:full
+  python3 deploy.py sepolia deploy:full
+  SUFFIX=PR-123 python3 deploy.py sepolia deploy:full
   python3 deploy.py base-sepolia deploy:full --catapulta --priority-gas-price 2
   python3 deploy.py sepolia deploy:adapters
   python3 deploy.py sepolia deploy:adapters --resume
   python3 deploy.py sepolia verify:protocol
   python3 deploy.py sepolia verify:contracts  # Verify & merge all contracts from latest deployment
   python3 deploy.py arbitrum-sepolia verify:protocol
-  VERSION=vXYZ python3 deploy.py deploy:testnets  # Deploy all Sepolia testnets (auto-resumes)
+  SUFFIX=vXYZ python3 deploy.py deploy:testnets  # Deploy all Sepolia testnets (auto-resumes)
   python3 deploy.py base-sepolia crosschaintest         # Full 4-step cross-chain test
   python3 deploy.py base-sepolia crosschaintest:test   # Repeat phase 3 (share class test)
         """
@@ -53,7 +55,7 @@ Examples:
     parser.add_argument("network", nargs="?", help="Network name (must match env/<network>.json)")
     parser.add_argument("step", nargs="?", help="Deployment step", choices=[
         "deploy:protocol", "deploy:full", "deploy:adapters", "wire:adapters",
-        "deploy:test", "verify:protocol", "verify:contracts", "dump:config", "release:sepolia",
+        "deploy:test", "verify:protocol", "verify:contracts", "release:sepolia",
         "crosschaintest", "crosschaintest:hub", "crosschaintest:spoke", "crosschaintest:test"
     ])
     parser.add_argument("--catapulta", action="store_true", help="Use Catapulta for deployment")
@@ -77,14 +79,14 @@ def validate_arguments(args, root_dir: pathlib.Path):
         print_info(f"Ledger: {args.ledger}")
         if args.forge_args:
             print_info(f"Forge args: {' '.join(args.forge_args)}")
-        print_info(f"VERSION env: {os.environ.get('VERSION', 'Not set')}")
+        print_info(f"SUFFIX env: {os.environ.get('SUFFIX', 'Not set (mainnet addresses)')}")
 
     # Check for required arguments
     if not args.step:
         print_error("Deployment step is required.")
         print_info("Run python3 deploy.py --help for available steps")
         raise SystemExit(1)
-    
+
     if not args.network:
         print_error("Network name is required")
         print_info("Available networks:")
@@ -94,7 +96,7 @@ def validate_arguments(args, root_dir: pathlib.Path):
                 if config_file.name != "latest":
                     print_info(f"  - {config_file.stem}")
         raise SystemExit(1)
-    
+
     network_config = root_dir / "env" / f"{args.network}.json"
     if not network_config.exists():
         print_error(f"Network config file not found: {network_config}")
@@ -110,10 +112,12 @@ def validate_arguments(args, root_dir: pathlib.Path):
                 print_info("  - anvil (local)")
         raise SystemExit(1)
 
-    # Check if VERSION environment variable is set for deployment steps
-    if args.step.startswith("deploy:") and not os.environ.get("VERSION") and not args.dry_run:
-        print_warning("VERSION environment variable not set. Create3 address collisions may occur.")
-        print_info("Consider running: VERSION=XYZ python3 deploy.py ...")
+    # Inform about SUFFIX usage for deployment steps
+    if args.step.startswith("deploy:") and not args.dry_run:
+        if os.environ.get("SUFFIX"):
+            print_info(f"Using SUFFIX='{os.environ.get('SUFFIX')}' for isolated deployment addresses")
+        else:
+            print_info("No SUFFIX set - deploying to canonical versioned addresses (mainnet mode)")
 
     # Validate forge arguments don't conflict with script defaults
     if args.forge_args:
@@ -133,12 +137,11 @@ def main():
     # Add unknown arguments as forge_args
     args.forge_args = unknown_args
 
-    # Normalize only the special case where the single positional is the testnets step
+    # Normalize special cases where the single positional is a network-less step
     # Example: python3 deploy.py deploy:testnets [--flags]
     if args.step is None and args.network == "deploy:testnets":
         args.step = "deploy:testnets"
         args.network = None
-
     # Get root directory early for validation
     script_dir = pathlib.Path(__file__).parent
     root_dir = script_dir.parent.parent
@@ -147,11 +150,11 @@ def main():
     if args.network != "anvil" and args.step != "deploy:testnets":
         validate_arguments(args, root_dir)
     elif args.step == "deploy:testnets":
-        # Special validation for deploy:testnets
-        if not os.environ.get("VERSION") and not args.dry_run:
-            print_error("VERSION environment variable is required for deploy:testnets")
-            print_info("Example: VERSION=v3.1.4 python3 script/deploy/deploy.py deploy:testnets")
-            sys.exit(1)
+        # Warn if no PREFIX is set for deploy:testnets (likely unintentional without isolation)
+        if not os.environ.get("SUFFIX") and not args.dry_run:
+            print_warning("SUFFIX environment variable is not set for deploy:testnets")
+            print_info("This will deploy to canonical versioned addresses (may collide with existing deployments)")
+            print_info("Consider: SUFFIX=vXYZ python3 script/deploy/deploy.py deploy:testnets")
 
     try:
         # Handle Anvil deployment specially - it's completely self-contained
@@ -172,14 +175,8 @@ def main():
             print_info(f"Chain ID: {env_loader.chain_id}")
             print_info(f"Deployment mode: {'Catapulta' if args.catapulta else 'Forge'}")
 
-            # Validate network configuration for deployment and wiring steps
-            if args.step in ["deploy:full", "deploy:adapters", "wire"]:
-                env_loader.validate_network()
-
-            # Set up deployment runner and verifier (only for deployment steps)
-            if args.step != "config:dump":
-                runner = DeploymentRunner(env_loader, args)
-                verifier = ContractVerifier(env_loader, args)
+            runner = DeploymentRunner(env_loader, args)
+            verifier = ContractVerifier(env_loader, args)
 
         # Execute the requested step
         verify_success = True
@@ -190,7 +187,7 @@ def main():
             already_deployed = False
             if "--resume" in args.forge_args and not args.dry_run:
                 already_deployed = verifier.config_has_latest_contracts()
-            
+
             # Why did we need to build before running forge script?
             # if "--resume" not in args.forge_args and not already_deployed:
             #     runner.build_contracts()
@@ -201,7 +198,7 @@ def main():
             else:
                 print_subsection(f"Deploying core protocol contracts for {args.network}")
                 deploy_success = runner.run_deploy("LaunchDeployer")
-            
+
             # Skip verification in dry-run mode
             if not args.dry_run:
                 print_section(f"Verifying deployment for {args.network}")
@@ -243,7 +240,7 @@ def main():
                 args.forge_args = original_forge_args
             elif args.dry_run:
                 print_info("Dry-run mode: skipping TestData deployment")
-        
+
         elif args.step == "verify":
             print_section(f"Verifying core protocol contracts for {args.network}")
             verify_success = verifier.verify_contracts("LaunchDeployer")
@@ -273,10 +270,6 @@ def main():
             print_section(f"Verifying contracts from latest deployment for {args.network}")
             verify_success = verifier.verify_contracts(None)
 
-        elif args.step == "dump:config":
-            print_section(f"Dumping config for {args.network}")
-            env_loader.dump_config()
-
         elif args.step == "release:sepolia":
             # Orchestrated deployment across all Sepolia testnets
             release_manager = ReleaseManager(root_dir, args)
@@ -286,18 +279,10 @@ def main():
         elif args.step == "wire":
             print_step(f"Wiring adapters for {args.network}")
             deploy_success = runner.run_deploy("WireAdapters")
-        
+
         elif args.step == "wire:all":
             print_section("Wiring adapters across connected networks")
-            # Load current network config
-            connects = []
-            try:
-                with open(env_loader.config_file, 'r') as f:
-                    cfg = json.load(f)
-                    connects = cfg.get('network', {}).get('connectsTo', []) or []
-            except Exception as e:
-                print_error(f"Failed to read network config: {e}")
-                sys.exit(1)
+            connects = env_loader.connected_networks
 
             all_networks = [args.network] + connects
             unique_networks = []
@@ -330,10 +315,6 @@ def main():
                     sys.exit(1)
             deploy_success = True
 
-        elif args.step == "config:dump":
-            print_section(f"Dumping config for {args.network}")
-            env_loader.dump_config()
-
         elif args.step == "crosschaintest":
             crosschain_manager = CrossChainTestManager(env_loader, args, root_dir)
             crosschain_manager.run_full()
@@ -354,7 +335,7 @@ def main():
             crosschain_manager.run_share_class_test()
             sys.exit(0)
             print_success("Cross-chain spoke tests completed")
-            sys.exit(0)            
+            sys.exit(0)
 
         # Handle errors
         if not verify_success:
