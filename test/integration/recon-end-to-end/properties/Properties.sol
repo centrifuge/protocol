@@ -1522,21 +1522,30 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     // NOTE: Removed because untestable; in BalanceSheet::withdraw, asset queue is increased at the same time that assets are sent to user which decreases holding_.total as well
     // function property_escrowBalanceSufficiency() public {}
 
-    /// @dev Property: BalanceSheet must always have sufficient balance for queued assets
+    /// @dev Property: Asset queue cannot create assets from nothing.
+    /// @notice queuedAssets tracks already-executed escrow movements pending hub notification.
+    ///         Since withdrawals decrease and deposits increase the escrow balance,
+    ///         the invariant is: available + queuedWithdrawals >= queuedDeposits
+    ///         (i.e., the escrow balance before the queued period was non-negative).
     function property_availableGtQueued() public {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
         address asset = _getVault().asset();
 
-        // Get current available balance
+        // Get current available balance (after all queued ops already executed on escrow)
         uint128 available = balanceSheet.availableBalanceOf(poolId, scId, asset, 0);
 
-        // Get queued withdrawals
-        (, uint128 queuedWithdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
+        // Get queued amounts (already-executed, pending hub notification)
+        (uint128 queuedDeposits, uint128 queuedWithdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
 
-        // Available must cover all pending withdrawals
-        gte(available, queuedWithdrawals, "Insufficient balance for pending withdrawals");
+        // available = previousAvailable + queuedDeposits - queuedWithdrawals
+        // => previousAvailable = available + queuedWithdrawals - queuedDeposits >= 0
+        gte(
+            uint256(available) + uint256(queuedWithdrawals),
+            uint256(queuedDeposits),
+            "Asset queue net exceeds prior available balance"
+        );
     }
 
     /// @dev Property 2.7: Authorization Boundary Enforcement
