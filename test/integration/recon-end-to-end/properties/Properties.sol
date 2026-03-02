@@ -1524,27 +1524,32 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
     /// @dev Property: Asset queue cannot create assets from nothing.
     /// @notice queuedAssets tracks already-executed escrow movements pending hub notification.
-    ///         Since withdrawals decrease and deposits increase the escrow balance,
-    ///         the invariant is: available + queuedWithdrawals >= queuedDeposits
-    ///         (i.e., the escrow balance before the queued period was non-negative).
+    ///         noteDeposit increases holding.total AND queuedDeposits atomically;
+    ///         noteWithdraw decreases holding.total AND increases queuedWithdrawals atomically.
+    ///         We use holding.total (not availableBalanceOf) because reserve/unreserve
+    ///         affect available but do NOT update the queue.
+    ///         Invariant: total + queuedWithdrawals >= queuedDeposits
+    ///         (i.e., the escrow total before the queued period was non-negative).
     function property_availableGtQueued() public {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
         address asset = _getVault().asset();
 
-        // Get current available balance (after all queued ops already executed on escrow)
-        uint128 available = balanceSheet.availableBalanceOf(poolId, scId, asset, 0);
+        // Use holding.total (not availableBalanceOf) since reserve/unreserve
+        // affect available but don't update the queue
+        PoolEscrow poolEscrow = PoolEscrow(address(balanceSheet.escrow(poolId)));
+        (uint128 total,) = poolEscrow.holding(scId, asset, 0);
 
         // Get queued amounts (already-executed, pending hub notification)
         (uint128 queuedDeposits, uint128 queuedWithdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
 
-        // available = previousAvailable + queuedDeposits - queuedWithdrawals
-        // => previousAvailable = available + queuedWithdrawals - queuedDeposits >= 0
+        // total = total_before_queue + queuedDeposits - queuedWithdrawals
+        // => total_before_queue = total + queuedWithdrawals - queuedDeposits >= 0
         gte(
-            uint256(available) + uint256(queuedWithdrawals),
+            uint256(total) + uint256(queuedWithdrawals),
             uint256(queuedDeposits),
-            "Asset queue net exceeds prior available balance"
+            "Asset queue net exceeds prior escrow total"
         );
     }
 
