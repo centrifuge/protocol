@@ -7,10 +7,9 @@ import "../../../../src/misc/interfaces/IERC20.sol";
 import {ERC20} from "../../../../src/misc/ERC20.sol";
 import {IERC6909Fungible} from "../../../../src/misc/interfaces/IERC6909.sol";
 
-import {AssetId} from "../../../../src/core/types/AssetId.sol";
-import {newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {PoolId, newPoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
 import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";

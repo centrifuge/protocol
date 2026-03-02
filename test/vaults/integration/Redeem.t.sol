@@ -5,7 +5,17 @@ import {D18} from "../../../src/misc/types/D18.sol";
 import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import "../../core/spoke/integration/BaseTest.sol";
+import {
+    AssetId,
+    AsyncVault,
+    BaseTest,
+    ERC20,
+    IShareToken,
+    MessageLib,
+    PoolId,
+    ShareClassId,
+    VaultKind
+} from "../../core/spoke/integration/BaseTest.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
