@@ -11,8 +11,7 @@ import {IShareToken} from "../../core/spoke/interfaces/IShareToken.sol";
 import {IVaultFactory} from "../../core/spoke/factories/interfaces/IVaultFactory.sol";
 
 import {SyncDepositVault} from "../SyncDepositVault.sol";
-import {IAsyncRedeemManager} from "../interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "../interfaces/IVaultManagers.sol";
+import {IAsyncRedeemManager, ISyncDepositManager} from "../interfaces/IVaultManagers.sol";
 
 /// @title  Sync Vault Factory
 /// @dev    Utility for deploying new vault contracts

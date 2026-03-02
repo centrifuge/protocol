@@ -5,7 +5,7 @@ import {HookData} from "../../../../src/core/spoke/interfaces/ITransferHook.sol"
 
 import {FullRestrictions} from "../../../../src/hooks/FullRestrictions.sol";
 
-import "../../mocks/Mock.sol";
+import {Mock} from "../../mocks/Mock.sol";
 
 contract MockFullRestrictions is FullRestrictions, Mock {
     constructor(
