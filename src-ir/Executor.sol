@@ -1,23 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IWeirollExecutorFactory} from "./interfaces/IWeirollExecutorFactory.sol";
-import {IWeirollExecutor} from "./interfaces/IWeirollExecutor.sol";
+import {IExecutorFactory} from "../src/managers/spoke/interfaces/IExecutorFactory.sol";
+import {IExecutor} from "../src/managers/spoke/interfaces/IExecutor.sol";
 
 import {VM} from "enso-weiroll/VM.sol";
-import {MerkleProofLib} from "../../misc/libraries/MerkleProofLib.sol";
-import {CastLib} from "../../misc/libraries/CastLib.sol";
-import {Multicall} from "../../misc/Multicall.sol";
+import {MerkleProofLib} from "../src/misc/libraries/MerkleProofLib.sol";
+import {CastLib} from "../src/misc/libraries/CastLib.sol";
+import {Multicall} from "../src/misc/Multicall.sol";
 
-import {PoolId} from "../../core/types/PoolId.sol";
-import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
+import {PoolId} from "../src/core/types/PoolId.sol";
+import {ShareClassId} from "../src/core/types/ShareClassId.sol";
+import {IBalanceSheet} from "../src/core/spoke/interfaces/IBalanceSheet.sol";
 
-/// @title  WeirollExecutor
+/// @title  Executor
 /// @notice Weiroll VM-based execution engine with script-level Merkle authorization and a state bitmap
 ///         for selectively fixing governance-approved state elements.
-contract WeirollExecutor is Multicall, VM, IWeirollExecutor, ITrustedContractUpdate {
+/// @dev    Compiled with `via_ir` to handle the weiroll VM's stack depth. The VM only supports
+///         CALL, STATICCALL, and VALUECALL to external targets (never DELEGATECALL), so the
+///         Executor's storage (policy mapping) cannot be overwritten by target contracts.
+contract Executor is Multicall, VM, IExecutor {
     using CastLib for *;
 
     PoolId public immutable poolId;
@@ -36,7 +38,7 @@ contract WeirollExecutor is Multicall, VM, IWeirollExecutor, ITrustedContractUpd
     // Owner actions
     // ──────────────────────────────────────────────────────────────────────────
 
-    /// @inheritdoc ITrustedContractUpdate
+    /// @notice Update the strategist policy root via the ContractUpdater.
     function trustedCall(PoolId poolId_, ShareClassId, /* scId */ bytes memory payload) external {
         require(poolId == poolId_, InvalidPoolId());
         require(msg.sender == contractUpdater, NotAuthorized());
@@ -54,7 +56,7 @@ contract WeirollExecutor is Multicall, VM, IWeirollExecutor, ITrustedContractUpd
     // Strategist actions
     // ──────────────────────────────────────────────────────────────────────────
 
-    /// @inheritdoc IWeirollExecutor
+    /// @inheritdoc IExecutor
     function execute(
         bytes32[] calldata commands,
         bytes[] calldata state,
@@ -104,9 +106,9 @@ contract WeirollExecutor is Multicall, VM, IWeirollExecutor, ITrustedContractUpd
     }
 }
 
-/// @title  WeirollExecutorFactory
-/// @notice Deploys pool-specific WeirollExecutor instances deterministically via CREATE2.
-contract WeirollExecutorFactory is IWeirollExecutorFactory {
+/// @title  ExecutorFactory
+/// @notice Deploys pool-specific Executor instances deterministically via CREATE2.
+contract ExecutorFactory is IExecutorFactory {
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
 
@@ -115,14 +117,14 @@ contract WeirollExecutorFactory is IWeirollExecutorFactory {
         balanceSheet = balanceSheet_;
     }
 
-    /// @inheritdoc IWeirollExecutorFactory
-    function newWeirollExecutor(PoolId poolId) external returns (IWeirollExecutor) {
+    /// @inheritdoc IExecutorFactory
+    function newExecutor(PoolId poolId) external returns (IExecutor) {
         require(balanceSheet.spoke().isPoolActive(poolId), InvalidPoolId());
 
-        WeirollExecutor executor =
-            new WeirollExecutor{salt: bytes32(uint256(poolId.raw()))}(poolId, contractUpdater);
+        Executor executor =
+            new Executor{salt: bytes32(uint256(poolId.raw()))}(poolId, contractUpdater);
 
-        emit DeployWeirollExecutor(poolId, address(executor));
-        return IWeirollExecutor(address(executor));
+        emit DeployExecutor(poolId, address(executor));
+        return IExecutor(address(executor));
     }
 }

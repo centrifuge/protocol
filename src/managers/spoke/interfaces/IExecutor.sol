@@ -1,56 +1,31 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IERC7751} from "../../../misc/interfaces/IERC7751.sol";
 import {IMulticall} from "../../../misc/interfaces/IMulticall.sol";
+import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUpdate.sol";
 
-/// @notice How an action is executed.
-enum ActionType {
-    /// @dev staticcall, no state change, read on-chain data for subsequent actions
-    StaticCall,
-    /// @dev call, state-changing call, no ETH sent
-    Call,
-    /// @dev call with ETH, inputs[0] resolves to the ETH amount, remaining inputs map to function arguments
-    ValueCall
-}
+import {PoolId} from "../../../core/types/PoolId.sol";
 
-/// @notice Where a leaf input value comes from. Ignored when children is non-empty (composite node).
-enum SourceType {
-    Fixed,
-    Runtime,
-    ReturnValue
-}
-
-/// @notice A single input to an action.
-/// @dev    children.length == 0 → leaf, resolved via source + data.
-///         children.length > 0  → composite, recursively resolves children indices from the action's inputs array.
-struct InputValue {
-    SourceType source;
-    bytes data;
-    uint256[] children;
-}
-
-struct Action {
-    ActionType actionType;
-    address target;
-    bytes4 selector;
-    InputValue[] inputs;
-    bytes inputTree;
-    bytes outputTree;
-}
-
-interface IExecutor is IERC7751, IMulticall {
+interface IExecutor is IMulticall, ITrustedContractUpdate {
     event UpdatePolicy(address indexed strategist, bytes32 oldRoot, bytes32 newRoot);
-    event ExecuteCall(address indexed target, bytes4 indexed selector, uint256 value);
+    event ExecuteScript(address indexed strategist, bytes32 scriptHash);
 
     error NotAStrategist();
-    error CallFailed();
     error InvalidProof();
     error InvalidPoolId();
     error NotAuthorized();
-    error InsufficientBalance();
-    error InputLengthMismatch();
-    error InvalidResultReference();
+    error StateLengthOverflow();
 
-    function execute(Action[] calldata actions, bytes[] calldata inputs, bytes32[] calldata proof) external payable;
+    function poolId() external view returns (PoolId);
+    function contractUpdater() external view returns (address);
+    function policy(address strategist) external view returns (bytes32);
+
+    /// @notice Execute a weiroll script authorized by a Merkle proof.
+    /// @param commands  Weiroll command bytes (selector + flags + indices + output + target).
+    /// @param state     Weiroll state array — elements with their bitmap bit set are fixed (hashed).
+    /// @param stateBitmap  Bit `i` set means `state[i]` is governance-approved and included in the script hash.
+    /// @param proof     Merkle proof siblings for the script hash leaf.
+    function execute(bytes32[] calldata commands, bytes[] calldata state, uint256 stateBitmap, bytes32[] calldata proof)
+        external
+        payable;
 }

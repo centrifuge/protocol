@@ -16,6 +16,7 @@ fs_permissions = [
   { access = "read", path = "env" },
   { access = "read-write", path = "snapshots" },
   { access = "read-write", path = "spell-cache" },
+  { access = "read", path = "out-ir" },
 ]
 
 # {@see {@link https://github.com/foundry-rs/foundry/issues/4060} }
@@ -58,6 +59,22 @@ runs = 10
 depth = 100
 call_override = false
 fail_on_revert = false
+
+# Compile weiroll VM with via_ir (stack-depth workaround)
+[profile.ir]
+src = "src-ir"
+test = "test-ir"
+script = "script-ir"
+libs = ["lib"]
+out = "out-ir"
+via_ir = true
+solc_version = "0.8.28"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 1
+bytecode_hash = "none"
+cbor_metadata = false
+auto_detect_remappings = false
 
 [profile.ci.fuzz]
 runs = 1000
