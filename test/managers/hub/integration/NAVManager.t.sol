@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {d18} from "../../../../src/misc/types/D18.sol";
 
-import "../../../core/hub/integration/BaseTest.sol";
+import {AssetId, BaseTest, IAdapter, PoolId, d18, newAssetId} from "../../../core/hub/integration/BaseTest.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";

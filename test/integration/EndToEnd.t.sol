@@ -55,20 +55,12 @@ import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
 import {SyncManager} from "../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
-import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {IAsyncVault, IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 
-import {
-    FullActionBatcher,
-    FullDeployer,
-    FullInput,
-    noAdaptersInput,
-    CoreInput,
-    defaultTxLimits
-} from "../../script/FullDeployer.s.sol";
+import {FullDeployer, DeployerInput, noAdaptersInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -270,31 +262,24 @@ contract EndToEndDeployment is Test {
         vm.stopPrank();
     }
 
-    function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe adminSafe)
+    function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe protocolSafe)
         internal
         returns (LocalAdapter adapter)
     {
-        FullActionBatcher batcher = new FullActionBatcher(address(deploy));
-
-        deploy.labelAddresses(string(abi.encodePacked(vm.toString(localCentrifugeId), "-")));
         deploy.deployFull(
-            FullInput({
-                core: CoreInput({
-                    centrifugeId: localCentrifugeId,
-                    version: bytes32(abi.encodePacked(localCentrifugeId)),
-                    txLimits: defaultTxLimits()
-                }),
-                adminSafe: adminSafe,
-                opsSafe: adminSafe,
+            DeployerInput({
+                centrifugeId: localCentrifugeId,
+                suffix: string(abi.encodePacked(localCentrifugeId)),
+                txLimits: defaultTxLimits(),
+                protocolSafe: protocolSafe,
+                opsSafe: protocolSafe,
                 adapters: noAdaptersInput()
             }),
-            batcher
+            address(deploy)
         );
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         _setAdapter(deploy, remoteCentrifugeId, adapter);
-
-        deploy.removeFullDeployerAccess(batcher);
     }
 
     function _setSpoke(FullDeployer deploy, uint16 centrifugeId, CSpoke storage s_) internal {

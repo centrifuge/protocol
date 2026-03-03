@@ -37,19 +37,9 @@ class DeploymentRunner:
     def _setup_env(self):
         env = os.environ.copy()
         env["NETWORK"] = self.env_loader.network_name
-        env["VERSION"] = os.environ.get("VERSION", "")
+        env["SUFFIX"] = os.environ.get("SUFFIX", "")
         if self.env_loader.etherscan_api_key is not None:
             env["ETHERSCAN_API_KEY"] = self.env_loader.etherscan_api_key
-        # Also add the vars in .env (if .env is there)
-        env_file = ".env"
-        if os.path.exists(env_file):
-            with open(env_file, "r") as f:
-                for line in f:
-                    if "=" in line and not line.strip().startswith("#"):
-                        k, v = line.strip().split("=", 1)
-                        # Only set if not already set in env (env file has lower priority)
-                        if k not in env:
-                            env[k] = v
         return env
 
     def run_deploy(self, script_name: str) -> bool:
@@ -61,18 +51,21 @@ class DeploymentRunner:
             hidden_path = self.env_loader.root_dir / "script" / "deploy" / "solidityHelpers" / f"{script_name}.s.sol"
             if hidden_path.exists():
                 self.script_path = hidden_path
-        # Fallback for test scripts moved to test/e2e_testnets/
-        if not self.script_path.exists() and script_name == "TestData":
-            test_path = self.env_loader.root_dir / "script" / "testnet" / f"{script_name}.s.sol"
-            if test_path.exists():
-                self.script_path = test_path
+        # Fallback for testnet scripts in script/testnet/
+        if not self.script_path.exists():
+            testnet_path = self.env_loader.root_dir / "script" / "testnet" / f"{script_name}.s.sol"
+            if testnet_path.exists():
+                self.script_path = testnet_path
+        if not self.script_path.exists():
+            print_error(f"Script {script_name}.s.sol not found")
+            return False
         print_subsection(f"Deploying {script_name}.s.sol")
         print_step(f"Deployment Info:")
         print_info(f"Script: {script_name}")
         print_info(f"Network: {self.env_loader.network_name}")
         print_info(f"Chain ID: {self.env_loader.chain_id}")
-        if os.environ.get("VERSION"):
-            print_info(f"Version (for salt): {os.environ.get("VERSION")}")
+        if os.environ.get("SUFFIX"):
+            print_info(f"Suffix (for salt): {os.environ.get('SUFFIX')}")
         print_info(f"Protocol Admin: {format_account(self.env_loader.protocol_admin_address)}")
         print_info(f"Ops Admin: {format_account(self.env_loader.ops_admin_address)}")
         base_cmd = self._build_command(script_name)
@@ -94,8 +87,10 @@ class DeploymentRunner:
             if not self._run_command(base_cmd):
                 return False
             print_success("Forge contracts deployed successfully")
-            # 2. Verify (only for protocol and adapter scripts, skip for anvil environments)
-            if not  "localhost" in self.env_loader.rpc_url and script_name not in ["TestData"]:
+            # 2. Verify (only for protocol and adapter scripts, and NOT in dry-run mode)
+            if (not self.args.dry_run and 
+                not self.env_loader.network_name.startswith("anvil") and 
+                "Test" not in script_name and "Wire" not in script_name):
                 cmd = base_cmd.copy()
                 cmd.append("--verify")
                 if "--resume" not in cmd:
@@ -106,7 +101,9 @@ class DeploymentRunner:
                 if not self._run_command(cmd):
                     return False
                 print_success("Forge contracts verified successfully")
-
+            elif self.args.dry_run:
+                print_info("⏭️  Dry-run mode: skipping verification (would broadcast transactions)")
+            
         return True
 
 
@@ -123,36 +120,12 @@ class DeploymentRunner:
         elif (is_testnet and not self.args.ledger) or "tenderly" in self.env_loader.rpc_url:
             # Only access private_key when actually needed (not using ledger)
             private_key = self.env_loader.private_key
-            # On local anvil, skip address derivation via cast (not reliable in some environments)
-            if "localhost" in (self.env_loader.rpc_url or ""):
-                print_info("Anvil detected (localhost RPC). Using known Anvil sender address.")
-                # Map well-known Anvil test private keys to their corresponding addresses
-                known_senders = {
-                    # 1st Anvil account
-                    "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-                    # 2nd Anvil account
-                    "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-                }
-                sender = known_senders.get(private_key)
-                if sender:
-                    print_info(f"Deploying address (Anvil known): {format_account(sender)}")
-                    return ["--private-key", private_key, "--sender", sender]
-                # Fallback if unknown key: proceed without deriving the sender
-                print_warning("Unknown Anvil private key; proceeding without explicit --sender.")
-                return ["--private-key", private_key]
-            # Otherwise derive the public address from the private key using 'cast'
-            try:
-                result = subprocess.run(["cast", "wallet", "address", "--private-key", private_key],
-                    capture_output=True, text=True, check=True)
-                derived_address = result.stdout.strip()
-                print_info(f"Deploying address (Testnet shared account): {format_account(derived_address)}")
-                if self.args.catapulta:
-                    #--sender Optional, specify the sender address (required when using --private-key)
-                    return ["--private-key", private_key, "--sender", derived_address]
-                else:
-                    return ["--private-key", private_key]
-            except subprocess.CalledProcessError:
-                print_warning("Failed to derive deployer address with 'cast'. Proceeding without address printout.")
+            if self.args.catapulta:
+                public_key = subprocess.run(["cast", "wallet", "address", "--private-key", private_key],
+                capture_output=True, text=True, check=True)
+                #--sender Optional, specify the sender address (required when using --private-key)
+                return ["--private-key", private_key, "--sender", public_key.stdout.strip()]
+            else:
                 return ["--private-key", private_key]
 
         elif not is_testnet and not self.args.ledger:

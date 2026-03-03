@@ -39,38 +39,32 @@ class ReleaseManager:
         print_info("Each network will be deployed, verified, wired, and loaded with test data")
         print_warning("This process may take 30-60 minutes")
         
-        # Validate VERSION is set
-        if not os.environ.get("VERSION"):
-            print_error("VERSION environment variable is required for release deployments")
-            print_info("Example: VERSION=v3.1.4 python3 script/deploy/deploy.py release:sepolia")
-            return False
-        
         # Load existing state or initialize new
         self._load_state()
-        
-        # Check if version changed - if so, clear state and start fresh
-        current_version = os.environ.get("VERSION")
-        saved_version = self.deployment_summary.get("version")
-        
-        if saved_version and saved_version != current_version:
-            print_warning(f"Version changed from {saved_version} to {current_version}")
+
+        # Check if suffix changed - if so, clear state and start fresh
+        current_suffix = os.environ.get("SUFFIX", "")
+        saved_suffix = self.deployment_summary.get("suffix")
+
+        if saved_suffix is not None and saved_suffix != current_suffix:
+            print_warning(f"SUFFIX changed from '{saved_suffix}' to '{current_suffix}'")
             print_info("🔄 Clearing state and starting fresh deployment...")
             self.clear_state()
         elif self.deployment_summary.get("networks"):
             print_info("📋 Resuming previous deployment...")
             self._print_resume_status()
         
-        # Build contracts once upfront (only if not resuming)
-        if not self.deployment_summary.get("networks"):
+        # Build contracts once upfront (only if not resuming and not dry-run)
+        if not self.deployment_summary.get("networks") and not self.args.dry_run:
             print_subsection("Building contracts")
             temp_env = EnvironmentLoader(network_name="sepolia", root_dir=self.root_dir, args=self.args)
             temp_runner = DeploymentRunner(temp_env, self.args)
             temp_runner.build_contracts()
         
         # Initialize deployment summary if new
-        if not self.deployment_summary.get("version"):
+        if not self.deployment_summary.get("networks"):
             self.deployment_summary = {
-                "version": os.environ.get("VERSION"),
+                "suffix": os.environ.get("SUFFIX", ""),
                 "networks": {},
                 "started_at": time.strftime("%Y-%m-%d %H:%M:%S")
             }
@@ -138,12 +132,16 @@ class ReleaseManager:
         else:
             print_info("⏭️  Protocol already deployed, skipping...")
         
-        # Step 2: Verify contracts with retries (skip if already done)
+        # Step 2: Verify contracts with retries (skip if already done or dry-run)
         if not self.deployment_summary["networks"][network]["verification"]:
-            print_subsection(f"Step 2/4: Verifying contracts on {network}")
-            if not self._retry_verification(network, network_verifier, "LaunchDeployer", "verification"):
-                self._save_state()
-                return False
+            if not self.args.dry_run:
+                print_subsection(f"Step 2/4: Verifying contracts on {network}")
+                if not self._retry_verification(network, network_verifier, "LaunchDeployer", "verification"):
+                    self._save_state()
+                    return False
+            else:
+                print_info("⏭️  Dry-run mode: skipping verification")
+                self.deployment_summary["networks"][network]["verification"] = True
         else:
             print_info("⏭️  Contracts already verified, skipping...")
         
@@ -173,7 +171,8 @@ class ReleaseManager:
     def _print_summary(self):
         """Print a formatted summary of the deployment results"""
         print_section("📊 Deployment Summary")
-        print_info(f"Version: {self.deployment_summary.get('version', 'N/A')}")
+        suffix = self.deployment_summary.get('suffix', '')
+        print_info(f"Suffix: {suffix if suffix else '(none - canonical addresses)'}")
         print_info(f"Started: {self.deployment_summary.get('started_at', 'N/A')}")
         
         if "completed_at" in self.deployment_summary:
@@ -280,6 +279,9 @@ class ReleaseManager:
     
     def _save_state(self):
         """Save deployment state to file"""
+        if self.args.dry_run:
+            print_info("💾 Dry-run mode: skipping state save")
+            return
         try:
             with open(self.state_file, 'w') as f:
                 json.dump(self.deployment_summary, f, indent=2)
