@@ -39,6 +39,7 @@ import {SyncDepositVaultFactory} from "../../src/vaults/factories/SyncDepositVau
 
 import "forge-std/Script.sol";
 
+import {EnvConfig} from "../utils/EnvConfig.s.sol";
 import {LaunchDeployer} from "../LaunchDeployer.s.sol";
 import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../../src/adapters/AxelarAdapter.sol";
@@ -103,35 +104,32 @@ abstract contract BaseTestData is LaunchDeployer {
     //----------------------------------------------------------------------------------------------
 
     /**
-     * @notice Load contract addresses from config JSON
+     * @notice Load contract addresses from EnvConfig
      * @dev Used by all test scripts to initialize contract references
      */
-    function loadContractsFromConfig(string memory config) internal {
-        spoke = Spoke(_readContractAddress(config, "$.contracts.spoke"));
-        hub = Hub(_readContractAddress(config, "$.contracts.hub"));
-        shareClassManager = ShareClassManager(_readContractAddress(config, "$.contracts.shareClassManager"));
-        redemptionRestrictionsHook =
-            RedemptionRestrictions(_readContractAddress(config, "$.contracts.redemptionRestrictionsHook"));
-        identityValuation = IdentityValuation(_readContractAddress(config, "$.contracts.identityValuation"));
-        asyncVaultFactory = AsyncVaultFactory(_readContractAddress(config, "$.contracts.asyncVaultFactory"));
-        syncDepositVaultFactory =
-            SyncDepositVaultFactory(_readContractAddress(config, "$.contracts.syncDepositVaultFactory"));
-        balanceSheet = BalanceSheet(_readContractAddress(config, "$.contracts.balanceSheet"));
-        hubRegistry = HubRegistry(_readContractAddress(config, "$.contracts.hubRegistry"));
-        asyncRequestManager =
-            AsyncRequestManager(payable(_readContractAddress(config, "$.contracts.asyncRequestManager")));
-        batchRequestManager = BatchRequestManager(_readContractAddress(config, "$.contracts.batchRequestManager"));
-        syncManager = SyncManager(_readContractAddress(config, "$.contracts.syncManager"));
-        protocolGuardian = ProtocolGuardian(_readContractAddress(config, "$.contracts.protocolGuardian"));
-        opsGuardian = OpsGuardian(_readContractAddress(config, "$.contracts.opsGuardian"));
-        subsidyManager = SubsidyManager(_readContractAddress(config, "$.contracts.subsidyManager"));
+    function loadContractsFromConfig(EnvConfig memory config) internal {
+        spoke = Spoke(config.contracts.spoke);
+        hub = Hub(config.contracts.hub);
+        shareClassManager = ShareClassManager(config.contracts.shareClassManager);
+        redemptionRestrictionsHook = RedemptionRestrictions(config.contracts.redemptionRestrictionsHook);
+        identityValuation = IdentityValuation(config.contracts.identityValuation);
+        asyncVaultFactory = AsyncVaultFactory(config.contracts.asyncVaultFactory);
+        syncDepositVaultFactory = SyncDepositVaultFactory(config.contracts.syncDepositVaultFactory);
+        balanceSheet = BalanceSheet(config.contracts.balanceSheet);
+        hubRegistry = HubRegistry(config.contracts.hubRegistry);
+        asyncRequestManager = AsyncRequestManager(payable(config.contracts.asyncRequestManager));
+        batchRequestManager = BatchRequestManager(config.contracts.batchRequestManager);
+        syncManager = SyncManager(config.contracts.syncManager);
+        protocolGuardian = ProtocolGuardian(config.contracts.protocolGuardian);
+        opsGuardian = OpsGuardian(config.contracts.opsGuardian);
+        subsidyManager = SubsidyManager(config.contracts.subsidyManager);
+        multiAdapter = MultiAdapter(config.contracts.multiAdapter);
 
         // Load adapter addresses
-        multiAdapter = MultiAdapter(_readContractAddress(config, "$.contracts.multiAdapter"));
-        axelarAdapter = AxelarAdapter(_readContractAddress(config, "$.contracts.axelarAdapter"));
-        layerZeroAdapter = LayerZeroAdapter(_readContractAddress(config, "$.contracts.layerZeroAdapter"));
-        wormholeAdapter = WormholeAdapter(_readContractAddress(config, "$.contracts.wormholeAdapter"));
-        chainlinkAdapter = ChainlinkAdapter(_readContractAddress(config, "$.contracts.chainlinkAdapter"));
+        axelarAdapter = AxelarAdapter(config.contracts.axelarAdapter);
+        layerZeroAdapter = LayerZeroAdapter(config.contracts.layerZeroAdapter);
+        wormholeAdapter = WormholeAdapter(config.contracts.wormholeAdapter);
+        chainlinkAdapter = ChainlinkAdapter(config.contracts.chainlinkAdapter);
     }
 
     //----------------------------------------------------------------------------------------------

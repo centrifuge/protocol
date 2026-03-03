@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "./BaseTest.sol";
+import {AssetId, AsyncVault, BaseTest, ERC20, IShareToken, PoolId, ShareClassId, VaultKind} from "./BaseTest.sol";
 
 contract AssetShareConversionTest is BaseTest {
     function testAssetShareConversion(bytes16 scId) public {
