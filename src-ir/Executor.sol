@@ -90,19 +90,16 @@ contract Executor is Multicall, VM, IExecutor {
         pure
         returns (bytes32)
     {
-        return keccak256(
-            abi.encodePacked(keccak256(abi.encodePacked(commands)), _hashFixedState(state, stateBitmap), stateBitmap)
-        );
-    }
-
-    function _hashFixedState(bytes[] calldata state, uint256 stateBitmap) internal pure returns (bytes32) {
         bytes memory packed;
         for (uint256 i; i < state.length; i++) {
             if (stateBitmap & (1 << i) != 0) {
                 packed = bytes.concat(packed, keccak256(state[i]));
             }
         }
-        return keccak256(packed);
+
+        return keccak256(
+            abi.encodePacked(keccak256(abi.encodePacked(commands)), keccak256(packed), stateBitmap)
+        );
     }
 }
 
