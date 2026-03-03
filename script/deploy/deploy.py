@@ -247,11 +247,11 @@ def main():
 
         elif args.step == "deploy:adapters":
             print_section(f"Deploying adapters only for {args.network}")
-            deploy_success = runner.run_deploy("OnlyAdapters")
+            deploy_success = runner.run_deploy("DeployAdapters")
             # After deploying with forge, also run our verifier to merge env/latest into env/<network>.json
             if deploy_success and not args.dry_run:
                 print_section(f"Verifying deployment for {args.network}")
-                verify_success = verifier.verify_contracts("OnlyAdapters")
+                verify_success = verifier.verify_contracts("DeployAdapters")
 
         elif args.step == "wire:adapters":
             print_step(f"Wiring adapters for {args.network}")

@@ -33,7 +33,6 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
 
     function setUp() public virtual {
         // Deployment
-        super.labelAddresses("");
         super.deployFull(
             DeployerInput({
                 centrifugeId: LOCAL_CENTRIFUGE_ID,
