@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {makeSalt} from "./BaseDeployer.s.sol";
+import {BaseDeployer} from "./BaseDeployer.s.sol";
 import {JsonUtils} from "./utils/JsonUtils.s.sol";
-import {CreateXScript} from "./utils/CreateXScript.sol";
 import {GraphQLQuery} from "./utils/GraphQLQuery.s.sol";
-import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 import {GraphQLConstants} from "./utils/EnvConfig.s.sol";
 
 import {Spoke} from "../src/core/spoke/Spoke.sol";
@@ -32,11 +30,11 @@ struct TokenInstanceData {
 
 /// @title PoolHooks
 /// @notice Script to deploy pool-specific hooks with pool escrow addresses
-contract PoolHooks is JsonRegistry, CreateXScript {
+contract PoolHooks is BaseDeployer {
     using stdJson for string;
     using JsonUtils for *;
 
-    bytes32 constant VERSION = "v3.1";
+    string constant VERSION = "v3.1";
 
     GraphQLQuery graphQL = new GraphQLQuery(GraphQLConstants.MAINNET_API);
 
@@ -49,15 +47,9 @@ contract PoolHooks is JsonRegistry, CreateXScript {
     BalanceSheet public balanceSheet;
     IPoolEscrowProvider public poolEscrowFactory;
 
-    address public deployer;
-
     function run() external {
         string memory network = vm.envString("NETWORK");
         string memory config = _loadConfig(network);
-
-        deployer = msg.sender;
-
-        setUpCreateXFactory();
 
         root = Root(_readContractAddress(config, "$.contracts.root"));
         spoke = Spoke(_readContractAddress(config, "$.contracts.spoke"));
@@ -78,6 +70,8 @@ contract PoolHooks is JsonRegistry, CreateXScript {
         console.log("Deployer:", deployer);
 
         vm.startBroadcast();
+
+        _init("", msg.sender);
 
         TokenInstanceData[] memory tokens = _tokenInstances();
 
@@ -151,9 +145,8 @@ contract PoolHooks is JsonRegistry, CreateXScript {
 
     function _deployFreelyTransferable(PoolId poolId, ShareClassId scId, address poolEscrow) internal {
         string memory saltName = string.concat("freelyTransferable-", vm.toString(PoolId.unwrap(poolId)));
-        bytes32 salt = makeSalt(saltName, VERSION, deployer);
+        address expectedAddr = previewCreate3Address(saltName, VERSION);
 
-        address expectedAddr = computeCreate3Address(salt, deployer);
         if (expectedAddr.code.length > 0) {
             console.log(
                 "FreelyTransferable already deployed at %s for pool %d scId %s",
@@ -166,7 +159,7 @@ contract PoolHooks is JsonRegistry, CreateXScript {
 
         FreelyTransferable hook = FreelyTransferable(
             create3(
-                salt,
+                createSalt(saltName, VERSION),
                 abi.encodePacked(
                     type(FreelyTransferable).creationCode,
                     abi.encode(
@@ -196,9 +189,8 @@ contract PoolHooks is JsonRegistry, CreateXScript {
 
     function _deployFullRestrictions(PoolId poolId, ShareClassId scId, address poolEscrow) internal {
         string memory saltName = string.concat("fullRestrictions-", vm.toString(PoolId.unwrap(poolId)));
-        bytes32 salt = makeSalt(saltName, VERSION, deployer);
+        address expectedAddr = previewCreate3Address(saltName, VERSION);
 
-        address expectedAddr = computeCreate3Address(salt, deployer);
         if (expectedAddr.code.length > 0) {
             console.log(
                 "FullRestrictions already deployed at %s for pool %d scId %s",
@@ -211,7 +203,7 @@ contract PoolHooks is JsonRegistry, CreateXScript {
 
         FullRestrictions hook = FullRestrictions(
             create3(
-                salt,
+                createSalt(saltName, VERSION),
                 abi.encodePacked(
                     type(FullRestrictions).creationCode,
                     abi.encode(

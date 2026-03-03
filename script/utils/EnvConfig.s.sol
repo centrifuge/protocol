@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {EnvConnections, Connection} from "./EnvConnectionsConfig.s.sol";
+
 import "forge-std/Vm.sol";
 
 import {AdapterConnections} from "../../src/deployment/ActionBatchers.sol";
@@ -16,8 +18,8 @@ library GraphQLConstants {
 struct NetworkConfig {
     uint256 chainId;
     string environment;
+    string name;
     uint16 centrifugeId;
-    string[] connectsTo;
     address protocolAdmin;
     address opsAdmin;
     uint8 batchLimit;
@@ -54,7 +56,6 @@ struct ChainlinkConfig {
 }
 
 struct AdaptersConfig {
-    uint8 threshold;
     LayerZeroConfig layerZero;
     WormholeConfig wormhole;
     AxelarConfig axelar;
@@ -62,15 +63,18 @@ struct AdaptersConfig {
 }
 
 struct ContractsConfig {
-    // Core
+    // Admin
     address root;
+    address tokenRecoverer;
+    address protocolGuardian;
+    address opsGuardian;
+    // Core
     address gasService;
     address gateway;
     address multiAdapter;
     address messageProcessor;
     address messageDispatcher;
     address poolEscrowFactory;
-    address tokenRecoverer;
     address hubRegistry;
     address accounting;
     address holdings;
@@ -82,9 +86,6 @@ struct ContractsConfig {
     address contractUpdater;
     address vaultRegistry;
     address hubHandler;
-    // Admin
-    address protocolGuardian;
-    address opsGuardian;
     // Vaults
     address asyncRequestManager;
     address syncManager;
@@ -134,6 +135,7 @@ library Env {
         string memory json = vm.readFile(string.concat("env/", network, ".json"));
 
         config.network = _parseNetworkConfig(json);
+        config.network.name = network;
         config.adapters = _parseAdaptersConfig(json);
         config.contracts = _parseContractsConfig(json);
     }
@@ -150,10 +152,6 @@ library Env {
             config.batchLimit = uint8(val);
         } catch {}
 
-        try vm.parseJsonStringArray(json, ".network.connectsTo") returns (string[] memory arr) {
-            config.connectsTo = arr;
-        } catch {}
-
         try vm.parseJsonString(json, ".network.verifier") returns (string memory val) {
             config.verifier = val;
         } catch {}
@@ -166,10 +164,6 @@ library Env {
     }
 
     function _parseAdaptersConfig(string memory json) private pure returns (AdaptersConfig memory config) {
-        try vm.parseJsonUint(json, ".adapters.threshold") returns (uint256 val) {
-            config.threshold = uint8(val);
-        } catch {}
-
         try vm.parseJsonBool(json, ".adapters.layerZero.deploy") returns (bool val) {
             config.layerZero.deploy = val;
         } catch {}
@@ -222,15 +216,19 @@ library Env {
             return config;
         }
 
-        // Core
+        // Admin
         config.root = _parseContractAddress(json, "root");
+        config.tokenRecoverer = _parseContractAddress(json, "tokenRecoverer");
+        config.protocolGuardian = _parseContractAddress(json, "protocolGuardian");
+        config.opsGuardian = _parseContractAddress(json, "opsGuardian");
+
+        // Core
         config.gasService = _parseContractAddress(json, "gasService");
         config.gateway = _parseContractAddress(json, "gateway");
         config.multiAdapter = _parseContractAddress(json, "multiAdapter");
         config.messageProcessor = _parseContractAddress(json, "messageProcessor");
         config.messageDispatcher = _parseContractAddress(json, "messageDispatcher");
         config.poolEscrowFactory = _parseContractAddress(json, "poolEscrowFactory");
-        config.tokenRecoverer = _parseContractAddress(json, "tokenRecoverer");
         config.hubRegistry = _parseContractAddress(json, "hubRegistry");
         config.accounting = _parseContractAddress(json, "accounting");
         config.holdings = _parseContractAddress(json, "holdings");
@@ -242,10 +240,6 @@ library Env {
         config.contractUpdater = _parseContractAddress(json, "contractUpdater");
         config.vaultRegistry = _parseContractAddress(json, "vaultRegistry");
         config.hubHandler = _parseContractAddress(json, "hubHandler");
-
-        // Admin
-        config.protocolGuardian = _parseContractAddress(json, "protocolGuardian");
-        config.opsGuardian = _parseContractAddress(json, "opsGuardian");
 
         // Vaults
         config.asyncRequestManager = _parseContractAddress(json, "asyncRequestManager");
@@ -312,8 +306,15 @@ library EnvConfigLib {
     {
         if (!config.adapters.layerZero.deploy) return params;
 
-        string[] memory connectsTo = config.network.connectsTo;
-        params = new SetConfigParam[](connectsTo.length);
+        Connection[] memory connections = config.network.connections();
+
+        // Count LZ-enabled connections
+        uint256 count;
+        for (uint256 i; i < connections.length; i++) {
+            if (connections[i].layerZero) count++;
+        }
+
+        params = new SetConfigParam[](count);
 
         // UlnConfig is the same for all connections - only eid differs
         uint32 ULN_CONFIG_TYPE = 2;
@@ -328,8 +329,11 @@ library EnvConfigLib {
             })
         );
 
-        for (uint256 i; i < connectsTo.length; i++) {
-            EnvConfig memory remoteConfig = Env.load(connectsTo[i]);
+        uint256 idx;
+        for (uint256 i; i < connections.length; i++) {
+            if (!connections[i].layerZero) continue;
+
+            EnvConfig memory remoteConfig = Env.load(connections[i].network);
 
             require(
                 config.adapters.layerZero.dvns.length == remoteConfig.adapters.layerZero.dvns.length,
@@ -340,17 +344,39 @@ library EnvConfigLib {
                 "blockConfirmations mismatch between local and remote config"
             );
 
-            params[i] = SetConfigParam(remoteConfig.adapters.layerZero.layerZeroEid, ULN_CONFIG_TYPE, encodedUln);
+            params[idx++] = SetConfigParam(remoteConfig.adapters.layerZero.layerZeroEid, ULN_CONFIG_TYPE, encodedUln);
+        }
+    }
+
+    function adapterConnections(EnvConfig memory config)
+        internal
+        view
+        returns (AdapterConnections[] memory adapterConnections_)
+    {
+        Connection[] memory connections = config.network.connections();
+        adapterConnections_ = new AdapterConnections[](connections.length);
+
+        for (uint256 i; i < connections.length; i++) {
+            EnvConfig memory remoteConfig = Env.load(connections[i].network);
+            Connection memory connection = connections[i];
+
+            adapterConnections_[i] = AdapterConnections({
+                centrifugeId: remoteConfig.network.centrifugeId,
+                layerZeroId: connection.layerZero ? remoteConfig.adapters.layerZero.layerZeroEid : 0,
+                wormholeId: connection.wormhole ? remoteConfig.adapters.wormhole.wormholeId : 0,
+                axelarId: connection.axelar ? remoteConfig.adapters.axelar.axelarId : "",
+                chainlinkId: connection.chainlink ? remoteConfig.adapters.chainlink.chainSelector : 0,
+                threshold: connection.threshold
+            });
         }
     }
 }
 
 library NetworkConfigLib {
     function buildBatchLimits(NetworkConfig memory config) internal view returns (uint8[32] memory batchLimits) {
-        string[] memory connectsTo = config.connectsTo;
-
-        for (uint256 i; i < connectsTo.length; i++) {
-            EnvConfig memory remoteConfig = Env.load(connectsTo[i]);
+        Connection[] memory connections_ = config.connections();
+        for (uint256 i; i < connections_.length; i++) {
+            EnvConfig memory remoteConfig = Env.load(connections_[i].network);
 
             uint16 centrifugeId = remoteConfig.network.centrifugeId;
             require(centrifugeId <= 31, "centrifugeId value higher than 31");
@@ -359,26 +385,8 @@ library NetworkConfigLib {
         }
     }
 
-    function buildConnections(NetworkConfig memory config)
-        internal
-        view
-        returns (AdapterConnections[] memory connections)
-    {
-        string[] memory connectsTo = config.connectsTo;
-        connections = new AdapterConnections[](connectsTo.length);
-
-        for (uint256 i; i < connectsTo.length; i++) {
-            EnvConfig memory remoteConfig = Env.load(connectsTo[i]);
-
-            connections[i] = AdapterConnections({
-                centrifugeId: remoteConfig.network.centrifugeId,
-                layerZeroId: remoteConfig.adapters.layerZero.layerZeroEid,
-                wormholeId: remoteConfig.adapters.wormhole.wormholeId,
-                axelarId: remoteConfig.adapters.axelar.axelarId,
-                chainlinkId: remoteConfig.adapters.chainlink.chainSelector,
-                threshold: remoteConfig.adapters.threshold
-            });
-        }
+    function connections(NetworkConfig memory config) internal view returns (Connection[] memory) {
+        return EnvConnections.load(config.environment).connectionsWith(config.name);
     }
 
     function rpcUrl(NetworkConfig memory config) internal view returns (string memory) {

@@ -3,8 +3,6 @@ pragma solidity 0.8.28;
 
 import {BaseDeployer} from "./BaseDeployer.s.sol";
 
-import {CastLib} from "../src/misc/libraries/CastLib.sol";
-
 import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
 
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
@@ -14,8 +12,6 @@ import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 /// @title OnlyAdapters
 /// @notice Deploys only messaging adapters, reusing existing core addresses from env/<network>.json
 contract OnlyAdapters is BaseDeployer {
-    using CastLib for *;
-
     MultiAdapter multiAdapter;
     WormholeAdapter wormholeAdapter;
     AxelarAdapter axelarAdapter;
@@ -60,7 +56,7 @@ contract OnlyAdapters is BaseDeployer {
         vm.startBroadcast();
         captureStartBlock();
 
-        _init(vm.envOr("VERSION", string("")).toBytes32(), msg.sender);
+        _init(vm.envOr("SUFFIX", string("")), msg.sender);
 
         if (deployWormhole) {
             address wormholeRelayer = vm.parseJsonAddress(config, "$.adapters.wormhole.relayer");
@@ -69,7 +65,7 @@ contract OnlyAdapters is BaseDeployer {
 
             wormholeAdapter = WormholeAdapter(
                 create3(
-                    createSalt("wormholeAdapter"),
+                    createSalt("wormholeAdapter", "v3.1"),
                     abi.encodePacked(
                         type(WormholeAdapter).creationCode, abi.encode(multiAdapter, wormholeRelayer, deployerEOA)
                     )
@@ -90,7 +86,7 @@ contract OnlyAdapters is BaseDeployer {
 
             axelarAdapter = AxelarAdapter(
                 create3(
-                    createSalt("axelarAdapter"),
+                    createSalt("axelarAdapter", "v3.1"),
                     abi.encodePacked(
                         type(AxelarAdapter).creationCode,
                         abi.encode(multiAdapter, axelarGateway, axelarGasService, deployerEOA)
@@ -111,7 +107,7 @@ contract OnlyAdapters is BaseDeployer {
 
             layerZeroAdapter = LayerZeroAdapter(
                 create3(
-                    createSalt("layerZeroAdapter"),
+                    createSalt("layerZeroAdapter", "v3.1"),
                     abi.encodePacked(
                         type(LayerZeroAdapter).creationCode,
                         abi.encode(multiAdapter, lzEndpoint, lzDelegate, deployerEOA)
