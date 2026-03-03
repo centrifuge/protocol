@@ -32,7 +32,6 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     address public poolEscrow;
 
     function setUp() public {
-        super.labelAddresses("");
         super.deployFull(
             DeployerInput({
                 centrifugeId: LOCAL_CENTRIFUGE_ID,
