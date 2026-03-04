@@ -6,7 +6,6 @@ import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 
 import "forge-std/Test.sol";
 
-import {V2CleaningsSpell} from "../../../src/spell/V2CleaningsSpell.sol";
 import {
     V2CleaningsSpell,
     ROOT_V2,

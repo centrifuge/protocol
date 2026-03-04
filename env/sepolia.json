@@ -3,16 +3,11 @@
     "chainId": 11155111,
     "environment": "testnet",
     "centrifugeId": 1,
-    "connectsTo": [
-      "arbitrum-sepolia",
-      "base-sepolia"
-    ],
     "protocolAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
     "opsAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
     "baseRpcUrl": "https://eth-sepolia.g.alchemy.com/v2/"
   },
   "adapters": {
-    "threshold": 1,
     "wormhole": {
       "wormholeId": 10002,
       "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",

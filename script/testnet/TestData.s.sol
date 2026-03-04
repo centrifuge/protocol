@@ -16,19 +16,16 @@ import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestr
 
 import "forge-std/Script.sol";
 
+import {Env, EnvConfig} from "../utils/EnvConfig.s.sol";
+
 // Script to deploy Hub and Vaults with a Localhost Adapter.
 contract TestData is BaseTestData {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
 
     function run() public override {
-        string memory network = vm.envString("NETWORK");
-        string memory configFile = string.concat("env/", network, ".json");
-        string memory config = vm.readFile(configFile);
-
-        uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
-
-        address admin = vm.parseJsonAddress(config, "$.network.protocolAdmin");
+        EnvConfig memory config = Env.load(vm.envString("NETWORK"));
+        uint16 centrifugeId = config.network.centrifugeId;
         loadContractsFromConfig(config);
 
         vm.startBroadcast();
@@ -48,7 +45,7 @@ contract TestData is BaseTestData {
                 poolIndex: 1,
                 token: token,
                 assetId: assetId,
-                admin: admin,
+                admin: config.network.protocolAdmin,
                 poolMetadata: "Testing pool",
                 shareClassName: "Tokenized MMF",
                 shareClassSymbol: "MMF",
@@ -99,7 +96,7 @@ contract TestData is BaseTestData {
                 poolIndex: 2,
                 token: token,
                 assetId: assetId,
-                admin: admin,
+                admin: config.network.protocolAdmin,
                 poolMetadata: "Testing pool",
                 shareClassName: "RWA Portfolio",
                 shareClassSymbol: "RWA",

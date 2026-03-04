@@ -75,7 +75,6 @@ contract BaseTest is FullDeployer, Test {
 
     function setUp() public virtual {
         // Deployment
-        labelAddresses("");
         deployFull(
             DeployerInput({
                 centrifugeId: CHAIN_CP,

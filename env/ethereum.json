@@ -3,22 +3,12 @@
     "chainId": 1,
     "environment": "mainnet",
     "centrifugeId": 1,
-    "connectsTo": [
-      "base",
-      "arbitrum",
-      "plume",
-      "avalanche",
-      "bnb-smart-chain",
-      "hyper-evm",
-      "optimism"
-    ],
     "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "batchLimit": 15,
     "baseRpcUrl": "https://eth-mainnet.g.alchemy.com/v2/"
   },
   "adapters": {
-    "threshold": 1,
     "layerZero": {
       "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
       "layerZeroEid": 30101,
@@ -32,7 +22,7 @@
     "wormhole": {
       "wormholeId": 2,
       "relayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
-      "deploy": false
+      "deploy": true
     },
     "axelar": {
       "axelarId": "Ethereum",
@@ -43,7 +33,7 @@
     "chainlink": {
       "chainSelector": 5009297550715157269,
       "ccipRouter": "0x80226fc0Ee2b096224EeAc085Bb9a8cba1146f7D",
-      "deploy": false
+      "deploy": true
     }
   },
   "contracts": {

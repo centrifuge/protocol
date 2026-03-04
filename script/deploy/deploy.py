@@ -182,7 +182,7 @@ def main():
         verify_success = True
         deploy_success = True
 
-        if args.step == "deploy:full":
+        if args.step in ("deploy:protocol", "deploy:full"):
             print_section("Running Protocol Deployment")
             already_deployed = False
             if "--resume" in args.forge_args and not args.dry_run:
@@ -193,7 +193,7 @@ def main():
             #     runner.build_contracts()
 
             if already_deployed:
-                print_info("Protocol contracts deployed and verified. Running TestData...")
+                print_info("Protocol contracts already deployed and verified.")
                 deploy_success = True
             else:
                 print_subsection(f"Deploying core protocol contracts for {args.network}")
@@ -224,8 +224,8 @@ def main():
                 print_info("Dry-run mode: skipping verification")
                 verify_success = True
 
-            # Auto-run TestData on testnets (skip in dry-run)
-            if verify_success and env_loader.is_testnet and not args.dry_run:
+            # Auto-run TestData on testnets (deploy:full only, skip in dry-run)
+            if args.step == "deploy:full" and verify_success and env_loader.is_testnet and not args.dry_run:
                 print_info("Auto-running TestData for testnet")
                 if "--resume" in args.forge_args and not already_deployed:
                     # User triggered command with --resume, probably because the protocol deployment failed
@@ -238,7 +238,7 @@ def main():
                 print_success("TestData deployment completed successfully")
                 # Restore forge args
                 args.forge_args = original_forge_args
-            elif args.dry_run:
+            elif args.step == "deploy:full" and args.dry_run:
                 print_info("Dry-run mode: skipping TestData deployment")
 
         elif args.step == "verify":
@@ -247,11 +247,11 @@ def main():
 
         elif args.step == "deploy:adapters":
             print_section(f"Deploying adapters only for {args.network}")
-            deploy_success = runner.run_deploy("OnlyAdapters")
+            deploy_success = runner.run_deploy("DeployAdapters")
             # After deploying with forge, also run our verifier to merge env/latest into env/<network>.json
             if deploy_success and not args.dry_run:
                 print_section(f"Verifying deployment for {args.network}")
-                verify_success = verifier.verify_contracts("OnlyAdapters")
+                verify_success = verifier.verify_contracts("DeployAdapters")
 
         elif args.step == "wire:adapters":
             print_step(f"Wiring adapters for {args.network}")
@@ -282,15 +282,7 @@ def main():
 
         elif args.step == "wire:all":
             print_section("Wiring adapters across connected networks")
-            # Load current network config
-            connects = []
-            try:
-                with open(env_loader.config_file, 'r') as f:
-                    cfg = json.load(f)
-                    connects = cfg.get('network', {}).get('connectsTo', []) or []
-            except Exception as e:
-                print_error(f"Failed to read network config: {e}")
-                sys.exit(1)
+            connects = env_loader.connected_networks
 
             all_networks = [args.network] + connects
             unique_networks = []
