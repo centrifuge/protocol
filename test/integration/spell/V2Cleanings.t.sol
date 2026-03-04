@@ -35,6 +35,8 @@ contract V2CleaningsSpellTest is Test {
     address constant GUARDIAN_V2_ETHEREUM_OR_ARBITRUM = 0x09ab10a9c3E6Eac1d18270a2322B6113F4C7f5E8;
     address constant GUARDIAN_V2_BASE = 0x427A1ce127b1775e4Cbd4F58ad468B9F832eA7e9;
 
+    uint256 constant MAX_POST_MINT_CFG_SUPPLY = 692_049_712_426_095_885_688_933_007;
+
     function _testCase(string memory rpcUrl) public {
         vm.createSelectFork(rpcUrl);
 
@@ -49,6 +51,7 @@ contract V2CleaningsSpellTest is Test {
         uint256 preCfgTotalSupply = IERC20(CFG).totalSupply();
         uint256 preCfgMintTreasuryBalance = IERC20(CFG).balanceOf(CNF_TREASURY_WALLET);
         uint256 preWcfgTotalSupply = block.chainid == ETHEREUM_CHAIN_ID ? IERC20(WCFG).totalSupply() : 0;
+        uint256 preWcfgBalanceOfIouCfg = block.chainid == ETHEREUM_CHAIN_ID ? IERC20(WCFG).balanceOf(IOU_CFG) : 0;
 
         // ----- REQUIRED RELIES -----
 
@@ -80,8 +83,9 @@ contract V2CleaningsSpellTest is Test {
             assertEq(IAuth(CFG).wards(IOU_CFG), 0);
 
             // CFG minting assertions
-            uint256 expectedMintAmount = preWcfgTotalSupply + CENTRIFUGE_CHAIN_CFG_AMOUNT;
+            uint256 expectedMintAmount = preWcfgTotalSupply - preWcfgBalanceOfIouCfg + CENTRIFUGE_CHAIN_CFG_AMOUNT;
             assertEq(IERC20(CFG).totalSupply(), preCfgTotalSupply + expectedMintAmount);
+            assertLe(IERC20(CFG).totalSupply(), MAX_POST_MINT_CFG_SUPPLY, "Total CFG supply exceeds max post-mint cap");
             assertEq(IERC20(CFG).balanceOf(CNF_TREASURY_WALLET), preCfgMintTreasuryBalance + expectedMintAmount);
             assertEq(IAuth(CFG).wards(address(spell)), 0);
         }

@@ -26,7 +26,13 @@ IERC20 constant USDC_BASE = IERC20(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913);
 IERC20 constant USDC_ARBITRUM = IERC20(0xaf88d065e77c8cC2239327C5EDb3A432268e5831);
 
 address constant CNF_TREASURY_WALLET = 0xD052A46b8e0C89fAcB393805E1917AfD20f293Cb;
-uint256 constant CENTRIFUGE_CHAIN_CFG_AMOUNT = 0; // TODO: Set exact amount before deployment
+
+// Centrifuge Chain CFG amount derivation:
+//   Total issuance on Centrifuge Chain:             578_423_119_298_517_443_782_165_480
+//   Minus migrated CFG (4dpEcgqFp38bzzT5VruKgbfVs6zcDMFRKUetx3fz2ndLRHMu):  -350_860_057_533_953_490_820_324_585
+//   Minus chainbridge  (4dpEcgqFp8UL6eA3b7hhtdj7qftHRZE7g1uadHyuw1WSNSgH):  -192_726_451_002_520_311_526_501_638
+//   = Remaining CFG on Centrifuge Chain:              34_836_610_762_043_641_435_339_257
+uint256 constant CENTRIFUGE_CHAIN_CFG_AMOUNT = 34_836_610_762_043_641_435_339_257;
 
 uint256 constant ETHEREUM_CHAIN_ID = 1;
 uint256 constant BASE_CHAIN_ID = 8453;
@@ -124,7 +130,10 @@ contract V2CleaningsSpell {
 
     function _mintCFGToTreasury() internal {
         if (block.chainid == ETHEREUM_CHAIN_ID) {
-            uint256 amount = IERC20(WCFG).totalSupply() + CENTRIFUGE_CHAIN_CFG_AMOUNT;
+            // Subtract wCFG balance held by the IOU_CFG contract, since those were already
+            // redeemed 1:1 for CFG and the wCFG total supply was not reduced upon redemption.
+            uint256 amount =
+                IERC20(WCFG).totalSupply() - IERC20(WCFG).balanceOf(IOU_CFG) + CENTRIFUGE_CHAIN_CFG_AMOUNT;
             ROOT_V3.relyContract(CFG, address(this));
             CFGTokenLike(CFG).mint(CNF_TREASURY_WALLET, amount);
             ROOT_V3.denyContract(CFG, address(this));
