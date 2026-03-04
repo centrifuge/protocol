@@ -132,8 +132,7 @@ contract V2CleaningsSpell {
         if (block.chainid == ETHEREUM_CHAIN_ID) {
             // Subtract wCFG balance held by the IOU_CFG contract, since those were already
             // redeemed 1:1 for CFG and the wCFG total supply was not reduced upon redemption.
-            uint256 amount =
-                IERC20(WCFG).totalSupply() - IERC20(WCFG).balanceOf(IOU_CFG) + CENTRIFUGE_CHAIN_CFG_AMOUNT;
+            uint256 amount = IERC20(WCFG).totalSupply() - IERC20(WCFG).balanceOf(IOU_CFG) + CENTRIFUGE_CHAIN_CFG_AMOUNT;
             ROOT_V3.relyContract(CFG, address(this));
             CFGTokenLike(CFG).mint(CNF_TREASURY_WALLET, amount);
             ROOT_V3.denyContract(CFG, address(this));
