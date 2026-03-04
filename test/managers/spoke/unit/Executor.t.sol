@@ -63,9 +63,7 @@ contract ExecutorTest is Test {
     WeirollTarget target;
 
     function setUp() public virtual {
-        executor = IExecutor(
-            deployCode("out-ir/Executor.sol/Executor.json", abi.encode(POOL_A, contractUpdater))
-        );
+        executor = IExecutor(deployCode("out-ir/Executor.sol/Executor.json", abi.encode(POOL_A, contractUpdater)));
         target = new WeirollTarget();
     }
 
@@ -490,9 +488,7 @@ contract ExecutorFactoryTest is Test {
         vm.mockCall(address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.spoke.selector), abi.encode(spoke));
 
         factory = IExecutorFactory(
-            deployCode(
-                "out-ir/Executor.sol/ExecutorFactory.json", abi.encode(contractUpdater, address(balanceSheet))
-            )
+            deployCode("out-ir/Executor.sol/ExecutorFactory.json", abi.encode(contractUpdater, address(balanceSheet)))
         );
     }
 
