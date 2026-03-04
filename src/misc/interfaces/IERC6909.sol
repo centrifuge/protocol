@@ -136,6 +136,24 @@ interface IERC6909MetadataExt is IERC6909Decimals {
     function symbol(uint256 assetId) external view returns (string memory);
 }
 
+/// @notice Subset of ERC-6909 that omits the operator pattern (isOperator, setOperator, OperatorSet).
+interface IERC6909ExclOperator is IERC165 {
+    error EmptyOwner();
+    error EmptyAmount();
+    error InvalidTokenId();
+    error InsufficientBalance(address owner, uint256 tokenId);
+    error InsufficientAllowance(address sender, uint256 tokenId);
+
+    event Approval(address indexed owner, address indexed spender, uint256 indexed tokenId, uint256 amount);
+    event Transfer(address caller, address indexed from, address indexed to, uint256 indexed tokenId, uint256 amount);
+
+    function balanceOf(address owner, uint256 tokenId) external view returns (uint256 amount);
+    function allowance(address owner, address spender, uint256 tokenId) external view returns (uint256 amount);
+    function transfer(address receiver, uint256 tokenId, uint256 amount) external returns (bool);
+    function transferFrom(address sender, address receiver, uint256 tokenId, uint256 amount) external returns (bool);
+    function approve(address spender, uint256 tokenId, uint256 amount) external returns (bool);
+}
+
 interface IERC6909Fungible is IERC6909 {
     /// @notice             Mint new tokens for a specific tokenid and assign them to an owner
     ///
@@ -151,15 +169,6 @@ interface IERC6909Fungible is IERC6909 {
     /// @param tokenId      Id of the item.
     /// @param amount       Subtract `amount` from the total supply of the given `tokenId`
     function burn(address owner, uint256 tokenId, uint256 amount) external;
-
-    /// @notice             Enforces a transfer from `spender` point of view.
-    ///
-    ///
-    /// @param sender       The owner of the `tokenId`
-    /// @param receiver     Address of the receiving party
-    /// @param tokenId      Token Id
-    /// @param amount       Amount to be transferred
-    function authTransferFrom(address sender, address receiver, uint256 tokenId, uint256 amount) external returns (bool);
 }
 
 /// @dev  A factory contract to deploy new collateral contracts implementing IERC6909.

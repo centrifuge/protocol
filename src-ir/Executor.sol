@@ -39,7 +39,14 @@ contract Executor is Multicall, VM, IExecutor {
     // ──────────────────────────────────────────────────────────────────────────
 
     /// @notice Update the strategist policy root via the ContractUpdater.
-    function trustedCall(PoolId poolId_, ShareClassId, /* scId */ bytes memory payload) external {
+    function trustedCall(
+        PoolId poolId_,
+        ShareClassId,
+        /* scId */
+        bytes memory payload
+    )
+        external
+    {
         require(poolId == poolId_, InvalidPoolId());
         require(msg.sender == contractUpdater, NotAuthorized());
 
@@ -57,12 +64,10 @@ contract Executor is Multicall, VM, IExecutor {
     // ──────────────────────────────────────────────────────────────────────────
 
     /// @inheritdoc IExecutor
-    function execute(
-        bytes32[] calldata commands,
-        bytes[] calldata state,
-        uint256 stateBitmap,
-        bytes32[] calldata proof
-    ) external payable {
+    function execute(bytes32[] calldata commands, bytes[] calldata state, uint256 stateBitmap, bytes32[] calldata proof)
+        external
+        payable
+    {
         bytes32 root = policy[msg.sender];
         require(root != bytes32(0), NotAStrategist());
         require(state.length <= 256, StateLengthOverflow());
@@ -97,9 +102,7 @@ contract Executor is Multicall, VM, IExecutor {
             }
         }
 
-        return keccak256(
-            abi.encodePacked(keccak256(abi.encodePacked(commands)), keccak256(packed), stateBitmap)
-        );
+        return keccak256(abi.encodePacked(keccak256(abi.encodePacked(commands)), keccak256(packed), stateBitmap));
     }
 }
 
@@ -108,6 +111,8 @@ contract Executor is Multicall, VM, IExecutor {
 contract ExecutorFactory is IExecutorFactory {
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
+
+    mapping(PoolId poolId => address) public executors;
 
     constructor(address contractUpdater_, IBalanceSheet balanceSheet_) {
         contractUpdater = contractUpdater_;
@@ -118,8 +123,9 @@ contract ExecutorFactory is IExecutorFactory {
     function newExecutor(PoolId poolId) external returns (IExecutor) {
         require(balanceSheet.spoke().isPoolActive(poolId), InvalidPoolId());
 
-        Executor executor =
-            new Executor{salt: bytes32(uint256(poolId.raw()))}(poolId, contractUpdater);
+        Executor executor = new Executor{salt: bytes32(uint256(poolId.raw()))}(poolId, contractUpdater);
+
+        executors[poolId] = address(executor);
 
         emit DeployExecutor(poolId, address(executor));
         return IExecutor(address(executor));

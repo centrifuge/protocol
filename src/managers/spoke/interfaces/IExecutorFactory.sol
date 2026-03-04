@@ -14,6 +14,9 @@ interface IExecutorFactory {
     function contractUpdater() external view returns (address);
     function balanceSheet() external view returns (IBalanceSheet);
 
+    /// @notice Returns the deployed executor for a given pool, or address(0) if none.
+    function executors(PoolId poolId) external view returns (address);
+
     /// @notice Deploys a new Executor for the given pool.
     function newExecutor(PoolId poolId) external returns (IExecutor);
 }
