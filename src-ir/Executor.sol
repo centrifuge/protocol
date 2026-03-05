@@ -83,14 +83,8 @@ contract Executor is Multicall, VM, IExecutor {
         bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap);
         require(MerkleProofLib.verify(proof, root, scriptHash), InvalidProof());
 
-        // Copy calldata state to memory — weiroll mutates state in-place
-        bytes[] memory mState = new bytes[](state.length);
-        for (uint256 i; i < state.length; i++) {
-            mState[i] = state[i];
-        }
-
         _activeStrategist = msg.sender;
-        _execute(commands, mState);
+        _execute(commands, _copyState(state));
         _activeStrategist = address(0);
 
         emit ExecuteScript(msg.sender, scriptHash);
@@ -111,21 +105,23 @@ contract Executor is Multicall, VM, IExecutor {
         require(MerkleProofLib.verify(proof, policy[_activeStrategist], scriptHash), InvalidProof());
 
         _inCallback = true;
-
-        bytes[] memory mState = new bytes[](state.length);
-        for (uint256 i; i < state.length; i++) {
-            mState[i] = state[i];
-        }
-        _execute(commands, mState);
-
+        _execute(commands, _copyState(state));
         _inCallback = false;
 
         emit ExecuteScript(_activeStrategist, scriptHash);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // Script hashing
+    // Internal helpers
     // ──────────────────────────────────────────────────────────────────────────
+
+    /// @dev Copy calldata state to memory, since weiroll mutates state in-place.
+    function _copyState(bytes[] calldata state) internal pure returns (bytes[] memory mState) {
+        mState = new bytes[](state.length);
+        for (uint256 i; i < state.length; i++) {
+            mState[i] = state[i];
+        }
+    }
 
     function _computeScriptHash(bytes32[] calldata commands, bytes[] calldata state, uint256 stateBitmap)
         internal

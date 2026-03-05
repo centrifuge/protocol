@@ -149,6 +149,10 @@ contract ExecutorTest is Test {
         return keccak256(packed);
     }
 
+    function _merkleRoot2(bytes32 a, bytes32 b) internal pure returns (bytes32) {
+        return a < b ? keccak256(abi.encodePacked(a, b)) : keccak256(abi.encodePacked(b, a));
+    }
+
     // ─── Constructor / receive tests ─────────────────────────────────────
 
     function testConstructor() public view {
