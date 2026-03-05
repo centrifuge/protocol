@@ -5,7 +5,7 @@ import {IReceiptToken} from "./interfaces/IReceiptToken.sol";
 import {IExecutorFactory} from "./interfaces/IExecutorFactory.sol";
 
 import {IERC20Metadata} from "../../misc/interfaces/IERC20.sol";
-import {IERC6909, IERC6909ExclOperator, IERC6909Decimals} from "../../misc/interfaces/IERC6909.sol";
+import {IERC6909, IERC6909ExclOperator, IERC6909MetadataExt} from "../../misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 
@@ -82,14 +82,24 @@ contract ReceiptToken is IReceiptToken {
         return true;
     }
 
-    /// @inheritdoc IERC6909Decimals
+    /// @inheritdoc IERC6909MetadataExt
+    function name(uint256 id) external view returns (string memory) {
+        return string.concat("Receipt: ", IERC20Metadata(address(uint160(id))).symbol());
+    }
+
+    /// @inheritdoc IERC6909MetadataExt
+    function symbol(uint256 id) external view returns (string memory) {
+        return string.concat("rec-", IERC20Metadata(address(uint160(id))).symbol());
+    }
+
+    /// @inheritdoc IERC6909MetadataExt
     function decimals(uint256 id) external view returns (uint8) {
         return IERC20Metadata(address(uint160(id))).decimals();
     }
 
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(IERC6909).interfaceId || interfaceId == type(IERC6909Decimals).interfaceId;
+        return interfaceId == type(IERC6909).interfaceId || interfaceId == type(IERC6909MetadataExt).interfaceId;
     }
 
     // ──────────────────────────────────────────────────────────────────────────

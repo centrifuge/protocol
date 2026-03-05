@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IERC6909ExclOperator, IERC6909Decimals} from "../../../misc/interfaces/IERC6909.sol";
+import {IERC6909ExclOperator, IERC6909MetadataExt} from "../../../misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../../core/types/PoolId.sol";
 
 import {IExecutorFactory} from "./IExecutorFactory.sol";
 
-interface IReceiptToken is IERC6909ExclOperator, IERC6909Decimals {
+interface IReceiptToken is IERC6909ExclOperator, IERC6909MetadataExt {
     error NotPoolExecutor();
 
     /// @notice The ExecutorFactory that tracks executor deployments.

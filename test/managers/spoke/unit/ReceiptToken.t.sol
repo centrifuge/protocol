@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
-import {IERC6909, IERC6909ExclOperator, IERC6909Decimals} from "../../../../src/misc/interfaces/IERC6909.sol";
+import {IERC6909, IERC6909ExclOperator, IERC6909MetadataExt} from "../../../../src/misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
@@ -288,8 +288,8 @@ contract ReceiptTokenSupportsInterfaceTest is ReceiptTokenTest {
         assertTrue(token.supportsInterface(type(IERC6909).interfaceId));
     }
 
-    function testSupportsERC6909Decimals() public view {
-        assertTrue(token.supportsInterface(type(IERC6909Decimals).interfaceId));
+    function testSupportsERC6909Metadata() public view {
+        assertTrue(token.supportsInterface(type(IERC6909MetadataExt).interfaceId));
     }
 
     function testDoesNotSupportRandom() public view {
@@ -297,9 +297,21 @@ contract ReceiptTokenSupportsInterfaceTest is ReceiptTokenTest {
     }
 }
 
-// ─── Decimals ────────────────────────────────────────────────────────────────
+// ─── Metadata ────────────────────────────────────────────────────────────────
 
-contract ReceiptTokenDecimalsTest is ReceiptTokenTest {
+contract ReceiptTokenMetadataTest is ReceiptTokenTest {
+    function testNameDerivedFromAssetSymbol() public {
+        vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.symbol.selector), abi.encode("USDC"));
+
+        assertEq(token.name(tokenIdA), "Receipt: USDC");
+    }
+
+    function testSymbolDerivedFromAssetSymbol() public {
+        vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.symbol.selector), abi.encode("USDC"));
+
+        assertEq(token.symbol(tokenIdA), "rec-USDC");
+    }
+
     function testDecimalsDelegatesToAsset() public {
         vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(6)));
 
