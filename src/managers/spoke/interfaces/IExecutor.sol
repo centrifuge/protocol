@@ -21,6 +21,8 @@ interface IExecutor is IMulticall, ITrustedContractUpdate {
     function poolId() external view returns (PoolId);
     function contractUpdater() external view returns (address);
     function policy(address strategist) external view returns (bytes32);
+    function inCallback() external view returns (bool);
+    function activeStrategist() external view returns (address);
 
     /// @notice Execute a weiroll script authorized by a Merkle proof.
     /// @param commands  Weiroll command bytes (selector + flags + indices + output + target).
@@ -32,7 +34,7 @@ interface IExecutor is IMulticall, ITrustedContractUpdate {
         payable;
 
     /// @notice Execute a callback script during an active `execute()`. Used for flash loan callbacks.
-    /// @dev    No `protected` modifier — guarded by `_activeStrategist != 0` and `!_inCallback` instead.
+    /// @dev    No `protected` modifier — guarded by `activeStrategist != 0` and `!inCallback` instead.
     /// @param commands  Weiroll command bytes for the inner (callback) script.
     /// @param state     Weiroll state array for the inner script.
     /// @param stateBitmap  State bitmap for the inner script.

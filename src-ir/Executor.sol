@@ -28,11 +28,8 @@ contract Executor is Multicall, VM, IExecutor {
 
     mapping(address strategist => bytes32 root) public policy;
 
-    /// @dev Tracks the strategist whose `execute()` is currently running. Set to address(0) outside execution.
-    address private transient _activeStrategist;
-
-    /// @dev Prevents nested callbacks (flash-within-flash).
-    bool private transient _inCallback;
+    bool public transient inCallback;
+    address public transient activeStrategist;
 
     constructor(PoolId poolId_, address contractUpdater_) {
         poolId = poolId_;
@@ -83,9 +80,9 @@ contract Executor is Multicall, VM, IExecutor {
         bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap);
         require(MerkleProofLib.verify(proof, root, scriptHash), InvalidProof());
 
-        _activeStrategist = msg.sender;
+        activeStrategist = msg.sender;
         _execute(commands, _copyState(state));
-        _activeStrategist = address(0);
+        activeStrategist = address(0);
 
         emit ExecuteScript(msg.sender, scriptHash);
     }
@@ -97,18 +94,18 @@ contract Executor is Multicall, VM, IExecutor {
         uint256 stateBitmap,
         bytes32[] calldata proof
     ) external {
-        require(_activeStrategist != address(0), NotInExecution());
-        require(!_inCallback, NestedCallback());
+        require(activeStrategist != address(0), NotInExecution());
+        require(!inCallback, NestedCallback());
         require(state.length <= 256, StateLengthOverflow());
 
         bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap);
-        require(MerkleProofLib.verify(proof, policy[_activeStrategist], scriptHash), InvalidProof());
+        require(MerkleProofLib.verify(proof, policy[activeStrategist], scriptHash), InvalidProof());
 
-        _inCallback = true;
+        inCallback = true;
         _execute(commands, _copyState(state));
-        _inCallback = false;
+        inCallback = false;
 
-        emit ExecuteScript(_activeStrategist, scriptHash);
+        emit ExecuteScript(activeStrategist, scriptHash);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
