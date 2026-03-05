@@ -448,6 +448,29 @@ contract ExecutorExecuteTests is ExecutorTest {
         executor.execute(commands, state, bitmap, new bytes32[](0));
     }
 
+    function testValueCall() public {
+        // Send 1 ETH along with setValuePayable(42)
+        vm.deal(address(executor), 2 ether);
+
+        bytes32[] memory commands = new bytes32[](1);
+        commands[0] = _valueCallCommand(WeirollTarget.setValuePayable.selector, 0, 1, address(target));
+
+        bytes[] memory state = new bytes[](2);
+        state[0] = abi.encode(uint256(1 ether)); // ETH value
+        state[1] = abi.encode(uint256(42)); // function arg
+
+        uint256 bitmap = 3; // both fixed
+
+        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap);
+        _setPolicy(strategist, scriptHash);
+
+        vm.prank(strategist);
+        executor.execute(commands, state, bitmap, new bytes32[](0));
+
+        assertEq(target.lastValue(), 42);
+        assertEq(address(target).balance, 1 ether);
+    }
+
     function testMixedFixedAndVariableState() public {
         bytes32[] memory commands = new bytes32[](1);
         commands[0] = _callCommand2(WeirollTarget.setValue.selector, 0, 1, address(target));

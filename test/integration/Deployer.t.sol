@@ -5,18 +5,7 @@ import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
 import {CoreInput} from "../../script/CoreDeployer.s.sol";
 import {ILayerZeroEndpointV2Like, SetConfigParam} from "../../script/utils/ILayerZeroEndpointV2Like.sol";
-import {
-    FullInput,
-    FullActionBatcher,
-    FullDeployer,
-    AdaptersInput,
-    WormholeInput,
-    AxelarInput,
-    LayerZeroInput,
-    ChainlinkInput,
-    defaultTxLimits,
-    AdapterConnections
-} from "../../script/FullDeployer.s.sol";
+import { FullInput, FullActionBatcher, FullDeployer, AdaptersInput, WormholeInput, AxelarInput, LayerZeroInput, ChainlinkInput, defaultTxLimits, AdapterConnections } from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 

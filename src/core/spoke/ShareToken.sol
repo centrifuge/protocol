@@ -2,14 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IShareToken, IERC1404} from "./interfaces/IShareToken.sol";
-import {
-    ITransferHook,
-    HookData,
-    SUCCESS_CODE_ID,
-    SUCCESS_MESSAGE,
-    ERROR_CODE_ID,
-    ERROR_MESSAGE
-} from "./interfaces/ITransferHook.sol";
+import { ITransferHook, HookData, SUCCESS_CODE_ID, SUCCESS_MESSAGE, ERROR_CODE_ID, ERROR_MESSAGE } from "./interfaces/ITransferHook.sol";
 
 import {ERC20} from "../../misc/ERC20.sol";
 import {IERC20} from "../../misc/interfaces/IERC20.sol";

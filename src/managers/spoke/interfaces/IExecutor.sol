@@ -2,9 +2,9 @@
 pragma solidity >=0.5.0;
 
 import {IMulticall} from "../../../misc/interfaces/IMulticall.sol";
-import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUpdate.sol";
 
 import {PoolId} from "../../../core/types/PoolId.sol";
+import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUpdate.sol";
 
 interface IExecutor is IMulticall, ITrustedContractUpdate {
     event UpdatePolicy(address indexed strategist, bytes32 oldRoot, bytes32 newRoot);

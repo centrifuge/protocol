@@ -8,13 +8,7 @@ import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 import {ISpokeMessageSender, IHubMessageSender, IScheduleAuthMessageSender} from "./interfaces/IGatewaySenders.sol";
-import {
-    ISpokeGatewayHandler,
-    IBalanceSheetGatewayHandler,
-    IHubGatewayHandler,
-    IContractUpdateGatewayHandler,
-    IVaultRegistryGatewayHandler
-} from "./interfaces/IGatewayHandlers.sol";
+import { ISpokeGatewayHandler, IBalanceSheetGatewayHandler, IHubGatewayHandler, IContractUpdateGatewayHandler, IVaultRegistryGatewayHandler } from "./interfaces/IGatewayHandlers.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";

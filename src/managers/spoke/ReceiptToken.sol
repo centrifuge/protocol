@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IERC165} from "forge-std/interfaces/IERC165.sol";
-import {IERC6909, IERC6909ExclOperator, IERC6909Decimals} from "../../misc/interfaces/IERC6909.sol";
-import {IERC20Metadata} from "../../misc/interfaces/IERC20.sol";
 import {IReceiptToken} from "./interfaces/IReceiptToken.sol";
 
+import {IERC20Metadata} from "../../misc/interfaces/IERC20.sol";
+import {IERC6909, IERC6909ExclOperator, IERC6909Decimals} from "../../misc/interfaces/IERC6909.sol";
+
 import {PoolId} from "../../core/types/PoolId.sol";
+
+import {IERC165} from "forge-std/interfaces/IERC165.sol";
 
 /// @title  ReceiptToken
 /// @notice ERC6909 multi-token representing in-flight async requests. Token IDs encode a pool ID
