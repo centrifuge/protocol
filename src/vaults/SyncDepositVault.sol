@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseVault} from "./BaseVaults.sol";
-import {IAsyncRedeemManager} from "./interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "./interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "./interfaces/IBaseRequestManager.sol";
-import {BaseAsyncRedeemVault, BaseSyncDepositVault} from "./BaseVaults.sol";
+import {BaseVault, BaseAsyncRedeemVault, BaseSyncDepositVault} from "./BaseVaults.sol";
+import {IAsyncRedeemManager, ISyncDepositManager} from "./interfaces/IVaultManagers.sol";
 
 import {IERC165} from "../misc/interfaces/IERC7575.sol";
 

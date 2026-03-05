@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
  * @fileoverview Generates a delta contract registry JSON file containing ABIs and chain deployment metadata.
- * 
+ *
  * This script generates "delta registries" - registries that only contain contracts that have
  * changed since the previous version. Each delta registry includes a pointer to the previous
  * registry's IPFS hash, allowing indexers to walk backwards through the version chain.
- * 
+ *
  * This script:
  * 1. Fetches the current live registry from registry.centrifuge.io to compare against
  * 2. Reads chain configurations from env/*.json files
@@ -13,30 +13,30 @@
  * 4. Fetches contract creation block numbers from Etherscan API (v2) for changed contracts
  * 5. Extracts ABIs from Forge build artifacts (only for changed contracts)
  * 6. Combines into a delta registry with previousRegistry pointer
- * 
+ *
  * Usage:
  *   # Delta mode (default):
  *   DEPLOYMENT_COMMIT=<commit> ETHERSCAN_API_KEY=<key> node script/registry/abi-registry.js [mainnet|testnet]
- *   
+ *
  *   # Full snapshot mode (rebuild from scratch):
  *   DEPLOYMENT_COMMIT=<commit> ETHERSCAN_API_KEY=<key> node script/registry/abi-registry.js [mainnet|testnet] --full
- *   
+ *
  *   # Delta mode with IPFS hash (regenerate against specific previous registry):
  *   DEPLOYMENT_COMMIT=<commit> ETHERSCAN_API_KEY=<key> SOURCE_IPFS=Qm... node script/registry/abi-registry.js [mainnet|testnet]
- * 
+ *
  * Environment Variables:
  *   - DEPLOYMENT_COMMIT: Git commit hash used to build the ABIs (required in CI)
  *   - ETHERSCAN_API_KEY: API key for Etherscan v2 API (required for block number fetching)
  *   - REGISTRY_MODE: Set to "full" to generate a full snapshot (alternative to --full flag)
  *   - SOURCE_IPFS: IPFS hash (CID) of previous registry to compare against (Qm... or bafy...)
- * 
+ *
  * CLI Arguments:
  *   - --full: Generate a full snapshot registry (includes all contracts, no delta comparison)
- * 
+ *
  * Output files:
  *   - mainnet: registry/registry-mainnet.json
  *   - testnet: registry/registry-testnet.json
- * 
+ *
  * Output: A JSON file with structure:
  *   {
  *     network: "mainnet" | "testnet",
@@ -46,7 +46,7 @@
  *     abis: { ContractName: [...], ... },
  *     chains: { chainId: { network, adapters, contracts, deployment }, ... }
  *   }
- * 
+ *
  * Note: The previousRegistry.ipfsHash is set from SOURCE_IPFS if provided.
  * Otherwise, it's set to null and filled in by pin-to-ipfs.js which queries Pinata for the CID
  * of the previous registry.
@@ -130,7 +130,7 @@ const IPFS_GATEWAY = "https://gateway.pinata.cloud";
 /**
  * Validates that a string is a valid IPFS hash (CID).
  * Supports both v0 (Qm...) and v1 (baf...) CIDs.
- * 
+ *
  * @param {string} input - String to validate
  * @returns {boolean} True if input is a valid IPFS CID
  */
@@ -155,7 +155,7 @@ function isValidIpfsHash(input) {
 
 /**
  * Fetches the current live registry from the registry URL or IPFS.
- * 
+ *
  * @param {string} environment - "mainnet" or "testnet"
  * @param {string|null} ipfsHash - Optional IPFS hash (CID) to fetch from IPFS gateway
  * @returns {Promise<Object|null>} The current live registry or null if not found
@@ -192,7 +192,7 @@ async function fetchCurrentRegistry(environment, ipfsHash = null) {
 /**
  * Extracts version string from deploymentInfo in env files.
  * Looks for version in deploy:protocol or other deployment entries.
- * 
+ *
  * @param {Object} chain - Chain configuration object from env/*.json
  * @returns {string|null} Version string or null if not found
  */
@@ -217,7 +217,7 @@ function getVersionFromDeploymentInfo(chain) {
 /**
  * Compares a contract from local env with the current live registry.
  * Returns true if the contract has changed (new address, blockNumber, or is new).
- * 
+ *
  * @param {string} contractName - Name of the contract
  * @param {Object} localContract - Contract data from local env file
  * @param {Object|null} currentRegistryChain - Chain data from current live registry
@@ -253,9 +253,9 @@ function hasContractChanged(contractName, localContract, currentRegistryChain) {
 
 /**
  * Extracts deployment startBlock from deploymentInfo.
- * 
+ *
  * Looks for startBlock in deploymentInfo entries.
- * 
+ *
  * @param {Object} chain - Chain configuration object from env/*.json
  * @returns {number|null} startBlock or null if not found
  */
@@ -275,7 +275,7 @@ function getDeploymentStartBlock(chain) {
 
 /**
  * Fetches contract creation info from Etherscan API v2.
- * 
+ *
  * @param {number} chainId - Chain ID
  * @param {string} contractAddress - Contract address
  * @returns {Promise<Object|null>} Object with blockNumber, timestamp and txHash, or null if not found
@@ -326,7 +326,7 @@ async function fetchContractCreationInfo(chainId, contractAddress) {
 
 /**
  * Fetches contract creation info from Avalanche via Routescan API.
- * 
+ *
  * @param {string} contractAddress - Contract address
  * @returns {Promise<Object|null>} Object with blockNumber, timestamp and txHash, or null if not found
  */
@@ -362,7 +362,7 @@ async function fetchContractCreationInfoAvalanche(contractAddress) {
 
 /**
  * Fetches contract creation info from Plume via Conduit explorer API.
- * 
+ *
  * @param {string} contractAddress - Contract address
  * @returns {Promise<Object|null>} Object with blockNumber, timestamp and txHash, or null if not found
  */
@@ -393,12 +393,12 @@ async function fetchContractCreationInfoPlume(contractAddress) {
 
 /**
  * Processes contracts to fetch block numbers from explorers.
- * 
+ *
  * For each contract:
  * - Fetches creation info from appropriate explorer API (Etherscan, Routescan, Conduit, etc.)
  * - Sets blockNumber to the fetched value, or null if not found
  * - Skips fetching for chains not supported by free API keys (BNB, Base)
- * 
+ *
  * @param {Object} chain - Chain configuration object from env/*.json
  * @param {string} networkFile - Filename of the env file (for error messages)
  * @returns {Promise<{contracts: Object, hasChanges: boolean}>} Processed contracts and whether any data was fetched
@@ -527,7 +527,7 @@ async function processContracts(chain, networkFile) {
 
 /**
  * Main entry point: generates a delta registry JSON file.
- * 
+ *
  * Process:
  * 1. Fetch current live registry from registry.centrifuge.io (unless in full mode)
  * 2. Process each chain in env/*.json matching the environment
@@ -626,7 +626,7 @@ async function main() {
 
         // Copy chain configuration (network, adapters)
         // Filter out deployment-only fields from network and adapters
-        const { environment, connectsTo, ...networkFields } = chain.network;
+        const { environment, ...networkFields } = chain.network;
 
         const cleanedAdapters = {};
         if (chain.adapters) {
@@ -781,7 +781,7 @@ async function main() {
 
 /**
  * Extracts deployment metadata from chain.deploymentInfo in env files.
- * 
+ *
  * @param {Object} chain - Chain configuration object from env/*.json
  * @returns {Object|null} Deployment metadata with deployedAt and block range
  */
@@ -809,7 +809,7 @@ function getDeploymentInfoFromEnv(chain) {
 
 /**
  * Normalizes a timestamp to Unix seconds (number).
- * 
+ *
  * @param {string|number|null} rawTimestamp - Raw timestamp value
  * @returns {number|null} Unix timestamp in seconds as a number, or null if invalid
  */
@@ -834,7 +834,7 @@ function normalizeTimestamp(rawTimestamp) {
 
 /**
  * Resolves the deployment commit hash for the registry version field.
- * 
+ *
  * @param {string|null} override - DEPLOYMENT_COMMIT env var value
  * @param {Set<string>} commitsSet - Set of git commits found in chain deploymentInfo
  * @returns {string} Git commit hash to use in registry.deploymentInfo.gitCommit
@@ -863,7 +863,7 @@ function resolveDeploymentCommit(override, commitsSet) {
 
 /**
  * Extracts git commit hash from chain.deploymentInfo.
- * 
+ *
  * @param {Object} chain - Chain configuration object from env/*.json
  * @returns {string|null} Git commit hash or null if not found
  */
@@ -881,7 +881,7 @@ function getDeploymentGitCommit(chain) {
 /**
  * Extracts ABIs from Forge build artifacts in ./out/ directory.
  * Only includes ABIs for contracts that are actually deployed (based on env file contracts).
- * 
+ *
  * @param {Object} chains - The chains object with deployed contracts
  * @param {boolean} fullMode - If true, include ABIs for all contracts. If false, only include changed contracts.
  * @returns {Object} Map of contract names to their ABIs
@@ -951,11 +951,11 @@ main()
 
 /**
  * Extracts deployment metadata from deploymentInfo in env files.
- * 
+ *
  * Returns:
  * - deployedAt: timestamp of deployment
  * - startBlock: block before deployment started (for indexing)
- * 
+ *
  * @param {Object} chain - Chain configuration object from env/*.json
  * @param {string} networkFile - Filename of the env file
  * @returns {Object} Deployment metadata

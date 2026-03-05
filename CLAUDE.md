@@ -26,7 +26,7 @@ cast storage <contract> <slot>              # Inspect storage slots
 
 ## Hub-Spoke Architecture
 
-### Deployment Patterns 
+### Deployment Patterns
 - **Cross-chain**: Hub on Ethereum, Spokes on target chains (Base, Arbitrum, etc.)
 - **Same-chain**: Both Hub and Spoke on same chain (e.g., Plume)
 - **Testing assumption**: Assume hub and spoke are on same chain unless specified otherwise
@@ -122,8 +122,7 @@ test/                        # Tests mirror src/ structure
 ├── managers/             # Manager contract tests
 ├── hooks/                # Transfer hook tests
 ├── adapters/             # Cross-chain adapter tests
-├── integration/          # Cross-module integration & fork tests
-├── spell/                # Governance spell tests
+├── integration/          # Cross-module integration & fork tests & spell tests
 └── misc/                 # Utility & library tests
 
 script/

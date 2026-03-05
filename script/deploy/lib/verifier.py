@@ -211,6 +211,25 @@ class ContractVerifier:
 
         return True
 
+    def config_has_latest_contracts(self) -> bool:
+        """Fast check: are contracts from env/latest already merged into env/<network>.json?"""
+        try:
+            if not self.latest_deployment.exists():
+                return False
+            with open(self.latest_deployment, 'r') as f:
+                latest = json.load(f)
+            with open(self.env_loader.config_file, 'r') as f:
+                cfg = json.load(f)
+            latest_contracts = latest.get('contracts', {}) or {}
+            config_contracts = cfg.get('contracts', {}) or {}
+            # Require every contract in latest to exist in config with identical address
+            for name, addr in latest_contracts.items():
+                if name not in config_contracts or config_contracts[name].lower() != addr.lower():
+                    return False
+            return True if latest_contracts else False
+        except Exception:
+            return False
+
     def _is_contract_deployed(self, address: str) -> bool:
         """Check if contract has code deployed"""
         payload = {
@@ -304,41 +323,48 @@ class ContractVerifier:
                     contract_address = contract_data.get('address')
                 else:
                     contract_address = contract_data
-                
+
                 if not contract_address:
                     continue
-                
+
                 # Get real deployment info from broadcast artifacts (preferred)
                 deploy_info = broadcast_deployment_info.get(contract_address.lower(), {})
-                
-                # Preserve existing blockNumber/txHash if we are not able to resolve them from broadcast.
+
+                # Preserve existing blockNumber/txHash/version if we are not able to resolve them from broadcast.
                 # This is important for flows like `verify:contracts` where no deployment script/broadcast is provided.
                 existing_entry = config_data['contracts'].get(contract_name)
                 existing_address = None
                 existing_block = None
                 existing_tx = None
+                existing_version = None
                 if isinstance(existing_entry, dict):
                     existing_address = existing_entry.get('address')
                     existing_block = existing_entry.get('blockNumber')
                     existing_tx = existing_entry.get('txHash')
-                
+                    existing_version = existing_entry.get('version')
+
                 new_block = deploy_info.get('blockNumber')
                 new_tx = deploy_info.get('txHash')
-                
+                new_version = contract_data.get('version') if isinstance(contract_data, dict) else None
+
                 same_address = (
                     isinstance(existing_address, str)
                     and existing_address.lower() == contract_address.lower()
                 )
-                
+
                 block_out = new_block if new_block is not None else (existing_block if same_address else None)
                 tx_out = new_tx if new_tx is not None else (existing_tx if same_address else None)
-                
-                # Always write in the new format with address, blockNumber, and txHash
-                config_data['contracts'][contract_name] = {
+                version_out = new_version or (existing_version if same_address else None)
+
+                # Always write in the new format with address, blockNumber, txHash, and version
+                entry = {
                     'address': contract_address,
                     'blockNumber': block_out,
                     'txHash': tx_out,
                 }
+                if version_out:
+                    entry['version'] = version_out
+                config_data['contracts'][contract_name] = entry
 
 
             # Get deployment timestamp from latest deployment file
@@ -350,20 +376,24 @@ class ContractVerifier:
 
             # Determine which deployment info entry to update
             deployment_step = self.args.step
-            if self.args.step == "release:sepolia":
-                # For release:sepolia, update the deploy:protocol entry instead
-                deployment_step = "deploy:protocol"
+            if deployment_step in ["release:sepolia", "deploy:testnets"]:
+                # For release:sepolia and deploy:testnets, update the deploy:full entry instead
+                deployment_step = "deploy:full"
             
-            if "deploy" in self.args.step or self.args.step == "release:sepolia":
+            if "deploy" in deployment_step:
+                # if there's a deploy:adapters, deploy:full overrides them. Delete:
+                if 'deploymentInfo' in config_data and 'deploy:adapters' in config_data['deploymentInfo']:
+                    del config_data['deploymentInfo']['deploy:adapters']
                 config_data['deploymentInfo'][deployment_step] = {
                     'gitCommit': git_commit,
                     'timestamp': deployment_timestamp,
+                    'suffix': os.environ.get("SUFFIX", "")
                 }
 
-            # Always include VERSION key in deploymentInfo (may be empty string if not set)
+            # Always include suffix key in deploymentInfo
             if deployment_step not in config_data['deploymentInfo']:
                 config_data['deploymentInfo'][deployment_step] = {}
-            config_data['deploymentInfo'][deployment_step]['version'] = os.environ.get("VERSION", "Null / NotSet")
+            config_data['deploymentInfo'][deployment_step]['suffix'] = os.environ.get("SUFFIX", "")
             
             # Get startBlock from deployment mechanism (-latest.json file) if available
             # Only calculate from contract block numbers if not provided by deployment
