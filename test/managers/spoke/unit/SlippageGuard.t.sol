@@ -333,6 +333,9 @@ contract SlippageGuardPeriodLossTest is SlippageGuardTest {
     }
 
     function testCumulativeLossWithinBounds() public {
+        // Warp past the initial period so the first close sets periodStart
+        vm.warp(block.timestamp + 1 days + 1);
+
         // Script 1: 1% loss (well within 5% period limit)
         _doSwapWithLoss(1000e18, 990e18);
 
