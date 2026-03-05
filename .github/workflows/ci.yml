@@ -50,6 +50,12 @@ jobs:
           version: v1.4.4
       - name: Load secrets
         run: python3 script/deploy/load_secrets.py
+      - name: Mask secrets
+        run: |
+          while IFS='=' read -r key value; do
+            [[ -z "$key" || "$key" == \#* || -z "$value" ]] && continue
+            echo "::add-mask::$value"
+          done < .env
       - name: Run fork and spell tests
         run: forge test --match-path "test/integration/{fork,spell}/**/*.sol" -vv
         env:
@@ -204,6 +210,14 @@ jobs:
           CI_MODE: true
         run: |
           script/deploy/setup.sh
+      - name: Load secrets
+        run: python3 script/deploy/load_secrets.py
+      - name: Mask secrets
+        run: |
+          while IFS='=' read -r key value; do
+            [[ -z "$key" || "$key" == \#* || -z "$value" ]] && continue
+            echo "::add-mask::$value"
+          done < .env
       - name: Install dependencies (forge)
         run: |
           forge install -j 0 --shallow --color auto
