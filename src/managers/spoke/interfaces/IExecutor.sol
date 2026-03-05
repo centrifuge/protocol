@@ -15,6 +15,8 @@ interface IExecutor is IMulticall, ITrustedContractUpdate {
     error InvalidPoolId();
     error NotAuthorized();
     error StateLengthOverflow();
+    error NotInExecution();
+    error NestedCallback();
 
     function poolId() external view returns (PoolId);
     function contractUpdater() external view returns (address);
@@ -28,4 +30,17 @@ interface IExecutor is IMulticall, ITrustedContractUpdate {
     function execute(bytes32[] calldata commands, bytes[] calldata state, uint256 stateBitmap, bytes32[] calldata proof)
         external
         payable;
+
+    /// @notice Execute a callback script during an active `execute()`. Used for flash loan callbacks.
+    /// @dev    No `protected` modifier — guarded by `_activeStrategist != 0` and `!_inCallback` instead.
+    /// @param commands  Weiroll command bytes for the inner (callback) script.
+    /// @param state     Weiroll state array for the inner script.
+    /// @param stateBitmap  State bitmap for the inner script.
+    /// @param proof     Merkle proof for the inner script hash against the active strategist's policy.
+    function executeCallback(
+        bytes32[] calldata commands,
+        bytes[] calldata state,
+        uint256 stateBitmap,
+        bytes32[] calldata proof
+    ) external;
 }

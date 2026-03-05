@@ -493,6 +493,389 @@ contract ExecutorExecuteTests is ExecutorTest {
     }
 }
 
+// ─── Callback bridge (mock for flash loan-like callback) ─────────────────────
+
+contract CallbackBridge {
+    function triggerCallback(
+        IExecutor executor,
+        bytes32[] calldata commands,
+        bytes[] calldata state,
+        uint256 stateBitmap,
+        bytes32[] calldata proof
+    ) external {
+        executor.executeCallback(commands, state, stateBitmap, proof);
+    }
+}
+
+// ─── Nested callback bridge (for testing nested callback rejection) ──────────
+
+contract NestedCallbackBridge {
+    IExecutor public executor;
+    bytes32[] public innerCommands;
+    bytes[] public innerState;
+    uint256 public innerBitmap;
+    bytes32[] public innerProof;
+
+    function setup(
+        IExecutor executor_,
+        bytes32[] calldata commands_,
+        bytes[] calldata state_,
+        uint256 bitmap_,
+        bytes32[] calldata proof_
+    ) external {
+        executor = executor_;
+        delete innerCommands;
+        delete innerState;
+        delete innerProof;
+        for (uint256 i; i < commands_.length; i++) {
+            innerCommands.push(commands_[i]);
+        }
+        for (uint256 i; i < state_.length; i++) {
+            innerState.push(state_[i]);
+        }
+        innerBitmap = bitmap_;
+        for (uint256 i; i < proof_.length; i++) {
+            innerProof.push(proof_[i]);
+        }
+    }
+
+    function triggerCallback(
+        IExecutor executor_,
+        bytes32[] calldata commands_,
+        bytes[] calldata state_,
+        uint256 stateBitmap_,
+        bytes32[] calldata proof_
+    ) external {
+        executor_.executeCallback(commands_, state_, stateBitmap_, proof_);
+    }
+
+    /// @dev Called by the inner weiroll script to trigger a second (nested) callback.
+    function reenter() external {
+        executor.executeCallback(innerCommands, innerState, innerBitmap, innerProof);
+    }
+}
+
+// ─── Callback Tests ──────────────────────────────────────────────────────────
+
+contract ExecutorCallbackTests is ExecutorTest {
+    CallbackBridge bridge;
+
+    function setUp() public override {
+        super.setUp();
+        bridge = new CallbackBridge();
+    }
+
+    function testCallbackRevertsWhenNotInExecution() public {
+        bytes32[] memory commands = new bytes32[](0);
+        bytes[] memory state = new bytes[](0);
+
+        vm.expectRevert(IExecutor.NotInExecution.selector);
+        bridge.triggerCallback(executor, commands, state, 0, new bytes32[](0));
+    }
+
+    function testCallbackRevertsInvalidProof() public {
+        // Build an outer script that calls bridge.triggerCallback with a bad inner proof
+        // Inner script: setValue(77)
+        bytes32[] memory innerCommands = new bytes32[](1);
+        innerCommands[0] = _callCommand(WeirollTarget.setValue.selector, 0, address(target));
+        bytes[] memory innerState = new bytes[](1);
+        innerState[0] = abi.encode(uint256(77));
+        uint256 innerBitmap = 1;
+
+        // Encode callback data with an empty (invalid) proof
+        bytes memory callbackData = abi.encode(innerCommands, innerState, innerBitmap, new bytes32[](0));
+
+        // Outer script: call bridge.triggerCallback(executor, innerCommands, innerState, innerBitmap, proof)
+        bytes32[] memory outerCommands = new bytes32[](1);
+        // Use DATA flag (0x20) to pass raw calldata from state[0]
+        outerCommands[0] = _buildCommand(
+            CallbackBridge.triggerCallback.selector,
+            uint8(FLAG_CT_CALL) | 0x20, // CALL + DATA flag
+            bytes6(uint48(0x00FFFFFFFFFF)), // state[0] as raw calldata
+            0xff,
+            address(bridge)
+        );
+
+        bytes[] memory outerState = new bytes[](1);
+        outerState[0] = abi.encodeWithSelector(
+            CallbackBridge.triggerCallback.selector,
+            address(executor),
+            innerCommands,
+            innerState,
+            innerBitmap,
+            new bytes32[](0) // invalid proof
+        );
+        uint256 outerBitmap = 1;
+        bytes32 outerHash = _computeScriptHash(outerCommands, outerState, outerBitmap);
+
+        // Policy is just the outer script hash (inner script is not in the tree → InvalidProof)
+        _setPolicy(strategist, outerHash);
+
+        vm.expectRevert(); // InvalidProof from the inner executeCallback
+        vm.prank(strategist);
+        executor.execute(outerCommands, outerState, outerBitmap, new bytes32[](0));
+    }
+
+    function testCallbackSuccess() public {
+        // Inner script: setValue(77)
+        bytes32[] memory innerCommands = new bytes32[](1);
+        innerCommands[0] = _callCommand(WeirollTarget.setValue.selector, 0, address(target));
+        bytes[] memory innerState = new bytes[](1);
+        innerState[0] = abi.encode(uint256(77));
+        uint256 innerBitmap = 1;
+        bytes32 innerHash = _computeScriptHash(innerCommands, innerState, innerBitmap);
+
+        // Outer script: call bridge.triggerCallback(executor, innerCommands, innerState, innerBitmap, proof)
+        bytes32[] memory outerCommands = new bytes32[](1);
+        outerCommands[0] = _buildCommand(
+            CallbackBridge.triggerCallback.selector,
+            uint8(FLAG_CT_CALL) | 0x20, // CALL + DATA flag
+            bytes6(uint48(0x00FFFFFFFFFF)),
+            0xff,
+            address(bridge)
+        );
+
+        // Compute inner proof (sibling = outer hash)
+        bytes32 outerHashForTree;
+        // We need the outer hash to build the Merkle tree, but the outer hash depends on the proof
+        // which depends on the tree. Solution: compute outer hash first with innerHash as sibling proof.
+        bytes32[] memory innerProof = new bytes32[](1);
+
+        // Build outer state with the inner proof placeholder — we'll compute the tree after
+        bytes[] memory outerState = new bytes[](1);
+
+        // First compute outer hash with a placeholder to find the Merkle root
+        // The outer state contains the encoded triggerCallback call with the inner proof
+        // Inner proof sibling will be the outer hash. But outer hash depends on outer state which contains
+        // the inner proof... circular dependency.
+        //
+        // Solution: the inner proof sibling is the outerHash. Build tree as:
+        //   root = hash(innerHash, outerHash)
+        // innerProof = [outerHash], outerProof = [innerHash]
+
+        // First, build outerState with innerProof = [placeholder]
+        // Then compute outerHash, set innerProof[0] = outerHash, rebuild outerState, recompute outerHash.
+        // Since outerState is fixed (bitmap bit set), changing it changes outerHash → still circular.
+        //
+        // Better approach: make outerState variable (bitmap bit 0 unset), so outerHash doesn't depend on state content.
+
+        outerState[0] = abi.encodeWithSelector(
+            CallbackBridge.triggerCallback.selector,
+            address(executor),
+            innerCommands,
+            innerState,
+            innerBitmap,
+            new bytes32[](1) // placeholder
+        );
+        uint256 outerBitmap = 0; // state is variable → not hashed
+
+        // Compute outer hash (commands are fixed, state is variable)
+        bytes32 outerHash = _computeScriptHash(outerCommands, outerState, outerBitmap);
+
+        // Build 2-leaf Merkle tree
+        bytes32 root;
+        if (uint256(innerHash) < uint256(outerHash)) {
+            root = keccak256(abi.encodePacked(innerHash, outerHash));
+        } else {
+            root = keccak256(abi.encodePacked(outerHash, innerHash));
+        }
+
+        _setPolicy(strategist, root);
+
+        // Now set the correct inner proof and rebuild outer state
+        innerProof[0] = outerHash;
+        outerState[0] = abi.encodeWithSelector(
+            CallbackBridge.triggerCallback.selector,
+            address(executor),
+            innerCommands,
+            innerState,
+            innerBitmap,
+            innerProof
+        );
+
+        // Outer proof
+        bytes32[] memory outerProof = new bytes32[](1);
+        outerProof[0] = innerHash;
+
+        vm.prank(strategist);
+        executor.execute(outerCommands, outerState, outerBitmap, outerProof);
+
+        assertEq(target.lastValue(), 77);
+    }
+
+    function testCallbackEmitsEvent() public {
+        // Same setup as testCallbackSuccess
+        bytes32[] memory innerCommands = new bytes32[](1);
+        innerCommands[0] = _callCommand(WeirollTarget.setValue.selector, 0, address(target));
+        bytes[] memory innerState = new bytes[](1);
+        innerState[0] = abi.encode(uint256(77));
+        uint256 innerBitmap = 1;
+        bytes32 innerHash = _computeScriptHash(innerCommands, innerState, innerBitmap);
+
+        bytes32[] memory outerCommands = new bytes32[](1);
+        outerCommands[0] = _buildCommand(
+            CallbackBridge.triggerCallback.selector,
+            uint8(FLAG_CT_CALL) | 0x20,
+            bytes6(uint48(0x00FFFFFFFFFF)),
+            0xff,
+            address(bridge)
+        );
+
+        bytes[] memory outerState = new bytes[](1);
+        outerState[0] = ""; // placeholder
+        uint256 outerBitmap = 0;
+        bytes32 outerHash = _computeScriptHash(outerCommands, outerState, outerBitmap);
+
+        bytes32 root;
+        if (uint256(innerHash) < uint256(outerHash)) {
+            root = keccak256(abi.encodePacked(innerHash, outerHash));
+        } else {
+            root = keccak256(abi.encodePacked(outerHash, innerHash));
+        }
+        _setPolicy(strategist, root);
+
+        bytes32[] memory innerProof = new bytes32[](1);
+        innerProof[0] = outerHash;
+        outerState[0] = abi.encodeWithSelector(
+            CallbackBridge.triggerCallback.selector,
+            address(executor),
+            innerCommands,
+            innerState,
+            innerBitmap,
+            innerProof
+        );
+
+        bytes32[] memory outerProof = new bytes32[](1);
+        outerProof[0] = innerHash;
+
+        // Expect the inner script's ExecuteScript event
+        vm.expectEmit();
+        emit IExecutor.ExecuteScript(strategist, innerHash);
+
+        vm.prank(strategist);
+        executor.execute(outerCommands, outerState, outerBitmap, outerProof);
+    }
+
+    function testCallbackStateLengthOverflow() public {
+        // Build an outer script that calls bridge with inner state of length 257
+        bytes[] memory bigState = new bytes[](257);
+        bytes32[] memory innerCommands = new bytes32[](0);
+        uint256 innerBitmap = 0;
+
+        bytes32[] memory outerCommands = new bytes32[](1);
+        outerCommands[0] = _buildCommand(
+            CallbackBridge.triggerCallback.selector,
+            uint8(FLAG_CT_CALL) | 0x20,
+            bytes6(uint48(0x00FFFFFFFFFF)),
+            0xff,
+            address(bridge)
+        );
+
+        bytes[] memory outerState = new bytes[](1);
+        outerState[0] = abi.encodeWithSelector(
+            CallbackBridge.triggerCallback.selector,
+            address(executor),
+            innerCommands,
+            bigState,
+            innerBitmap,
+            new bytes32[](0)
+        );
+        uint256 outerBitmap = 0;
+        bytes32 outerHash = _computeScriptHash(outerCommands, outerState, outerBitmap);
+        _setPolicy(strategist, outerHash);
+
+        vm.expectRevert(); // StateLengthOverflow from executeCallback
+        vm.prank(strategist);
+        executor.execute(outerCommands, outerState, outerBitmap, new bytes32[](0));
+    }
+
+    function testActiveStrategistClearedAfterExecution() public {
+        // Run a simple execute
+        bytes32[] memory commands = new bytes32[](1);
+        commands[0] = _callCommand(WeirollTarget.setValue.selector, 0, address(target));
+        bytes[] memory state = new bytes[](1);
+        state[0] = abi.encode(uint256(42));
+        uint256 bitmap = 1;
+        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap);
+        _setPolicy(strategist, scriptHash);
+
+        vm.prank(strategist);
+        executor.execute(commands, state, bitmap, new bytes32[](0));
+
+        // After execute() completes, callback should revert
+        vm.expectRevert(IExecutor.NotInExecution.selector);
+        bridge.triggerCallback(executor, commands, state, bitmap, new bytes32[](0));
+    }
+
+    function testCallbackRevertsOnNestedCallback() public {
+        NestedCallbackBridge nestedBridge = new NestedCallbackBridge();
+
+        // Inner script 2 (the nested one): setValue(99) — doesn't matter what it does
+        bytes32[] memory inner2Commands = new bytes32[](1);
+        inner2Commands[0] = _callCommand(WeirollTarget.setValue.selector, 0, address(target));
+        bytes[] memory inner2State = new bytes[](1);
+        inner2State[0] = abi.encode(uint256(99));
+        uint256 inner2Bitmap = 1;
+
+        // Inner script 1: calls nestedBridge.reenter() which triggers a second executeCallback
+        bytes32[] memory inner1Commands = new bytes32[](1);
+        bytes6 noInputs = bytes6(uint48(0xFFFFFFFFFFFF));
+        inner1Commands[0] =
+            _buildCommand(NestedCallbackBridge.reenter.selector, uint8(FLAG_CT_CALL), noInputs, 0xff, address(nestedBridge));
+        bytes[] memory inner1State = new bytes[](0);
+        uint256 inner1Bitmap = 0;
+        bytes32 inner1Hash = _computeScriptHash(inner1Commands, inner1State, inner1Bitmap);
+
+        // Outer script: calls nestedBridge.triggerCallback → executor.executeCallback (inner1)
+        //   Inner1 calls nestedBridge.reenter() → executor.executeCallback (inner2) → should revert NestedCallback
+        bytes32[] memory outerCommands = new bytes32[](1);
+        outerCommands[0] = _buildCommand(
+            NestedCallbackBridge.triggerCallback.selector,
+            uint8(FLAG_CT_CALL) | 0x20,
+            bytes6(uint48(0x00FFFFFFFFFF)),
+            0xff,
+            address(nestedBridge)
+        );
+
+        bytes[] memory outerState = new bytes[](1);
+        outerState[0] = ""; // placeholder
+        uint256 outerBitmap = 0;
+        bytes32 outerHash = _computeScriptHash(outerCommands, outerState, outerBitmap);
+
+        // 2-leaf tree: inner1Hash + outerHash
+        bytes32 root;
+        if (uint256(inner1Hash) < uint256(outerHash)) {
+            root = keccak256(abi.encodePacked(inner1Hash, outerHash));
+        } else {
+            root = keccak256(abi.encodePacked(outerHash, inner1Hash));
+        }
+        _setPolicy(strategist, root);
+
+        // Setup the nested bridge with inner2 data (will be used in reenter)
+        nestedBridge.setup(executor, inner2Commands, inner2State, inner2Bitmap, new bytes32[](0));
+
+        // Build correct inner1 proof
+        bytes32[] memory inner1Proof = new bytes32[](1);
+        inner1Proof[0] = outerHash;
+
+        outerState[0] = abi.encodeWithSelector(
+            NestedCallbackBridge.triggerCallback.selector,
+            address(executor),
+            inner1Commands,
+            inner1State,
+            inner1Bitmap,
+            inner1Proof
+        );
+
+        bytes32[] memory outerProof = new bytes32[](1);
+        outerProof[0] = inner1Hash;
+
+        vm.expectRevert(); // NestedCallback from the second executeCallback attempt
+        vm.prank(strategist);
+        executor.execute(outerCommands, outerState, outerBitmap, outerProof);
+    }
+}
+
 // ─── Factory ──────────────────────────────────────────────────────────────────
 
 contract ExecutorFactoryTest is Test {

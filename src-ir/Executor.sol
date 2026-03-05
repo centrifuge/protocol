@@ -28,6 +28,12 @@ contract Executor is Multicall, VM, IExecutor {
 
     mapping(address strategist => bytes32 root) public policy;
 
+    /// @dev Tracks the strategist whose `execute()` is currently running. Set to address(0) outside execution.
+    address private transient _activeStrategist;
+
+    /// @dev Prevents nested callbacks (flash-within-flash).
+    bool private transient _inCallback;
+
     constructor(PoolId poolId_, address contractUpdater_) {
         poolId = poolId_;
         contractUpdater = contractUpdater_;
@@ -83,9 +89,38 @@ contract Executor is Multicall, VM, IExecutor {
             mState[i] = state[i];
         }
 
+        _activeStrategist = msg.sender;
         _execute(commands, mState);
+        _activeStrategist = address(0);
 
         emit ExecuteScript(msg.sender, scriptHash);
+    }
+
+    /// @inheritdoc IExecutor
+    function executeCallback(
+        bytes32[] calldata commands,
+        bytes[] calldata state,
+        uint256 stateBitmap,
+        bytes32[] calldata proof
+    ) external {
+        require(_activeStrategist != address(0), NotInExecution());
+        require(!_inCallback, NestedCallback());
+        require(state.length <= 256, StateLengthOverflow());
+
+        bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap);
+        require(MerkleProofLib.verify(proof, policy[_activeStrategist], scriptHash), InvalidProof());
+
+        _inCallback = true;
+
+        bytes[] memory mState = new bytes[](state.length);
+        for (uint256 i; i < state.length; i++) {
+            mState[i] = state[i];
+        }
+        _execute(commands, mState);
+
+        _inCallback = false;
+
+        emit ExecuteScript(_activeStrategist, scriptHash);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
