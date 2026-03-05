@@ -3,9 +3,13 @@ pragma solidity >=0.5.0;
 
 import {PoolId} from "../../../core/types/PoolId.sol";
 import {AssetId} from "../../../core/types/AssetId.sol";
+import {IHub} from "../../../core/hub/interfaces/IHub.sol";
 import {AccountId} from "../../../core/types/AccountId.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
+import {IHoldings} from "../../../core/hub/interfaces/IHoldings.sol";
 import {IValuation} from "../../../core/hub/interfaces/IValuation.sol";
+import {IAccounting} from "../../../core/hub/interfaces/IAccounting.sol";
+import {IHubRegistry} from "../../../core/hub/interfaces/IHubRegistry.sol";
 import {ISnapshotHook} from "../../../core/hub/interfaces/ISnapshotHook.sol";
 
 /// @title  INAVHook
@@ -58,6 +62,22 @@ interface INAVManager is ISnapshotHook {
     error ExceedsMaxAccounts();
     error InvalidStateOfAccounts();
     error InvalidNAVHook();
+
+    //----------------------------------------------------------------------------------------------
+    // Immutables
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Central coordination contract for pool management and cross-chain operations
+    function hub() external view returns (IHub);
+
+    /// @notice Tracks asset positions and valuations across all pools and share classes
+    function holdings() external view returns (IHoldings);
+
+    /// @notice Double-entry accounting system for recording pool debits and credits
+    function accounting() external view returns (IAccounting);
+
+    /// @notice Registry of pools, assets, and manager permissions on the hub chain
+    function hubRegistry() external view returns (IHubRegistry);
 
     //----------------------------------------------------------------------------------------------
     // Administration
