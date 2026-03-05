@@ -49,22 +49,15 @@ contract PoolHooks is BaseDeployer {
     function run() external {
         EnvConfig memory config = Env.load(vm.envString("NETWORK"));
 
+        centrifugeId = config.network.centrifugeId;
+
         root = Root(config.contracts.root);
         spoke = Spoke(config.contracts.spoke);
         balanceSheet = BalanceSheet(config.contracts.balanceSheet);
         poolEscrowFactory = IPoolEscrowProvider(config.contracts.poolEscrowFactory);
         freelyTransferableHook = config.contracts.freelyTransferableHook;
         fullRestrictionsHook = config.contracts.fullRestrictionsHook;
-
-        centrifugeId = config.network.centrifugeId;
-
-        root = Root(_readContractAddress(config, "$.contracts.root"));
-        spoke = Spoke(_readContractAddress(config, "$.contracts.spoke"));
-        balanceSheet = BalanceSheet(_readContractAddress(config, "$.contracts.balanceSheet"));
-        poolEscrowFactory = IPoolEscrowProvider(_readContractAddress(config, "$.contracts.poolEscrowFactory"));
-        contractUpdater = _readContractAddress(config, "$.contracts.contractUpdater");
-        freelyTransferableHook = _readContractAddress(config, "$.contracts.freelyTransferableHook");
-        fullRestrictionsHook = _readContractAddress(config, "$.contracts.fullRestrictionsHook");
+        contractUpdater = config.contracts.contractUpdater;
 
         GraphQLQuery graphQL = new GraphQLQuery(config.network.graphQLApi());
 
