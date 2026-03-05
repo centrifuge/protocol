@@ -28,8 +28,6 @@ contract Executor is Multicall, VM, IExecutor {
 
     mapping(address strategist => bytes32 root) public policy;
 
-    bool private _executing;
-
     constructor(PoolId poolId_, address contractUpdater_) {
         poolId = poolId_;
         contractUpdater = contractUpdater_;
@@ -70,10 +68,8 @@ contract Executor is Multicall, VM, IExecutor {
     function execute(bytes32[] calldata commands, bytes[] calldata state, uint256 stateBitmap, bytes32[] calldata proof)
         external
         payable
+        protected
     {
-        require(!_executing, Reentrancy());
-        _executing = true;
-
         bytes32 root = policy[msg.sender];
         require(root != bytes32(0), NotAStrategist());
         require(state.length <= 256, StateLengthOverflow());
@@ -89,8 +85,6 @@ contract Executor is Multicall, VM, IExecutor {
 
         _execute(commands, mState);
 
-        _executing = false;
-
         emit ExecuteScript(msg.sender, scriptHash);
     }
 
@@ -103,14 +97,22 @@ contract Executor is Multicall, VM, IExecutor {
         pure
         returns (bytes32)
     {
-        bytes memory packed;
+        uint256 count;
+        for (uint256 i; i < state.length; i++) {
+            if (stateBitmap & (1 << i) != 0) count++;
+        }
+
+        bytes32[] memory hashes = new bytes32[](count);
+        uint256 j;
         for (uint256 i; i < state.length; i++) {
             if (stateBitmap & (1 << i) != 0) {
-                packed = bytes.concat(packed, keccak256(state[i]));
+                hashes[j++] = keccak256(state[i]);
             }
         }
 
-        return keccak256(abi.encodePacked(keccak256(abi.encodePacked(commands)), keccak256(packed), stateBitmap));
+        return keccak256(
+            abi.encodePacked(keccak256(abi.encodePacked(commands)), keccak256(abi.encodePacked(hashes)), stateBitmap)
+        );
     }
 }
 

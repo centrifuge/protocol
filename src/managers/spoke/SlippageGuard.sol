@@ -27,6 +27,7 @@ contract SlippageGuard is ISlippageGuard {
     bytes32 internal constant OPENER_SLOT = keccak256("slippageGuard.opener");
     bytes32 internal constant POOL_ID_SLOT = keccak256("slippageGuard.poolId");
     bytes32 internal constant SC_ID_SLOT = keccak256("slippageGuard.scId");
+    uint256 internal constant PRE_BASE_SLOT = uint256(keccak256("slippageGuard.pre"));
 
     ISpoke public immutable spoke;
     IBalanceSheet public immutable balanceSheet;
@@ -76,8 +77,7 @@ contract SlippageGuard is ISlippageGuard {
             TransientArrayLib.push(TOKEN_IDS_SLOT, bytes32(tokenId));
 
             uint128 balance = balanceSheet.availableBalanceOf(poolId, scId, asset, tokenId);
-            bytes32 preSlot = keccak256(abi.encodePacked("slippageGuard.pre", i));
-            TransientStorageLib.tstore(preSlot, uint256(balance));
+            TransientStorageLib.tstore(bytes32(PRE_BASE_SLOT + i), uint256(balance));
         }
     }
 
@@ -126,7 +126,7 @@ contract SlippageGuard is ISlippageGuard {
             address asset = address(uint160(uint256(assets[i])));
             uint256 tokenId = uint256(tokenIds[i]);
 
-            uint128 pre = uint128(TransientStorageLib.tloadUint256(keccak256(abi.encodePacked("slippageGuard.pre", i))));
+            uint128 pre = uint128(TransientStorageLib.tloadUint256(bytes32(PRE_BASE_SLOT + i)));
             uint128 post = balanceSheet.availableBalanceOf(poolId, scId, asset, tokenId);
 
             D18 price = spoke.pricePoolPerAsset(poolId, scId, spoke.assetToId(asset, tokenId), true);
