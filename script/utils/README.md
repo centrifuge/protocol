@@ -173,10 +173,10 @@ import {Auth} from "../misc/Auth.sol";
 **Script Imports:**
 ```solidity
 // Before
-import {CoreInput} from "script/CoreDeployer.s.sol";
+import {CoreInput} from "script/FullDeployer.s.sol";
 
 // After (from script/FullDeployer.s.sol)
-import {CoreInput} from "./CoreDeployer.s.sol";
+import {CoreInput} from "./FullDeployer.s.sol";
 ```
 
 **Test-to-Source Imports:**

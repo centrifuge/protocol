@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @fileoverview Validates a registry JSON file before pinning to IPFS.
- * 
+ *
  * This script performs comprehensive validation checks on a registry file:
  * - Each chain has a startBlock value
  * - startBlock is higher than the previous registry's startBlock (if previous exists)
@@ -12,11 +12,11 @@
  * - Contract addresses are valid Ethereum addresses
  * - All referenced contracts have corresponding ABI entries
  * - No empty chains
- * 
+ *
  * Usage:
  *   node script/registry/utils/validate-registry.js registry/registry-testnet.json
  *   node script/registry/utils/validate-registry.js registry/registry-mainnet.json --compare-live
- * 
+ *
  * Options:
  *   --compare-live    Fetch the current live registry to compare versions and startBlocks
  *   --quiet           Only show failures and warnings, not passes
@@ -332,8 +332,8 @@ function validateChainConfigMatchesEnv(registry) {
         const envNetwork = envData.network || {};
 
         // Compare all fields that exist in both registry and env file
-        // Exclude fields that are deployment-only (environment, connectsTo)
-        const fieldsToExclude = ["environment", "connectsTo"];
+        // Exclude fields that are deployment-only (environment)
+        const fieldsToExclude = ["environment"];
         const allNetworkFields = new Set([
             ...Object.keys(registryNetwork),
             ...Object.keys(envNetwork)

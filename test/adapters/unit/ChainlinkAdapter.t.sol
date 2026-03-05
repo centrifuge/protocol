@@ -16,9 +16,6 @@ import {ChainlinkAdapter} from "../../../src/adapters/ChainlinkAdapter.sol";
 import {
     IChainlinkAdapter,
     IAdapter,
-    ChainlinkSource,
-    ChainlinkDestination,
-    IRouterClient,
     IClient,
     GENERIC_EXTRA_ARGS_V2_TAG,
     IAny2EVMMessageReceiver

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import "./BaseTest.sol";
+import {BaseTest, D18, IAdapter, IHubRequestManager, PoolId, d18} from "./BaseTest.sol";
 
 import {D18, d18} from "../../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
@@ -10,9 +10,8 @@ import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {PricingLib} from "../../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {MessageLib} from "../../../../src/core/messaging/libraries/MessageLib.sol";
-import {VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubRequestManager.sol";
+import {MessageLib, VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {RequestCallbackMessageLib} from "../../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
@@ -29,7 +28,7 @@ contract TestCases is BaseTest {
         cv.registerAsset(EUR_STABLE_C2, 12);
 
         poolId = hubRegistry.poolId(CHAIN_CP, 1);
-        vm.prank(ADMIN);
+        vm.prank(address(opsGuardian.opsSafe()));
         opsGuardian.createPool(poolId, FM, USD_ID);
 
         scId = shareClassManager.previewNextShareClassId(poolId);
