@@ -85,7 +85,7 @@ contract V2CleaningsSpellTest is Test {
             // CFG minting assertions
             uint256 expectedMintAmount = preWcfgTotalSupply - preWcfgBalanceOfIouCfg + CENTRIFUGE_CHAIN_CFG_AMOUNT;
             assertEq(IERC20(CFG).totalSupply(), preCfgTotalSupply + expectedMintAmount);
-            assertLe(IERC20(CFG).totalSupply(), MAX_POST_MINT_CFG_SUPPLY, "Total CFG supply exceeds max post-mint cap");
+            assertEq(IERC20(CFG).totalSupply(), MAX_POST_MINT_CFG_SUPPLY, "Total CFG supply exceeds max post-mint cap");
             assertEq(IERC20(CFG).balanceOf(CNF_TREASURY_WALLET), preCfgMintTreasuryBalance + expectedMintAmount);
             assertEq(IAuth(CFG).wards(address(spell)), 0);
         }
