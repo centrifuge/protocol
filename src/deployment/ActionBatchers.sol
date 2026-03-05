@@ -354,6 +354,10 @@ contract NonCoreActionBatcher {
         // Rely contractUpdater
         report.syncManager.rely(address(report.core.contractUpdater));
         report.asyncRequestManager.rely(address(report.core.contractUpdater));
+        report.freezeOnlyHook.rely(address(report.core.contractUpdater));
+        report.fullRestrictionsHook.rely(address(report.core.contractUpdater));
+        report.freelyTransferableHook.rely(address(report.core.contractUpdater));
+        report.redemptionRestrictionsHook.rely(address(report.core.contractUpdater));
 
         // Rely hub
         report.batchRequestManager.rely(address(report.core.hub));
