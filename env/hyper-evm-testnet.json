@@ -7,7 +7,24 @@
     "opsAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
     "baseRpcUrl": "https://hyperliquid-testnet.g.alchemy.com/v2/"
   },
+  "adapters": {
+    "layerZero": {
+      "endpoint": "0xf9e1815F151024bDE4B7C10BAC10e8Ba9F6b53E1",
+      "layerZeroEid": 40362,
+      "deploy": true,
+      "blockConfirmations": 5,
+      "DVNs": [
+        "0x91e698871030d0e1b6c9268c20bb57e2720618dd"
+      ]
+    }
+  },
   "contracts": {
+    "layerZeroAdapter": {
+      "address": "0x24f3192d46869609F8F6605e662b8146CA4240d3",
+      "blockNumber": 47348915,
+      "txHash": "0xb7cf5653c3244134455117a3ef2b190102eeb32fd83e8196362f57d65f8be8f1",
+      "version": "v3.1"
+    },
     "root": {
       "address": "0x1Fa8a2fe2eAE2373B03Fa313E016605EB86cBae8",
       "blockNumber": 43580306,
