@@ -38,8 +38,9 @@ contract PoolHooks is BaseDeployer {
 
     uint16 public centrifugeId;
 
-    address public freelyTransferableHook;
+    address public contractUpdater;
     address public fullRestrictionsHook;
+    address public freelyTransferableHook;
     Root public root;
     Spoke public spoke;
     BalanceSheet public balanceSheet;
@@ -48,14 +49,15 @@ contract PoolHooks is BaseDeployer {
     function run() external {
         EnvConfig memory config = Env.load(vm.envString("NETWORK"));
 
+        centrifugeId = config.network.centrifugeId;
+
         root = Root(config.contracts.root);
         spoke = Spoke(config.contracts.spoke);
         balanceSheet = BalanceSheet(config.contracts.balanceSheet);
         poolEscrowFactory = IPoolEscrowProvider(config.contracts.poolEscrowFactory);
         freelyTransferableHook = config.contracts.freelyTransferableHook;
         fullRestrictionsHook = config.contracts.fullRestrictionsHook;
-
-        centrifugeId = config.network.centrifugeId;
+        contractUpdater = config.contracts.contractUpdater;
 
         GraphQLQuery graphQL = new GraphQLQuery(config.network.graphQLApi());
 
@@ -88,7 +90,7 @@ contract PoolHooks is BaseDeployer {
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", vm.toString(centrifugeId),
+            "  centrifugeId: ", vm.toString(centrifugeId).asJsonString(),
             "}"
         );
 
@@ -222,6 +224,7 @@ contract PoolHooks is BaseDeployer {
 
         hook.rely(address(root));
         hook.rely(address(spoke));
+        hook.rely(address(contractUpdater));
         hook.deny(msg.sender);
     }
 
