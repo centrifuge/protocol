@@ -112,8 +112,6 @@ contract ExecutorFactory is IExecutorFactory {
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
 
-    mapping(PoolId poolId => address) public executors;
-
     constructor(address contractUpdater_, IBalanceSheet balanceSheet_) {
         contractUpdater = contractUpdater_;
         balanceSheet = balanceSheet_;
@@ -124,8 +122,6 @@ contract ExecutorFactory is IExecutorFactory {
         require(balanceSheet.spoke().isPoolActive(poolId), InvalidPoolId());
 
         Executor executor = new Executor{salt: bytes32(uint256(poolId.raw()))}(poolId, contractUpdater);
-
-        executors[poolId] = address(executor);
 
         emit DeployExecutor(poolId, address(executor));
         return IExecutor(address(executor));

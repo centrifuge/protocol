@@ -5,7 +5,6 @@ import {IERC165} from "forge-std/interfaces/IERC165.sol";
 import {IERC6909, IERC6909ExclOperator, IERC6909Decimals} from "../../misc/interfaces/IERC6909.sol";
 import {IERC20Metadata} from "../../misc/interfaces/IERC20.sol";
 import {IReceiptToken} from "./interfaces/IReceiptToken.sol";
-import {IExecutorFactory} from "./interfaces/IExecutorFactory.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 
@@ -16,17 +15,30 @@ import {PoolId} from "../../core/types/PoolId.sol";
 /// @dev    Not fully ERC-6909 compatible: operator support (isOperator, setOperator) is omitted
 ///         because these tokens are only held within the protocol (BalanceSheet/Executor).
 contract ReceiptToken is IReceiptToken {
-    IExecutorFactory public immutable factory;
+    address public immutable factory;
+    bytes32 public immutable executorInitCodeHash;
 
     mapping(address owner => mapping(uint256 tokenId => uint256)) public balanceOf;
     mapping(address owner => mapping(address spender => mapping(uint256 tokenId => uint256))) public allowance;
 
-    constructor(IExecutorFactory factory_) {
+    constructor(address factory_, bytes32 executorInitCodeHash_) {
         factory = factory_;
+        executorInitCodeHash = executorInitCodeHash_;
     }
 
     modifier onlyPoolExecutor(uint256 id) {
-        require(msg.sender == factory.executors(_poolId(id)), NotPoolExecutor());
+        address expected = address(
+            uint160(
+                uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            bytes1(0xff), factory, bytes32(uint256(_poolId(id).raw())), executorInitCodeHash
+                        )
+                    )
+                )
+            )
+        );
+        require(msg.sender == expected, NotPoolExecutor());
         _;
     }
 

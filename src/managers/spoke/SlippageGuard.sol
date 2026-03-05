@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ISlippageGuard, AssetEntry, SlippageConfig, EpochState} from "./interfaces/ISlippageGuard.sol";
+import {ISlippageGuard, AssetEntry, SlippageConfig, PeriodState} from "./interfaces/ISlippageGuard.sol";
 import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 import {D18} from "../../misc/types/D18.sol";
@@ -22,7 +22,7 @@ import {ShareClassId} from "../../core/types/ShareClassId.sol";
 /// @title  SlippageGuard
 /// @notice Standalone bookend contract for Executor scripts. Call `open()` at the start and `close()` at the end
 ///         of a script to verify that the net value change across all touched assets stays within a slippage bound.
-///         Additionally tracks cumulative slippage per epoch to prevent death-by-a-thousand-cuts attacks.
+///         Additionally tracks cumulative loss per period to prevent death-by-a-thousand-cuts attacks.
 contract SlippageGuard is ISlippageGuard {
     bytes32 internal constant ASSETS_SLOT = keccak256("slippageGuard.assets");
     bytes32 internal constant TOKEN_IDS_SLOT = keccak256("slippageGuard.tokenIds");
@@ -31,7 +31,7 @@ contract SlippageGuard is ISlippageGuard {
     IBalanceSheet public immutable balanceSheet;
     address public immutable contractUpdater;
 
-    mapping(PoolId => mapping(ShareClassId => EpochState)) public epoch;
+    mapping(PoolId => mapping(ShareClassId => PeriodState)) public period;
     mapping(PoolId => mapping(ShareClassId => SlippageConfig)) public config;
 
     constructor(ISpoke spoke_, IBalanceSheet balanceSheet_, address contractUpdater_) {
@@ -48,9 +48,9 @@ contract SlippageGuard is ISlippageGuard {
     function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external {
         require(msg.sender == contractUpdater, NotAuthorized());
 
-        (uint16 maxEpochSlippageBps, uint32 epochDuration) = abi.decode(payload, (uint16, uint32));
-        config[poolId][scId] = SlippageConfig(maxEpochSlippageBps, epochDuration);
-        emit SetConfig(poolId, scId, maxEpochSlippageBps, epochDuration);
+        (uint16 maxPeriodLossBps, uint32 periodDuration) = abi.decode(payload, (uint16, uint32));
+        config[poolId][scId] = SlippageConfig(maxPeriodLossBps, periodDuration);
+        emit SetConfig(poolId, scId, maxPeriodLossBps, periodDuration);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -83,7 +83,7 @@ contract SlippageGuard is ISlippageGuard {
             require(loss <= withdrawn * maxSlippageBps / 10_000, SlippageExceeded(withdrawn, deposited, maxSlippageBps));
 
             if (loss > 0) {
-                _accumulateEpoch(poolId, scId, loss, totalPreValue);
+                _trackPeriodLoss(poolId, scId, loss, totalPreValue);
             }
         }
 
@@ -130,23 +130,23 @@ contract SlippageGuard is ISlippageGuard {
         }
     }
 
-    function _accumulateEpoch(PoolId poolId, ShareClassId scId, uint256 loss, uint256 totalPreValue) internal {
+    function _trackPeriodLoss(PoolId poolId, ShareClassId scId, uint256 loss, uint256 totalPreValue) internal {
         SlippageConfig storage cfg = config[poolId][scId];
-        if (cfg.epochDuration == 0) return;
+        if (cfg.periodDuration == 0) return;
 
         uint256 lossFraction = loss * 1e18 / totalPreValue;
-        EpochState storage ep = epoch[poolId][scId];
+        PeriodState storage ps = period[poolId][scId];
 
-        if (block.timestamp >= ep.epochStart + cfg.epochDuration) {
-            ep.accumulatedSlippage = lossFraction;
-            ep.epochStart = uint48(block.timestamp);
+        if (block.timestamp >= ps.periodStart + cfg.periodDuration) {
+            ps.cumulativeLoss = lossFraction;
+            ps.periodStart = uint48(block.timestamp);
         } else {
-            ep.accumulatedSlippage += lossFraction;
+            ps.cumulativeLoss += lossFraction;
         }
 
         require(
-            ep.accumulatedSlippage <= uint256(cfg.maxEpochSlippageBps) * 1e18 / 10_000,
-            EpochSlippageExceeded(ep.accumulatedSlippage, cfg.maxEpochSlippageBps)
+            ps.cumulativeLoss <= uint256(cfg.maxPeriodLossBps) * 1e18 / 10_000,
+            PeriodLossExceeded(ps.cumulativeLoss, cfg.maxPeriodLossBps)
         );
     }
 }
