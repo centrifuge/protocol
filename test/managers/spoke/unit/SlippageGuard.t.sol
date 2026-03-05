@@ -23,6 +23,7 @@ contract SlippageGuardTest is Test {
 
     address spoke = makeAddr("spoke");
     address balanceSheet = makeAddr("balanceSheet");
+    address contractUpdater = makeAddr("contractUpdater");
     address shareToken = makeAddr("shareToken");
     address assetA = makeAddr("assetA");
     address assetB = makeAddr("assetB");
@@ -31,7 +32,7 @@ contract SlippageGuardTest is Test {
 
     function setUp() public virtual {
         _setupMocks();
-        guard = new SlippageGuard(ISpoke(spoke), IBalanceSheet(balanceSheet));
+        guard = new SlippageGuard(ISpoke(spoke), IBalanceSheet(balanceSheet), contractUpdater);
     }
 
     function _setupMocks() internal {
