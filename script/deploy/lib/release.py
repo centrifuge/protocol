@@ -39,21 +39,15 @@ class ReleaseManager:
         print_info("Each network will be deployed, verified, wired, and loaded with test data")
         print_warning("This process may take 30-60 minutes")
         
-        # Validate VERSION is set
-        if not os.environ.get("VERSION"):
-            print_error("VERSION environment variable is required for release deployments")
-            print_info("Example: VERSION=v3.1.4 python3 script/deploy/deploy.py release:sepolia")
-            return False
-        
         # Load existing state or initialize new
         self._load_state()
-        
-        # Check if version changed - if so, clear state and start fresh
-        current_version = os.environ.get("VERSION")
-        saved_version = self.deployment_summary.get("version")
-        
-        if saved_version and saved_version != current_version:
-            print_warning(f"Version changed from {saved_version} to {current_version}")
+
+        # Check if suffix changed - if so, clear state and start fresh
+        current_suffix = os.environ.get("SUFFIX", "")
+        saved_suffix = self.deployment_summary.get("suffix")
+
+        if saved_suffix is not None and saved_suffix != current_suffix:
+            print_warning(f"SUFFIX changed from '{saved_suffix}' to '{current_suffix}'")
             print_info("🔄 Clearing state and starting fresh deployment...")
             self.clear_state()
         elif self.deployment_summary.get("networks"):
@@ -68,9 +62,9 @@ class ReleaseManager:
             temp_runner.build_contracts()
         
         # Initialize deployment summary if new
-        if not self.deployment_summary.get("version"):
+        if not self.deployment_summary.get("networks"):
             self.deployment_summary = {
-                "version": os.environ.get("VERSION"),
+                "suffix": os.environ.get("SUFFIX", ""),
                 "networks": {},
                 "started_at": time.strftime("%Y-%m-%d %H:%M:%S")
             }
@@ -177,7 +171,8 @@ class ReleaseManager:
     def _print_summary(self):
         """Print a formatted summary of the deployment results"""
         print_section("📊 Deployment Summary")
-        print_info(f"Version: {self.deployment_summary.get('version', 'N/A')}")
+        suffix = self.deployment_summary.get('suffix', '')
+        print_info(f"Suffix: {suffix if suffix else '(none - canonical addresses)'}")
         print_info(f"Started: {self.deployment_summary.get('started_at', 'N/A')}")
         
         if "completed_at" in self.deployment_summary:

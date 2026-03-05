@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {D18, d18} from "../../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
-import "../../../core/spoke/integration/BaseTest.sol";
+import {AssetId, BaseTest, ShareClassId} from "../../../core/spoke/integration/BaseTest.sol";
 
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";

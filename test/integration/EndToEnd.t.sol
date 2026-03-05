@@ -55,11 +55,10 @@ import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
 import {SyncManager} from "../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
-import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {IAsyncVault, IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 
 import {FullDeployer, DeployerInput, noAdaptersInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
 
@@ -267,11 +266,10 @@ contract EndToEndDeployment is Test {
         internal
         returns (LocalAdapter adapter)
     {
-        deploy.labelAddresses(string(abi.encodePacked(vm.toString(localCentrifugeId), "-")));
         deploy.deployFull(
             DeployerInput({
                 centrifugeId: localCentrifugeId,
-                version: bytes32(abi.encodePacked(localCentrifugeId)),
+                suffix: string(abi.encodePacked(localCentrifugeId)),
                 txLimits: defaultTxLimits(),
                 protocolSafe: protocolSafe,
                 opsSafe: protocolSafe,
