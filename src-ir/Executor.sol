@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Multicall} from "../src/misc/Multicall.sol";
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 import {MerkleProofLib} from "../src/misc/libraries/MerkleProofLib.sol";
 
 import {PoolId} from "../src/core/types/PoolId.sol";
 import {ShareClassId} from "../src/core/types/ShareClassId.sol";
+import {IGateway} from "../src/core/messaging/interfaces/IGateway.sol";
 import {IBalanceSheet} from "../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {BatchedMulticall} from "../src/core/utils/BatchedMulticall.sol";
 
 import {IExecutor} from "../src/managers/spoke/interfaces/IExecutor.sol";
 import {IExecutorFactory} from "../src/managers/spoke/interfaces/IExecutorFactory.sol";
@@ -20,7 +21,7 @@ import {VM} from "enso-weiroll/VM.sol";
 /// @dev    Compiled with `via_ir` to handle the weiroll VM's stack depth. The VM only supports
 ///         CALL, STATICCALL, and VALUECALL to external targets (never DELEGATECALL), so the
 ///         Executor's storage (policy mapping) cannot be overwritten by target contracts.
-contract Executor is Multicall, VM, IExecutor {
+contract Executor is BatchedMulticall, VM, IExecutor {
     using CastLib for *;
 
     PoolId public immutable poolId;
@@ -31,7 +32,7 @@ contract Executor is Multicall, VM, IExecutor {
     bool public transient inCallback;
     address public transient activeStrategist;
 
-    constructor(PoolId poolId_, address contractUpdater_) {
+    constructor(PoolId poolId_, address contractUpdater_, IGateway gateway_) BatchedMulticall(gateway_) {
         poolId = poolId_;
         contractUpdater = contractUpdater_;
     }
@@ -73,18 +74,19 @@ contract Executor is Multicall, VM, IExecutor {
         payable
         protected
     {
-        bytes32 root = policy[msg.sender];
+        address sender = msgSender();
+        bytes32 root = policy[sender];
         require(root != bytes32(0), NotAStrategist());
         require(state.length <= 256, StateLengthOverflow());
 
         bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap);
         require(MerkleProofLib.verify(proof, root, scriptHash), InvalidProof());
 
-        activeStrategist = msg.sender;
+        activeStrategist = sender;
         _execute(commands, _copyState(state));
         activeStrategist = address(0);
 
-        emit ExecuteScript(msg.sender, scriptHash);
+        emit ExecuteScript(sender, scriptHash);
     }
 
     /// @inheritdoc IExecutor
@@ -94,8 +96,8 @@ contract Executor is Multicall, VM, IExecutor {
         uint256 stateBitmap,
         bytes32[] calldata proof
     ) external {
-        require(activeStrategist != address(0), NotInExecution());
         require(!inCallback, NestedCallback());
+        require(activeStrategist != address(0), NotInExecution());
         require(state.length <= 256, StateLengthOverflow());
 
         bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap);
@@ -151,19 +153,21 @@ contract Executor is Multicall, VM, IExecutor {
 contract ExecutorFactory is IExecutorFactory {
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
+    IGateway public immutable gateway;
 
     mapping(PoolId poolId => address) public executors;
 
-    constructor(address contractUpdater_, IBalanceSheet balanceSheet_) {
+    constructor(address contractUpdater_, IBalanceSheet balanceSheet_, IGateway gateway_) {
         contractUpdater = contractUpdater_;
         balanceSheet = balanceSheet_;
+        gateway = gateway_;
     }
 
     /// @inheritdoc IExecutorFactory
     function newExecutor(PoolId poolId) external returns (IExecutor) {
         require(balanceSheet.spoke().isPoolActive(poolId), InvalidPoolId());
 
-        Executor executor = new Executor{salt: bytes32(uint256(poolId.raw()))}(poolId, contractUpdater);
+        Executor executor = new Executor{salt: bytes32(uint256(poolId.raw()))}(poolId, contractUpdater, gateway);
         executors[poolId] = address(executor);
 
         emit DeployExecutor(poolId, address(executor));

@@ -8,6 +8,8 @@ import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 
+import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
+
 import {IExecutor} from "../../../../src/managers/spoke/interfaces/IExecutor.sol";
 import {IExecutorFactory} from "../../../../src/managers/spoke/interfaces/IExecutorFactory.sol";
 
@@ -58,12 +60,15 @@ contract ExecutorTest is Test {
     address contractUpdater = makeAddr("contractUpdater");
     address strategist = makeAddr("strategist");
     address unauthorized = makeAddr("unauthorized");
+    IGateway gateway = IGateway(makeAddr("gateway"));
 
     IExecutor executor;
     WeirollTarget target;
 
     function setUp() public virtual {
-        executor = IExecutor(deployCode("out-ir/Executor.sol/Executor.json", abi.encode(POOL_A, contractUpdater)));
+        executor = IExecutor(
+            deployCode("out-ir/Executor.sol/Executor.json", abi.encode(POOL_A, contractUpdater, address(gateway)))
+        );
         target = new WeirollTarget();
     }
 
@@ -884,6 +889,7 @@ contract ExecutorFactoryTest is Test {
     PoolId constant POOL_B = PoolId.wrap(2);
 
     address contractUpdater = makeAddr("contractUpdater");
+    IGateway gateway = IGateway(makeAddr("gateway"));
     IBalanceSheet balanceSheet;
     ISpoke spoke;
     IExecutorFactory factory;
@@ -895,13 +901,17 @@ contract ExecutorFactoryTest is Test {
         vm.mockCall(address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.spoke.selector), abi.encode(spoke));
 
         factory = IExecutorFactory(
-            deployCode("out-ir/Executor.sol/ExecutorFactory.json", abi.encode(contractUpdater, address(balanceSheet)))
+            deployCode(
+                "out-ir/Executor.sol/ExecutorFactory.json",
+                abi.encode(contractUpdater, address(balanceSheet), address(gateway))
+            )
         );
     }
 
     function testConstructor() public view {
         assertEq(factory.contractUpdater(), contractUpdater);
         assertEq(address(factory.balanceSheet()), address(balanceSheet));
+        assertEq(address(factory.gateway()), address(gateway));
     }
 }
 

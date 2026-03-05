@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IMulticall} from "../../../misc/interfaces/IMulticall.sol";
-
 import {PoolId} from "../../../core/types/PoolId.sol";
+import {IBatchedMulticall} from "../../../core/utils/interfaces/IBatchedMulticall.sol";
 import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUpdate.sol";
 
-interface IExecutor is IMulticall, ITrustedContractUpdate {
+interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
     event UpdatePolicy(address indexed strategist, bytes32 oldRoot, bytes32 newRoot);
     event ExecuteScript(address indexed strategist, bytes32 scriptHash);
 
