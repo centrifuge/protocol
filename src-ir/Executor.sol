@@ -142,7 +142,9 @@ contract Executor is Multicall, VM, IExecutor {
         }
 
         return keccak256(
-            abi.encodePacked(keccak256(abi.encodePacked(commands)), keccak256(abi.encodePacked(hashes)), stateBitmap)
+            abi.encodePacked(
+                keccak256(abi.encodePacked(commands)), keccak256(abi.encodePacked(hashes)), stateBitmap, state.length
+            )
         );
     }
 }

@@ -135,7 +135,9 @@ contract ExecutorTest is Test {
         returns (bytes32)
     {
         return keccak256(
-            abi.encodePacked(keccak256(abi.encodePacked(commands)), _hashFixedState(state, stateBitmap), stateBitmap)
+            abi.encodePacked(
+                keccak256(abi.encodePacked(commands)), _hashFixedState(state, stateBitmap), stateBitmap, state.length
+            )
         );
     }
 
@@ -385,12 +387,7 @@ contract ExecutorExecuteTests is ExecutorTest {
         uint256 bitmapB = 1;
         bytes32 leafB = _computeScriptHash(commandsB, stateB, bitmapB);
 
-        bytes32 root;
-        if (uint256(leafA) < uint256(leafB)) {
-            root = keccak256(abi.encodePacked(leafA, leafB));
-        } else {
-            root = keccak256(abi.encodePacked(leafB, leafA));
-        }
+        bytes32 root = _merkleRoot2(leafA, leafB);
 
         _setPolicy(strategist, root);
 
