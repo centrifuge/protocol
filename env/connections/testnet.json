@@ -10,8 +10,8 @@
         },
         {
             "chains": [["hyper-evm-testnet"], "ALL"],
-            "adapters": [],
-            "threshold": 0
+            "adapters": ["layerZero"],
+            "threshold": 1
         }
     ]
 }
