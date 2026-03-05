@@ -15,6 +15,7 @@ interface IExecutor is IMulticall, ITrustedContractUpdate {
     error InvalidPoolId();
     error NotAuthorized();
     error StateLengthOverflow();
+    error Reentrancy();
 
     function poolId() external view returns (PoolId);
     function contractUpdater() external view returns (address);

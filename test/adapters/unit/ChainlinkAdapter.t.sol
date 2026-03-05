@@ -13,7 +13,16 @@ import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHa
 import "forge-std/Test.sol";
 
 import {ChainlinkAdapter} from "../../../src/adapters/ChainlinkAdapter.sol";
-import { IChainlinkAdapter, IAdapter, ChainlinkSource, ChainlinkDestination, IRouterClient, IClient, GENERIC_EXTRA_ARGS_V2_TAG, IAny2EVMMessageReceiver } from "../../../src/adapters/interfaces/IChainlinkAdapter.sol";
+import {
+    IChainlinkAdapter,
+    IAdapter,
+    ChainlinkSource,
+    ChainlinkDestination,
+    IRouterClient,
+    IClient,
+    GENERIC_EXTRA_ARGS_V2_TAG,
+    IAny2EVMMessageReceiver
+} from "../../../src/adapters/interfaces/IChainlinkAdapter.sol";
 
 contract MockCCIPRouter is Mock {
     function isChainSupported(uint64 chainSelector) external pure returns (bool) {

@@ -10,7 +10,12 @@ import {IAsyncDepositManager} from "./interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "./interfaces/IBaseRequestManager.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "./interfaces/IAsyncVault.sol";
 import {RequestCallbackType, RequestCallbackMessageLib} from "./libraries/RequestCallbackMessageLib.sol";
-import { IAsyncRequestManager, AsyncInvestmentState, REASON_DEPOSIT, REASON_REDEEM } from "./interfaces/IVaultManagers.sol";
+import {
+    IAsyncRequestManager,
+    AsyncInvestmentState,
+    REASON_DEPOSIT,
+    REASON_REDEEM
+} from "./interfaces/IVaultManagers.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";

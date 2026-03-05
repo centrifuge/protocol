@@ -7,7 +7,27 @@ import {IERC20} from "../../src/misc/interfaces/IERC20.sol";
 import "forge-std/Test.sol";
 
 import {V2CleaningsSpell} from "../../src/spell/V2CleaningsSpell.sol";
-import { V2CleaningsSpell, ROOT_V2, ROOT_V3, CFG, WCFG, WCFG_MULTISIG, CHAINBRIDGE_ERC20_HANDLER, CREATE3_PROXY, IOU_CFG, ETHEREUM_CHAIN_ID, BASE_CHAIN_ID, ARBITRUM_CHAIN_ID, TRANCHE_JAAA, TRANCHE_JTRSY, TREASURY, ESCROW_V2, USDC_ETHEREUM, USDC_BASE, USDC_ARBITRUM } from "../../src/spell/V2CleaningsSpell.sol";
+import {
+    V2CleaningsSpell,
+    ROOT_V2,
+    ROOT_V3,
+    CFG,
+    WCFG,
+    WCFG_MULTISIG,
+    CHAINBRIDGE_ERC20_HANDLER,
+    CREATE3_PROXY,
+    IOU_CFG,
+    ETHEREUM_CHAIN_ID,
+    BASE_CHAIN_ID,
+    ARBITRUM_CHAIN_ID,
+    TRANCHE_JAAA,
+    TRANCHE_JTRSY,
+    TREASURY,
+    ESCROW_V2,
+    USDC_ETHEREUM,
+    USDC_BASE,
+    USDC_ARBITRUM
+} from "../../src/spell/V2CleaningsSpell.sol";
 
 contract V2CleaningsSpellTest is Test {
     address constant PROTOCOL_GUARDIAN_V3_1 = 0xCEb7eD5d5B3bAD3088f6A1697738B60d829635c6;

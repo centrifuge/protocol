@@ -22,7 +22,6 @@ contract ReceiptTokenTest is Test {
     PoolId constant POOL_B = PoolId.wrap(2);
 
     address factoryAddr = makeAddr("factory");
-    bytes32 initCodeHash = keccak256("mockInitCode");
 
     ReceiptToken token;
 
@@ -33,34 +32,25 @@ contract ReceiptTokenTest is Test {
 
     uint256 tokenIdA;
     uint256 tokenIdB;
-    address executorA;
-    address executorB;
+    address executorA = makeAddr("executorA");
+    address executorB = makeAddr("executorB");
 
     function setUp() public virtual {
-        token = new ReceiptToken(factoryAddr, initCodeHash);
+        token = new ReceiptToken(IExecutorFactory(factoryAddr));
 
         tokenIdA = token.toTokenId(POOL_A, asset);
         tokenIdB = token.toTokenId(POOL_B, asset);
 
-        executorA = _predictExecutor(POOL_A);
-        executorB = _predictExecutor(POOL_B);
-    }
-
-    function _predictExecutor(PoolId poolId) internal view returns (address) {
-        return address(
-            uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(bytes1(0xff), factoryAddr, bytes32(uint256(poolId.raw())), initCodeHash)
-                    )
-                )
-            )
+        vm.mockCall(
+            factoryAddr, abi.encodeWithSelector(IExecutorFactory.executors.selector, POOL_A), abi.encode(executorA)
+        );
+        vm.mockCall(
+            factoryAddr, abi.encodeWithSelector(IExecutorFactory.executors.selector, POOL_B), abi.encode(executorB)
         );
     }
 
     function _mint(address to, uint256 id, uint256 amount) internal {
-        PoolId poolId = PoolId.wrap(uint64(id >> 160));
-        vm.prank(_predictExecutor(poolId));
+        vm.prank(PoolId.wrap(uint64(id >> 160)).raw() == POOL_A.raw() ? executorA : executorB);
         token.mint(to, id, amount);
     }
 }
@@ -69,12 +59,11 @@ contract ReceiptTokenTest is Test {
 
 contract ReceiptTokenConstructorTest is ReceiptTokenTest {
     function testConstructor() public view {
-        assertEq(token.factory(), factoryAddr);
-        assertEq(token.executorInitCodeHash(), initCodeHash);
+        assertEq(address(token.factory()), factoryAddr);
     }
 }
 
-// ─── Access Control (CREATE2) ────────────────────────────────────────────────
+// ─── Access Control ──────────────────────────────────────────────────────────
 
 contract ReceiptTokenAccessControlTest is ReceiptTokenTest {
     function testMintFromCorrectExecutor() public {
@@ -340,12 +329,7 @@ contract ReceiptTokenFactoryIntegrationTest is Test {
             deployCode("out-ir/Executor.sol/ExecutorFactory.json", abi.encode(contractUpdater, address(balanceSheet)))
         );
 
-        // Compute init code hash from the artifact
-        bytes memory executorCreationCode = vm.getCode("out-ir/Executor.sol/Executor.json");
-        bytes memory initCode = abi.encodePacked(executorCreationCode, abi.encode(POOL_A, contractUpdater));
-        bytes32 executorInitCodeHash = keccak256(initCode);
-
-        token = new ReceiptToken(address(factory), executorInitCodeHash);
+        token = new ReceiptToken(factory);
     }
 
     function testFactoryDeployedExecutorCanMint() public {

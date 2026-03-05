@@ -24,6 +24,7 @@ interface ISlippageGuard is ITrustedContractUpdate {
     error SlippageExceeded(uint256 withdrawn, uint256 deposited, uint16 maxBps);
     error PeriodLossExceeded(uint256 accumulated, uint16 maxBps);
     error NotOpen();
+    error NotOpener();
     error NotAuthorized();
 
     event SetConfig(PoolId indexed poolId, ShareClassId indexed scId, uint16 maxPeriodLossBps, uint32 periodDuration);

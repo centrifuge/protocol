@@ -93,6 +93,25 @@ contract SlippageGuardCloseWithoutOpenTest is SlippageGuardTest {
     }
 }
 
+// --- Opener check ---
+
+contract SlippageGuardOpenerTest is SlippageGuardTest {
+    function testCloseFromDifferentCallerReverts() public {
+        _mockBalance(assetA, 0, 1000e18);
+        guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
+
+        vm.expectRevert(ISlippageGuard.NotOpener.selector);
+        vm.prank(makeAddr("attacker"));
+        guard.close(POOL_A, SC_1, 100);
+    }
+
+    function testCloseFromSameCallerSucceeds() public {
+        _mockBalance(assetA, 0, 1000e18);
+        guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
+        guard.close(POOL_A, SC_1, 100);
+    }
+}
+
 // --- Slippage within bounds (swap scenarios) ---
 
 contract SlippageGuardWithinBoundsTest is SlippageGuardTest {

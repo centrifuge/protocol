@@ -12,7 +12,12 @@ import {Gateway} from "../../../src/core/messaging/Gateway.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IProtocolPauser} from "../../../src/core/messaging/interfaces/IProtocolPauser.sol";
 import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
-import { IGateway, PROCESS_FAIL_MESSAGE_GAS, MESSAGE_MAX_LENGTH, ERR_MAX_LENGTH } from "../../../src/core/messaging/interfaces/IGateway.sol";
+import {
+    IGateway,
+    PROCESS_FAIL_MESSAGE_GAS,
+    MESSAGE_MAX_LENGTH,
+    ERR_MAX_LENGTH
+} from "../../../src/core/messaging/interfaces/IGateway.sol";
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 

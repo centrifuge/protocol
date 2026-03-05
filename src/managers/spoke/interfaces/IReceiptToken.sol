@@ -5,14 +5,13 @@ import {IERC6909ExclOperator, IERC6909Decimals} from "../../../misc/interfaces/I
 
 import {PoolId} from "../../../core/types/PoolId.sol";
 
+import {IExecutorFactory} from "./IExecutorFactory.sol";
+
 interface IReceiptToken is IERC6909ExclOperator, IERC6909Decimals {
     error NotPoolExecutor();
 
-    /// @notice The ExecutorFactory address (CREATE2 deployer).
-    function factory() external view returns (address);
-
-    /// @notice The init code hash of the Executor contract, used for CREATE2 prediction.
-    function executorInitCodeHash() external view returns (bytes32);
+    /// @notice The ExecutorFactory that tracks executor deployments.
+    function factory() external view returns (IExecutorFactory);
 
     /// @notice Mint new tokens for a specific tokenId and assign them to an owner.
     function mint(address owner, uint256 tokenId, uint256 amount) external;

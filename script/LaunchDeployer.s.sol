@@ -3,7 +3,17 @@ pragma solidity 0.8.28;
 
 import {CoreInput, makeSalt} from "./CoreDeployer.s.sol";
 import {EnvConfig, Env, prettyEnvString} from "./utils/EnvConfig.s.sol";
-import { FullInput, FullActionBatcher, FullDeployer, AdaptersInput, WormholeInput, AxelarInput, LayerZeroInput, ChainlinkInput, AdapterConnections } from "./FullDeployer.s.sol";
+import {
+    FullInput,
+    FullActionBatcher,
+    FullDeployer,
+    AdaptersInput,
+    WormholeInput,
+    AxelarInput,
+    LayerZeroInput,
+    ChainlinkInput,
+    AdapterConnections
+} from "./FullDeployer.s.sol";
 
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 

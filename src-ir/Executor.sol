@@ -28,6 +28,8 @@ contract Executor is Multicall, VM, IExecutor {
 
     mapping(address strategist => bytes32 root) public policy;
 
+    bool private _executing;
+
     constructor(PoolId poolId_, address contractUpdater_) {
         poolId = poolId_;
         contractUpdater = contractUpdater_;
@@ -69,6 +71,9 @@ contract Executor is Multicall, VM, IExecutor {
         external
         payable
     {
+        require(!_executing, Reentrancy());
+        _executing = true;
+
         bytes32 root = policy[msg.sender];
         require(root != bytes32(0), NotAStrategist());
         require(state.length <= 256, StateLengthOverflow());
@@ -83,6 +88,8 @@ contract Executor is Multicall, VM, IExecutor {
         }
 
         _execute(commands, mState);
+
+        _executing = false;
 
         emit ExecuteScript(msg.sender, scriptHash);
     }
@@ -113,6 +120,8 @@ contract ExecutorFactory is IExecutorFactory {
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
 
+    mapping(PoolId poolId => address) public executors;
+
     constructor(address contractUpdater_, IBalanceSheet balanceSheet_) {
         contractUpdater = contractUpdater_;
         balanceSheet = balanceSheet_;
@@ -123,6 +132,7 @@ contract ExecutorFactory is IExecutorFactory {
         require(balanceSheet.spoke().isPoolActive(poolId), InvalidPoolId());
 
         Executor executor = new Executor{salt: bytes32(uint256(poolId.raw()))}(poolId, contractUpdater);
+        executors[poolId] = address(executor);
 
         emit DeployExecutor(poolId, address(executor));
         return IExecutor(address(executor));

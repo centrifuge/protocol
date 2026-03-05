@@ -24,6 +24,7 @@ import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdat
 contract SlippageGuard is ISlippageGuard {
     bytes32 internal constant ASSETS_SLOT = keccak256("slippageGuard.assets");
     bytes32 internal constant TOKEN_IDS_SLOT = keccak256("slippageGuard.tokenIds");
+    bytes32 internal constant OPENER_SLOT = keccak256("slippageGuard.opener");
 
     ISpoke public immutable spoke;
     IBalanceSheet public immutable balanceSheet;
@@ -57,6 +58,12 @@ contract SlippageGuard is ISlippageGuard {
 
     /// @inheritdoc ISlippageGuard
     function open(PoolId poolId, ShareClassId scId, AssetEntry[] calldata assets) external {
+        if (TransientArrayLib.length(ASSETS_SLOT) > 0) {
+            TransientArrayLib.clear(ASSETS_SLOT);
+            TransientArrayLib.clear(TOKEN_IDS_SLOT);
+        }
+        TransientStorageLib.tstore(OPENER_SLOT, uint256(uint160(msg.sender)));
+
         for (uint256 i; i < assets.length; i++) {
             address asset = assets[i].asset;
             uint256 tokenId = assets[i].tokenId;
@@ -73,6 +80,7 @@ contract SlippageGuard is ISlippageGuard {
     /// @inheritdoc ISlippageGuard
     function close(PoolId poolId, ShareClassId scId, uint16 maxSlippageBps) external {
         require(TransientArrayLib.length(ASSETS_SLOT) > 0, NotOpen());
+        require(msg.sender == address(uint160(TransientStorageLib.tloadUint256(OPENER_SLOT))), NotOpener());
 
         uint8 poolDecimals = IERC20Metadata(address(spoke.shareToken(poolId, scId))).decimals();
         (uint256 withdrawn, uint256 deposited, uint256 totalPreValue) = _computeDeltas(poolId, scId, poolDecimals);

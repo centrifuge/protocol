@@ -3,7 +3,15 @@ pragma solidity 0.8.28;
 
 import {RequestCallbackMessageLib} from "./libraries/RequestCallbackMessageLib.sol";
 import {RequestMessageLib, RequestType as RequestMessageType} from "./libraries/RequestMessageLib.sol";
-import { IBatchRequestManager, EpochInvestAmounts, EpochRedeemAmounts, UserOrder, QueuedOrder, RequestType, EpochId } from "./interfaces/IBatchRequestManager.sol";
+import {
+    IBatchRequestManager,
+    EpochInvestAmounts,
+    EpochRedeemAmounts,
+    UserOrder,
+    QueuedOrder,
+    RequestType,
+    EpochId
+} from "./interfaces/IBatchRequestManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
