@@ -25,6 +25,8 @@ contract SlippageGuard is ISlippageGuard {
     bytes32 internal constant ASSETS_SLOT = keccak256("slippageGuard.assets");
     bytes32 internal constant TOKEN_IDS_SLOT = keccak256("slippageGuard.tokenIds");
     bytes32 internal constant OPENER_SLOT = keccak256("slippageGuard.opener");
+    bytes32 internal constant POOL_ID_SLOT = keccak256("slippageGuard.poolId");
+    bytes32 internal constant SC_ID_SLOT = keccak256("slippageGuard.scId");
 
     ISpoke public immutable spoke;
     IBalanceSheet public immutable balanceSheet;
@@ -47,9 +49,9 @@ contract SlippageGuard is ISlippageGuard {
     function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external {
         require(msg.sender == contractUpdater, NotAuthorized());
 
-        (uint16 maxPeriodLossBps, uint32 periodDuration) = abi.decode(payload, (uint16, uint32));
-        config[poolId][scId] = SlippageConfig(maxPeriodLossBps, periodDuration);
-        emit SetConfig(poolId, scId, maxPeriodLossBps, periodDuration);
+        (uint128 maxPeriodLoss, uint32 periodDuration) = abi.decode(payload, (uint128, uint32));
+        config[poolId][scId] = SlippageConfig(maxPeriodLoss, periodDuration);
+        emit SetConfig(poolId, scId, maxPeriodLoss, periodDuration);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -63,6 +65,8 @@ contract SlippageGuard is ISlippageGuard {
             TransientArrayLib.clear(TOKEN_IDS_SLOT);
         }
         TransientStorageLib.tstore(OPENER_SLOT, uint256(uint160(msg.sender)));
+        TransientStorageLib.tstore(POOL_ID_SLOT, uint256(poolId.raw()));
+        TransientStorageLib.tstore(SC_ID_SLOT, uint256(uint128(ShareClassId.unwrap(scId))));
 
         for (uint256 i; i < assets.length; i++) {
             address asset = assets[i].asset;
@@ -78,18 +82,27 @@ contract SlippageGuard is ISlippageGuard {
     }
 
     /// @inheritdoc ISlippageGuard
+    /// @dev Withdrawn amounts are rounded up and deposited amounts rounded down, so a mathematically
+    ///      zero-slippage swap may produce a phantom loss of up to 1 wei per asset. Consequently,
+    ///      setting `maxSlippageBps = 0` effectively disables all swaps. Use at least 1 bps if any
+    ///      balance change is expected.
     function close(PoolId poolId, ShareClassId scId, uint16 maxSlippageBps) external {
         require(TransientArrayLib.length(ASSETS_SLOT) > 0, NotOpen());
         require(msg.sender == address(uint160(TransientStorageLib.tloadUint256(OPENER_SLOT))), NotOpener());
+        require(
+            poolId.raw() == uint64(TransientStorageLib.tloadUint256(POOL_ID_SLOT))
+                && ShareClassId.unwrap(scId) == bytes16(uint128(TransientStorageLib.tloadUint256(SC_ID_SLOT))),
+            ContextMismatch()
+        );
 
         uint8 poolDecimals = IERC20Metadata(address(spoke.shareToken(poolId, scId))).decimals();
-        (uint256 withdrawn, uint256 deposited, uint256 totalPreValue) = _computeDeltas(poolId, scId, poolDecimals);
+        (uint256 withdrawn, uint256 deposited) = _computeDeltas(poolId, scId, poolDecimals);
         if (withdrawn > 0) {
             uint256 loss = withdrawn > deposited ? withdrawn - deposited : 0;
             require(loss <= withdrawn * maxSlippageBps / 10_000, SlippageExceeded(withdrawn, deposited, maxSlippageBps));
 
             if (loss > 0) {
-                _trackPeriodLoss(poolId, scId, loss, totalPreValue);
+                _trackPeriodLoss(poolId, scId, uint128(loss));
             }
         }
 
@@ -104,7 +117,7 @@ contract SlippageGuard is ISlippageGuard {
     function _computeDeltas(PoolId poolId, ShareClassId scId, uint8 poolDecimals)
         internal
         view
-        returns (uint256 withdrawn, uint256 deposited, uint256 totalPreValue)
+        returns (uint256 withdrawn, uint256 deposited)
     {
         bytes32[] memory assets = TransientArrayLib.getBytes32(ASSETS_SLOT);
         bytes32[] memory tokenIds = TransientArrayLib.getBytes32(TOKEN_IDS_SLOT);
@@ -120,10 +133,6 @@ contract SlippageGuard is ISlippageGuard {
             uint8 assetDecimals =
                 tokenId == 0 ? IERC20Metadata(asset).decimals() : IERC6909MetadataExt(asset).decimals(tokenId);
 
-            totalPreValue += PricingLib.assetToPoolAmount(
-                pre, assetDecimals, poolDecimals, price, MathLib.Rounding.Down
-            );
-
             if (post < pre) {
                 withdrawn += PricingLib.assetToPoolAmount(
                     pre - post, assetDecimals, poolDecimals, price, MathLib.Rounding.Up
@@ -136,23 +145,20 @@ contract SlippageGuard is ISlippageGuard {
         }
     }
 
-    function _trackPeriodLoss(PoolId poolId, ShareClassId scId, uint256 loss, uint256 totalPreValue) internal {
+    /// @dev Tracks absolute loss in pool units.
+    function _trackPeriodLoss(PoolId poolId, ShareClassId scId, uint128 loss) internal {
         SlippageConfig storage cfg = config[poolId][scId];
         if (cfg.periodDuration == 0) return;
 
-        uint256 lossFraction = loss * 1e18 / totalPreValue;
         PeriodState storage ps = period[poolId][scId];
 
         if (block.timestamp >= ps.periodStart + cfg.periodDuration) {
-            ps.cumulativeLoss = lossFraction;
+            ps.cumulativeLoss = loss;
             ps.periodStart = uint48(block.timestamp);
         } else {
-            ps.cumulativeLoss += lossFraction;
+            ps.cumulativeLoss += loss;
         }
 
-        require(
-            ps.cumulativeLoss <= uint256(cfg.maxPeriodLossBps) * 1e18 / 10_000,
-            PeriodLossExceeded(ps.cumulativeLoss, cfg.maxPeriodLossBps)
-        );
+        require(ps.cumulativeLoss <= cfg.maxPeriodLoss, PeriodLossExceeded(ps.cumulativeLoss, cfg.maxPeriodLoss));
     }
 }

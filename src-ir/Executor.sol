@@ -16,7 +16,7 @@ import {VM} from "enso-weiroll/VM.sol";
 
 /// @title  Executor
 /// @notice Weiroll VM-based execution engine with script-level Merkle authorization and a state bitmap
-///         for selectively fixing governance-approved state elements.
+///         for selectively fixing hub-manager-approved state elements.
 /// @dev    Compiled with `via_ir` to handle the weiroll VM's stack depth. The VM only supports
 ///         CALL, STATICCALL, and VALUECALL to external targets (never DELEGATECALL), so the
 ///         Executor's storage (policy mapping) cannot be overwritten by target contracts.

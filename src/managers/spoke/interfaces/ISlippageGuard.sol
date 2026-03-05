@@ -11,23 +11,24 @@ struct AssetEntry {
 }
 
 struct SlippageConfig {
-    uint16 maxPeriodLossBps; // Per-period cumulative max in bps (0 = disabled)
+    uint128 maxPeriodLoss; // Per-period cumulative max in pool units (0 = disabled)
     uint32 periodDuration; // Period window in seconds
 }
 
 struct PeriodState {
-    uint256 cumulativeLoss; // Sum of (loss / totalPreValue) per script, 1e18 precision
+    uint128 cumulativeLoss; // Absolute cumulative loss in pool units
     uint48 periodStart;
 }
 
 interface ISlippageGuard is ITrustedContractUpdate {
     error SlippageExceeded(uint256 withdrawn, uint256 deposited, uint16 maxBps);
-    error PeriodLossExceeded(uint256 accumulated, uint16 maxBps);
+    error PeriodLossExceeded(uint128 accumulated, uint128 maxPeriodLoss);
     error NotOpen();
     error NotOpener();
+    error ContextMismatch();
     error NotAuthorized();
 
-    event SetConfig(PoolId indexed poolId, ShareClassId indexed scId, uint16 maxPeriodLossBps, uint32 periodDuration);
+    event SetConfig(PoolId indexed poolId, ShareClassId indexed scId, uint128 maxPeriodLoss, uint32 periodDuration);
 
     //----------------------------------------------------------------------------------------------
     // Functions
@@ -49,6 +50,6 @@ interface ISlippageGuard is ITrustedContractUpdate {
     function config(PoolId poolId, ShareClassId scId)
         external
         view
-        returns (uint16 maxPeriodLossBps, uint32 periodDuration);
-    function period(PoolId poolId, ShareClassId scId) external view returns (uint256 cumulativeLoss, uint48 periodStart);
+        returns (uint128 maxPeriodLoss, uint32 periodDuration);
+    function period(PoolId poolId, ShareClassId scId) external view returns (uint128 cumulativeLoss, uint48 periodStart);
 }

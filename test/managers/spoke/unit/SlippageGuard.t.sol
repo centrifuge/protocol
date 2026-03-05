@@ -110,6 +110,22 @@ contract SlippageGuardOpenerTest is SlippageGuardTest {
         guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
         guard.close(POOL_A, SC_1, 100);
     }
+
+    function testCloseWithDifferentPoolIdReverts() public {
+        _mockBalance(assetA, 0, 1000e18);
+        guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
+
+        vm.expectRevert(ISlippageGuard.ContextMismatch.selector);
+        guard.close(PoolId.wrap(99), SC_1, 100);
+    }
+
+    function testCloseWithDifferentShareClassReverts() public {
+        _mockBalance(assetA, 0, 1000e18);
+        guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
+
+        vm.expectRevert(ISlippageGuard.ContextMismatch.selector);
+        guard.close(POOL_A, ShareClassId.wrap(bytes16("other")), 100);
+    }
 }
 
 // --- Slippage within bounds (swap scenarios) ---
@@ -294,35 +310,35 @@ contract SlippageGuardReopenTest is SlippageGuardTest {
 
 contract SlippageGuardTrustedCallTest is SlippageGuardTest {
     function testSetConfig() public {
-        uint16 maxPeriodLossBps = 500;
+        uint128 maxPeriodLoss = 500e18;
         uint32 periodDuration = 1 days;
 
         vm.expectEmit();
-        emit ISlippageGuard.SetConfig(POOL_A, SC_1, maxPeriodLossBps, periodDuration);
+        emit ISlippageGuard.SetConfig(POOL_A, SC_1, maxPeriodLoss, periodDuration);
 
         vm.prank(contractUpdater);
-        guard.trustedCall(POOL_A, SC_1, abi.encode(maxPeriodLossBps, periodDuration));
+        guard.trustedCall(POOL_A, SC_1, abi.encode(maxPeriodLoss, periodDuration));
 
-        (uint16 storedBps, uint32 storedDuration) = guard.config(POOL_A, SC_1);
-        assertEq(storedBps, maxPeriodLossBps);
+        (uint128 storedLoss, uint32 storedDuration) = guard.config(POOL_A, SC_1);
+        assertEq(storedLoss, maxPeriodLoss);
         assertEq(storedDuration, periodDuration);
     }
 
     function testSetConfigNotAuthorized() public {
         vm.expectRevert(ISlippageGuard.NotAuthorized.selector);
         vm.prank(makeAddr("random"));
-        guard.trustedCall(POOL_A, SC_1, abi.encode(uint16(500), uint32(1 days)));
+        guard.trustedCall(POOL_A, SC_1, abi.encode(uint128(500e18), uint32(1 days)));
     }
 
     function testSetConfigOverwrite() public {
         vm.prank(contractUpdater);
-        guard.trustedCall(POOL_A, SC_1, abi.encode(uint16(500), uint32(1 days)));
+        guard.trustedCall(POOL_A, SC_1, abi.encode(uint128(500e18), uint32(1 days)));
 
         vm.prank(contractUpdater);
-        guard.trustedCall(POOL_A, SC_1, abi.encode(uint16(200), uint32(2 days)));
+        guard.trustedCall(POOL_A, SC_1, abi.encode(uint128(200e18), uint32(2 days)));
 
-        (uint16 storedBps, uint32 storedDuration) = guard.config(POOL_A, SC_1);
-        assertEq(storedBps, 200);
+        (uint128 storedLoss, uint32 storedDuration) = guard.config(POOL_A, SC_1);
+        assertEq(storedLoss, 200e18);
         assertEq(storedDuration, 2 days);
     }
 }
@@ -330,12 +346,15 @@ contract SlippageGuardTrustedCallTest is SlippageGuardTest {
 // --- Period-based cumulative loss ---
 
 contract SlippageGuardPeriodLossTest is SlippageGuardTest {
+    // Max allowed cumulative loss per period: 500e18 pool units
+    uint128 constant MAX_PERIOD_LOSS = 500e18;
+
     function setUp() public override {
         super.setUp();
 
-        // Configure period: 500 bps max over 1 day
+        // Configure period: 500e18 max loss over 1 day
         vm.prank(contractUpdater);
-        guard.trustedCall(POOL_A, SC_1, abi.encode(uint16(500), uint32(1 days)));
+        guard.trustedCall(POOL_A, SC_1, abi.encode(MAX_PERIOD_LOSS, uint32(1 days)));
     }
 
     function _doSwapWithLoss(uint128 preBalance, uint128 postBalance) internal {
@@ -355,62 +374,62 @@ contract SlippageGuardPeriodLossTest is SlippageGuardTest {
         // Warp past the initial period so the first close sets periodStart
         vm.warp(block.timestamp + 1 days + 1);
 
-        // Script 1: 1% loss (well within 5% period limit)
+        // Script 1: loss = 10e18 pool units (within 500e18 limit)
         _doSwapWithLoss(1000e18, 990e18);
 
-        (uint256 loss, uint48 start) = guard.period(POOL_A, SC_1);
-        assertGt(loss, 0);
+        (uint128 loss, uint48 start) = guard.period(POOL_A, SC_1);
+        assertEq(loss, 10e18);
         assertEq(start, uint48(block.timestamp));
 
-        // Script 2: another 1% loss (cumulative 2%, still within 5%)
+        // Script 2: another 9.9e18 loss (cumulative 19.9e18, well within 500e18)
         _doSwapWithLoss(990e18, 980.1e18);
     }
 
     function testCumulativeLossExceedsBounds() public {
-        // Script 1: 3% loss
-        _doSwapWithLoss(1000e18, 970e18);
+        // Script 1: loss = 300e18 (within 500e18 limit)
+        _doSwapWithLoss(1000e18, 700e18);
 
-        // Script 2: another 3% loss — cumulative ~6% > 5% limit
-        _mockBalance(assetA, 0, 970e18);
+        // Script 2: loss = 210e18 — cumulative 510e18 > 500e18 limit
+        _mockBalance(assetA, 0, 700e18);
         _mockBalance(assetB, 0, 0);
 
         guard.open(POOL_A, SC_1, _twoAssetEntries(assetA, assetB));
 
         _mockBalance(assetA, 0, 0);
-        _mockBalance(assetB, 0, 940.9e18);
+        _mockBalance(assetB, 0, 490e18);
 
         vm.expectRevert();
         guard.close(POOL_A, SC_1, 10_000);
     }
 
     function testPeriodResetsAfterDuration() public {
-        // Script 1: 4% loss (within 5%)
-        _doSwapWithLoss(1000e18, 960e18);
+        // Script 1: loss = 400e18 (within 500e18)
+        _doSwapWithLoss(1000e18, 600e18);
 
-        (uint256 lossBefore,) = guard.period(POOL_A, SC_1);
-        assertGt(lossBefore, 0);
+        (uint128 lossBefore,) = guard.period(POOL_A, SC_1);
+        assertEq(lossBefore, 400e18);
 
         // Warp past period duration
         vm.warp(block.timestamp + 1 days + 1);
 
-        // Script 2: 4% loss again — period resets, so this starts fresh
-        _doSwapWithLoss(960e18, 921.6e18);
+        // Script 2: loss = 400e18 again — period resets, so this starts fresh
+        _doSwapWithLoss(600e18, 200e18);
 
-        (uint256 lossAfter, uint48 newStart) = guard.period(POOL_A, SC_1);
-        // After reset, loss should be just the new script's fraction (not accumulated)
-        assertLt(lossAfter, lossBefore + lossAfter);
+        (uint128 lossAfter, uint48 newStart) = guard.period(POOL_A, SC_1);
+        // After reset, loss should be just the new script's loss (not accumulated)
+        assertEq(lossAfter, 400e18);
         assertEq(newStart, uint48(block.timestamp));
     }
 
     function testPeriodDisabledWhenZeroDuration() public {
         // Override config with zero duration (disabled)
         vm.prank(contractUpdater);
-        guard.trustedCall(POOL_A, SC_1, abi.encode(uint16(500), uint32(0)));
+        guard.trustedCall(POOL_A, SC_1, abi.encode(uint128(500e18), uint32(0)));
 
-        // Even with 10% loss, no PeriodLossExceeded because tracking is disabled
+        // Even with large loss, no PeriodLossExceeded because tracking is disabled
         _doSwapWithLoss(1000e18, 900e18);
 
-        // Second script with 10% loss — still no revert
+        // Second script with large loss — still no revert
         _doSwapWithLoss(900e18, 810e18);
     }
 }
