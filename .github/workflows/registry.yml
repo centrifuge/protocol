@@ -192,7 +192,7 @@ jobs:
           fi
           echo "testnet_changed=$testnet_changed" >> $GITHUB_OUTPUT
       - name: Update Cloudflare Web3 URL
-        if: steps.upload_to_ipfs.outputs.mainnet != '' || steps.upload_to_ipfs.outputs.testnet != ''
+        if: steps.upload_to_ipfs.outputs.mainnet_changed == 'true' || steps.upload_to_ipfs.outputs.testnet_changed == 'true'
         env:
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
