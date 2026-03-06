@@ -3,7 +3,12 @@ pragma solidity 0.8.28;
 
 /// @author Adapted from Boring Vaults from Se7en-Seas
 library MerkleTreeLib {
+    error NoLeaves();
+    error LeafNotFoundInTree();
+
     function generateMerkleTree(bytes32[] memory inputLeafs) internal pure returns (bytes32[][] memory tree) {
+        require(inputLeafs.length > 0, NoLeaves());
+
         uint256 leafsLength = inputLeafs.length;
         bytes32[][] memory leafs = new bytes32[][](1);
 
@@ -49,9 +54,11 @@ library MerkleTreeLib {
         }
         merkleTreeOut[merkleTreeIn_length] = new bytes32[](next_layer_length);
         uint256 count;
+        uint256 last = merkleTreeIn_length - 1;
         for (uint256 i; i < layer_length; i += 2) {
-            merkleTreeOut[merkleTreeIn_length][count] =
-                _hashPair(merkleTreeIn[merkleTreeIn_length - 1][i], merkleTreeIn[merkleTreeIn_length - 1][i + 1]);
+            // When layer_length is odd, duplicate the last element as its own sibling
+            bytes32 right = (i + 1 < layer_length) ? merkleTreeIn[last][i + 1] : merkleTreeIn[last][i];
+            merkleTreeOut[merkleTreeIn_length][count] = _hashPair(merkleTreeIn[last][i], right);
             count++;
         }
 
@@ -81,18 +88,24 @@ library MerkleTreeLib {
 
         // Build the proof
         for (uint256 i; i < tree_length - 1; ++i) {
+            uint256 layerLen = tree[i].length;
+            bool found = false;
             // For each layer we need to find the leaf.
-            for (uint256 j; j < tree[i].length; ++j) {
+            for (uint256 j; j < layerLen; ++j) {
                 if (leaf == tree[i][j]) {
+                    found = true;
                     // We have found the leaf, so now figure out if the proof needs the next leaf or the previous one.
-                    proof[i] = j % 2 == 0 ? tree[i][j + 1] : tree[i][j - 1];
+                    // Guard against out-of-bounds: when j is even and j+1 >= layerLen, duplicate the node itself
+                    if (j % 2 == 0) {
+                        proof[i] = (j + 1 < layerLen) ? tree[i][j + 1] : tree[i][j];
+                    } else {
+                        proof[i] = tree[i][j - 1];
+                    }
                     leaf = _hashPair(leaf, proof[i]);
                     break;
-                } else if (j == tree[i].length - 1) {
-                    // We have reached the end of the layer and have not found the leaf.
-                    revert("Leaf not found in tree");
                 }
             }
+            require(found, LeafNotFoundInTree());
         }
     }
 }
