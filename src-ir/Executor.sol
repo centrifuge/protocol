@@ -31,6 +31,7 @@ contract Executor is BatchedMulticall, VM, IExecutor {
 
     bool public transient inCallback;
     address public transient activeStrategist;
+    bytes32 public transient expectedCallback;
 
     constructor(PoolId poolId_, address contractUpdater_, IGateway gateway_) BatchedMulticall(gateway_) {
         poolId = poolId_;
@@ -69,45 +70,42 @@ contract Executor is BatchedMulticall, VM, IExecutor {
     // ──────────────────────────────────────────────────────────────────────────
 
     /// @inheritdoc IExecutor
-    function execute(bytes32[] calldata commands, bytes[] calldata state, uint256 stateBitmap, bytes32[] calldata proof)
-        external
-        payable
-        protected
-    {
+    function execute(
+        bytes32[] calldata commands,
+        bytes[] calldata state,
+        uint256 stateBitmap,
+        bytes32 callbackHash,
+        bytes32[] calldata proof
+    ) external payable protected {
         address sender = msgSender();
         bytes32 root = policy[sender];
         require(root != bytes32(0), NotAStrategist());
         require(state.length <= 256, StateLengthOverflow());
 
-        bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap);
+        bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, callbackHash);
         require(MerkleProofLib.verify(proof, root, scriptHash), InvalidProof());
 
         activeStrategist = sender;
+        expectedCallback = callbackHash;
         _execute(commands, _copyState(state));
         activeStrategist = address(0);
+        expectedCallback = bytes32(0);
 
         emit ExecuteScript(sender, scriptHash);
     }
 
     /// @inheritdoc IExecutor
-    function executeCallback(
-        bytes32[] calldata commands,
-        bytes[] calldata state,
-        uint256 stateBitmap,
-        bytes32[] calldata proof
-    ) external {
+    function executeCallback(bytes32[] calldata commands, bytes[] calldata state, uint256 stateBitmap) external {
         require(!inCallback, NestedCallback());
-        require(activeStrategist != address(0), NotInExecution());
         require(state.length <= 256, StateLengthOverflow());
+        require(activeStrategist != address(0), NotInExecution());
 
-        bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap);
-        require(MerkleProofLib.verify(proof, policy[activeStrategist], scriptHash), InvalidProof());
+        bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, bytes32(0));
+        require(scriptHash == expectedCallback, InvalidCallback());
 
         inCallback = true;
         _execute(commands, _copyState(state));
         inCallback = false;
-
-        emit ExecuteScript(activeStrategist, scriptHash);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -122,11 +120,12 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         }
     }
 
-    function _computeScriptHash(bytes32[] calldata commands, bytes[] calldata state, uint256 stateBitmap)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function _computeScriptHash(
+        bytes32[] calldata commands,
+        bytes[] calldata state,
+        uint256 stateBitmap,
+        bytes32 callbackHash
+    ) internal pure returns (bytes32) {
         uint256 count;
         for (uint256 i; i < state.length; i++) {
             if (stateBitmap & (1 << i) != 0) count++;
@@ -142,7 +141,11 @@ contract Executor is BatchedMulticall, VM, IExecutor {
 
         return keccak256(
             abi.encodePacked(
-                keccak256(abi.encodePacked(commands)), keccak256(abi.encodePacked(hashes)), stateBitmap, state.length
+                keccak256(abi.encodePacked(commands)),
+                keccak256(abi.encodePacked(hashes)),
+                stateBitmap,
+                state.length,
+                callbackHash
             )
         );
     }

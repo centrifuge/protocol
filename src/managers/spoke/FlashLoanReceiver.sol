@@ -44,9 +44,9 @@ contract FlashLoanReceiver is IFlashLoanReceiver, IAaveV3FlashLoanReceiver {
         address executor = _executor;
         asset.safeTransfer(executor, amount);
 
-        (bytes32[] memory commands, bytes[] memory state, uint256 stateBitmap, bytes32[] memory proof) =
-            abi.decode(params, (bytes32[], bytes[], uint256, bytes32[]));
-        IExecutor(executor).executeCallback(commands, state, stateBitmap, proof);
+        (bytes32[] memory commands, bytes[] memory state, uint256 stateBitmap) =
+            abi.decode(params, (bytes32[], bytes[], uint256));
+        IExecutor(executor).executeCallback(commands, state, stateBitmap);
 
         // Inner script must have sent repayment tokens back to this contract
         asset.safeApprove(msg.sender, amount + premium);
