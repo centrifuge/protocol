@@ -12,6 +12,7 @@ import {ReceiptToken} from "../../../../src/managers/spoke/ReceiptToken.sol";
 import {IExecutor} from "../../../../src/managers/spoke/interfaces/IExecutor.sol";
 import {IReceiptToken} from "../../../../src/managers/spoke/interfaces/IReceiptToken.sol";
 import {IExecutorFactory} from "../../../../src/managers/spoke/interfaces/IExecutorFactory.sol";
+import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 
 import "forge-std/Test.sol";
 
@@ -309,6 +310,7 @@ contract ReceiptTokenFactoryIntegrationTest is Test {
     PoolId constant POOL_A = PoolId.wrap(1);
 
     address contractUpdater = makeAddr("contractUpdater");
+    address gateway = makeAddr("gateway");
     IBalanceSheet balanceSheet;
     ISpoke spoke;
     IExecutorFactory factory;
@@ -322,7 +324,10 @@ contract ReceiptTokenFactoryIntegrationTest is Test {
         vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
 
         factory = IExecutorFactory(
-            deployCode("out-ir/Executor.sol/ExecutorFactory.json", abi.encode(contractUpdater, address(balanceSheet)))
+            deployCode(
+                "out-ir/Executor.sol/ExecutorFactory.json",
+                abi.encode(contractUpdater, address(balanceSheet), gateway)
+            )
         );
 
         token = new ReceiptToken(factory);
