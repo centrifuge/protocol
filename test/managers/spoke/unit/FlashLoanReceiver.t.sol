@@ -137,7 +137,7 @@ contract FlashLoanReceiverTest is Test {
         token.mint(address(mockExecutor), loanAmount + fee);
 
         // Callback data (will be passed to executeCallback)
-        bytes memory callbackData = abi.encode(new bytes32[](0), new bytes[](0), uint256(0), new bytes32[](0));
+        bytes memory callbackData = abi.encode(new bytes32[](0), new bytes[](0), uint256(0));
 
         receiver.requestFlashLoan(
             IAaveV3Pool(address(pool)), address(token), loanAmount, IExecutor(address(mockExecutor)), callbackData
@@ -176,7 +176,7 @@ contract MockExecutor {
         amount = amount_;
     }
 
-    function executeCallback(bytes32[] calldata, bytes[] calldata, uint256, bytes32[] calldata) external {
+    function executeCallback(bytes32[] calldata, bytes[] calldata, uint256) external {
         // Simulate inner script: transfer tokens back to the receiver for repayment
         MockToken(token).transfer(recipient, amount);
     }
