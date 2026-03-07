@@ -33,13 +33,10 @@ contract FlashLoanReceiver is IFlashLoanReceiver, IAaveV3FlashLoanReceiver {
     }
 
     /// @inheritdoc IAaveV3FlashLoanReceiver
-    function executeOperation(
-        address asset,
-        uint256 amount,
-        uint256 premium,
-        address initiator,
-        bytes calldata params
-    ) external returns (bool) {
+    function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata params)
+        external
+        returns (bool)
+    {
         require(msg.sender == _pool, NotPool());
         require(initiator == address(this), NotInitiator());
         require(_executor != address(0), NotActive());

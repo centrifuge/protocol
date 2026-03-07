@@ -52,15 +52,16 @@ contract MockAavePool {
         uint256 amount,
         bytes calldata params,
         uint16 /* referralCode */
-    ) external {
+    )
+        external
+    {
         // Transfer tokens to receiver
         MockToken(asset).transfer(receiverAddress, amount);
 
         // Call executeOperation on receiver
         uint256 fee = amount * premium / 10_000;
-        bool success = IAaveV3FlashLoanReceiver(receiverAddress).executeOperation(
-            asset, amount, fee, receiverAddress, params
-        );
+        bool success =
+            IAaveV3FlashLoanReceiver(receiverAddress).executeOperation(asset, amount, fee, receiverAddress, params);
         require(success, "Flash loan failed");
 
         // Pull repayment
@@ -99,13 +100,7 @@ contract FlashLoanReceiverTest is Test {
         WrongInitiatorPool wrongPool = new WrongInitiatorPool();
 
         vm.expectRevert(IFlashLoanReceiver.NotInitiator.selector);
-        receiver.requestFlashLoan(
-            IAaveV3Pool(address(wrongPool)),
-            address(token),
-            100,
-            IExecutor(executor),
-            ""
-        );
+        receiver.requestFlashLoan(IAaveV3Pool(address(wrongPool)), address(token), 100, IExecutor(executor), "");
     }
 
     function testExecuteOperationRevertsNotActive() public {
@@ -145,11 +140,7 @@ contract FlashLoanReceiverTest is Test {
         bytes memory callbackData = abi.encode(new bytes32[](0), new bytes[](0), uint256(0), new bytes32[](0));
 
         receiver.requestFlashLoan(
-            IAaveV3Pool(address(pool)),
-            address(token),
-            loanAmount,
-            IExecutor(address(mockExecutor)),
-            callbackData
+            IAaveV3Pool(address(pool)), address(token), loanAmount, IExecutor(address(mockExecutor)), callbackData
         );
 
         // Pool should have been repaid: original + fee
@@ -166,11 +157,11 @@ contract WrongInitiatorPool {
         uint256 amount,
         bytes calldata params,
         uint16 /* referralCode */
-    ) external {
+    )
+        external
+    {
         // Call with wrong initiator (address(0x1) instead of receiverAddress)
-        IAaveV3FlashLoanReceiver(receiverAddress).executeOperation(
-            asset, amount, 0, address(0x1), params
-        );
+        IAaveV3FlashLoanReceiver(receiverAddress).executeOperation(asset, amount, 0, address(0x1), params);
     }
 }
 
@@ -185,12 +176,7 @@ contract MockExecutor {
         amount = amount_;
     }
 
-    function executeCallback(
-        bytes32[] calldata,
-        bytes[] calldata,
-        uint256,
-        bytes32[] calldata
-    ) external {
+    function executeCallback(bytes32[] calldata, bytes[] calldata, uint256, bytes32[] calldata) external {
         // Simulate inner script: transfer tokens back to the receiver for repayment
         MockToken(token).transfer(recipient, amount);
     }

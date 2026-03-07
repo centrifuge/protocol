@@ -826,8 +826,9 @@ contract ExecutorCallbackTests is ExecutorTest {
         // Inner script 1: calls nestedBridge.reenter() which triggers a second executeCallback
         bytes32[] memory inner1Commands = new bytes32[](1);
         bytes6 noInputs = bytes6(uint48(0xFFFFFFFFFFFF));
-        inner1Commands[0] =
-            _buildCommand(NestedCallbackBridge.reenter.selector, uint8(FLAG_CT_CALL), noInputs, 0xff, address(nestedBridge));
+        inner1Commands[0] = _buildCommand(
+            NestedCallbackBridge.reenter.selector, uint8(FLAG_CT_CALL), noInputs, 0xff, address(nestedBridge)
+        );
         bytes[] memory inner1State = new bytes[](0);
         uint256 inner1Bitmap = 0;
         bytes32 inner1Hash = _computeScriptHash(inner1Commands, inner1State, inner1Bitmap);

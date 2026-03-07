@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
-import {IERC6909, IERC6909ExclOperator, IERC6909MetadataExt} from "../../../../src/misc/interfaces/IERC6909.sol";
+import {IERC6909ExclOperator, IERC6909MetadataExt} from "../../../../src/misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
@@ -278,22 +278,6 @@ contract ReceiptTokenTokenIdTest is ReceiptTokenTest {
     function testTokenIdEncodesPoolIdInUpper64() public view {
         uint256 id = token.toTokenId(POOL_A, asset);
         assertEq(uint64(id >> 160), POOL_A.raw());
-    }
-}
-
-// ─── supportsInterface ───────────────────────────────────────────────────────
-
-contract ReceiptTokenSupportsInterfaceTest is ReceiptTokenTest {
-    function testSupportsERC6909() public view {
-        assertTrue(token.supportsInterface(type(IERC6909).interfaceId));
-    }
-
-    function testSupportsERC6909Metadata() public view {
-        assertTrue(token.supportsInterface(type(IERC6909MetadataExt).interfaceId));
-    }
-
-    function testDoesNotSupportRandom() public view {
-        assertFalse(token.supportsInterface(bytes4(0xdeadbeef)));
     }
 }
 

@@ -69,6 +69,8 @@ contract SlippageGuard is ISlippageGuard {
         TransientStorageLib.tstore(POOL_ID_SLOT, uint256(poolId.raw()));
         TransientStorageLib.tstore(SC_ID_SLOT, uint256(uint128(ShareClassId.unwrap(scId))));
 
+        // NOTE: Duplicate asset entries would inflate deposited values and mask losses.
+        // Governance must not approve scripts that pass duplicate assets.
         for (uint256 i; i < assets.length; i++) {
             address asset = assets[i].asset;
             uint256 tokenId = assets[i].tokenId;

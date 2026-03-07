@@ -5,11 +5,9 @@ import {IReceiptToken} from "./interfaces/IReceiptToken.sol";
 import {IExecutorFactory} from "./interfaces/IExecutorFactory.sol";
 
 import {IERC20Metadata} from "../../misc/interfaces/IERC20.sol";
-import {IERC6909, IERC6909ExclOperator, IERC6909MetadataExt} from "../../misc/interfaces/IERC6909.sol";
+import {IERC6909ExclOperator, IERC6909MetadataExt} from "../../misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
-
-import {IERC165} from "forge-std/interfaces/IERC165.sol";
 
 /// @title  ReceiptToken
 /// @notice ERC6909 multi-token representing in-flight async requests. Token IDs encode a pool ID
@@ -95,11 +93,6 @@ contract ReceiptToken is IReceiptToken {
     /// @inheritdoc IERC6909MetadataExt
     function decimals(uint256 id) external view returns (uint8) {
         return IERC20Metadata(address(uint160(id))).decimals();
-    }
-
-    /// @inheritdoc IERC165
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(IERC6909).interfaceId || interfaceId == type(IERC6909MetadataExt).interfaceId;
     }
 
     // ──────────────────────────────────────────────────────────────────────────
