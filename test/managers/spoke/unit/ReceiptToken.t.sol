@@ -325,8 +325,7 @@ contract ReceiptTokenFactoryIntegrationTest is Test {
 
         factory = IExecutorFactory(
             deployCode(
-                "out-ir/Executor.sol/ExecutorFactory.json",
-                abi.encode(contractUpdater, address(balanceSheet), gateway)
+                "out-ir/Executor.sol/ExecutorFactory.json", abi.encode(contractUpdater, address(balanceSheet), gateway)
             )
         );
 
