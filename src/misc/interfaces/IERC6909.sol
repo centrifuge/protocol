@@ -137,7 +137,7 @@ interface IERC6909MetadataExt is IERC6909Decimals {
 }
 
 /// @notice Subset of ERC-6909 that omits the operator pattern (isOperator, setOperator, OperatorSet).
-interface IERC6909ExclOperator is IERC165 {
+interface IERC6909ExclOperator {
     error EmptyOwner();
     error EmptyAmount();
     error InvalidTokenId();
