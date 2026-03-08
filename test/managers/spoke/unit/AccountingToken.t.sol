@@ -8,9 +8,9 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 
-import {ReceiptToken} from "../../../../src/managers/spoke/ReceiptToken.sol";
+import {AccountingToken} from "../../../../src/managers/spoke/AccountingToken.sol";
 import {IExecutor} from "../../../../src/managers/spoke/interfaces/IExecutor.sol";
-import {IReceiptToken} from "../../../../src/managers/spoke/interfaces/IReceiptToken.sol";
+import {IAccountingToken} from "../../../../src/managers/spoke/interfaces/IAccountingToken.sol";
 import {IExecutorFactory} from "../../../../src/managers/spoke/interfaces/IExecutorFactory.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 
@@ -18,13 +18,13 @@ import "forge-std/Test.sol";
 
 // ─── Base ────────────────────────────────────────────────────────────────────
 
-contract ReceiptTokenTest is Test {
+contract AccountingTokenTest is Test {
     PoolId constant POOL_A = PoolId.wrap(1);
     PoolId constant POOL_B = PoolId.wrap(2);
 
     address factoryAddr = makeAddr("factory");
 
-    ReceiptToken token;
+    AccountingToken token;
 
     address asset = makeAddr("asset");
     address user = makeAddr("user");
@@ -37,7 +37,7 @@ contract ReceiptTokenTest is Test {
     address executorB = makeAddr("executorB");
 
     function setUp() public virtual {
-        token = new ReceiptToken(IExecutorFactory(factoryAddr));
+        token = new AccountingToken(IExecutorFactory(factoryAddr));
 
         tokenIdA = token.toTokenId(POOL_A, asset);
         tokenIdB = token.toTokenId(POOL_B, asset);
@@ -58,7 +58,7 @@ contract ReceiptTokenTest is Test {
 
 // ─── Constructor ─────────────────────────────────────────────────────────────
 
-contract ReceiptTokenConstructorTest is ReceiptTokenTest {
+contract AccountingTokenConstructorTest is AccountingTokenTest {
     function testConstructor() public view {
         assertEq(address(token.factory()), factoryAddr);
     }
@@ -66,7 +66,7 @@ contract ReceiptTokenConstructorTest is ReceiptTokenTest {
 
 // ─── Access Control ──────────────────────────────────────────────────────────
 
-contract ReceiptTokenAccessControlTest is ReceiptTokenTest {
+contract AccountingTokenAccessControlTest is AccountingTokenTest {
     function testMintFromCorrectExecutor() public {
         vm.prank(executorA);
         token.mint(user, tokenIdA, 100e18);
@@ -83,7 +83,7 @@ contract ReceiptTokenAccessControlTest is ReceiptTokenTest {
 
     function testMintFromWrongPoolExecutorReverts() public {
         // executorB cannot mint tokenIdA (belongs to pool A)
-        vm.expectRevert(IReceiptToken.NotPoolExecutor.selector);
+        vm.expectRevert(IAccountingToken.NotPoolExecutor.selector);
         vm.prank(executorB);
         token.mint(user, tokenIdA, 100e18);
     }
@@ -91,13 +91,13 @@ contract ReceiptTokenAccessControlTest is ReceiptTokenTest {
     function testBurnFromWrongPoolExecutorReverts() public {
         _mint(user, tokenIdA, 100e18);
 
-        vm.expectRevert(IReceiptToken.NotPoolExecutor.selector);
+        vm.expectRevert(IAccountingToken.NotPoolExecutor.selector);
         vm.prank(executorB);
         token.burn(user, tokenIdA, 50e18);
     }
 
     function testMintFromRandomAddressReverts() public {
-        vm.expectRevert(IReceiptToken.NotPoolExecutor.selector);
+        vm.expectRevert(IAccountingToken.NotPoolExecutor.selector);
         vm.prank(user);
         token.mint(user, tokenIdA, 100e18);
     }
@@ -105,7 +105,7 @@ contract ReceiptTokenAccessControlTest is ReceiptTokenTest {
     function testBurnFromRandomAddressReverts() public {
         _mint(user, tokenIdA, 100e18);
 
-        vm.expectRevert(IReceiptToken.NotPoolExecutor.selector);
+        vm.expectRevert(IAccountingToken.NotPoolExecutor.selector);
         vm.prank(user);
         token.burn(user, tokenIdA, 50e18);
     }
@@ -113,7 +113,7 @@ contract ReceiptTokenAccessControlTest is ReceiptTokenTest {
 
 // ─── Mint / Burn ─────────────────────────────────────────────────────────────
 
-contract ReceiptTokenMintBurnTest is ReceiptTokenTest {
+contract AccountingTokenMintBurnTest is AccountingTokenTest {
     function testMintEmitsTransfer() public {
         vm.expectEmit();
         emit IERC6909ExclOperator.Transfer(executorA, address(0), user, tokenIdA, 100e18);
@@ -157,7 +157,7 @@ contract ReceiptTokenMintBurnTest is ReceiptTokenTest {
 
 // ─── ERC-6909 Transfer ───────────────────────────────────────────────────────
 
-contract ReceiptTokenTransferTest is ReceiptTokenTest {
+contract AccountingTokenTransferTest is AccountingTokenTest {
     function testTransfer() public {
         _mint(user, tokenIdA, 100e18);
 
@@ -182,7 +182,7 @@ contract ReceiptTokenTransferTest is ReceiptTokenTest {
 
 // ─── ERC-6909 TransferFrom ───────────────────────────────────────────────────
 
-contract ReceiptTokenTransferFromTest is ReceiptTokenTest {
+contract AccountingTokenTransferFromTest is AccountingTokenTest {
     function testTransferFromWithApproval() public {
         _mint(user, tokenIdA, 100e18);
 
@@ -236,7 +236,7 @@ contract ReceiptTokenTransferFromTest is ReceiptTokenTest {
 
 // ─── ERC-6909 Approve ────────────────────────────────────────────────────────
 
-contract ReceiptTokenApproveTest is ReceiptTokenTest {
+contract AccountingTokenApproveTest is AccountingTokenTest {
     function testApprove() public {
         vm.expectEmit();
         emit IERC6909ExclOperator.Approval(user, spender, tokenIdA, 200e18);
@@ -259,7 +259,7 @@ contract ReceiptTokenApproveTest is ReceiptTokenTest {
 
 // ─── Token ID Encoding ───────────────────────────────────────────────────────
 
-contract ReceiptTokenTokenIdTest is ReceiptTokenTest {
+contract AccountingTokenTokenIdTest is AccountingTokenTest {
     function testToTokenId() public view {
         uint256 id = token.toTokenId(POOL_A, asset);
         assertEq(id, (uint256(POOL_A.raw()) << 160) | uint256(uint160(asset)));
@@ -284,17 +284,17 @@ contract ReceiptTokenTokenIdTest is ReceiptTokenTest {
 
 // ─── Metadata ────────────────────────────────────────────────────────────────
 
-contract ReceiptTokenMetadataTest is ReceiptTokenTest {
+contract AccountingTokenMetadataTest is AccountingTokenTest {
     function testNameDerivedFromAssetSymbol() public {
         vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.symbol.selector), abi.encode("USDC"));
 
-        assertEq(token.name(tokenIdA), "Receipt: USDC");
+        assertEq(token.name(tokenIdA), "Accounting USDC");
     }
 
     function testSymbolDerivedFromAssetSymbol() public {
         vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.symbol.selector), abi.encode("USDC"));
 
-        assertEq(token.symbol(tokenIdA), "rec-USDC");
+        assertEq(token.symbol(tokenIdA), "accUSDC");
     }
 
     function testDecimalsDelegatesToAsset() public {
@@ -306,7 +306,7 @@ contract ReceiptTokenMetadataTest is ReceiptTokenTest {
 
 // ─── Factory Integration (real CREATE2) ──────────────────────────────────────
 
-contract ReceiptTokenFactoryIntegrationTest is Test {
+contract AccountingTokenFactoryIntegrationTest is Test {
     PoolId constant POOL_A = PoolId.wrap(1);
 
     address contractUpdater = makeAddr("contractUpdater");
@@ -314,7 +314,7 @@ contract ReceiptTokenFactoryIntegrationTest is Test {
     IBalanceSheet balanceSheet;
     ISpoke spoke;
     IExecutorFactory factory;
-    ReceiptToken token;
+    AccountingToken token;
 
     function setUp() public {
         balanceSheet = IBalanceSheet(makeAddr("balanceSheet"));
@@ -329,7 +329,7 @@ contract ReceiptTokenFactoryIntegrationTest is Test {
             )
         );
 
-        token = new ReceiptToken(factory);
+        token = new AccountingToken(factory);
     }
 
     function testFactoryDeployedExecutorCanMint() public {
@@ -364,7 +364,7 @@ contract ReceiptTokenFactoryIntegrationTest is Test {
         address asset_ = makeAddr("asset");
         uint256 tokenId = token.toTokenId(POOL_A, asset_);
 
-        vm.expectRevert(IReceiptToken.NotPoolExecutor.selector);
+        vm.expectRevert(IAccountingToken.NotPoolExecutor.selector);
         vm.prank(makeAddr("random"));
         token.mint(makeAddr("user"), tokenId, 100e18);
     }

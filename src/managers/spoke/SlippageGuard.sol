@@ -52,6 +52,7 @@ contract SlippageGuard is ISlippageGuard {
 
         (uint128 maxPeriodLoss, uint32 periodDuration) = abi.decode(payload, (uint128, uint32));
         config[poolId][scId] = SlippageConfig(maxPeriodLoss, periodDuration);
+        delete period[poolId][scId];
         emit SetConfig(poolId, scId, maxPeriodLoss, periodDuration);
     }
 

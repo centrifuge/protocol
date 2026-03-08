@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IReceiptToken} from "./interfaces/IReceiptToken.sol";
+import {IAccountingToken} from "./interfaces/IAccountingToken.sol";
 import {IExecutorFactory} from "./interfaces/IExecutorFactory.sol";
 
 import {IERC20Metadata} from "../../misc/interfaces/IERC20.sol";
@@ -9,13 +9,13 @@ import {IERC6909ExclOperator, IERC6909MetadataExt} from "../../misc/interfaces/I
 
 import {PoolId} from "../../core/types/PoolId.sol";
 
-/// @title  ReceiptToken
+/// @title  AccountingToken
 /// @notice ERC6909 multi-token representing in-flight async requests. Token IDs encode a pool ID
 ///         and asset address, so a single deployment can be shared across all pools. Only the
 ///         executor deployed by the factory for a given pool may mint or burn that pool's token IDs.
 /// @dev    Not fully ERC-6909 compatible: operator support (isOperator, setOperator) is omitted
 ///         because these tokens are only held within the protocol (BalanceSheet/Executor).
-contract ReceiptToken is IReceiptToken {
+contract AccountingToken is IAccountingToken {
     IExecutorFactory public immutable factory;
 
     mapping(address owner => mapping(uint256 tokenId => uint256)) public balanceOf;
@@ -34,13 +34,13 @@ contract ReceiptToken is IReceiptToken {
     // Mint / Burn (executor-gated)
     // ──────────────────────────────────────────────────────────────────────────
 
-    /// @inheritdoc IReceiptToken
+    /// @inheritdoc IAccountingToken
     function mint(address owner, uint256 id, uint256 amount) external onlyPoolExecutor(id) {
         balanceOf[owner][id] += amount;
         emit Transfer(msg.sender, address(0), owner, id, amount);
     }
 
-    /// @inheritdoc IReceiptToken
+    /// @inheritdoc IAccountingToken
     function burn(address owner, uint256 id, uint256 amount) external onlyPoolExecutor(id) {
         require(balanceOf[owner][id] >= amount, InsufficientBalance(owner, id));
         balanceOf[owner][id] -= amount;
@@ -82,12 +82,12 @@ contract ReceiptToken is IReceiptToken {
 
     /// @inheritdoc IERC6909MetadataExt
     function name(uint256 id) external view returns (string memory) {
-        return string.concat("Receipt: ", IERC20Metadata(address(uint160(id))).symbol());
+        return string.concat("Accounting ", IERC20Metadata(address(uint160(id))).symbol());
     }
 
     /// @inheritdoc IERC6909MetadataExt
     function symbol(uint256 id) external view returns (string memory) {
-        return string.concat("rec-", IERC20Metadata(address(uint160(id))).symbol());
+        return string.concat("acc", IERC20Metadata(address(uint160(id))).symbol());
     }
 
     /// @inheritdoc IERC6909MetadataExt
@@ -99,7 +99,7 @@ contract ReceiptToken is IReceiptToken {
     // Token ID helpers
     // ──────────────────────────────────────────────────────────────────────────
 
-    /// @inheritdoc IReceiptToken
+    /// @inheritdoc IAccountingToken
     function toTokenId(PoolId poolId, address asset) public pure returns (uint256) {
         return (uint256(poolId.raw()) << 160) | uint256(uint160(asset));
     }

@@ -7,7 +7,7 @@ import {PoolId} from "../../../core/types/PoolId.sol";
 
 import {IExecutorFactory} from "./IExecutorFactory.sol";
 
-interface IReceiptToken is IERC6909ExclOperator, IERC6909MetadataExt {
+interface IAccountingToken is IERC6909ExclOperator, IERC6909MetadataExt {
     error NotPoolExecutor();
 
     /// @notice The ExecutorFactory that tracks executor deployments.

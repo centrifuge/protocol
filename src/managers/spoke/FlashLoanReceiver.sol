@@ -11,6 +11,10 @@ import {IFlashLoanReceiver} from "./interfaces/IFlashLoanReceiver.sol";
 /// @notice Periphery contract bridging Aave V3 flash loans to Executor.executeCallback().
 ///         The outer weiroll script calls `requestFlashLoan`, Aave sends tokens and calls back
 ///         `executeOperation`, which forwards to the Executor's inner callback script.
+///
+///         The `pool` parameter in `requestFlashLoan` MUST be a fixed
+///         state element in the weiroll stateBitmap. If left as non-fixed state, a strategist
+///         could substitute a malicious pool address.
 contract FlashLoanReceiver is IFlashLoanReceiver, IAaveV3FlashLoanReceiver {
     using SafeTransferLib for address;
 
