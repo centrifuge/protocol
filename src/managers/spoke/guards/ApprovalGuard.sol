@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {IApprovalGuard, ApprovalEntry} from "./interfaces/IApprovalGuard.sol";
 
-import {IERC20} from "../../misc/interfaces/IERC20.sol";
+import {IERC20} from "../../../misc/interfaces/IERC20.sol";
 
 /// @title  ApprovalGuard
 /// @notice Stateless guard that verifies all listed ERC20 approvals from the caller are zero.

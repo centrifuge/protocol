@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {D18} from "../../../../src/misc/types/D18.sol";
+import {IERC6909MetadataExt} from "../../../../src/misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
@@ -9,8 +10,8 @@ import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 
-import {SlippageGuard} from "../../../../src/managers/spoke/SlippageGuard.sol";
-import {ISlippageGuard, AssetEntry} from "../../../../src/managers/spoke/interfaces/ISlippageGuard.sol";
+import {SlippageGuard} from "../../../../src/managers/spoke/guards/SlippageGuard.sol";
+import {ISlippageGuard, AssetEntry} from "../../../../src/managers/spoke/guards/interfaces/ISlippageGuard.sol";
 
 import "forge-std/Test.sol";
 
@@ -19,6 +20,7 @@ contract SlippageGuardTest is Test {
     ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("1"));
     AssetId constant ASSET_ID_1 = AssetId.wrap(1);
     AssetId constant ASSET_ID_2 = AssetId.wrap(2);
+    AssetId constant ASSET_ID_3 = AssetId.wrap(3);
 
     D18 constant PRICE_ONE = D18.wrap(1e18);
 
@@ -431,6 +433,139 @@ contract SlippageGuardPeriodLossTest is SlippageGuardTest {
 
         // Second script with large loss — still no revert
         _doSwapWithLoss(900e18, 810e18);
+    }
+}
+
+// --- ERC-6909 asset support ---
+
+contract SlippageGuardERC6909Test is SlippageGuardTest {
+    address erc6909 = makeAddr("erc6909");
+    uint256 erc6909TokenId = 42;
+
+    function setUp() public override {
+        super.setUp();
+
+        // Mock ERC6909 decimals (non-zero tokenId branch)
+        vm.mockCall(
+            erc6909,
+            abi.encodeWithSelector(IERC6909MetadataExt.decimals.selector, erc6909TokenId),
+            abi.encode(uint8(18))
+        );
+        vm.mockCall(
+            spoke, abi.encodeWithSelector(ISpoke.assetToId.selector, erc6909, erc6909TokenId), abi.encode(ASSET_ID_3)
+        );
+        vm.mockCall(
+            spoke,
+            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_3, true),
+            abi.encode(PRICE_ONE)
+        );
+    }
+
+    function _erc6909Entry() internal view returns (AssetEntry[] memory) {
+        AssetEntry[] memory entries = new AssetEntry[](1);
+        entries[0] = AssetEntry(erc6909, erc6909TokenId);
+        return entries;
+    }
+
+    function _mixedEntries() internal view returns (AssetEntry[] memory) {
+        AssetEntry[] memory entries = new AssetEntry[](2);
+        entries[0] = AssetEntry(assetA, 0);
+        entries[1] = AssetEntry(erc6909, erc6909TokenId);
+        return entries;
+    }
+
+    function testERC6909NoValueChange() public {
+        _mockBalance(erc6909, erc6909TokenId, 1000e18);
+
+        guard.open(POOL_A, SC_1, _erc6909Entry());
+
+        guard.close(POOL_A, SC_1, 100);
+    }
+
+    function testERC6909WithdrawalWithinBounds() public {
+        _mockBalance(erc6909, erc6909TokenId, 1000e18);
+        _mockBalance(assetA, 0, 0);
+
+        guard.open(POOL_A, SC_1, _mixedEntries());
+
+        // Swap: withdraw 200 ERC6909, deposit 195 assetA (2.5% slippage, bound = 500 bps)
+        _mockBalance(erc6909, erc6909TokenId, 800e18);
+        _mockBalance(assetA, 0, 195e18);
+
+        guard.close(POOL_A, SC_1, 500);
+    }
+
+    function testERC6909WithdrawalExceedsBounds() public {
+        _mockBalance(erc6909, erc6909TokenId, 1000e18);
+        _mockBalance(assetA, 0, 0);
+
+        guard.open(POOL_A, SC_1, _mixedEntries());
+
+        // Swap: withdraw 200 ERC6909, deposit 150 assetA (25% slippage, bound = 500 bps)
+        _mockBalance(erc6909, erc6909TokenId, 800e18);
+        _mockBalance(assetA, 0, 150e18);
+
+        vm.expectRevert();
+        guard.close(POOL_A, SC_1, 500);
+    }
+
+    function testERC6909DepositOnly() public {
+        _mockBalance(erc6909, erc6909TokenId, 100e18);
+
+        guard.open(POOL_A, SC_1, _erc6909Entry());
+
+        _mockBalance(erc6909, erc6909TokenId, 200e18);
+
+        guard.close(POOL_A, SC_1, 0);
+    }
+
+    function testERC6909DifferentDecimals() public {
+        // 6-decimal ERC6909 at 2:1 price (each token worth 2 pool units)
+        uint8 erc6909Decimals = 6;
+        D18 priceTwo = D18.wrap(2e18);
+
+        vm.mockCall(
+            erc6909,
+            abi.encodeWithSelector(IERC6909MetadataExt.decimals.selector, erc6909TokenId),
+            abi.encode(erc6909Decimals)
+        );
+        vm.mockCall(
+            spoke,
+            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_3, true),
+            abi.encode(priceTwo)
+        );
+
+        // Pre: 1000e6 erc6909 (worth 2000e18 pool units) + 0 assetA
+        _mockBalance(erc6909, erc6909TokenId, 1000e6);
+        _mockBalance(assetA, 0, 0);
+
+        guard.open(POOL_A, SC_1, _mixedEntries());
+
+        // Post: 500e6 erc6909 (withdrew 500e6 → 1000e18 pool units) + 960e18 assetA (deposited 960e18 pool units)
+        // loss = 1000e18 - 960e18 = 40e18, 40/1000 = 4% < 5%
+        _mockBalance(erc6909, erc6909TokenId, 500e6);
+        _mockBalance(assetA, 0, 960e18);
+
+        guard.close(POOL_A, SC_1, 500);
+    }
+
+    function testERC6909PeriodLossTracking() public {
+        vm.prank(contractUpdater);
+        guard.trustedCall(POOL_A, SC_1, abi.encode(uint128(500e18), uint32(1 days)));
+
+        // Script with ERC6909 loss
+        _mockBalance(erc6909, erc6909TokenId, 1000e18);
+        _mockBalance(assetA, 0, 0);
+
+        guard.open(POOL_A, SC_1, _mixedEntries());
+
+        _mockBalance(erc6909, erc6909TokenId, 0);
+        _mockBalance(assetA, 0, 990e18);
+
+        guard.close(POOL_A, SC_1, 10_000);
+
+        (uint128 loss,) = guard.period(POOL_A, SC_1);
+        assertEq(loss, 10e18);
     }
 }
 

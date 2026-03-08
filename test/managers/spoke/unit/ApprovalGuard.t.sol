@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {ApprovalGuard} from "../../../../src/managers/spoke/ApprovalGuard.sol";
-import {IApprovalGuard, ApprovalEntry} from "../../../../src/managers/spoke/interfaces/IApprovalGuard.sol";
+import {ApprovalGuard} from "../../../../src/managers/spoke/guards/ApprovalGuard.sol";
+import {IApprovalGuard, ApprovalEntry} from "../../../../src/managers/spoke/guards/interfaces/IApprovalGuard.sol";
 
 import "forge-std/Test.sol";
 
