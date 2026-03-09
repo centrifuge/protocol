@@ -373,7 +373,10 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track reserve operations
         ghost_totalReserveOperations[key]++;
 
-        // TODO: Investigate adding handlers for both reasons, use hardcoded deposit for now
+        // NOTE: Only REASON_DEPOSIT exposed. REASON_REDEEM is covered via lifecycle shortcuts
+        // (e.g., shortcut_redeem_and_claim_clamped) which go through AsyncRequestManager.
+        // Adding REASON_REDEEM here would double the admin-mistake false positive surface
+        // (Issue #10) without new protocol insight.
         try balanceSheet.reserve(
             poolId, scId, vault.asset(), tokenId, amount, address(asyncRequestManager), REASON_DEPOSIT
         ) {
@@ -411,7 +414,10 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track unreserve operations
         ghost_totalUnreserveOperations[key]++;
 
-        // TODO: Investigate adding handlers for both reasons, use hardcoded deposit for now
+        // NOTE: Only REASON_DEPOSIT exposed. REASON_REDEEM is covered via lifecycle shortcuts
+        // (e.g., shortcut_redeem_and_claim_clamped) which go through AsyncRequestManager.
+        // Adding REASON_REDEEM here would double the admin-mistake false positive surface
+        // (Issue #10) without new protocol insight.
         try balanceSheet.unreserve(
             poolId, scId, vault.asset(), tokenId, amount, address(asyncRequestManager), REASON_DEPOSIT
         ) {
