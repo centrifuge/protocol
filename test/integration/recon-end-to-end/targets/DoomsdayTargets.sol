@@ -220,7 +220,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         hub.notifySharePrice{value: MAX_MESSAGE_COST}(poolId, scId, CENTRIFUGE_CHAIN_ID, _getActor());
         hub.notifyAssetPrice{value: MAX_MESSAGE_COST}(poolId, scId, assetId, _getActor());
 
-        // === CONVERSION FUNCTION TESTS === //
+        // === CONVERSION FUNCTION TESTS === //`
         try vault.convertToShares(1e18) returns (uint256 shares) {
             eq(shares, 0, "convertToShares should return 0 at zero price");
         } catch {
