@@ -2,15 +2,15 @@
 pragma solidity 0.8.28;
 
 import {IBaseVault} from "./interfaces/IBaseVault.sol";
-import {IRedeemManager} from "./interfaces/IVaultManagers.sol";
-import {IDepositManager} from "./interfaces/IVaultManagers.sol";
-import {IAsyncRedeemManager} from "./interfaces/IVaultManagers.sol";
 import {RequestMessageLib} from "./libraries/RequestMessageLib.sol";
-import {IAsyncDepositManager} from "./interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "./interfaces/IBaseRequestManager.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "./interfaces/IAsyncVault.sol";
 import {RequestCallbackType, RequestCallbackMessageLib} from "./libraries/RequestCallbackMessageLib.sol";
 import {
+    IRedeemManager,
+    IDepositManager,
+    IAsyncRedeemManager,
+    IAsyncDepositManager,
     IAsyncRequestManager,
     AsyncInvestmentState,
     REASON_DEPOSIT,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity >=0.7.6;
 
-import "../../../../src/misc/libraries/ExcessivelySafeCallLib.sol";
+import {ExcessivelySafeCallLib} from "../../../../src/misc/libraries/ExcessivelySafeCallLib.sol";
 
 import "forge-std/Test.sol";
 

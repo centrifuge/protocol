@@ -75,7 +75,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
         deployFull(
             DeployerInput({
                 centrifugeId: CENTRIFUGE_ID,
-                version: bytes32(0),
+                suffix: "",
                 txLimits: defaultTxLimits(),
                 protocolSafe: ADMIN_SAFE,
                 opsSafe: OPS_SAFE,
@@ -554,9 +554,11 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(spoke));
+        vm.assume(nonWard != address(contractUpdater));
 
         assertEq(freezeOnlyHook.wards(address(root)), 1);
         assertEq(freezeOnlyHook.wards(address(spoke)), 1);
+        assertEq(freezeOnlyHook.wards(address(contractUpdater)), 1);
         assertEq(freezeOnlyHook.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -567,9 +569,11 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(spoke));
+        vm.assume(nonWard != address(contractUpdater));
 
         assertEq(redemptionRestrictionsHook.wards(address(root)), 1);
         assertEq(redemptionRestrictionsHook.wards(address(spoke)), 1);
+        assertEq(redemptionRestrictionsHook.wards(address(contractUpdater)), 1);
         assertEq(redemptionRestrictionsHook.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -580,9 +584,11 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(spoke));
+        vm.assume(nonWard != address(contractUpdater));
 
         assertEq(freelyTransferableHook.wards(address(root)), 1);
         assertEq(freelyTransferableHook.wards(address(spoke)), 1);
+        assertEq(freelyTransferableHook.wards(address(contractUpdater)), 1);
         assertEq(freelyTransferableHook.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -593,9 +599,11 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(spoke));
+        vm.assume(nonWard != address(contractUpdater));
 
         assertEq(fullRestrictionsHook.wards(address(root)), 1);
         assertEq(fullRestrictionsHook.wards(address(spoke)), 1);
+        assertEq(fullRestrictionsHook.wards(address(contractUpdater)), 1);
         assertEq(fullRestrictionsHook.wards(nonWard), 0);
 
         // dependencies set correctly

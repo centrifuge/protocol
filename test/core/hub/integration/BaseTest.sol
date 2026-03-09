@@ -75,11 +75,10 @@ contract BaseTest is FullDeployer, Test {
 
     function setUp() public virtual {
         // Deployment
-        labelAddresses("");
         deployFull(
             DeployerInput({
                 centrifugeId: CHAIN_CP,
-                version: bytes32(0),
+                suffix: "",
                 txLimits: defaultTxLimits(),
                 protocolSafe: ISafe(makeAddr("ProtocolSafe")),
                 opsSafe: ISafe(makeAddr("OpsSafe")),
