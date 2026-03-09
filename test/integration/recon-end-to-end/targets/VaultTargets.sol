@@ -144,8 +144,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 vault.scId()
             ][vaultRegistry.vaultDetails(vault).assetId][to] += vault.convertToAssets(shares);
 
-            bytes32 shareKey = keccak256(abi.encode(vault.poolId(), vault.scId()));
-
             if (
                 fullRestrictions.isFrozen(vault.share(), _getActor()) == true
                     || fullRestrictions.isFrozen(vault.share(), to) == true
@@ -569,7 +567,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         unchecked {
             uint256 deltaUser = tokenUserAfter - tokenUserB4;
 
-            // NOTE: FoT check - verifies actual transfer matches returned amount
+            // NOTE: Fee-on-transfer check - verifies actual transfer matches returned amount
             eq(deltaUser, assets, "FoT-1");
 
             uint256 deltaEscrow = tokenEscrowB4 - tokenEscrowAfter;
@@ -611,7 +609,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         unchecked {
             uint256 deltaUser = tokenUserAfter - tokenUserB4;
 
-            // NOTE: FoT check - verifies actual transfer matches returned amount
+            // NOTE: Fee-on-transfer check - verifies actual transfer matches returned amount
             eq(deltaUser, assets, "FoT-withdraw-1");
 
             uint256 deltaEscrow = tokenEscrowB4 - tokenEscrowAfter;

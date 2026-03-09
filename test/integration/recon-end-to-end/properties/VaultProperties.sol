@@ -316,10 +316,6 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
 
         withdrawAmount = between(withdrawAmount, 1, maxWithdrawBefore);
 
-        PoolId poolId = _getVault().poolId();
-        ShareClassId scId = _getVault().scId();
-        AssetId assetId = vaultRegistry.vaultDetails(_getVault()).assetId;
-
         vm.prank(_getActor());
         try _getVault().withdraw(withdrawAmount, _getActor(), _getActor()) returns (uint256 shares) {
             uint256 maxWithdrawAfter = _getVault().maxWithdraw(_getActor());
@@ -329,10 +325,6 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
             t(difference == maxWithdrawAfter, "rounding error in maxWithdraw");
 
             if (withdrawAmount == maxWithdrawBefore) {
-                (,,,,, uint128 pendingWithdrawRequest,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
-                (uint256 pendingWithdraw,) =
-                    batchRequestManager.redeemRequest(poolId, scId, assetId, _getActor().toBytes32());
-
                 eq(maxWithdrawAfter, 0, "maxWithdrawAfter should be 0 if withdrawAmount == maxWithdrawBefore");
                 lte(assets, maxWithdrawBefore, "assets withdrawn surpass maxWithdraw");
             }
@@ -392,7 +384,6 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
             gte(difference, maxRedeemAfter, "maxRedeemAfter isn't sufficiently decreased");
 
             if (redeemAmount == maxRedeemBefore) {
-                (,,,,, uint128 pendingRedeemRequest,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
                 (uint256 pendingRedeem,) =
                     batchRequestManager.redeemRequest(poolId, scId, assetId, _getActor().toBytes32());
 

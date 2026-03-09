@@ -53,7 +53,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     //             _getActor()
     //         );
     //         if (assets < maxMintAsAssets && !isFrozen && isMember) {
-    //             t(false, "cant deposit less than maxMint");
+    //             t(false, "cannot deposit less than maxMint");
     //         }
     //     }
     //     uint256 sharesAsAssets = _getVault().convertToAssets(sharesReceived);
@@ -81,7 +81,6 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     /// precision
     /// @dev Property: user should always be able to mint less than maxMint
     function doomsday_mint(uint256 shares) public statelessTest {
-        uint256 ppfsBefore = BaseVault(address(_getVault())).pricePerShare();
         (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
 
         vm.prank(_getActor());
@@ -92,7 +91,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             bool isFrozen = fullRestrictions.isFrozen(address(_getVault()), _getActor());
             (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
             if (shares < maxMint && !isFrozen && isMember) {
-                t(false, "cant mint less than maxMint");
+                t(false, "cannot mint less than maxMint");
             }
         }
         uint256 assetsAsShares = _getVault().convertToShares(assetsSpent);
@@ -125,7 +124,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             bool isFrozen = fullRestrictions.isFrozen(address(_getVault()), _getActor());
             (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
             if (shares < maxWithdrawAsShares && !isFrozen && isMember) {
-                t(false, "cant redeem less than maxWithdraw");
+                t(false, "cannot redeem less than maxWithdraw");
             }
         }
         uint256 assetsAsShares = _getVault().convertToShares(assetsReceived);
@@ -154,7 +153,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             bool isFrozen = fullRestrictions.isFrozen(address(_getVault()), _getActor());
             (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
             if (assets < maxWithdraw && !isFrozen && isMember) {
-                t(false, "cant withdraw less than maxWithdraw");
+                t(false, "cannot withdraw less than maxWithdraw");
             }
         }
         uint256 sharesAsAssets = _getVault().convertToAssets(sharesReceived);

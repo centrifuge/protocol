@@ -11,7 +11,7 @@ abstract contract SharedStorage {
      */
     uint8 constant RECON_MODULO_DECIMALS = 19; // NOTE: Caps to 18
 
-    // Reenable canary tests, to help determine if coverage goals are being met
+    // Re-enable canary tests, to help determine if coverage goals are being met
     bool constant RECON_TOGGLE_CANARY_TESTS = false;
 
     // Properties we did not implement and we do not want that to be flagged

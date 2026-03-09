@@ -2,8 +2,7 @@
 pragma solidity ^0.8.22;
 
 import {IERC165} from "../../../../src/misc/interfaces/IERC7575.sol";
-import {IERC7540Deposit} from "../../../../src/misc/interfaces/IERC7540.sol";
-import {IERC7887Deposit} from "../../../../src/misc/interfaces/IERC7540.sol";
+import {IERC7540Deposit, IERC7887Deposit} from "../../../../src/misc/interfaces/IERC7540.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";

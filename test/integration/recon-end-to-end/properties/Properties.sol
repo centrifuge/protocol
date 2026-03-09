@@ -18,14 +18,12 @@ import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 
-import "forge-std/console2.sol";
 import {console2} from "forge-std/console2.sol";
 
-import {OpType} from "../BeforeAfter.sol";
 import {Asserts} from "@chimera/Asserts.sol";
 import {Helpers} from "../utils/Helpers.sol";
-import {BeforeAfter} from "../BeforeAfter.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
+import {OpType, BeforeAfter} from "../BeforeAfter.sol";
 
 abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     using CastLib for *;

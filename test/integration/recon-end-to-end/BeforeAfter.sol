@@ -57,7 +57,7 @@ abstract contract BeforeAfter is Setup {
         mapping(address vault => mapping(address investor => PriceVars)) investorsGlobals; // global ghost variable only updated as needed
         mapping(address vault => mapping(address investor => AsyncInvestmentState)) investments;
         mapping(address user => uint256 balance) shareTokenBalance;
-        mapping(address user => uint256 balance) assetTokenBalance; // uses vault's underyling asset as source of truth instead of _getAsset()
+        mapping(address user => uint256 balance) assetTokenBalance; // uses vault's underlying asset as source of truth instead of _getAsset()
         mapping(address vault => uint256 price) pricePerShare;
         mapping(address vault => uint256 balance) escrowAssetBalance;
         uint256 escrowShareTokenBalance;
