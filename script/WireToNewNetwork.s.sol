@@ -149,19 +149,19 @@ contract WireToNewNetwork is Script {
 
         if (bytes(derivationPath).length > 0) {
             address[] memory targets = new address[](4);
-            bytes[] memory datas = new bytes[](4);
+            bytes[] memory data = new bytes[](4);
             targets[0] = endpoint;
-            datas[0] = abi.encodeCall(ILayerZeroEndpointV2Like.setSendLibrary, (lzAdapter, targetEid, sendLib));
+            data[0] = abi.encodeCall(ILayerZeroEndpointV2Like.setSendLibrary, (lzAdapter, targetEid, sendLib));
             targets[1] = endpoint;
-            datas[1] = abi.encodeCall(ILayerZeroEndpointV2Like.setReceiveLibrary, (lzAdapter, targetEid, recvLib, 0));
+            data[1] = abi.encodeCall(ILayerZeroEndpointV2Like.setReceiveLibrary, (lzAdapter, targetEid, recvLib, 0));
             targets[2] = endpoint;
-            datas[2] = abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, sendLib, params));
+            data[2] = abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, sendLib, params));
             targets[3] = endpoint;
-            datas[3] = abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, recvLib, params));
-            (address to, bytes memory batchData) = protocolSafe.getProposeTransactionsTargetAndData(targets, datas);
+            data[3] = abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, recvLib, params));
+            (address to, bytes memory batchData) = protocolSafe.getProposeTransactionsTargetAndData(targets, data);
             bytes memory signature =
                 protocolSafe.sign(to, batchData, Enum.Operation.DelegateCall, msg.sender, derivationPath);
-            protocolSafe.proposeTransactionsWithSignature(targets, datas, msg.sender, signature);
+            protocolSafe.proposeTransactionsWithSignature(targets, data, msg.sender, signature);
         } else {
             lzEndpoint.setSendLibrary(lzAdapter, targetEid, sendLib);
             lzEndpoint.setReceiveLibrary(lzAdapter, targetEid, recvLib, 0);
