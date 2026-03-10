@@ -54,8 +54,6 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     IBalanceSheet public balanceSheet;
     IVaultRegistry public vaultRegistry;
     ISubsidyManager public subsidyManager;
-    address public something;
-    address public something2;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
 
@@ -669,19 +667,6 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         // Choose the latest update to be the marker
         lastUpdated = MathLib.max(shareLastUpdated, assetLastUpdated).toUint64();
     }
-
-    function priceLastUpdated2(IBaseVault vault_) public view virtual returns (uint64 lastUpdated) {
-        PoolId poolId = vault_.poolId();
-        ShareClassId scId = vault_.scId();
-
-        (uint64 shareLastUpdated,,) = spoke.markersPricePoolPerShare(poolId, scId);
-        (uint64 assetLastUpdated,,) =
-            spoke.markersPricePoolPerAsset(poolId, scId, vaultRegistry.vaultDetails(vault_).assetId);
-
-        // Choose the latest update to be the marker
-        lastUpdated = MathLib.max(shareLastUpdated, assetLastUpdated).toUint64();
-    }
-
 
     /// @inheritdoc IBaseRequestManager
     function poolEscrow(PoolId poolId) public view returns (IPoolEscrow) {
