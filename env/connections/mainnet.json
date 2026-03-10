@@ -19,7 +19,7 @@
             "threshold": 2
         },
         {
-            "chains": [["monad"], ["plume", "hyper-evm"]],
+            "chains": [["monad"], ["plume", "hyper-evm", "pharos"]],
             "adapters": ["layerZero"],
             "threshold": 1
         }
