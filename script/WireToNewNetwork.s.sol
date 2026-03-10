@@ -1,22 +1,23 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {Env, EnvConfig, Connection} from "./utils/EnvConfig.s.sol";
+
+import {PoolId} from "../src/core/types/PoolId.sol";
 import {IAdapter} from "../src/core/messaging/interfaces/IAdapter.sol";
 import {IMultiAdapter} from "../src/core/messaging/interfaces/IMultiAdapter.sol";
+
 import {IOpsGuardian} from "../src/admin/interfaces/IOpsGuardian.sol";
-import {PoolId} from "../src/core/types/PoolId.sol";
+
+import "forge-std/Script.sol";
+
+import {Safe, Enum} from "safe-utils/Safe.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 import {
     SetConfigParam,
     UlnConfig,
     ILayerZeroEndpointV2Like
 } from "../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
-
-import "forge-std/Script.sol";
-
-import {Safe, Enum} from "safe-utils/Safe.sol";
-
-import {Env, EnvConfig, Connection} from "./utils/EnvConfig.s.sol";
 
 /// @title WireToNewNetwork
 /// @notice Proposes OpsGuardian.wire and initAdapters transactions via the ops Safe
