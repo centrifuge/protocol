@@ -33,7 +33,7 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
         wire(networkName, targetName, "");
         vm.stopPrank();
 
-        vm.startPrank(target.network.protocolAdmin);
+        vm.startPrank(source.network.protocolAdmin);
         configureLzDvns(networkName, targetName, "");
         vm.stopPrank();
 
@@ -153,4 +153,12 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
     function testWirePlume() external {
         _testCase("plume");
     }
+
+    function testWirePharos() external {
+        _testCase("pharos");
+    }
+
+    // function testWireMonad() external {
+    //     _testCase("monad");
+    // }
 }

@@ -12,6 +12,16 @@
             "chains": [["pharos"], "ALL"],
             "adapters": ["layerZero"],
             "threshold": 1
+        },
+        {
+            "chains": [["monad"], "ALL"],
+            "adapters": ["layerZero", "chainlink"],
+            "threshold": 2
+        },
+        {
+            "chains": [["monad"], ["plume", "hyper-evm"]],
+            "adapters": ["layerZero"],
+            "threshold": 1
         }
     ]
 }
