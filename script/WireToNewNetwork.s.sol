@@ -42,7 +42,6 @@ contract WireToNewNetwork is Script {
     Safe.Client safe;
     uint256 nonce;
     Safe.Client protocolSafe;
-    uint256 protocolNonce;
     string derivationPath;
     address opsGuardian;
 
@@ -131,7 +130,6 @@ contract WireToNewNetwork is Script {
 
         if (bytes(derivationPath).length > 0) {
             protocolSafe.initialize(source.network.protocolAdmin);
-            protocolNonce = protocolSafe.getNonce();
         }
 
         _configureLzDvns(source, target);
@@ -150,14 +148,20 @@ contract WireToNewNetwork is Script {
         address endpoint = address(lzEndpoint);
 
         if (bytes(derivationPath).length > 0) {
-            _callProtocol(
-                endpoint, abi.encodeCall(ILayerZeroEndpointV2Like.setSendLibrary, (lzAdapter, targetEid, sendLib))
-            );
-            _callProtocol(
-                endpoint, abi.encodeCall(ILayerZeroEndpointV2Like.setReceiveLibrary, (lzAdapter, targetEid, recvLib, 0))
-            );
-            _callProtocol(endpoint, abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, sendLib, params)));
-            _callProtocol(endpoint, abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, recvLib, params)));
+            address[] memory targets = new address[](4);
+            bytes[] memory datas = new bytes[](4);
+            targets[0] = endpoint;
+            datas[0] = abi.encodeCall(ILayerZeroEndpointV2Like.setSendLibrary, (lzAdapter, targetEid, sendLib));
+            targets[1] = endpoint;
+            datas[1] = abi.encodeCall(ILayerZeroEndpointV2Like.setReceiveLibrary, (lzAdapter, targetEid, recvLib, 0));
+            targets[2] = endpoint;
+            datas[2] = abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, sendLib, params));
+            targets[3] = endpoint;
+            datas[3] = abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, recvLib, params));
+            (address to, bytes memory batchData) = protocolSafe.getProposeTransactionsTargetAndData(targets, datas);
+            bytes memory signature =
+                protocolSafe.sign(to, batchData, Enum.Operation.DelegateCall, msg.sender, derivationPath);
+            protocolSafe.proposeTransactionsWithSignature(targets, datas, msg.sender, signature);
         } else {
             lzEndpoint.setSendLibrary(lzAdapter, targetEid, sendLib);
             lzEndpoint.setReceiveLibrary(lzAdapter, targetEid, recvLib, 0);
@@ -196,20 +200,6 @@ contract WireToNewNetwork is Script {
             }
         }
         revert("No connection configured between source and target");
-    }
-
-    function _callProtocol(address target, bytes memory data) internal {
-        Safe.ExecTransactionParams memory params = Safe.ExecTransactionParams({
-            to: target,
-            value: 0,
-            data: data,
-            operation: Enum.Operation.Call,
-            sender: msg.sender,
-            signature: protocolSafe.sign(target, data, Enum.Operation.Call, msg.sender, protocolNonce, derivationPath),
-            nonce: protocolNonce
-        });
-        protocolSafe.proposeTransaction(params);
-        protocolNonce++;
     }
 
     function _call(bytes memory data) internal {
