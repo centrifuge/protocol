@@ -138,7 +138,12 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
     function test_vault_redeem_and_fulfill_shortcut() public {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true, false);
 
-        shortcut_deposit_and_claim(1e18, 1e18, 1e18, 1e18, 0);
+        // Deposit with exact amount (no 2x) to avoid leftover escrow reservations
+        shortcut_request_deposit(1e18, 1e18, 1e18, 0);
+        uint32 depositEpoch = batchRequestManager.nowDepositEpoch(_getPool(), _getShareClassId(), _getAssetId());
+        shortcut_approve_and_issue_shares_safe(1e18, depositEpoch, 1e18);
+        hub_notifyDeposit(MAX_CLAIMS);
+        vault_deposit(1e18);
 
         shortcut_redeem_and_claim(1e18, 1e18, 0);
     }

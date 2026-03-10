@@ -568,7 +568,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             uint256 deltaUser = tokenUserAfter - tokenUserB4;
 
             // NOTE: Fee-on-transfer check - verifies actual transfer matches returned amount
-            eq(deltaUser, assets, "FoT-1");
+            eq(deltaUser, assets, "fee-on-transfer-1");
 
             uint256 deltaEscrow = tokenEscrowB4 - tokenEscrowAfter;
             emit DebugNumber(deltaUser);
@@ -610,7 +610,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             uint256 deltaUser = tokenUserAfter - tokenUserB4;
 
             // NOTE: Fee-on-transfer check - verifies actual transfer matches returned amount
-            eq(deltaUser, assets, "FoT-withdraw-1");
+            eq(deltaUser, assets, "fee-on-transfer-withdraw-1");
 
             uint256 deltaEscrow = tokenEscrowB4 - tokenEscrowAfter;
             emit DebugNumber(deltaUser);
