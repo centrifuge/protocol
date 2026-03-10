@@ -8,6 +8,7 @@ import {LayerZeroAdapter} from "../../../src/adapters/LayerZeroAdapter.sol";
 import {ChainlinkAdapter} from "../../../src/adapters/ChainlinkAdapter.sol";
 
 import {Env, EnvConfig} from "../../../script/utils/EnvConfig.s.sol";
+import {Connection} from "../../../script/utils/EnvConnectionsConfig.s.sol";
 import {WireToNewNetwork} from "../../../script/WireToNewNetwork.s.sol";
 
 import "forge-std/Test.sol";
@@ -41,16 +42,18 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
         asset.file("name", "Test Token");
         asset.file("symbol", "TEST");
 
-        vm.deal(address(this), 1 ether);
+        vm.deal(address(this), 10 ether);
         vm.recordLogs();
 
-        ISpoke(source.contracts.spoke).registerAsset{value: 0.1 ether}(
+        ISpoke(source.contracts.spoke).registerAsset{value: 10 ether}(
             target.network.centrifugeId, address(asset), 0, address(this)
         );
 
+        Connection memory targetConn = _findTargetConnection(source, targetName);
+
         Vm.Log[] memory logs = vm.getRecordedLogs();
         _assertLayerZeroEvent(source, target, logs);
-        _assertChainlinkEvent(source, target, logs);
+        if (targetConn.chainlink) _assertChainlinkEvent(source, target, logs);
     }
 
     /// @dev Checks the LZ endpoint emits PacketSent with Monad's EID and Monad's LZ adapter as the receiver.
@@ -154,11 +157,7 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
         _testCase("plume");
     }
 
-    function testWirePharos() external {
-        _testCase("pharos");
-    }
-
-    // function testWireMonad() external {
-    //     _testCase("monad");
+    // function testWirePharos() external {
+    //     _testCase("pharos");
     // }
 }

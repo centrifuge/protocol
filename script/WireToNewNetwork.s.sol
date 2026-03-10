@@ -72,20 +72,41 @@ contract WireToNewNetwork is Script {
             nonce = safe.getNonce();
         }
 
-        IAdapter[] memory adapters = new IAdapter[](2);
+        uint256 adapterCount;
+        if (targetConn.layerZero) adapterCount++;
+        if (targetConn.wormhole) adapterCount++;
+        if (targetConn.axelar) adapterCount++;
+        if (targetConn.chainlink) adapterCount++;
 
-        {
+        IAdapter[] memory adapters = new IAdapter[](adapterCount);
+        uint256 idx;
+
+        if (targetConn.layerZero) {
             address lzAdapter = source.contracts.layerZeroAdapter;
             bytes memory data = abi.encode(target.adapters.layerZero.layerZeroEid, target.contracts.layerZeroAdapter);
             _call(abi.encodeCall(IOpsGuardian.wire, (lzAdapter, target.network.centrifugeId, data)));
-            adapters[0] = IAdapter(lzAdapter);
+            adapters[idx++] = IAdapter(lzAdapter);
         }
 
-        {
+        if (targetConn.wormhole) {
+            address wormholeAdapter = source.contracts.wormholeAdapter;
+            bytes memory data = abi.encode(target.adapters.wormhole.wormholeId, target.contracts.wormholeAdapter);
+            _call(abi.encodeCall(IOpsGuardian.wire, (wormholeAdapter, target.network.centrifugeId, data)));
+            adapters[idx++] = IAdapter(wormholeAdapter);
+        }
+
+        if (targetConn.axelar) {
+            address axelarAdapter = source.contracts.axelarAdapter;
+            bytes memory data = abi.encode(target.adapters.axelar.axelarId, target.contracts.axelarAdapter);
+            _call(abi.encodeCall(IOpsGuardian.wire, (axelarAdapter, target.network.centrifugeId, data)));
+            adapters[idx++] = IAdapter(axelarAdapter);
+        }
+
+        if (targetConn.chainlink) {
             address chainlinkAdapter = source.contracts.chainlinkAdapter;
             bytes memory data = abi.encode(target.adapters.chainlink.chainSelector, target.contracts.chainlinkAdapter);
             _call(abi.encodeCall(IOpsGuardian.wire, (chainlinkAdapter, target.network.centrifugeId, data)));
-            adapters[1] = IAdapter(chainlinkAdapter);
+            adapters[idx++] = IAdapter(chainlinkAdapter);
         }
 
         _call(
@@ -101,6 +122,10 @@ contract WireToNewNetwork is Script {
     {
         EnvConfig memory source = Env.load(networkName);
         EnvConfig memory target = Env.load(targetName);
+
+        Connection memory targetConn = _findTargetConnection(source, targetName);
+        if (!targetConn.layerZero) return;
+
         derivationPath = derivationPath_;
 
         if (bytes(derivationPath).length > 0) {
