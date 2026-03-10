@@ -24,16 +24,17 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
 
     function _testCase(string memory networkName) internal {
         EnvConfig memory source = Env.load(networkName);
-        EnvConfig memory target = Env.load(TARGET);
+        string memory targetName = "monad";
+        EnvConfig memory target = Env.load(targetName);
 
         vm.createSelectFork(source.network.rpcUrl());
 
         vm.startPrank(source.network.opsAdmin);
-        wire(networkName, "");
+        wire(networkName, targetName, "");
         vm.stopPrank();
 
         vm.startPrank(target.network.protocolAdmin);
-        configureLzDvns(networkName, "");
+        configureLzDvns(networkName, targetName, "");
         vm.stopPrank();
 
         ERC20 asset = new ERC20(18);
@@ -131,5 +132,25 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
 
     function testWireArbitrum() external {
         _testCase("arbitrum");
+    }
+
+    function testWireAvalanche() external {
+        _testCase("avalanche");
+    }
+
+    function testWireBnbSmartChain() external {
+        _testCase("bnb-smart-chain");
+    }
+
+    function testWireHyperEvm() external {
+        _testCase("hyper-evm");
+    }
+
+    function testWireOptimism() external {
+        _testCase("optimism");
+    }
+
+    function testWirePlume() external {
+        _testCase("plume");
     }
 }

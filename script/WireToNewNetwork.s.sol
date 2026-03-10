@@ -2,7 +2,9 @@
 pragma solidity 0.8.28;
 
 import {IAdapter} from "../src/core/messaging/interfaces/IAdapter.sol";
+import {IMultiAdapter} from "../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {IOpsGuardian} from "../src/admin/interfaces/IOpsGuardian.sol";
+import {PoolId} from "../src/core/types/PoolId.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 import {
     SetConfigParam,
@@ -33,7 +35,6 @@ import {Env, EnvConfig, Connection} from "./utils/EnvConfig.s.sol";
 contract WireToNewNetwork is Script {
     using Safe for *;
 
-    string constant TARGET = "monad";
     string constant LEDGER_DERIVATION_PATH = "m/44'/60'/0'/0/0";
     uint32 constant ULN_CONFIG_TYPE = 2;
 
@@ -47,16 +48,22 @@ contract WireToNewNetwork is Script {
     function run() external {
         vm.startBroadcast();
         string memory networkName = vm.envString("NETWORK");
-        wire(networkName, LEDGER_DERIVATION_PATH);
-        configureLzDvns(networkName, LEDGER_DERIVATION_PATH);
+        string memory targetName = vm.envString("TARGET");
+        wire(networkName, targetName, LEDGER_DERIVATION_PATH);
+        configureLzDvns(networkName, targetName, LEDGER_DERIVATION_PATH);
         vm.stopBroadcast();
     }
 
-    function wire(string memory networkName, string memory derivationPath_) public {
+    function wire(string memory networkName, string memory targetName, string memory derivationPath_) public {
         EnvConfig memory source = Env.load(networkName);
-        EnvConfig memory target = Env.load(TARGET);
+        EnvConfig memory target = Env.load(targetName);
 
-        Connection memory targetConn = _findTargetConnection(source);
+        require(
+            IMultiAdapter(source.contracts.multiAdapter).quorum(target.network.centrifugeId, PoolId.wrap(0)) == 0,
+            "Target already wired"
+        );
+
+        Connection memory targetConn = _findTargetConnection(source, targetName);
         derivationPath = derivationPath_;
         opsGuardian = source.contracts.opsGuardian;
 
@@ -89,9 +96,11 @@ contract WireToNewNetwork is Script {
         );
     }
 
-    function configureLzDvns(string memory networkName, string memory derivationPath_) public {
+    function configureLzDvns(string memory networkName, string memory targetName, string memory derivationPath_)
+        public
+    {
         EnvConfig memory source = Env.load(networkName);
-        EnvConfig memory target = Env.load(TARGET);
+        EnvConfig memory target = Env.load(targetName);
         derivationPath = derivationPath_;
 
         if (bytes(derivationPath).length > 0) {
@@ -149,10 +158,14 @@ contract WireToNewNetwork is Script {
         return SetConfigParam(destEid, ULN_CONFIG_TYPE, encodedUln);
     }
 
-    function _findTargetConnection(EnvConfig memory source) internal view returns (Connection memory) {
+    function _findTargetConnection(EnvConfig memory source, string memory targetName)
+        internal
+        view
+        returns (Connection memory)
+    {
         Connection[] memory connections = source.network.connections();
         for (uint256 i = 0; i < connections.length; i++) {
-            if (keccak256(bytes(connections[i].network)) == keccak256(bytes(TARGET))) {
+            if (keccak256(bytes(connections[i].network)) == keccak256(bytes(targetName))) {
                 return connections[i];
             }
         }
