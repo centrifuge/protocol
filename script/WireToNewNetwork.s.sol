@@ -97,7 +97,7 @@ contract WireToNewNetwork is Script {
 
         if (targetConn.axelar) {
             address axelarAdapter = source.contracts.axelarAdapter;
-            bytes memory data = abi.encode(target.adapters.axelar.axelarId, target.contracts.axelarAdapter);
+            bytes memory data = abi.encode(target.adapters.axelar.axelarId, vm.toString(target.contracts.axelarAdapter));
             _call(abi.encodeCall(IOpsGuardian.wire, (axelarAdapter, target.network.centrifugeId, data)));
             adapters[idx++] = IAdapter(axelarAdapter);
         }
