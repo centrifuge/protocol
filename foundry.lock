@@ -2,6 +2,9 @@
   "lib/chimera": {
     "rev": "d5cf52bc5bbf75f988f8aada23fd12d0bcf7798a"
   },
+  "lib/enso-weiroll": {
+    "rev": "900250114203727ff236d3f6313673c17c2d90dd"
+  },
   "lib/forge-std": {
     "rev": "1eea5bae12ae557d589f9f0f0edae2faa47cb262"
   },
