@@ -1,0 +1,21 @@
+testMode: "assertion"
+prefix: "optimize_"
+coverage: true
+corpusDir: "echidna"
+balanceAddr: 0x1043561a8829300000
+balanceContract: 0x1043561a8829300000
+filterFunctions: []
+cryticArgs: ["--foundry-compile-all"]
+deployer: "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496"
+contractAddr: "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496"
+shrinkLimit: 100000
+## Rely on Foundry compilation, compile and build libraries to those addresses
+cryticArgs: ["--foundry-compile-all", "--compile-libraries=(MathLib,0xf01),(CastLib,0xf02),(BytesLib,0xf03),(MessageLib,0xf04),(TransientStorageLib,0xf05)"]
+## Deploy them to these addresses
+deployContracts: [
+  ["0xf01", "MathLib"],
+  ["0xf02", "CastLib"],
+  ["0xf03", "BytesLib"],
+  ["0xf04", "MessageLib"],
+  ["0xf05", "TransientStorageLib"]
+]

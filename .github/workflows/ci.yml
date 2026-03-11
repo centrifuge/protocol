@@ -84,7 +84,19 @@ jobs:
       - name: Build contracts
         run: |
           forge --version
-          forge build --sizes --skip test --deny warnings
+          forge build --deny warnings
+      - name: Check contract sizes
+        run: |
+          # Check contract sizes, excluding test/script contracts which are not deployed
+          sizes_output=$(forge build --sizes 2>&1 || true)
+          echo "$sizes_output"
+          oversized=$(echo "$sizes_output" | grep -E "\|\s+-[0-9]" | grep -v "test/" | grep -v "script/" | grep -v "Harness" | grep -v "Mock" | grep -v "Crytic" || true)
+          if [ -n "$oversized" ]; then
+            echo ""
+            echo "Error: deployed contracts exceed the EIP-170 size limit:"
+            echo "$oversized"
+            exit 1
+          fi
 
       - name: Check formatting
         run: forge fmt --check

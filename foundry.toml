@@ -39,7 +39,7 @@ ignored_warnings_from = [
   "src/misc/ReentrancyProtection.sol", # Issue: https://github.com/ethereum/solidity/issues/14359
 ]
 
-dynamic_test_linking = true
+dynamic_test_linking = false # crytic-compile can't resolve foundry-pp/DeployHelper*.sol virtual stubs
 
 [profile.default.lint]
 severity = ["high"]
@@ -54,6 +54,9 @@ runs = 10
 depth = 100
 call_override = false
 fail_on_revert = false
+
+[profile.echidna]
+dynamic_test_linking = false # Enabling this would lead to foundry-pp/DeployHelper*.sol files that crytic-compile can't resolve
 
 [profile.ci.fuzz]
 runs = 1000
