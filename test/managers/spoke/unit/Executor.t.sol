@@ -12,6 +12,7 @@ import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 
 import {IExecutor} from "../../../../src/managers/spoke/interfaces/IExecutor.sol";
 import {IExecutorFactory} from "../../../../src/managers/spoke/interfaces/IExecutorFactory.sol";
+import {ITrustedContractUpdate} from "../../../../src/core/utils/interfaces/IContractUpdate.sol";
 
 import {WeirollTarget, ExecutorTestBase} from "../ExecutorTestBase.sol";
 
@@ -366,6 +367,31 @@ contract ExecutorExecuteTests is ExecutorTest {
         assertEq(address(target).balance, 1 ether);
     }
 
+    function testSelfCallTrustedCallReverts() public {
+        // A weiroll command targeting the Executor's own trustedCall should revert
+        // because msg.sender is the Executor itself, not the contractUpdater
+        bytes32[] memory commands = new bytes32[](1);
+        commands[0] = _buildCommand(
+            ITrustedContractUpdate.trustedCall.selector,
+            uint8(FLAG_CT_CALL) | 0x20, // FLAG_DATA
+            bytes6(uint48(0x00FFFFFFFFFF)), // state[0] is raw calldata
+            0xff,
+            address(executor)
+        );
+
+        bytes memory payload = abi.encode(bytes32(uint256(uint160(strategist))), keccak256("malicious"));
+        bytes[] memory state = new bytes[](1);
+        state[0] = abi.encodeWithSelector(ITrustedContractUpdate.trustedCall.selector, POOL_A, SC_1, payload);
+        uint256 bitmap = 0;
+
+        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, bytes32(0));
+        _setPolicy(strategist, scriptHash);
+
+        vm.expectRevert(); // NotAuthorized (wrapped by VM.ExecutionFailed)
+        vm.prank(strategist);
+        executor.execute(commands, state, bitmap, bytes32(0), new bytes32[](0));
+    }
+
     function testMixedFixedAndVariableState() public {
         bytes32[] memory commands = new bytes32[](1);
         commands[0] = _callCommand2(WeirollTarget.setValue.selector, 0, 1, address(target));
@@ -669,13 +695,12 @@ contract ExecutorFactoryDeployTest is ExecutorFactoryTest {
         factory.newExecutor(POOL_B);
     }
 
-    function testNewExecutorDeterministic() public {
+    function testNewExecutorAlreadyDeployed() public {
         vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
 
         factory.newExecutor(POOL_A);
 
-        // Second call should revert because CREATE2 with same salt fails
-        vm.expectRevert();
+        vm.expectRevert(IExecutorFactory.AlreadyDeployed.selector);
         factory.newExecutor(POOL_A);
     }
 

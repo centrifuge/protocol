@@ -195,7 +195,7 @@ contract SlippageGuardExceedingBoundsTest is SlippageGuardTest {
         _mockBalance(assetA, 0, 0);
         _mockBalance(assetB, 0, 900e18);
 
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(ISlippageGuard.SlippageExceeded.selector, 1000e18, 900e18, 500));
         guard.close(POOL_A, SC_1, 500);
     }
 
@@ -209,7 +209,7 @@ contract SlippageGuardExceedingBoundsTest is SlippageGuardTest {
         _mockBalance(assetA, 0, 0);
         // assetB still 0
 
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(ISlippageGuard.SlippageExceeded.selector, 1000e18, 0, 500));
         guard.close(POOL_A, SC_1, 500);
     }
 }
@@ -246,7 +246,7 @@ contract SlippageGuardMultiAssetTest is SlippageGuardTest {
         _mockBalance(assetA, 0, 800e18);
         _mockBalance(assetB, 0, 670e18);
 
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(ISlippageGuard.SlippageExceeded.selector, 200e18, 170e18, 500));
         guard.close(POOL_A, SC_1, 500);
     }
 }
@@ -291,19 +291,25 @@ contract SlippageGuardStalePriceTest is SlippageGuardTest {
     }
 }
 
-// --- Re-open overwrites ---
+// --- Re-open blocked while in progress ---
 
 contract SlippageGuardReopenTest is SlippageGuardTest {
-    function testReopenOverwritesPreviousState() public {
-        // First open with 1000 tokens
+    function testReopenWhileInProgressReverts() public {
         _mockBalance(assetA, 0, 1000e18);
         guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
 
-        // Second open overwrites with 500 tokens
+        vm.expectRevert(ISlippageGuard.InProgress.selector);
+        guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
+    }
+
+    function testReopenAfterCloseSucceeds() public {
+        _mockBalance(assetA, 0, 1000e18);
+        guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
+        guard.close(POOL_A, SC_1, 100);
+
+        // Now re-open should work
         _mockBalance(assetA, 0, 500e18);
         guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
-
-        // Close — no change from second snapshot
         guard.close(POOL_A, SC_1, 100);
     }
 }
@@ -400,7 +406,7 @@ contract SlippageGuardPeriodLossTest is SlippageGuardTest {
         _mockBalance(assetA, 0, 0);
         _mockBalance(assetB, 0, 490e18);
 
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(ISlippageGuard.PeriodLossExceeded.selector, 510e18, MAX_PERIOD_LOSS));
         guard.close(POOL_A, SC_1, 10_000);
     }
 
@@ -505,7 +511,7 @@ contract SlippageGuardERC6909Test is SlippageGuardTest {
         _mockBalance(erc6909, erc6909TokenId, 800e18);
         _mockBalance(assetA, 0, 150e18);
 
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(ISlippageGuard.SlippageExceeded.selector, 200e18, 150e18, 500));
         guard.close(POOL_A, SC_1, 500);
     }
 
