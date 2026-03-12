@@ -48,7 +48,6 @@ contract Executor is BatchedMulticall, VM, IExecutor {
     function trustedCall(
         PoolId poolId_,
         ShareClassId,
-        /* scId */
         bytes calldata payload
     )
         external

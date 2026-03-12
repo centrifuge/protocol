@@ -22,16 +22,16 @@ import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUp
 ///         of a script to verify that the net value change across all touched assets stays within a slippage bound.
 ///         Additionally tracks cumulative loss per period to prevent death-by-a-thousand-cuts attacks.
 contract SlippageGuard is ISlippageGuard {
+    bytes32 internal constant SC_ID_SLOT = keccak256("slippageGuard.scId");
     bytes32 internal constant ASSETS_SLOT = keccak256("slippageGuard.assets");
-    bytes32 internal constant TOKEN_IDS_SLOT = keccak256("slippageGuard.tokenIds");
     bytes32 internal constant OPENER_SLOT = keccak256("slippageGuard.opener");
     bytes32 internal constant POOL_ID_SLOT = keccak256("slippageGuard.poolId");
-    bytes32 internal constant SC_ID_SLOT = keccak256("slippageGuard.scId");
+    bytes32 internal constant TOKEN_IDS_SLOT = keccak256("slippageGuard.tokenIds");
     uint256 internal constant PRE_BASE_SLOT = uint256(keccak256("slippageGuard.pre"));
 
     ISpoke public immutable spoke;
-    IBalanceSheet public immutable balanceSheet;
     address public immutable contractUpdater;
+    IBalanceSheet public immutable balanceSheet;
 
     mapping(PoolId => mapping(ShareClassId => PeriodState)) public period;
     mapping(PoolId => mapping(ShareClassId => SlippageConfig)) public config;
@@ -68,7 +68,7 @@ contract SlippageGuard is ISlippageGuard {
         TransientStorageLib.tstore(SC_ID_SLOT, uint256(uint128(ShareClassId.unwrap(scId))));
 
         // NOTE: Duplicate asset entries would inflate deposited values and mask losses.
-        // Governance must not approve scripts that pass duplicate assets.
+        // Hub managers must not approve scripts that pass duplicate assets.
         for (uint256 i; i < assets.length; i++) {
             address asset = assets[i].asset;
             uint256 tokenId = assets[i].tokenId;
