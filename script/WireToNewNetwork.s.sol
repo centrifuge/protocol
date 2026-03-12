@@ -83,6 +83,7 @@ contract WireToNewNetwork is Script {
 
         if (targetConn.layerZero) {
             address lzAdapter = source.contracts.layerZeroAdapter;
+            require(lzAdapter != address(0), "LayerZero adapter not configured for source network");
             bytes memory data = abi.encode(target.adapters.layerZero.layerZeroEid, target.contracts.layerZeroAdapter);
             _call(abi.encodeCall(IOpsGuardian.wire, (lzAdapter, target.network.centrifugeId, data)));
             adapters[idx++] = IAdapter(lzAdapter);
@@ -90,6 +91,7 @@ contract WireToNewNetwork is Script {
 
         if (targetConn.wormhole) {
             address wormholeAdapter = source.contracts.wormholeAdapter;
+            require(wormholeAdapter != address(0), "Wormhole adapter not configured for source network");
             bytes memory data = abi.encode(target.adapters.wormhole.wormholeId, target.contracts.wormholeAdapter);
             _call(abi.encodeCall(IOpsGuardian.wire, (wormholeAdapter, target.network.centrifugeId, data)));
             adapters[idx++] = IAdapter(wormholeAdapter);
@@ -97,6 +99,7 @@ contract WireToNewNetwork is Script {
 
         if (targetConn.axelar) {
             address axelarAdapter = source.contracts.axelarAdapter;
+            require(axelarAdapter != address(0), "Axelar adapter not configured for source network");
             bytes memory data = abi.encode(target.adapters.axelar.axelarId, vm.toString(target.contracts.axelarAdapter));
             _call(abi.encodeCall(IOpsGuardian.wire, (axelarAdapter, target.network.centrifugeId, data)));
             adapters[idx++] = IAdapter(axelarAdapter);
@@ -104,6 +107,7 @@ contract WireToNewNetwork is Script {
 
         if (targetConn.chainlink) {
             address chainlinkAdapter = source.contracts.chainlinkAdapter;
+            require(chainlinkAdapter != address(0), "Chainlink adapter not configured for source network");
             bytes memory data = abi.encode(target.adapters.chainlink.chainSelector, target.contracts.chainlinkAdapter);
             _call(abi.encodeCall(IOpsGuardian.wire, (chainlinkAdapter, target.network.centrifugeId, data)));
             adapters[idx++] = IAdapter(chainlinkAdapter);
@@ -146,6 +150,8 @@ contract WireToNewNetwork is Script {
         address sendLib = lzEndpoint.defaultSendLibrary(targetEid);
         address recvLib = lzEndpoint.defaultReceiveLibrary(targetEid);
         address endpoint = address(lzEndpoint);
+
+        require(sendLib != address(0) && recvLib != address(0), "LZ default libraries not configured for target EID");
 
         if (bytes(derivationPath).length > 0) {
             address[] memory targets = new address[](4);

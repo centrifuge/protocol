@@ -159,7 +159,7 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
         _testCase("plume");
     }
 
-    // function testWirePharos() external {
-    //     _testCase("pharos");
-    // }
+    function testWirePharos() external {
+        _testCase("pharos");
+    }
 }
