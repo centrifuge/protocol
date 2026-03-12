@@ -4,7 +4,9 @@ pragma solidity 0.8.28;
 import {ERC20} from "../../../src/misc/ERC20.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
+import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
+import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 
 import {Env, EnvConfig} from "../../../script/utils/EnvConfig.s.sol";
 import {WireToNewNetwork} from "../../../script/WireToNewNetwork.s.sol";
@@ -40,6 +42,16 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
         configureLzDvns(networkName, targetName, "");
         vm.stopPrank();
 
+        Connection memory targetConn = _findTargetConnection(source, targetName);
+
+        IMultiAdapter multiAdapter = IMultiAdapter(source.contracts.multiAdapter);
+        assertGt(multiAdapter.quorum(target.network.centrifugeId, PoolId.wrap(0)), 0, "Quorum not set");
+        assertEq(
+            multiAdapter.threshold(target.network.centrifugeId, PoolId.wrap(0)),
+            targetConn.threshold,
+            "Threshold not set"
+        );
+
         ERC20 asset = new ERC20(18);
         asset.file("name", "Test Token");
         asset.file("symbol", "TEST");
@@ -50,8 +62,6 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
         ISpoke(source.contracts.spoke).registerAsset{value: 10 ether}(
             target.network.centrifugeId, address(asset), 0, address(this)
         );
-
-        Connection memory targetConn = _findTargetConnection(source, targetName);
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
         _assertLayerZeroEvent(source, target, logs);
@@ -159,7 +169,8 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
         _testCase("plume");
     }
 
-    function testWirePharos() external {
-        _testCase("pharos");
-    }
+    // Pharos is already wired to Monad
+    // function testWirePharos() external {
+    //     _testCase("pharos");
+    // }
 }
