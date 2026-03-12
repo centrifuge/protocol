@@ -49,7 +49,7 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         PoolId poolId_,
         ShareClassId,
         /* scId */
-        bytes memory payload
+        bytes calldata payload
     )
         external
     {
@@ -104,6 +104,7 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         require(scriptHash == expectedCallback, InvalidCallback());
 
         inCallback = true;
+        expectedCallback = bytes32(0);
         _execute(commands, _copyState(state));
         inCallback = false;
     }
@@ -168,6 +169,7 @@ contract ExecutorFactory is IExecutorFactory {
 
     /// @inheritdoc IExecutorFactory
     function newExecutor(PoolId poolId) external returns (IExecutor) {
+        require(executors[poolId] == address(0), AlreadyDeployed());
         require(balanceSheet.spoke().isPoolActive(poolId), InvalidPoolId());
 
         Executor executor = new Executor{salt: bytes32(uint256(poolId.raw()))}(poolId, contractUpdater, gateway);

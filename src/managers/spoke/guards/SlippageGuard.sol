@@ -47,7 +47,7 @@ contract SlippageGuard is ISlippageGuard {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external {
+    function trustedCall(PoolId poolId, ShareClassId scId, bytes calldata payload) external {
         require(msg.sender == contractUpdater, NotAuthorized());
 
         (uint128 maxPeriodLoss, uint32 periodDuration) = abi.decode(payload, (uint128, uint32));
@@ -62,10 +62,7 @@ contract SlippageGuard is ISlippageGuard {
 
     /// @inheritdoc ISlippageGuard
     function open(PoolId poolId, ShareClassId scId, AssetEntry[] calldata assets) external {
-        if (TransientArrayLib.length(ASSETS_SLOT) > 0) {
-            TransientArrayLib.clear(ASSETS_SLOT);
-            TransientArrayLib.clear(TOKEN_IDS_SLOT);
-        }
+        require(TransientArrayLib.length(ASSETS_SLOT) == 0, InProgress());
         TransientStorageLib.tstore(OPENER_SLOT, uint256(uint160(msg.sender)));
         TransientStorageLib.tstore(POOL_ID_SLOT, uint256(poolId.raw()));
         TransientStorageLib.tstore(SC_ID_SLOT, uint256(uint128(ShareClassId.unwrap(scId))));

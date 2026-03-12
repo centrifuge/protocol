@@ -309,7 +309,21 @@ contract ExecutorExecuteTests is ExecutorTest {
         bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, bytes32(0));
         _setPolicy(strategist, scriptHash);
 
-        vm.expectRevert(); // ExecutionFailed from VM
+        vm.expectRevert(); // VM.ExecutionFailed (not importable)
+        vm.prank(strategist);
+        executor.execute(commands, state, bitmap, bytes32(0), new bytes32[](0));
+    }
+
+    function testStateLengthExactly256() public {
+        _setPolicy(strategist, keccak256("root"));
+
+        bytes32[] memory commands = new bytes32[](0);
+        bytes[] memory state = new bytes[](256);
+        uint256 bitmap = 0;
+
+        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, bytes32(0));
+        _setPolicy(strategist, scriptHash);
+
         vm.prank(strategist);
         executor.execute(commands, state, bitmap, bytes32(0), new bytes32[](0));
     }
@@ -471,7 +485,7 @@ contract ExecutorCallbackTests is ExecutorTest {
         bytes32 outerHash = _computeScriptHash(outerCommands, outerState, outerBitmap, bytes32(0));
         _setPolicy(strategist, outerHash);
 
-        vm.expectRevert(); // InvalidCallback
+        vm.expectRevert(); // InvalidCallback (wrapped by VM.ExecutionFailed)
         vm.prank(strategist);
         executor.execute(outerCommands, outerState, outerBitmap, bytes32(0), new bytes32[](0));
     }
@@ -534,7 +548,7 @@ contract ExecutorCallbackTests is ExecutorTest {
         bytes32 outerHash = _computeScriptHash(outerCommands, outerState, outerBitmap, innerHash);
         _setPolicy(strategist, outerHash);
 
-        vm.expectRevert(); // StateLengthOverflow from executeCallback
+        vm.expectRevert(); // StateLengthOverflow (wrapped by VM.ExecutionFailed)
         vm.prank(strategist);
         executor.execute(outerCommands, outerState, outerBitmap, innerHash, new bytes32[](0));
     }
@@ -598,7 +612,7 @@ contract ExecutorCallbackTests is ExecutorTest {
         bytes32 outerHash = _computeScriptHash(outerCommands, outerState, outerBitmap, inner1Hash);
         _setPolicy(strategist, outerHash);
 
-        vm.expectRevert(); // NestedCallback from the second executeCallback attempt
+        vm.expectRevert(); // NestedCallback (wrapped by VM.ExecutionFailed)
         vm.prank(strategist);
         executor.execute(outerCommands, outerState, outerBitmap, inner1Hash, new bytes32[](0));
     }
@@ -645,6 +659,7 @@ contract ExecutorFactoryDeployTest is ExecutorFactoryTest {
 
         assertEq(exec.poolId().raw(), POOL_A.raw());
         assertEq(exec.contractUpdater(), contractUpdater);
+        assertEq(factory.executors(POOL_A), address(exec));
     }
 
     function testNewExecutorInvalidPoolId() public {

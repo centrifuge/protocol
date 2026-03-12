@@ -2,7 +2,9 @@
 pragma solidity >=0.5.0;
 
 import {PoolId} from "../../../../core/types/PoolId.sol";
+import {ISpoke} from "../../../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../core/types/ShareClassId.sol";
+import {IBalanceSheet} from "../../../../core/spoke/interfaces/IBalanceSheet.sol";
 import {ITrustedContractUpdate} from "../../../../core/utils/interfaces/IContractUpdate.sol";
 
 struct AssetEntry {
@@ -23,6 +25,7 @@ struct PeriodState {
 interface ISlippageGuard is ITrustedContractUpdate {
     error SlippageExceeded(uint256 withdrawn, uint256 deposited, uint16 maxBps);
     error PeriodLossExceeded(uint128 accumulated, uint128 maxPeriodLoss);
+    error InProgress();
     error NotOpen();
     error NotOpener();
     error ContextMismatch();
@@ -46,6 +49,8 @@ interface ISlippageGuard is ITrustedContractUpdate {
     /// @param maxSlippageBps Maximum allowed slippage in basis points
     function close(PoolId poolId, ShareClassId scId, uint16 maxSlippageBps) external;
 
+    function spoke() external view returns (ISpoke);
+    function balanceSheet() external view returns (IBalanceSheet);
     function contractUpdater() external view returns (address);
     function config(PoolId poolId, ShareClassId scId)
         external

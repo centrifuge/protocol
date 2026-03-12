@@ -31,6 +31,7 @@ contract FlashLoanReceiver is IFlashLoanReceiver, IAaveV3FlashLoanReceiver {
     ) external {
         _pool = address(pool);
         _executor = address(executor);
+        emit FlashLoan(address(pool), token, amount, address(executor));
         pool.flashLoanSimple(address(this), token, amount, callbackData, 0);
         _pool = address(0);
         _executor = address(0);
@@ -53,6 +54,7 @@ contract FlashLoanReceiver is IFlashLoanReceiver, IAaveV3FlashLoanReceiver {
         IExecutor(executor).executeCallback(commands, state, stateBitmap);
 
         // Inner script must have sent repayment tokens back to this contract
+        asset.safeApprove(msg.sender, 0);
         asset.safeApprove(msg.sender, amount + premium);
         return true;
     }

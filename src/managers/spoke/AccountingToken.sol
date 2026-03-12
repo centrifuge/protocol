@@ -35,16 +35,16 @@ contract AccountingToken is IAccountingToken {
     // ──────────────────────────────────────────────────────────────────────────
 
     /// @inheritdoc IAccountingToken
-    function mint(address owner, uint256 id, uint256 amount) external onlyPoolExecutor(id) {
-        balanceOf[owner][id] += amount;
-        emit Transfer(msg.sender, address(0), owner, id, amount);
+    function mint(address owner, uint256 tokenId, uint256 amount) external onlyPoolExecutor(tokenId) {
+        balanceOf[owner][tokenId] += amount;
+        emit Transfer(msg.sender, address(0), owner, tokenId, amount);
     }
 
     /// @inheritdoc IAccountingToken
-    function burn(address owner, uint256 id, uint256 amount) external onlyPoolExecutor(id) {
-        require(balanceOf[owner][id] >= amount, InsufficientBalance(owner, id));
-        balanceOf[owner][id] -= amount;
-        emit Transfer(msg.sender, owner, address(0), id, amount);
+    function burn(address owner, uint256 tokenId, uint256 amount) external onlyPoolExecutor(tokenId) {
+        require(balanceOf[owner][tokenId] >= amount, InsufficientBalance(owner, tokenId));
+        balanceOf[owner][tokenId] -= amount;
+        emit Transfer(msg.sender, owner, address(0), tokenId, amount);
     }
 
     // ──────────────────────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import {IBalanceSheet} from "../../../core/spoke/interfaces/IBalanceSheet.sol";
 interface IExecutorFactory {
     event DeployExecutor(PoolId indexed poolId, address indexed executor);
 
+    error AlreadyDeployed();
     error InvalidPoolId();
 
     function contractUpdater() external view returns (address);

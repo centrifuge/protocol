@@ -165,7 +165,7 @@ contract ExecutorHelpers is IExecutorHelpers {
     ///         Index 0 returns the first 32-byte word, index 1 the second, etc.
     function extractElement(bytes memory tuple, uint256 index) external pure returns (bytes32 result) {
         uint256 offset = index * 32;
-        require(tuple.length >= offset + 32);
+        require(tuple.length >= offset + 32, OutOfBounds());
         assembly {
             result := mload(add(add(tuple, 32), offset))
         }

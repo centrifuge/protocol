@@ -5,6 +5,8 @@ import {IAaveV3Pool} from "./IAaveV3Pool.sol";
 import {IExecutor} from "./IExecutor.sol";
 
 interface IFlashLoanReceiver {
+    event FlashLoan(address indexed pool, address indexed asset, uint256 amount, address indexed executor);
+
     error NotPool();
     error NotInitiator();
     error NotActive();
