@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 // Recon Deps
 
 import {HubTargets} from "./targets/HubTargets.sol";
+import {HookTargets} from "./targets/HookTargets.sol";
 import {Properties} from "./properties/Properties.sol";
 import {AdminTargets} from "./targets/AdminTargets.sol";
 import {SpokeTargets} from "./targets/SpokeTargets.sol";
@@ -41,7 +42,8 @@ abstract contract TargetFunctions is
     HubTargets,
     BalanceSheetTargets,
     AdminTargets,
-    DoomsdayTargets
+    DoomsdayTargets,
+    HookTargets
 {
     bool hasDoneADeploy;
 
