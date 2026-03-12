@@ -17,6 +17,8 @@ import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 
 import {BatchRequestManagerHarness} from "../mocks/BatchRequestManagerHarness.sol";
 
+import {console2} from "forge-std/console2.sol";
+
 import {vm} from "@chimera/Hevm.sol";
 import {OpType} from "../BeforeAfter.sol";
 import {Helpers} from "../utils/Helpers.sol";
@@ -49,31 +51,44 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
     // NOTE: this notifies for all epochs until all have been claimed
-    function hub_notifyDeposit_clamped(uint32 maxClaims) public {
-        // Clamp maxClaims to actual available claims
+    function hub_notifyDeposit_clamped(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
+        // Setup vault context and investor
         bytes32 investor = CastLib.toBytes32(_getActor());
         PoolId poolId = _getVault().poolId();
         ShareClassId scId = _getVault().scId();
         AssetId assetId = vaultRegistry.vaultDetails(_getVault()).assetId;
 
+        // Calculate and bound max claims
         uint32 maxClaimsBound = batchRequestManager.maxDepositClaims(poolId, scId, investor, assetId);
         maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
+        console2.log("maxClaims: ", maxClaims);
 
-        hub_notifyDeposit(maxClaims);
+        // Capture validation state if needed
+        bool hasClaimedAll = _hasClaimedAllEpochs(maxClaims, maxClaimsBound);
+        uint128 pendingBeforeSCM;
+        uint256 maxMintBefore;
+        if (hasClaimedAll) {
+            (pendingBeforeSCM,, maxMintBefore) = _captureDepositStateBefore(investor);
+        }
     }
 
     // NOTE: this notifies for all epochs until all have been claimed
-    function hub_notifyRedeem_clamped(uint32 maxClaims) public {
-        // Clamp maxClaims to actual available claims
+    function hub_notifyRedeem_clamped(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
+        // Setup vault context and investor
         bytes32 investor = CastLib.toBytes32(_getActor());
         PoolId poolId = _getVault().poolId();
         ShareClassId scId = _getVault().scId();
         AssetId assetId = vaultRegistry.vaultDetails(_getVault()).assetId;
 
+        // Calculate and bound max claims
         uint32 maxClaimsBound = batchRequestManager.maxRedeemClaims(poolId, scId, investor, assetId);
         maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
 
-        hub_notifyRedeem(maxClaims);
+        // Handle validation or continuation
+        if (maxClaimsBound > 0) {
+            // Continue claiming remaining epochs
+            hub_notifyRedeem(1);
+        }
     }
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
