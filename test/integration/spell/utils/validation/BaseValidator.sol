@@ -27,6 +27,7 @@ struct ValidationContext {
     GraphQLQuery indexer;
     CacheStore cache;
     bool isMainnet;
+    string networkName;
 }
 
 /// @title BaseValidator
