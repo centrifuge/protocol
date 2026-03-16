@@ -610,10 +610,10 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(address(fullRestrictionsHook.root()), address(root));
     }
 
-    function testOnOfframpManagerFactory() public view {
+    function testOnOffRampFactory() public view {
         // dependencies set correctly
-        assertEq(address(onOfframpManagerFactory.contractUpdater()), address(contractUpdater));
-        assertEq(address(onOfframpManagerFactory.balanceSheet()), address(balanceSheet));
+        assertEq(address(onOffRampFactory.contractUpdater()), address(contractUpdater));
+        assertEq(address(onOffRampFactory.balanceSheet()), address(balanceSheet));
     }
 
     function testMerkleProofManagerFactory() public view {

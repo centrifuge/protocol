@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IOnOfframpManager} from "./interfaces/IOnOfframpManager.sol";
-import {IOnOfframpManagerFactory} from "./interfaces/IOnOfframpManagerFactory.sol";
+import {IOnOffRamp} from "./interfaces/IOnOffRamp.sol";
+import {IOnOffRampFactory} from "./interfaces/IOnOffRampFactory.sol";
 import {IDepositManager, IWithdrawManager} from "./interfaces/IBalanceSheetManager.sol";
 
 import {CastLib} from "../../misc/libraries/CastLib.sol";
@@ -15,13 +15,13 @@ import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 import {IBalanceSheet, WithdrawMode} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 
-/// @title  OnOfframpManager
+/// @title  OnOffRamp
 /// @notice Balance sheet manager for depositing and withdrawing ERC20 assets.
 ///         - Onramping is permissionless: once an asset is allowed to be onramped and ERC20 assets have been
 ///           transferred to the manager, anyone can trigger the balance sheet deposit.
 ///         - Offramping is permissioned: only predefined relayers can trigger withdrawals to predefined
 ///           offramp accounts.
-contract OnOfframpManager is IOnOfframpManager {
+contract OnOffRamp is IOnOffRamp {
     using CastLib for *;
 
     PoolId public immutable poolId;
@@ -138,7 +138,7 @@ contract OnOfframpManager is IOnOfframpManager {
     }
 }
 
-contract OnOfframpManagerFactory is IOnOfframpManagerFactory {
+contract OnOffRampFactory is IOnOffRampFactory {
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
 
@@ -147,15 +147,15 @@ contract OnOfframpManagerFactory is IOnOfframpManagerFactory {
         balanceSheet = balanceSheet_;
     }
 
-    /// @inheritdoc IOnOfframpManagerFactory
-    function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOfframpManager) {
+    /// @inheritdoc IOnOffRampFactory
+    function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOffRamp) {
         balanceSheet.spoke().shareToken(poolId, scId); // Check for existence
 
-        OnOfframpManager manager = new OnOfframpManager{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
+        OnOffRamp manager = new OnOffRamp{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
             poolId, scId, contractUpdater, balanceSheet
         );
 
-        emit DeployOnOfframpManager(poolId, scId, address(manager));
-        return IOnOfframpManager(manager);
+        emit DeployOnOffRamp(poolId, scId, address(manager));
+        return IOnOffRamp(manager);
     }
 }

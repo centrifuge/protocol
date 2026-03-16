@@ -5,24 +5,24 @@ import {IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
 import {IERC6909ExclOperator, IERC6909MetadataExt} from "../../../../src/misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
-import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
-import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
 import {AccountingToken} from "../../../../src/managers/spoke/AccountingToken.sol";
-import {IExecutor} from "../../../../src/managers/spoke/interfaces/IExecutor.sol";
 import {IAccountingToken} from "../../../../src/managers/spoke/interfaces/IAccountingToken.sol";
-import {IExecutorFactory} from "../../../../src/managers/spoke/interfaces/IExecutorFactory.sol";
-import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 
 import "forge-std/Test.sol";
 
 // ─── Base ────────────────────────────────────────────────────────────────────
 
 contract AccountingTokenTest is Test {
+    using CastLib for address;
+
     PoolId constant POOL_A = PoolId.wrap(1);
     PoolId constant POOL_B = PoolId.wrap(2);
+    ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("sc1"));
 
-    address factoryAddr = makeAddr("factory");
+    address contractUpdater = makeAddr("contractUpdater");
 
     AccountingToken token;
 
@@ -33,26 +33,26 @@ contract AccountingTokenTest is Test {
 
     uint256 tokenIdA;
     uint256 tokenIdB;
-    address executorA = makeAddr("executorA");
-    address executorB = makeAddr("executorB");
+    address minterA = makeAddr("minterA");
+    address minterB = makeAddr("minterB");
 
     function setUp() public virtual {
-        token = new AccountingToken(IExecutorFactory(factoryAddr));
+        token = new AccountingToken(contractUpdater);
 
-        tokenIdA = token.toTokenId(POOL_A, asset);
-        tokenIdB = token.toTokenId(POOL_B, asset);
+        tokenIdA = token.toTokenId(POOL_A, asset, false);
+        tokenIdB = token.toTokenId(POOL_B, asset, false);
 
-        vm.mockCall(
-            factoryAddr, abi.encodeWithSelector(IExecutorFactory.executors.selector, POOL_A), abi.encode(executorA)
-        );
-        vm.mockCall(
-            factoryAddr, abi.encodeWithSelector(IExecutorFactory.executors.selector, POOL_B), abi.encode(executorB)
-        );
+        // Register minters via trustedCall
+        vm.startPrank(contractUpdater);
+        token.trustedCall(POOL_A, SC_1, abi.encode(minterA.toBytes32(), true));
+        token.trustedCall(POOL_B, SC_1, abi.encode(minterB.toBytes32(), true));
+        vm.stopPrank();
     }
 
     function _mint(address to, uint256 id, uint256 amount) internal {
-        vm.prank(PoolId.wrap(uint64(id >> 160)).raw() == POOL_A.raw() ? executorA : executorB);
-        token.mint(to, id, amount);
+        address minter = PoolId.wrap(uint64(id >> 160)).raw() == POOL_A.raw() ? minterA : minterB;
+        vm.prank(minter);
+        token.mint(to, id, amount, SC_1);
     }
 }
 
@@ -60,66 +60,119 @@ contract AccountingTokenTest is Test {
 
 contract AccountingTokenConstructorTest is AccountingTokenTest {
     function testConstructor() public view {
-        assertEq(address(token.factory()), factoryAddr);
+        assertEq(token.contractUpdater(), contractUpdater);
     }
 }
 
 // ─── Access Control ──────────────────────────────────────────────────────────
 
 contract AccountingTokenAccessControlTest is AccountingTokenTest {
-    function testMintFromCorrectExecutor() public {
-        vm.prank(executorA);
-        token.mint(user, tokenIdA, 100e18);
+    function testMintFromCorrectMinter() public {
+        vm.prank(minterA);
+        token.mint(user, tokenIdA, 100e18, SC_1);
         assertEq(token.balanceOf(user, tokenIdA), 100e18);
     }
 
-    function testBurnFromCorrectExecutor() public {
+    function testBurnFromCorrectMinter() public {
         _mint(user, tokenIdA, 100e18);
 
-        vm.prank(executorA);
-        token.burn(user, tokenIdA, 50e18);
+        vm.prank(minterA);
+        token.burn(user, tokenIdA, 50e18, SC_1);
         assertEq(token.balanceOf(user, tokenIdA), 50e18);
     }
 
-    function testMintFromWrongPoolExecutorReverts() public {
-        // executorB cannot mint tokenIdA (belongs to pool A)
-        vm.expectRevert(IAccountingToken.NotPoolExecutor.selector);
-        vm.prank(executorB);
-        token.mint(user, tokenIdA, 100e18);
+    function testMintFromWrongPoolMinterReverts() public {
+        // minterB cannot mint tokenIdA (belongs to pool A)
+        vm.expectRevert(IAccountingToken.NotMinter.selector);
+        vm.prank(minterB);
+        token.mint(user, tokenIdA, 100e18, SC_1);
     }
 
-    function testBurnFromWrongPoolExecutorReverts() public {
+    function testBurnFromWrongPoolMinterReverts() public {
         _mint(user, tokenIdA, 100e18);
 
-        vm.expectRevert(IAccountingToken.NotPoolExecutor.selector);
-        vm.prank(executorB);
-        token.burn(user, tokenIdA, 50e18);
+        vm.expectRevert(IAccountingToken.NotMinter.selector);
+        vm.prank(minterB);
+        token.burn(user, tokenIdA, 50e18, SC_1);
     }
 
     function testMintFromRandomAddressReverts() public {
-        vm.expectRevert(IAccountingToken.NotPoolExecutor.selector);
+        vm.expectRevert(IAccountingToken.NotMinter.selector);
         vm.prank(user);
-        token.mint(user, tokenIdA, 100e18);
+        token.mint(user, tokenIdA, 100e18, SC_1);
     }
 
     function testBurnFromRandomAddressReverts() public {
         _mint(user, tokenIdA, 100e18);
 
-        vm.expectRevert(IAccountingToken.NotPoolExecutor.selector);
+        vm.expectRevert(IAccountingToken.NotMinter.selector);
         vm.prank(user);
-        token.burn(user, tokenIdA, 50e18);
+        token.burn(user, tokenIdA, 50e18, SC_1);
+    }
+}
+
+// ─── TrustedCall ─────────────────────────────────────────────────────────────
+
+contract AccountingTokenTrustedCallTest is AccountingTokenTest {
+    using CastLib for address;
+
+    function testTrustedCallOnlyCallableByContractUpdater() public {
+        vm.expectRevert(IAccountingToken.NotMinter.selector);
+        vm.prank(user);
+        token.trustedCall(POOL_A, SC_1, abi.encode(user.toBytes32(), true));
+    }
+
+    function testTrustedCallEnablesMinter() public {
+        address newMinter = makeAddr("newMinter");
+        assertFalse(token.minters(POOL_A, newMinter));
+
+        vm.prank(contractUpdater);
+        token.trustedCall(POOL_A, SC_1, abi.encode(newMinter.toBytes32(), true));
+
+        assertTrue(token.minters(POOL_A, newMinter));
+    }
+
+    function testTrustedCallDisablesMinter() public {
+        assertTrue(token.minters(POOL_A, minterA));
+
+        vm.prank(contractUpdater);
+        token.trustedCall(POOL_A, SC_1, abi.encode(minterA.toBytes32(), false));
+
+        assertFalse(token.minters(POOL_A, minterA));
+    }
+
+    function testTrustedCallEmitsUpdateMinter() public {
+        address newMinter = makeAddr("newMinter");
+
+        vm.expectEmit();
+        emit IAccountingToken.UpdateMinter(POOL_A, newMinter, true);
+
+        vm.prank(contractUpdater);
+        token.trustedCall(POOL_A, SC_1, abi.encode(newMinter.toBytes32(), true));
+    }
+
+    function testDisabledMinterCannotMint() public {
+        // Disable minterA
+        vm.prank(contractUpdater);
+        token.trustedCall(POOL_A, SC_1, abi.encode(minterA.toBytes32(), false));
+
+        vm.expectRevert(IAccountingToken.NotMinter.selector);
+        vm.prank(minterA);
+        token.mint(user, tokenIdA, 100e18, SC_1);
     }
 }
 
 // ─── Mint / Burn ─────────────────────────────────────────────────────────────
 
 contract AccountingTokenMintBurnTest is AccountingTokenTest {
-    function testMintEmitsTransfer() public {
+    function testMintEmitsTransferAndMint() public {
         vm.expectEmit();
-        emit IERC6909ExclOperator.Transfer(executorA, address(0), user, tokenIdA, 100e18);
+        emit IERC6909ExclOperator.Transfer(minterA, address(0), user, tokenIdA, 100e18);
+        vm.expectEmit();
+        emit IAccountingToken.Mint(POOL_A, SC_1, user, tokenIdA, 100e18);
 
-        vm.prank(executorA);
-        token.mint(user, tokenIdA, 100e18);
+        vm.prank(minterA);
+        token.mint(user, tokenIdA, 100e18, SC_1);
     }
 
     function testMintAccumulates() public {
@@ -128,21 +181,23 @@ contract AccountingTokenMintBurnTest is AccountingTokenTest {
         assertEq(token.balanceOf(user, tokenIdA), 150e18);
     }
 
-    function testBurnEmitsTransfer() public {
+    function testBurnEmitsTransferAndBurn() public {
         _mint(user, tokenIdA, 100e18);
 
         vm.expectEmit();
-        emit IERC6909ExclOperator.Transfer(executorA, user, address(0), tokenIdA, 60e18);
+        emit IERC6909ExclOperator.Transfer(minterA, user, address(0), tokenIdA, 60e18);
+        vm.expectEmit();
+        emit IAccountingToken.Burn(POOL_A, SC_1, user, tokenIdA, 60e18);
 
-        vm.prank(executorA);
-        token.burn(user, tokenIdA, 60e18);
+        vm.prank(minterA);
+        token.burn(user, tokenIdA, 60e18, SC_1);
     }
 
     function testBurnExactBalance() public {
         _mint(user, tokenIdA, 100e18);
 
-        vm.prank(executorA);
-        token.burn(user, tokenIdA, 100e18);
+        vm.prank(minterA);
+        token.burn(user, tokenIdA, 100e18, SC_1);
         assertEq(token.balanceOf(user, tokenIdA), 0);
     }
 
@@ -150,8 +205,8 @@ contract AccountingTokenMintBurnTest is AccountingTokenTest {
         _mint(user, tokenIdA, 50e18);
 
         vm.expectRevert(abi.encodeWithSelector(IERC6909ExclOperator.InsufficientBalance.selector, user, tokenIdA));
-        vm.prank(executorA);
-        token.burn(user, tokenIdA, 51e18);
+        vm.prank(minterA);
+        token.burn(user, tokenIdA, 51e18, SC_1);
     }
 }
 
@@ -261,24 +316,40 @@ contract AccountingTokenApproveTest is AccountingTokenTest {
 
 contract AccountingTokenTokenIdTest is AccountingTokenTest {
     function testToTokenId() public view {
-        uint256 id = token.toTokenId(POOL_A, asset);
+        uint256 id = token.toTokenId(POOL_A, asset, false);
         assertEq(id, (uint256(POOL_A.raw()) << 160) | uint256(uint160(asset)));
     }
 
     function testTokenIdIsolatesPoolIds() public view {
-        uint256 idA = token.toTokenId(POOL_A, asset);
-        uint256 idB = token.toTokenId(POOL_B, asset);
+        uint256 idA = token.toTokenId(POOL_A, asset, false);
+        uint256 idB = token.toTokenId(POOL_B, asset, false);
         assertTrue(idA != idB);
     }
 
     function testTokenIdEncodesAssetInLower160() public view {
-        uint256 id = token.toTokenId(POOL_A, asset);
+        uint256 id = token.toTokenId(POOL_A, asset, false);
         assertEq(address(uint160(id)), asset);
     }
 
     function testTokenIdEncodesPoolIdInUpper64() public view {
-        uint256 id = token.toTokenId(POOL_A, asset);
+        uint256 id = token.toTokenId(POOL_A, asset, false);
         assertEq(uint64(id >> 160), POOL_A.raw());
+    }
+
+    function testToTokenIdWithLiabilitySetsBit255() public view {
+        uint256 id = token.toTokenId(POOL_A, asset, true);
+        uint256 idNoLiab = token.toTokenId(POOL_A, asset, false);
+        assertEq(id, idNoLiab | (1 << 255));
+    }
+
+    function testIsLiabilityReturnsTrueForLiabilityTokenId() public view {
+        uint256 id = token.toTokenId(POOL_A, asset, true);
+        assertTrue(token.isLiability(id));
+    }
+
+    function testIsLiabilityReturnsFalseForNonLiabilityTokenId() public view {
+        uint256 id = token.toTokenId(POOL_A, asset, false);
+        assertFalse(token.isLiability(id));
     }
 }
 
@@ -294,7 +365,7 @@ contract AccountingTokenMetadataTest is AccountingTokenTest {
     function testSymbolDerivedFromAssetSymbol() public {
         vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.symbol.selector), abi.encode("USDC"));
 
-        assertEq(token.symbol(tokenIdA), "accUSDC");
+        assertEq(token.symbol(tokenIdA), "acc-USDC");
     }
 
     function testDecimalsDelegatesToAsset() public {
@@ -302,70 +373,76 @@ contract AccountingTokenMetadataTest is AccountingTokenTest {
 
         assertEq(token.decimals(tokenIdA), 6);
     }
+
+    function testLiabilityNameDerivedFromAssetSymbol() public {
+        uint256 liabId = token.toTokenId(POOL_A, asset, true);
+        vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.symbol.selector), abi.encode("USDC"));
+
+        assertEq(token.name(liabId), "Liability USDC");
+    }
+
+    function testLiabilitySymbolDerivedFromAssetSymbol() public {
+        uint256 liabId = token.toTokenId(POOL_A, asset, true);
+        vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.symbol.selector), abi.encode("USDC"));
+
+        assertEq(token.symbol(liabId), "liab-USDC");
+    }
 }
 
-// ─── Factory Integration (real CREATE2) ──────────────────────────────────────
+// ─── Minter Integration ─────────────────────────────────────────────────────
 
-contract AccountingTokenFactoryIntegrationTest is Test {
+contract AccountingTokenMinterIntegrationTest is Test {
+    using CastLib for address;
+
     PoolId constant POOL_A = PoolId.wrap(1);
+    ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("sc1"));
 
     address contractUpdater = makeAddr("contractUpdater");
-    address gateway = makeAddr("gateway");
-    IBalanceSheet balanceSheet;
-    ISpoke spoke;
-    IExecutorFactory factory;
     AccountingToken token;
 
     function setUp() public {
-        balanceSheet = IBalanceSheet(makeAddr("balanceSheet"));
-        spoke = ISpoke(makeAddr("spoke"));
-
-        vm.mockCall(address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.spoke.selector), abi.encode(spoke));
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
-
-        factory = IExecutorFactory(
-            deployCode(
-                "out-ir/Executor.sol/ExecutorFactory.json", abi.encode(contractUpdater, address(balanceSheet), gateway)
-            )
-        );
-
-        token = new AccountingToken(factory);
+        token = new AccountingToken(contractUpdater);
     }
 
-    function testFactoryDeployedExecutorCanMint() public {
-        IExecutor executor = factory.newExecutor(POOL_A);
+    function testTrustedCallRegisteredMinterCanMint() public {
+        address minter = makeAddr("minter");
         address asset_ = makeAddr("asset");
-        uint256 tokenId = token.toTokenId(POOL_A, asset_);
-
+        uint256 tokenId = token.toTokenId(POOL_A, asset_, false);
         address user_ = makeAddr("user");
-        vm.prank(address(executor));
-        token.mint(user_, tokenId, 100e18);
+
+        vm.prank(contractUpdater);
+        token.trustedCall(POOL_A, SC_1, abi.encode(minter.toBytes32(), true));
+
+        vm.prank(minter);
+        token.mint(user_, tokenId, 100e18, SC_1);
 
         assertEq(token.balanceOf(user_, tokenId), 100e18);
     }
 
-    function testFactoryDeployedExecutorCanBurn() public {
-        IExecutor executor = factory.newExecutor(POOL_A);
+    function testTrustedCallRegisteredMinterCanBurn() public {
+        address minter = makeAddr("minter");
         address asset_ = makeAddr("asset");
-        uint256 tokenId = token.toTokenId(POOL_A, asset_);
-
+        uint256 tokenId = token.toTokenId(POOL_A, asset_, false);
         address user_ = makeAddr("user");
-        vm.prank(address(executor));
-        token.mint(user_, tokenId, 100e18);
 
-        vm.prank(address(executor));
-        token.burn(user_, tokenId, 100e18);
+        vm.prank(contractUpdater);
+        token.trustedCall(POOL_A, SC_1, abi.encode(minter.toBytes32(), true));
+
+        vm.prank(minter);
+        token.mint(user_, tokenId, 100e18, SC_1);
+
+        vm.prank(minter);
+        token.burn(user_, tokenId, 100e18, SC_1);
 
         assertEq(token.balanceOf(user_, tokenId), 0);
     }
 
-    function testNonExecutorCannotMint() public {
-        factory.newExecutor(POOL_A);
+    function testNonMinterCannotMint() public {
         address asset_ = makeAddr("asset");
-        uint256 tokenId = token.toTokenId(POOL_A, asset_);
+        uint256 tokenId = token.toTokenId(POOL_A, asset_, false);
 
-        vm.expectRevert(IAccountingToken.NotPoolExecutor.selector);
+        vm.expectRevert(IAccountingToken.NotMinter.selector);
         vm.prank(makeAddr("random"));
-        token.mint(makeAddr("user"), tokenId, 100e18);
+        token.mint(makeAddr("user"), tokenId, 100e18, SC_1);
     }
 }

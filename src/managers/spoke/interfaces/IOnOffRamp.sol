@@ -7,10 +7,10 @@ import {PoolId} from "../../../core/types/PoolId.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUpdate.sol";
 
-/// @title  IOnOfframpManager
+/// @title  IOnOffRamp
 /// @notice Interface for managing onramp (deposits) and offramp (withdrawals) operations for a specific pool and share class
 /// @dev    Combines deposit, withdraw, and contract update functionality with relayer and asset whitelisting
-interface IOnOfframpManager is IDepositManager, IWithdrawManager, ITrustedContractUpdate {
+interface IOnOffRamp is IDepositManager, IWithdrawManager, ITrustedContractUpdate {
     enum TrustedCall {
         Onramp,
         Relayer,

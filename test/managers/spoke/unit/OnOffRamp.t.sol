@@ -14,8 +14,8 @@ import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IBalanceSheet, WithdrawMode} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 
-import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
-import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
+import {OnOffRampFactory} from "../../../../src/managers/spoke/OnOffRamp.sol";
+import {IOnOffRamp} from "../../../../src/managers/spoke/interfaces/IOnOffRamp.sol";
 import {IDepositManager, IWithdrawManager} from "../../../../src/managers/spoke/interfaces/IBalanceSheetManager.sol";
 
 import "forge-std/Test.sol";
@@ -23,7 +23,7 @@ import "forge-std/Test.sol";
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}
 
-contract OnOfframpManagerTest is Test {
+contract OnOffRampTest is Test {
     using CastLib for *;
 
     IBalanceSheet balanceSheet = IBalanceSheet(address(new IsContract()));
@@ -46,8 +46,8 @@ contract OnOfframpManagerTest is Test {
     address relayer = makeAddr("relayer");
     address receiver = makeAddr("receiver");
 
-    OnOfframpManagerFactory factory;
-    IOnOfframpManager manager;
+    OnOffRampFactory factory;
+    IOnOffRamp manager;
 
     function setUp() public virtual {
         _setupMocks();
@@ -73,7 +73,7 @@ contract OnOfframpManagerTest is Test {
     }
 
     function _deployManager() internal {
-        factory = new OnOfframpManagerFactory(contractUpdater, balanceSheet);
+        factory = new OnOffRampFactory(contractUpdater, balanceSheet);
 
         // Mock balanceSheet.spoke().shareToken() to prevent revert during deployment
         vm.mockCall(
@@ -132,14 +132,14 @@ contract OnOfframpManagerTest is Test {
     function _enableOnramp() internal {
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_A, SC_1, abi.encode(uint8(IOnOfframpManager.TrustedCall.Onramp), DEFAULT_ASSET_ID, true)
+            POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, true)
         );
     }
 
     function _enableRelayer(address relayer_) internal {
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_A, SC_1, abi.encode(uint8(IOnOfframpManager.TrustedCall.Relayer), relayer_.toBytes32(), true)
+            POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Relayer), relayer_.toBytes32(), true)
         );
     }
 
@@ -148,7 +148,7 @@ contract OnOfframpManagerTest is Test {
         manager.trustedCall(
             POOL_A,
             SC_1,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Offramp), DEFAULT_ASSET_ID, receiver_.toBytes32(), true)
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Offramp), DEFAULT_ASSET_ID, receiver_.toBytes32(), true)
         );
     }
 
@@ -157,39 +157,39 @@ contract OnOfframpManagerTest is Test {
         manager.trustedCall(
             POOL_A,
             SC_1,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Offramp), DEFAULT_ASSET_ID, receiver_.toBytes32(), false)
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Offramp), DEFAULT_ASSET_ID, receiver_.toBytes32(), false)
         );
     }
 }
 
-contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
+contract OnOffRampUpdateContractFailureTests is OnOffRampTest {
     using CastLib for *;
 
     function testInvalidSource(address notContractUpdater) public {
         vm.assume(notContractUpdater != contractUpdater);
 
-        vm.expectRevert(IOnOfframpManager.NotContractUpdater.selector);
+        vm.expectRevert(IOnOffRamp.NotContractUpdater.selector);
         vm.prank(notContractUpdater);
         manager.trustedCall(
-            POOL_A, SC_1, abi.encode(uint8(IOnOfframpManager.TrustedCall.Onramp), DEFAULT_ASSET_ID, true)
+            POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, true)
         );
     }
 
     function testInvalidPool() public {
-        vm.expectRevert(IOnOfframpManager.InvalidPoolId.selector);
+        vm.expectRevert(IOnOffRamp.InvalidPoolId.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_B, SC_1, abi.encode(uint8(IOnOfframpManager.TrustedCall.Onramp), DEFAULT_ASSET_ID, true)
+            POOL_B, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, true)
         );
     }
 
     function testInvalidShareClass() public {
         ShareClassId wrongScId = ShareClassId.wrap(bytes16("wrong_sc"));
 
-        vm.expectRevert(IOnOfframpManager.InvalidShareClassId.selector);
+        vm.expectRevert(IOnOffRamp.InvalidShareClassId.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_A, wrongScId, abi.encode(uint8(IOnOfframpManager.TrustedCall.Onramp), DEFAULT_ASSET_ID, true)
+            POOL_A, wrongScId, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, true)
         );
     }
 
@@ -199,10 +199,10 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
             address(spoke), abi.encodeWithSelector(ISpoke.idToAsset.selector, ASSET_ID), abi.encode(address(erc20), 1)
         );
 
-        vm.expectRevert(IOnOfframpManager.ERC6909NotSupported.selector);
+        vm.expectRevert(IOnOffRamp.ERC6909NotSupported.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_A, SC_1, abi.encode(uint8(IOnOfframpManager.TrustedCall.Onramp), DEFAULT_ASSET_ID, true)
+            POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, true)
         );
     }
 
@@ -212,25 +212,25 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerTest {
             address(spoke), abi.encodeWithSelector(ISpoke.idToAsset.selector, ASSET_ID), abi.encode(address(erc20), 1)
         );
 
-        vm.expectRevert(IOnOfframpManager.ERC6909NotSupported.selector);
+        vm.expectRevert(IOnOffRamp.ERC6909NotSupported.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(
             POOL_A,
             SC_1,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Offramp), DEFAULT_ASSET_ID, receiver.toBytes32(), true)
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Offramp), DEFAULT_ASSET_ID, receiver.toBytes32(), true)
         );
     }
 
     function testUnknownTrustedCall() public {
-        vm.expectRevert(IOnOfframpManager.UnknownTrustedCall.selector);
+        vm.expectRevert(IOnOffRamp.UnknownTrustedCall.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(POOL_A, SC_1, abi.encode(uint8(99), DEFAULT_ASSET_ID, bytes32(""), true));
     }
 }
 
-contract OnOfframpManagerDepositFailureTests is OnOfframpManagerTest {
+contract OnOffRampDepositFailureTests is OnOffRampTest {
     function testNotAllowed(uint128 amount) public {
-        vm.expectRevert(IOnOfframpManager.NotAllowedOnrampAsset.selector);
+        vm.expectRevert(IOnOffRamp.NotAllowedOnrampAsset.selector);
         manager.deposit(address(erc20), ERC20_TOKEN_ID, amount, address(manager));
     }
 
@@ -257,7 +257,7 @@ contract OnOfframpManagerDepositFailureTests is OnOfframpManagerTest {
     }
 }
 
-contract OnOfframpManagerDepositSuccessTests is OnOfframpManagerTest {
+contract OnOffRampDepositSuccessTests is OnOffRampTest {
     function testDeposit(uint128 amount) public {
         amount = uint128(bound(amount, 1, type(uint128).max));
 
@@ -285,17 +285,17 @@ contract OnOfframpManagerDepositSuccessTests is OnOfframpManagerTest {
 
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_A, SC_1, abi.encode(uint8(IOnOfframpManager.TrustedCall.Onramp), DEFAULT_ASSET_ID, false)
+            POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, false)
         );
 
-        vm.expectRevert(IOnOfframpManager.NotAllowedOnrampAsset.selector);
+        vm.expectRevert(IOnOffRamp.NotAllowedOnrampAsset.selector);
         manager.deposit(address(erc20), ERC20_TOKEN_ID, 100, address(manager));
     }
 }
 
-contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerTest {
+contract OnOffRampWithdrawFailureTests is OnOffRampTest {
     function testNotAllowed(uint128 amount) public {
-        vm.expectRevert(IOnOfframpManager.NotRelayer.selector);
+        vm.expectRevert(IOnOffRamp.NotRelayer.selector);
         manager.withdraw(address(erc20), ERC20_TOKEN_ID, amount, address(this));
     }
 
@@ -303,7 +303,7 @@ contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerTest {
         _enableRelayer(relayer);
 
         vm.prank(relayer);
-        vm.expectRevert(IOnOfframpManager.InvalidOfframpDestination.selector);
+        vm.expectRevert(IOnOffRamp.InvalidOfframpDestination.selector);
         manager.withdraw(address(erc20), ERC20_TOKEN_ID, amount, address(0));
     }
 
@@ -314,7 +314,7 @@ contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerTest {
         _mockManagerPermissions(true);
 
         vm.prank(relayer);
-        vm.expectRevert(IOnOfframpManager.InvalidOfframpDestination.selector);
+        vm.expectRevert(IOnOffRamp.InvalidOfframpDestination.selector);
         manager.withdraw(address(erc20), ERC20_TOKEN_ID, amount, receiver);
     }
 
@@ -326,7 +326,7 @@ contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerTest {
         _mockManagerPermissions(true);
 
         vm.prank(relayer);
-        vm.expectRevert(IOnOfframpManager.InvalidOfframpDestination.selector);
+        vm.expectRevert(IOnOffRamp.InvalidOfframpDestination.selector);
         manager.withdraw(address(erc20), ERC20_TOKEN_ID, amount, receiver);
     }
 
@@ -356,7 +356,7 @@ contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerTest {
     }
 }
 
-contract OnOfframpManagerWithdrawSuccessTests is OnOfframpManagerTest {
+contract OnOffRampWithdrawSuccessTests is OnOffRampTest {
     function testWithdraw(uint128 amount) public {
         amount = uint128(bound(amount, 1, type(uint128).max));
 
@@ -378,18 +378,18 @@ contract OnOfframpManagerWithdrawSuccessTests is OnOfframpManagerTest {
     }
 }
 
-contract OnOfframpManagerTrustedWithdrawFailureTests is OnOfframpManagerTest {
+contract OnOffRampTrustedWithdrawFailureTests is OnOffRampTest {
     using CastLib for *;
 
     function testWithdrawTrustedCallZeroAddressReceiver(uint128 amount) public {
         amount = uint128(bound(amount, 1, type(uint128).max));
 
-        vm.expectRevert(IOnOfframpManager.InvalidOfframpDestination.selector);
+        vm.expectRevert(IOnOffRamp.InvalidOfframpDestination.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(
             POOL_A,
             SC_1,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, bytes32(0))
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, bytes32(0))
         );
     }
 
@@ -397,12 +397,12 @@ contract OnOfframpManagerTrustedWithdrawFailureTests is OnOfframpManagerTest {
         amount = uint128(bound(amount, 1, type(uint128).max));
 
         // Don't enable offramp for receiver
-        vm.expectRevert(IOnOfframpManager.InvalidOfframpDestination.selector);
+        vm.expectRevert(IOnOffRamp.InvalidOfframpDestination.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(
             POOL_A,
             SC_1,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
         );
     }
 
@@ -413,12 +413,12 @@ contract OnOfframpManagerTrustedWithdrawFailureTests is OnOfframpManagerTest {
         _enableOfframp(receiver);
         _disableOfframp(receiver);
 
-        vm.expectRevert(IOnOfframpManager.InvalidOfframpDestination.selector);
+        vm.expectRevert(IOnOffRamp.InvalidOfframpDestination.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(
             POOL_A,
             SC_1,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
         );
     }
 
@@ -428,12 +428,12 @@ contract OnOfframpManagerTrustedWithdrawFailureTests is OnOfframpManagerTest {
 
         _enableOfframp(receiver);
 
-        vm.expectRevert(IOnOfframpManager.NotContractUpdater.selector);
+        vm.expectRevert(IOnOffRamp.NotContractUpdater.selector);
         vm.prank(notContractUpdater);
         manager.trustedCall(
             POOL_A,
             SC_1,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
         );
     }
 
@@ -442,12 +442,12 @@ contract OnOfframpManagerTrustedWithdrawFailureTests is OnOfframpManagerTest {
 
         _enableOfframp(receiver);
 
-        vm.expectRevert(IOnOfframpManager.InvalidPoolId.selector);
+        vm.expectRevert(IOnOffRamp.InvalidPoolId.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(
             POOL_B,
             SC_1,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
         );
     }
 
@@ -457,12 +457,12 @@ contract OnOfframpManagerTrustedWithdrawFailureTests is OnOfframpManagerTest {
 
         _enableOfframp(receiver);
 
-        vm.expectRevert(IOnOfframpManager.InvalidShareClassId.selector);
+        vm.expectRevert(IOnOffRamp.InvalidShareClassId.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(
             POOL_A,
             wrongScId,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
         );
     }
 
@@ -478,7 +478,7 @@ contract OnOfframpManagerTrustedWithdrawFailureTests is OnOfframpManagerTest {
         manager.trustedCall(
             POOL_A,
             SC_1,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
         );
     }
 
@@ -494,12 +494,12 @@ contract OnOfframpManagerTrustedWithdrawFailureTests is OnOfframpManagerTest {
         manager.trustedCall(
             POOL_A,
             SC_1,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
         );
     }
 }
 
-contract OnOfframpManagerTrustedWithdrawSuccessTests is OnOfframpManagerTest {
+contract OnOffRampTrustedWithdrawSuccessTests is OnOffRampTest {
     using CastLib for *;
 
     function testWithdrawTrustedCall(uint128 amount) public {
@@ -521,7 +521,7 @@ contract OnOfframpManagerTrustedWithdrawSuccessTests is OnOfframpManagerTest {
         manager.trustedCall(
             POOL_A,
             SC_1,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
         );
     }
 
@@ -548,7 +548,7 @@ contract OnOfframpManagerTrustedWithdrawSuccessTests is OnOfframpManagerTest {
         manager.trustedCall(
             POOL_A,
             SC_1,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount1, receiver.toBytes32())
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount1, receiver.toBytes32())
         );
 
         // Second withdrawal to receiver2
@@ -564,7 +564,7 @@ contract OnOfframpManagerTrustedWithdrawSuccessTests is OnOfframpManagerTest {
         manager.trustedCall(
             POOL_A,
             SC_1,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount2, receiver2.toBytes32())
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount2, receiver2.toBytes32())
         );
     }
 
@@ -581,7 +581,7 @@ contract OnOfframpManagerTrustedWithdrawSuccessTests is OnOfframpManagerTest {
         manager.trustedCall(
             POOL_A,
             SC_1,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
         );
     }
 
@@ -604,12 +604,12 @@ contract OnOfframpManagerTrustedWithdrawSuccessTests is OnOfframpManagerTest {
         manager.trustedCall(
             POOL_A,
             SC_1,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, receiver.toBytes32())
         );
     }
 }
 
-contract OnOfframpManagerERC165Tests is OnOfframpManagerTest {
+contract OnOffRampERC165Tests is OnOffRampTest {
     function testERC165Support(bytes4 unsupportedInterfaceId) public view {
         bytes4 erc165 = 0x01ffc9a7;
         bytes4 depositManager = 0xc864037c;

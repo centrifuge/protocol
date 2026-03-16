@@ -37,7 +37,7 @@ import {QueueManager} from "../src/managers/spoke/QueueManager.sol";
 import {VaultDecoder} from "../src/managers/spoke/decoders/VaultDecoder.sol";
 import {SimplePriceManager} from "../src/managers/hub/SimplePriceManager.sol";
 import {CircleDecoder} from "../src/managers/spoke/decoders/CircleDecoder.sol";
-import {OnOfframpManagerFactory} from "../src/managers/spoke/OnOfframpManager.sol";
+import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";
 import {MerkleProofManagerFactory} from "../src/managers/spoke/MerkleProofManager.sol";
 
 import {OracleValuation} from "../src/valuations/OracleValuation.sol";
@@ -158,7 +158,7 @@ contract FullDeployer is BaseDeployer, Constants {
     RedemptionRestrictions public redemptionRestrictionsHook;
 
     QueueManager public queueManager;
-    OnOfframpManagerFactory public onOfframpManagerFactory;
+    OnOffRampFactory public onOffRampFactory;
     MerkleProofManagerFactory public merkleProofManagerFactory;
     VaultDecoder public vaultDecoder;
     CircleDecoder public circleDecoder;
@@ -531,10 +531,10 @@ contract FullDeployer is BaseDeployer, Constants {
             )
         );
 
-        onOfframpManagerFactory = OnOfframpManagerFactory(
+        onOffRampFactory = OnOffRampFactory(
             create3(
-                createSalt("onOfframpManagerFactory", V3_1),
-                abi.encodePacked(type(OnOfframpManagerFactory).creationCode, abi.encode(contractUpdater, balanceSheet))
+                createSalt("onOffRampFactory", V3_1),
+                abi.encodePacked(type(OnOffRampFactory).creationCode, abi.encode(contractUpdater, balanceSheet))
             )
         );
 
@@ -698,7 +698,7 @@ contract FullDeployer is BaseDeployer, Constants {
             freelyTransferableHook,
             redemptionRestrictionsHook,
             queueManager,
-            onOfframpManagerFactory,
+            onOffRampFactory,
             merkleProofManagerFactory,
             vaultDecoder,
             circleDecoder,

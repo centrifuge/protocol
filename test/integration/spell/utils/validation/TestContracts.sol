@@ -34,7 +34,7 @@ import {QueueManager} from "../../../../../src/managers/spoke/QueueManager.sol";
 import {VaultDecoder} from "../../../../../src/managers/spoke/decoders/VaultDecoder.sol";
 import {SimplePriceManager} from "../../../../../src/managers/hub/SimplePriceManager.sol";
 import {CircleDecoder} from "../../../../../src/managers/spoke/decoders/CircleDecoder.sol";
-import {OnOfframpManagerFactory} from "../../../../../src/managers/spoke/OnOfframpManager.sol";
+import {OnOffRampFactory} from "../../../../../src/managers/spoke/OnOffRamp.sol";
 import {MerkleProofManagerFactory} from "../../../../../src/managers/spoke/MerkleProofManager.sol";
 
 import {OracleValuation} from "../../../../../src/valuations/OracleValuation.sol";
@@ -113,7 +113,7 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         FreelyTransferable(c.freelyTransferableHook),
         RedemptionRestrictions(c.redemptionRestrictionsHook),
         QueueManager(c.queueManager),
-        OnOfframpManagerFactory(c.onOfframpManagerFactory),
+        OnOffRampFactory(c.onOffRampFactory),
         MerkleProofManagerFactory(c.merkleProofManagerFactory),
         VaultDecoder(c.vaultDecoder),
         CircleDecoder(c.circleDecoder),

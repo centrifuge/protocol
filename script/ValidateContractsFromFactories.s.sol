@@ -9,7 +9,7 @@ import {IERC20Metadata} from "../src/misc/interfaces/IERC20.sol";
 
 import {PoolEscrow} from "../src/core/spoke/PoolEscrow.sol";
 
-import {OnOfframpManager} from "../src/managers/spoke/OnOfframpManager.sol";
+import {OnOffRamp} from "../src/managers/spoke/OnOffRamp.sol";
 import {MerkleProofManager} from "../src/managers/spoke/MerkleProofManager.sol";
 
 import {AsyncVault} from "../src/vaults/AsyncVault.sol";
@@ -63,7 +63,7 @@ contract ValidateContractsFromFactories is Script {
         results[2] = _verifyContract(addr.shareToken, "ShareToken");
         results[3] = _verifyContract(addr.poolEscrow, "PoolEscrow");
         results[4] = _verifyContract(addr.refundEscrow, "RefundEscrow");
-        results[5] = _verifyContract(addr.onOfframpManager, "OnOfframpManager");
+        results[5] = _verifyContract(addr.onOfframpManager, "OnOffRamp");
         results[6] = _verifyContract(addr.merkleProofManager, "MerkleProofManager");
 
         // Log summary
@@ -213,8 +213,8 @@ contract ValidateContractsFromFactories is Script {
             return _getPoolEscrowArgs(contractAddress);
         } else if (nameHash == keccak256("RefundEscrow")) {
             return _getRefundEscrowArgs();
-        } else if (nameHash == keccak256("OnOfframpManager")) {
-            return _getOnOfframpManagerArgs(contractAddress);
+        } else if (nameHash == keccak256("OnOffRamp")) {
+            return _getOnOffRampArgs(contractAddress);
         } else if (nameHash == keccak256("MerkleProofManager")) {
             return _getMerkleProofManagerArgs(contractAddress);
         }
@@ -253,8 +253,8 @@ contract ValidateContractsFromFactories is Script {
         return "";
     }
 
-    function _getOnOfframpManagerArgs(address manager) internal view returns (bytes memory) {
-        OnOfframpManager m = OnOfframpManager(manager);
+    function _getOnOffRampArgs(address manager) internal view returns (bytes memory) {
+        OnOffRamp m = OnOffRamp(manager);
         return abi.encode(m.poolId(), m.scId(), m.contractUpdater(), address(m.balanceSheet()));
     }
 
