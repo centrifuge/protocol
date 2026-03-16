@@ -60,9 +60,9 @@ contract WireToNewNetwork is Script {
     ///         Targets already wired (quorum > 0) are silently skipped.
     function wireAll(string memory networkName, string[] memory targetNames, string memory derivationPath) public {
         EnvConfig memory source = Env.load(networkName);
-        (address[] memory targets, bytes[] memory datas) = _collectWireCalls(source, targetNames);
+        (address[] memory targets, bytes[] memory data) = _collectWireCalls(source, targetNames);
         if (targets.length == 0) return;
-        _batchCall(safe, source.network.opsAdmin, targets, datas, derivationPath);
+        _batchCall(safe, source.network.opsAdmin, targets, data, derivationPath);
     }
 
     /// @notice Configure LZ DVNs for multiple targets in a single batched protocol Safe proposal.
@@ -71,9 +71,9 @@ contract WireToNewNetwork is Script {
         public
     {
         EnvConfig memory source = Env.load(networkName);
-        (address[] memory targets, bytes[] memory datas) = _collectDvnCalls(source, targetNames);
+        (address[] memory targets, bytes[] memory data) = _collectDvnCalls(source, targetNames);
         if (targets.length == 0) return;
-        _batchCall(protocolSafe, source.network.protocolAdmin, targets, datas, derivationPath);
+        _batchCall(protocolSafe, source.network.protocolAdmin, targets, data, derivationPath);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -101,13 +101,13 @@ contract WireToNewNetwork is Script {
     function _collectWireCalls(EnvConfig memory source, string[] memory targetNames)
         internal
         view
-        returns (address[] memory targets, bytes[] memory datas)
+        returns (address[] memory targets, bytes[] memory data)
     {
         address opsGuardian = source.contracts.opsGuardian;
 
         // Over-allocate: max 5 calls per target (4 adapters + 1 initAdapters)
         targets = new address[](targetNames.length * 5);
-        datas = new bytes[](targetNames.length * 5);
+        data = new bytes[](targetNames.length * 5);
         uint256 idx;
 
         for (uint256 t; t < targetNames.length; t++) {
@@ -128,7 +128,7 @@ contract WireToNewNetwork is Script {
                 address lzAdapter = source.contracts.layerZeroAdapter;
                 require(lzAdapter != address(0), "LayerZero adapter not configured for source network");
                 targets[idx] = opsGuardian;
-                datas[idx] = abi.encodeCall(
+                data[idx] = abi.encodeCall(
                     IOpsGuardian.wire,
                     (
                         lzAdapter,
@@ -144,7 +144,7 @@ contract WireToNewNetwork is Script {
                 address wormholeAdapter = source.contracts.wormholeAdapter;
                 require(wormholeAdapter != address(0), "Wormhole adapter not configured for source network");
                 targets[idx] = opsGuardian;
-                datas[idx] = abi.encodeCall(
+                data[idx] = abi.encodeCall(
                     IOpsGuardian.wire,
                     (
                         wormholeAdapter,
@@ -160,7 +160,7 @@ contract WireToNewNetwork is Script {
                 address axelarAdapter = source.contracts.axelarAdapter;
                 require(axelarAdapter != address(0), "Axelar adapter not configured for source network");
                 targets[idx] = opsGuardian;
-                datas[idx] = abi.encodeCall(
+                data[idx] = abi.encodeCall(
                     IOpsGuardian.wire,
                     (
                         axelarAdapter,
@@ -176,7 +176,7 @@ contract WireToNewNetwork is Script {
                 address chainlinkAdapter = source.contracts.chainlinkAdapter;
                 require(chainlinkAdapter != address(0), "Chainlink adapter not configured for source network");
                 targets[idx] = opsGuardian;
-                datas[idx] = abi.encodeCall(
+                data[idx] = abi.encodeCall(
                     IOpsGuardian.wire,
                     (
                         chainlinkAdapter,
@@ -195,7 +195,7 @@ contract WireToNewNetwork is Script {
             }
 
             targets[idx] = opsGuardian;
-            datas[idx] = abi.encodeCall(
+            data[idx] = abi.encodeCall(
                 IOpsGuardian.initAdapters,
                 // recoveryIndex = adapterCount: no recovery adapter. Configured separately after initial wiring if needed.
                 (centrifugeId, trimmedAdapters, conn.threshold, uint8(adapterCount))
@@ -206,7 +206,7 @@ contract WireToNewNetwork is Script {
         // Safe: idx <= original length; only shrinks array length
         assembly {
             mstore(targets, idx)
-            mstore(datas, idx)
+            mstore(data, idx)
         }
     }
 
@@ -215,7 +215,7 @@ contract WireToNewNetwork is Script {
     function _collectDvnCalls(EnvConfig memory source, string[] memory targetNames)
         internal
         view
-        returns (address[] memory targets, bytes[] memory datas)
+        returns (address[] memory targets, bytes[] memory data)
     {
         address lzAdapter = source.contracts.layerZeroAdapter;
         if (lzAdapter == address(0)) return (new address[](0), new bytes[](0));
@@ -225,7 +225,7 @@ contract WireToNewNetwork is Script {
 
         // Over-allocate: 4 calls per target
         targets = new address[](targetNames.length * 4);
-        datas = new bytes[](targetNames.length * 4);
+        data = new bytes[](targetNames.length * 4);
         uint256 idx;
 
         for (uint256 t; t < targetNames.length; t++) {
@@ -245,26 +245,26 @@ contract WireToNewNetwork is Script {
             );
 
             targets[idx] = endpoint;
-            datas[idx] = abi.encodeCall(ILayerZeroEndpointV2Like.setSendLibrary, (lzAdapter, targetEid, sendLib));
+            data[idx] = abi.encodeCall(ILayerZeroEndpointV2Like.setSendLibrary, (lzAdapter, targetEid, sendLib));
             idx++;
 
             targets[idx] = endpoint;
-            datas[idx] = abi.encodeCall(ILayerZeroEndpointV2Like.setReceiveLibrary, (lzAdapter, targetEid, recvLib, 0));
+            data[idx] = abi.encodeCall(ILayerZeroEndpointV2Like.setReceiveLibrary, (lzAdapter, targetEid, recvLib, 0));
             idx++;
 
             targets[idx] = endpoint;
-            datas[idx] = abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, sendLib, params));
+            data[idx] = abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, sendLib, params));
             idx++;
 
             targets[idx] = endpoint;
-            datas[idx] = abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, recvLib, params));
+            data[idx] = abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, recvLib, params));
             idx++;
         }
 
         // Safe: idx <= original length; only shrinks array length
         assembly {
             mstore(targets, idx)
-            mstore(datas, idx)
+            mstore(data, idx)
         }
     }
 
@@ -278,18 +278,18 @@ contract WireToNewNetwork is Script {
         Safe.Client storage safeClient,
         address safeAddr,
         address[] memory targets,
-        bytes[] memory datas,
+        bytes[] memory data,
         string memory derivationPath
     ) internal {
         if (bytes(derivationPath).length > 0) {
             safeClient.initialize(safeAddr);
-            (address to, bytes memory batchData) = safeClient.getProposeTransactionsTargetAndData(targets, datas);
+            (address to, bytes memory batchData) = safeClient.getProposeTransactionsTargetAndData(targets, data);
             bytes memory signature =
                 safeClient.sign(to, batchData, Enum.Operation.DelegateCall, msg.sender, derivationPath);
-            safeClient.proposeTransactionsWithSignature(targets, datas, msg.sender, signature);
+            safeClient.proposeTransactionsWithSignature(targets, data, msg.sender, signature);
         } else {
             for (uint256 i; i < targets.length; i++) {
-                (bool success, bytes memory returnData) = targets[i].call(datas[i]);
+                (bool success, bytes memory returnData) = targets[i].call(data[i]);
                 if (!success) assembly { revert(add(returnData, 32), mload(returnData)) }
             }
         }
