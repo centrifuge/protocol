@@ -6,8 +6,6 @@ import {IERC6909ExclOperator, IERC6909MetadataExt} from "../../../../src/misc/in
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
-
 import {AccountingToken} from "../../../../src/managers/spoke/AccountingToken.sol";
 import {IAccountingToken} from "../../../../src/managers/spoke/interfaces/IAccountingToken.sol";
 
@@ -16,8 +14,6 @@ import "forge-std/Test.sol";
 // ─── Base ────────────────────────────────────────────────────────────────────
 
 contract AccountingTokenTest is Test {
-    using CastLib for address;
-
     PoolId constant POOL_A = PoolId.wrap(1);
     PoolId constant POOL_B = PoolId.wrap(2);
     ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("sc1"));
@@ -36,6 +32,10 @@ contract AccountingTokenTest is Test {
     address minterA = makeAddr("minterA");
     address minterB = makeAddr("minterB");
 
+    function _toBytes32(address addr) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(addr)));
+    }
+
     function setUp() public virtual {
         token = new AccountingToken(contractUpdater);
 
@@ -44,8 +44,8 @@ contract AccountingTokenTest is Test {
 
         // Register minters via trustedCall
         vm.startPrank(contractUpdater);
-        token.trustedCall(POOL_A, SC_1, abi.encode(minterA.toBytes32(), true));
-        token.trustedCall(POOL_B, SC_1, abi.encode(minterB.toBytes32(), true));
+        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(minterA), true));
+        token.trustedCall(POOL_B, SC_1, abi.encode(_toBytes32(minterB), true));
         vm.stopPrank();
     }
 
@@ -114,12 +114,10 @@ contract AccountingTokenAccessControlTest is AccountingTokenTest {
 // ─── TrustedCall ─────────────────────────────────────────────────────────────
 
 contract AccountingTokenTrustedCallTest is AccountingTokenTest {
-    using CastLib for address;
-
     function testTrustedCallOnlyCallableByContractUpdater() public {
         vm.expectRevert(IAccountingToken.NotMinter.selector);
         vm.prank(user);
-        token.trustedCall(POOL_A, SC_1, abi.encode(user.toBytes32(), true));
+        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(user), true));
     }
 
     function testTrustedCallEnablesMinter() public {
@@ -127,7 +125,7 @@ contract AccountingTokenTrustedCallTest is AccountingTokenTest {
         assertFalse(token.minters(POOL_A, newMinter));
 
         vm.prank(contractUpdater);
-        token.trustedCall(POOL_A, SC_1, abi.encode(newMinter.toBytes32(), true));
+        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(newMinter), true));
 
         assertTrue(token.minters(POOL_A, newMinter));
     }
@@ -136,7 +134,7 @@ contract AccountingTokenTrustedCallTest is AccountingTokenTest {
         assertTrue(token.minters(POOL_A, minterA));
 
         vm.prank(contractUpdater);
-        token.trustedCall(POOL_A, SC_1, abi.encode(minterA.toBytes32(), false));
+        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(minterA), false));
 
         assertFalse(token.minters(POOL_A, minterA));
     }
@@ -148,13 +146,13 @@ contract AccountingTokenTrustedCallTest is AccountingTokenTest {
         emit IAccountingToken.UpdateMinter(POOL_A, newMinter, true);
 
         vm.prank(contractUpdater);
-        token.trustedCall(POOL_A, SC_1, abi.encode(newMinter.toBytes32(), true));
+        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(newMinter), true));
     }
 
     function testDisabledMinterCannotMint() public {
         // Disable minterA
         vm.prank(contractUpdater);
-        token.trustedCall(POOL_A, SC_1, abi.encode(minterA.toBytes32(), false));
+        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(minterA), false));
 
         vm.expectRevert(IAccountingToken.NotMinter.selector);
         vm.prank(minterA);
@@ -392,13 +390,15 @@ contract AccountingTokenMetadataTest is AccountingTokenTest {
 // ─── Minter Integration ─────────────────────────────────────────────────────
 
 contract AccountingTokenMinterIntegrationTest is Test {
-    using CastLib for address;
-
     PoolId constant POOL_A = PoolId.wrap(1);
     ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("sc1"));
 
     address contractUpdater = makeAddr("contractUpdater");
     AccountingToken token;
+
+    function _toBytes32(address addr) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(addr)));
+    }
 
     function setUp() public {
         token = new AccountingToken(contractUpdater);
@@ -411,7 +411,7 @@ contract AccountingTokenMinterIntegrationTest is Test {
         address user_ = makeAddr("user");
 
         vm.prank(contractUpdater);
-        token.trustedCall(POOL_A, SC_1, abi.encode(minter.toBytes32(), true));
+        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(minter), true));
 
         vm.prank(minter);
         token.mint(user_, tokenId, 100e18, SC_1);
@@ -426,7 +426,7 @@ contract AccountingTokenMinterIntegrationTest is Test {
         address user_ = makeAddr("user");
 
         vm.prank(contractUpdater);
-        token.trustedCall(POOL_A, SC_1, abi.encode(minter.toBytes32(), true));
+        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(minter), true));
 
         vm.prank(minter);
         token.mint(user_, tokenId, 100e18, SC_1);

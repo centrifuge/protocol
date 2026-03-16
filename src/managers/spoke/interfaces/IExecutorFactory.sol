@@ -10,16 +10,13 @@ import {IBalanceSheet} from "../../../core/spoke/interfaces/IBalanceSheet.sol";
 interface IExecutorFactory {
     event DeployExecutor(PoolId indexed poolId, address indexed executor);
 
-    error AlreadyDeployed();
     error InvalidPoolId();
 
     function contractUpdater() external view returns (address);
     function balanceSheet() external view returns (IBalanceSheet);
     function gateway() external view returns (IGateway);
 
-    /// @notice Returns the executor deployed for a given pool, or address(0) if none.
-    function executors(PoolId poolId) external view returns (address);
-
-    /// @notice Deploys a new Executor for the given pool.
+    /// @notice Deploys a new Executor for the given pool. Reverts if one is already deployed
+    ///         (CREATE2 with deterministic salt prevents redeployment).
     function newExecutor(PoolId poolId) external returns (IExecutor);
 }

@@ -171,8 +171,6 @@ contract ExecutorFactory is IExecutorFactory {
     IBalanceSheet public immutable balanceSheet;
     IGateway public immutable gateway;
 
-    mapping(PoolId poolId => address) public executors;
-
     constructor(address contractUpdater_, IBalanceSheet balanceSheet_, IGateway gateway_) {
         contractUpdater = contractUpdater_;
         balanceSheet = balanceSheet_;
@@ -181,11 +179,9 @@ contract ExecutorFactory is IExecutorFactory {
 
     /// @inheritdoc IExecutorFactory
     function newExecutor(PoolId poolId) external returns (IExecutor) {
-        require(executors[poolId] == address(0), AlreadyDeployed());
         require(balanceSheet.spoke().isPoolActive(poolId), InvalidPoolId());
 
         Executor executor = new Executor{salt: bytes32(uint256(poolId.raw()))}(poolId, contractUpdater, gateway);
-        executors[poolId] = address(executor);
 
         emit DeployExecutor(poolId, address(executor));
         return IExecutor(address(executor));

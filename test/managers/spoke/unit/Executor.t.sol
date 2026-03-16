@@ -686,7 +686,6 @@ contract ExecutorFactoryDeployTest is ExecutorFactoryTest {
 
         assertEq(exec.poolId().raw(), POOL_A.raw());
         assertEq(exec.contractUpdater(), contractUpdater);
-        assertEq(factory.executors(POOL_A), address(exec));
     }
 
     function testNewExecutorInvalidPoolId() public {
@@ -696,12 +695,13 @@ contract ExecutorFactoryDeployTest is ExecutorFactoryTest {
         factory.newExecutor(POOL_B);
     }
 
-    function testNewExecutorAlreadyDeployed() public {
+    function testNewExecutorAlreadyDeployedReverts() public {
         vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
 
         factory.newExecutor(POOL_A);
 
-        vm.expectRevert(IExecutorFactory.AlreadyDeployed.selector);
+        // CREATE2 with same salt reverts on redeployment
+        vm.expectRevert();
         factory.newExecutor(POOL_A);
     }
 

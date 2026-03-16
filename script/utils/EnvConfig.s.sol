@@ -102,7 +102,7 @@ struct ContractsConfig {
     address freelyTransferableHook;
     address redemptionRestrictionsHook;
     // Spoke managers
-    address onOfframpManagerFactory;
+    address onOffRampFactory;
     address merkleProofManagerFactory;
     // Valuations
     address identityValuation;
@@ -259,7 +259,7 @@ library Env {
         config.redemptionRestrictionsHook = _parseContractAddress(json, "redemptionRestrictionsHook");
 
         // Spoke managers
-        config.onOfframpManagerFactory = _parseContractAddress(json, "onOfframpManagerFactory");
+        config.onOffRampFactory = _parseContractAddress(json, "onOfframpManagerFactory");
         config.merkleProofManagerFactory = _parseContractAddress(json, "merkleProofManagerFactory");
 
         // Valuations
