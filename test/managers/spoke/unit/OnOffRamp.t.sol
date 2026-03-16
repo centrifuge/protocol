@@ -131,16 +131,12 @@ contract OnOffRampTest is Test {
 
     function _enableOnramp() internal {
         vm.prank(contractUpdater);
-        manager.trustedCall(
-            POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, true)
-        );
+        manager.trustedCall(POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, true));
     }
 
     function _enableRelayer(address relayer_) internal {
         vm.prank(contractUpdater);
-        manager.trustedCall(
-            POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Relayer), relayer_.toBytes32(), true)
-        );
+        manager.trustedCall(POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Relayer), relayer_.toBytes32(), true));
     }
 
     function _enableOfframp(address receiver_) internal {
@@ -170,17 +166,13 @@ contract OnOffRampUpdateContractFailureTests is OnOffRampTest {
 
         vm.expectRevert(IOnOffRamp.NotContractUpdater.selector);
         vm.prank(notContractUpdater);
-        manager.trustedCall(
-            POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, true)
-        );
+        manager.trustedCall(POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, true));
     }
 
     function testInvalidPool() public {
         vm.expectRevert(IOnOffRamp.InvalidPoolId.selector);
         vm.prank(contractUpdater);
-        manager.trustedCall(
-            POOL_B, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, true)
-        );
+        manager.trustedCall(POOL_B, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, true));
     }
 
     function testInvalidShareClass() public {
@@ -188,9 +180,7 @@ contract OnOffRampUpdateContractFailureTests is OnOffRampTest {
 
         vm.expectRevert(IOnOffRamp.InvalidShareClassId.selector);
         vm.prank(contractUpdater);
-        manager.trustedCall(
-            POOL_A, wrongScId, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, true)
-        );
+        manager.trustedCall(POOL_A, wrongScId, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, true));
     }
 
     function testERC6909NotSupportedOnramp() public {
@@ -201,9 +191,7 @@ contract OnOffRampUpdateContractFailureTests is OnOffRampTest {
 
         vm.expectRevert(IOnOffRamp.ERC6909NotSupported.selector);
         vm.prank(contractUpdater);
-        manager.trustedCall(
-            POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, true)
-        );
+        manager.trustedCall(POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, true));
     }
 
     function testERC6909NotSupportedOfframp() public {
@@ -284,9 +272,7 @@ contract OnOffRampDepositSuccessTests is OnOffRampTest {
         _enableOnramp();
 
         vm.prank(contractUpdater);
-        manager.trustedCall(
-            POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, false)
-        );
+        manager.trustedCall(POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), DEFAULT_ASSET_ID, false));
 
         vm.expectRevert(IOnOffRamp.NotAllowedOnrampAsset.selector);
         manager.deposit(address(erc20), ERC20_TOKEN_ID, 100, address(manager));
@@ -387,9 +373,7 @@ contract OnOffRampTrustedWithdrawFailureTests is OnOffRampTest {
         vm.expectRevert(IOnOffRamp.InvalidOfframpDestination.selector);
         vm.prank(contractUpdater);
         manager.trustedCall(
-            POOL_A,
-            SC_1,
-            abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, bytes32(0))
+            POOL_A, SC_1, abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw), DEFAULT_ASSET_ID, amount, bytes32(0))
         );
     }
 

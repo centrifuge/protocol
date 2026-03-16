@@ -9,8 +9,12 @@ import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUp
 
 interface IAccountingToken is IERC6909ExclOperator, IERC6909MetadataExt, ITrustedContractUpdate {
     event UpdateMinter(PoolId indexed poolId, address indexed minter, bool canMint);
-    event Mint(PoolId indexed poolId, ShareClassId indexed scId, address indexed owner, uint256 tokenId, uint256 amount);
-    event Burn(PoolId indexed poolId, ShareClassId indexed scId, address indexed owner, uint256 tokenId, uint256 amount);
+    event Mint(
+        PoolId indexed poolId, ShareClassId indexed scId, address indexed owner, uint256 tokenId, uint256 amount
+    );
+    event Burn(
+        PoolId indexed poolId, ShareClassId indexed scId, address indexed owner, uint256 tokenId, uint256 amount
+    );
 
     error NotMinter();
 

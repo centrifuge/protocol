@@ -103,17 +103,16 @@ contract AccountingToken is IAccountingToken {
     /// @inheritdoc IERC6909MetadataExt
     function name(uint256 id) external view returns (string memory) {
         string memory assetSymbol = IERC20Metadata(_asset(id)).symbol();
-        return id & LIABILITY_BIT != 0
-            ? string.concat("Liability ", assetSymbol)
-            : string.concat("Accounting ", assetSymbol);
+        return
+            id & LIABILITY_BIT != 0
+                ? string.concat("Liability ", assetSymbol)
+                : string.concat("Accounting ", assetSymbol);
     }
 
     /// @inheritdoc IERC6909MetadataExt
     function symbol(uint256 id) external view returns (string memory) {
         string memory assetSymbol = IERC20Metadata(_asset(id)).symbol();
-        return id & LIABILITY_BIT != 0
-            ? string.concat("liab-", assetSymbol)
-            : string.concat("acc-", assetSymbol);
+        return id & LIABILITY_BIT != 0 ? string.concat("liab-", assetSymbol) : string.concat("acc-", assetSymbol);
     }
 
     /// @inheritdoc IERC6909MetadataExt

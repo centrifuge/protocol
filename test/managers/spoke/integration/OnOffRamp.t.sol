@@ -82,9 +82,7 @@ contract OnOffRampIntegrationTest is OnOffRampBaseTest {
         // Enable onramp
         vm.prank(address(contractUpdater));
         manager.trustedCall(
-            POOL_A,
-            defaultTypedShareClassId,
-            abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), defaultAssetId, true)
+            POOL_A, defaultTypedShareClassId, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), defaultAssetId, true)
         );
 
         // Enable relayer
