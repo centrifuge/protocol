@@ -173,4 +173,59 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
     // function testWirePharos() external {
     //     _testCase("pharos");
     // }
+
+    /// @notice Tests that wireAll + configureLzDvnsAll correctly batch multiple targets
+    ///         into a single execution, wiring both monad and pharos from ethereum in one call.
+    function testBatchWireEthereum() external {
+        string memory networkName = "ethereum";
+        EnvConfig memory source = Env.load(networkName);
+
+        vm.createSelectFork(source.network.rpcUrl());
+
+        string[] memory targetNames = new string[](2);
+        targetNames[0] = "monad";
+        targetNames[1] = "pharos";
+
+        // Batch wire both targets in a single call
+        vm.startPrank(source.network.opsAdmin);
+        wireAll(networkName, targetNames, "");
+        vm.stopPrank();
+
+        // Batch configure DVNs for both targets in a single call
+        vm.startPrank(source.network.protocolAdmin);
+        configureLzDvnsAll(networkName, targetNames, "");
+        vm.stopPrank();
+
+        // Verify both targets are wired with correct quorum/threshold
+        IMultiAdapter ma = IMultiAdapter(source.contracts.multiAdapter);
+        for (uint256 i; i < targetNames.length; i++) {
+            EnvConfig memory target = Env.load(targetNames[i]);
+            Connection memory conn = _findTargetConnection(source, targetNames[i]);
+
+            uint16 cid = target.network.centrifugeId;
+            assertGt(ma.quorum(cid, PoolId.wrap(0)), 0, string.concat("Quorum not set for ", targetNames[i]));
+            assertEq(
+                ma.threshold(cid, PoolId.wrap(0)), conn.threshold, string.concat("Wrong threshold for ", targetNames[i])
+            );
+        }
+
+        // Verify cross-chain message can be sent to monad (the first target)
+        EnvConfig memory monad = Env.load("monad");
+        ERC20 asset = new ERC20(18);
+        asset.file("name", "Test Token");
+        asset.file("symbol", "TEST");
+
+        vm.deal(address(this), 10 ether);
+        vm.recordLogs();
+
+        ISpoke(source.contracts.spoke).registerAsset{value: 10 ether}(
+            monad.network.centrifugeId, address(asset), 0, address(this)
+        );
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        _assertLayerZeroEvent(source, monad, logs);
+
+        Connection memory monadConn = _findTargetConnection(source, "monad");
+        if (monadConn.chainlink) _assertChainlinkEvent(source, monad, logs);
+    }
 }

@@ -20,19 +20,19 @@ import {
 } from "../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
 /// @title WireToNewNetwork
-/// @notice Proposes OpsGuardian.wire and initAdapters transactions via the ops Safe
-///         to wire a chain to a target chain.
-/// @dev Run this script on each non-target mainnet chain that needs to be wired to a target chain.
-///      The target chain was deployed after the other chains and has already been wired to them,
-///      but the reciprocal wiring (other chains -> target chain) still needs to be set up.
+/// @notice Proposes batched OpsGuardian.wire/initAdapters and LZ DVN config transactions via Safe
+///         to wire a source chain to one or more target chains.
+/// @dev Run this script on each source chain that needs to be wired to target chain(s).
+///      All ops Safe calls (wire + initAdapters) are batched into a single proposal.
+///      All protocol Safe calls (LZ DVN config) are batched into a single proposal.
+///      This minimizes signing rounds to at most 2 per source chain.
 ///
 ///      Set NETWORK env var to the source chain name (e.g., "ethereum", "base", "arbitrum").
-///      The script reads adapter configuration from env/<network>.json and
-///      env/connections/mainnet.json to determine which adapters to wire.
+///      Set TARGETS env var to comma-separated target chain names (e.g., "monad,pharos").
 ///
 ///      Example usage:
-///        NETWORK=ethereum forge script script/WireToNewNetwork.s.sol --rpc-url $ETH_RPC_URL --broadcast
-///        NETWORK=base forge script script/WireToNewNetwork.s.sol --rpc-url $BASE_RPC_URL --broadcast
+///        NETWORK=ethereum TARGETS=monad,pharos forge script script/WireToNewNetwork.s.sol --rpc-url $ETH_RPC_URL --broadcast
+///        NETWORK=monad TARGETS=ethereum,base,arbitrum forge script script/WireToNewNetwork.s.sol --rpc-url $MONAD_RPC_URL --broadcast
 contract WireToNewNetwork is Script {
     using Safe for *;
 
@@ -40,139 +40,255 @@ contract WireToNewNetwork is Script {
     uint32 constant ULN_CONFIG_TYPE = 2;
 
     Safe.Client safe;
-    uint256 nonce;
     Safe.Client protocolSafe;
-    string derivationPath;
-    address opsGuardian;
 
     function run() external {
         vm.startBroadcast();
         string memory networkName = vm.envString("NETWORK");
-        string memory targetName = vm.envString("TARGET");
-        wire(networkName, targetName, LEDGER_DERIVATION_PATH);
-        configureLzDvns(networkName, targetName, LEDGER_DERIVATION_PATH);
+        string[] memory targetNames = vm.envString("TARGETS", ",");
+        wireAll(networkName, targetNames, LEDGER_DERIVATION_PATH);
+        configureLzDvnsAll(networkName, targetNames, LEDGER_DERIVATION_PATH);
         vm.stopBroadcast();
     }
 
-    function wire(string memory networkName, string memory targetName, string memory derivationPath_) public {
+    //----------------------------------------------------------------------------------------------
+    // Multi-target batched entry points
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Wire adapters for multiple targets in a single batched ops Safe proposal.
+    ///         Targets already wired (quorum > 0) are silently skipped.
+    function wireAll(string memory networkName, string[] memory targetNames, string memory derivationPath) public {
         EnvConfig memory source = Env.load(networkName);
-        EnvConfig memory target = Env.load(targetName);
-
-        require(
-            IMultiAdapter(source.contracts.multiAdapter).quorum(target.network.centrifugeId, PoolId.wrap(0)) == 0,
-            "Target already wired"
-        );
-
-        Connection memory targetConn = _findTargetConnection(source, targetName);
-        derivationPath = derivationPath_;
-        opsGuardian = source.contracts.opsGuardian;
-
-        if (bytes(derivationPath).length > 0) {
-            safe.initialize(source.network.opsAdmin);
-            nonce = safe.getNonce();
-        }
-
-        uint256 adapterCount;
-        if (targetConn.layerZero) adapterCount++;
-        if (targetConn.wormhole) adapterCount++;
-        if (targetConn.axelar) adapterCount++;
-        if (targetConn.chainlink) adapterCount++;
-
-        IAdapter[] memory adapters = new IAdapter[](adapterCount);
-        uint256 idx;
-
-        if (targetConn.layerZero) {
-            address lzAdapter = source.contracts.layerZeroAdapter;
-            require(lzAdapter != address(0), "LayerZero adapter not configured for source network");
-            bytes memory data = abi.encode(target.adapters.layerZero.layerZeroEid, target.contracts.layerZeroAdapter);
-            _call(abi.encodeCall(IOpsGuardian.wire, (lzAdapter, target.network.centrifugeId, data)));
-            adapters[idx++] = IAdapter(lzAdapter);
-        }
-
-        if (targetConn.wormhole) {
-            address wormholeAdapter = source.contracts.wormholeAdapter;
-            require(wormholeAdapter != address(0), "Wormhole adapter not configured for source network");
-            bytes memory data = abi.encode(target.adapters.wormhole.wormholeId, target.contracts.wormholeAdapter);
-            _call(abi.encodeCall(IOpsGuardian.wire, (wormholeAdapter, target.network.centrifugeId, data)));
-            adapters[idx++] = IAdapter(wormholeAdapter);
-        }
-
-        if (targetConn.axelar) {
-            address axelarAdapter = source.contracts.axelarAdapter;
-            require(axelarAdapter != address(0), "Axelar adapter not configured for source network");
-            bytes memory data = abi.encode(target.adapters.axelar.axelarId, vm.toString(target.contracts.axelarAdapter));
-            _call(abi.encodeCall(IOpsGuardian.wire, (axelarAdapter, target.network.centrifugeId, data)));
-            adapters[idx++] = IAdapter(axelarAdapter);
-        }
-
-        if (targetConn.chainlink) {
-            address chainlinkAdapter = source.contracts.chainlinkAdapter;
-            require(chainlinkAdapter != address(0), "Chainlink adapter not configured for source network");
-            bytes memory data = abi.encode(target.adapters.chainlink.chainSelector, target.contracts.chainlinkAdapter);
-            _call(abi.encodeCall(IOpsGuardian.wire, (chainlinkAdapter, target.network.centrifugeId, data)));
-            adapters[idx++] = IAdapter(chainlinkAdapter);
-        }
-
-        _call(
-            abi.encodeCall(
-                IOpsGuardian.initAdapters,
-                (target.network.centrifugeId, adapters, targetConn.threshold, uint8(adapters.length))
-            )
-        );
+        (address[] memory targets, bytes[] memory datas) = _collectWireCalls(source, targetNames);
+        if (targets.length == 0) return;
+        _batchCall(safe, source.network.opsAdmin, targets, datas, derivationPath);
     }
 
-    function configureLzDvns(string memory networkName, string memory targetName, string memory derivationPath_)
+    /// @notice Configure LZ DVNs for multiple targets in a single batched protocol Safe proposal.
+    ///         Targets without a LayerZero connection are silently skipped.
+    function configureLzDvnsAll(string memory networkName, string[] memory targetNames, string memory derivationPath)
         public
     {
         EnvConfig memory source = Env.load(networkName);
-        EnvConfig memory target = Env.load(targetName);
-
-        Connection memory targetConn = _findTargetConnection(source, targetName);
-        if (!targetConn.layerZero) return;
-
-        derivationPath = derivationPath_;
-
-        if (bytes(derivationPath).length > 0) {
-            protocolSafe.initialize(source.network.protocolAdmin);
-        }
-
-        _configureLzDvns(source, target);
+        (address[] memory targets, bytes[] memory datas) = _collectDvnCalls(source, targetNames);
+        if (targets.length == 0) return;
+        _batchCall(protocolSafe, source.network.protocolAdmin, targets, datas, derivationPath);
     }
 
-    function _configureLzDvns(EnvConfig memory source, EnvConfig memory target) internal {
+    //----------------------------------------------------------------------------------------------
+    // Single-target entry points (backward compat for tests)
+    //----------------------------------------------------------------------------------------------
+
+    function wire(string memory networkName, string memory targetName, string memory derivationPath) public {
+        string[] memory targets = new string[](1);
+        targets[0] = targetName;
+        wireAll(networkName, targets, derivationPath);
+    }
+
+    function configureLzDvns(string memory networkName, string memory targetName, string memory derivationPath) public {
+        string[] memory targets = new string[](1);
+        targets[0] = targetName;
+        configureLzDvnsAll(networkName, targets, derivationPath);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Internal: collect calls
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev Collects all OpsGuardian.wire + initAdapters calls across all targets.
+    ///      Skips targets where quorum is already set (already wired).
+    function _collectWireCalls(EnvConfig memory source, string[] memory targetNames)
+        internal
+        view
+        returns (address[] memory targets, bytes[] memory datas)
+    {
+        address opsGuardian = source.contracts.opsGuardian;
+
+        // Over-allocate: max 5 calls per target (4 adapters + 1 initAdapters)
+        targets = new address[](targetNames.length * 5);
+        datas = new bytes[](targetNames.length * 5);
+        uint256 idx;
+
+        for (uint256 t; t < targetNames.length; t++) {
+            EnvConfig memory target = Env.load(targetNames[t]);
+            uint16 centrifugeId = target.network.centrifugeId;
+
+            if (IMultiAdapter(source.contracts.multiAdapter).quorum(centrifugeId, PoolId.wrap(0)) != 0) {
+                continue; // Already wired, skip
+            }
+
+            Connection memory conn = _findTargetConnection(source, targetNames[t]);
+
+            IAdapter[] memory adapters = new IAdapter[](4);
+            uint256 adapterCount;
+
+            if (conn.layerZero) {
+                address lzAdapter = source.contracts.layerZeroAdapter;
+                require(lzAdapter != address(0), "LayerZero adapter not configured for source network");
+                targets[idx] = opsGuardian;
+                datas[idx] = abi.encodeCall(
+                    IOpsGuardian.wire,
+                    (
+                        lzAdapter,
+                        centrifugeId,
+                        abi.encode(target.adapters.layerZero.layerZeroEid, target.contracts.layerZeroAdapter)
+                    )
+                );
+                idx++;
+                adapters[adapterCount++] = IAdapter(lzAdapter);
+            }
+
+            if (conn.wormhole) {
+                address wormholeAdapter = source.contracts.wormholeAdapter;
+                require(wormholeAdapter != address(0), "Wormhole adapter not configured for source network");
+                targets[idx] = opsGuardian;
+                datas[idx] = abi.encodeCall(
+                    IOpsGuardian.wire,
+                    (
+                        wormholeAdapter,
+                        centrifugeId,
+                        abi.encode(target.adapters.wormhole.wormholeId, target.contracts.wormholeAdapter)
+                    )
+                );
+                idx++;
+                adapters[adapterCount++] = IAdapter(wormholeAdapter);
+            }
+
+            if (conn.axelar) {
+                address axelarAdapter = source.contracts.axelarAdapter;
+                require(axelarAdapter != address(0), "Axelar adapter not configured for source network");
+                targets[idx] = opsGuardian;
+                datas[idx] = abi.encodeCall(
+                    IOpsGuardian.wire,
+                    (
+                        axelarAdapter,
+                        centrifugeId,
+                        abi.encode(target.adapters.axelar.axelarId, vm.toString(target.contracts.axelarAdapter))
+                    )
+                );
+                idx++;
+                adapters[adapterCount++] = IAdapter(axelarAdapter);
+            }
+
+            if (conn.chainlink) {
+                address chainlinkAdapter = source.contracts.chainlinkAdapter;
+                require(chainlinkAdapter != address(0), "Chainlink adapter not configured for source network");
+                targets[idx] = opsGuardian;
+                datas[idx] = abi.encodeCall(
+                    IOpsGuardian.wire,
+                    (
+                        chainlinkAdapter,
+                        centrifugeId,
+                        abi.encode(target.adapters.chainlink.chainSelector, target.contracts.chainlinkAdapter)
+                    )
+                );
+                idx++;
+                adapters[adapterCount++] = IAdapter(chainlinkAdapter);
+            }
+
+            // Trim adapters to actual count
+            IAdapter[] memory trimmedAdapters = new IAdapter[](adapterCount);
+            for (uint256 i; i < adapterCount; i++) {
+                trimmedAdapters[i] = adapters[i];
+            }
+
+            targets[idx] = opsGuardian;
+            datas[idx] = abi.encodeCall(
+                IOpsGuardian.initAdapters,
+                (centrifugeId, trimmedAdapters, conn.threshold, uint8(adapterCount)) /* no recovery adapter */
+            );
+            idx++;
+        }
+
+        // Trim arrays to actual size
+        assembly {
+            mstore(targets, idx)
+            mstore(datas, idx)
+        }
+    }
+
+    /// @dev Collects all LZ DVN config calls (setSendLibrary, setReceiveLibrary, setConfig x2)
+    ///      across all targets. Skips targets without a LayerZero connection.
+    function _collectDvnCalls(EnvConfig memory source, string[] memory targetNames)
+        internal
+        view
+        returns (address[] memory targets, bytes[] memory datas)
+    {
         address lzAdapter = source.contracts.layerZeroAdapter;
+        if (lzAdapter == address(0)) return (targets, datas);
+
         ILayerZeroEndpointV2Like lzEndpoint = ILayerZeroEndpointV2Like(address(LayerZeroAdapter(lzAdapter).endpoint()));
-        uint32 targetEid = target.adapters.layerZero.layerZeroEid;
-
-        SetConfigParam[] memory params = new SetConfigParam[](1);
-        params[0] = _buildLzConfigParam(source, targetEid);
-
-        address sendLib = lzEndpoint.defaultSendLibrary(targetEid);
-        address recvLib = lzEndpoint.defaultReceiveLibrary(targetEid);
         address endpoint = address(lzEndpoint);
 
-        require(sendLib != address(0) && recvLib != address(0), "LZ default libraries not configured for target EID");
+        // Over-allocate: 4 calls per target
+        targets = new address[](targetNames.length * 4);
+        datas = new bytes[](targetNames.length * 4);
+        uint256 idx;
 
+        for (uint256 t; t < targetNames.length; t++) {
+            Connection memory conn = _findTargetConnection(source, targetNames[t]);
+            if (!conn.layerZero) continue;
+
+            EnvConfig memory target = Env.load(targetNames[t]);
+            uint32 targetEid = target.adapters.layerZero.layerZeroEid;
+
+            SetConfigParam[] memory params = new SetConfigParam[](1);
+            params[0] = _buildLzConfigParam(source, targetEid);
+
+            address sendLib = lzEndpoint.defaultSendLibrary(targetEid);
+            address recvLib = lzEndpoint.defaultReceiveLibrary(targetEid);
+            require(
+                sendLib != address(0) && recvLib != address(0), "LZ default libraries not configured for target EID"
+            );
+
+            targets[idx] = endpoint;
+            datas[idx] = abi.encodeCall(ILayerZeroEndpointV2Like.setSendLibrary, (lzAdapter, targetEid, sendLib));
+            idx++;
+
+            targets[idx] = endpoint;
+            datas[idx] = abi.encodeCall(ILayerZeroEndpointV2Like.setReceiveLibrary, (lzAdapter, targetEid, recvLib, 0));
+            idx++;
+
+            targets[idx] = endpoint;
+            datas[idx] = abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, sendLib, params));
+            idx++;
+
+            targets[idx] = endpoint;
+            datas[idx] = abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, recvLib, params));
+            idx++;
+        }
+
+        // Trim arrays to actual size
+        assembly {
+            mstore(targets, idx)
+            mstore(datas, idx)
+        }
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Internal: helpers
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev Proposes a batched Safe transaction (production) or executes calls directly (tests).
+    ///      Empty derivationPath = direct call mode (tests); non-empty = Safe proposal mode (production).
+    function _batchCall(
+        Safe.Client storage safeClient,
+        address safeAddr,
+        address[] memory targets,
+        bytes[] memory datas,
+        string memory derivationPath
+    ) internal {
         if (bytes(derivationPath).length > 0) {
-            address[] memory targets = new address[](4);
-            bytes[] memory data = new bytes[](4);
-            targets[0] = endpoint;
-            data[0] = abi.encodeCall(ILayerZeroEndpointV2Like.setSendLibrary, (lzAdapter, targetEid, sendLib));
-            targets[1] = endpoint;
-            data[1] = abi.encodeCall(ILayerZeroEndpointV2Like.setReceiveLibrary, (lzAdapter, targetEid, recvLib, 0));
-            targets[2] = endpoint;
-            data[2] = abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, sendLib, params));
-            targets[3] = endpoint;
-            data[3] = abi.encodeCall(ILayerZeroEndpointV2Like.setConfig, (lzAdapter, recvLib, params));
-            (address to, bytes memory batchData) = protocolSafe.getProposeTransactionsTargetAndData(targets, data);
+            safeClient.initialize(safeAddr);
+            (address to, bytes memory batchData) = safeClient.getProposeTransactionsTargetAndData(targets, datas);
             bytes memory signature =
-                protocolSafe.sign(to, batchData, Enum.Operation.DelegateCall, msg.sender, derivationPath);
-            protocolSafe.proposeTransactionsWithSignature(targets, data, msg.sender, signature);
+                safeClient.sign(to, batchData, Enum.Operation.DelegateCall, msg.sender, derivationPath);
+            safeClient.proposeTransactionsWithSignature(targets, datas, msg.sender, signature);
         } else {
-            lzEndpoint.setSendLibrary(lzAdapter, targetEid, sendLib);
-            lzEndpoint.setReceiveLibrary(lzAdapter, targetEid, recvLib, 0);
-            lzEndpoint.setConfig(lzAdapter, sendLib, params);
-            lzEndpoint.setConfig(lzAdapter, recvLib, params);
+            for (uint256 i; i < targets.length; i++) {
+                (bool success, bytes memory returnData) = targets[i].call(datas[i]);
+                if (!success) assembly { revert(add(returnData, 32), mload(returnData)) }
+            }
         }
     }
 
@@ -185,7 +301,7 @@ contract WireToNewNetwork is Script {
             UlnConfig({
                 confirmations: source.adapters.layerZero.blockConfirmations,
                 requiredDVNCount: uint8(source.adapters.layerZero.dvns.length),
-                optionalDVNCount: type(uint8).max,
+                optionalDVNCount: type(uint8).max, // NIL_DVN_COUNT: explicitly no optional DVNs
                 optionalDVNThreshold: 0,
                 requiredDVNs: source.adapters.layerZero.dvns,
                 optionalDVNs: new address[](0)
@@ -206,24 +322,5 @@ contract WireToNewNetwork is Script {
             }
         }
         revert("No connection configured between source and target");
-    }
-
-    function _call(bytes memory data) internal {
-        if (bytes(derivationPath).length > 0) {
-            Safe.ExecTransactionParams memory params = Safe.ExecTransactionParams({
-                to: opsGuardian,
-                value: 0,
-                data: data,
-                operation: Enum.Operation.Call,
-                sender: msg.sender,
-                signature: safe.sign(opsGuardian, data, Enum.Operation.Call, msg.sender, nonce, derivationPath),
-                nonce: nonce
-            });
-            safe.proposeTransaction(params);
-            nonce++;
-        } else {
-            (bool success, bytes memory returnData) = opsGuardian.call(data);
-            if (!success) assembly { revert(add(returnData, 32), mload(returnData)) }
-        }
     }
 }
