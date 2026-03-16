@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {ERC20} from "../../../src/misc/ERC20.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 
@@ -173,11 +172,6 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
         _testCase("plume");
     }
 
-    // Pharos is already wired to Monad
-    // function testWirePharos() external {
-    //     _testCase("pharos");
-    // }
-
     /// @notice Tests that wireAll + configureLzDvnsAll correctly batch multiple targets
     ///         into a single execution, wiring both monad and pharos from ethereum in one call.
     function testBatchWireEthereum() external {
@@ -241,6 +235,61 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
 
         Vm.Log[] memory pharosLogs = vm.getRecordedLogs();
         _assertLayerZeroEvent(source, pharos, pharosLogs);
+    }
+
+    /// @notice Tests that _collectWireCalls and _collectDvnCalls produce exactly one batch each
+    ///         for multiple targets, proving a single Safe signature per batch.
+    function testCollectCallsBatchesMultipleTargets() external {
+        EnvConfig memory source = Env.load("ethereum");
+        vm.createSelectFork(source.network.rpcUrl());
+
+        string[] memory targetNames = new string[](2);
+        targetNames[0] = "monad";
+        targetNames[1] = "pharos";
+
+        _assertWireCallsBatched(source, targetNames);
+        _assertDvnCallsBatched(source, targetNames);
+    }
+
+    function _assertWireCallsBatched(EnvConfig memory source, string[] memory targetNames) internal view {
+        (address[] memory targets, bytes[] memory datas) = _collectWireCalls(source, targetNames);
+
+        // Count expected calls: per target = N adapter wire calls + 1 initAdapters
+        uint256 expected;
+        for (uint256 t; t < targetNames.length; t++) {
+            Connection memory conn = _findTargetConnection(source, targetNames[t]);
+            if (conn.layerZero) expected++;
+            if (conn.wormhole) expected++;
+            if (conn.axelar) expected++;
+            if (conn.chainlink) expected++;
+            expected++; // initAdapters
+        }
+
+        assertEq(targets.length, expected, "Wire calls not batched into single array");
+        assertEq(datas.length, expected, "Wire data count mismatch");
+
+        for (uint256 i; i < targets.length; i++) {
+            assertEq(targets[i], source.contracts.opsGuardian, "Wire call target is not opsGuardian");
+        }
+    }
+
+    function _assertDvnCallsBatched(EnvConfig memory source, string[] memory targetNames) internal view {
+        (address[] memory targets, bytes[] memory datas) = _collectDvnCalls(source, targetNames);
+
+        // 4 per LZ-enabled target expected
+        uint256 expected;
+        for (uint256 t; t < targetNames.length; t++) {
+            Connection memory conn = _findTargetConnection(source, targetNames[t]);
+            if (conn.layerZero) expected += 4;
+        }
+
+        assertEq(targets.length, expected, "DVN calls not batched into single array");
+        assertEq(datas.length, expected, "DVN data count mismatch");
+
+        address lzEndpoint = address(LayerZeroAdapter(source.contracts.layerZeroAdapter).endpoint());
+        for (uint256 i; i < targets.length; i++) {
+            assertEq(targets[i], lzEndpoint, "DVN call target is not LZ endpoint");
+        }
     }
 
     /// @notice Tests that wireAll silently skips already-wired targets.
