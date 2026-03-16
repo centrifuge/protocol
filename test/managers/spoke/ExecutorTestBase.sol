@@ -52,6 +52,19 @@ abstract contract ExecutorTestBase is Test {
     uint256 constant FLAG_CT_STATICCALL = 0x02;
     uint256 constant FLAG_CT_VALUECALL = 0x03;
 
+    bytes32[] internal NO_CALLBACKS = new bytes32[](0);
+
+    function _callbacks(bytes32 h) internal pure returns (bytes32[] memory arr) {
+        arr = new bytes32[](1);
+        arr[0] = h;
+    }
+
+    function _callbacks(bytes32 h0, bytes32 h1) internal pure returns (bytes32[] memory arr) {
+        arr = new bytes32[](2);
+        arr[0] = h0;
+        arr[1] = h1;
+    }
+
     // ─── Command builder helpers ──────────────────────────────────────────
 
     /// @dev Build a weiroll command bytes32.
@@ -118,7 +131,7 @@ abstract contract ExecutorTestBase is Test {
         bytes32[] memory commands,
         bytes[] memory state,
         uint256 stateBitmap,
-        bytes32 callbackHash
+        bytes32[] memory callbackHashes
     ) internal pure returns (bytes32) {
         return keccak256(
             abi.encodePacked(
@@ -126,7 +139,7 @@ abstract contract ExecutorTestBase is Test {
                 _hashFixedState(state, stateBitmap),
                 stateBitmap,
                 state.length,
-                callbackHash
+                keccak256(abi.encodePacked(callbackHashes))
             )
         );
     }

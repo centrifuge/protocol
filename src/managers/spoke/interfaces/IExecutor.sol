@@ -12,30 +12,29 @@ interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
     error NotAStrategist();
     error InvalidProof();
     error InvalidCallback();
+    error CallbackExhausted();
     error InvalidPoolId();
     error NotAuthorized();
     error StateLengthOverflow();
     error NotInExecution();
-    error NestedCallback();
 
     function poolId() external view returns (PoolId);
     function contractUpdater() external view returns (address);
     function policy(address strategist) external view returns (bytes32);
-    function inCallback() external view returns (bool);
+    function callbackDepth() external view returns (uint256);
     function activeStrategist() external view returns (address);
-    function expectedCallback() external view returns (bytes32);
 
     /// @notice Execute a weiroll script authorized by a Merkle proof.
-    /// @param commands     Weiroll command bytes (selector + flags + indices + output + target).
-    /// @param state        Weiroll state array — elements with their bitmap bit set are fixed (hashed).
-    /// @param stateBitmap  Bit `i` set means `state[i]` is governance-approved and included in the script hash.
-    /// @param callbackHash Script hash of the bound callback, or bytes32(0) if no callback is used.
-    /// @param proof        Merkle proof siblings for the script hash leaf.
+    /// @param commands       Weiroll command bytes (selector + flags + indices + output + target).
+    /// @param state          Weiroll state array — elements with their bitmap bit set are fixed (hashed).
+    /// @param stateBitmap    Bit `i` set means `state[i]` is governance-approved and included in the script hash.
+    /// @param callbackHashes Pre-committed script hashes for each callback, consumed in invocation order.
+    /// @param proof          Merkle proof siblings for the script hash leaf.
     function execute(
         bytes32[] calldata commands,
         bytes[] calldata state,
         uint256 stateBitmap,
-        bytes32 callbackHash,
+        bytes32[] calldata callbackHashes,
         bytes32[] calldata proof
     ) external payable;
 

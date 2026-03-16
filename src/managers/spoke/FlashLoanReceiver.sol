@@ -43,8 +43,8 @@ contract FlashLoanReceiver is IFlashLoanReceiver, IAaveV3FlashLoanReceiver {
         returns (bool)
     {
         require(msg.sender == _pool, NotPool());
-        require(initiator == address(this), NotInitiator());
         require(_executor != address(0), NotActive());
+        require(initiator == address(this), NotInitiator());
 
         address executor = _executor;
         asset.safeTransfer(executor, amount);

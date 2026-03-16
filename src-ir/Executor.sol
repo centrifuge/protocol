@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 import {MerkleProofLib} from "../src/misc/libraries/MerkleProofLib.sol";
+import {TransientArrayLib} from "../src/misc/libraries/TransientArrayLib.sol";
 
 import {PoolId} from "../src/core/types/PoolId.sol";
 import {ShareClassId} from "../src/core/types/ShareClassId.sol";
@@ -24,14 +25,16 @@ import {VM} from "enso-weiroll/VM.sol";
 contract Executor is BatchedMulticall, VM, IExecutor {
     using CastLib for *;
 
+    bytes32 private constant CALLBACK_HASHES_SLOT = bytes32(uint256(keccak256("executor.callbackHashes")) - 1);
+
     PoolId public immutable poolId;
     address public immutable contractUpdater;
 
     mapping(address strategist => bytes32 root) public policy;
 
-    bool public transient inCallback;
     address public transient activeStrategist;
-    bytes32 public transient expectedCallback;
+    uint256 public transient callbackDepth;
+    uint256 private transient _callbackNext;
 
     constructor(PoolId poolId_, address contractUpdater_, IGateway gateway_) BatchedMulticall(gateway_) {
         poolId = poolId_;
@@ -73,7 +76,7 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         bytes32[] calldata commands,
         bytes[] calldata state,
         uint256 stateBitmap,
-        bytes32 callbackHash,
+        bytes32[] calldata callbackHashes,
         bytes32[] calldata proof
     ) external payable protected {
         address sender = msgSender();
@@ -81,31 +84,37 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         require(root != bytes32(0), NotAStrategist());
         require(state.length <= 256, StateLengthOverflow());
 
-        bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, callbackHash);
+        bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, callbackHashes);
         require(MerkleProofLib.verify(proof, root, scriptHash), InvalidProof());
 
         activeStrategist = sender;
-        expectedCallback = callbackHash;
+        for (uint256 i; i < callbackHashes.length; i++) {
+            TransientArrayLib.push(CALLBACK_HASHES_SLOT, callbackHashes[i]);
+        }
         _execute(commands, _copyState(state));
         activeStrategist = address(0);
-        expectedCallback = bytes32(0);
+        TransientArrayLib.clear(CALLBACK_HASHES_SLOT);
+        _callbackNext = 0;
 
         emit ExecuteScript(sender, scriptHash);
     }
 
     /// @inheritdoc IExecutor
     function executeCallback(bytes32[] calldata commands, bytes[] calldata state, uint256 stateBitmap) external {
-        require(!inCallback, NestedCallback());
         require(state.length <= 256, StateLengthOverflow());
         require(activeStrategist != address(0), NotInExecution());
 
-        bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, bytes32(0));
-        require(scriptHash == expectedCallback, InvalidCallback());
+        uint256 idx = _callbackNext;
+        require(idx < TransientArrayLib.length(CALLBACK_HASHES_SLOT), CallbackExhausted());
 
-        inCallback = true;
-        expectedCallback = bytes32(0);
+        bytes32 expected = TransientArrayLib.at(CALLBACK_HASHES_SLOT, idx);
+        bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, _emptyCallbackHashes());
+        require(scriptHash == expected, InvalidCallback());
+
+        _callbackNext = idx + 1;
+        callbackDepth++;
         _execute(commands, _copyState(state));
-        inCallback = false;
+        callbackDepth--;
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -124,7 +133,7 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         bytes32[] calldata commands,
         bytes[] calldata state,
         uint256 stateBitmap,
-        bytes32 callbackHash
+        bytes32[] memory callbackHashes
     ) internal pure returns (bytes32) {
         uint256 count;
         for (uint256 i; i < state.length; i++) {
@@ -145,9 +154,13 @@ contract Executor is BatchedMulticall, VM, IExecutor {
                 keccak256(abi.encodePacked(hashes)),
                 stateBitmap,
                 state.length,
-                callbackHash
+                keccak256(abi.encodePacked(callbackHashes))
             )
         );
+    }
+
+    function _emptyCallbackHashes() internal pure returns (bytes32[] memory) {
+        return new bytes32[](0);
     }
 }
 
