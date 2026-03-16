@@ -34,6 +34,12 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
 
         vm.createSelectFork(source.network.rpcUrl());
 
+        assertEq(
+            IMultiAdapter(source.contracts.multiAdapter).quorum(target.network.centrifugeId, GLOBAL_POOL),
+            0,
+            "Target already wired, test is ineffective"
+        );
+
         vm.startPrank(source.network.opsAdmin);
         wire(networkName, targetName, "");
         vm.stopPrank();
@@ -45,11 +51,9 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
         Connection memory targetConn = _findTargetConnection(source, targetName);
 
         IMultiAdapter multiAdapter = IMultiAdapter(source.contracts.multiAdapter);
-        assertGt(multiAdapter.quorum(target.network.centrifugeId, PoolId.wrap(0)), 0, "Quorum not set");
+        assertGt(multiAdapter.quorum(target.network.centrifugeId, GLOBAL_POOL), 0, "Quorum not set");
         assertEq(
-            multiAdapter.threshold(target.network.centrifugeId, PoolId.wrap(0)),
-            targetConn.threshold,
-            "Threshold not set"
+            multiAdapter.threshold(target.network.centrifugeId, GLOBAL_POOL), targetConn.threshold, "Threshold not set"
         );
 
         ERC20 asset = new ERC20(18);
@@ -203,9 +207,9 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
             Connection memory conn = _findTargetConnection(source, targetNames[i]);
 
             uint16 cid = target.network.centrifugeId;
-            assertGt(ma.quorum(cid, PoolId.wrap(0)), 0, string.concat("Quorum not set for ", targetNames[i]));
+            assertGt(ma.quorum(cid, GLOBAL_POOL), 0, string.concat("Quorum not set for ", targetNames[i]));
             assertEq(
-                ma.threshold(cid, PoolId.wrap(0)), conn.threshold, string.concat("Wrong threshold for ", targetNames[i])
+                ma.threshold(cid, GLOBAL_POOL), conn.threshold, string.concat("Wrong threshold for ", targetNames[i])
             );
         }
 
@@ -215,7 +219,7 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
         asset.file("name", "Test Token");
         asset.file("symbol", "TEST");
 
-        vm.deal(address(this), 10 ether);
+        vm.deal(address(this), 20 ether);
         vm.recordLogs();
 
         ISpoke(source.contracts.spoke).registerAsset{value: 10 ether}(
@@ -227,5 +231,48 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
 
         Connection memory monadConn = _findTargetConnection(source, "monad");
         if (monadConn.chainlink) _assertChainlinkEvent(source, monad, logs);
+
+        EnvConfig memory pharos = Env.load("pharos");
+        vm.recordLogs();
+
+        ISpoke(source.contracts.spoke).registerAsset{value: 10 ether}(
+            pharos.network.centrifugeId, address(asset), 0, address(this)
+        );
+
+        Vm.Log[] memory pharosLogs = vm.getRecordedLogs();
+        _assertLayerZeroEvent(source, pharos, pharosLogs);
+    }
+
+    /// @notice Tests that wireAll silently skips already-wired targets.
+    function testBatchWireSkipsAlreadyWired() external {
+        string memory networkName = "ethereum";
+        EnvConfig memory source = Env.load(networkName);
+        vm.createSelectFork(source.network.rpcUrl());
+
+        // Wire monad first (single target)
+        vm.startPrank(source.network.opsAdmin);
+        wire(networkName, "monad", "");
+        vm.stopPrank();
+
+        IMultiAdapter ma = IMultiAdapter(source.contracts.multiAdapter);
+        EnvConfig memory monad = Env.load("monad");
+        EnvConfig memory pharos = Env.load("pharos");
+
+        uint8 monadQuorum = ma.quorum(monad.network.centrifugeId, GLOBAL_POOL);
+        assertGt(monadQuorum, 0, "Monad should be wired");
+        assertEq(ma.quorum(pharos.network.centrifugeId, GLOBAL_POOL), 0, "Pharos should not be wired yet");
+
+        // Now batch wire [monad, pharos] -- monad should be skipped
+        string[] memory targetNames = new string[](2);
+        targetNames[0] = "monad";
+        targetNames[1] = "pharos";
+
+        vm.startPrank(source.network.opsAdmin);
+        wireAll(networkName, targetNames, "");
+        vm.stopPrank();
+
+        // Monad state unchanged, pharos newly wired
+        assertEq(ma.quorum(monad.network.centrifugeId, GLOBAL_POOL), monadQuorum, "Monad quorum should be unchanged");
+        assertGt(ma.quorum(pharos.network.centrifugeId, GLOBAL_POOL), 0, "Pharos should now be wired");
     }
 }

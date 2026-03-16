@@ -38,6 +38,7 @@ contract WireToNewNetwork is Script {
 
     string constant LEDGER_DERIVATION_PATH = "m/44'/60'/0'/0/0";
     uint32 constant ULN_CONFIG_TYPE = 2;
+    PoolId constant GLOBAL_POOL = PoolId.wrap(0);
 
     Safe.Client safe;
     Safe.Client protocolSafe;
@@ -113,8 +114,9 @@ contract WireToNewNetwork is Script {
             EnvConfig memory target = Env.load(targetNames[t]);
             uint16 centrifugeId = target.network.centrifugeId;
 
-            if (IMultiAdapter(source.contracts.multiAdapter).quorum(centrifugeId, PoolId.wrap(0)) != 0) {
-                continue; // Already wired, skip
+            if (IMultiAdapter(source.contracts.multiAdapter).quorum(centrifugeId, GLOBAL_POOL) != 0) {
+                console.log("Skipping already-wired target:", targetNames[t]);
+                continue;
             }
 
             Connection memory conn = _findTargetConnection(source, targetNames[t]);
@@ -195,12 +197,13 @@ contract WireToNewNetwork is Script {
             targets[idx] = opsGuardian;
             datas[idx] = abi.encodeCall(
                 IOpsGuardian.initAdapters,
-                (centrifugeId, trimmedAdapters, conn.threshold, uint8(adapterCount)) /* no recovery adapter */
+                // recoveryIndex = adapterCount: no recovery adapter. Configured separately after initial wiring if needed.
+                (centrifugeId, trimmedAdapters, conn.threshold, uint8(adapterCount))
             );
             idx++;
         }
 
-        // Trim arrays to actual size
+        // Safe: idx <= original length; only shrinks array length
         assembly {
             mstore(targets, idx)
             mstore(datas, idx)
@@ -215,7 +218,7 @@ contract WireToNewNetwork is Script {
         returns (address[] memory targets, bytes[] memory datas)
     {
         address lzAdapter = source.contracts.layerZeroAdapter;
-        if (lzAdapter == address(0)) return (targets, datas);
+        if (lzAdapter == address(0)) return (new address[](0), new bytes[](0));
 
         ILayerZeroEndpointV2Like lzEndpoint = ILayerZeroEndpointV2Like(address(LayerZeroAdapter(lzAdapter).endpoint()));
         address endpoint = address(lzEndpoint);
@@ -258,7 +261,7 @@ contract WireToNewNetwork is Script {
             idx++;
         }
 
-        // Trim arrays to actual size
+        // Safe: idx <= original length; only shrinks array length
         assembly {
             mstore(targets, idx)
             mstore(datas, idx)
