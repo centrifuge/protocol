@@ -799,7 +799,7 @@ contract ExecutorSelfCallTests is ExecutorTest {
 // ─── Script Hash Fuzz Tests ─────────────────────────────────────────────────
 
 contract ExecutorScriptHashFuzzTests is ExecutorTest {
-    function testFuzzScriptHashDeterministic(uint256 bitmap, uint8 stateLen) public {
+    function testFuzzScriptHashDeterministic(uint256 bitmap, uint8 stateLen) public view {
         stateLen = uint8(bound(stateLen, 0, 16)); // keep reasonable
         bitmap = bitmap & ((1 << stateLen) - 1); // only valid bits
 
@@ -816,7 +816,7 @@ contract ExecutorScriptHashFuzzTests is ExecutorTest {
         assertEq(hash1, hash2);
     }
 
-    function testFuzzDifferentBitmapsDifferentHashes(uint256 bitmapA, uint256 bitmapB) public {
+    function testFuzzDifferentBitmapsDifferentHashes(uint256 bitmapA, uint256 bitmapB) public view {
         // 4 state elements, constrain bitmaps to 4 bits
         bitmapA = bitmapA & 0xF;
         bitmapB = bitmapB & 0xF;
@@ -835,7 +835,7 @@ contract ExecutorScriptHashFuzzTests is ExecutorTest {
         assertNotEq(hashA, hashB);
     }
 
-    function testFuzzDifferentStateDifferentHashes(uint256 valA, uint256 valB) public {
+    function testFuzzDifferentStateDifferentHashes(uint256 valA, uint256 valB) public view {
         vm.assume(valA != valB);
 
         bytes32[] memory commands = new bytes32[](1);
@@ -853,7 +853,7 @@ contract ExecutorScriptHashFuzzTests is ExecutorTest {
         );
     }
 
-    function testFuzzVariableStateIgnoredInHash(uint256 valA, uint256 valB) public {
+    function testFuzzVariableStateIgnoredInHash(uint256 valA, uint256 valB) public view {
         bytes32[] memory commands = new bytes32[](1);
         commands[0] = _callCommand(WeirollTarget.setValue.selector, 0, address(target));
 
