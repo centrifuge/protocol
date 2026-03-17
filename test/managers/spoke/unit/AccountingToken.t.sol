@@ -354,10 +354,10 @@ contract AccountingTokenTokenIdTest is AccountingTokenTest {
 // ─── Metadata ────────────────────────────────────────────────────────────────
 
 contract AccountingTokenMetadataTest is AccountingTokenTest {
-    function testNameDerivedFromAssetSymbol() public {
-        vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.symbol.selector), abi.encode("USDC"));
+    function testNameDerivedFromAssetName() public {
+        vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.name.selector), abi.encode("USD Coin"));
 
-        assertEq(token.name(tokenIdA), "Accounting USDC");
+        assertEq(token.name(tokenIdA), "Accounting -USD Coin");
     }
 
     function testSymbolDerivedFromAssetSymbol() public {
@@ -372,11 +372,11 @@ contract AccountingTokenMetadataTest is AccountingTokenTest {
         assertEq(token.decimals(tokenIdA), 6);
     }
 
-    function testLiabilityNameDerivedFromAssetSymbol() public {
+    function testLiabilityNameDerivedFromAssetName() public {
         uint256 liabId = token.toTokenId(POOL_A, asset, true);
-        vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.symbol.selector), abi.encode("USDC"));
+        vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.name.selector), abi.encode("USD Coin"));
 
-        assertEq(token.name(liabId), "Liability USDC");
+        assertEq(token.name(liabId), "Accounting (Liability) -USD Coin");
     }
 
     function testLiabilitySymbolDerivedFromAssetSymbol() public {

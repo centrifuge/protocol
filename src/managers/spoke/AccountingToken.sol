@@ -13,8 +13,7 @@ import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdat
 /// @title  AccountingToken
 /// @notice ERC6909 multi-token representing in-flight async requests and cross-chain liabilities.
 ///         Token IDs encode a pool ID, asset address, and liability flag, so a single deployment
-///         can be shared across all pools. Minter permissions are managed via trustedCall from
-///         the ContractUpdater, following the same pattern as BalanceSheet manager registration.
+///         can be shared across all pools.
 /// @dev    Not fully ERC-6909 compatible: operator support (isOperator, setOperator) is omitted
 ///         because these tokens are only held within the protocol (BalanceSheet/Executor).
 contract AccountingToken is IAccountingToken {
@@ -102,11 +101,11 @@ contract AccountingToken is IAccountingToken {
 
     /// @inheritdoc IERC6909MetadataExt
     function name(uint256 id) external view returns (string memory) {
-        string memory assetSymbol = IERC20Metadata(_asset(id)).symbol();
+        string memory assetName = IERC20Metadata(_asset(id)).name();
         return
             id & LIABILITY_BIT != 0
-                ? string.concat("Liability ", assetSymbol)
-                : string.concat("Accounting ", assetSymbol);
+                ? string.concat("Accounting (Liability) -", assetName)
+                : string.concat("Accounting -", assetName);
     }
 
     /// @inheritdoc IERC6909MetadataExt
