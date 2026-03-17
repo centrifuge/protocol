@@ -32,9 +32,8 @@ contract Executor is BatchedMulticall, VM, IExecutor {
 
     mapping(address strategist => bytes32 root) public policy;
 
-    uint256 public transient callbackNext;
-    uint256 public transient callbackDepth;
     address public transient activeStrategist;
+    uint256 public transient callbackIdx;
 
     constructor(PoolId poolId_, address contractUpdater_, IGateway gateway_) BatchedMulticall(gateway_) {
         poolId = poolId_;
@@ -79,25 +78,26 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         bytes32[] calldata callbackHashes,
         bytes32[] calldata proof
     ) external payable protected {
-        address sender = msgSender();
-        bytes32 root = policy[sender];
+        bytes32 root = policy[msgSender()];
         require(root != bytes32(0), NotAStrategist());
         require(state.length <= 256, StateLengthOverflow());
 
         bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, callbackHashes);
         require(MerkleProofLib.verify(proof, root, scriptHash), InvalidProof());
 
-        activeStrategist = sender;
+        activeStrategist = msgSender();
         for (uint256 i; i < callbackHashes.length; i++) {
             TransientArrayLib.push(CALLBACK_HASHES_SLOT, callbackHashes[i]);
         }
+        
         _execute(commands, _copyState(state));
-        require(callbackNext == TransientArrayLib.length(CALLBACK_HASHES_SLOT), UnconsumedCallbacks());
+        require(callbackIdx == TransientArrayLib.length(CALLBACK_HASHES_SLOT), UnconsumedCallbacks());
+
+        callbackIdx = 0;
         activeStrategist = address(0);
         TransientArrayLib.clear(CALLBACK_HASHES_SLOT);
-        callbackNext = 0;
 
-        emit ExecuteScript(sender, scriptHash);
+        emit ExecuteScript(msgSender(), scriptHash);
     }
 
     /// @inheritdoc IExecutor
@@ -106,19 +106,17 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         require(msg.sender != address(this), SelfCallForbidden());
         require(activeStrategist != address(0), NotInExecution());
 
-        uint256 idx = callbackNext;
+        uint256 idx = callbackIdx;
         require(idx < TransientArrayLib.length(CALLBACK_HASHES_SLOT), CallbackExhausted());
 
         bytes32 expected = TransientArrayLib.at(CALLBACK_HASHES_SLOT, idx);
         bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, _emptyCallbackHashes());
         require(scriptHash == expected, InvalidCallback());
 
-        callbackNext = idx + 1;
-        callbackDepth++;
+        callbackIdx = idx + 1;
         _execute(commands, _copyState(state));
-        callbackDepth--;
 
-        emit ExecuteCallback(activeStrategist, scriptHash, callbackDepth + 1);
+        emit ExecuteCallback(activeStrategist, scriptHash);
     }
 
     // ──────────────────────────────────────────────────────────────────────────

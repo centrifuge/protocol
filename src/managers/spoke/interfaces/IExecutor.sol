@@ -8,7 +8,7 @@ import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUp
 interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
     event UpdatePolicy(address indexed strategist, bytes32 oldRoot, bytes32 newRoot);
     event ExecuteScript(address indexed strategist, bytes32 scriptHash);
-    event ExecuteCallback(address indexed strategist, bytes32 scriptHash, uint256 depth);
+    event ExecuteCallback(address indexed strategist, bytes32 scriptHash);
 
     error NotAStrategist();
     error InvalidProof();
@@ -24,8 +24,8 @@ interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
     function poolId() external view returns (PoolId);
     function contractUpdater() external view returns (address);
     function policy(address strategist) external view returns (bytes32);
-    function callbackDepth() external view returns (uint256);
     function activeStrategist() external view returns (address);
+    function callbackIdx() external view returns (uint256);
 
     /// @notice Execute a weiroll script authorized by a Merkle proof.
     /// @param commands       Weiroll command bytes (selector + flags + indices + output + target).
