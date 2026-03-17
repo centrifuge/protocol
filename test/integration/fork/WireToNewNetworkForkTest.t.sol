@@ -252,7 +252,7 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
     }
 
     function _assertWireCallsBatched(EnvConfig memory source, string[] memory targetNames) internal view {
-        (address[] memory targets, bytes[] memory datas) = _collectWireCalls(source, targetNames);
+        (address[] memory targets, bytes[] memory data) = _collectWireCalls(source, targetNames);
 
         // Count expected calls: per target = N adapter wire calls + 1 initAdapters
         uint256 expected;
@@ -266,7 +266,7 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
         }
 
         assertEq(targets.length, expected, "Wire calls not batched into single array");
-        assertEq(datas.length, expected, "Wire data count mismatch");
+        assertEq(data.length, expected, "Wire data count mismatch");
 
         for (uint256 i; i < targets.length; i++) {
             assertEq(targets[i], source.contracts.opsGuardian, "Wire call target is not opsGuardian");
@@ -274,7 +274,7 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
     }
 
     function _assertDvnCallsBatched(EnvConfig memory source, string[] memory targetNames) internal view {
-        (address[] memory targets, bytes[] memory datas) = _collectDvnCalls(source, targetNames);
+        (address[] memory targets, bytes[] memory data) = _collectDvnCalls(source, targetNames);
 
         // 4 per LZ-enabled target expected
         uint256 expected;
@@ -284,7 +284,7 @@ contract WireToNewNetworkForkTest is WireToNewNetwork, Test {
         }
 
         assertEq(targets.length, expected, "DVN calls not batched into single array");
-        assertEq(datas.length, expected, "DVN data count mismatch");
+        assertEq(data.length, expected, "DVN data count mismatch");
 
         address lzEndpoint = address(LayerZeroAdapter(source.contracts.layerZeroAdapter).endpoint());
         for (uint256 i; i < targets.length; i++) {
