@@ -5,18 +5,16 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
-import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
+import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {ITrustedContractUpdate} from "../../../../src/core/utils/interfaces/IContractUpdate.sol";
 
 import {IExecutor} from "../../../../src/managers/spoke/interfaces/IExecutor.sol";
 import {IExecutorFactory} from "../../../../src/managers/spoke/interfaces/IExecutorFactory.sol";
-import {ITrustedContractUpdate} from "../../../../src/core/utils/interfaces/IContractUpdate.sol";
-
-import {WeirollTarget, ExecutorTestBase} from "../ExecutorTestBase.sol";
 
 import "forge-std/Test.sol";
+
+import {WeirollTarget, ExecutorTestBase} from "../ExecutorTestBase.sol";
 
 // ─── Base test ────────────────────────────────────────────────────────────────
 

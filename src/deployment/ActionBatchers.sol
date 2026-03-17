@@ -38,10 +38,10 @@ import {RedemptionRestrictions} from "../hooks/RedemptionRestrictions.sol";
 
 import {NAVManager} from "../managers/hub/NAVManager.sol";
 import {QueueManager} from "../managers/spoke/QueueManager.sol";
+import {OnOffRampFactory} from "../managers/spoke/OnOffRamp.sol";
 import {VaultDecoder} from "../managers/spoke/decoders/VaultDecoder.sol";
 import {SimplePriceManager} from "../managers/hub/SimplePriceManager.sol";
 import {CircleDecoder} from "../managers/spoke/decoders/CircleDecoder.sol";
-import {OnOffRampFactory} from "../managers/spoke/OnOffRamp.sol";
 import {MerkleProofManagerFactory} from "../managers/spoke/MerkleProofManager.sol";
 
 import {OracleValuation} from "../valuations/OracleValuation.sol";

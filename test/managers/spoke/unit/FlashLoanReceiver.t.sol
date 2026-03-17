@@ -2,9 +2,9 @@
 pragma solidity 0.8.28;
 
 import {IExecutor} from "../../../../src/managers/spoke/interfaces/IExecutor.sol";
-import {IAaveV3Pool, IAaveV3FlashLoanReceiver} from "../../../../src/managers/spoke/interfaces/IAaveV3Pool.sol";
-import {IFlashLoanReceiver} from "../../../../src/managers/spoke/interfaces/IFlashLoanReceiver.sol";
 import {FlashLoanReceiver} from "../../../../src/managers/spoke/FlashLoanReceiver.sol";
+import {IFlashLoanReceiver} from "../../../../src/managers/spoke/interfaces/IFlashLoanReceiver.sol";
+import {IAaveV3Pool, IAaveV3FlashLoanReceiver} from "../../../../src/managers/spoke/interfaces/IAaveV3Pool.sol";
 
 import "forge-std/Test.sol";
 

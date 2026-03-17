@@ -614,6 +614,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(onOffRampFactory.contractUpdater()), address(contractUpdater));
         assertEq(address(onOffRampFactory.balanceSheet()), address(balanceSheet));
+        assertEq(address(onOffRampFactory.accountingToken()), address(accountingToken));
     }
 
     function testMerkleProofManagerFactory() public view {

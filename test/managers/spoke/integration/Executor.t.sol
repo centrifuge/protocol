@@ -1,28 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+import {D18} from "../../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
-
-import {PoolId} from "../../../../src/core/types/PoolId.sol";
-import {AssetId} from "../../../../src/core/types/AssetId.sol";
-import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
-import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {IBatchedMulticall} from "../../../../src/core/utils/interfaces/IBatchedMulticall.sol";
 import {IMulticall} from "../../../../src/misc/interfaces/IMulticall.sol";
 
+import {AssetId} from "../../../../src/core/types/AssetId.sol";
+import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
+import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {IBatchedMulticall} from "../../../../src/core/utils/interfaces/IBatchedMulticall.sol";
+
 import {IExecutor} from "../../../../src/managers/spoke/interfaces/IExecutor.sol";
-import {FlashLoanReceiver} from "../../../../src/managers/spoke/FlashLoanReceiver.sol";
-import {IFlashLoanReceiver} from "../../../../src/managers/spoke/interfaces/IFlashLoanReceiver.sol";
-import {IAaveV3Pool, IAaveV3FlashLoanReceiver} from "../../../../src/managers/spoke/interfaces/IAaveV3Pool.sol";
 import {SlippageGuard} from "../../../../src/managers/spoke/guards/SlippageGuard.sol";
+import {FlashLoanReceiver} from "../../../../src/managers/spoke/FlashLoanReceiver.sol";
+import {IAaveV3FlashLoanReceiver} from "../../../../src/managers/spoke/interfaces/IAaveV3Pool.sol";
+import {IFlashLoanReceiver} from "../../../../src/managers/spoke/interfaces/IFlashLoanReceiver.sol";
 import {ISlippageGuard, AssetEntry} from "../../../../src/managers/spoke/guards/interfaces/ISlippageGuard.sol";
 
-import {D18} from "../../../../src/misc/types/D18.sol";
+import "forge-std/Test.sol";
 
 import {WeirollTarget, ExecutorTestBase} from "../ExecutorTestBase.sol";
-
-import "forge-std/Test.sol";
 
 // ─── Mock gateway simulating withBatch/lockCallback ──────────────────────────
 

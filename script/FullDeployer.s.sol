@@ -34,10 +34,11 @@ import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
 
 import {NAVManager} from "../src/managers/hub/NAVManager.sol";
 import {QueueManager} from "../src/managers/spoke/QueueManager.sol";
+import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";
+import {AccountingToken} from "../src/managers/spoke/AccountingToken.sol";
 import {VaultDecoder} from "../src/managers/spoke/decoders/VaultDecoder.sol";
 import {SimplePriceManager} from "../src/managers/hub/SimplePriceManager.sol";
 import {CircleDecoder} from "../src/managers/spoke/decoders/CircleDecoder.sol";
-import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";
 import {MerkleProofManagerFactory} from "../src/managers/spoke/MerkleProofManager.sol";
 
 import {OracleValuation} from "../src/valuations/OracleValuation.sol";
@@ -158,6 +159,7 @@ contract FullDeployer is BaseDeployer, Constants {
     RedemptionRestrictions public redemptionRestrictionsHook;
 
     QueueManager public queueManager;
+    AccountingToken public accountingToken;
     OnOffRampFactory public onOffRampFactory;
     MerkleProofManagerFactory public merkleProofManagerFactory;
     VaultDecoder public vaultDecoder;
@@ -531,10 +533,19 @@ contract FullDeployer is BaseDeployer, Constants {
             )
         );
 
+        accountingToken = AccountingToken(
+            create3(
+                createSalt("accountingToken", V3_1),
+                abi.encodePacked(type(AccountingToken).creationCode, abi.encode(contractUpdater))
+            )
+        );
+
         onOffRampFactory = OnOffRampFactory(
             create3(
                 createSalt("onOffRampFactory", V3_1),
-                abi.encodePacked(type(OnOffRampFactory).creationCode, abi.encode(contractUpdater, balanceSheet))
+                abi.encodePacked(
+                    type(OnOffRampFactory).creationCode, abi.encode(contractUpdater, balanceSheet, accountingToken)
+                )
             )
         );
 

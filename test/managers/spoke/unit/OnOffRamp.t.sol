@@ -7,6 +7,7 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {IERC165} from "../../../../src/misc/interfaces/IERC165.sol";
 import {IEscrow} from "../../../../src/misc/interfaces/IEscrow.sol";
 import {IERC7751} from "../../../../src/misc/interfaces/IERC7751.sol";
+import {IERC6909ExclOperator} from "../../../../src/misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
@@ -16,6 +17,7 @@ import {IBalanceSheet, WithdrawMode} from "../../../../src/core/spoke/interfaces
 
 import {OnOffRampFactory} from "../../../../src/managers/spoke/OnOffRamp.sol";
 import {IOnOffRamp} from "../../../../src/managers/spoke/interfaces/IOnOffRamp.sol";
+import {IAccountingToken} from "../../../../src/managers/spoke/interfaces/IAccountingToken.sol";
 import {IDepositManager, IWithdrawManager} from "../../../../src/managers/spoke/interfaces/IBalanceSheetManager.sol";
 
 import "forge-std/Test.sol";
@@ -29,6 +31,7 @@ contract OnOffRampTest is Test {
     IBalanceSheet balanceSheet = IBalanceSheet(address(new IsContract()));
     ISpoke spoke = ISpoke(address(new IsContract()));
     IERC20 erc20 = IERC20(address(new IsContract()));
+    IAccountingToken accountingToken = IAccountingToken(address(new IsContract()));
 
     PoolId constant POOL_A = PoolId.wrap(1);
     PoolId constant POOL_B = PoolId.wrap(2); // For invalid pool tests
@@ -70,10 +73,21 @@ contract OnOffRampTest is Test {
         vm.mockCall(address(erc20), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
         vm.mockCall(address(erc20), abi.encodeWithSelector(IERC20.transferFrom.selector), abi.encode(true));
         vm.mockCall(address(erc20), abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
+
+        // Mock accountingToken functions
+        vm.mockCall(
+            address(accountingToken),
+            abi.encodeWithSelector(IAccountingToken.toTokenId.selector),
+            abi.encode(uint256(1))
+        );
+        vm.mockCall(address(accountingToken), abi.encodeWithSelector(IAccountingToken.mint.selector), abi.encode());
+        vm.mockCall(
+            address(accountingToken), abi.encodeWithSelector(IERC6909ExclOperator.approve.selector), abi.encode(true)
+        );
     }
 
     function _deployManager() internal {
-        factory = new OnOffRampFactory(contractUpdater, balanceSheet);
+        factory = new OnOffRampFactory(contractUpdater, balanceSheet, accountingToken);
 
         // Mock balanceSheet.spoke().shareToken() to prevent revert during deployment
         vm.mockCall(
@@ -98,6 +112,13 @@ contract OnOffRampTest is Test {
         } else {
             vm.mockCall(address(balanceSheet), callData, abi.encode());
         }
+
+        // Mock the accounting token deposit to BalanceSheet (liability token)
+        vm.mockCall(
+            address(balanceSheet),
+            abi.encodeWithSelector(IBalanceSheet.deposit.selector, POOL_A, SC_1, address(accountingToken)),
+            abi.encode()
+        );
     }
 
     function _mockBalanceSheetWithdraw(uint128 amount, address receiver_, bool shouldRevert, bytes memory revertData)
@@ -112,6 +133,13 @@ contract OnOffRampTest is Test {
         } else {
             vm.mockCall(address(balanceSheet), callData, abi.encode());
         }
+
+        // Mock the accounting token deposit to BalanceSheet (non-liability token)
+        vm.mockCall(
+            address(balanceSheet),
+            abi.encodeWithSelector(IBalanceSheet.deposit.selector, POOL_A, SC_1, address(accountingToken)),
+            abi.encode()
+        );
     }
 
     function _mockManagerPermissions(bool isManager) internal {

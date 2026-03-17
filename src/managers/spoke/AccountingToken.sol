@@ -102,10 +102,9 @@ contract AccountingToken is IAccountingToken {
     /// @inheritdoc IERC6909MetadataExt
     function name(uint256 id) external view returns (string memory) {
         string memory assetName = IERC20Metadata(_asset(id)).name();
-        return
-            id & LIABILITY_BIT != 0
-                ? string.concat("Accounting (Liability) -", assetName)
-                : string.concat("Accounting -", assetName);
+        return id & LIABILITY_BIT != 0
+            ? string.concat("Accounting (Liability) -", assetName)
+            : string.concat("Accounting -", assetName);
     }
 
     /// @inheritdoc IERC6909MetadataExt

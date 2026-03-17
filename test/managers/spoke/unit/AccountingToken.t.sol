@@ -2,10 +2,11 @@
 pragma solidity 0.8.28;
 
 import {IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
-import {IERC6909ExclOperator, IERC6909MetadataExt} from "../../../../src/misc/interfaces/IERC6909.sol";
+import {IERC6909ExclOperator} from "../../../../src/misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+
 import {AccountingToken} from "../../../../src/managers/spoke/AccountingToken.sol";
 import {IAccountingToken} from "../../../../src/managers/spoke/interfaces/IAccountingToken.sol";
 

@@ -8,8 +8,8 @@ import {TransientArrayLib} from "../src/misc/libraries/TransientArrayLib.sol";
 import {PoolId} from "../src/core/types/PoolId.sol";
 import {ShareClassId} from "../src/core/types/ShareClassId.sol";
 import {IGateway} from "../src/core/messaging/interfaces/IGateway.sol";
-import {IBalanceSheet} from "../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {BatchedMulticall} from "../src/core/utils/BatchedMulticall.sol";
+import {IBalanceSheet} from "../src/core/spoke/interfaces/IBalanceSheet.sol";
 
 import {IExecutor} from "../src/managers/spoke/interfaces/IExecutor.sol";
 import {IExecutorFactory} from "../src/managers/spoke/interfaces/IExecutorFactory.sol";
