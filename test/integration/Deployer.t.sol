@@ -617,12 +617,6 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(address(onOffRampFactory.accountingToken()), address(accountingToken));
     }
 
-    function testMerkleProofManagerFactory() public view {
-        // dependencies set correctly
-        assertEq(address(merkleProofManagerFactory.contractUpdater()), address(contractUpdater));
-        assertEq(address(merkleProofManagerFactory.balanceSheet()), address(balanceSheet));
-    }
-
     function testQueueManager() public view {
         // dependencies set correctly
         assertEq(address(queueManager.contractUpdater()), address(contractUpdater));
@@ -665,6 +659,23 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(batchRequestManager.wards(address(hub)), 1);
         assertEq(batchRequestManager.wards(address(hubHandler)), 1);
         assertEq(batchRequestManager.wards(nonWard), 0);
+    }
+
+    function testExecutorFactory() public view {
+        // dependencies set correctly
+        assertEq(executorFactory.contractUpdater(), address(contractUpdater));
+        assertEq(address(executorFactory.balanceSheet()), address(balanceSheet));
+        assertEq(address(executorFactory.gateway()), address(gateway));
+    }
+
+    function testExecutorHelpers() public view {
+        // contract deployed
+        assertTrue(address(executorHelpers).code.length > 0);
+    }
+
+    function testFlashLoanHelper() public view {
+        // contract deployed
+        assertTrue(address(flashLoanHelper).code.length > 0);
     }
 }
 

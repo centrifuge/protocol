@@ -103,16 +103,12 @@ struct ContractsConfig {
     address redemptionRestrictionsHook;
     // Spoke managers
     address onOffRampFactory;
-    address merkleProofManagerFactory;
     // Valuations
     address identityValuation;
     address oracleValuation;
     // Hub managers
     address navManager;
     address simplePriceManager;
-    // Decoders
-    address vaultDecoder;
-    address circleDecoder;
     // Adapters
     address layerZeroAdapter;
     address wormholeAdapter;
@@ -260,7 +256,6 @@ library Env {
 
         // Spoke managers
         config.onOffRampFactory = _parseContractAddress(json, "onOfframpManagerFactory");
-        config.merkleProofManagerFactory = _parseContractAddress(json, "merkleProofManagerFactory");
 
         // Valuations
         config.identityValuation = _parseContractAddress(json, "identityValuation");
@@ -269,10 +264,6 @@ library Env {
         // Hub managers
         config.navManager = _parseContractAddress(json, "navManager");
         config.simplePriceManager = _parseContractAddress(json, "simplePriceManager");
-
-        // Decoders
-        config.vaultDecoder = _parseContractAddress(json, "vaultDecoder");
-        config.circleDecoder = _parseContractAddress(json, "circleDecoder");
 
         // Adapters
         config.layerZeroAdapter = _tryParseContractAddress(json, "layerZeroAdapter");

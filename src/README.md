@@ -27,6 +27,6 @@ src/
 - **[`admin`](./admin)** - Protocol governance with Root, ProtocolGuardian, OpsGuardian, and TokenRecoverer for timelocked permissions and emergency controls
 - **[`hooks`](./hooks)** - Transfer hook implementations (FreezeOnly, RedemptionRestrictions, FullRestrictions, FreelyTransferable)
 - **[`managers/hub`](./managers/hub)** - NAVManager for net asset value tracking and SimplePriceManager for single-share-class pool pricing
-- **[`managers/spoke`](./managers/spoke)** - OnOfframpManager for asset custody, MerkleProofManager for permissioned operations, QueueManager for batched syncing
+- **[`managers/spoke`](./managers/spoke)** - OnOfframpManager for asset custody, QueueManager for batched syncing
 - **[`valuations`](./valuations)** - Asset valuation implementations (IdentityValuation for 1:1 pricing, OracleValuation for oracle-based pricing)
 - **[`vaults`](./vaults)** - ERC-4626/ERC-7540 vault implementations (AsyncVault, SyncDepositVault), request managers, and router

@@ -2,8 +2,8 @@
 pragma solidity 0.8.28;
 
 import {IExecutor} from "../../../../src/managers/spoke/interfaces/IExecutor.sol";
-import {FlashLoanReceiver} from "../../../../src/managers/spoke/FlashLoanReceiver.sol";
-import {IFlashLoanReceiver} from "../../../../src/managers/spoke/interfaces/IFlashLoanReceiver.sol";
+import {FlashLoanHelper} from "../../../../src/managers/spoke/FlashLoanHelper.sol";
+import {IFlashLoanHelper} from "../../../../src/managers/spoke/interfaces/IFlashLoanHelper.sol";
 import {IAaveV3Pool, IAaveV3FlashLoanReceiver} from "../../../../src/managers/spoke/interfaces/IAaveV3Pool.sol";
 
 import "forge-std/Test.sol";
@@ -69,23 +69,23 @@ contract MockAavePool {
     }
 }
 
-// ─── FlashLoanReceiver Tests ─────────────────────────────────────────────────
+// ─── FlashLoanHelper Tests ─────────────────────────────────────────────────
 
-contract FlashLoanReceiverTest is Test {
-    FlashLoanReceiver receiver;
+contract FlashLoanHelperTest is Test {
+    FlashLoanHelper receiver;
     MockAavePool pool;
     MockToken token;
     address executor;
 
     function setUp() public {
-        receiver = new FlashLoanReceiver();
+        receiver = new FlashLoanHelper();
         pool = new MockAavePool();
         token = new MockToken();
         executor = makeAddr("executor");
     }
 
     function testExecuteOperationRevertsNotPool() public {
-        vm.expectRevert(IFlashLoanReceiver.NotPool.selector);
+        vm.expectRevert(IFlashLoanHelper.NotPool.selector);
         receiver.executeOperation(address(token), 100, 1, address(receiver), "");
     }
 
@@ -99,7 +99,7 @@ contract FlashLoanReceiverTest is Test {
         // Deploy a custom pool that passes wrong initiator
         WrongInitiatorPool wrongPool = new WrongInitiatorPool();
 
-        vm.expectRevert(IFlashLoanReceiver.NotInitiator.selector);
+        vm.expectRevert(IFlashLoanHelper.NotInitiator.selector);
         receiver.requestFlashLoan(IAaveV3Pool(address(wrongPool)), address(token), 100, IExecutor(executor), "");
     }
 
@@ -111,7 +111,7 @@ contract FlashLoanReceiverTest is Test {
         // Test via a pool that calls executeOperation after we clear state.
 
         // Simpler: just verify the direct call reverts (NotPool, which is the first check)
-        vm.expectRevert(IFlashLoanReceiver.NotPool.selector);
+        vm.expectRevert(IFlashLoanHelper.NotPool.selector);
         vm.prank(address(pool));
         receiver.executeOperation(address(token), 100, 1, address(receiver), "");
     }

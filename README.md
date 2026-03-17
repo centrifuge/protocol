@@ -66,4 +66,4 @@ forge test
 ```
 
 ## License
-The primary license is the [Business Source License 1.1](https://github.com/centrifuge/protocol/blob/main/LICENSE). However, all files in the [`src/misc`](./src/misc) folder, [`src/managers/MerkleProofManager.sol`](./src/managers/MerkleProofManager.sol), and any interface file can also be licensed under `GPL-2.0-or-later` (as indicated in their SPDX headers).
+The primary license is the [Business Source License 1.1](https://github.com/centrifuge/protocol/blob/main/LICENSE). However, all files in the [`src/misc`](./src/misc) folder and any interface file can also be licensed under `GPL-2.0-or-later` (as indicated in their SPDX headers).

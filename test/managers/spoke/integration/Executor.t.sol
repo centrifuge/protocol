@@ -12,9 +12,9 @@ import {IBatchedMulticall} from "../../../../src/core/utils/interfaces/IBatchedM
 
 import {IExecutor} from "../../../../src/managers/spoke/interfaces/IExecutor.sol";
 import {SlippageGuard} from "../../../../src/managers/spoke/guards/SlippageGuard.sol";
-import {FlashLoanReceiver} from "../../../../src/managers/spoke/FlashLoanReceiver.sol";
+import {FlashLoanHelper} from "../../../../src/managers/spoke/FlashLoanHelper.sol";
 import {IAaveV3FlashLoanReceiver} from "../../../../src/managers/spoke/interfaces/IAaveV3Pool.sol";
-import {IFlashLoanReceiver} from "../../../../src/managers/spoke/interfaces/IFlashLoanReceiver.sol";
+import {IFlashLoanHelper} from "../../../../src/managers/spoke/interfaces/IFlashLoanHelper.sol";
 import {ISlippageGuard, AssetEntry} from "../../../../src/managers/spoke/guards/interfaces/ISlippageGuard.sol";
 
 import "forge-std/Test.sol";
@@ -378,7 +378,7 @@ contract ExecutorSlippageGuardTest is ExecutorTestBase {
     }
 }
 
-// ─── Executor → FlashLoanReceiver → executeCallback integration ─────────────
+// ─── Executor → FlashLoanHelper → executeCallback integration ─────────────
 
 /// @dev Simple ERC20 mock for flash loan tests
 contract SimpleToken {
@@ -428,7 +428,7 @@ contract ExecutorFlashLoanTest is ExecutorTestBase {
     MockGateway mockGateway;
     IExecutor executor;
     WeirollTarget target;
-    FlashLoanReceiver flashReceiver;
+    FlashLoanHelper flashReceiver;
     SimpleAavePool aavePool;
     SimpleToken token;
 
@@ -438,7 +438,7 @@ contract ExecutorFlashLoanTest is ExecutorTestBase {
             deployCode("out-ir/Executor.sol/Executor.json", abi.encode(POOL_A, contractUpdater, address(mockGateway)))
         );
         target = new WeirollTarget();
-        flashReceiver = new FlashLoanReceiver();
+        flashReceiver = new FlashLoanHelper();
         aavePool = new SimpleAavePool();
         token = new SimpleToken();
 
@@ -471,13 +471,13 @@ contract ExecutorFlashLoanTest is ExecutorTestBase {
         uint256 innerBitmap = 1;
         bytes32 innerHash = _computeScriptHash(innerCommands, innerState, innerBitmap, NO_CALLBACKS);
 
-        // Encode callback data for Aave pool → FlashLoanReceiver.executeOperation → Executor.executeCallback
+        // Encode callback data for Aave pool → FlashLoanHelper.executeOperation → Executor.executeCallback
         bytes memory callbackData = abi.encode(innerCommands, innerState, innerBitmap);
 
         // Outer script: call flashReceiver.requestFlashLoan(pool, token, amount, executor, callbackData)
         bytes32[] memory outerCommands = new bytes32[](1);
         outerCommands[0] = _buildCommand(
-            IFlashLoanReceiver.requestFlashLoan.selector,
+            IFlashLoanHelper.requestFlashLoan.selector,
             uint8(FLAG_CT_CALL) | 0x20, // FLAG_DATA
             bytes6(uint48(0x00FFFFFFFFFF)),
             0xff,
@@ -485,7 +485,7 @@ contract ExecutorFlashLoanTest is ExecutorTestBase {
         );
         bytes[] memory outerState = new bytes[](1);
         outerState[0] = abi.encodeWithSelector(
-            IFlashLoanReceiver.requestFlashLoan.selector,
+            IFlashLoanHelper.requestFlashLoan.selector,
             address(aavePool),
             address(token),
             loanAmount,

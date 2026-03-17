@@ -36,10 +36,10 @@ import {NAVManager} from "../src/managers/hub/NAVManager.sol";
 import {QueueManager} from "../src/managers/spoke/QueueManager.sol";
 import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";
 import {AccountingToken} from "../src/managers/spoke/AccountingToken.sol";
-import {VaultDecoder} from "../src/managers/spoke/decoders/VaultDecoder.sol";
+import {ExecutorHelpers} from "../src/managers/spoke/ExecutorHelpers.sol";
+import {FlashLoanHelper} from "../src/managers/spoke/FlashLoanHelper.sol";
+import {IExecutorFactory} from "../src/managers/spoke/interfaces/IExecutorFactory.sol";
 import {SimplePriceManager} from "../src/managers/hub/SimplePriceManager.sol";
-import {CircleDecoder} from "../src/managers/spoke/decoders/CircleDecoder.sol";
-import {MerkleProofManagerFactory} from "../src/managers/spoke/MerkleProofManager.sol";
 
 import {OracleValuation} from "../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
@@ -160,11 +160,10 @@ contract FullDeployer is BaseDeployer, Constants {
 
     QueueManager public queueManager;
     AccountingToken public accountingToken;
+    ExecutorHelpers public executorHelpers;
+    FlashLoanHelper public flashLoanHelper;
+    IExecutorFactory public executorFactory;
     OnOffRampFactory public onOffRampFactory;
-    MerkleProofManagerFactory public merkleProofManagerFactory;
-    VaultDecoder public vaultDecoder;
-    CircleDecoder public circleDecoder;
-
     BatchRequestManager public batchRequestManager;
 
     IdentityValuation public identityValuation;
@@ -540,6 +539,24 @@ contract FullDeployer is BaseDeployer, Constants {
             )
         );
 
+        executorHelpers = ExecutorHelpers(
+            create3(createSalt("executorHelpers", V3_1), abi.encodePacked(type(ExecutorHelpers).creationCode))
+        );
+
+        flashLoanHelper = FlashLoanHelper(
+            create3(createSalt("flashLoanHelper", V3_1), abi.encodePacked(type(FlashLoanHelper).creationCode))
+        );
+
+        executorFactory = IExecutorFactory(
+            create3(
+                createSalt("executorFactory", V3_1),
+                abi.encodePacked(
+                    vm.getCode("out-ir/Executor.sol/ExecutorFactory.json"),
+                    abi.encode(contractUpdater, balanceSheet, gateway)
+                )
+            )
+        );
+
         onOffRampFactory = OnOffRampFactory(
             create3(
                 createSalt("onOffRampFactory", V3_1),
@@ -547,22 +564,6 @@ contract FullDeployer is BaseDeployer, Constants {
                     type(OnOffRampFactory).creationCode, abi.encode(contractUpdater, balanceSheet, accountingToken)
                 )
             )
-        );
-
-        merkleProofManagerFactory = MerkleProofManagerFactory(
-            create3(
-                createSalt("merkleProofManagerFactory", V3_1),
-                abi.encodePacked(
-                    type(MerkleProofManagerFactory).creationCode, abi.encode(contractUpdater, balanceSheet)
-                )
-            )
-        );
-
-        vaultDecoder =
-            VaultDecoder(create3(createSalt("vaultDecoder", V3_1), abi.encodePacked(type(VaultDecoder).creationCode)));
-
-        circleDecoder = CircleDecoder(
-            create3(createSalt("circleDecoder", V3_1), abi.encodePacked(type(CircleDecoder).creationCode))
         );
 
         batchRequestManager = BatchRequestManager(
@@ -710,9 +711,6 @@ contract FullDeployer is BaseDeployer, Constants {
             redemptionRestrictionsHook,
             queueManager,
             onOffRampFactory,
-            merkleProofManagerFactory,
-            vaultDecoder,
-            circleDecoder,
             batchRequestManager,
             identityValuation,
             oracleValuation,

@@ -4,7 +4,7 @@ pragma solidity >=0.5.0;
 import {IExecutor} from "./IExecutor.sol";
 import {IAaveV3Pool} from "./IAaveV3Pool.sol";
 
-interface IFlashLoanReceiver {
+interface IFlashLoanHelper {
     event FlashLoan(address indexed pool, address indexed asset, uint256 amount, address indexed executor);
 
     error NotPool();

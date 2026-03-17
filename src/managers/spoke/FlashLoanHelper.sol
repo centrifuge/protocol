@@ -2,12 +2,12 @@
 pragma solidity 0.8.28;
 
 import {IExecutor} from "./interfaces/IExecutor.sol";
-import {IFlashLoanReceiver} from "./interfaces/IFlashLoanReceiver.sol";
+import {IFlashLoanHelper} from "./interfaces/IFlashLoanHelper.sol";
 import {IAaveV3Pool, IAaveV3FlashLoanReceiver} from "./interfaces/IAaveV3Pool.sol";
 
 import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 
-/// @title  FlashLoanReceiver
+/// @title  FlashLoanHelper
 /// @notice Periphery contract bridging Aave V3 flash loans to Executor.executeCallback().
 ///         The outer weiroll script calls `requestFlashLoan`, Aave sends tokens and calls back
 ///         `executeOperation`, which forwards to the Executor's inner callback script.
@@ -15,13 +15,13 @@ import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 ///         The `pool` parameter in `requestFlashLoan` MUST be a fixed
 ///         state element in the weiroll stateBitmap. If left as non-fixed state, a strategist
 ///         could substitute a malicious pool address.
-contract FlashLoanReceiver is IFlashLoanReceiver, IAaveV3FlashLoanReceiver {
+contract FlashLoanHelper is IFlashLoanHelper, IAaveV3FlashLoanReceiver {
     using SafeTransferLib for address;
 
     address private transient _pool;
     address private transient _executor;
 
-    /// @inheritdoc IFlashLoanReceiver
+    /// @inheritdoc IFlashLoanHelper
     function requestFlashLoan(
         IAaveV3Pool pool,
         address token,
