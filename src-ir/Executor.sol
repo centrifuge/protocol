@@ -32,9 +32,9 @@ contract Executor is BatchedMulticall, VM, IExecutor {
 
     mapping(address strategist => bytes32 root) public policy;
 
-    address public transient activeStrategist;
+    uint256 public transient callbackNext;
     uint256 public transient callbackDepth;
-    uint256 private transient _callbackNext;
+    address public transient activeStrategist;
 
     constructor(PoolId poolId_, address contractUpdater_, IGateway gateway_) BatchedMulticall(gateway_) {
         poolId = poolId_;
@@ -92,10 +92,10 @@ contract Executor is BatchedMulticall, VM, IExecutor {
             TransientArrayLib.push(CALLBACK_HASHES_SLOT, callbackHashes[i]);
         }
         _execute(commands, _copyState(state));
-        require(_callbackNext == TransientArrayLib.length(CALLBACK_HASHES_SLOT), UnconsumedCallbacks());
+        require(callbackNext == TransientArrayLib.length(CALLBACK_HASHES_SLOT), UnconsumedCallbacks());
         activeStrategist = address(0);
         TransientArrayLib.clear(CALLBACK_HASHES_SLOT);
-        _callbackNext = 0;
+        callbackNext = 0;
 
         emit ExecuteScript(sender, scriptHash);
     }
@@ -106,14 +106,14 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         require(msg.sender != address(this), SelfCallForbidden());
         require(activeStrategist != address(0), NotInExecution());
 
-        uint256 idx = _callbackNext;
+        uint256 idx = callbackNext;
         require(idx < TransientArrayLib.length(CALLBACK_HASHES_SLOT), CallbackExhausted());
 
         bytes32 expected = TransientArrayLib.at(CALLBACK_HASHES_SLOT, idx);
         bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, _emptyCallbackHashes());
         require(scriptHash == expected, InvalidCallback());
 
-        _callbackNext = idx + 1;
+        callbackNext = idx + 1;
         callbackDepth++;
         _execute(commands, _copyState(state));
         callbackDepth--;

@@ -38,8 +38,8 @@ import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";
 import {AccountingToken} from "../src/managers/spoke/AccountingToken.sol";
 import {ExecutorHelpers} from "../src/managers/spoke/ExecutorHelpers.sol";
 import {FlashLoanHelper} from "../src/managers/spoke/FlashLoanHelper.sol";
-import {IExecutorFactory} from "../src/managers/spoke/interfaces/IExecutorFactory.sol";
 import {SimplePriceManager} from "../src/managers/hub/SimplePriceManager.sol";
+import {IExecutorFactory} from "../src/managers/spoke/interfaces/IExecutorFactory.sol";
 
 import {OracleValuation} from "../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
