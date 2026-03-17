@@ -92,6 +92,7 @@ contract Executor is BatchedMulticall, VM, IExecutor {
             TransientArrayLib.push(CALLBACK_HASHES_SLOT, callbackHashes[i]);
         }
         _execute(commands, _copyState(state));
+        require(_callbackNext == TransientArrayLib.length(CALLBACK_HASHES_SLOT), UnconsumedCallbacks());
         activeStrategist = address(0);
         TransientArrayLib.clear(CALLBACK_HASHES_SLOT);
         _callbackNext = 0;
@@ -102,6 +103,7 @@ contract Executor is BatchedMulticall, VM, IExecutor {
     /// @inheritdoc IExecutor
     function executeCallback(bytes32[] calldata commands, bytes[] calldata state, uint256 stateBitmap) external {
         require(state.length <= 256, StateLengthOverflow());
+        require(msg.sender != address(this), SelfCallForbidden());
         require(activeStrategist != address(0), NotInExecution());
 
         uint256 idx = _callbackNext;
@@ -115,6 +117,8 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         callbackDepth++;
         _execute(commands, _copyState(state));
         callbackDepth--;
+
+        emit ExecuteCallback(activeStrategist, scriptHash, callbackDepth + 1);
     }
 
     // ──────────────────────────────────────────────────────────────────────────

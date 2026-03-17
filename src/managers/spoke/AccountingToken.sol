@@ -40,7 +40,7 @@ contract AccountingToken is IAccountingToken {
 
     /// @inheritdoc ITrustedContractUpdate
     function trustedCall(PoolId poolId, ShareClassId, bytes calldata payload) external {
-        require(msg.sender == contractUpdater, NotMinter());
+        require(msg.sender == contractUpdater, NotAuthorized());
         (bytes32 who, bool canMint) = abi.decode(payload, (bytes32, bool));
         address minter = address(uint160(uint256(who)));
         minters[poolId][minter] = canMint;
@@ -53,6 +53,7 @@ contract AccountingToken is IAccountingToken {
 
     /// @inheritdoc IAccountingToken
     function mint(address owner, uint256 tokenId, uint256 amount, ShareClassId scId) external onlyMinter(tokenId) {
+        require(owner != address(0), ZeroAddress());
         balanceOf[owner][tokenId] += amount;
         emit Transfer(msg.sender, address(0), owner, tokenId, amount);
         emit Mint(_poolId(tokenId), scId, owner, tokenId, amount);
@@ -72,6 +73,7 @@ contract AccountingToken is IAccountingToken {
 
     /// @inheritdoc IERC6909ExclOperator
     function transfer(address receiver, uint256 id, uint256 amount) external returns (bool) {
+        require(receiver != address(0), ZeroAddress());
         require(balanceOf[msg.sender][id] >= amount, InsufficientBalance(msg.sender, id));
         balanceOf[msg.sender][id] -= amount;
         balanceOf[receiver][id] += amount;
@@ -81,6 +83,7 @@ contract AccountingToken is IAccountingToken {
 
     /// @inheritdoc IERC6909ExclOperator
     function transferFrom(address sender, address receiver, uint256 id, uint256 amount) external returns (bool) {
+        require(receiver != address(0), ZeroAddress());
         if (msg.sender != sender) {
             require(allowance[sender][msg.sender][id] >= amount, InsufficientAllowance(sender, id));
             allowance[sender][msg.sender][id] -= amount;

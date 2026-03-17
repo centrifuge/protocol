@@ -408,14 +408,14 @@ contract SimpleToken {
     }
 }
 
-/// @dev Aave pool mock that sends tokens and calls executeOperation
+/// @dev Aave pool mock that sends tokens and calls onFlashLoan
 contract SimpleAavePool {
     uint256 public constant PREMIUM = 9; // 0.09%
 
     function flashLoanSimple(address receiver, address asset, uint256 amount, bytes calldata params, uint16) external {
         SimpleToken(asset).transfer(receiver, amount);
         uint256 fee = amount * PREMIUM / 10_000;
-        IAaveV3FlashLoanReceiver(receiver).executeOperation(asset, amount, fee, receiver, params);
+        IAaveV3FlashLoanReceiver(receiver).onFlashLoan(asset, amount, fee, receiver, params);
         SimpleToken(asset).transferFrom(receiver, address(this), amount + fee);
     }
 }
@@ -471,7 +471,7 @@ contract ExecutorFlashLoanTest is ExecutorTestBase {
         uint256 innerBitmap = 1;
         bytes32 innerHash = _computeScriptHash(innerCommands, innerState, innerBitmap, NO_CALLBACKS);
 
-        // Encode callback data for Aave pool → FlashLoanHelper.executeOperation → Executor.executeCallback
+        // Encode callback data for Aave pool → FlashLoanHelper.onFlashLoan → Executor.executeCallback
         bytes memory callbackData = abi.encode(innerCommands, innerState, innerBitmap);
 
         // Outer script: call flashReceiver.requestFlashLoan(pool, token, amount, executor, callbackData)

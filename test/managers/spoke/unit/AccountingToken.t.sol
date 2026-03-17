@@ -116,7 +116,7 @@ contract AccountingTokenAccessControlTest is AccountingTokenTest {
 
 contract AccountingTokenTrustedCallTest is AccountingTokenTest {
     function testTrustedCallOnlyCallableByContractUpdater() public {
-        vm.expectRevert(IAccountingToken.NotMinter.selector);
+        vm.expectRevert(IAccountingToken.NotAuthorized.selector);
         vm.prank(user);
         token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(user), true));
     }

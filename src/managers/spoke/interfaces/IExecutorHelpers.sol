@@ -13,6 +13,7 @@ interface IExecutorHelpers {
     error ConditionFalse();
     error ConditionTrue();
     error CastOverflow();
+    error InvalidBps();
     error OutOfBounds();
 
     // ──────────────────────────────────────────────────────────────────────

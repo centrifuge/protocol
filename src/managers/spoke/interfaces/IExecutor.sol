@@ -8,11 +8,14 @@ import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUp
 interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
     event UpdatePolicy(address indexed strategist, bytes32 oldRoot, bytes32 newRoot);
     event ExecuteScript(address indexed strategist, bytes32 scriptHash);
+    event ExecuteCallback(address indexed strategist, bytes32 scriptHash, uint256 depth);
 
     error NotAStrategist();
     error InvalidProof();
     error InvalidCallback();
     error CallbackExhausted();
+    error UnconsumedCallbacks();
+    error SelfCallForbidden();
     error InvalidPoolId();
     error NotAuthorized();
     error StateLengthOverflow();

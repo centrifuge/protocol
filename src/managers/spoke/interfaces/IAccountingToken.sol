@@ -17,6 +17,8 @@ interface IAccountingToken is IERC6909ExclOperator, IERC6909MetadataExt, ITruste
     );
 
     error NotMinter();
+    error NotAuthorized();
+    error ZeroAddress();
 
     /// @notice The ContractUpdater that manages minter permissions.
     function contractUpdater() external view returns (address);
