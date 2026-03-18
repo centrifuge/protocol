@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IAccountingToken} from "./interfaces/IAccountingToken.sol";
 
+import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {IERC20Metadata} from "../../misc/interfaces/IERC20.sol";
 import {IERC6909ExclOperator, IERC6909MetadataExt} from "../../misc/interfaces/IERC6909.sol";
 
@@ -17,6 +18,8 @@ import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdat
 /// @dev    Not fully ERC-6909 compatible: operator support (isOperator, setOperator) is omitted
 ///         because these tokens are only held within the protocol (BalanceSheet/Executor).
 contract AccountingToken is IAccountingToken {
+    using CastLib for bytes32;
+
     uint256 private constant LIABILITY_BIT = 1 << 255;
 
     address public immutable contractUpdater;
@@ -42,7 +45,7 @@ contract AccountingToken is IAccountingToken {
     function trustedCall(PoolId poolId, ShareClassId, bytes calldata payload) external {
         require(msg.sender == contractUpdater, NotAuthorized());
         (bytes32 who, bool canMint) = abi.decode(payload, (bytes32, bool));
-        address minter = address(uint160(uint256(who)));
+        address minter = who.toAddress();
         minters[poolId][minter] = canMint;
         emit UpdateMinter(poolId, minter, canMint);
     }
