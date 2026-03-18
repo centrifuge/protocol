@@ -62,6 +62,7 @@ import {RefundEscrowFactory} from "../src/utils/RefundEscrowFactory.sol";
 import { Constants, CoreReport, CoreActionBatcher, NonCoreActionBatcher, AdapterActionBatcher, NonCoreReport, AdaptersReport, AdapterConnections, SetConfigParam } from "../src/deployment/ActionBatchers.sol";
 
 string constant V3_1 = "v3.1";
+string constant V3_1_1 = "v3.1.1";
 
 struct WormholeInput {
     bool shouldDeploy;
@@ -524,22 +525,22 @@ contract FullDeployer is BaseDeployer, Constants {
 
         accountingToken = AccountingToken(
             create3(
-                createSalt("accountingToken", V3_1),
+                createSalt("accountingToken", V3_1_1),
                 abi.encodePacked(type(AccountingToken).creationCode, abi.encode(contractUpdater))
             )
         );
 
         executorHelpers = ExecutorHelpers(
-            create3(createSalt("executorHelpers", V3_1), abi.encodePacked(type(ExecutorHelpers).creationCode))
+            create3(createSalt("executorHelpers", V3_1_1), abi.encodePacked(type(ExecutorHelpers).creationCode))
         );
 
         flashLoanHelper = FlashLoanHelper(
-            create3(createSalt("flashLoanHelper", V3_1), abi.encodePacked(type(FlashLoanHelper).creationCode))
+            create3(createSalt("flashLoanHelper", V3_1_1), abi.encodePacked(type(FlashLoanHelper).creationCode))
         );
 
         executorFactory = IExecutorFactory(
             create3(
-                createSalt("executorFactory", V3_1),
+                createSalt("executorFactory", V3_1_1),
                 abi.encodePacked(
                     vm.getCode("out-ir/Executor.sol/ExecutorFactory.json"),
                     abi.encode(contractUpdater, balanceSheet, gateway)
@@ -549,7 +550,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
         onOffRampFactory = OnOffRampFactory(
             create3(
-                createSalt("onOffRampFactory", V3_1),
+                createSalt("onOffRampFactory", V3_1_1),
                 abi.encodePacked(
                     type(OnOffRampFactory).creationCode, abi.encode(contractUpdater, balanceSheet, accountingToken)
                 )

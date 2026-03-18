@@ -67,7 +67,6 @@ contract ExecutorHelpers is IExecutorHelpers {
 
     /// @notice Returns amount * (10_000 + bps) / 10_000. Upper bound calculation.
     function addBps(uint256 amount, uint256 bps) external pure returns (uint256) {
-        require(bps <= BPS_BASE, InvalidBps());
         return amount * (BPS_BASE + bps) / BPS_BASE;
     }
 
