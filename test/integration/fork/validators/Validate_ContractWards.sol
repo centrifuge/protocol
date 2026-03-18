@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
-
 import {Env, EnvConfig, ContractsConfig as C} from "../../../../script/utils/EnvConfig.s.sol";
 
 import {BaseValidator, ValidationContext} from "../../spell/utils/validation/BaseValidator.sol";
@@ -162,18 +160,5 @@ contract Validate_ContractWards is BaseValidator("ContractWards") {
         _checkWard(c.root, c.tokenRecoverer, "root <- tokenRecoverer");
         _checkWard(c.tokenRecoverer, c.messageDispatcher, "tokenRecoverer <- messageDispatcher");
         _checkWard(c.tokenRecoverer, c.messageProcessor, "tokenRecoverer <- messageProcessor");
-    }
-
-    function _checkWard(address wardedContract, address wardHolder, string memory label) internal {
-        if (wardedContract == address(0) || wardHolder == address(0)) return;
-        if (wardedContract.code.length == 0) return;
-
-        try IAuth(wardedContract).wards(wardHolder) returns (uint256 val) {
-            if (val != 1) {
-                _errors.push(_buildError("ward", label, "1", vm.toString(val), string.concat("Ward missing: ", label)));
-            }
-        } catch {
-            _errors.push(_buildError("ward", label, "callable", "reverted", string.concat("wards() reverted: ", label)));
-        }
     }
 }

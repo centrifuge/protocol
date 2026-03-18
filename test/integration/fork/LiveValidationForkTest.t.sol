@@ -4,6 +4,8 @@ pragma solidity 0.8.28;
 import {Validate_Vaults} from "./validators/Validate_Vaults.sol";
 import {Validate_Endorsements} from "./validators/Validate_Endorsements.sol";
 import {Validate_ContractWards} from "./validators/Validate_ContractWards.sol";
+import {Validate_GuardianSafes} from "./validators/Validate_GuardianSafes.sol";
+import {Validate_HookPoolEscrow} from "./validators/Validate_HookPoolEscrow.sol";
 import {Validate_RootPermissions} from "./validators/Validate_RootPermissions.sol";
 import {Validate_FileConfigurations} from "./validators/Validate_FileConfigurations.sol";
 import {Validate_AdapterConfigurations} from "./validators/Validate_AdapterConfigurations.sol";
@@ -23,13 +25,15 @@ contract LiveValidationForkTest is Test {
         EnvConfig memory config = Env.load(networkName);
         vm.createSelectFork(config.network.rpcUrl());
 
-        BaseValidator[] memory validators = new BaseValidator[](6);
+        BaseValidator[] memory validators = new BaseValidator[](8);
         validators[0] = new Validate_RootPermissions();
         validators[1] = new Validate_ContractWards();
         validators[2] = new Validate_FileConfigurations();
         validators[3] = new Validate_Endorsements();
-        validators[4] = new Validate_AdapterConfigurations();
-        validators[5] = new Validate_Vaults();
+        validators[4] = new Validate_GuardianSafes();
+        validators[5] = new Validate_AdapterConfigurations();
+        validators[6] = new Validate_Vaults();
+        validators[7] = new Validate_HookPoolEscrow();
 
         ValidationExecutor executor = new ValidationExecutor(networkName, "live-validation");
         executor.runPreValidation(validators, true);

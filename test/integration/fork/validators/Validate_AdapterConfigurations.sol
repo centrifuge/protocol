@@ -5,8 +5,11 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {MultiAdapter} from "../../../../src/core/messaging/MultiAdapter.sol";
 import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
 
+import {JsonUtils} from "../../../../script/utils/JsonUtils.s.sol";
 import {Connection} from "../../../../script/utils/EnvConnectionsConfig.s.sol";
 import {Env, EnvConfig, AdaptersConfig, ContractsConfig as C} from "../../../../script/utils/EnvConfig.s.sol";
+
+import {stdJson} from "forge-std/StdJson.sol";
 
 import {AxelarAdapter} from "../../../../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../../../../src/adapters/WormholeAdapter.sol";
@@ -18,6 +21,9 @@ import {BaseValidator, ValidationContext} from "../../spell/utils/validation/Bas
 /// @notice Validates MultiAdapter quorum/threshold/adapter order and adapter source/destination
 ///         mappings using connection topology from env/connections/*.json.
 contract Validate_AdapterConfigurations is BaseValidator("AdapterConfigurations") {
+    using stdJson for string;
+    using JsonUtils for *;
+
     PoolId constant GLOBAL_POOL = PoolId.wrap(0);
 
     function validate(ValidationContext memory ctx) public override {
@@ -37,6 +43,8 @@ contract Validate_AdapterConfigurations is BaseValidator("AdapterConfigurations"
         for (uint256 i; i < connections.length; i++) {
             _validateConnection(c, connections[i]);
         }
+
+        _validatePoolAdapters(ctx, c);
     }
 
     function _validateConnection(C memory c, Connection memory conn) internal {
@@ -436,6 +444,168 @@ contract Validate_AdapterConfigurations is BaseValidator("AdapterConfigurations"
                     string.concat("Chainlink destination address mismatch for ", chainName)
                 )
             );
+        }
+    }
+
+    // ==================== PER-POOL ADAPTER VALIDATION ====================
+
+    /// @dev Queries the indexer for all vaults on this chain and validates per-pool adapter config
+    ///      for every cross-chain pool (poolId.centrifugeId() != localCentrifugeId).
+    function _validatePoolAdapters(ValidationContext memory ctx, C memory c) internal {
+        string memory centrifugeIdStr = vm.toString(ctx.localCentrifugeId).asJsonString();
+        string memory json = ctx.indexer
+            .queryGraphQL(
+                string.concat(
+                    "vaults(limit: 1000, where: { centrifugeId: ",
+                    centrifugeIdStr,
+                    " }) { totalCount items { poolId } }"
+                )
+            );
+
+        uint256 totalCount = json.readUint(".data.vaults.totalCount");
+        if (totalCount == 0) return;
+        require(totalCount < 1000, "Vault count exceeds query limit; implement pagination");
+
+        PoolId[] memory uniquePools = _deduplicatePoolIds(json, totalCount);
+        _checkPoolAdapters(c, ctx.localCentrifugeId, uniquePools);
+    }
+
+    /// @dev Reads raw poolId values from the vault list and returns a deduplicated PoolId array.
+    function _deduplicatePoolIds(string memory json, uint256 totalCount) internal pure returns (PoolId[] memory) {
+        PoolId[] memory seen = new PoolId[](totalCount);
+        uint256 uniqueCount;
+
+        for (uint256 i; i < totalCount; i++) {
+            uint256 rawPoolId = json.readUint(".data.vaults.items".asJsonPath(i, "poolId"));
+            PoolId poolId = PoolId.wrap(uint64(rawPoolId));
+
+            bool found;
+            for (uint256 j; j < uniqueCount; j++) {
+                if (seen[j] == poolId) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                seen[uniqueCount] = poolId;
+                uniqueCount++;
+            }
+        }
+
+        PoolId[] memory result = new PoolId[](uniqueCount);
+        for (uint256 i; i < uniqueCount; i++) {
+            result[i] = seen[i];
+        }
+        return result;
+    }
+
+    /// @dev For each cross-chain pool, validates quorum > 0 and that all pool adapters
+    ///      are a subset of the GLOBAL_POOL adapter list for the same hub centrifugeId.
+    function _checkPoolAdapters(C memory c, uint16 localCentrifugeId, PoolId[] memory pools) internal {
+        for (uint256 i; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            uint16 hubCentrifugeId = poolId.centrifugeId();
+
+            // Only validate cross-chain pools — same-chain pools have no inter-chain adapter config
+            if (hubCentrifugeId == localCentrifugeId) continue;
+
+            _checkPoolAdapterConfig(c.multiAdapter, poolId, hubCentrifugeId);
+        }
+    }
+
+    /// @dev Validates quorum, threshold, recoveryIndex, and adapter subset for a single cross-chain pool.
+    function _checkPoolAdapterConfig(address multiAdapterAddr, PoolId poolId, uint16 hubCentrifugeId) internal {
+        MultiAdapter ma = MultiAdapter(multiAdapterAddr);
+        string memory poolLabel = vm.toString(PoolId.unwrap(poolId));
+
+        uint8 poolQuorum = ma.quorum(hubCentrifugeId, poolId);
+        if (poolQuorum == 0) {
+            _errors.push(
+                _buildError(
+                    "pool.quorum",
+                    poolLabel,
+                    "> 0",
+                    "0",
+                    string.concat("Pool has no adapters to hub (quorum=0) for pool ", poolLabel)
+                )
+            );
+            return;
+        }
+
+        uint8 poolThreshold = ma.threshold(hubCentrifugeId, poolId);
+        if (poolThreshold > poolQuorum) {
+            _errors.push(
+                _buildError(
+                    "pool.threshold",
+                    poolLabel,
+                    string.concat("<= ", vm.toString(poolQuorum)),
+                    vm.toString(poolThreshold),
+                    string.concat("Pool threshold > quorum for pool ", poolLabel)
+                )
+            );
+        }
+
+        uint8 poolRecoveryIndex = ma.recoveryIndex(hubCentrifugeId, poolId);
+        if (poolRecoveryIndex > poolQuorum) {
+            _errors.push(
+                _buildError(
+                    "pool.recoveryIndex",
+                    poolLabel,
+                    string.concat("<= ", vm.toString(poolQuorum)),
+                    vm.toString(poolRecoveryIndex),
+                    string.concat("Pool recoveryIndex > quorum for pool ", poolLabel)
+                )
+            );
+        }
+
+        _checkPoolAdaptersAreSubset(ma, poolId, hubCentrifugeId, poolQuorum, poolLabel);
+    }
+
+    /// @dev Verifies that every adapter registered for the pool also exists in GLOBAL_POOL's adapter list.
+    ///      This guards against rogue adapters being set per-pool that bypass the global trust config.
+    function _checkPoolAdaptersAreSubset(
+        MultiAdapter ma,
+        PoolId poolId,
+        uint16 hubCentrifugeId,
+        uint8 poolQuorum,
+        string memory poolLabel
+    ) internal {
+        uint8 globalQuorum = ma.quorum(hubCentrifugeId, GLOBAL_POOL);
+        address[] memory globalAdapters = new address[](globalQuorum);
+        for (uint8 k; k < globalQuorum; k++) {
+            try ma.adapters(hubCentrifugeId, GLOBAL_POOL, k) returns (IAdapter a) {
+                globalAdapters[k] = address(a);
+            } catch {
+                break;
+            }
+        }
+
+        for (uint8 k; k < poolQuorum; k++) {
+            address poolAdapter;
+            try ma.adapters(hubCentrifugeId, poolId, k) returns (IAdapter a) {
+                poolAdapter = address(a);
+            } catch {
+                break;
+            }
+
+            bool found;
+            for (uint256 g; g < globalAdapters.length; g++) {
+                if (globalAdapters[g] == poolAdapter) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                _errors.push(
+                    _buildError(
+                        "pool.adapter",
+                        poolLabel,
+                        "in GLOBAL_POOL adapters",
+                        vm.toString(poolAdapter),
+                        string.concat("Pool adapter not in GLOBAL_POOL adapter list for pool ", poolLabel)
+                    )
+                );
+            }
         }
     }
 }

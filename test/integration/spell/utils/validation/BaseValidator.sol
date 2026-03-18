@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 import {TestContracts} from "./TestContracts.sol";
 
+import {IAuth} from "../../../../../src/misc/interfaces/IAuth.sol";
+
 import {PoolId} from "../../../../../src/core/types/PoolId.sol";
 
 import {CacheStore} from "../../../../../script/utils/CacheStore.sol";
@@ -96,5 +98,19 @@ abstract contract BaseValidator is Test {
             }
         }
         return string.concat(json, "]");
+    }
+
+    /// @notice Check that wardHolder has ward on wardedContract
+    function _checkWard(address wardedContract, address wardHolder, string memory label) internal {
+        if (wardedContract == address(0) || wardHolder == address(0)) return;
+        if (wardedContract.code.length == 0) return;
+
+        try IAuth(wardedContract).wards(wardHolder) returns (uint256 val) {
+            if (val != 1) {
+                _errors.push(_buildError("ward", label, "1", vm.toString(val), string.concat("Ward missing: ", label)));
+            }
+        } catch {
+            _errors.push(_buildError("ward", label, "callable", "reverted", string.concat("wards() reverted: ", label)));
+        }
     }
 }

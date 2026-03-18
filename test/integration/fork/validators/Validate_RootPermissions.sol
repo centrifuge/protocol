@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
-
 import {ContractsConfig as C} from "../../../../script/utils/EnvConfig.s.sol";
 
 import {BaseValidator, ValidationContext} from "../../spell/utils/validation/BaseValidator.sol";
@@ -60,19 +58,6 @@ contract Validate_RootPermissions is BaseValidator("RootPermissions") {
     }
 
     function _checkRootWard(address root, address target, string memory label) internal {
-        if (target == address(0)) return;
-        if (target.code.length == 0) return;
-
-        try IAuth(target).wards(root) returns (uint256 val) {
-            if (val != 1) {
-                _errors.push(
-                    _buildError("rootWard", label, "1", vm.toString(val), string.concat("Root not ward of ", label))
-                );
-            }
-        } catch {
-            _errors.push(
-                _buildError("rootWard", label, "callable", "reverted", string.concat("wards() reverted on ", label))
-            );
-        }
+        _checkWard(target, root, string.concat("Root not ward of ", label));
     }
 }
