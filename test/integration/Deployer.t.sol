@@ -633,6 +633,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(oracleValuation.hubRegistry()), address(hubRegistry));
         assertEq(address(oracleValuation.hub()), address(hub));
+        assertEq(oracleValuation.contractUpdater(), address(contractUpdater));
     }
 
     function testNavManager() public view {

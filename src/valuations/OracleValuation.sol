@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IOracleValuation} from "./interfaces/IOracleValuation.sol";
 
+import {CastLib} from "../misc/libraries/CastLib.sol";
 import {D18} from "../misc/types/D18.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
@@ -12,6 +13,7 @@ import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IValuation} from "../core/hub/interfaces/IValuation.sol";
 import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
+import {IUntrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  OracleValuation
 /// @notice Provides an implementation for valuation of assets by trusted price feeders.
@@ -20,16 +22,22 @@ import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
 /// @dev    To set up, add a price feeder using `updateFeeder()`, set this contract as the valuation
 ///         for one or more assets, and set this contract as a hub manager, so it can call
 ///         `hub.updateHoldingValue()`.
-contract OracleValuation is IOracleValuation {
+///         Supports both local calls via `setPrice()` and remote calls via `untrustedCall()`
+///         from spoke-side executors. Both paths validate the caller against the `feeder` mapping.
+contract OracleValuation is IOracleValuation, IUntrustedContractUpdate {
+    using CastLib for *;
     IHub public immutable hub;
+    address public immutable contractUpdater;
     IHubRegistry public immutable hubRegistry;
 
-    mapping(PoolId => mapping(address => bool)) public feeder;
+    /// @dev centrifugeId=0 for local feeders, otherwise the source chain ID for remote feeders.
+    mapping(PoolId => mapping(uint16 centrifugeId => mapping(address => bool))) public feeder;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId base => Price))) public pricePoolPerAsset;
 
-    constructor(IHub hub_, IHubRegistry hubRegistry_) {
+    constructor(IHub hub_, IHubRegistry hubRegistry_, address contractUpdater_) {
         hub = hub_;
         hubRegistry = hubRegistry_;
+        contractUpdater = contractUpdater_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -37,10 +45,10 @@ contract OracleValuation is IOracleValuation {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IOracleValuation
-    function updateFeeder(PoolId poolId, address feeder_, bool canFeed) external {
+    function updateFeeder(PoolId poolId, uint16 centrifugeId, address feeder_, bool canFeed) external {
         require(hubRegistry.manager(poolId, msg.sender), NotHubManager());
-        feeder[poolId][feeder_] = canFeed;
-        emit UpdateFeeder(poolId, feeder_, canFeed);
+        feeder[poolId][centrifugeId][feeder_] = canFeed;
+        emit UpdateFeeder(poolId, centrifugeId, feeder_, canFeed);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -49,11 +57,27 @@ contract OracleValuation is IOracleValuation {
 
     /// @inheritdoc IOracleValuation
     function setPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 newPrice) external {
-        require(feeder[poolId][msg.sender], NotFeeder());
+        require(feeder[poolId][0][msg.sender], NotFeeder());
+        _setPrice(poolId, scId, assetId, newPrice);
+    }
 
+    /// @inheritdoc IUntrustedContractUpdate
+    function untrustedCall(
+        PoolId poolId,
+        ShareClassId scId,
+        bytes calldata payload,
+        uint16 centrifugeId,
+        bytes32 sender
+    ) external {
+        require(msg.sender == contractUpdater, NotAuthorized());
+        require(feeder[poolId][centrifugeId][sender.toAddress()], NotFeeder());
+        (uint128 assetId, uint128 newPrice) = abi.decode(payload, (uint128, uint128));
+        _setPrice(poolId, scId, AssetId.wrap(assetId), D18.wrap(newPrice));
+    }
+
+    function _setPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 newPrice) internal {
         pricePoolPerAsset[poolId][scId][assetId] = Price(newPrice, true);
         hub.updateHoldingValue(poolId, scId, assetId);
-
         emit UpdatePrice(poolId, scId, assetId, newPrice);
     }
 

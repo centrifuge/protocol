@@ -583,7 +583,7 @@ contract FullDeployer is BaseDeployer, Constants {
         oracleValuation = OracleValuation(
             create3(
                 createSalt("oracleValuation", V3_1),
-                abi.encodePacked(type(OracleValuation).creationCode, abi.encode(hub, hubRegistry))
+                abi.encodePacked(type(OracleValuation).creationCode, abi.encode(hub, hubRegistry, contractUpdater))
             )
         );
 
