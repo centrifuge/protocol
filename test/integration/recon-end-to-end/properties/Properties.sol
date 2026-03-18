@@ -514,7 +514,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     }
 
     /// @dev Property: requested deposits must be >= the fulfilled cancelled deposits
-    function property_cancelled_soundness() public {
+    function property_cancelled_soundness() public vaultIsSet {
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
