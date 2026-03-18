@@ -8,18 +8,7 @@ import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 import {IERC7540Deposit} from "../../../src/misc/interfaces/IERC7540.sol";
 
-import {
-    AssetId,
-    AsyncVault,
-    BaseTest,
-    ERC20,
-    IShareToken,
-    MessageLib,
-    MockAdapter,
-    PoolId,
-    SyncDepositVault,
-    VaultKind
-} from "../../core/spoke/integration/BaseTest.sol";
+import { AssetId, AsyncVault, BaseTest, ERC20, IShareToken, MessageLib, MockAdapter, PoolId, SyncDepositVault, VaultKind } from "../../core/spoke/integration/BaseTest.sol";
 
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";

@@ -2,22 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
-import {
-    D18,
-    MathLib,
-    d18,
-    divD18,
-    eq,
-    isNotZero,
-    isZero,
-    mulD18,
-    mulUint128,
-    mulUint256,
-    raw,
-    reciprocal,
-    reciprocalMulUint128,
-    reciprocalMulUint256
-} from "../../../../src/misc/types/D18.sol";
+import { D18, MathLib, d18, divD18, eq, isNotZero, isZero, mulD18, mulUint128, mulUint256, raw, reciprocal, reciprocalMulUint128, reciprocalMulUint256 } from "../../../../src/misc/types/D18.sol";
 
 import "forge-std/Test.sol";
 

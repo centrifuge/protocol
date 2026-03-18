@@ -59,17 +59,7 @@ import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
 import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 import {RefundEscrowFactory} from "../src/utils/RefundEscrowFactory.sol";
-import {
-    Constants,
-    CoreReport,
-    CoreActionBatcher,
-    NonCoreActionBatcher,
-    AdapterActionBatcher,
-    NonCoreReport,
-    AdaptersReport,
-    AdapterConnections,
-    SetConfigParam
-} from "../src/deployment/ActionBatchers.sol";
+import { Constants, CoreReport, CoreActionBatcher, NonCoreActionBatcher, AdapterActionBatcher, NonCoreReport, AdaptersReport, AdapterConnections, SetConfigParam } from "../src/deployment/ActionBatchers.sol";
 
 string constant V3_1 = "v3.1";
 

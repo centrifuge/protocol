@@ -3,17 +3,7 @@ pragma solidity 0.8.28;
 
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
-import {
-    DeployerInput,
-    FullDeployer,
-    AdaptersInput,
-    WormholeInput,
-    AxelarInput,
-    LayerZeroInput,
-    ChainlinkInput,
-    defaultTxLimits,
-    AdapterConnections
-} from "../../script/FullDeployer.s.sol";
+import { DeployerInput, FullDeployer, AdaptersInput, WormholeInput, AxelarInput, LayerZeroInput, ChainlinkInput, defaultTxLimits, AdapterConnections } from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 

@@ -2,15 +2,7 @@
 pragma solidity 0.8.28;
 
 import {EnvConfig, Env, prettyEnvString} from "./utils/EnvConfig.s.sol";
-import {
-    DeployerInput,
-    FullDeployer,
-    AdaptersInput,
-    WormholeInput,
-    AxelarInput,
-    LayerZeroInput,
-    ChainlinkInput
-} from "./FullDeployer.s.sol";
+import { DeployerInput, FullDeployer, AdaptersInput, WormholeInput, AxelarInput, LayerZeroInput, ChainlinkInput } from "./FullDeployer.s.sol";
 
 import {ISafe} from "../src/admin/interfaces/ISafe.sol";
 
