@@ -89,4 +89,15 @@ interface IExecutorHelpers {
     function toBytes32(address value) external pure returns (bytes32);
     function toUint256(bytes32 value) external pure returns (uint256);
     function toBytes32(uint256 value) external pure returns (bytes32);
+
+    // ──────────────────────────────────────────────────────────────────────
+    // ABI encoding
+    // ──────────────────────────────────────────────────────────────────────
+
+    function encodeUint128(uint128 value) external pure returns (bytes memory);
+    function encodeUint256(uint256 value) external pure returns (bytes memory);
+    function encodeAddress(address value) external pure returns (bytes memory);
+    function encodeBytes32(bytes32 value) external pure returns (bytes memory);
+    function encodeBool(bool value) external pure returns (bytes memory);
+    function bytesConcat(bytes memory a, bytes memory b) external pure returns (bytes memory);
 }

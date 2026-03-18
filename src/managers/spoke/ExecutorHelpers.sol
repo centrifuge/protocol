@@ -207,4 +207,38 @@ contract ExecutorHelpers is IExecutorHelpers {
     function toBytes32(uint256 value) external pure returns (bytes32) {
         return bytes32(value);
     }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // ABI encoding
+    // ──────────────────────────────────────────────────────────────────────
+
+    /// @notice ABI-encode a single uint128 as 32 bytes (left-padded).
+    function encodeUint128(uint128 value) external pure returns (bytes memory) {
+        return abi.encode(value);
+    }
+
+    /// @notice ABI-encode a single uint256 as 32 bytes.
+    function encodeUint256(uint256 value) external pure returns (bytes memory) {
+        return abi.encode(value);
+    }
+
+    /// @notice ABI-encode a single address as 32 bytes (left-padded).
+    function encodeAddress(address value) external pure returns (bytes memory) {
+        return abi.encode(value);
+    }
+
+    /// @notice ABI-encode a single bytes32.
+    function encodeBytes32(bytes32 value) external pure returns (bytes memory) {
+        return abi.encode(value);
+    }
+
+    /// @notice ABI-encode a single bool as 32 bytes.
+    function encodeBool(bool value) external pure returns (bytes memory) {
+        return abi.encode(value);
+    }
+
+    /// @notice Concatenate two byte arrays.
+    function bytesConcat(bytes memory a, bytes memory b) external pure returns (bytes memory) {
+        return bytes.concat(a, b);
+    }
 }
