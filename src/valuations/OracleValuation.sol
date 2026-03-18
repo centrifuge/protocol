@@ -26,11 +26,15 @@ import {IUntrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate
 ///         from spoke-side executors. Both paths validate the caller against the `feeder` mapping.
 contract OracleValuation is IOracleValuation, IUntrustedContractUpdate {
     using CastLib for *;
+
+    /// @dev centrifugeId used for local feeders (as opposed to remote/cross-chain feeders).
+    uint16 public constant LOCAL = 0;
+
     IHub public immutable hub;
     address public immutable contractUpdater;
     IHubRegistry public immutable hubRegistry;
 
-    /// @dev centrifugeId=0 for local feeders, otherwise the source chain ID for remote feeders.
+    /// @dev centrifugeId=LOCAL for local feeders, otherwise the source chain ID for remote feeders.
     mapping(PoolId => mapping(uint16 centrifugeId => mapping(address => bool))) public feeder;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId base => Price))) public pricePoolPerAsset;
 
@@ -57,7 +61,7 @@ contract OracleValuation is IOracleValuation, IUntrustedContractUpdate {
 
     /// @inheritdoc IOracleValuation
     function setPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 newPrice) external {
-        require(feeder[poolId][0][msg.sender], NotFeeder());
+        require(feeder[poolId][LOCAL][msg.sender], NotFeeder());
         _setPrice(poolId, scId, assetId, newPrice);
     }
 
