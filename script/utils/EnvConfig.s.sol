@@ -102,6 +102,8 @@ struct ContractsConfig {
     address freelyTransferableHook;
     address redemptionRestrictionsHook;
     // Spoke managers
+    address onOfframpManagerFactory;
+    address merkleProofManagerFactory;
     address onOffRampFactory;
     // Valuations
     address identityValuation;
@@ -109,6 +111,9 @@ struct ContractsConfig {
     // Hub managers
     address navManager;
     address simplePriceManager;
+    // Decoders
+    address vaultDecoder;
+    address circleDecoder;
     // Adapters
     address layerZeroAdapter;
     address wormholeAdapter;
@@ -255,7 +260,9 @@ library Env {
         config.redemptionRestrictionsHook = _parseContractAddress(json, "redemptionRestrictionsHook");
 
         // Spoke managers
-        config.onOffRampFactory = _parseContractAddress(json, "onOfframpManagerFactory");
+        config.onOfframpManagerFactory = _parseContractAddress(json, "onOfframpManagerFactory");
+        config.merkleProofManagerFactory = _parseContractAddress(json, "merkleProofManagerFactory");
+        config.onOffRampFactory = _tryParseContractAddress(json, "onOffRampFactory");
 
         // Valuations
         config.identityValuation = _parseContractAddress(json, "identityValuation");
@@ -264,6 +271,10 @@ library Env {
         // Hub managers
         config.navManager = _parseContractAddress(json, "navManager");
         config.simplePriceManager = _parseContractAddress(json, "simplePriceManager");
+
+        // Decoders
+        config.vaultDecoder = _parseContractAddress(json, "vaultDecoder");
+        config.circleDecoder = _parseContractAddress(json, "circleDecoder");
 
         // Adapters
         config.layerZeroAdapter = _tryParseContractAddress(json, "layerZeroAdapter");
