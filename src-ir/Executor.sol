@@ -77,10 +77,11 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         uint256 stateBitmap,
         bytes32[] calldata callbackHashes,
         bytes32[] calldata proof
-    ) external payable protected {
+    ) external payable {
         bytes32 root = policy[msgSender()];
         require(root != bytes32(0), NotAStrategist());
         require(state.length <= 256, StateLengthOverflow());
+        require(activeStrategist == address(0), AlreadyExecuting());
 
         bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, callbackHashes);
         require(MerkleProofLib.verify(proof, root, scriptHash), InvalidProof());

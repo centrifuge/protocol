@@ -917,6 +917,91 @@ contract ExecutorEthForwardingTests is ExecutorTest {
     }
 }
 
+// ─── Reentrancy ──────────────────────────────────────────────────────────────
+
+/// @dev Contract strategist that reenters Executor.execute() when called mid-script.
+contract ReentrantStrategist {
+    IExecutor public executor;
+    bytes private reentryData;
+
+    function configure(IExecutor executor_, bytes calldata reentryData_) external {
+        executor = executor_;
+        reentryData = reentryData_;
+    }
+
+    function trigger(bytes32[] calldata commands, bytes[] calldata state, uint256 bitmap, bytes32[] calldata proof)
+        external
+    {
+        executor.execute(commands, state, bitmap, new bytes32[](0), proof);
+    }
+
+    /// @dev Called by weiroll script — attempts to reenter execute() with a second leaf.
+    function reenter() external {
+        (bytes32[] memory commands, bytes[] memory state, uint256 bitmap, bytes32[] memory proof) =
+            abi.decode(reentryData, (bytes32[], bytes[], uint256, bytes32[]));
+        executor.execute(commands, state, bitmap, new bytes32[](0), proof);
+    }
+}
+
+contract ExecutorReentrancyTests is ExecutorTestBase {
+    IGateway gateway = IGateway(makeAddr("gateway"));
+    address contractUpdater = makeAddr("contractUpdater");
+
+    IExecutor executor;
+    WeirollTarget target;
+    ReentrantStrategist strategist;
+
+    function setUp() public {
+        executor = IExecutor(
+            deployCode("out-ir/Executor.sol/Executor.json", abi.encode(POOL_A, contractUpdater, address(gateway)))
+        );
+        target = new WeirollTarget();
+        strategist = new ReentrantStrategist();
+    }
+
+    function testReentrantExecuteReverts() public {
+        // Leaf B: target.setValue(42)
+        bytes32[] memory commandsB = new bytes32[](1);
+        commandsB[0] = _callCommand(WeirollTarget.setValue.selector, 0, address(target));
+        bytes[] memory stateB = new bytes[](1);
+        stateB[0] = abi.encode(uint256(42));
+        uint256 bitmapB = 1;
+        bytes32 leafB = _computeScriptHash(commandsB, stateB, bitmapB, NO_CALLBACKS);
+
+        // Leaf A: call strategist.reenter() (which attempts to execute leaf B)
+        bytes32[] memory commandsA = new bytes32[](1);
+        commandsA[0] = _buildCommand(
+            ReentrantStrategist.reenter.selector,
+            uint8(FLAG_CT_CALL),
+            bytes6(uint48(0xFFFFFFFFFFFF)),
+            0xff,
+            address(strategist)
+        );
+        bytes[] memory stateA = new bytes[](0);
+        uint256 bitmapA = 0;
+        bytes32 leafA = _computeScriptHash(commandsA, stateA, bitmapA, NO_CALLBACKS);
+
+        // Build merkle tree with both leaves
+        bytes32 root = _merkleRoot2(leafA, leafB);
+        _setPolicy(executor, address(strategist), root, contractUpdater);
+
+        bytes32[] memory proofA = new bytes32[](1);
+        proofA[0] = leafB;
+        bytes32[] memory proofB = new bytes32[](1);
+        proofB[0] = leafA;
+
+        // Configure strategist to reenter with leaf B
+        strategist.configure(executor, abi.encode(commandsB, stateB, bitmapB, proofB));
+
+        // Reentrant execution must revert (AlreadyExecuting, wrapped by weiroll VM)
+        vm.expectRevert();
+        strategist.trigger(commandsA, stateA, bitmapA, proofA);
+
+        // Verify target was not modified
+        assertEq(target.lastValue(), 0);
+    }
+}
+
 // ─── Factory ──────────────────────────────────────────────────────────────────
 
 contract ExecutorFactoryTest is Test {

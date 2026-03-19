@@ -20,6 +20,7 @@ interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
     error NotAuthorized();
     error StateLengthOverflow();
     error NotInExecution();
+    error AlreadyExecuting();
 
     function poolId() external view returns (PoolId);
     function contractUpdater() external view returns (address);
