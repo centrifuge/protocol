@@ -51,11 +51,11 @@ contract VerifyFactoryContracts is Script {
 
     constructor() {
         config = Env.load(vm.envString("NETWORK"));
-        indexer = new GraphQLQuery(config.network.graphQLApi());
     }
 
     function run() public {
         vm.createSelectFork(config.network.rpcUrl());
+        indexer = new GraphQLQuery(config.network.graphQLApi());
 
         AddressesToVerify memory addr = _fetchAddresses();
 
@@ -85,7 +85,7 @@ contract VerifyFactoryContracts is Script {
         string memory orderBy =
             string.concat("orderBy: ", "createdAt".asJsonString(), ", orderDirection: ", "desc".asJsonString());
 
-        string memory centrifugeIdValue = vm.toString(config.network.centrifugeId);
+        string memory centrifugeIdValue = vm.toString(config.network.centrifugeId).asJsonString();
 
         // forgefmt: disable-next-item
         string memory json = indexer.queryGraphQL(string.concat(
