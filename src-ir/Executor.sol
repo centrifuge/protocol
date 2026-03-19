@@ -80,7 +80,7 @@ contract Executor is BatchedMulticall, VM, IExecutor {
     ) external payable {
         bytes32 root = policy[msgSender()];
         require(root != bytes32(0), NotAStrategist());
-        require(state.length <= 256, StateLengthOverflow());
+        require(state.length <= 128, StateLengthOverflow());
         require(activeStrategist == address(0), AlreadyExecuting());
 
         bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, callbackHashes);
@@ -103,7 +103,7 @@ contract Executor is BatchedMulticall, VM, IExecutor {
 
     /// @inheritdoc IExecutor
     function executeCallback(bytes32[] calldata commands, bytes[] calldata state, uint256 stateBitmap) external {
-        require(state.length <= 256, StateLengthOverflow());
+        require(state.length <= 128, StateLengthOverflow());
         require(msg.sender != address(this), SelfCallForbidden());
         require(activeStrategist != address(0), NotInExecution());
 

@@ -289,7 +289,7 @@ contract ExecutorExecuteTests is ExecutorTest {
         _setPolicy(strategist, keccak256("root"));
 
         bytes32[] memory commands = new bytes32[](0);
-        bytes[] memory state = new bytes[](257);
+        bytes[] memory state = new bytes[](129);
 
         vm.expectRevert(IExecutor.StateLengthOverflow.selector);
         vm.prank(strategist);
@@ -313,11 +313,11 @@ contract ExecutorExecuteTests is ExecutorTest {
         executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
     }
 
-    function testStateLengthExactly256() public {
+    function testStateLengthExactly128() public {
         _setPolicy(strategist, keccak256("root"));
 
         bytes32[] memory commands = new bytes32[](0);
-        bytes[] memory state = new bytes[](256);
+        bytes[] memory state = new bytes[](128);
         uint256 bitmap = 0;
 
         bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, NO_CALLBACKS);
