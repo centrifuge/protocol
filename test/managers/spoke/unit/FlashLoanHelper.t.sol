@@ -58,10 +58,10 @@ contract MockAavePool {
         // Transfer tokens to receiver
         MockToken(asset).transfer(receiverAddress, amount);
 
-        // Call onFlashLoan on receiver
+        // Call executeOperation on receiver
         uint256 fee = amount * premium / 10_000;
         bool success =
-            IAaveV3FlashLoanReceiver(receiverAddress).onFlashLoan(asset, amount, fee, receiverAddress, params);
+            IAaveV3FlashLoanReceiver(receiverAddress).executeOperation(asset, amount, fee, receiverAddress, params);
         require(success, "Flash loan failed");
 
         // Pull repayment
@@ -86,7 +86,7 @@ contract FlashLoanHelperTest is Test {
 
     function testOnFlashLoanRevertsNotPool() public {
         vm.expectRevert(IFlashLoanHelper.NotPool.selector);
-        receiver.onFlashLoan(address(token), 100, 1, address(receiver), "");
+        receiver.executeOperation(address(token), 100, 1, address(receiver), "");
     }
 
     function testOnFlashLoanRevertsNotInitiator() public {
@@ -104,16 +104,16 @@ contract FlashLoanHelperTest is Test {
     }
 
     function testOnFlashLoanRevertsNotActive() public {
-        // Direct call to onFlashLoan without requestFlashLoan context
+        // Direct call to executeOperation without requestFlashLoan context
         // _pool is address(0), so msg.sender != _pool → NotPool
         // To get NotActive we need _pool == msg.sender but _executor == address(0)
         // This can't happen in normal flow since requestFlashLoan sets both.
-        // Test via a pool that calls onFlashLoan after we clear state.
+        // Test via a pool that calls executeOperation after we clear state.
 
         // Simpler: just verify the direct call reverts (NotPool, which is the first check)
         vm.expectRevert(IFlashLoanHelper.NotPool.selector);
         vm.prank(address(pool));
-        receiver.onFlashLoan(address(token), 100, 1, address(receiver), "");
+        receiver.executeOperation(address(token), 100, 1, address(receiver), "");
     }
 
     function testFullFlashLoanFlow() public {
@@ -161,7 +161,7 @@ contract WrongInitiatorPool {
         external
     {
         // Call with wrong initiator (address(0x1) instead of receiverAddress)
-        IAaveV3FlashLoanReceiver(receiverAddress).onFlashLoan(asset, amount, 0, address(0x1), params);
+        IAaveV3FlashLoanReceiver(receiverAddress).executeOperation(asset, amount, 0, address(0x1), params);
     }
 }
 

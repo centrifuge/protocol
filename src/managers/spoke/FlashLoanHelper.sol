@@ -10,7 +10,7 @@ import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 /// @title  FlashLoanHelper
 /// @notice Periphery contract bridging Aave V3 flash loans to Executor.executeCallback().
 ///         The outer weiroll script calls `requestFlashLoan`, Aave sends tokens and calls back
-///         `onFlashLoan`, which forwards to the Executor's inner callback script.
+///         `executeOperation`, which forwards to the Executor's inner callback script.
 ///
 ///         The `pool` parameter in `requestFlashLoan` MUST be a fixed
 ///         state element in the weiroll stateBitmap. If left as non-fixed state, a strategist
@@ -38,7 +38,7 @@ contract FlashLoanHelper is IFlashLoanHelper, IAaveV3FlashLoanReceiver {
     }
 
     /// @inheritdoc IAaveV3FlashLoanReceiver
-    function onFlashLoan(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata params)
+    function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata params)
         external
         returns (bool)
     {
