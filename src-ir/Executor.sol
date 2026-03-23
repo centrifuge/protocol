@@ -26,6 +26,7 @@ contract Executor is BatchedMulticall, VM, IExecutor {
     using CastLib for *;
 
     bytes32 private constant CALLBACK_HASHES_SLOT = bytes32(uint256(keccak256("executor.callbackHashes")) - 1);
+    bytes32 private constant CALLBACK_CALLERS_SLOT = bytes32(uint256(keccak256("executor.callbackCallers")) - 1);
 
     PoolId public immutable poolId;
     address public immutable contractUpdater;
@@ -74,35 +75,39 @@ contract Executor is BatchedMulticall, VM, IExecutor {
     function execute(
         bytes32[] calldata commands,
         bytes[] calldata state,
-        uint256 stateBitmap,
+        uint128 stateBitmap,
         bytes32[] calldata callbackHashes,
+        address[] calldata callbackCallers,
         bytes32[] calldata proof
     ) external payable {
         bytes32 root = policy[msgSender()];
         require(root != bytes32(0), NotAStrategist());
         require(state.length <= 128, StateLengthOverflow());
         require(activeStrategist == address(0), AlreadyExecuting());
+        require(callbackHashes.length == callbackCallers.length, CallbackLengthMismatch());
 
-        bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, callbackHashes);
+        bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, callbackHashes, callbackCallers);
         require(MerkleProofLib.verify(proof, root, scriptHash), InvalidProof());
 
         activeStrategist = msgSender();
         for (uint256 i; i < callbackHashes.length; i++) {
             TransientArrayLib.push(CALLBACK_HASHES_SLOT, callbackHashes[i]);
+            TransientArrayLib.push(CALLBACK_CALLERS_SLOT, callbackCallers[i]);
         }
-        
+
         _execute(commands, _copyState(state));
         require(callbackIdx == TransientArrayLib.length(CALLBACK_HASHES_SLOT), UnconsumedCallbacks());
 
         callbackIdx = 0;
         activeStrategist = address(0);
         TransientArrayLib.clear(CALLBACK_HASHES_SLOT);
+        TransientArrayLib.clear(CALLBACK_CALLERS_SLOT);
 
         emit ExecuteScript(msgSender(), scriptHash);
     }
 
     /// @inheritdoc IExecutor
-    function executeCallback(bytes32[] calldata commands, bytes[] calldata state, uint256 stateBitmap) external {
+    function executeCallback(bytes32[] calldata commands, bytes[] calldata state, uint128 stateBitmap) external {
         require(state.length <= 128, StateLengthOverflow());
         require(msg.sender != address(this), SelfCallForbidden());
         require(activeStrategist != address(0), NotInExecution());
@@ -110,8 +115,10 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         uint256 idx = callbackIdx;
         require(idx < TransientArrayLib.length(CALLBACK_HASHES_SLOT), CallbackExhausted());
 
+        require(msg.sender == TransientArrayLib.atAddress(CALLBACK_CALLERS_SLOT, idx), InvalidCallbackCaller());
+
         bytes32 expected = TransientArrayLib.at(CALLBACK_HASHES_SLOT, idx);
-        bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, _emptyCallbackHashes());
+        bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, _emptyCallbackHashes(), _emptyCallers());
         require(scriptHash == expected, InvalidCallback());
 
         callbackIdx = idx + 1;
@@ -135,8 +142,9 @@ contract Executor is BatchedMulticall, VM, IExecutor {
     function _computeScriptHash(
         bytes32[] calldata commands,
         bytes[] calldata state,
-        uint256 stateBitmap,
-        bytes32[] memory callbackHashes
+        uint128 stateBitmap,
+        bytes32[] memory callbackHashes,
+        address[] memory callbackCallers
     ) internal pure returns (bytes32) {
         uint256 count;
         for (uint256 i; i < state.length; i++) {
@@ -157,13 +165,18 @@ contract Executor is BatchedMulticall, VM, IExecutor {
                 keccak256(abi.encodePacked(hashes)),
                 stateBitmap,
                 state.length,
-                keccak256(abi.encodePacked(callbackHashes))
+                keccak256(abi.encodePacked(callbackHashes)),
+                keccak256(abi.encodePacked(callbackCallers))
             )
         );
     }
 
     function _emptyCallbackHashes() internal pure returns (bytes32[] memory) {
         return new bytes32[](0);
+    }
+
+    function _emptyCallers() internal pure returns (address[] memory) {
+        return new address[](0);
     }
 }
 

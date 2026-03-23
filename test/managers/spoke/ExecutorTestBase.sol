@@ -53,6 +53,7 @@ abstract contract ExecutorTestBase is Test {
     uint256 constant FLAG_CT_VALUECALL = 0x03;
 
     bytes32[] internal NO_CALLBACKS = new bytes32[](0);
+    address[] internal NO_CALLERS = new address[](0);
 
     function _callbacks(bytes32 h) internal pure returns (bytes32[] memory arr) {
         arr = new bytes32[](1);
@@ -63,6 +64,17 @@ abstract contract ExecutorTestBase is Test {
         arr = new bytes32[](2);
         arr[0] = h0;
         arr[1] = h1;
+    }
+
+    function _callers(address c) internal pure returns (address[] memory arr) {
+        arr = new address[](1);
+        arr[0] = c;
+    }
+
+    function _callers(address c0, address c1) internal pure returns (address[] memory arr) {
+        arr = new address[](2);
+        arr[0] = c0;
+        arr[1] = c1;
     }
 
     // ─── Command builder helpers ──────────────────────────────────────────
@@ -130,8 +142,18 @@ abstract contract ExecutorTestBase is Test {
     function _computeScriptHash(
         bytes32[] memory commands,
         bytes[] memory state,
-        uint256 stateBitmap,
+        uint128 stateBitmap,
         bytes32[] memory callbackHashes
+    ) internal pure returns (bytes32) {
+        return _computeScriptHash(commands, state, stateBitmap, callbackHashes, new address[](0));
+    }
+
+    function _computeScriptHash(
+        bytes32[] memory commands,
+        bytes[] memory state,
+        uint128 stateBitmap,
+        bytes32[] memory callbackHashes,
+        address[] memory callbackCallers
     ) internal pure returns (bytes32) {
         return keccak256(
             abi.encodePacked(
@@ -139,12 +161,13 @@ abstract contract ExecutorTestBase is Test {
                 _hashFixedState(state, stateBitmap),
                 stateBitmap,
                 state.length,
-                keccak256(abi.encodePacked(callbackHashes))
+                keccak256(abi.encodePacked(callbackHashes)),
+                keccak256(abi.encodePacked(callbackCallers))
             )
         );
     }
 
-    function _hashFixedState(bytes[] memory state, uint256 stateBitmap) internal pure returns (bytes32) {
+    function _hashFixedState(bytes[] memory state, uint128 stateBitmap) internal pure returns (bytes32) {
         bytes memory packed;
         for (uint256 i; i < state.length; i++) {
             if (stateBitmap & (1 << i) != 0) {

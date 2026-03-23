@@ -34,7 +34,7 @@ contract AccountingTokenTest is Test {
     address minterB = makeAddr("minterB");
 
     function _toBytes32(address addr) internal pure returns (bytes32) {
-        return bytes32(uint256(uint160(addr)));
+        return bytes32(bytes20(addr));
     }
 
     function setUp() public virtual {
@@ -398,7 +398,7 @@ contract AccountingTokenMinterIntegrationTest is Test {
     AccountingToken token;
 
     function _toBytes32(address addr) internal pure returns (bytes32) {
-        return bytes32(uint256(uint160(addr)));
+        return bytes32(bytes20(addr));
     }
 
     function setUp() public {

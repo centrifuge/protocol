@@ -13,8 +13,10 @@ interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
     error NotAStrategist();
     error InvalidProof();
     error InvalidCallback();
+    error InvalidCallbackCaller();
     error CallbackExhausted();
     error UnconsumedCallbacks();
+    error CallbackLengthMismatch();
     error SelfCallForbidden();
     error InvalidPoolId();
     error NotAuthorized();
@@ -29,16 +31,18 @@ interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
     function callbackIdx() external view returns (uint256);
 
     /// @notice Execute a weiroll script authorized by a Merkle proof.
-    /// @param commands       Weiroll command bytes (selector + flags + indices + output + target).
-    /// @param state          Weiroll state array — elements with their bitmap bit set are fixed (hashed).
-    /// @param stateBitmap    Bit `i` set means `state[i]` is governance-approved and included in the script hash.
-    /// @param callbackHashes Pre-committed script hashes for each callback, consumed in invocation order.
-    /// @param proof          Merkle proof siblings for the script hash leaf.
+    /// @param commands        Weiroll command bytes (selector + flags + indices + output + target).
+    /// @param state           Weiroll state array — elements with their bitmap bit set are fixed (hashed).
+    /// @param stateBitmap     Bit `i` set means `state[i]` is governance-approved and included in the script hash.
+    /// @param callbackHashes  Pre-committed script hashes for each callback, consumed in invocation order.
+    /// @param callbackCallers Expected msg.sender for each callback (must match callbackHashes length).
+    /// @param proof           Merkle proof siblings for the script hash leaf.
     function execute(
         bytes32[] calldata commands,
         bytes[] calldata state,
-        uint256 stateBitmap,
+        uint128 stateBitmap,
         bytes32[] calldata callbackHashes,
+        address[] calldata callbackCallers,
         bytes32[] calldata proof
     ) external payable;
 
@@ -48,5 +52,5 @@ interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
     /// @param commands     Weiroll command bytes for the callback script.
     /// @param state        Weiroll state array for the callback script.
     /// @param stateBitmap  State bitmap for the callback script.
-    function executeCallback(bytes32[] calldata commands, bytes[] calldata state, uint256 stateBitmap) external;
+    function executeCallback(bytes32[] calldata commands, bytes[] calldata state, uint128 stateBitmap) external;
 }

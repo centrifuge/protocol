@@ -30,9 +30,17 @@ library TransientArrayLib {
         return data;
     }
 
+    function push(bytes32 key, address value) internal {
+        push(key, bytes32(uint256(uint160(value))));
+    }
+
     function at(bytes32 key, uint256 index) internal view returns (bytes32) {
         uint256 baseSlot = uint256(keccak256(abi.encodePacked(key)));
         return bytes32(baseSlot + index + 1).tloadBytes32();
+    }
+
+    function atAddress(bytes32 key, uint256 index) internal view returns (address) {
+        return address(uint160(uint256(at(key, index))));
     }
 
     function length(bytes32 key) internal view returns (uint256) {

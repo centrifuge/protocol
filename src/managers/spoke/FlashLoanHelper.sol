@@ -49,8 +49,8 @@ contract FlashLoanHelper is IFlashLoanHelper, IAaveV3FlashLoanReceiver {
         address executor = _executor;
         asset.safeTransfer(executor, amount);
 
-        (bytes32[] memory commands, bytes[] memory state, uint256 stateBitmap) =
-            abi.decode(params, (bytes32[], bytes[], uint256));
+        (bytes32[] memory commands, bytes[] memory state, uint128 stateBitmap) =
+            abi.decode(params, (bytes32[], bytes[], uint128));
         IExecutor(executor).executeCallback(commands, state, stateBitmap);
 
         // Inner script must have sent repayment tokens back to this contract
