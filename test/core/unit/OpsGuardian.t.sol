@@ -5,6 +5,7 @@ import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
+import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
@@ -20,6 +21,7 @@ contract OpsGuardianTest is Test {
     ISafe immutable SAFE = ISafe(address(new IsContract()));
     ICreatePool immutable hub = ICreatePool(address(new IsContract()));
     IMultiAdapter immutable multiAdapter = IMultiAdapter(address(new IsContract()));
+    IGateway immutable gateway = IGateway(address(new IsContract()));
 
     address immutable UNAUTHORIZED = makeAddr("unauthorized");
     address immutable ADMIN = makeAddr("admin");
@@ -33,13 +35,14 @@ contract OpsGuardianTest is Test {
     OpsGuardian opsGuardian;
 
     function setUp() public virtual {
-        opsGuardian = new OpsGuardian(SAFE, hub, multiAdapter);
+        opsGuardian = new OpsGuardian(SAFE, hub, multiAdapter, gateway);
     }
 
     function testOpsGuardian() public view {
         assertEq(address(opsGuardian.opsSafe()), address(SAFE));
         assertEq(address(opsGuardian.hub()), address(hub));
         assertEq(address(opsGuardian.multiAdapter()), address(multiAdapter));
+        assertEq(address(opsGuardian.gateway()), address(gateway));
     }
 }
 
@@ -164,7 +167,7 @@ contract OpsGuardianTestFile is OpsGuardianTest {
     function testFileRevertWhenProtocolSpecificParam() public {
         vm.prank(address(SAFE));
         vm.expectRevert(IOpsGuardian.FileUnrecognizedParam.selector);
-        opsGuardian.file("gateway", makeAddr("address"));
+        opsGuardian.file("sender", makeAddr("address"));
     }
 
     function testFileRevertWhenSafeParam() public {

@@ -230,6 +230,7 @@ contract CoreActionBatcher is Constants {
 
         // Rely opsGuardian
         report.multiAdapter.rely(address(report.opsGuardian));
+        report.gateway.rely(address(report.opsGuardian));
         report.hub.rely(address(report.opsGuardian));
 
         // Rely tokenRecoverer

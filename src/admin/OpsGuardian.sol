@@ -10,6 +10,8 @@ import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
 import {IAdapter} from "../core/messaging/interfaces/IAdapter.sol";
 import {IMultiAdapter} from "../core/messaging/interfaces/IMultiAdapter.sol";
+import {IGasService} from "../core/messaging/interfaces/IGasService.sol";
+import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
 
 /// @title  OpsGuardian
 /// @notice This contract manages operational aspects of the protocol including adapter initialization,
@@ -20,11 +22,13 @@ contract OpsGuardian is IOpsGuardian {
     ISafe public opsSafe;
     ICreatePool public hub;
     IMultiAdapter public multiAdapter;
+    IGateway public gateway;
 
-    constructor(ISafe opsSafe_, ICreatePool hub_, IMultiAdapter multiAdapter_) {
+    constructor(ISafe opsSafe_, ICreatePool hub_, IMultiAdapter multiAdapter_, IGateway gateway_) {
         opsSafe = opsSafe_;
         hub = hub_;
         multiAdapter = multiAdapter_;
+        gateway = gateway_;
     }
 
     modifier onlySafe() {
@@ -41,8 +45,14 @@ contract OpsGuardian is IOpsGuardian {
         if (what == "opsSafe") opsSafe = ISafe(data);
         else if (what == "hub") hub = ICreatePool(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
+        else if (what == "gateway") gateway = IGateway(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
+    }
+
+    function setGasService(IGasService gasService) external onlySafe {
+        gateway.file("messageProperties", address(gasService));
+        multiAdapter.file("messageProperties", address(gasService));
     }
 
     //----------------------------------------------------------------------------------------------

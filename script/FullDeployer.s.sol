@@ -391,7 +391,7 @@ contract FullDeployer is BaseDeployer, Constants {
         opsGuardian = OpsGuardian(
             create3(
                 createSalt("opsGuardian", V3_1),
-                abi.encodePacked(type(OpsGuardian).creationCode, abi.encode(ISafe(address(batcher)), hub, multiAdapter))
+                abi.encodePacked(type(OpsGuardian).creationCode, abi.encode(ISafe(address(batcher)), hub, multiAdapter, gateway))
             )
         );
     }
