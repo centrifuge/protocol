@@ -16,7 +16,7 @@ contract CircuitBreakerGuard is ICircuitBreakerGuard {
         CumulativeState storage s = cumulative[msg.sender][key];
         if (block.timestamp - s.windowStart > window) {
             s.windowStart = uint64(block.timestamp);
-            s.total = uint128(amount);
+            s.total = amount.toUint128();
         } else {
             s.total += uint128(amount);
         }
