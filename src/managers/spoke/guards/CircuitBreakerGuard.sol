@@ -3,31 +3,38 @@ pragma solidity 0.8.28;
 
 import {ICircuitBreakerGuard, CumulativeState, ReferenceState} from "./interfaces/ICircuitBreakerGuard.sol";
 
+import {MathLib} from "../../../misc/libraries/MathLib.sol";
+
 /// @title  CircuitBreakerGuard
 /// @notice Rolling-window circuit breaker for weiroll scripts. Limits cumulative throughput
 ///         (e.g. bridge outflows) and per-update value deviation (e.g. price updates).
 /// @dev    Called via weiroll CALL, so `msg.sender` is the Executor — state is per-executor.
 contract CircuitBreakerGuard is ICircuitBreakerGuard {
+    using MathLib for uint256;
+
     mapping(address caller => mapping(bytes32 key => ReferenceState)) public refs;
     mapping(address caller => mapping(bytes32 key => CumulativeState)) public cumulative;
 
     /// @inheritdoc ICircuitBreakerGuard
     function tally(bytes32 key, uint256 amount, uint256 max, uint256 window) external {
         CumulativeState storage s = cumulative[msg.sender][key];
+        uint256 newTotal;
         if (block.timestamp - s.windowStart > window) {
             s.windowStart = uint64(block.timestamp);
-            s.total = amount.toUint128();
+            newTotal = amount;
         } else {
-            s.total += uint128(amount);
+            newTotal = uint256(s.total) + amount;
         }
-        require(s.total <= max, ExceedsLimit());
+        require(newTotal <= max, ExceedsCumulativeLimit(key, amount, max, window));
+        s.total = newTotal.toUint128();
     }
 
     /// @inheritdoc ICircuitBreakerGuard
     function delta(bytes32 key, uint256 currentValue, uint256 newValue, uint256 maxDeltaBps, uint256 window) external {
-        ReferenceState storage s = refs[msg.sender][key];
+        if (currentValue == 0) return;
 
         uint256 anchor;
+        ReferenceState storage s = refs[msg.sender][key];
         if (s.windowStart == 0 || block.timestamp - s.windowStart > window) {
             anchor = currentValue;
             s.anchor = uint128(currentValue);
@@ -37,6 +44,6 @@ contract CircuitBreakerGuard is ICircuitBreakerGuard {
         }
 
         uint256 d = newValue > anchor ? newValue - anchor : anchor - newValue;
-        require(d * 10_000 <= anchor * maxDeltaBps, ExceedsLimit());
+        require(d * 10_000 <= anchor * maxDeltaBps, ExceedsDeltaLimit(key, currentValue, newValue, maxDeltaBps, window));
     }
 }

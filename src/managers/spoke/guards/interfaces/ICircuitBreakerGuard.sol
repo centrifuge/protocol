@@ -12,7 +12,8 @@ struct ReferenceState {
 }
 
 interface ICircuitBreakerGuard {
-    error ExceedsLimit();
+    error ExceedsCumulativeLimit(bytes32 key, uint256 amount, uint256 max, uint256 window);
+    error ExceedsDeltaLimit(bytes32 key, uint256 currentValue, uint256 newValue, uint256 maxDeltaBps, uint256 window);
 
     /// @notice Tally an amount and revert if the rolling window limit is exceeded.
     ///         Use for bounding total throughput (e.g. bridge outflows per 24h).
