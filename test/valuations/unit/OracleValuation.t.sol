@@ -19,6 +19,7 @@ import "forge-std/Test.sol";
 contract IsContract {}
 
 contract OracleValuationTest is Test {
+    using CastLib for *;
     PoolId constant POOL_A = PoolId.wrap(42);
     PoolId constant POOL_B = PoolId.wrap(43);
     ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("1"));
@@ -73,7 +74,7 @@ contract OracleValuationTest is Test {
 
     function _enableFeeder(PoolId poolId, address feeder_) internal {
         vm.prank(poolManager);
-        valuation.updateFeeder(poolId, 0, feeder_, true);
+        valuation.updateFeeder(poolId, 0, feeder_.toBytes32(), true);
     }
 
     function _setPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price) internal {
@@ -93,42 +94,42 @@ contract OracleValuationConstructorTests is OracleValuationTest {
 contract OracleValuationUpdateFeederTests is OracleValuationTest {
     function testUpdateFeederSuccess() public {
         vm.expectEmit(true, true, true, true);
-        emit IOracleValuation.UpdateFeeder(POOL_A, 0, feeder, true);
+        emit IOracleValuation.UpdateFeeder(POOL_A, 0, feeder.toBytes32(), true);
 
         vm.prank(poolManager);
-        valuation.updateFeeder(POOL_A, 0, feeder, true);
+        valuation.updateFeeder(POOL_A, 0, feeder.toBytes32(), true);
 
-        assertTrue(valuation.feeder(POOL_A, 0, feeder));
+        assertTrue(valuation.feeder(POOL_A, 0, feeder.toBytes32()));
     }
 
     function testUpdateFeederDisable() public {
         // First enable
         vm.prank(poolManager);
-        valuation.updateFeeder(POOL_A, 0, feeder, true);
-        assertTrue(valuation.feeder(POOL_A, 0, feeder));
+        valuation.updateFeeder(POOL_A, 0, feeder.toBytes32(), true);
+        assertTrue(valuation.feeder(POOL_A, 0, feeder.toBytes32()));
 
         // Then disable
         vm.prank(poolManager);
-        valuation.updateFeeder(POOL_A, 0, feeder, false);
-        assertFalse(valuation.feeder(POOL_A, 0, feeder));
+        valuation.updateFeeder(POOL_A, 0, feeder.toBytes32(), false);
+        assertFalse(valuation.feeder(POOL_A, 0, feeder.toBytes32()));
     }
 
     function testUpdateFeederNotHubManager() public {
         vm.expectRevert(IOracleValuation.NotHubManager.selector);
         vm.prank(notManager);
-        valuation.updateFeeder(POOL_A, 0, feeder, true);
+        valuation.updateFeeder(POOL_A, 0, feeder.toBytes32(), true);
     }
 
     function testUpdateFeederMultipleFeeders() public {
         address feeder2 = makeAddr("feeder2");
 
         vm.startPrank(poolManager);
-        valuation.updateFeeder(POOL_A, 0, feeder, true);
-        valuation.updateFeeder(POOL_A, 0, feeder2, true);
+        valuation.updateFeeder(POOL_A, 0, feeder.toBytes32(), true);
+        valuation.updateFeeder(POOL_A, 0, feeder2.toBytes32(), true);
         vm.stopPrank();
 
-        assertTrue(valuation.feeder(POOL_A, 0, feeder));
-        assertTrue(valuation.feeder(POOL_A, 0, feeder2));
+        assertTrue(valuation.feeder(POOL_A, 0, feeder.toBytes32()));
+        assertTrue(valuation.feeder(POOL_A, 0, feeder2.toBytes32()));
     }
 }
 

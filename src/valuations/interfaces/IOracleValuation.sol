@@ -20,7 +20,7 @@ interface IOracleValuation is IValuation {
     }
 
     event UpdatePrice(PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, D18 newPrice);
-    event UpdateFeeder(PoolId indexed poolId, uint16 indexed centrifugeId, address indexed feeder, bool canFeed);
+    event UpdateFeeder(PoolId indexed poolId, uint16 indexed centrifugeId, bytes32 indexed feeder, bool canFeed);
 
     error NotAuthorized();
     error NotFeeder();
@@ -30,9 +30,9 @@ interface IOracleValuation is IValuation {
     /// @notice Update the permission for a feeder to set prices for a pool.
     /// @param poolId The pool identifier
     /// @param centrifugeId The source chain ID (0 for local feeders)
-    /// @param feeder_ The address of the feeder
+    /// @param feeder_ The identifier of the feeder
     /// @param canFeed Whether the feeder can set prices
-    function updateFeeder(PoolId poolId, uint16 centrifugeId, address feeder_, bool canFeed) external;
+    function updateFeeder(PoolId poolId, uint16 centrifugeId, bytes32 feeder_, bool canFeed) external;
 
     /// @notice Set the price for an asset in a pool's share class
     /// @param poolId The pool identifier

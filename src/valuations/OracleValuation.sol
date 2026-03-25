@@ -35,7 +35,7 @@ contract OracleValuation is IOracleValuation, IUntrustedContractUpdate {
     IHubRegistry public immutable hubRegistry;
 
     /// @dev centrifugeId=LOCAL for local feeders, otherwise the source chain ID for remote feeders.
-    mapping(PoolId => mapping(uint16 centrifugeId => mapping(address => bool))) public feeder;
+    mapping(PoolId => mapping(uint16 centrifugeId => mapping(bytes32 => bool))) public feeder;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId base => Price))) public pricePoolPerAsset;
 
     constructor(IHub hub_, IHubRegistry hubRegistry_, address contractUpdater_) {
@@ -49,7 +49,7 @@ contract OracleValuation is IOracleValuation, IUntrustedContractUpdate {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IOracleValuation
-    function updateFeeder(PoolId poolId, uint16 centrifugeId, address feeder_, bool canFeed) external {
+    function updateFeeder(PoolId poolId, uint16 centrifugeId, bytes32 feeder_, bool canFeed) external {
         require(hubRegistry.manager(poolId, msg.sender), NotHubManager());
         feeder[poolId][centrifugeId][feeder_] = canFeed;
         emit UpdateFeeder(poolId, centrifugeId, feeder_, canFeed);
@@ -61,7 +61,7 @@ contract OracleValuation is IOracleValuation, IUntrustedContractUpdate {
 
     /// @inheritdoc IOracleValuation
     function setPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 newPrice) external {
-        require(feeder[poolId][LOCAL][msg.sender], NotFeeder());
+        require(feeder[poolId][LOCAL][msg.sender.toBytes32()], NotFeeder());
         _setPrice(poolId, scId, assetId, newPrice);
     }
 
@@ -74,7 +74,7 @@ contract OracleValuation is IOracleValuation, IUntrustedContractUpdate {
         bytes32 sender
     ) external {
         require(msg.sender == contractUpdater, NotAuthorized());
-        require(feeder[poolId][centrifugeId][sender.toAddress()], NotFeeder());
+        require(feeder[poolId][centrifugeId][sender], NotFeeder());
         (uint128 assetId, uint128 newPrice) = abi.decode(payload, (uint128, uint128));
         _setPrice(poolId, scId, AssetId.wrap(assetId), D18.wrap(newPrice));
     }
