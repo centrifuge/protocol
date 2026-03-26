@@ -13,6 +13,10 @@ abstract contract HookTargets is BaseTargetFunctions, Properties {
     ///         which can overlap with isDepositRequestOrIssuance, isDepositClaim, and
     ///         isCrosschainTransferExecution when to == ESCROW_HOOK_ID.
     function hook_classifyTransfer(address from, address to) public {
+        // Only either source or destination can be zero address in a real ERC20 transfer
+        // (mint = from zero, burn = to zero). Both zero is impossible.
+        if (from == address(0) && to == address(0)) return;
+
         uint256 trueCount = 0;
 
         if (fullRestrictions.isDepositRequestOrIssuance(from, to)) trueCount++;

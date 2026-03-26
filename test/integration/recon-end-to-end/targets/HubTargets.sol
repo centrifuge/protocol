@@ -43,6 +43,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint32 maxClaims;
         bool hasClaimedAll;
         uint128 pendingBeforeSCM;
+        uint128 queuedDepositAmountBefore;
         uint256 maxMintBefore;
     }
 
@@ -130,9 +131,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         // Capture validation state if needed
         bool hasClaimedAll = _hasClaimedAllEpochs(maxClaims, maxClaimsBound);
         uint128 pendingBeforeSCM;
+        uint128 queuedDepositAmountBefore;
         uint256 maxMintBefore;
         if (hasClaimedAll) {
             (pendingBeforeSCM,, maxMintBefore) = _captureDepositStateBefore(investor);
+            // Capture queued deposit amount: _postClaimUpdateQueued adds queued.amount
+            // back to pending after claim, offsetting the decrease from _claimDeposit
+            (, queuedDepositAmountBefore) = batchRequestManager.queuedDepositRequest(poolId, scId, assetId, investor);
         }
 
         // Execute call and validation in separate function (fresh stack frame)
@@ -146,6 +151,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
                 maxClaims: maxClaims,
                 hasClaimedAll: hasClaimedAll,
                 pendingBeforeSCM: pendingBeforeSCM,
+                queuedDepositAmountBefore: queuedDepositAmountBefore,
                 maxMintBefore: maxMintBefore
             })
         );
@@ -180,7 +186,11 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         // Handle validation
         if (params.hasClaimedAll) {
             _validateDepositClaimComplete(
-                params.investor, params.pendingBeforeSCM, params.maxMintBefore, totalPaymentAssetAmount
+                params.investor,
+                params.pendingBeforeSCM,
+                params.queuedDepositAmountBefore,
+                params.maxMintBefore,
+                totalPaymentAssetAmount
             );
         }
     }
@@ -394,18 +404,18 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
 
     /// @dev Validates deposit claim completion when all epochs are claimed
     /// @param investor The investor's address as bytes32
-    /// @param pendingBeforeSCM Pending amount in SCM before claim
     /// @param maxMintBefore Maximum mint capacity before claim
     /// @param totalPaymentAssetAmount Total assets used for payment
     function _validateDepositClaimComplete(
         bytes32 investor,
         uint128 pendingBeforeSCM,
+        uint128 queuedDepositAmountBefore,
         uint256 maxMintBefore,
         uint128 totalPaymentAssetAmount
     ) private {
         _validateDepositEpochUpdate(investor);
         _validateNoCancellationQueued(investor);
-        _validateDepositPendingDelta(investor, pendingBeforeSCM, totalPaymentAssetAmount);
+        _validateDepositPendingDelta(investor, pendingBeforeSCM, queuedDepositAmountBefore, totalPaymentAssetAmount);
         _validateMaxMintDecrease(maxMintBefore, totalPaymentAssetAmount);
     }
 
@@ -440,9 +450,16 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// @param investor The investor's address as bytes32
     /// @param pendingBeforeSCM Pending amount before claim
     /// @param totalPaymentAssetAmount Total assets used for payment
-    function _validateDepositPendingDelta(bytes32 investor, uint128 pendingBeforeSCM, uint128 totalPaymentAssetAmount)
-        private
-    {
+    /// @dev Validates pending deposit amount delta accounting for queued deposits.
+    /// After claim, BatchRequestManager._postClaimUpdateQueued adds queued.amount back to pending,
+    /// so the observed delta is: paymentAmount - queuedAmount (net decrease).
+    /// The invariant: pendingDelta + queuedDepositAmountBefore >= totalPaymentAssetAmount
+    function _validateDepositPendingDelta(
+        bytes32 investor,
+        uint128 pendingBeforeSCM,
+        uint128 queuedDepositAmountBefore,
+        uint128 totalPaymentAssetAmount
+    ) private {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
@@ -452,10 +469,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
 
         uint128 pendingDelta = pendingBeforeSCM >= pendingAfterSCM ? pendingBeforeSCM - pendingAfterSCM : 0;
 
+        // _claimDeposit decreases pending by paymentAmount, then _postClaimUpdateQueued
+        // adds back queuedAmount. So: pendingDelta = paymentAmount - queuedAmount
+        // Therefore: pendingDelta + queuedAmount >= paymentAmount
         gte(
-            pendingDelta,
+            uint256(pendingDelta) + uint256(queuedDepositAmountBefore),
             totalPaymentAssetAmount,
-            "pending delta should be greater (if cancel queued) or equal to the payment asset amount"
+            "pending delta + queued deposit should be >= payment asset amount"
         );
     }
 
