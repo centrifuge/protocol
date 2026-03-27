@@ -78,7 +78,7 @@ contract ExecutorMulticallTest is ExecutorTestBase {
         bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, NO_CALLBACKS);
         _setPolicy(strategist, scriptHash);
         return
-            abi.encodeWithSelector(IExecutor.execute.selector, commands, state, bitmap, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+            abi.encodeWithSelector(IExecutor.execute.selector, commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
     }
 }
 
@@ -114,8 +114,8 @@ contract ExecutorMulticallBatchTest is ExecutorMulticallTest {
         proofB[0] = hashA;
 
         bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeWithSelector(IExecutor.execute.selector, cmdsA, stateA, bitmapA, NO_CALLBACKS, NO_CALLERS, proofA);
-        calls[1] = abi.encodeWithSelector(IExecutor.execute.selector, cmdsB, stateB, bitmapB, NO_CALLBACKS, NO_CALLERS, proofB);
+        calls[0] = abi.encodeWithSelector(IExecutor.execute.selector, cmdsA, stateA, bitmapA, 0, NO_CALLBACKS, NO_CALLERS, proofA);
+        calls[1] = abi.encodeWithSelector(IExecutor.execute.selector, cmdsB, stateB, bitmapB, 0, NO_CALLBACKS, NO_CALLERS, proofB);
 
         vm.prank(strategist);
         IMulticall(address(executor)).multicall(calls);
@@ -207,8 +207,8 @@ contract ExecutorMulticallBatchTest is ExecutorMulticallTest {
         proofB[0] = hashA;
 
         bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeWithSelector(IExecutor.execute.selector, cmdsA, stateA, bitmapA, NO_CALLBACKS, NO_CALLERS, proofA);
-        calls[1] = abi.encodeWithSelector(IExecutor.execute.selector, cmdsB, stateB, bitmapB, NO_CALLBACKS, NO_CALLERS, proofB);
+        calls[0] = abi.encodeWithSelector(IExecutor.execute.selector, cmdsA, stateA, bitmapA, 0, NO_CALLBACKS, NO_CALLERS, proofA);
+        calls[1] = abi.encodeWithSelector(IExecutor.execute.selector, cmdsB, stateB, bitmapB, 0, NO_CALLBACKS, NO_CALLERS, proofB);
 
         vm.prank(strategist);
         IMulticall(address(executor)).multicall(calls);
@@ -334,7 +334,7 @@ contract ExecutorSlippageGuardTest is ExecutorTestBase {
 
         // Test 1: No balance change — should pass trivially
         vm.prank(strategist);
-        executor.execute(commands, state, bitmap, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
         assertEq(target.lastValue(), 42);
     }
 
@@ -374,7 +374,7 @@ contract ExecutorSlippageGuardTest is ExecutorTestBase {
 
         vm.expectRevert(); // InProgress (wrapped by VM.ExecutionFailed)
         vm.prank(strategist);
-        executor.execute(commands, state, bitmap, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
     }
 }
 
@@ -472,7 +472,7 @@ contract ExecutorFlashLoanTest is ExecutorTestBase {
         bytes32 innerHash = _computeScriptHash(innerCommands, innerState, innerBitmap, NO_CALLBACKS);
 
         // Encode callback data for Aave pool → FlashLoanHelper.executeOperation → Executor.executeCallback
-        bytes memory callbackData = abi.encode(innerCommands, innerState, innerBitmap);
+        bytes memory callbackData = abi.encode(innerCommands, innerState, innerBitmap, uint8(0));
 
         // Outer script: call flashReceiver.requestFlashLoan(pool, token, amount, executor, callbackData)
         bytes32[] memory outerCommands = new bytes32[](1);
@@ -505,6 +505,7 @@ contract ExecutorFlashLoanTest is ExecutorTestBase {
             outerCommands,
             outerState,
             outerBitmap,
+            0,
             _callbacks(innerHash),
             _callers(address(flashReceiver)),
             new bytes32[](0)

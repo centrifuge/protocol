@@ -23,6 +23,7 @@ interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
     error StateLengthOverflow();
     error NotInExecution();
     error AlreadyExecuting();
+    error FixedStateModified();
 
     function poolId() external view returns (PoolId);
     function contractUpdater() external view returns (address);
@@ -34,6 +35,13 @@ interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
     /// @param commands        Weiroll command bytes (selector + flags + indices + output + target).
     /// @param state           Weiroll state array — elements with their bitmap bit set are fixed (hashed).
     /// @param stateBitmap     Bit `i` set means `state[i]` is governance-approved and included in the script hash.
+    /// @param fixedSlots      Number of leading state slots (slots [0, fixedSlots)) that the script must not
+    ///                        overwrite. Enforced via a keccak hash comparison before and after execution.
+    ///                        This is necessary because the weiroll VM writes outputs directly into the state
+    ///                        array by index — there is no mechanism inside the VM to declare a slot as
+    ///                        read-only, and inspecting every command's output pointer at runtime would be
+    ///                        equivalent in cost. The hash approach catches any write to the protected range
+    ///                        with a single pair of keccak operations, regardless of how many commands run.
     /// @param callbackHashes  Pre-committed script hashes for each callback, consumed in invocation order.
     /// @param callbackCallers Expected msg.sender for each callback (must match callbackHashes length).
     /// @param proof           Merkle proof siblings for the script hash leaf.
@@ -41,6 +49,7 @@ interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
         bytes32[] calldata commands,
         bytes[] calldata state,
         uint128 stateBitmap,
+        uint8 fixedSlots,
         bytes32[] calldata callbackHashes,
         address[] calldata callbackCallers,
         bytes32[] calldata proof
@@ -52,5 +61,11 @@ interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
     /// @param commands     Weiroll command bytes for the callback script.
     /// @param state        Weiroll state array for the callback script.
     /// @param stateBitmap  State bitmap for the callback script.
-    function executeCallback(bytes32[] calldata commands, bytes[] calldata state, uint128 stateBitmap) external;
+    /// @param fixedSlots   Number of leading state slots that must not be modified during execution.
+    function executeCallback(
+        bytes32[] calldata commands,
+        bytes[] calldata state,
+        uint128 stateBitmap,
+        uint8 fixedSlots
+    ) external;
 }

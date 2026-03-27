@@ -145,7 +145,7 @@ abstract contract ExecutorTestBase is Test {
         uint128 stateBitmap,
         bytes32[] memory callbackHashes
     ) internal pure returns (bytes32) {
-        return _computeScriptHash(commands, state, stateBitmap, callbackHashes, new address[](0));
+        return _computeScriptHash(commands, state, stateBitmap, 0, callbackHashes, new address[](0));
     }
 
     function _computeScriptHash(
@@ -155,11 +155,23 @@ abstract contract ExecutorTestBase is Test {
         bytes32[] memory callbackHashes,
         address[] memory callbackCallers
     ) internal pure returns (bytes32) {
+        return _computeScriptHash(commands, state, stateBitmap, 0, callbackHashes, callbackCallers);
+    }
+
+    function _computeScriptHash(
+        bytes32[] memory commands,
+        bytes[] memory state,
+        uint128 stateBitmap,
+        uint8 fixedSlots,
+        bytes32[] memory callbackHashes,
+        address[] memory callbackCallers
+    ) internal pure returns (bytes32) {
         return keccak256(
             abi.encodePacked(
                 keccak256(abi.encodePacked(commands)),
                 _hashFixedState(state, stateBitmap),
                 stateBitmap,
+                fixedSlots,
                 state.length,
                 keccak256(abi.encodePacked(callbackHashes)),
                 keccak256(abi.encodePacked(callbackCallers))
