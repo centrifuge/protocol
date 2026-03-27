@@ -147,7 +147,7 @@ contract ExecutorExecuteTests is ExecutorTest {
 
         vm.expectRevert(IExecutor.NotAStrategist.selector);
         vm.prank(unauthorized);
-        executor.execute(commands, state, 0, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, 0, NO_CALLBACKS, new bytes32[](0));
     }
 
     function testSingleCallAllFixed() public {
@@ -166,7 +166,7 @@ contract ExecutorExecuteTests is ExecutorTest {
         emit IExecutor.ExecuteScript(strategist, scriptHash);
 
         vm.prank(strategist);
-        executor.execute(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
 
         assertEq(target.lastValue(), 42);
     }
@@ -188,7 +188,7 @@ contract ExecutorExecuteTests is ExecutorTest {
         _setPolicy(strategist, scriptHash);
 
         vm.prank(strategist);
-        executor.execute(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
 
         assertEq(target.lastValue(), 100);
     }
@@ -209,7 +209,7 @@ contract ExecutorExecuteTests is ExecutorTest {
         _setPolicy(strategist, scriptHash);
 
         vm.prank(strategist);
-        executor.execute(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
 
         assertEq(target.lastValue(), 30);
     }
@@ -229,7 +229,7 @@ contract ExecutorExecuteTests is ExecutorTest {
         execState[0] = abi.encode(uint256(999));
 
         vm.prank(strategist);
-        executor.execute(commands, execState, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, execState, bitmap, NO_CALLBACKS, new bytes32[](0));
 
         assertEq(target.lastValue(), 999);
     }
@@ -250,7 +250,7 @@ contract ExecutorExecuteTests is ExecutorTest {
 
         vm.expectRevert(IExecutor.InvalidProof.selector);
         vm.prank(strategist);
-        executor.execute(commands, tamperedState, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, tamperedState, bitmap, NO_CALLBACKS, new bytes32[](0));
     }
 
     function testMerkleProofWithMultipleLeaves() public {
@@ -275,13 +275,13 @@ contract ExecutorExecuteTests is ExecutorTest {
         proof[0] = leafB;
 
         vm.prank(strategist);
-        executor.execute(commandsA, stateA, bitmapA, 0, NO_CALLBACKS, NO_CALLERS, proof);
+        executor.execute(commandsA, stateA, bitmapA, NO_CALLBACKS, proof);
         assertEq(target.lastValue(), 42);
 
         proof[0] = leafA;
 
         vm.prank(strategist);
-        executor.execute(commandsB, stateB, bitmapB, 0, NO_CALLBACKS, NO_CALLERS, proof);
+        executor.execute(commandsB, stateB, bitmapB, NO_CALLBACKS, proof);
         assertEq(target.lastValue(), 99);
     }
 
@@ -293,7 +293,7 @@ contract ExecutorExecuteTests is ExecutorTest {
 
         vm.expectRevert(IExecutor.StateLengthOverflow.selector);
         vm.prank(strategist);
-        executor.execute(commands, state, 0, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, 0, NO_CALLBACKS, new bytes32[](0));
     }
 
     function testWeirollRevertPropagation() public {
@@ -310,7 +310,7 @@ contract ExecutorExecuteTests is ExecutorTest {
 
         vm.expectRevert(); // VM.ExecutionFailed (not importable)
         vm.prank(strategist);
-        executor.execute(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
     }
 
     function testStateLengthExactly128() public {
@@ -324,7 +324,7 @@ contract ExecutorExecuteTests is ExecutorTest {
         _setPolicy(strategist, scriptHash);
 
         vm.prank(strategist);
-        executor.execute(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
     }
 
     function testInvalidProofReverts() public {
@@ -340,7 +340,7 @@ contract ExecutorExecuteTests is ExecutorTest {
 
         vm.expectRevert(IExecutor.InvalidProof.selector);
         vm.prank(strategist);
-        executor.execute(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
     }
 
     function testValueCall() public {
@@ -359,7 +359,7 @@ contract ExecutorExecuteTests is ExecutorTest {
         _setPolicy(strategist, scriptHash);
 
         vm.prank(strategist);
-        executor.execute(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
 
         assertEq(target.lastValue(), 42);
         assertEq(address(target).balance, 1 ether);
@@ -387,7 +387,7 @@ contract ExecutorExecuteTests is ExecutorTest {
 
         vm.expectRevert(); // NotAuthorized (wrapped by VM.ExecutionFailed)
         vm.prank(strategist);
-        executor.execute(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
     }
 
     function testMixedFixedAndVariableState() public {
@@ -408,7 +408,7 @@ contract ExecutorExecuteTests is ExecutorTest {
         execState[1] = abi.encode(uint256(999));
 
         vm.prank(strategist);
-        executor.execute(commands, execState, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, execState, bitmap, NO_CALLBACKS, new bytes32[](0));
     }
 }
 
@@ -421,7 +421,7 @@ contract CallbackBridge {
         bytes[] calldata state,
         uint128 stateBitmap
     ) external {
-        executor.executeCallback(commands, state, stateBitmap, 0);
+        executor.executeCallback(commands, state, stateBitmap);
     }
 }
 
@@ -454,12 +454,12 @@ contract NestedCallbackBridge {
         bytes[] calldata state_,
         uint128 bitmap_
     ) external {
-        executor_.executeCallback(commands_, state_, bitmap_, 0);
+        executor_.executeCallback(commands_, state_, bitmap_);
     }
 
     /// @dev Called by the inner weiroll script to trigger a second (nested) callback.
     function reenter() external {
-        executor.executeCallback(innerCommands, innerState, innerBitmap, 0);
+        executor.executeCallback(innerCommands, innerState, innerBitmap);
     }
 }
 
@@ -511,7 +511,7 @@ contract ExecutorCallbackTests is ExecutorTest {
 
         vm.expectRevert(); // CallbackExhausted (wrapped by VM.ExecutionFailed)
         vm.prank(strategist);
-        executor.execute(outerCommands, outerState, outerBitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(outerCommands, outerState, outerBitmap, NO_CALLBACKS, new bytes32[](0));
     }
 
     function testCallbackSuccess() public {
@@ -541,12 +541,12 @@ contract ExecutorCallbackTests is ExecutorTest {
 
         // Outer script hash binds to inner via callbackHashes + callbackCallers
         bytes32 outerHash =
-            _computeScriptHash(outerCommands, outerState, outerBitmap, 0, _callbacks(innerHash), _callers(address(bridge)));
+            _computeScriptHash(outerCommands, outerState, outerBitmap, _callback(innerHash, address(bridge)));
         _setPolicy(strategist, outerHash);
 
         vm.prank(strategist);
         executor.execute(
-            outerCommands, outerState, outerBitmap, 0, _callbacks(innerHash), _callers(address(bridge)), new bytes32[](0)
+            outerCommands, outerState, outerBitmap, _callback(innerHash, address(bridge)), new bytes32[](0)
         );
 
         assertEq(target.lastValue(), 77);
@@ -581,32 +581,28 @@ contract ExecutorCallbackTests is ExecutorTest {
         uint128 outerBitmap = 0;
 
         bytes32 outerHash =
-            _computeScriptHash(outerCommands, outerState, outerBitmap, 0, _callbacks(innerHash), _callers(wrongCaller));
+            _computeScriptHash(outerCommands, outerState, outerBitmap, _callback(innerHash, wrongCaller));
         _setPolicy(strategist, outerHash);
 
         // bridge calls executeCallback but msg.sender (bridge) != expectedCaller (wrongCaller)
         vm.expectRevert(); // InvalidCallbackCaller (wrapped by VM.ExecutionFailed)
         vm.prank(strategist);
         executor.execute(
-            outerCommands, outerState, outerBitmap, 0, _callbacks(innerHash), _callers(wrongCaller), new bytes32[](0)
+            outerCommands, outerState, outerBitmap, _callback(innerHash, wrongCaller), new bytes32[](0)
         );
     }
 
-    function testCallbackLengthMismatchReverts() public {
+    function testCallbackNoCallbacksSucceeds() public {
         bytes32[] memory commands = new bytes32[](0);
         bytes[] memory state = new bytes[](0);
         uint128 bitmap = 0;
 
-        // 1 callback hash but 0 callers → mismatch
-        bytes32[] memory cbHashes = _callbacks(keccak256("inner"));
-
-        // Compute hash with matching arrays for the policy
-        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, cbHashes, _callers(address(bridge)));
+        // No callbacks — empty Callback[] passes trivially
+        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, NO_CALLBACKS);
         _setPolicy(strategist, scriptHash);
 
-        vm.expectRevert(IExecutor.CallbackLengthMismatch.selector);
         vm.prank(strategist);
-        executor.execute(commands, state, bitmap, 0, cbHashes, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
     }
 
     function testCallbackStateLengthOverflow() public {
@@ -630,13 +626,13 @@ contract ExecutorCallbackTests is ExecutorTest {
         );
         uint128 outerBitmap = 0;
         bytes32 outerHash =
-            _computeScriptHash(outerCommands, outerState, outerBitmap, 0, _callbacks(innerHash), _callers(address(bridge)));
+            _computeScriptHash(outerCommands, outerState, outerBitmap, _callback(innerHash, address(bridge)));
         _setPolicy(strategist, outerHash);
 
         vm.expectRevert(); // StateLengthOverflow (wrapped by VM.ExecutionFailed)
         vm.prank(strategist);
         executor.execute(
-            outerCommands, outerState, outerBitmap, 0, _callbacks(innerHash), _callers(address(bridge)), new bytes32[](0)
+            outerCommands, outerState, outerBitmap, _callback(innerHash, address(bridge)), new bytes32[](0)
         );
     }
 
@@ -650,7 +646,7 @@ contract ExecutorCallbackTests is ExecutorTest {
         _setPolicy(strategist, scriptHash);
 
         vm.prank(strategist);
-        executor.execute(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
 
         // After execute() completes, callback should revert
         vm.expectRevert(IExecutor.NotInExecution.selector);
@@ -697,14 +693,13 @@ contract ExecutorCallbackTests is ExecutorTest {
             NestedCallbackBridge.triggerCallback.selector, address(executor), inner1Commands, inner1State, inner1Bitmap
         );
         uint128 outerBitmap = 0;
-        bytes32[] memory cbHashes = _callbacks(inner1Hash);
-        address[] memory cbCallers = _callers(address(nestedBridge));
-        bytes32 outerHash = _computeScriptHash(outerCommands, outerState, outerBitmap, cbHashes, cbCallers);
+        IExecutor.Callback[] memory callbacks = _callback(inner1Hash, address(nestedBridge));
+        bytes32 outerHash = _computeScriptHash(outerCommands, outerState, outerBitmap, callbacks);
         _setPolicy(strategist, outerHash);
 
         vm.expectRevert(); // CallbackExhausted (wrapped by VM.ExecutionFailed)
         vm.prank(strategist);
-        executor.execute(outerCommands, outerState, outerBitmap, 0, cbHashes, cbCallers, new bytes32[](0));
+        executor.execute(outerCommands, outerState, outerBitmap, callbacks, new bytes32[](0));
     }
 }
 
@@ -720,8 +715,8 @@ contract SequentialCallbackBridge {
         bytes[] calldata state2,
         uint128 bitmap2
     ) external {
-        executor_.executeCallback(cmds1, state1, bitmap1, 0);
-        executor_.executeCallback(cmds2, state2, bitmap2, 0);
+        executor_.executeCallback(cmds1, state1, bitmap1);
+        executor_.executeCallback(cmds2, state2, bitmap2);
     }
 }
 
@@ -777,13 +772,13 @@ contract ExecutorSequentialCallbackTests is ExecutorTest {
         );
         uint128 outerBitmap = 0;
 
-        bytes32[] memory cbHashes = _callbacks(inner1Hash, inner2Hash);
-        address[] memory cbCallers = _callers(address(seqBridge), address(seqBridge));
-        bytes32 outerHash = _computeScriptHash(outerCmds, outerState, outerBitmap, cbHashes, cbCallers);
+        IExecutor.Callback[] memory callbacks =
+            _callbacks(inner1Hash, address(seqBridge), inner2Hash, address(seqBridge));
+        bytes32 outerHash = _computeScriptHash(outerCmds, outerState, outerBitmap, callbacks);
         _setPolicy(strategist, outerHash);
 
         vm.prank(strategist);
-        executor.execute(outerCmds, outerState, outerBitmap, 0, cbHashes, cbCallers, new bytes32[](0));
+        executor.execute(outerCmds, outerState, outerBitmap, callbacks, new bytes32[](0));
 
         // Second callback ran last → setValue(22)
         assertEq(target.lastValue(), 22);
@@ -816,14 +811,14 @@ contract ExecutorSequentialCallbackTests is ExecutorTest {
         );
         uint128 outerBitmap = 0;
 
-        bytes32[] memory cbHashes = _callbacks(innerHash, unusedHash);
-        address[] memory cbCallers = _callers(address(bridge), address(bridge));
-        bytes32 outerHash = _computeScriptHash(outerCmds, outerState, outerBitmap, cbHashes, cbCallers);
+        IExecutor.Callback[] memory callbacks =
+            _callbacks(innerHash, address(bridge), unusedHash, address(bridge));
+        bytes32 outerHash = _computeScriptHash(outerCmds, outerState, outerBitmap, callbacks);
         _setPolicy(strategist, outerHash);
 
         vm.expectRevert(IExecutor.UnconsumedCallbacks.selector);
         vm.prank(strategist);
-        executor.execute(outerCmds, outerState, outerBitmap, 0, cbHashes, cbCallers, new bytes32[](0));
+        executor.execute(outerCmds, outerState, outerBitmap, callbacks, new bytes32[](0));
     }
 }
 
@@ -850,11 +845,11 @@ contract ExecutorSelfCallTests is ExecutorTest {
         );
 
         bytes[] memory outerState = new bytes[](1);
-        outerState[0] = abi.encodeWithSelector(IExecutor.executeCallback.selector, innerCmds, innerState, innerBitmap, uint8(0));
+        outerState[0] = abi.encodeWithSelector(IExecutor.executeCallback.selector, innerCmds, innerState, innerBitmap);
         uint128 outerBitmap = 0;
 
         bytes32 outerHash = _computeScriptHash(
-            outerCmds, outerState, outerBitmap, 0, _callbacks(innerHash), _callers(address(executor))
+            outerCmds, outerState, outerBitmap, _callback(innerHash, address(executor))
         );
         _setPolicy(strategist, outerHash);
 
@@ -862,7 +857,7 @@ contract ExecutorSelfCallTests is ExecutorTest {
         vm.expectRevert();
         vm.prank(strategist);
         executor.execute(
-            outerCmds, outerState, outerBitmap, 0, _callbacks(innerHash), _callers(address(executor)), new bytes32[](0)
+            outerCmds, outerState, outerBitmap, _callback(innerHash, address(executor)), new bytes32[](0)
         );
     }
 }
@@ -944,68 +939,49 @@ contract ExecutorScriptHashFuzzTests is ExecutorTest {
 // ─── Fixed Slots Tests ──────────────────────────────────────────────────────
 
 contract ExecutorFixedSlotsTests is ExecutorTest {
-    function testFixedSlotUnmodifiedPasses() public {
-        // Slot 0 is fixed (fixedSlots=1), script reads from slot 1 and writes nowhere → should pass
+    function testBitmapSlotUnmodifiedPasses() public {
+        // Slot 0 in bitmap: protected. Script reads from slot 1 only → passes.
         bytes32[] memory commands = new bytes32[](1);
         commands[0] = _callCommand(WeirollTarget.setValue.selector, 1, address(target));
         bytes[] memory state = new bytes[](2);
-        state[0] = abi.encode(uint256(0xdead)); // fixed — not written
+        state[0] = abi.encode(uint256(0xdead)); // bitmap-protected, not written
         state[1] = abi.encode(uint256(42));
-        uint128 bitmap = 3; // both fixed for hash purposes
-        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, 1, NO_CALLBACKS, NO_CALLERS);
+        uint128 bitmap = 3; // both slots in bitmap
+        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap);
         _setPolicy(strategist, scriptHash);
 
         vm.prank(strategist);
-        executor.execute(commands, state, bitmap, 1, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
         assertEq(target.lastValue(), 42);
     }
 
-    function testFixedSlotModifiedReverts() public {
-        // Script writes output back to slot 0, which is fixed → FixedStateModified
-        bytes32[] memory commands = new bytes32[](1);
-        // getValue() returns lastValue and writes it to state[0]
-        commands[0] = _staticCallNoInputs(WeirollTarget.getValue.selector, 0, address(target));
-        bytes[] memory state = new bytes[](1);
-        state[0] = abi.encode(uint256(0xdead));
-        uint128 bitmap = 1;
-        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, 1, NO_CALLBACKS, NO_CALLERS);
-        _setPolicy(strategist, scriptHash);
-
-        vm.expectRevert(); // FixedStateModified (wrapped by VM.ExecutionFailed or bubbled up)
-        vm.prank(strategist);
-        executor.execute(commands, state, bitmap, 1, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
-    }
-
-    function testZeroFixedSlotsAlwaysPasses() public {
-        // fixedSlots=0: no slots checked, any write is fine
+    function testBitmapSlotModifiedReverts() public {
+        // Script writes to slot 0 which has its bitmap bit set → FixedStateModified
         bytes32[] memory commands = new bytes32[](1);
         commands[0] = _staticCallNoInputs(WeirollTarget.getValue.selector, 0, address(target));
         bytes[] memory state = new bytes[](1);
         state[0] = abi.encode(uint256(0xdead));
-        uint128 bitmap = 1;
-        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS);
+        uint128 bitmap = 1; // slot 0 is bitmap-protected
+        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap);
         _setPolicy(strategist, scriptHash);
 
+        vm.expectRevert(IExecutor.FixedStateModified.selector);
         vm.prank(strategist);
-        executor.execute(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
     }
 
-    function testFixedSlotsMustBeIncludedInScriptHash() public {
-        // A script approved with fixedSlots=0 must not be executable with fixedSlots=1
+    function testZeroBitmapSkipsWriteProtection() public {
+        // bitmap=0: no bits set, any write is allowed
         bytes32[] memory commands = new bytes32[](1);
-        commands[0] = _callCommand(WeirollTarget.setValue.selector, 0, address(target));
+        commands[0] = _staticCallNoInputs(WeirollTarget.getValue.selector, 0, address(target));
         bytes[] memory state = new bytes[](1);
-        state[0] = abi.encode(uint256(42));
-        uint128 bitmap = 1;
-
-        // Approve with fixedSlots=0
-        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS);
+        state[0] = abi.encode(uint256(0xdead));
+        uint128 bitmap = 0;
+        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap);
         _setPolicy(strategist, scriptHash);
 
-        // Try to execute with fixedSlots=1 → proof mismatch
-        vm.expectRevert(IExecutor.InvalidProof.selector);
         vm.prank(strategist);
-        executor.execute(commands, state, bitmap, 1, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
     }
 }
 
@@ -1027,7 +1003,7 @@ contract ExecutorEthForwardingTests is ExecutorTest {
 
         vm.deal(strategist, 1 ether);
         vm.prank(strategist);
-        executor.execute{value: 1 ether}(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute{value: 1 ether}(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
 
         assertEq(target.lastValue(), 42);
         assertEq(address(target).balance, 1 ether);
@@ -1049,7 +1025,7 @@ contract ExecutorEthForwardingTests is ExecutorTest {
 
         vm.deal(strategist, 2 ether);
         vm.prank(strategist);
-        executor.execute{value: 2 ether}(commands, state, bitmap, 0, NO_CALLBACKS, NO_CALLERS, new bytes32[](0));
+        executor.execute{value: 2 ether}(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
 
         assertEq(address(target).balance, 0.5 ether);
         assertEq(address(executor).balance, 1.5 ether);
@@ -1071,14 +1047,14 @@ contract ReentrantStrategist {
     function trigger(bytes32[] calldata commands, bytes[] calldata state, uint128 bitmap, bytes32[] calldata proof)
         external
     {
-        executor.execute(commands, state, bitmap, 0, new bytes32[](0), new address[](0), proof);
+        executor.execute(commands, state, bitmap, new IExecutor.Callback[](0), proof);
     }
 
     /// @dev Called by weiroll script — attempts to reenter execute() with a second leaf.
     function reenter() external {
         (bytes32[] memory commands, bytes[] memory state, uint128 bitmap, bytes32[] memory proof) =
             abi.decode(reentryData, (bytes32[], bytes[], uint128, bytes32[]));
-        executor.execute(commands, state, bitmap, 0, new bytes32[](0), new address[](0), proof);
+        executor.execute(commands, state, bitmap, new IExecutor.Callback[](0), proof);
     }
 }
 

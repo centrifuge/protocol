@@ -76,31 +76,27 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         bytes32[] calldata commands,
         bytes[] calldata state,
         uint128 stateBitmap,
-        uint8 fixedSlots,
-        bytes32[] calldata callbackHashes,
-        address[] calldata callbackCallers,
+        IExecutor.Callback[] calldata callbacks,
         bytes32[] calldata proof
     ) external payable {
         bytes32 root = policy[msgSender()];
         require(root != bytes32(0), NotAStrategist());
         require(state.length <= 128, StateLengthOverflow());
-        require(fixedSlots <= state.length, StateLengthOverflow());
         require(activeStrategist == address(0), AlreadyExecuting());
-        require(callbackHashes.length == callbackCallers.length, CallbackLengthMismatch());
 
-        bytes32 scriptHash = computeScriptHash(commands, state, stateBitmap, fixedSlots, callbackHashes, callbackCallers);
+        bytes32 scriptHash = computeScriptHash(commands, state, stateBitmap, callbacks);
         require(MerkleProofLib.verify(proof, root, scriptHash), InvalidProof());
 
         activeStrategist = msgSender();
-        for (uint256 i; i < callbackHashes.length; i++) {
-            TransientArrayLib.push(CALLBACK_HASHES_SLOT, callbackHashes[i]);
-            TransientArrayLib.push(CALLBACK_CALLERS_SLOT, callbackCallers[i]);
+        for (uint256 i; i < callbacks.length; i++) {
+            TransientArrayLib.push(CALLBACK_HASHES_SLOT, callbacks[i].hash);
+            TransientArrayLib.push(CALLBACK_CALLERS_SLOT, callbacks[i].caller);
         }
 
         bytes[] memory mState = _copyState(state);
-        bytes32 pre = _hashFixedSlots(mState, fixedSlots);
+        bytes32 pre = _hashBitmapSlots(mState, stateBitmap);
         _execute(commands, mState);
-        require(_hashFixedSlots(mState, fixedSlots) == pre, FixedStateModified());
+        require(_hashBitmapSlots(mState, stateBitmap) == pre, FixedStateModified());
         require(callbackIdx == TransientArrayLib.length(CALLBACK_HASHES_SLOT), UnconsumedCallbacks());
 
         callbackIdx = 0;
@@ -112,32 +108,24 @@ contract Executor is BatchedMulticall, VM, IExecutor {
     }
 
     /// @inheritdoc IExecutor
-    function executeCallback(
-        bytes32[] calldata commands,
-        bytes[] calldata state,
-        uint128 stateBitmap,
-        uint8 fixedSlots
-    ) external {
+    function executeCallback(bytes32[] calldata commands, bytes[] calldata state, uint128 stateBitmap) external {
         require(state.length <= 128, StateLengthOverflow());
-        require(fixedSlots <= state.length, StateLengthOverflow());
         require(msg.sender != address(this), SelfCallForbidden());
         require(activeStrategist != address(0), NotInExecution());
 
         uint256 idx = callbackIdx;
         require(idx < TransientArrayLib.length(CALLBACK_HASHES_SLOT), CallbackExhausted());
-
         require(msg.sender == TransientArrayLib.atAddress(CALLBACK_CALLERS_SLOT, idx), InvalidCallbackCaller());
 
         bytes32 expected = TransientArrayLib.at(CALLBACK_HASHES_SLOT, idx);
-        bytes32 scriptHash =
-            computeScriptHash(commands, state, stateBitmap, fixedSlots, new bytes32[](0), new address[](0));
+        bytes32 scriptHash = computeScriptHash(commands, state, stateBitmap, new IExecutor.Callback[](0));
         require(scriptHash == expected, InvalidCallback());
 
         callbackIdx = idx + 1;
         bytes[] memory mState = _copyState(state);
-        bytes32 pre = _hashFixedSlots(mState, fixedSlots);
+        bytes32 pre = _hashBitmapSlots(mState, stateBitmap);
         _execute(commands, mState);
-        require(_hashFixedSlots(mState, fixedSlots) == pre, FixedStateModified());
+        require(_hashBitmapSlots(mState, stateBitmap) == pre, FixedStateModified());
 
         emit ExecuteCallback(activeStrategist, scriptHash);
     }
@@ -150,9 +138,7 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         bytes32[] calldata commands,
         bytes[] calldata state,
         uint128 stateBitmap,
-        uint8 fixedSlots,
-        bytes32[] memory callbackHashes,
-        address[] memory callbackCallers
+        IExecutor.Callback[] memory callbacks
     ) public pure returns (bytes32) {
         uint256 count;
         for (uint256 i; i < state.length; i++) {
@@ -172,10 +158,8 @@ contract Executor is BatchedMulticall, VM, IExecutor {
                 keccak256(abi.encodePacked(commands)),
                 keccak256(abi.encodePacked(hashes)),
                 stateBitmap,
-                fixedSlots,
                 state.length,
-                keccak256(abi.encodePacked(callbackHashes)),
-                keccak256(abi.encodePacked(callbackCallers))
+                keccak256(abi.encode(callbacks))
             )
         );
     }
@@ -188,12 +172,13 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         }
     }
 
-    /// @dev Hash the first `n` slots of the in-memory state array.
-    function _hashFixedSlots(bytes[] memory state, uint8 n) internal pure returns (bytes32) {
-        if (n == 0) return bytes32(0);
+    /// @dev Hash all state slots whose bit is set in `bitmap`. Returns keccak256("") when bitmap is zero.
+    function _hashBitmapSlots(bytes[] memory state, uint128 bitmap) internal pure returns (bytes32) {
         bytes memory packed;
-        for (uint256 i; i < n; i++) {
-            packed = bytes.concat(packed, keccak256(state[i]));
+        for (uint256 i; i < state.length; i++) {
+            if (bitmap & (1 << i) != 0) {
+                packed = bytes.concat(packed, keccak256(state[i]));
+            }
         }
         return keccak256(packed);
     }

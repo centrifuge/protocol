@@ -52,29 +52,21 @@ abstract contract ExecutorTestBase is Test {
     uint256 constant FLAG_CT_STATICCALL = 0x02;
     uint256 constant FLAG_CT_VALUECALL = 0x03;
 
-    bytes32[] internal NO_CALLBACKS = new bytes32[](0);
-    address[] internal NO_CALLERS = new address[](0);
+    IExecutor.Callback[] internal NO_CALLBACKS;
 
-    function _callbacks(bytes32 h) internal pure returns (bytes32[] memory arr) {
-        arr = new bytes32[](1);
-        arr[0] = h;
+    function _callback(bytes32 h, address caller) internal pure returns (IExecutor.Callback[] memory arr) {
+        arr = new IExecutor.Callback[](1);
+        arr[0] = IExecutor.Callback(h, caller);
     }
 
-    function _callbacks(bytes32 h0, bytes32 h1) internal pure returns (bytes32[] memory arr) {
-        arr = new bytes32[](2);
-        arr[0] = h0;
-        arr[1] = h1;
-    }
-
-    function _callers(address c) internal pure returns (address[] memory arr) {
-        arr = new address[](1);
-        arr[0] = c;
-    }
-
-    function _callers(address c0, address c1) internal pure returns (address[] memory arr) {
-        arr = new address[](2);
-        arr[0] = c0;
-        arr[1] = c1;
+    function _callbacks(bytes32 h0, address c0, bytes32 h1, address c1)
+        internal
+        pure
+        returns (IExecutor.Callback[] memory arr)
+    {
+        arr = new IExecutor.Callback[](2);
+        arr[0] = IExecutor.Callback(h0, c0);
+        arr[1] = IExecutor.Callback(h1, c1);
     }
 
     // ─── Command builder helpers ──────────────────────────────────────────
@@ -143,40 +135,25 @@ abstract contract ExecutorTestBase is Test {
         bytes32[] memory commands,
         bytes[] memory state,
         uint128 stateBitmap,
-        bytes32[] memory callbackHashes
-    ) internal pure returns (bytes32) {
-        return _computeScriptHash(commands, state, stateBitmap, 0, callbackHashes, new address[](0));
-    }
-
-    function _computeScriptHash(
-        bytes32[] memory commands,
-        bytes[] memory state,
-        uint128 stateBitmap,
-        bytes32[] memory callbackHashes,
-        address[] memory callbackCallers
-    ) internal pure returns (bytes32) {
-        return _computeScriptHash(commands, state, stateBitmap, 0, callbackHashes, callbackCallers);
-    }
-
-    function _computeScriptHash(
-        bytes32[] memory commands,
-        bytes[] memory state,
-        uint128 stateBitmap,
-        uint8 fixedSlots,
-        bytes32[] memory callbackHashes,
-        address[] memory callbackCallers
+        IExecutor.Callback[] memory callbacks
     ) internal pure returns (bytes32) {
         return keccak256(
             abi.encodePacked(
                 keccak256(abi.encodePacked(commands)),
                 _hashFixedState(state, stateBitmap),
                 stateBitmap,
-                fixedSlots,
                 state.length,
-                keccak256(abi.encodePacked(callbackHashes)),
-                keccak256(abi.encodePacked(callbackCallers))
+                keccak256(abi.encode(callbacks))
             )
         );
+    }
+
+    function _computeScriptHash(bytes32[] memory commands, bytes[] memory state, uint128 stateBitmap)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return _computeScriptHash(commands, state, stateBitmap, new IExecutor.Callback[](0));
     }
 
     function _hashFixedState(bytes[] memory state, uint128 stateBitmap) internal pure returns (bytes32) {

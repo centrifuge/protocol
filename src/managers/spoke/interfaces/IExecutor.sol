@@ -6,6 +6,13 @@ import {IBatchedMulticall} from "../../../core/utils/interfaces/IBatchedMultical
 import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUpdate.sol";
 
 interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
+    /// @notice A pre-committed callback: the script hash the outer script expects, and the address
+    ///         that must call executeCallback() to satisfy it.
+    struct Callback {
+        bytes32 hash;
+        address caller;
+    }
+
     event UpdatePolicy(address indexed strategist, bytes32 oldRoot, bytes32 newRoot);
     event ExecuteScript(address indexed strategist, bytes32 scriptHash);
     event ExecuteCallback(address indexed strategist, bytes32 scriptHash);
@@ -16,13 +23,16 @@ interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
     error InvalidCallbackCaller();
     error CallbackExhausted();
     error UnconsumedCallbacks();
-    error CallbackLengthMismatch();
     error SelfCallForbidden();
     error InvalidPoolId();
     error NotAuthorized();
     error StateLengthOverflow();
     error NotInExecution();
     error AlreadyExecuting();
+    /// @notice Revert if a weiroll command wrote to a state slot whose bit is set in stateBitmap.
+    ///         The weiroll VM writes outputs directly by index with no read-only concept. Inspecting
+    ///         every command's output pointer would cost as much as a hash, so we hash the protected
+    ///         slots before and after execution and compare.
     error FixedStateModified();
 
     function poolId() external view returns (PoolId);
@@ -32,40 +42,25 @@ interface IExecutor is IBatchedMulticall, ITrustedContractUpdate {
     function callbackIdx() external view returns (uint256);
 
     /// @notice Execute a weiroll script authorized by a Merkle proof.
-    /// @param commands        Weiroll command bytes (selector + flags + indices + output + target).
-    /// @param state           Weiroll state array — elements with their bitmap bit set are fixed (hashed).
-    /// @param stateBitmap     Bit `i` set means `state[i]` is governance-approved and included in the script hash.
-    /// @param fixedSlots      Number of leading state slots (slots [0, fixedSlots)) that the script must not
-    ///                        overwrite. Enforced via a keccak hash comparison before and after execution.
-    ///                        This is necessary because the weiroll VM writes outputs directly into the state
-    ///                        array by index — there is no mechanism inside the VM to declare a slot as
-    ///                        read-only, and inspecting every command's output pointer at runtime would be
-    ///                        equivalent in cost. The hash approach catches any write to the protected range
-    ///                        with a single pair of keccak operations, regardless of how many commands run.
-    /// @param callbackHashes  Pre-committed script hashes for each callback, consumed in invocation order.
-    /// @param callbackCallers Expected msg.sender for each callback (must match callbackHashes length).
-    /// @param proof           Merkle proof siblings for the script hash leaf.
+    /// @param commands     Weiroll command bytes (selector + flags + indices + output + target).
+    /// @param state        Weiroll state array.
+    /// @param stateBitmap  Bit `i` set means `state[i]` is governance-approved (included in script
+    ///                     hash) and write-protected at runtime (FixedStateModified if overwritten).
+    /// @param callbacks    Pre-committed (hash, caller) pairs consumed by executeCallback in order.
+    /// @param proof        Merkle proof siblings for the script hash leaf.
     function execute(
         bytes32[] calldata commands,
         bytes[] calldata state,
         uint128 stateBitmap,
-        uint8 fixedSlots,
-        bytes32[] calldata callbackHashes,
-        address[] calldata callbackCallers,
+        Callback[] calldata callbacks,
         bytes32[] calldata proof
     ) external payable;
 
     /// @notice Execute a callback script during an active `execute()`. Bound to the outer script
-    ///         via `callbackHash` — no separate Merkle proof needed.
-    /// @dev    No `protected` modifier — guarded by `activeStrategist != 0` and `!inCallback` instead.
+    ///         via a pre-committed hash — no separate Merkle proof needed.
+    /// @dev    Guarded by `activeStrategist != 0` and the pre-committed caller check.
     /// @param commands     Weiroll command bytes for the callback script.
     /// @param state        Weiroll state array for the callback script.
-    /// @param stateBitmap  State bitmap for the callback script.
-    /// @param fixedSlots   Number of leading state slots that must not be modified during execution.
-    function executeCallback(
-        bytes32[] calldata commands,
-        bytes[] calldata state,
-        uint128 stateBitmap,
-        uint8 fixedSlots
-    ) external;
+    /// @param stateBitmap  State bitmap: set bits are included in hash and write-protected.
+    function executeCallback(bytes32[] calldata commands, bytes[] calldata state, uint128 stateBitmap) external;
 }
