@@ -15,6 +15,8 @@ import {IOracleValuation} from "../../../src/valuations/interfaces/IOracleValuat
 
 import "forge-std/Test.sol";
 
+using CastLib for address;
+
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}
 
@@ -373,8 +375,8 @@ contract OracleValuationEdgeCaseTests is OracleValuationTest {
 
         // Enable multiple feeders
         vm.startPrank(poolManager);
-        valuation.updateFeeder(POOL_A, 0, feeder2, true);
-        valuation.updateFeeder(POOL_A, 0, feeder3, true);
+        valuation.updateFeeder(POOL_A, 0, feeder2.toBytes32(), true);
+        valuation.updateFeeder(POOL_A, 0, feeder3.toBytes32(), true);
         vm.stopPrank();
 
         // All feeders should be able to set prices
@@ -412,7 +414,7 @@ contract OracleValuationUntrustedCallTests is OracleValuationTest {
         super.setUp();
         // Register remote feeder
         vm.prank(poolManager);
-        valuation.updateFeeder(POOL_A, REMOTE_CENTRIFUGE_ID, remoteFeeder, true);
+        valuation.updateFeeder(POOL_A, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32(), true);
     }
 
     function testUntrustedCallSuccess() public {

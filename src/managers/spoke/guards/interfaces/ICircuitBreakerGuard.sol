@@ -34,6 +34,6 @@ interface ICircuitBreakerGuard {
     /// @param window        Window duration in seconds.
     function delta(bytes32 key, uint256 currentValue, uint256 newValue, uint256 maxDeltaBps, uint256 window) external;
 
-    function cumulative(address caller, bytes32 key) external view returns (uint128 total, uint64 windowStart);
-    function refs(address caller, bytes32 key) external view returns (uint128 anchor, uint64 windowStart);
+    function cumulative(address caller, bytes32 key, uint256 window) external view returns (uint128 total, uint64 windowStart);
+    function refs(address caller, bytes32 key, uint256 window) external view returns (uint128 anchor, uint64 windowStart);
 }

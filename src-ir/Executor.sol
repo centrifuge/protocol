@@ -86,7 +86,7 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         require(activeStrategist == address(0), AlreadyExecuting());
         require(callbackHashes.length == callbackCallers.length, CallbackLengthMismatch());
 
-        bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, callbackHashes, callbackCallers);
+        bytes32 scriptHash = computeScriptHash(commands, state, stateBitmap, callbackHashes, callbackCallers);
         require(MerkleProofLib.verify(proof, root, scriptHash), InvalidProof());
 
         activeStrategist = msgSender();
@@ -118,7 +118,7 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         require(msg.sender == TransientArrayLib.atAddress(CALLBACK_CALLERS_SLOT, idx), InvalidCallbackCaller());
 
         bytes32 expected = TransientArrayLib.at(CALLBACK_HASHES_SLOT, idx);
-        bytes32 scriptHash = _computeScriptHash(commands, state, stateBitmap, _emptyCallbackHashes(), _emptyCallers());
+        bytes32 scriptHash = computeScriptHash(commands, state, stateBitmap, _emptyCallbackHashes(), _emptyCallers());
         require(scriptHash == expected, InvalidCallback());
 
         callbackIdx = idx + 1;
@@ -128,24 +128,16 @@ contract Executor is BatchedMulticall, VM, IExecutor {
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // Internal helpers
+    // Helpers
     // ──────────────────────────────────────────────────────────────────────────
 
-    /// @dev Copy calldata state to memory, since weiroll mutates state in-place.
-    function _copyState(bytes[] calldata state) internal pure returns (bytes[] memory mState) {
-        mState = new bytes[](state.length);
-        for (uint256 i; i < state.length; i++) {
-            mState[i] = state[i];
-        }
-    }
-
-    function _computeScriptHash(
+    function computeScriptHash(
         bytes32[] calldata commands,
         bytes[] calldata state,
         uint128 stateBitmap,
         bytes32[] memory callbackHashes,
         address[] memory callbackCallers
-    ) internal pure returns (bytes32) {
+    ) public pure returns (bytes32) {
         uint256 count;
         for (uint256 i; i < state.length; i++) {
             if (stateBitmap & (1 << i) != 0) count++;
@@ -169,6 +161,14 @@ contract Executor is BatchedMulticall, VM, IExecutor {
                 keccak256(abi.encodePacked(callbackCallers))
             )
         );
+    }
+
+    /// @dev Copy calldata state to memory, since weiroll mutates state in-place.
+    function _copyState(bytes[] calldata state) internal pure returns (bytes[] memory mState) {
+        mState = new bytes[](state.length);
+        for (uint256 i; i < state.length; i++) {
+            mState[i] = state[i];
+        }
     }
 
     function _emptyCallbackHashes() internal pure returns (bytes32[] memory) {
