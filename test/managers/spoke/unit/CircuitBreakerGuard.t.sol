@@ -39,7 +39,7 @@ contract CircuitBreakerTallyTest is Test {
 
     function testTallyExceedsLimitReverts() public {
         guard.tally(key, 600_000e6, MAX, WINDOW);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(ICircuitBreakerGuard.ExceedsCumulativeLimit.selector, key, 500_000e6, MAX, WINDOW));
         guard.tally(key, 500_000e6, MAX, WINDOW);
     }
 
@@ -54,7 +54,7 @@ contract CircuitBreakerTallyTest is Test {
     function testTallyDoesNotResetBeforeWindowExpiry() public {
         guard.tally(key, 600_000e6, MAX, WINDOW);
         vm.warp(block.timestamp + WINDOW - 1);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(ICircuitBreakerGuard.ExceedsCumulativeLimit.selector, key, 500_000e6, MAX, WINDOW));
         guard.tally(key, 500_000e6, MAX, WINDOW);
     }
 
@@ -82,7 +82,7 @@ contract CircuitBreakerTallyTest is Test {
         uint256 max = type(uint128).max;
         guard.tally(key, a, max, WINDOW);
         if (uint256(a) + uint256(b) > max) {
-            vm.expectRevert();
+            vm.expectRevert(abi.encodeWithSelector(ICircuitBreakerGuard.ExceedsCumulativeLimit.selector, key, b, max, WINDOW));
             guard.tally(key, b, max, WINDOW);
         } else {
             guard.tally(key, b, max, WINDOW);
@@ -96,7 +96,7 @@ contract CircuitBreakerTallyTest is Test {
         guard.tally(key, MAX, MAX, 0);
 
         // Same block: 0 seconds elapsed, not > 0, so amounts accumulate and revert
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(ICircuitBreakerGuard.ExceedsCumulativeLimit.selector, key, 1, MAX, 0));
         guard.tally(key, 1, MAX, 0);
 
         // Next block: 1 second elapsed > 0, window resets
@@ -149,7 +149,7 @@ contract CircuitBreakerDeltaTest is Test {
 
     function testExceedsBoundaryReverts() public {
         // 5% of 1000 = 50, so 1051 should fail
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(ICircuitBreakerGuard.ExceedsDeltaLimit.selector, key, 1000, 1051, MAX_BPS, WINDOW));
         guard.delta(key, 1000, 1051, MAX_BPS, WINDOW);
     }
 
@@ -158,7 +158,7 @@ contract CircuitBreakerDeltaTest is Test {
     }
 
     function testNegativeDeviationExceedsReverts() public {
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(ICircuitBreakerGuard.ExceedsDeltaLimit.selector, key, 1000, 949, MAX_BPS, WINDOW));
         guard.delta(key, 1000, 949, MAX_BPS, WINDOW);
     }
 
@@ -179,7 +179,7 @@ contract CircuitBreakerDeltaTest is Test {
         vm.warp(block.timestamp + WINDOW + 1);
 
         // New window anchored at 2000 — 2101 exceeds 5%
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(ICircuitBreakerGuard.ExceedsDeltaLimit.selector, key, 2000, 2101, MAX_BPS, WINDOW));
         guard.delta(key, 2000, 2101, MAX_BPS, WINDOW);
     }
 
@@ -189,7 +189,7 @@ contract CircuitBreakerDeltaTest is Test {
         guard.delta(key, 9999, 1030, MAX_BPS, WINDOW);
         guard.delta(key, 9999, 1050, MAX_BPS, WINDOW); // at boundary
 
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(ICircuitBreakerGuard.ExceedsDeltaLimit.selector, key, 9999, 1051, MAX_BPS, WINDOW));
         guard.delta(key, 9999, 1051, MAX_BPS, WINDOW); // beyond boundary
     }
 
@@ -228,7 +228,7 @@ contract CircuitBreakerDeltaTest is Test {
         // maxDeltaBps=0: d*10_000 <= 0 only when d == 0, i.e. newValue == anchor
         guard.delta(key, 1000, 1000, 0, WINDOW);
 
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(ICircuitBreakerGuard.ExceedsDeltaLimit.selector, key, 9999, 1001, 0, WINDOW));
         guard.delta(key, 9999, 1001, 0, WINDOW); // any deviation from anchor (1000) fails
     }
 
@@ -251,7 +251,7 @@ contract CircuitBreakerDeltaTest is Test {
 
         uint256 d = newValue > currentValue ? uint256(newValue) - currentValue : uint256(currentValue) - newValue;
         if (d * 10_000 > uint256(currentValue) * maxDeltaBps) {
-            vm.expectRevert();
+            vm.expectRevert(abi.encodeWithSelector(ICircuitBreakerGuard.ExceedsDeltaLimit.selector, key, currentValue, newValue, maxDeltaBps, WINDOW));
             guard.delta(key, currentValue, newValue, maxDeltaBps, WINDOW);
         } else {
             guard.delta(key, currentValue, newValue, maxDeltaBps, WINDOW);
