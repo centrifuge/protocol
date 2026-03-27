@@ -118,7 +118,7 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         require(msg.sender == TransientArrayLib.atAddress(CALLBACK_CALLERS_SLOT, idx), InvalidCallbackCaller());
 
         bytes32 expected = TransientArrayLib.at(CALLBACK_HASHES_SLOT, idx);
-        bytes32 scriptHash = computeScriptHash(commands, state, stateBitmap, _emptyCallbackHashes(), _emptyCallers());
+        bytes32 scriptHash = computeScriptHash(commands, state, stateBitmap, new bytes32[](0), new address[](0));
         require(scriptHash == expected, InvalidCallback());
 
         callbackIdx = idx + 1;
@@ -171,13 +171,6 @@ contract Executor is BatchedMulticall, VM, IExecutor {
         }
     }
 
-    function _emptyCallbackHashes() internal pure returns (bytes32[] memory) {
-        return new bytes32[](0);
-    }
-
-    function _emptyCallers() internal pure returns (address[] memory) {
-        return new address[](0);
-    }
 }
 
 /// @title  ExecutorFactory
