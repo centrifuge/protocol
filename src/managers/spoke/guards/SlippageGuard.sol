@@ -22,6 +22,7 @@ import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUp
 ///         of a script to verify that the net value change across all touched assets stays within a slippage bound.
 ///         Additionally tracks cumulative loss per period to prevent death-by-a-thousand-cuts attacks.
 contract SlippageGuard is ISlippageGuard {
+    using MathLib for uint256;
     bytes32 internal constant SC_ID_SLOT = keccak256("slippageGuard.scId");
     bytes32 internal constant ASSETS_SLOT = keccak256("slippageGuard.assets");
     bytes32 internal constant OPENER_SLOT = keccak256("slippageGuard.opener");
@@ -102,7 +103,7 @@ contract SlippageGuard is ISlippageGuard {
             require(loss <= withdrawn * maxSlippageBps / 10_000, SlippageExceeded(withdrawn, deposited, maxSlippageBps));
 
             if (loss > 0) {
-                _trackPeriodLoss(poolId, scId, uint128(loss));
+                _trackPeriodLoss(poolId, scId, loss.toUint128());
             }
         }
 
