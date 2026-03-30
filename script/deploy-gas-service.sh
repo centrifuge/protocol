@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Deploys the GasService and propose it using OpsGuardian in all mainnet chains
-# Usage: PROPOSER=<safe_proposer_address> script/deploy-gas-service.sh
+# Usage: PROPOSER=<safe_proposer_address> VERSION=<version> script/deploy-gas-service.sh
 
 set -euo pipefail
 
@@ -9,6 +9,7 @@ set -a; source .env; set +a
 
 # Proposer address (Ledger account that will sign the Safe proposals)
 PROPOSER="${PROPOSER:?Missing PROPOSER env var}"
+VERSION="${VERSION:?Missing VERSION env var}"
 
 for NETWORK_FILE in env/*.json; do
     NETWORK=$(basename "$NETWORK_FILE" .json)
@@ -37,7 +38,7 @@ for NETWORK_FILE in env/*.json; do
     echo "========================================================"
     echo ""
 
-    NETWORK="$NETWORK" forge script script/DeployGasService.s.sol:DeployGasService \
+    NETWORK="$NETWORK" VERSION="$VERSION" forge script script/DeployGasService.s.sol:DeployGasService \
         --rpc-url "$RPC_URL" \
         --sender "$PROPOSER" \
         --broadcast
