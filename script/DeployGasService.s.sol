@@ -3,9 +3,8 @@ pragma solidity 0.8.28;
 
 import {Env, EnvConfig} from "./utils/EnvConfig.s.sol";
 
-import {GasService} from "../src/core/messaging/GasService.sol";
-import {IGasService} from "../src/core/messaging/interfaces/IGasService.sol";
-
+import {GasService} from "../src/admin/GasService.sol";
+import {IGasService} from "../src/admin/interfaces/IGasService.sol";
 import {IOpsGuardian} from "../src/admin/interfaces/IOpsGuardian.sol";
 
 import "forge-std/Script.sol";

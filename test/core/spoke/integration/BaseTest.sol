@@ -13,11 +13,11 @@ import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
 import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
-import {MAX_MESSAGE_COST} from "../../../../src/core/messaging/interfaces/IGasService.sol";
 import {IVaultFactory} from "../../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
 import {MessageLib, VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {ISafe} from "../../../../src/admin/interfaces/ISafe.sol";
+import {MAX_MESSAGE_COST} from "../../../../src/admin/interfaces/IGasService.sol";
 
 import {AsyncVault} from "../../../../src/vaults/AsyncVault.sol";
 import {SyncDepositVault} from "../../../../src/vaults/SyncDepositVault.sol";

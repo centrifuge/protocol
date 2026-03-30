@@ -2,11 +2,11 @@
 pragma solidity >=0.5.0;
 
 import {ISafe} from "./ISafe.sol";
+import {IGasService} from "./IGasService.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
-import {IGasService} from "../../core/messaging/interfaces/IGasService.sol";
 
 interface IOpsGuardian {
     error NotTheAuthorizedSafe();

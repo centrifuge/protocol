@@ -10,8 +10,9 @@ import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {PoolEscrow} from "../../../../src/core/spoke/PoolEscrow.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
-import {MAX_MESSAGE_COST} from "../../../../src/core/messaging/interfaces/IGasService.sol";
 import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubRequestManager.sol";
+
+import {MAX_MESSAGE_COST} from "../../../../src/admin/interfaces/IGasService.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 

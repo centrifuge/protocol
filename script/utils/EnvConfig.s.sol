@@ -68,8 +68,8 @@ struct ContractsConfig {
     address tokenRecoverer;
     address protocolGuardian;
     address opsGuardian;
-    // Core
     address gasService;
+    // Core
     address gateway;
     address multiAdapter;
     address messageProcessor;
@@ -221,9 +221,9 @@ library Env {
         config.tokenRecoverer = _parseContractAddress(json, "tokenRecoverer");
         config.protocolGuardian = _parseContractAddress(json, "protocolGuardian");
         config.opsGuardian = _parseContractAddress(json, "opsGuardian");
+        config.gasService = _parseContractAddress(json, "gasService");
 
         // Core
-        config.gasService = _parseContractAddress(json, "gasService");
         config.gateway = _parseContractAddress(json, "gateway");
         config.multiAdapter = _parseContractAddress(json, "multiAdapter");
         config.messageProcessor = _parseContractAddress(json, "messageProcessor");

@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {ISafe} from "./interfaces/ISafe.sol";
 import {ICreatePool} from "./interfaces/ICreatePool.sol";
+import {IGasService} from "./interfaces/IGasService.sol";
 import {IOpsGuardian} from "./interfaces/IOpsGuardian.sol";
 import {IAdapterWiring} from "./interfaces/IAdapterWiring.sol";
 
@@ -10,7 +11,6 @@ import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
 import {IAdapter} from "../core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
-import {IGasService} from "../core/messaging/interfaces/IGasService.sol";
 import {IMultiAdapter} from "../core/messaging/interfaces/IMultiAdapter.sol";
 
 /// @title  OpsGuardian
