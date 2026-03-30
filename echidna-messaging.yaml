@@ -1,0 +1,17 @@
+testMode: "assertion"
+coverage: true
+corpusDir: "echidna-messaging"
+filterFunctions: []
+deployer: "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496"
+contractAddr: "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496"
+shrinkLimit: 50000
+## Rely on Foundry compilation; deploy externally-linked libraries to fixed addresses
+cryticArgs: ["--foundry-compile-all", "--compile-libraries=(MathLib,0xf01),(CastLib,0xf02),(BytesLib,0xf03),(MessageLib,0xf04),(TransientStorageLib,0xf05)"]
+## Deploy them to these addresses
+deployContracts: [
+  ["0xf01", "MathLib"],
+  ["0xf02", "CastLib"],
+  ["0xf03", "BytesLib"],
+  ["0xf04", "MessageLib"],
+  ["0xf05", "TransientStorageLib"]
+]
