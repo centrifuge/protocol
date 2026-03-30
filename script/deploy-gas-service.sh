@@ -41,6 +41,9 @@ for NETWORK_FILE in env/*.json; do
         --rpc-url "$RPC_URL" \
         --sender "$PROPOSER" \
         --broadcast
+
+    python3 script/deploy/update_network_config.py "$NETWORK" \
+        --script script/DeployGasService.s.sol
 done
 
 echo ""
