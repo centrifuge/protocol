@@ -3,6 +3,8 @@ pragma solidity >=0.5.0;
 
 import {IRecoverable} from "../../../misc/interfaces/IRecoverable.sol";
 
+import {IRoot} from "../../../admin/interfaces/IRoot.sol";
+
 interface ITokenRecoverer {
     event RecoverTokens(
         IRecoverable indexed target, address indexed token, uint256 tokenId, address indexed to, uint256 amount
@@ -15,4 +17,7 @@ interface ITokenRecoverer {
     /// @param to The address to send recovered tokens to
     /// @param amount The amount of tokens to recover
     function recoverTokens(IRecoverable target, address token, uint256 tokenId, address to, uint256 amount) external;
+
+    /// @notice Root authority that grants this contract permission to recover tokens from protocol contracts
+    function root() external view returns (IRoot);
 }

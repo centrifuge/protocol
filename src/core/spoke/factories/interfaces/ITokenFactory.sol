@@ -11,6 +11,12 @@ interface ITokenFactory {
 
     error FileUnrecognizedParam();
 
+    /// @notice Root authority that manages ward permissions and timelocked upgrades
+    function root() external view returns (address);
+
+    /// @notice Addresses which are automatically granted ward access on newly deployed share tokens
+    function tokenWards(uint256 index) external view returns (address);
+
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
     function file(bytes32 what, address[] memory data) external;

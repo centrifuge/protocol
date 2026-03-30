@@ -82,10 +82,259 @@ def parse_import_statement(import_stmt: str) -> Tuple[List[str], str]:
 
     return [], path
 
+def resolve_import_path(import_path: str, current_file: str) -> str:
+    """Resolve an import path to an actual file on disk, returns None if unresolvable"""
+    current_file_clean = current_file.replace('\\', '/').lstrip('./')
+    current_dir = os.path.dirname(current_file_clean)
+
+    if import_path.startswith('./') or import_path.startswith('../'):
+        # Relative path
+        resolved = os.path.normpath(os.path.join(current_dir, import_path))
+        return resolved.replace('\\', '/')
+    elif import_path.startswith('src/') or import_path.startswith('test/') or import_path.startswith('script/'):
+        # Project-absolute path
+        return import_path
+    elif import_path.startswith('centrifuge-v3/'):
+        return import_path[len('centrifuge-v3/'):]
+    else:
+        # Library or other path (e.g. forge-std) - can't resolve
+        return None
+
+
+def strip_comments(content: str) -> str:
+    """Strip single-line and multi-line comments from Solidity source code."""
+    # Remove multi-line comments (/* ... */ and /** ... */)
+    result = re.sub(r'/\*.*?\*/', '', content, flags=re.DOTALL)
+    # Remove single-line comments (// ...)
+    result = re.sub(r'//[^\n]*', '', result)
+    return result
+
+
+def get_exported_symbols(file_path: str) -> Set[str]:
+    """Get all symbols exported by a Solidity file via named import.
+
+    This includes:
+    - Top-level definitions (contracts, interfaces, libraries, structs, enums, errors, types)
+    - Symbols explicitly named-imported (import {X} from ...)
+
+    NOTE: Symbols from bare imports (import "file.sol") in the target file are NOT included,
+    because Solidity does not re-export them for named import from other files.
+    """
+
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except (FileNotFoundError, IOError):
+        return set()
+
+    symbols = set()
+
+    # Strip comments to avoid matching keywords in NatSpec/comments
+    # (e.g. "Vault contract before the" would falsely match \bcontract\s+(\w+))
+    code_only = strip_comments(content)
+
+    # Pre-compute brace depth at each position to distinguish file-level from nested declarations
+    brace_depth = []
+    depth = 0
+    for ch in code_only:
+        brace_depth.append(depth)
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+
+    # contract/interface/library are always file-level in Solidity (can't be nested)
+    for pattern in [
+        r'\bcontract\s+(\w+)',
+        r'\binterface\s+(\w+)',
+        r'\blibrary\s+(\w+)',
+    ]:
+        for match in re.finditer(pattern, code_only):
+            symbols.add(match.group(1))
+
+    # struct, enum, error, type, function can appear both at file level and inside contracts.
+    # Only include file-level ones (brace depth 0) since nested ones aren't importable directly.
+    for pattern in [
+        r'\bstruct\s+(\w+)',
+        r'\benum\s+(\w+)',
+        r'\berror\s+(\w+)',
+        r'\btype\s+(\w+)\s+is\s+',
+        r'\bfunction\s+(\w+)',
+    ]:
+        for match in re.finditer(pattern, code_only):
+            if match.start() < len(brace_depth) and brace_depth[match.start()] == 0:
+                symbols.add(match.group(1))
+
+    # Symbols from named imports are re-exported by the file (use original content, not stripped)
+    for match in re.finditer(r'import\s+\{([^}]+)\}\s+from\s+"([^"]+)"', content):
+        imported_symbols_str = match.group(1)
+        for sym in imported_symbols_str.split(','):
+            sym = sym.strip()
+            if ' as ' in sym:
+                symbols.add(sym.split(' as ')[1].strip())
+            else:
+                symbols.add(sym)
+
+    # NOTE: We intentionally do NOT recurse into bare imports (import "file.sol")
+    # in the target file. In Solidity, bare imports make symbols available within
+    # the importing file, but those symbols are NOT re-exportable via named imports.
+    # i.e., if A.sol has `import "B.sol"` and B.sol defines Foo, then
+    # `import {Foo} from "A.sol"` will FAIL — Foo is not a declared symbol of A.sol.
+    # Only symbols defined in A.sol or explicitly named-imported by A.sol are available.
+
+    return symbols
+
+
+def convert_bare_imports_to_named(imports: List[str], current_file: str, content_without_imports: str) -> List[str]:
+    """Convert bare imports (import "path") to named imports (import {X, Y} from "path")
+    by resolving what symbols they provide and checking which are actually used."""
+    result = []
+
+    for import_stmt in imports:
+        symbols, path = parse_import_statement(import_stmt)
+
+        if symbols or not path:
+            # Already a named import or couldn't parse - keep as-is
+            result.append(import_stmt)
+            continue
+
+        # This is a bare import - try to resolve its symbols
+        resolved_path = resolve_import_path(path, current_file)
+        if not resolved_path or not os.path.exists(resolved_path):
+            # Can't resolve the file (e.g. forge-std) - keep as bare import
+            result.append(import_stmt)
+            continue
+
+        # Get all symbols exported by the target file
+        available_symbols = get_exported_symbols(resolved_path)
+
+        if not available_symbols:
+            # Couldn't determine symbols - keep as bare import
+            result.append(import_stmt)
+            continue
+
+        # Find which symbols are actually used in the current file
+        used_symbols = []
+        for sym in sorted(available_symbols):
+            pattern = r'\b' + re.escape(sym) + r'\b'
+            if re.search(pattern, content_without_imports):
+                used_symbols.append(sym)
+
+        if not used_symbols:
+            # No symbols appear used - keep as bare import
+            # (unused import removal can deal with it later)
+            result.append(import_stmt)
+            continue
+
+        # Convert to named import with only the used symbols
+        symbols_str = ", ".join(used_symbols)
+        result.append(f'import {{{symbols_str}}} from "{path}";')
+
+    return result
+
+
+def find_duplicate_imports(imports: List[str]) -> List[str]:
+    """Find duplicate imports: multiple imports from the same path where one is a subset of another"""
+    duplicates = []
+
+    # Group imports by path
+    path_to_imports: Dict[str, List[Tuple[int, List[str], str]]] = {}
+    for idx, import_stmt in enumerate(imports):
+        symbols, path = parse_import_statement(import_stmt)
+        if path:
+            if path not in path_to_imports:
+                path_to_imports[path] = []
+            path_to_imports[path].append((idx, symbols, import_stmt))
+
+    for path, import_group in path_to_imports.items():
+        if len(import_group) <= 1:
+            continue
+
+        # Multiple imports from the same path - find redundant ones
+        for i, (idx_i, symbols_i, stmt_i) in enumerate(import_group):
+            symbols_set_i = set(symbols_i) if symbols_i else set()
+            for j, (idx_j, symbols_j, stmt_j) in enumerate(import_group):
+                if i >= j:
+                    continue
+                symbols_set_j = set(symbols_j) if symbols_j else set()
+
+                # If i's symbols are a subset of j's, i is redundant
+                if symbols_set_i and symbols_set_j and symbols_set_i <= symbols_set_j:
+                    duplicates.append(f"Duplicate import '{stmt_i}' (all symbols already in '{stmt_j}')")
+                # If j's symbols are a subset of i's, j is redundant
+                elif symbols_set_i and symbols_set_j and symbols_set_j <= symbols_set_i:
+                    duplicates.append(f"Duplicate import '{stmt_j}' (all symbols already in '{stmt_i}')")
+
+    return duplicates
+
+
+def merge_duplicate_imports(imports: List[str]) -> Tuple[List[str], int]:
+    """Merge duplicate imports from the same path, returning merged list and count of removed imports"""
+    # Group imports by path
+    path_to_imports: Dict[str, List[Tuple[int, List[str], str]]] = {}
+    path_order: List[str] = []  # Track first occurrence order
+    non_path_imports: List[Tuple[int, str]] = []
+
+    for idx, import_stmt in enumerate(imports):
+        symbols, path = parse_import_statement(import_stmt)
+        if path:
+            if path not in path_to_imports:
+                path_to_imports[path] = []
+                path_order.append(path)
+            path_to_imports[path].append((idx, symbols, import_stmt))
+        else:
+            non_path_imports.append((idx, import_stmt))
+
+    merged = []
+    removed_count = 0
+
+    for path in path_order:
+        import_group = path_to_imports[path]
+        if len(import_group) == 1:
+            merged.append(import_group[0][2])
+            continue
+
+        # Multiple imports from same path - merge symbols
+        all_symbols: List[str] = []
+        seen_symbols: Set[str] = set()
+        has_direct_import = False
+
+        for _, symbols, stmt in import_group:
+            if not symbols:
+                has_direct_import = True
+            for s in symbols:
+                if s not in seen_symbols:
+                    all_symbols.append(s)
+                    seen_symbols.add(s)
+
+        if has_direct_import and not all_symbols:
+            # Only direct imports (no symbols) - keep just one
+            merged.append(import_group[0][2])
+            removed_count += len(import_group) - 1
+        elif all_symbols:
+            # Reconstruct a single merged import with all symbols
+            symbols_str = ", ".join(all_symbols)
+            merged.append(f'import {{{symbols_str}}} from "{path}";')
+            removed_count += len(import_group) - 1
+        else:
+            merged.append(import_group[0][2])
+            removed_count += len(import_group) - 1
+
+    # Add non-path imports
+    for _, stmt in non_path_imports:
+        merged.append(stmt)
+
+    return merged, removed_count
+
+
 def find_unused_imports(file_path: str, content: str) -> List[str]:
     """Find unused imports in a Solidity file"""
     imports = extract_imports(content)
     unused_imports = []
+
+    # Check for duplicate imports first
+    duplicates = find_duplicate_imports(imports)
+    unused_imports.extend(duplicates)
 
     # Remove import statements from content for analysis
     content_without_imports = content
@@ -141,17 +390,23 @@ def fix_unused_imports_in_file(file_path: str) -> Tuple[bool, int]:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
 
-        imports = extract_imports(content)
-        if not imports:
+        original_imports = extract_imports(content)
+        if not original_imports:
             return False, 0
 
-        # Remove import statements from content for analysis
+        # Remove import statements from content for analysis (using originals)
         content_without_imports = content
-        for import_stmt in imports:
+        for import_stmt in original_imports:
             content_without_imports = content_without_imports.replace(import_stmt, '')
 
+        # Convert bare imports to named imports before merging
+        named_imports = convert_bare_imports_to_named(original_imports, file_path, content_without_imports)
+
+        # Merge duplicate imports from the same path
+        imports, merge_removed = merge_duplicate_imports(named_imports)
+
         new_imports = []
-        removed_count = 0
+        removed_count = merge_removed
 
         for import_stmt in imports:
             symbols, path = parse_import_statement(import_stmt)
@@ -183,11 +438,10 @@ def fix_unused_imports_in_file(file_path: str) -> Tuple[bool, int]:
                 # No unused symbols, keep import as is
                 new_imports.append(import_stmt)
 
-        # Replace old imports with new ones
-        new_content = content
-        for old_import in imports:
-            new_content = new_content.replace(old_import + '\n', '')
-            new_content = new_content.replace(old_import, '')
+        # Remove all original import statements from content using regex
+        # (string replacement fails on multi-line imports due to whitespace normalization)
+        import_removal_pattern = r'import\s+.*?;'
+        new_content = re.sub(import_removal_pattern, '', content, flags=re.MULTILINE | re.DOTALL)
 
         # Add new imports back
         if new_imports:
@@ -400,6 +654,12 @@ def fix_file_imports(file_path: str, convert_to_relative: bool = True) -> bool:
         # Remove all imports using regex pattern (handles both single-line and multi-line)
         import_removal_pattern = r'import\s+.*?;'
         content_without_imports = re.sub(import_removal_pattern, '', content, flags=re.MULTILINE | re.DOTALL)
+
+        # Convert bare imports to named imports before merging
+        imports = convert_bare_imports_to_named(imports, file_path, content_without_imports)
+
+        # Merge duplicate imports from the same path
+        imports, _ = merge_duplicate_imports(imports)
 
         # Convert to relative imports if requested
         if convert_to_relative:
