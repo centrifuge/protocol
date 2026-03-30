@@ -31,13 +31,14 @@ contract ValidationExecutor is Script {
             localCentrifugeId: config.network.centrifugeId,
             indexer: new GraphQLQuery(config.network.graphQLApi()),
             cache: new CacheStore(string.concat("spell-cache/validation/", executorName, "/", network)),
-            isMainnet: config.network.isMainnet()
+            isMainnet: config.network.isMainnet(),
+            networkName: network
         });
     }
 
     function runPreValidation(BaseValidator[] memory validators, bool shouldRevert) external {
         ctx.contracts.latest = empty;
-        _execute(validators, "PRE-SPELL", shouldRevert);
+        _execute(validators, "PRE", shouldRevert);
     }
 
     /// @notice cleans old cache and runs the cache-related validators
@@ -49,7 +50,7 @@ contract ValidationExecutor is Script {
 
     function runPostValidation(BaseValidator[] memory validators, TestContracts memory latest) external {
         ctx.contracts.latest = latest;
-        _execute(validators, "POST-SPELL", true);
+        _execute(validators, "POST", true);
     }
 
     function _execute(BaseValidator[] memory validators, string memory phaseName, bool shouldRevert)
@@ -61,7 +62,7 @@ contract ValidationExecutor is Script {
 
         for (uint256 i = 0; i < validators.length; i++) {
             require(
-                !executed[validators[i]], string.concat("The validator", validators[i].name(), "was already executed")
+                !executed[validators[i]], string.concat("The validator ", validators[i].name(), " was already executed")
             );
             executed[validators[i]] = true;
 

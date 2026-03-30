@@ -1,71 +1,96 @@
-name: Weekly Chain Validation
+# Weekly Deployment Validation
+#
+# Runs live fork tests from the `live-validators` branch against all deployed networks.
+# The `live-validators` branch is pinned to the latest deployed protocol version.
+#
+# To update after a new deployment:
+#   git push origin <release-tag-or-commit>:refs/heads/live-validators --force
+#
+# Schedule triggers only fire on the default branch (main), so this file must
+# live on main even though it checks out `live-validators` for test execution.
+
+name: Weekly Deployment Validation
 
 on:
   schedule:
-    # Run every Monday at 6:00 AM UTC (7:00 AM CET)
-    - cron: "0 6 * * 1"
+    - cron: "15 6 * * 1" # Monday 6:15 AM UTC
   workflow_dispatch:
-    # Allow manual triggering for testing
+    inputs:
+      branch:
+        description: "Branch to validate (default: live-validators)"
+        required: false
+        default: "live-validators"
+
+env:
+  FOUNDRY_PROFILE: ci
 
 jobs:
-  validate-chains:
+  validate-state:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    permissions:
+      contents: "read"
+      id-token: "write"
     strategy:
+      fail-fast: false
       matrix:
         chain:
-          - name: "Ethereum"
-            test: "test_validateEthereum"
-            emoji: "🌐"
-            # rpc_secret: "ETH_RPC_URL"
-          - name: "Base"
-            test: "test_validateBase"
-            emoji: "🔵"
-            # rpc_secret: "BASE_RPC_URL"
-          - name: "Arbitrum"
-            test: "test_validateArbitrum"
-            emoji: "🔶"
-            # rpc_secret: "ARBITRUM_RPC_URL"
-          - name: "Avalanche"
-            test: "test_validateAvalanche"
-            emoji: "🏔️"
-            # rpc_secret: "AVAX_RPC_URL"
-          - name: "BNB"
-            test: "test_validateBNB"
-            emoji: "🟡"
-            # rpc_secret: "BNB_RPC_URL"
-          - name: "Plume"
-            test: "test_validatePlume"
-            emoji: "🟣"
-            # rpc_secret: "PLUME_RPC_URL"
-
-    name: "Validate ${{ matrix.chain.name }}"
-
+          - { name: "Ethereum", test: "testLiveValidation_Ethereum" }
+          - { name: "Base", test: "testLiveValidation_Base" }
+          - { name: "Arbitrum", test: "testLiveValidation_Arbitrum" }
+          - { name: "Plume", test: "testLiveValidation_Plume" }
+          - { name: "Avalanche", test: "testLiveValidation_Avalanche" }
+          - { name: "BNB", test: "testLiveValidation_BnbSmartChain" }
+          - { name: "Optimism", test: "testLiveValidation_Optimism" }
+          - { name: "HyperEVM", test: "testLiveValidation_HyperEvm" }
+          - { name: "Monad", test: "testLiveValidation_Monad" }
+    name: "State: ${{ matrix.chain.name }}"
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/checkout@v4
         with:
-          version: v1.4.1
-
-      - name: Create build cache
-        uses: actions/cache@v4
+          ref: ${{ inputs.branch || 'live-validators' }}
+      - uses: google-github-actions/auth@v2
         with:
-          path: |
-            cache
-            out
-          key: ${{ runner.os }}-foundry-${{ hashFiles('lib/**', 'src/**', 'test/**') }}
-          restore-keys: |
-            ${{ runner.os }}-foundry-
+          workload_identity_provider: ${{ secrets.GCP_WIP }}
+          service_account: ${{ secrets.GCP_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.4
+      - run: python3 script/deploy/load_secrets.py
+      - run: forge test --match-test "${{ matrix.chain.test }}" -vv
 
-      - name: Install dependencies
-        run: forge install --no-commit
-
-      - name: Validate ${{ matrix.chain.name }} deployment
-        # env:
-        #   ${{ matrix.chain.rpc_secret }}: ${{ secrets[matrix.chain.rpc_secret] }}
-        run: |
-          echo "${{ matrix.chain.emoji }} Validating ${{ matrix.chain.name }} deployment..."
-          forge test --match-test ${{ matrix.chain.test }} -vv
+  validate-flows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: "read"
+      id-token: "write"
+    strategy:
+      fail-fast: false
+      matrix:
+        chain:
+          - { name: "Ethereum", test: "testInvestmentFlows_Ethereum" }
+          - { name: "Base", test: "testInvestmentFlows_Base" }
+          - { name: "Arbitrum", test: "testInvestmentFlows_Arbitrum" }
+          - { name: "Plume", test: "testInvestmentFlows_Plume" }
+          - { name: "Avalanche", test: "testInvestmentFlows_Avalanche" }
+          - { name: "BNB", test: "testInvestmentFlows_BnbSmartChain" }
+          - { name: "Optimism", test: "testInvestmentFlows_Optimism" }
+          - { name: "HyperEVM", test: "testInvestmentFlows_HyperEvm" }
+          - { name: "Monad", test: "testInvestmentFlows_Monad" }
+    name: "Flows: ${{ matrix.chain.name }}"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch || 'live-validators' }}
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIP }}
+          service_account: ${{ secrets.GCP_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.4
+      - run: python3 script/deploy/load_secrets.py
+      - run: forge test --match-test "${{ matrix.chain.test }}" -vv
