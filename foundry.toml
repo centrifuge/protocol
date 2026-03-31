@@ -37,13 +37,9 @@ gas_snapshot_check = false
 # False-alarm warnings
 ignored_warnings_from = [
   "src/misc/ReentrancyProtection.sol", # Issue: https://github.com/ethereum/solidity/issues/14359
-  "test/spell/migration/validation/validators/Validate_BalanceSheet.sol", #https://github.com/foundry-rs/foundry/issues/13086
 ]
 
-dynamic_test_linking = true
-
-# Exclude spell tests from test runs and coverage
-skip = ["test/spell/migration/validation/**/*.sol"]
+dynamic_test_linking = false # crytic-compile can't resolve foundry-pp/DeployHelper*.sol virtual stubs
 
 [profile.default.lint]
 severity = ["high"]
@@ -59,6 +55,9 @@ depth = 100
 call_override = false
 fail_on_revert = false
 
+[profile.echidna]
+dynamic_test_linking = false # Enabling this would lead to foundry-pp/DeployHelper*.sol files that crytic-compile can't resolve
+
 [profile.ci.fuzz]
 runs = 1000
 max_test_rejects = 1_000_000 # Number of times `vm.assume` can fail
@@ -71,7 +70,7 @@ fail_on_revert = false
 
 [profile.ci-coverage]
 verbosity = 2
-no_match_coverage = "test/spoke/fuzzing/**/*.sol|test/spell/migration/**/*.sol"
+no_match_coverage = "test/spoke/fuzzing/**/*.sol|test/integration/spell/utils/validation/**/*.sol"
 
 [profile.ci-coverage.fuzz]
 runs = 512                # 2x of default

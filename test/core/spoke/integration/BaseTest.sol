@@ -7,10 +7,9 @@ import "../../../../src/misc/interfaces/IERC20.sol";
 import {ERC20} from "../../../../src/misc/ERC20.sol";
 import {IERC6909Fungible} from "../../../../src/misc/interfaces/IERC6909.sol";
 
-import {AssetId} from "../../../../src/core/types/AssetId.sol";
-import {newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {PoolId, newPoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
 import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
@@ -23,14 +22,7 @@ import {ISafe} from "../../../../src/admin/interfaces/ISafe.sol";
 import {AsyncVault} from "../../../../src/vaults/AsyncVault.sol";
 import {SyncDepositVault} from "../../../../src/vaults/SyncDepositVault.sol";
 
-import {
-    FullActionBatcher,
-    FullDeployer,
-    FullInput,
-    noAdaptersInput,
-    defaultTxLimits,
-    CoreInput
-} from "../../../../script/FullDeployer.s.sol";
+import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../../../script/FullDeployer.s.sol";
 
 import {MockAdapter} from "../../mocks/MockAdapter.sol";
 import {MockCentrifugeChain} from "../mocks/MockCentrifugeChain.sol";
@@ -52,8 +44,6 @@ contract BaseTest is FullDeployer, Test {
     address investor = makeAddr("investor");
     address nonMember = makeAddr("nonMember");
     address randomUser = makeAddr("randomUser");
-    address immutable ADMIN = address(protocolSafe);
-
     uint128 constant MAX_UINT128 = type(uint128).max;
     uint64 constant MAX_UINT64 = type(uint64).max;
 
@@ -82,24 +72,21 @@ contract BaseTest is FullDeployer, Test {
     }
 
     function setUp() public virtual {
-        FullActionBatcher batcher = new FullActionBatcher(address(this));
-
-        labelAddresses("");
-
         deployFull(
-            FullInput({
-                core: CoreInput({centrifugeId: THIS_CHAIN_ID, version: bytes32(0), txLimits: defaultTxLimits()}),
-                protocolSafe: ISafe(ADMIN),
-                opsSafe: ISafe(ADMIN),
+            DeployerInput({
+                centrifugeId: THIS_CHAIN_ID,
+                suffix: "",
+                txLimits: defaultTxLimits(),
+                protocolSafe: ISafe(makeAddr("ProtocolSafe")),
+                opsSafe: ISafe(makeAddr("OpsSafe")),
                 adapters: noAdaptersInput()
             }),
-            batcher
+            address(this)
         );
 
-        // Give permissions to address(this) for most call in these tests.
+        // Give permissions to address(this) for most calls in these tests.
         // NOTE: This can be removed when use cases use the correct pranks
-        vm.startPrank(address(batcher));
-        root.rely(address(this));
+        vm.startPrank(address(root));
         gateway.rely(address(this));
         multiAdapter.rely(address(this));
         messageDispatcher.rely(address(this));
@@ -125,7 +112,8 @@ contract BaseTest is FullDeployer, Test {
         redemptionRestrictionsHook.rely(address(this));
         vm.stopPrank();
 
-        removeFullDeployerAccess(batcher);
+        vm.prank(address(protocolGuardian));
+        root.rely(address(this));
 
         // Ensure test contract has auth on vaultRegistry for testing
         vaultRegistry.rely(address(this));

@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.0;
+
+import {TargetFunctions} from "./TargetFunctions.sol";
+
+import {CryticAsserts} from "@chimera/CryticAsserts.sol";
+
+// echidna test/integration/recon-end-to-end/CryticE2ETester.sol --contract CryticE2ETester --config echidna.yaml --format text --workers 16 --test-limit 100000000
+// medusa fuzz --config medusa.json
+contract CryticE2ETester is TargetFunctions, CryticAsserts {
+    constructor() payable {
+        setup();
+    }
+}

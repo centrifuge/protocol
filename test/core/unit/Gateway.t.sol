@@ -22,6 +22,7 @@ import {
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 
 import "forge-std/Test.sol";
+import {VmSafe} from "forge-std/Vm.sol";
 
 // -----------------------------------------
 //     MESSAGE MOCKING
@@ -190,7 +191,9 @@ contract GatewayExt is Gateway, Test {
                 || message.toUint8(0) == uint8(MessageKind.WithPoolALongFail)
         ) {
             console.log("stricted consumed gas in the failure:", consumedGas);
-            assertLt(consumedGas, PROCESS_FAIL_MESSAGE_GAS, "PROCESS_FAIL_MESSAGE_GAS is not high enough");
+            // Coverage disables the optimizer, increasing gas costs
+            uint256 tolerance = vm.isContext(VmSafe.ForgeContext.Coverage) ? 5_000 : 0;
+            assertLt(consumedGas, PROCESS_FAIL_MESSAGE_GAS + tolerance, "PROCESS_FAIL_MESSAGE_GAS is not high enough");
         }
     }
 

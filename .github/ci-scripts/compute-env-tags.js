@@ -12,7 +12,7 @@
  * 
  * Tag format: deploy-${environment}-${version}-${shortSha}
  *   - environment: from `network.environment` (e.g. mainnet, testnet)
- *   - version: from deploymentInfo["deploy:protocol"].version
+ *   - version: highest semver found across all contracts[*].version in the env file
  *   - shortSha: first 7 chars of the deployment gitCommit
  * 
  * The tag points directly to the deployment commit SHA referenced in the env file,
@@ -73,24 +73,28 @@ function extractTagInfo(filePath) {
             return [];
         }
 
+        // Determine the version from the highest version found across all contracts
+        const version = findHighestContractVersion(chain.contracts);
+
         const results = [];
 
-        // Look for deploy:protocol.version
+        // Look for deploy:protocol gitCommit
         const protocolDeploy = deploymentInfo["deploy:protocol"];
         if (protocolDeploy?.gitCommit) {
             results.push({
                 environment,
-                version: protocolDeploy.version || null,
+                version,
                 gitCommit: protocolDeploy.gitCommit,
             });
         }
 
-        // Fallback: check any deploymentInfo entry for gitCommit
-        for (const value of Object.values(deploymentInfo)) {
+        // Fallback: check any other deploymentInfo entry for gitCommit
+        for (const [key, value] of Object.entries(deploymentInfo)) {
+            if (key === "deploy:protocol") continue;
             if (value?.gitCommit) {
                 results.push({
                     environment,
-                    version: value.version || null,
+                    version,
                     gitCommit: value.gitCommit,
                 });
             }
@@ -117,6 +121,56 @@ function generateTimestamp() {
     const seconds = String(now.getUTCSeconds()).padStart(2, "0");
 
     return `${year}${month}${day}-${hours}${minutes}${seconds}`;
+}
+
+/**
+ * Parses a version string into its numeric components.
+ * Supports formats: "v3.1.0", "v3.1", "v3", "3.1.0", "3.1", "3" (optional 'v' prefix)
+ * @param {string} versionStr - Version string to parse
+ * @returns {{ major: number, minor: number, patch: number, original: string } | null}
+ */
+function parseVersion(versionStr) {
+    if (!versionStr || typeof versionStr !== "string") return null;
+    const cleaned = versionStr.replace(/^v/i, "");
+    const parts = cleaned.split(".").map((p) => parseInt(p, 10));
+    if (parts.length === 0 || parts.some(isNaN)) return null;
+    return {
+        major: parts[0] || 0,
+        minor: parts[1] || 0,
+        patch: parts[2] || 0,
+        original: versionStr,
+    };
+}
+
+/**
+ * Compares two parsed versions. Returns positive if a > b, negative if a < b, 0 if equal.
+ * @param {{ major: number, minor: number, patch: number }} a
+ * @param {{ major: number, minor: number, patch: number }} b
+ * @returns {number}
+ */
+function compareVersions(a, b) {
+    if (a.major !== b.major) return a.major - b.major;
+    if (a.minor !== b.minor) return a.minor - b.minor;
+    return a.patch - b.patch;
+}
+
+/**
+ * Finds the highest version across all contracts in the env file.
+ * @param {Object} contracts - The contracts object from the env JSON
+ * @returns {string|null} The highest version string found, or null if none
+ */
+function findHighestContractVersion(contracts) {
+    if (!contracts || typeof contracts !== "object") return null;
+    let highest = null;
+    for (const contract of Object.values(contracts)) {
+        if (!contract?.version) continue;
+        const parsed = parseVersion(contract.version);
+        if (!parsed) continue;
+        if (!highest || compareVersions(parsed, highest) > 0) {
+            highest = parsed;
+        }
+    }
+    return highest?.original || null;
 }
 
 /**

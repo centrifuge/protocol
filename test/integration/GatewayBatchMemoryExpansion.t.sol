@@ -31,7 +31,7 @@ contract GatewayBatchMemoryExpansionTest is CentrifugeIntegrationTest {
         target = address(new MockUntrustedTarget());
 
         // Create a pool so messages are valid
-        vm.prank(address(protocolSafe));
+        vm.prank(address(opsGuardian.opsSafe()));
         opsGuardian.createPool(poolId, address(this), USD_ID);
 
         // Give this test contract authorization to call gateway.handle()

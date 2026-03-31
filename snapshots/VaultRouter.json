@@ -1,6 +1,13 @@
 {
+<<<<<<< HEAD
   "claimDeposit": "1185145",
   "enable": "61144",
   "requestDeposit": "896783",
   "requestRedeem": "2592679"
+=======
+  "claimDeposit": "1179164",
+  "enable": "61122",
+  "requestDeposit": "889214",
+  "requestRedeem": "2573781"
+>>>>>>> origin/main
 }

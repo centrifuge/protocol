@@ -26,10 +26,10 @@ try {
     const baseRef = process.env.GITHUB_BASE_REF || "HEAD^";
     const headRef = process.env.GITHUB_HEAD_REF || "HEAD";
     
-    // Try to get changed files
+    // Try to get changed files (use "env/" so git lists any changed file under env/, not literal globs)
     try {
         const diff = execSync(
-            `git diff --name-only ${baseRef} ${headRef} -- env/*.json env/**/*.json`,
+            `git diff --name-only ${baseRef} ${headRef} -- env/`,
             { encoding: "utf8", cwd: process.cwd() }
         );
         changedFiles = diff.trim().split("\n").filter(Boolean);
@@ -70,11 +70,9 @@ for (const filePath of changedFiles) {
     }
 }
 
-// If no changes detected, default to both (safety fallback)
+// If no env changes detected, leave both false so only changed environments are built
 if (!changedEnvs.mainnet && !changedEnvs.testnet) {
-    console.warn("No environment changes detected, defaulting to both");
-    changedEnvs.mainnet = true;
-    changedEnvs.testnet = true;
+    console.warn("No environment changes detected; mainnet and testnet will not be built.");
 }
 
 console.log(JSON.stringify(changedEnvs));

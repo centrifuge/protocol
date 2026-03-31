@@ -2,9 +2,12 @@
 pragma solidity 0.8.28;
 
 import {IBaseVault} from "./interfaces/IBaseVault.sol";
-import {IDepositManager} from "./interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "./interfaces/IVaultManagers.sol";
-import {ISyncManager, ISyncDepositValuation} from "./interfaces/IVaultManagers.sol";
+import {
+    IDepositManager,
+    ISyncDepositManager,
+    ISyncManager,
+    ISyncDepositValuation
+} from "./interfaces/IVaultManagers.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18} from "../misc/types/D18.sol";

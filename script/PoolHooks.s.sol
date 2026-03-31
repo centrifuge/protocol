@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {makeSalt} from "./CoreDeployer.s.sol";
-import {CreateXScript} from "./utils/CreateXScript.sol";
+import {BaseDeployer} from "./BaseDeployer.s.sol";
+import {JsonUtils} from "./utils/JsonUtils.s.sol";
+import {Env, EnvConfig} from "./utils/EnvConfig.s.sol";
 import {GraphQLQuery} from "./utils/GraphQLQuery.s.sol";
-import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
-import {GraphQLConstants} from "./utils/GraphQLConstants.sol";
 
 import {Spoke} from "../src/core/spoke/Spoke.sol";
 import {PoolId} from "../src/core/types/PoolId.sol";
@@ -31,44 +30,38 @@ struct TokenInstanceData {
 
 /// @title PoolHooks
 /// @notice Script to deploy pool-specific hooks with pool escrow addresses
-contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
+contract PoolHooks is BaseDeployer {
     using stdJson for string;
+    using JsonUtils for *;
 
-    bytes32 constant VERSION = "v3.1";
+    string constant VERSION = "v3.1";
 
     uint16 public centrifugeId;
 
-    address public freelyTransferableHook;
+    address public contractUpdater;
     address public fullRestrictionsHook;
+    address public freelyTransferableHook;
     Root public root;
     Spoke public spoke;
     BalanceSheet public balanceSheet;
     IPoolEscrowProvider public poolEscrowFactory;
 
-    address public deployer;
-
-    function _graphQLApi() internal pure override returns (string memory) {
-        return GraphQLConstants.PRODUCTION_API;
-    }
-
     function run() external {
-        string memory network = vm.envString("NETWORK");
-        string memory config = _loadConfig(network);
+        EnvConfig memory config = Env.load(vm.envString("NETWORK"));
 
-        deployer = msg.sender;
+        centrifugeId = config.network.centrifugeId;
 
-        setUpCreateXFactory();
+        root = Root(config.contracts.root);
+        spoke = Spoke(config.contracts.spoke);
+        balanceSheet = BalanceSheet(config.contracts.balanceSheet);
+        poolEscrowFactory = IPoolEscrowProvider(config.contracts.poolEscrowFactory);
+        freelyTransferableHook = config.contracts.freelyTransferableHook;
+        fullRestrictionsHook = config.contracts.fullRestrictionsHook;
+        contractUpdater = config.contracts.contractUpdater;
 
-        root = Root(_readContractAddress(config, "$.contracts.root"));
-        spoke = Spoke(_readContractAddress(config, "$.contracts.spoke"));
-        balanceSheet = BalanceSheet(_readContractAddress(config, "$.contracts.balanceSheet"));
-        poolEscrowFactory = IPoolEscrowProvider(_readContractAddress(config, "$.contracts.poolEscrowFactory"));
-        freelyTransferableHook = _readContractAddress(config, "$.contracts.freelyTransferableHook");
-        fullRestrictionsHook = _readContractAddress(config, "$.contracts.fullRestrictionsHook");
+        GraphQLQuery graphQL = new GraphQLQuery(config.network.graphQLApi());
 
-        centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
-
-        console.log("Network:", network);
+        console.log("Network:", config.network.name);
         console.log("CentrifugeId:", centrifugeId);
         console.log("Root:", address(root));
         console.log("Spoke:", address(spoke));
@@ -79,7 +72,9 @@ contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
 
         vm.startBroadcast();
 
-        TokenInstanceData[] memory tokens = _tokenInstances();
+        _init("", msg.sender);
+
+        TokenInstanceData[] memory tokens = _tokenInstances(graphQL);
 
         console.log("Found %d token instances on chain %d", tokens.length, centrifugeId);
 
@@ -90,27 +85,22 @@ contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
         vm.stopBroadcast();
     }
 
-    function _loadConfig(string memory network) internal view returns (string memory) {
-        string memory configFile = string.concat("env/", network, ".json");
-        return vm.readFile(configFile);
-    }
-
-    function _tokenInstances() internal returns (TokenInstanceData[] memory tokens) {
+    function _tokenInstances(GraphQLQuery graphQL) internal returns (TokenInstanceData[] memory tokens) {
         // forgefmt: disable-next-item
         string memory params = string.concat(
             "limit: 1000,"
             "where: {"
-            "  centrifugeId: ", _jsonValue(centrifugeId),
+            "  centrifugeId: ", vm.toString(centrifugeId).asJsonString(),
             "}"
         );
 
         // forgefmt: disable-next-item
-        string memory json = _queryGraphQL(string.concat(
+        string memory json = graphQL.queryGraphQL(string.concat(
             "tokenInstances(", params, ") {",
             "  totalCount"
             "  items {"
             "    tokenId"
-            "    address"            
+            "    address"
             "    token {"
             "      poolId"
             "    }"
@@ -123,10 +113,10 @@ contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
         tokens = new TokenInstanceData[](totalCount);
         for (uint256 i = 0; i < totalCount; i++) {
             tokens[i].poolId =
-                PoolId.wrap(uint64(json.readUint(_buildJsonPath(".data.tokenInstances.items", i, "token.poolId"))));
+                PoolId.wrap(uint64(json.readUint(".data.tokenInstances.items".asJsonPath(i, "token.poolId"))));
             tokens[i].scId =
-                ShareClassId.wrap(_parseBytes16(json, _buildJsonPath(".data.tokenInstances.items", i, "tokenId")));
-            tokens[i].tokenAddress = json.readAddress(_buildJsonPath(".data.tokenInstances.items", i, "address"));
+                ShareClassId.wrap(_parseBytes16(json, ".data.tokenInstances.items".asJsonPath(i, "tokenId")));
+            tokens[i].tokenAddress = json.readAddress(".data.tokenInstances.items".asJsonPath(i, "address"));
         }
     }
 
@@ -151,9 +141,8 @@ contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
 
     function _deployFreelyTransferable(PoolId poolId, ShareClassId scId, address poolEscrow) internal {
         string memory saltName = string.concat("freelyTransferable-", vm.toString(PoolId.unwrap(poolId)));
-        bytes32 salt = makeSalt(saltName, VERSION, deployer);
+        address expectedAddr = previewCreate3Address(saltName, VERSION);
 
-        address expectedAddr = computeCreate3Address(salt, deployer);
         if (expectedAddr.code.length > 0) {
             console.log(
                 "FreelyTransferable already deployed at %s for pool %d scId %s",
@@ -166,7 +155,7 @@ contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
 
         FreelyTransferable hook = FreelyTransferable(
             create3(
-                salt,
+                createSalt(saltName, VERSION),
                 abi.encodePacked(
                     type(FreelyTransferable).creationCode,
                     abi.encode(
@@ -196,9 +185,8 @@ contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
 
     function _deployFullRestrictions(PoolId poolId, ShareClassId scId, address poolEscrow) internal {
         string memory saltName = string.concat("fullRestrictions-", vm.toString(PoolId.unwrap(poolId)));
-        bytes32 salt = makeSalt(saltName, VERSION, deployer);
+        address expectedAddr = previewCreate3Address(saltName, VERSION);
 
-        address expectedAddr = computeCreate3Address(salt, deployer);
         if (expectedAddr.code.length > 0) {
             console.log(
                 "FullRestrictions already deployed at %s for pool %d scId %s",
@@ -211,7 +199,7 @@ contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
 
         FullRestrictions hook = FullRestrictions(
             create3(
-                salt,
+                createSalt(saltName, VERSION),
                 abi.encodePacked(
                     type(FullRestrictions).creationCode,
                     abi.encode(
@@ -236,6 +224,7 @@ contract PoolHooks is JsonRegistry, GraphQLQuery, CreateXScript {
 
         hook.rely(address(root));
         hook.rely(address(spoke));
+        hook.rely(address(contractUpdater));
         hook.deny(msg.sender);
     }
 

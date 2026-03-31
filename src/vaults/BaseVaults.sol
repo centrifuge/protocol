@@ -3,19 +3,17 @@ pragma solidity 0.8.28;
 
 import {IBaseVault} from "./interfaces/IBaseVault.sol";
 import {IAsyncRedeemVault} from "./interfaces/IAsyncVault.sol";
-import {IAsyncRedeemManager} from "./interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "./interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "./interfaces/IBaseRequestManager.sol";
+import {IAsyncRedeemManager, ISyncDepositManager} from "./interfaces/IVaultManagers.sol";
 
 import {Auth} from "../misc/Auth.sol";
-import "../misc/interfaces/IERC7540.sol";
-import "../misc/interfaces/IERC7575.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
-import {IERC7575} from "../misc/interfaces/IERC7575.sol";
 import {EIP712Lib} from "../misc/libraries/EIP712Lib.sol";
 import {IERC20Metadata} from "../misc/interfaces/IERC20.sol";
 import {SignatureLib} from "../misc/libraries/SignatureLib.sol";
+import {IERC165, IERC7575} from "../misc/interfaces/IERC7575.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
+import {IERC7540Operator, IERC7540Redeem, IERC7714, IERC7741, IERC7887Redeem} from "../misc/interfaces/IERC7540.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {IVault} from "../core/spoke/interfaces/IVault.sol";

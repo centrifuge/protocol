@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import "./BaseTest.sol";
+import {BaseTest, IAdapter, PoolId} from "./BaseTest.sol";
 
 contract TestBatchingAndPayment is BaseTest {
     /// Test the following:
@@ -14,7 +14,7 @@ contract TestBatchingAndPayment is BaseTest {
     /// forge-config: default.isolate = true
     function testMultipleMulticallSamePool() public {
         PoolId poolA = hubRegistry.poolId(CHAIN_CP, 1);
-        vm.startPrank(ADMIN);
+        vm.startPrank(address(opsGuardian.opsSafe()));
         opsGuardian.createPool(poolA, FM, USD_ID);
 
         vm.startPrank(FM);
@@ -40,7 +40,7 @@ contract TestBatchingAndPayment is BaseTest {
     ///
     /// forge-config: default.isolate = true
     function testMultipleMulticallDifferentPools() public {
-        vm.startPrank(ADMIN);
+        vm.startPrank(address(opsGuardian.opsSafe()));
 
         PoolId poolA = hubRegistry.poolId(CHAIN_CP, 1);
         PoolId poolB = hubRegistry.poolId(CHAIN_CP, 2);

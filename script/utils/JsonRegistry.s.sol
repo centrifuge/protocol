@@ -6,37 +6,29 @@ import {console} from "forge-std/console.sol";
 
 contract JsonRegistry is Script {
     string deploymentOutput;
-    uint256 registeredContracts = 0;
-    bool shouldLabelAddresses;
+    uint256 registeredContracts;
     string addressLabelPrefix;
     uint256 deploymentStartBlock;
 
-    function register(string memory name, address target) public {
-        // Note: Real block numbers are extracted from broadcast artifacts by verifier.py
-        // block.number here would be the script execution block, not the actual deployment block
-        string memory contractJson = string(abi.encodePacked('    "', name, '": "', vm.toString(target), '"'));
+    function register(string memory name, address target, string memory version) public {
+        _register(
+            name, string(abi.encodePacked('{ "address": "', vm.toString(target), '", "version": "', version, '" }'))
+        );
+    }
+
+    function _register(string memory name, string memory value) internal {
+        string memory contractJson = string(abi.encodePacked('    "', name, '": ', value));
 
         deploymentOutput = (registeredContracts == 0)
             ? string(abi.encodePacked(deploymentOutput, contractJson))
             : string(abi.encodePacked(deploymentOutput, ",\n", contractJson));
 
         registeredContracts += 1;
-
-        if (shouldLabelAddresses) {
-            vm.label(target, string(abi.encodePacked(addressLabelPrefix, name)));
-        }
-    }
-
-    function labelAddresses(string memory prefix) public {
-        shouldLabelAddresses = true;
-        addressLabelPrefix = prefix;
     }
 
     function startDeploymentOutput() public {
+        registeredContracts = 0;
         deploymentOutput = '{\n  "contracts": {\n';
-    }
-
-    function captureStartBlock() public {
         deploymentStartBlock = block.number;
     }
 
@@ -85,20 +77,5 @@ contract JsonRegistry is Script {
 
         vm.writeFile(latestPath, fullOutput);
         console.log("Contract addresses also saved to: %s", latestPath);
-    }
-
-    /// @notice Read a contract address from JSON config, supporting both nested and flat formats
-    /// @dev Tries to read from "pointer.address" first, falls back to "pointer" directly
-    /// @param config The JSON configuration string
-    /// @param pointer The JSON path to the contract address (e.g., "$.contracts.hub")
-    /// @return The contract address
-    function _readContractAddress(string memory config, string memory pointer) internal pure returns (address) {
-        string memory nestedPointer = string.concat(pointer, ".address");
-        try vm.parseJsonAddress(config, nestedPointer) returns (address addr) {
-            if (addr != address(0)) {
-                return addr;
-            }
-        } catch {}
-        return vm.parseJsonAddress(config, pointer);
     }
 }

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IHubRegistry} from "./IHubRegistry.sol";
+
 import {D18} from "../../../misc/types/D18.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
@@ -166,4 +168,16 @@ interface IShareClassManager {
         external
         view
         returns (string memory name, string memory symbol, bytes32 salt);
+
+    /// @notice Registry of pools, assets, and manager permissions on the hub chain
+    function hubRegistry() external view returns (IHubRegistry);
+
+    /// @notice Whether a CREATE3 deployment salt has already been consumed
+    /// @param salt The salt to check
+    function salts(bytes32 salt) external view returns (bool);
+
+    /// @notice Whether a share class ID has been registered for a pool
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    function shareClassIds(PoolId poolId, ShareClassId scId) external view returns (bool);
 }
