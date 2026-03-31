@@ -48,8 +48,8 @@
  *   }
  *
  * Note: The previousRegistry.ipfsHash is set from SOURCE_IPFS if provided.
- * Otherwise, it's set to null and filled in by pin-to-ipfs.js which queries Pinata for the CID
- * of the previous registry.
+ * Otherwise, it's resolved via DNS dnslink lookup on the live registry hostname
+ * (e.g. _dnslink.registry.centrifuge.io → dnslink=/ipfs/<CID>).
  */
 
 import {
@@ -60,6 +60,7 @@ import {
     existsSync,
 } from "fs";
 import { dirname, join } from "path";
+import { resolveTxt } from "dns/promises";
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -126,6 +127,50 @@ const REGISTRY_URLS = {
  * IPFS gateway URL (Pinata is used since that's where registries are pinned)
  */
 const IPFS_GATEWAY = "https://gateway.pinata.cloud";
+
+/**
+ * DNS hostnames for dnslink CID resolution.
+ * Cloudflare Web3 hostnames publish a TXT record at _dnslink.<hostname>
+ * with value "dnslink=/ipfs/<CID>".
+ */
+const DNSLINK_HOSTNAMES = {
+    mainnet: "registry.centrifuge.io",
+    testnet: "registry.testnet.centrifuge.io",
+};
+
+/**
+ * Resolves the IPFS CID of the currently live registry via DNS TXT lookup.
+ * This is the source of truth — the dnslink record points to whatever CID
+ * Cloudflare is actually serving.
+ *
+ * @param {string} environment - "mainnet" or "testnet"
+ * @returns {Promise<string|null>} IPFS CID or null if not resolvable
+ */
+async function resolveLiveCid(environment) {
+    const hostname = DNSLINK_HOSTNAMES[environment];
+    if (!hostname) return null;
+
+    const dnslinkHost = `_dnslink.${hostname}`;
+    try {
+        console.log(`  Resolving live CID via DNS: ${dnslinkHost}`);
+        const records = await resolveTxt(dnslinkHost);
+        // records is an array of arrays of strings, e.g. [["dnslink=/ipfs/Qm..."]]
+        for (const record of records) {
+            const txt = record.join("");
+            const match = txt.match(/^dnslink=\/ipfs\/(.+)$/);
+            if (match) {
+                const cid = match[1];
+                console.log(`  ✓ Resolved live CID: ${cid}`);
+                return cid;
+            }
+        }
+        console.warn(`  ⚠ No dnslink record found at ${dnslinkHost}`);
+        return null;
+    } catch (error) {
+        console.warn(`  ⚠ DNS lookup failed for ${dnslinkHost}: ${error.message}`);
+        return null;
+    }
+}
 
 /**
  * Validates that a string is a valid IPFS hash (CID).
@@ -578,6 +623,11 @@ async function main() {
         } else if (!sourceIpfs && !currentRegistry) {
             console.warn(`  ⚠ Could not fetch current registry for comparison`);
         }
+
+        // Resolve the live CID via DNS if not explicitly provided
+        if (!previousIpfsHash && previousVersion) {
+            previousIpfsHash = await resolveLiveCid(selector);
+        }
     } else {
         console.log(`  Skipping registry fetch (full mode - no comparison)`);
         // In full mode, set previousRegistry to null to mark this as the base registry
@@ -728,12 +778,12 @@ async function main() {
         deploymentInfo: {
             gitCommit: resolveDeploymentCommit(deploymentCommitOverride, deploymentCommits),
         },
-        // previousRegistry pointer - ipfsHash filled from SOURCE_IPFS if provided,
-        // otherwise filled by pin-to-ipfs.js via Pinata query
-        // In full mode, set to null to mark this as the base registry
+        // previousRegistry pointer - ipfsHash resolved from SOURCE_IPFS env var,
+        // or via DNS dnslink lookup on the live registry hostname.
+        // In full mode, set to null to mark this as the base registry.
         previousRegistry: previousVersion ? {
             version: previousVersion,
-            ipfsHash: previousIpfsHash || null, // Use provided IPFS hash, or filled by pin-to-ipfs.js via Pinata query
+            ipfsHash: previousIpfsHash || null,
         } : null,
         chains: chains,
     };
