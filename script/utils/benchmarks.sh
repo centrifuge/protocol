@@ -24,7 +24,7 @@ case $1 in
 
     python3 script/utils/update_gas_service_values.py ./snapshots/MessageGasLimits.json "$tmp"
 
-    sdiff -s ./src/core/messaging/GasService.sol "$tmp"
+    sdiff -s ./src/admin/GasService.sol "$tmp"
     ;;
 
   *)
