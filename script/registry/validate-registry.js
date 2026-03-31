@@ -119,6 +119,18 @@ async function validate(registryPath) {
         warnings.push({ path: "chains", message: "Delta registry has zero chains — nothing changed?" });
     }
 
+    // Same overrides as abi-registry.js packAbis — keeps validator in sync
+    const ABI_NAME_OVERRIDES = {
+        "NavManager": "NAVManager",
+        "FreezeOnlyHook": "FreezeOnly",
+        "FullRestrictionsHook": "FullRestrictions",
+        "FreelyTransferableHook": "FreelyTransferable",
+        "RedemptionRestrictionsHook": "RedemptionRestrictions",
+    };
+    const FACTORY_BASE_OVERRIDES = {
+        "TokenFactory": "ShareToken",
+    };
+
     const allContractNames = new Set();
     let totalContracts = 0;
 
@@ -143,10 +155,13 @@ async function validate(registryPath) {
         for (const [name, contract] of Object.entries(contracts)) {
             totalContracts++;
             const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1);
-            allContractNames.add(capitalizedName);
+            const resolvedName = ABI_NAME_OVERRIDES[capitalizedName] || capitalizedName;
+            allContractNames.add(resolvedName);
 
             if (capitalizedName.endsWith("Factory")) {
-                allContractNames.add(capitalizedName.replace(/Factory$/, ""));
+                const baseName = FACTORY_BASE_OVERRIDES[capitalizedName]
+                    || capitalizedName.replace(/Factory$/, "");
+                allContractNames.add(baseName);
             }
 
             // address

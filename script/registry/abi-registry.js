@@ -235,27 +235,36 @@ async function fetchCurrentRegistry(environment, ipfsHash = null) {
 }
 
 /**
- * Extracts version string from deploymentInfo in env files.
- * Looks for version in deploy:protocol or other deployment entries.
+ * Extracts version string from an env file.
+ * Checks deploymentInfo first, then falls back to contract-level version fields.
  *
  * @param {Object} chain - Chain configuration object from env/*.json
  * @returns {string|null} Version string or null if not found
  */
-function getVersionFromDeploymentInfo(chain) {
+function getVersionFromChain(chain) {
+    // Check deploymentInfo entries first
     const info = chain.deploymentInfo;
-    if (!info || typeof info !== "object") return null;
-
-    // First, check deploy:protocol which is the main deployment
-    if (info["deploy:protocol"]?.version) {
-        return info["deploy:protocol"].version;
-    }
-
-    // Fall back to any entry with a version
-    for (const value of Object.values(info)) {
-        if (value?.version) {
-            return value.version;
+    if (info && typeof info === "object") {
+        if (info["deploy:protocol"]?.version) {
+            return info["deploy:protocol"].version;
+        }
+        for (const value of Object.values(info)) {
+            if (value?.version) {
+                return value.version;
+            }
         }
     }
+
+    // Fall back to contract-level version (all contracts in a deployment share the same version)
+    const contracts = chain.contracts;
+    if (contracts && typeof contracts === "object") {
+        for (const value of Object.values(contracts)) {
+            if (value?.version) {
+                return value.version;
+            }
+        }
+    }
+
     return null;
 }
 
@@ -741,7 +750,7 @@ async function main() {
         if (chainCommit) {
             deploymentCommits.add(chainCommit);
         }
-        const chainVersion = getVersionFromDeploymentInfo(chain);
+        const chainVersion = getVersionFromChain(chain);
         if (chainVersion) {
             versions.add(chainVersion);
         }
@@ -928,6 +937,22 @@ function getDeploymentGitCommit(chain) {
     return null;
 }
 
+// Env contract keys whose capitalized form doesn't match the Forge artifact name.
+// Maps capitalized env key → actual Solidity contract name in out/.
+const ABI_NAME_OVERRIDES = {
+    "NavManager": "NAVManager",
+    "FreezeOnlyHook": "FreezeOnly",
+    "FullRestrictionsHook": "FullRestrictions",
+    "FreelyTransferableHook": "FreelyTransferable",
+    "RedemptionRestrictionsHook": "RedemptionRestrictions",
+};
+
+// Factory base name overrides: when stripping "Factory" suffix produces a name
+// that doesn't match the actual artifact (e.g. TokenFactory → ShareToken, not Token).
+const FACTORY_BASE_OVERRIDES = {
+    "TokenFactory": "ShareToken",
+};
+
 /**
  * Extracts ABIs from Forge build artifacts in ./out/ directory.
  * Only includes ABIs for contracts that are actually deployed (based on env file contracts).
@@ -946,20 +971,20 @@ function packAbis(chains, fullMode = false) {
         );
     }
 
-    // Collect all unique contract names from deployed contracts across chains
-    // Capitalize first letter to match ABI filename (e.g., "hub" → "Hub")
-    // Also include base contracts for factories (e.g., PoolEscrowFactory → PoolEscrow)
+    // Collect all unique contract names from deployed contracts across chains.
+    // Applies name overrides so env keys map to actual Forge artifact names.
     const deployedContracts = new Set();
 
     for (const chain of Object.values(chains)) {
         const contracts = Object.keys(chain.contracts || {});
         for (const name of contracts) {
             const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
-            deployedContracts.add(capitalized);
+            const resolved = ABI_NAME_OVERRIDES[capitalized] || capitalized;
+            deployedContracts.add(resolved);
 
-            // If this is a factory, also include the underlying implementation ABI
             if (capitalized.endsWith("Factory")) {
-                const baseName = capitalized.replace(/Factory$/, "");
+                const baseName = FACTORY_BASE_OVERRIDES[capitalized]
+                    || capitalized.replace(/Factory$/, "");
                 deployedContracts.add(baseName);
             }
         }
