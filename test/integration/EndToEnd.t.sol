@@ -20,7 +20,6 @@ import {Gateway} from "../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
 import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
-import {GasService} from "../../src/core/messaging/GasService.sol";
 import {PricingLib} from "../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
@@ -29,7 +28,6 @@ import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {BalanceSheet, WithdrawMode} from "../../src/core/spoke/BalanceSheet.sol";
-import {MAX_MESSAGE_COST} from "../../src/core/messaging/interfaces/IGasService.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 import {IMessageHandler} from "../../src/core/messaging/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/messaging/MultiAdapter.sol";
@@ -38,9 +36,11 @@ import {IUntrustedContractUpdate} from "../../src/core/utils/interfaces/IContrac
 import {MessageLib, MessageType, VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {Root} from "../../src/admin/Root.sol";
+import {GasService} from "../../src/admin/GasService.sol";
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../../src/admin/ProtocolGuardian.sol";
+import {MAX_MESSAGE_COST} from "../../src/admin/interfaces/IGasService.sol";
 
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
 

@@ -3,6 +3,7 @@ pragma solidity >=0.5.0;
 
 import {ISafe} from "./ISafe.sol";
 import {ICreatePool} from "./ICreatePool.sol";
+import {IGasService} from "./IGasService.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
@@ -38,6 +39,10 @@ interface IOpsGuardian {
     /// @param what Accepts a bytes32 representation of 'opsSafe', 'hub', or 'multiAdapter'
     /// @param data New value for the parameter
     function file(bytes32 what, address data) external;
+
+    /// @notice Updates the gas service
+    /// @param gasService the new gas service to use
+    function setGasService(IGasService gasService) external;
 
     /// @notice Registers a new pool
     /// @param poolId The pool identifier

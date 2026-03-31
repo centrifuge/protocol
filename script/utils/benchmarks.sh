@@ -11,7 +11,7 @@ case $1 in
   apply)
     # Computes new benchmarks and updates GasService with those values
     RAYON_NUM_THREADS=1 BENCHMARKING_RUN_ID="$(date +%s)" forge test EndToEnd
-    python3 script/utils/update_gas_service_values.py ./snapshots/MessageGasLimits.json ./src/core/messaging/GasService.sol
+    python3 script/utils/update_gas_service_values.py ./snapshots/MessageGasLimits.json ./src/admin/GasService.sol
     ;;
 
   check)
@@ -24,7 +24,7 @@ case $1 in
 
     python3 script/utils/update_gas_service_values.py ./snapshots/MessageGasLimits.json "$tmp"
 
-    sdiff -s ./src/core/messaging/GasService.sol "$tmp"
+    sdiff -s ./src/admin/GasService.sol "$tmp"
     ;;
 
   *)
