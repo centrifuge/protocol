@@ -3196,7 +3196,7 @@ contract BatchRequestManagerERC165Support is BatchRequestManagerBaseTest {
         bytes4 erc165 = 0x01ffc9a7;
         bytes4 hubRequestManager = 0x2f6c33bf;
         bytes4 hubRequestManagerNotifications = 0x3a2d9da4;
-        bytes4 batchRequestManagerID = 0xaf00afbd;
+        bytes4 batchRequestManagerID = 0x5cdb8e3c;
 
         vm.assume(
             unsupportedInterfaceId != erc165 && unsupportedInterfaceId != hubRequestManager
