@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {ISpoke} from "./ISpoke.sol";
 import {IVault, VaultKind} from "./IVault.sol";
+import {ISpokeRegistry} from "./ISpokeRegistry.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
@@ -56,11 +56,18 @@ interface IVaultRegistry {
     error FileUnrecognizedParam();
 
     //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Stores pool, share class, asset, and price state for the spoke side
+    function spokeRegistry() external view returns (ISpokeRegistry);
+
+    //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
 
     /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'spoke'
+    /// @param what Accepts a bytes32 representation of 'spokeRegistry'
     function file(bytes32 what, address data) external;
 
     //----------------------------------------------------------------------------------------------
@@ -134,7 +141,4 @@ interface IVaultRegistry {
         external
         view
         returns (IVault vault);
-
-    /// @notice Spoke-side entry point for this chain's pool and share class operations
-    function spoke() external view returns (ISpoke);
 }

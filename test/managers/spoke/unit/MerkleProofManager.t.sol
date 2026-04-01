@@ -4,9 +4,9 @@ pragma solidity 0.8.28;
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
-import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {IMerkleProofManager} from "../../../../src/managers/spoke/interfaces/IMerkleProofManager.sol";
 import {IMerkleProofManagerFactory} from "../../../../src/managers/spoke/interfaces/IMerkleProofManagerFactory.sol";
@@ -150,14 +150,18 @@ contract MerkleProofManagerFactoryTest is Test {
 
     address contractUpdater = makeAddr("contractUpdater");
     IBalanceSheet balanceSheet;
-    ISpoke spoke;
+    ISpokeRegistry spokeRegistry;
     MerkleProofManagerFactory factory;
 
     function setUp() public virtual {
         balanceSheet = IBalanceSheet(makeAddr("balanceSheet"));
-        spoke = ISpoke(makeAddr("spoke"));
+        spokeRegistry = ISpokeRegistry(makeAddr("spokeRegistry"));
 
-        vm.mockCall(address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.spoke.selector), abi.encode(spoke));
+        vm.mockCall(
+            address(balanceSheet),
+            abi.encodeWithSelector(IBalanceSheet.spokeRegistry.selector),
+            abi.encode(spokeRegistry)
+        );
 
         factory = new MerkleProofManagerFactory(contractUpdater, balanceSheet);
     }
@@ -170,7 +174,11 @@ contract MerkleProofManagerFactoryTest is Test {
 
 contract MerkleProofManagerFactoryNewManagerTest is MerkleProofManagerFactoryTest {
     function testNewManagerSuccess() public {
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A),
+            abi.encode(true)
+        );
 
         IMerkleProofManager manager = factory.newManager(POOL_A);
         MerkleProofManager concreteManager = MerkleProofManager(payable(address(manager)));
@@ -180,14 +188,22 @@ contract MerkleProofManagerFactoryNewManagerTest is MerkleProofManagerFactoryTes
     }
 
     function testNewManagerInvalidPoolId() public {
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_B), abi.encode(false));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_B),
+            abi.encode(false)
+        );
 
         vm.expectRevert(IMerkleProofManagerFactory.InvalidPoolId.selector);
         factory.newManager(POOL_B);
     }
 
     function testNewManagerDeterministic() public {
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A),
+            abi.encode(true)
+        );
 
         IMerkleProofManager manager1 = factory.newManager(POOL_A);
 
@@ -201,7 +217,11 @@ contract MerkleProofManagerFactoryNewManagerTest is MerkleProofManagerFactoryTes
     }
 
     function testNewManagerEventEmission() public {
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A),
+            abi.encode(true)
+        );
 
         vm.recordLogs();
         IMerkleProofManager manager = factory.newManager(POOL_A);

@@ -1,52 +1,45 @@
 @startuml spoke
-title Spoke
+title Spoke Architecture
 hide empty members
 
-skinparam linetype ortho
-
-package core {
-    interface IGateway
-    interface IRequestManager
+package "Messaging" <<cloud>> {
+    circle " " as messaging
 }
 
-package messaging {
-    interface ISpokeMessageSender
-    interface IMessageProcessor
+package factories {
+    class TokenFactory
+    class PoolEscrowFactory
+    class PoolEscrow
 }
 
 class Spoke
-class ShareToken
+class SpokeHandler
+class SpokeRegistry
+
 class BalanceSheet
-class TokenFactory
 class VaultRegistry
-class PoolEscrowFactory
-class PoolEscrow
-
-interface IVaultFactory
-interface IVault
+class ShareToken
 interface ITransferHook
+interface IRequestManager
 
-Spoke --> TokenFactory
-Spoke --> PoolEscrowFactory
-Spoke o-- "n" ShareToken
-Spoke --> IGateway
-Spoke --> ISpokeMessageSender
-Spoke --> VaultRegistry
-Spoke <-> IRequestManager
-Spoke <-- IMessageProcessor
+Spoke -down-> SpokeRegistry
+Spoke -up-> messaging
 
-VaultRegistry --> IVaultFactory
-VaultRegistry o-[norank]- "n" IVault
+messaging --> SpokeHandler
+messaging --> VaultRegistry
+SpokeHandler --> SpokeRegistry
+SpokeHandler --> TokenFactory
+SpokeHandler --> PoolEscrowFactory
 
-BalanceSheet --> Spoke
-BalanceSheet --> ISpokeMessageSender
+BalanceSheet --> SpokeRegistry
+VaultRegistry --> SpokeRegistry
 
-PoolEscrowFactory o-- "n" PoolEscrow
-PoolEscrowFactory ..> PoolEscrow
+SpokeRegistry o-- "n" IRequestManager
+SpokeRegistry o-- "n" ShareToken
 
-ShareToken .[dotted].> ITransferHook
-
-TokenFactory ..> ShareToken
-IVaultFactory ..> IVault
+' Factories
+TokenFactory ..> "n" ShareToken
+PoolEscrowFactory ..> "n" PoolEscrow
+ShareToken o--> ITransferHook
 
 @enduml

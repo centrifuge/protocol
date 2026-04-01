@@ -10,6 +10,7 @@ import {PoolId} from "../../core/types/PoolId.sol";
 import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
+import {ISpokeRegistry} from "../../core/spoke/interfaces/ISpokeRegistry.sol";
 import {IVaultRegistry} from "../../core/spoke/interfaces/IVaultRegistry.sol";
 import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
@@ -248,7 +249,7 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
     }
 
     /// @notice Updates contract parameters of type address.
-    /// @param what The bytes32 representation of 'gateway' or 'spoke'.
+    /// @param what The bytes32 representation of 'spokeRegistry', etc.
     /// @param data The new contract address.
     function file(bytes32 what, address data) external;
 
@@ -275,8 +276,8 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
     function setMaxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 maxReserve)
         external;
 
-    /// @notice Spoke-side entry point for this chain's pool and share class operations
-    function spoke() external view returns (ISpoke);
+    /// @notice Stores pool, share class, asset, and price state for the spoke side
+    function spokeRegistry() external view returns (ISpokeRegistry);
 
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
     function balanceSheet() external view returns (IBalanceSheet);
@@ -365,6 +366,12 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
             bool pendingCancelDepositRequest,
             bool pendingCancelRedeemRequest
         );
+
+    /// @notice Handles user-facing cross-chain operations and asset registration
+    function spoke() external view returns (ISpoke);
+
+    /// @notice Stores pool, share class, asset, and price state for the spoke side
+    function spokeRegistry() external view returns (ISpokeRegistry);
 
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
     function balanceSheet() external view returns (IBalanceSheet);

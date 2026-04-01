@@ -41,8 +41,8 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
         assetId = spoke.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId, address(this));
-        spoke.addPool(POOL_A);
-        spoke.addShareClass(
+        spokeHandler.addPool(POOL_A);
+        spokeHandler.addShareClass(
             POOL_A,
             defaultTypedShareClassId,
             "testShareClass",
@@ -51,13 +51,13 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
             bytes32(""),
             address(fullRestrictionsHook)
         );
-        spoke.updatePricePoolPerShare(
+        spokeHandler.updatePricePoolPerShare(
             POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare, uint64(block.timestamp)
         );
-        spoke.updatePricePoolPerAsset(
+        spokeHandler.updatePricePoolPerAsset(
             POOL_A, defaultTypedShareClassId, assetId, defaultPricePoolPerShare, uint64(block.timestamp)
         );
-        spoke.updateRestriction(
+        spokeHandler.updateRestriction(
             POOL_A,
             defaultTypedShareClassId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({

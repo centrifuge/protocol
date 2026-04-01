@@ -56,7 +56,7 @@ contract OnOfframpManager is IOnOfframpManager {
         TrustedCall kind = TrustedCall(kindValue);
         if (kind == TrustedCall.Onramp) {
             (, uint128 assetId, bool isEnabled) = abi.decode(payload, (uint8, uint128, bool));
-            (address asset, uint256 tokenId) = balanceSheet.spoke().idToAsset(AssetId.wrap(assetId));
+            (address asset, uint256 tokenId) = balanceSheet.spokeRegistry().idToAsset(AssetId.wrap(assetId));
             require(tokenId == 0, ERC6909NotSupported());
 
             onramp[asset] = isEnabled;
@@ -74,7 +74,7 @@ contract OnOfframpManager is IOnOfframpManager {
         } else if (kind == TrustedCall.Offramp) {
             (, uint128 assetId, bytes32 receiverAddress, bool isEnabled) =
                 abi.decode(payload, (uint8, uint128, bytes32, bool));
-            (address asset, uint256 tokenId) = balanceSheet.spoke().idToAsset(AssetId.wrap(assetId));
+            (address asset, uint256 tokenId) = balanceSheet.spokeRegistry().idToAsset(AssetId.wrap(assetId));
             require(tokenId == 0, ERC6909NotSupported());
             address receiver = receiverAddress.toAddress();
 
@@ -83,7 +83,7 @@ contract OnOfframpManager is IOnOfframpManager {
         } else if (kind == TrustedCall.Withdraw) {
             (, uint128 assetId, uint128 amount, bytes32 receiverAddress) =
                 abi.decode(payload, (uint8, uint128, uint128, bytes32));
-            (address asset,) = balanceSheet.spoke().idToAsset(AssetId.wrap(assetId));
+            (address asset,) = balanceSheet.spokeRegistry().idToAsset(AssetId.wrap(assetId));
             address receiver = receiverAddress.toAddress();
 
             require(offramp[asset][receiver], InvalidOfframpDestination());
@@ -149,7 +149,7 @@ contract OnOfframpManagerFactory is IOnOfframpManagerFactory {
 
     /// @inheritdoc IOnOfframpManagerFactory
     function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOfframpManager) {
-        balanceSheet.spoke().shareToken(poolId, scId); // Check for existence
+        balanceSheet.spokeRegistry().shareToken(poolId, scId); // Check for existence
 
         OnOfframpManager manager = new OnOfframpManager{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
             poolId, scId, contractUpdater, balanceSheet

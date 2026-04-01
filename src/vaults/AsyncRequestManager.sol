@@ -34,6 +34,7 @@ import {IPoolEscrow} from "../core/spoke/interfaces/IPoolEscrow.sol";
 import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
 import {ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
+import {ISpokeRegistry} from "../core/spoke/interfaces/ISpokeRegistry.sol";
 import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 import {IBalanceSheet, WithdrawMode} from "../core/spoke/interfaces/IBalanceSheet.sol";
 import {VaultDetails, IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
@@ -51,6 +52,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     using RequestCallbackMessageLib for *;
 
     ISpoke public spoke;
+    ISpokeRegistry public spokeRegistry;
     IBalanceSheet public balanceSheet;
     IVaultRegistry public vaultRegistry;
     ISubsidyManager public subsidyManager;
@@ -69,6 +71,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
 
     function file(bytes32 what, address data) external auth {
         if (what == "spoke") spoke = ISpoke(data);
+        else if (what == "spokeRegistry") spokeRegistry = ISpokeRegistry(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistry(data);
         else if (what == "subsidyManager") subsidyManager = ISubsidyManager(data);
@@ -235,7 +238,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         uint128 assetAmount,
         D18 pricePoolPerAsset
     ) internal {
-        (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
+        (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
 
         balanceSheet.unreserve(poolId, scId, asset, tokenId, assetAmount, address(this), REASON_DEPOSIT);
 
@@ -245,7 +248,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     }
 
     function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) internal {
-        address token = address(spoke.shareToken(poolId, scId));
+        address token = address(spokeRegistry.shareToken(poolId, scId));
 
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
         balanceSheet.issue(poolId, scId, address(balanceSheet.escrow(poolId)), shareAmount);
@@ -261,11 +264,11 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         uint128 shareAmount,
         D18 pricePoolPerShare
     ) internal {
-        (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
+        (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
 
         balanceSheet.reserve(poolId, scId, asset, tokenId, assetAmount, address(this), REASON_REDEEM);
         balanceSheet.unreserve(
-            poolId, scId, address(spoke.shareToken(poolId, scId)), 0, shareAmount, address(this), REASON_REDEEM
+            poolId, scId, address(spokeRegistry.shareToken(poolId, scId)), 0, shareAmount, address(this), REASON_REDEEM
         );
         // Queue asset decrease atomically with share burn to prevent NAV desync + escrow update deferred to claim
         balanceSheet.noteWithdraw(poolId, scId, asset, tokenId, assetAmount);
@@ -620,7 +623,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         uint128 assets_ = assets.toUint128();
         VaultDetails memory vd = vaultRegistry.vaultDetails(vault_);
         (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
-            spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vd.assetId, false);
+            spokeRegistry.pricesPoolPer(vault_.poolId(), vault_.scId(), vd.assetId, false);
 
         return pricePoolPerShare.isZero()
             ? 0
@@ -640,7 +643,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         uint128 shares_ = shares.toUint128();
         VaultDetails memory vd = vaultRegistry.vaultDetails(vault_);
         (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
-            spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vd.assetId, false);
+            spokeRegistry.pricesPoolPer(vault_.poolId(), vault_.scId(), vd.assetId, false);
 
         return pricePoolPerAsset.isZero()
             ? 0
@@ -660,9 +663,9 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
-        (uint64 shareLastUpdated,,) = spoke.markersPricePoolPerShare(poolId, scId);
+        (uint64 shareLastUpdated,,) = spokeRegistry.markersPricePoolPerShare(poolId, scId);
         (uint64 assetLastUpdated,,) =
-            spoke.markersPricePoolPerAsset(poolId, scId, vaultRegistry.vaultDetails(vault_).assetId);
+            spokeRegistry.markersPricePoolPerAsset(poolId, scId, vaultRegistry.vaultDetails(vault_).assetId);
 
         // Choose the latest update to be the marker
         lastUpdated = MathLib.max(shareLastUpdated, assetLastUpdated).toUint64();
