@@ -15,6 +15,8 @@ import {BalanceSheet} from "../core/spoke/BalanceSheet.sol";
 import {GasService} from "../core/messaging/GasService.sol";
 import {AssetId, newAssetId} from "../core/types/AssetId.sol";
 import {VaultRegistry} from "../core/spoke/VaultRegistry.sol";
+import {SpokeHandler} from "../core/spoke/SpokeHandler.sol";
+import {SpokeRegistry} from "../core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../core/messaging/MultiAdapter.sol";
 import {ContractUpdater} from "../core/utils/ContractUpdater.sol";
 import {IAdapter} from "../core/messaging/interfaces/IAdapter.sol";
@@ -73,6 +75,8 @@ struct CoreReport {
     TokenFactory tokenFactory;
     ContractUpdater contractUpdater;
     VaultRegistry vaultRegistry;
+    SpokeHandler spokeHandler;
+    SpokeRegistry spokeRegistry;
     HubRegistry hubRegistry;
     Accounting accounting;
     Holdings holdings;
@@ -156,6 +160,8 @@ contract CoreActionBatcher is Constants {
         report.balanceSheet.rely(root);
         report.contractUpdater.rely(root);
         report.vaultRegistry.rely(root);
+        report.spokeRegistry.rely(root);
+        report.spokeHandler.rely(root);
 
         report.hubRegistry.rely(root);
         report.accounting.rely(root);
@@ -175,7 +181,6 @@ contract CoreActionBatcher is Constants {
 
         // Rely messageDispatcher
         report.gateway.rely(address(report.messageDispatcher));
-        report.spoke.rely(address(report.messageDispatcher));
         report.balanceSheet.rely(address(report.messageDispatcher));
         report.contractUpdater.rely(address(report.messageDispatcher));
         report.vaultRegistry.rely(address(report.messageDispatcher));
@@ -186,7 +191,6 @@ contract CoreActionBatcher is Constants {
         // Rely messageProcessor
         report.gateway.rely(address(report.messageProcessor));
         report.multiAdapter.rely(address(report.messageProcessor));
-        report.spoke.rely(address(report.messageProcessor));
         report.balanceSheet.rely(address(report.messageProcessor));
         report.contractUpdater.rely(address(report.messageProcessor));
         report.vaultRegistry.rely(address(report.messageProcessor));
@@ -195,16 +199,21 @@ contract CoreActionBatcher is Constants {
         report.tokenRecoverer.rely(address(report.messageProcessor));
 
         // Rely spoke
-        report.gateway.rely(address(report.spoke));
         report.messageDispatcher.rely(address(report.spoke));
-        report.tokenFactory.rely(address(report.spoke));
-        report.poolEscrowFactory.rely(address(report.spoke));
+
+        // Rely spokeHandler
+        report.spokeHandler.rely(address(report.messageProcessor));
+        report.spokeHandler.rely(address(report.messageDispatcher));
+        report.tokenFactory.rely(address(report.spokeHandler));
+        report.poolEscrowFactory.rely(address(report.spokeHandler));
+
+        // Rely spokeRegistry
+        report.spokeRegistry.rely(address(report.spokeHandler));
+        report.spokeRegistry.rely(address(report.spoke));
+        report.spokeRegistry.rely(address(report.vaultRegistry));
 
         // Rely balanceSheet
         report.messageDispatcher.rely(address(report.balanceSheet));
-
-        // Rely vaultRegistry
-        report.spoke.rely(address(report.vaultRegistry));
 
         // Rely hub
         report.multiAdapter.rely(address(report.hub));
@@ -242,7 +251,7 @@ contract CoreActionBatcher is Constants {
 
         report.multiAdapter.file("messageProperties", address(report.gasService));
 
-        report.messageDispatcher.file("spoke", address(report.spoke));
+        report.messageDispatcher.file("spokeHandler", address(report.spokeHandler));
         report.messageDispatcher.file("balanceSheet", address(report.balanceSheet));
         report.messageDispatcher.file("contractUpdater", address(report.contractUpdater));
         report.messageDispatcher.file("vaultRegistry", address(report.vaultRegistry));
@@ -251,7 +260,7 @@ contract CoreActionBatcher is Constants {
 
         report.messageProcessor.file("multiAdapter", address(report.multiAdapter));
         report.messageProcessor.file("gateway", address(report.gateway));
-        report.messageProcessor.file("spoke", address(report.spoke));
+        report.messageProcessor.file("spokeHandler", address(report.spokeHandler));
         report.messageProcessor.file("balanceSheet", address(report.balanceSheet));
         report.messageProcessor.file("contractUpdater", address(report.contractUpdater));
         report.messageProcessor.file("vaultRegistry", address(report.vaultRegistry));
@@ -260,16 +269,15 @@ contract CoreActionBatcher is Constants {
 
         report.poolEscrowFactory.file("balanceSheet", address(report.balanceSheet));
 
-        report.spoke.file("gateway", address(report.gateway));
-        report.spoke.file("poolEscrowFactory", address(report.poolEscrowFactory));
+        report.spoke.file("spokeRegistry", address(report.spokeRegistry));
         report.spoke.file("sender", address(report.messageDispatcher));
 
-        report.balanceSheet.file("spoke", address(report.spoke));
+        report.balanceSheet.file("spokeRegistry", address(report.spokeRegistry));
         report.balanceSheet.file("gateway", address(report.gateway));
         report.balanceSheet.file("poolEscrowProvider", address(report.poolEscrowFactory));
         report.balanceSheet.file("sender", address(report.messageDispatcher));
 
-        report.vaultRegistry.file("spoke", address(report.spoke));
+        report.vaultRegistry.file("spokeRegistry", address(report.spokeRegistry));
 
         report.hub.file("sender", address(report.messageDispatcher));
 
@@ -278,9 +286,11 @@ contract CoreActionBatcher is Constants {
         report.opsGuardian.file("opsSafe", address(opsSafe));
         report.protocolGuardian.file("safe", address(protocolSafe));
 
-        address[] memory tokenWards = new address[](2);
-        tokenWards[0] = address(report.spoke);
-        tokenWards[1] = address(report.balanceSheet);
+        address[] memory tokenWards = new address[](4);
+        tokenWards[0] = address(report.spokeHandler);
+        tokenWards[1] = address(report.spoke);
+        tokenWards[2] = address(report.balanceSheet);
+        tokenWards[3] = address(report.spokeRegistry);
         report.tokenFactory.file("wards", tokenWards);
 
         // Endorse methods
@@ -307,6 +317,8 @@ contract CoreActionBatcher is Constants {
         report.contractUpdater.deny(address(this));
         report.vaultRegistry.deny(address(this));
         report.poolEscrowFactory.deny(address(this));
+        report.spokeRegistry.deny(address(this));
+        report.spokeHandler.deny(address(this));
 
         report.hubRegistry.deny(address(this));
         report.accounting.deny(address(this));
@@ -340,12 +352,12 @@ contract NonCoreActionBatcher {
 
         report.batchRequestManager.rely(root);
 
-        // Rely spoke
-        report.asyncRequestManager.rely(address(report.core.spoke));
-        report.freezeOnlyHook.rely(address(report.core.spoke));
-        report.fullRestrictionsHook.rely(address(report.core.spoke));
-        report.freelyTransferableHook.rely(address(report.core.spoke));
-        report.redemptionRestrictionsHook.rely(address(report.core.spoke));
+        // Rely spokeHandler
+        report.asyncRequestManager.rely(address(report.core.spokeHandler));
+        report.freezeOnlyHook.rely(address(report.core.spokeHandler));
+        report.fullRestrictionsHook.rely(address(report.core.spokeHandler));
+        report.freelyTransferableHook.rely(address(report.core.spokeHandler));
+        report.redemptionRestrictionsHook.rely(address(report.core.spokeHandler));
 
         // Rely vaultRegistry
         report.asyncVaultFactory.rely(address(report.core.vaultRegistry));
@@ -382,10 +394,11 @@ contract NonCoreActionBatcher {
         report.refundEscrowFactory.file(bytes32("controller"), address(report.subsidyManager));
 
         report.asyncRequestManager.file("spoke", address(report.core.spoke));
+        report.asyncRequestManager.file("spokeRegistry", address(report.core.spokeRegistry));
         report.asyncRequestManager.file("balanceSheet", address(report.core.balanceSheet));
         report.asyncRequestManager.file("vaultRegistry", address(report.core.vaultRegistry));
 
-        report.syncManager.file("spoke", address(report.core.spoke));
+        report.syncManager.file("spokeRegistry", address(report.core.spokeRegistry));
         report.syncManager.file("balanceSheet", address(report.core.balanceSheet));
         report.syncManager.file("vaultRegistry", address(report.core.vaultRegistry));
 

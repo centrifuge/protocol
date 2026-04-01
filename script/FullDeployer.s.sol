@@ -13,6 +13,8 @@ import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
 import {GasService} from "../src/core/messaging/GasService.sol";
 import {VaultRegistry} from "../src/core/spoke/VaultRegistry.sol";
+import {SpokeHandler} from "../src/core/spoke/SpokeHandler.sol";
+import {SpokeRegistry} from "../src/core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
 import {ContractUpdater} from "../src/core/utils/ContractUpdater.sol";
 import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
@@ -135,6 +137,8 @@ contract FullDeployer is BaseDeployer, Constants {
     TokenFactory public tokenFactory;
     ContractUpdater public contractUpdater;
     VaultRegistry public vaultRegistry;
+    SpokeRegistry public spokeRegistry;
+    SpokeHandler public spokeHandler;
     PoolEscrowFactory public poolEscrowFactory;
 
     HubRegistry public hubRegistry;
@@ -298,9 +302,7 @@ contract FullDeployer is BaseDeployer, Constants {
         );
 
         spoke = Spoke(
-            create3(
-                createSalt("spoke", V3_1), abi.encodePacked(type(Spoke).creationCode, abi.encode(tokenFactory, batcher))
-            )
+            create3(createSalt("spoke", V3_1), abi.encodePacked(type(Spoke).creationCode, abi.encode(batcher)))
         );
 
         balanceSheet = BalanceSheet(
@@ -321,6 +323,22 @@ contract FullDeployer is BaseDeployer, Constants {
             create3(
                 createSalt("poolEscrowFactory", V3_1),
                 abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(root, batcher))
+            )
+        );
+
+        spokeRegistry = SpokeRegistry(
+            create3(
+                createSalt("spokeRegistry", V3_1),
+                abi.encodePacked(type(SpokeRegistry).creationCode, abi.encode(batcher))
+            )
+        );
+
+        spokeHandler = SpokeHandler(
+            create3(
+                createSalt("spokeHandler", V3_1),
+                abi.encodePacked(
+                    type(SpokeHandler).creationCode, abi.encode(spokeRegistry, tokenFactory, poolEscrowFactory, batcher)
+                )
             )
         );
 
@@ -672,6 +690,8 @@ contract FullDeployer is BaseDeployer, Constants {
             tokenFactory,
             contractUpdater,
             vaultRegistry,
+            spokeHandler,
+            spokeRegistry,
             hubRegistry,
             accounting,
             holdings,

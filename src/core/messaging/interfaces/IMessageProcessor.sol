@@ -47,9 +47,6 @@ interface IMessageProcessor is IMessageHandler {
     /// @notice Handles multi-protocol message verification and routing for cross-chain communication
     function multiAdapter() external view returns (IMultiAdapter);
 
-    /// @notice Spoke-side handler for pool, share class, and vault operations
-    function spoke() external view returns (ISpokeGatewayHandler);
-
     /// @notice Hub-side handler for investment request processing and share issuance
     function hubHandler() external view returns (IHubGatewayHandler);
 

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {ISpoke} from "./ISpoke.sol";
 import {IVault, VaultKind} from "./IVault.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
@@ -135,6 +134,4 @@ interface IVaultRegistry {
         view
         returns (IVault vault);
 
-    /// @notice Spoke-side entry point for this chain's pool and share class operations
-    function spoke() external view returns (ISpoke);
 }

@@ -7,7 +7,6 @@ import {IBaseRequestManager} from "./IBaseRequestManager.sol";
 import {D18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
-import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {IVaultRegistry} from "../../core/spoke/interfaces/IVaultRegistry.sol";
@@ -274,9 +273,6 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
     /// @param maxReserve The amount of maximum reserve
     function setMaxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 maxReserve)
         external;
-
-    /// @notice Spoke-side entry point for this chain's pool and share class operations
-    function spoke() external view returns (ISpoke);
 
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
     function balanceSheet() external view returns (IBalanceSheet);
