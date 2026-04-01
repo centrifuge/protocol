@@ -46,12 +46,11 @@ import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
 
-import {NonCoreReport} from "../../../src/deployment/ActionBatchers.sol";
-
 import {VMLabeling} from "../utils/VMLabeling.sol";
 import {ChainConfigs} from "../utils/ChainConfigs.sol";
 import {AxelarAdapter} from "../../../src/adapters/AxelarAdapter.sol";
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
+import {NonCoreReport} from "../../../src/deployment/ActionBatchers.sol";
 import {WormholeAdapter} from "../../../src/adapters/WormholeAdapter.sol";
 import {LayerZeroAdapter} from "../../../src/adapters/LayerZeroAdapter.sol";
 import {RefundEscrowFactory} from "../../../src/utils/RefundEscrowFactory.sol";

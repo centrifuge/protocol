@@ -295,7 +295,8 @@ contract InvestmentFlowExecutor is Test {
 
         IAsyncRedeemVault vault = IAsyncRedeemVault(ctx.gql.vault);
 
-        uint128 shares = uint128(ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor));
+        uint128 shares =
+            uint128(ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor));
 
         vm.startPrank(investor);
         vault.requestRedeem(shares, investor, investor);
@@ -373,7 +374,8 @@ contract InvestmentFlowExecutor is Test {
         vm.stopPrank();
 
         IBaseVault vault = IBaseVault(ctx.gql.vault);
-        uint256 initialShares = ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor);
+        uint256 initialShares =
+            ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor);
 
         vm.startPrank(investor);
         ERC20(vault.asset()).approve(ctx.gql.vault, ctx.testAmount);
@@ -539,7 +541,8 @@ contract InvestmentFlowExecutor is Test {
         );
         vm.stopPrank();
 
-        uint256 initialShares = ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor);
+        uint256 initialShares =
+            ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor);
         vm.startPrank(investor);
         vault.mint(vault.maxMint(investor), investor);
         vm.stopPrank();

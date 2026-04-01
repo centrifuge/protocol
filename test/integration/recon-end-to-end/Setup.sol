@@ -20,8 +20,6 @@ import {MockValuation} from "../../core/mocks/MockValuation.sol";
 
 import {Hub} from "../../../src/core/hub/Hub.sol";
 import {Spoke} from "../../../src/core/spoke/Spoke.sol";
-import {SpokeHandler} from "../../../src/core/spoke/SpokeHandler.sol";
-import {SpokeRegistry} from "../../../src/core/spoke/SpokeRegistry.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {Holdings} from "../../../src/core/hub/Holdings.sol";
@@ -33,6 +31,8 @@ import {HubHandler} from "../../../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../../../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../../../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {SpokeHandler} from "../../../src/core/spoke/SpokeHandler.sol";
+import {SpokeRegistry} from "../../../src/core/spoke/SpokeRegistry.sol";
 import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
 import {IHoldings} from "../../../src/core/hub/interfaces/IHoldings.sol";
 import {IAccounting} from "../../../src/core/hub/interfaces/IAccounting.sol";

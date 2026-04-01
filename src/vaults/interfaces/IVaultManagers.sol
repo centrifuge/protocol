@@ -7,11 +7,11 @@ import {IBaseRequestManager} from "./IBaseRequestManager.sol";
 import {D18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
-import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
+import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {IVaultRegistry} from "../../core/spoke/interfaces/IVaultRegistry.sol";
 import {ISpokeRegistry} from "../../core/spoke/interfaces/ISpokeRegistry.sol";
+import {IVaultRegistry} from "../../core/spoke/interfaces/IVaultRegistry.sol";
 import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 import {ISubsidyManager} from "../../utils/interfaces/ISubsidyManager.sol";

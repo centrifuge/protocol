@@ -12,9 +12,9 @@ import {HubHandler} from "../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
 import {GasService} from "../src/core/messaging/GasService.sol";
-import {VaultRegistry} from "../src/core/spoke/VaultRegistry.sol";
 import {SpokeHandler} from "../src/core/spoke/SpokeHandler.sol";
 import {SpokeRegistry} from "../src/core/spoke/SpokeRegistry.sol";
+import {VaultRegistry} from "../src/core/spoke/VaultRegistry.sol";
 import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
 import {ContractUpdater} from "../src/core/utils/ContractUpdater.sol";
 import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
@@ -301,9 +301,8 @@ contract FullDeployer is BaseDeployer, Constants {
             )
         );
 
-        spoke = Spoke(
-            create3(createSalt("spoke", V3_1), abi.encodePacked(type(Spoke).creationCode, abi.encode(batcher)))
-        );
+        spoke =
+            Spoke(create3(createSalt("spoke", V3_1), abi.encodePacked(type(Spoke).creationCode, abi.encode(batcher))));
 
         balanceSheet = BalanceSheet(
             create3(

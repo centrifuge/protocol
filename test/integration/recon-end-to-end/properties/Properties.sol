@@ -1916,7 +1916,9 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                     if (cumulativeWithdrawn > 0 && cumulativeRevoked > 0) {
                         // Core Invariant 1: Get current prices for proportionality validation
                         try spokeRegistry.pricePoolPerShare(poolId, scId, false) returns (D18 pricePerShare) {
-                            try spokeRegistry.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 pricePerAsset) {
+                            try spokeRegistry.pricePoolPerAsset(poolId, scId, assetId, true) returns (
+                                D18 pricePerAsset
+                            ) {
                                 // Skip validation if either price is 0 (uninitialized state)
                                 if (D18.unwrap(pricePerShare) == 0 || D18.unwrap(pricePerAsset) == 0) {
                                     continue;

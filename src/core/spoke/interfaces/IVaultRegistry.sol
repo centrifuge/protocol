@@ -141,5 +141,4 @@ interface IVaultRegistry {
         external
         view
         returns (IVault vault);
-
 }
