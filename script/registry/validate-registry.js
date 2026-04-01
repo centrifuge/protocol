@@ -15,10 +15,6 @@
  *   - abis: every contract in chains must have a corresponding ABI entry
  *
  * Soft requirements (warnings — shown but don't fail CI):
- *   - txHash per contract
- *   - deployment.deployedAt per chain
- *   - deploymentInfo.gitCommit
- *   - previousRegistry.version
  *   - zero chains in a delta registry
  *
  * Usage:
@@ -102,15 +98,6 @@ async function validate(registryPath) {
             });
         }
     }
-    if (registry.previousRegistry && !registry.previousRegistry.version) {
-        warnings.push({ path: "previousRegistry.version", message: "Missing — human-readable only, indexer follows ipfsHash" });
-    }
-
-    // --- deploymentInfo.gitCommit ---
-    if (!registry.deploymentInfo?.gitCommit) {
-        warnings.push({ path: "deploymentInfo.gitCommit", message: "Missing — metadata only" });
-    }
-
     // --- chains ---
     const chains = registry.chains || {};
     const chainIds = Object.keys(chains);
@@ -145,11 +132,6 @@ async function validate(registryPath) {
             errors.push({ path: `chains.${chainId}.deployment.startBlock`, message: `Must be a number, got ${typeof startBlock}: ${JSON.stringify(startBlock)}` });
         }
 
-        // deployment.deployedAt
-        if (chain.deployment?.deployedAt == null) {
-            warnings.push({ path: `chains.${chainId}.deployment.deployedAt`, message: "Missing — metadata only" });
-        }
-
         // contracts
         const contracts = chain.contracts || {};
         for (const [name, contract] of Object.entries(contracts)) {
@@ -176,10 +158,6 @@ async function validate(registryPath) {
                 errors.push({ path: `chains.${chainId}.contracts.${name}.blockNumber`, message: `Must be a number, got ${typeof contract.blockNumber}: ${JSON.stringify(contract.blockNumber)}` });
             }
 
-            // txHash
-            if (!contract.txHash) {
-                warnings.push({ path: `chains.${chainId}.contracts.${name}.txHash`, message: "Missing — useful for traceability" });
-            }
         }
     }
 

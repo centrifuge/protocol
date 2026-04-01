@@ -235,14 +235,37 @@ async function fetchCurrentRegistry(environment, ipfsHash = null) {
 }
 
 /**
- * Extracts version string from an env file.
- * Checks deploymentInfo first, then falls back to contract-level version fields.
+ * Normalizes a version string for comparison.
+ * Strips leading "v" and splits into numeric segments.
+ * e.g. "v3.1" → [3, 1], "3" → [3]
+ */
+function parseVersion(v) {
+    return v.replace(/^v/i, "").split(".").map(Number);
+}
+
+/**
+ * Compares two version strings. Returns > 0 if a > b, < 0 if a < b, 0 if equal.
+ */
+function compareVersions(a, b) {
+    const pa = parseVersion(a);
+    const pb = parseVersion(b);
+    const len = Math.max(pa.length, pb.length);
+    for (let i = 0; i < len; i++) {
+        const diff = (pa[i] || 0) - (pb[i] || 0);
+        if (diff !== 0) return diff;
+    }
+    return 0;
+}
+
+/**
+ * Extracts the highest version string from an env file.
+ * Checks deploymentInfo first, then collects all contract-level versions
+ * and returns the highest one (e.g. "v3.1" wins over "3").
  *
  * @param {Object} chain - Chain configuration object from env/*.json
  * @returns {string|null} Version string or null if not found
  */
 function getVersionFromChain(chain) {
-    // Check deploymentInfo entries first
     const info = chain.deploymentInfo;
     if (info && typeof info === "object") {
         if (info["deploy:protocol"]?.version) {
@@ -255,14 +278,16 @@ function getVersionFromChain(chain) {
         }
     }
 
-    // Fall back to contract-level version (all contracts in a deployment share the same version)
     const contracts = chain.contracts;
     if (contracts && typeof contracts === "object") {
+        let highest = null;
         for (const value of Object.values(contracts)) {
-            if (value?.version) {
-                return value.version;
+            const v = value?.version;
+            if (v && (!highest || compareVersions(v, highest) > 0)) {
+                highest = v;
             }
         }
+        return highest;
     }
 
     return null;

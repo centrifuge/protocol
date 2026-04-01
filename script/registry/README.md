@@ -236,14 +236,14 @@ These fields are required by the Ponder/indexer pipeline. Missing any of them wi
 | `chains.<chainId>.contracts.<name>.blockNumber` | Must be a number. When the contract was deployed; used for event listening start. |
 | `abis.<ContractName>` | Must exist for every contract in `chains`. Without ABIs the indexer cannot decode events. |
 
-### Soft fields (warnings only)
+### Other fields (not validated)
 
-These are present in the registry but not strictly required by the indexer. Missing values produce warnings in the PR comment but do not block merging.
+These are present in the registry but not used by the indexer. They are not checked by the validator.
 
 | Field | Notes |
 |-------|-------|
-| `contracts[name].txHash` | Useful for traceability |
-| `deployment.deployedAt` | Metadata only |
-| `deploymentInfo.gitCommit` | Metadata only |
+| `contracts[name].txHash` | Traceability metadata |
+| `deployment.deployedAt` | Deployment timestamp |
+| `deploymentInfo.gitCommit` | Source commit metadata |
 | `previousRegistry.version` | Human-readable; indexer follows `ipfsHash` |
 | `adapters.$adapterName` | `null` when that adapter is not configured for the network |
