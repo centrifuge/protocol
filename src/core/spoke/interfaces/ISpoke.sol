@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {ISpokeRegistry} from "./ISpokeRegistry.sol";
+
+import {ISpokeMessageSender} from "../../messaging/interfaces/IGatewaySenders.sol";
+
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
@@ -49,6 +53,16 @@ interface ISpoke {
     error LocalTransferNotAllowed();
     error CrossChainTransferNotAllowed();
     error InvalidRequestManager();
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Stores pool, share class, asset, and price state for the spoke side
+    function spokeRegistry() external view returns (ISpokeRegistry);
+
+    /// @notice Dispatches cross-chain messages from this spoke to the hub chain
+    function sender() external view returns (ISpokeMessageSender);
 
     //----------------------------------------------------------------------------------------------
     // Administration

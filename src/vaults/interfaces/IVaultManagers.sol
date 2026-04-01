@@ -8,8 +8,10 @@ import {D18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {IVaultRegistry} from "../../core/spoke/interfaces/IVaultRegistry.sol";
+import {ISpokeRegistry} from "../../core/spoke/interfaces/ISpokeRegistry.sol";
 import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 import {ISubsidyManager} from "../../utils/interfaces/ISubsidyManager.sol";
@@ -274,6 +276,9 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
     function setMaxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 maxReserve)
         external;
 
+    /// @notice Stores pool, share class, asset, and price state for the spoke side
+    function spokeRegistry() external view returns (ISpokeRegistry);
+
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
     function balanceSheet() external view returns (IBalanceSheet);
 
@@ -361,6 +366,12 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
             bool pendingCancelDepositRequest,
             bool pendingCancelRedeemRequest
         );
+
+    /// @notice Handles user-facing cross-chain operations and asset registration
+    function spoke() external view returns (ISpoke);
+
+    /// @notice Stores pool, share class, asset, and price state for the spoke side
+    function spokeRegistry() external view returns (ISpokeRegistry);
 
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
     function balanceSheet() external view returns (IBalanceSheet);

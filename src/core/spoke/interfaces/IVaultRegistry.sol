@@ -2,6 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {IVault, VaultKind} from "./IVault.sol";
+import {ISpokeRegistry} from "./ISpokeRegistry.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
@@ -53,6 +54,13 @@ interface IVaultRegistry {
     error AlreadyLinkedVault();
     error AlreadyUnlinkedVault();
     error FileUnrecognizedParam();
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Stores pool, share class, asset, and price state for the spoke side
+    function spokeRegistry() external view returns (ISpokeRegistry);
 
     //----------------------------------------------------------------------------------------------
     // Administration
