@@ -108,7 +108,6 @@ contract OnOffRamp is IOnOffRamp {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IDepositManager
-    /// @dev Deposits real asset to BalanceSheet and mints a liability accounting token.
     function deposit(
         address asset,
         uint256,
@@ -131,7 +130,6 @@ contract OnOffRamp is IOnOffRamp {
     }
 
     /// @inheritdoc IWithdrawManager
-    /// @dev Withdraws real asset from BalanceSheet to receiver and mints a non-liability accounting token.
     function withdraw(
         address asset,
         uint256,

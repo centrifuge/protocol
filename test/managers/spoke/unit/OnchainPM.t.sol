@@ -1168,4 +1168,24 @@ contract OnchainPMFactoryDeployTest is OnchainPMFactoryTest {
         assertEq(uint256(logs[0].topics[1]), POOL_A.raw());
         assertEq(address(uint160(uint256(logs[0].topics[2]))), address(exec));
     }
+
+    function testGetAddressMatchesDeploy() public {
+        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
+
+        address predicted = factory.getAddress(POOL_A);
+        IOnchainPM deployed = factory.newOnchainPM(POOL_A);
+
+        assertEq(predicted, address(deployed));
+    }
+
+    function testGetAddressDifferentPools() public {
+        address addrA = factory.getAddress(POOL_A);
+        address addrB = factory.getAddress(POOL_B);
+
+        assertTrue(addrA != addrB);
+    }
+
+    function testGetAddressDeterministic() public view {
+        assertEq(factory.getAddress(POOL_A), factory.getAddress(POOL_A));
+    }
 }
