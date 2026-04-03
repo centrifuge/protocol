@@ -48,13 +48,7 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
     //----------------------------------------------------------------------------------------------
 
     /// @notice Update the strategist policy root via the ContractUpdater.
-    function trustedCall(
-        PoolId poolId_,
-        ShareClassId,
-        bytes calldata payload
-    )
-        external
-    {
+    function trustedCall(PoolId poolId_, ShareClassId, bytes calldata payload) external {
         require(poolId == poolId_, InvalidPoolId());
         require(msg.sender == contractUpdater, NotAuthorized());
 
@@ -197,19 +191,9 @@ contract OnchainPMFactory is IOnchainPMFactory {
 
     /// @inheritdoc IOnchainPMFactory
     function getAddress(PoolId poolId) external view returns (address) {
-        bytes32 hash = keccak256(
-            abi.encodePacked(
-                bytes1(0xff),
-                address(this),
-                bytes32(uint256(poolId.raw())),
-                keccak256(
-                    abi.encodePacked(
-                        type(OnchainPM).creationCode, abi.encode(poolId, contractUpdater, gateway)
-                    )
-                )
-            )
-        );
-
-        return address(uint160(uint256(hash)));
+        bytes32 salt = bytes32(uint256(poolId.raw()));
+        bytes32 initCodeHash =
+            keccak256(abi.encodePacked(type(OnchainPM).creationCode, abi.encode(poolId, contractUpdater, gateway)));
+        return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initCodeHash)))));
     }
 }
