@@ -33,8 +33,8 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
 
     mapping(address strategist => bytes32 root) public policy;
 
-    address public transient activeStrategist;
     uint256 public transient callbackIdx;
+    address public transient activeStrategist;
 
     constructor(PoolId poolId_, address contractUpdater_, IGateway gateway_) BatchedMulticall(gateway_) {
         poolId = poolId_;
@@ -43,9 +43,9 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
 
     receive() external payable {}
 
-    // ──────────────────────────────────────────────────────────────────────────
+    //----------------------------------------------------------------------------------------------
     // Owner actions
-    // ──────────────────────────────────────────────────────────────────────────
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Update the strategist policy root via the ContractUpdater.
     function trustedCall(
@@ -67,9 +67,9 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
         emit UpdatePolicy(strategist, oldRoot, what);
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
+    //----------------------------------------------------------------------------------------------
     // Strategist actions
-    // ──────────────────────────────────────────────────────────────────────────
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IOnchainPM
     function execute(
@@ -126,9 +126,9 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
         emit ExecuteCallback(activeStrategist, scriptHash);
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
+    //----------------------------------------------------------------------------------------------
     // Helpers
-    // ──────────────────────────────────────────────────────────────────────────
+    //----------------------------------------------------------------------------------------------
 
     function computeScriptHash(
         bytes32[] calldata commands,
@@ -170,7 +170,6 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
 
         return keccak256(abi.encodePacked(hashes));
     }
-
 }
 
 /// @title  Onchain Portfolio Manager Factory
@@ -194,5 +193,23 @@ contract OnchainPMFactory is IOnchainPMFactory {
 
         emit DeployOnchainPM(poolId, address(onchainPM));
         return IOnchainPM(address(onchainPM));
+    }
+
+    /// @inheritdoc IOnchainPMFactory
+    function getAddress(PoolId poolId) external view returns (address) {
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                bytes1(0xff),
+                address(this),
+                bytes32(uint256(poolId.raw())),
+                keccak256(
+                    abi.encodePacked(
+                        type(OnchainPM).creationCode, abi.encode(poolId, contractUpdater, gateway)
+                    )
+                )
+            )
+        );
+
+        return address(uint160(uint256(hash)));
     }
 }

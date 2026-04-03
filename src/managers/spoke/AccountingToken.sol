@@ -37,9 +37,9 @@ contract AccountingToken is IAccountingToken {
         _;
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
+    //----------------------------------------------------------------------------------------------
     // Owner actions
-    // ──────────────────────────────────────────────────────────────────────────
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ITrustedContractUpdate
     function trustedCall(PoolId poolId, ShareClassId, bytes calldata payload) external {
@@ -50,9 +50,9 @@ contract AccountingToken is IAccountingToken {
         emit UpdateMinter(poolId, minter, canMint);
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
+    //----------------------------------------------------------------------------------------------
     // Mint / Burn (minter-gated)
-    // ──────────────────────────────────────────────────────────────────────────
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAccountingToken
     function mint(address owner, uint256 tokenId, uint256 amount, ShareClassId scId) external onlyMinter(tokenId) {
@@ -70,9 +70,9 @@ contract AccountingToken is IAccountingToken {
         emit Burn(_poolId(tokenId), scId, owner, tokenId, amount);
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
+    //----------------------------------------------------------------------------------------------
     // ERC-6909
-    // ──────────────────────────────────────────────────────────────────────────
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IERC6909ExclOperator
     function transfer(address receiver, uint256 id, uint256 amount) external returns (bool) {
@@ -124,9 +124,9 @@ contract AccountingToken is IAccountingToken {
         return IERC20Metadata(_asset(id)).decimals();
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
+    //----------------------------------------------------------------------------------------------
     // Token ID helpers
-    // ──────────────────────────────────────────────────────────────────────────
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAccountingToken
     function toTokenId(PoolId poolId, address asset, bool liability) public pure returns (uint256) {

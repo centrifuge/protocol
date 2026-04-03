@@ -55,6 +55,6 @@ interface IOnchainPM is IBatchedMulticall, ITrustedContractUpdate {
     /// @dev    Guarded by `activeStrategist != 0` and the pre-committed caller check.
     /// @param commands     Weiroll command bytes for the callback script.
     /// @param state        Weiroll state array for the callback script.
-    /// @param stateBitmap  State bitmap: set bits are included in hash and write-protected.
+    /// @param stateBitmap  State bitmap: set bits are included in hash.
     function executeCallback(bytes32[] calldata commands, bytes[] calldata state, uint128 stateBitmap) external;
 }

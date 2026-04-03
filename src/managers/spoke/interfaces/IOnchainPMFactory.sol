@@ -19,4 +19,7 @@ interface IOnchainPMFactory {
     /// @notice Deploys a new OnchainPM for the given pool. Reverts if one is already deployed
     ///         (CREATE2 with deterministic salt prevents redeployment).
     function newOnchainPM(PoolId poolId) external returns (IOnchainPM);
+
+    /// @notice Returns the deterministic address for a pool's OnchainPM.
+    function getAddress(PoolId poolId) external view returns (address);
 }
