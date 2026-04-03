@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {MathLib} from "../../../misc/libraries/MathLib.sol";
 
-/// @title  IOnchainPMHelpers — Onchain Portfolio Manager Helpers
+/// @title  IScriptHelpers
 /// @notice Interface for weiroll script utility functions.
-interface IOnchainPMHelpers {
+interface IScriptHelpers {
     //----------------------------------------------------------------------------------------------
     // Errors
     //----------------------------------------------------------------------------------------------

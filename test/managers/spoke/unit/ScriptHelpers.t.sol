@@ -3,18 +3,18 @@ pragma solidity 0.8.28;
 
 import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
 
-import {OnchainPMHelpers} from "../../../../src/managers/spoke/OnchainPMHelpers.sol";
-import {IOnchainPMHelpers} from "../../../../src/managers/spoke/interfaces/IOnchainPMHelpers.sol";
+import {ScriptHelpers} from "../../../../src/managers/spoke/ScriptHelpers.sol";
+import {IScriptHelpers} from "../../../../src/managers/spoke/interfaces/IScriptHelpers.sol";
 
 import "forge-std/Test.sol";
 
 // ─── Guards ──────────────────────────────────────────────────────────────────
 
-contract OnchainPMHelpersGuardTest is Test {
-    OnchainPMHelpers helpers;
+contract ScriptHelpersGuardTest is Test {
+    ScriptHelpers helpers;
 
     function setUp() public {
-        helpers = new OnchainPMHelpers();
+        helpers = new ScriptHelpers();
     }
 
     function testRevertIfFalsePasses() public view {
@@ -22,7 +22,7 @@ contract OnchainPMHelpersGuardTest is Test {
     }
 
     function testRevertIfFalseReverts() public {
-        vm.expectRevert(IOnchainPMHelpers.ConditionFalse.selector);
+        vm.expectRevert(IScriptHelpers.ConditionFalse.selector);
         helpers.revertIfFalse(false);
     }
 
@@ -31,18 +31,18 @@ contract OnchainPMHelpersGuardTest is Test {
     }
 
     function testRevertIfTrueReverts() public {
-        vm.expectRevert(IOnchainPMHelpers.ConditionTrue.selector);
+        vm.expectRevert(IScriptHelpers.ConditionTrue.selector);
         helpers.revertIfTrue(true);
     }
 }
 
 // ─── Arithmetic ──────────────────────────────────────────────────────────────
 
-contract OnchainPMHelpersMathTest is Test {
-    OnchainPMHelpers helpers;
+contract ScriptHelpersMathTest is Test {
+    ScriptHelpers helpers;
 
     function setUp() public {
-        helpers = new OnchainPMHelpers();
+        helpers = new ScriptHelpers();
     }
 
     function testAdd() public view {
@@ -142,11 +142,11 @@ contract OnchainPMHelpersMathTest is Test {
 
 // ─── Comparisons ─────────────────────────────────────────────────────────────
 
-contract OnchainPMHelpersComparisonTest is Test {
-    OnchainPMHelpers helpers;
+contract ScriptHelpersComparisonTest is Test {
+    ScriptHelpers helpers;
 
     function setUp() public {
-        helpers = new OnchainPMHelpers();
+        helpers = new ScriptHelpers();
     }
 
     function testEq() public view {
@@ -197,11 +197,11 @@ contract OnchainPMHelpersComparisonTest is Test {
 
 // ─── Boolean logic ───────────────────────────────────────────────────────────
 
-contract OnchainPMHelpersBooleanTest is Test {
-    OnchainPMHelpers helpers;
+contract ScriptHelpersBooleanTest is Test {
+    ScriptHelpers helpers;
 
     function setUp() public {
-        helpers = new OnchainPMHelpers();
+        helpers = new ScriptHelpers();
     }
 
     function testNot() public view {
@@ -226,11 +226,11 @@ contract OnchainPMHelpersBooleanTest is Test {
 
 // ─── Branching ───────────────────────────────────────────────────────────────
 
-contract OnchainPMHelpersTernaryTest is Test {
-    OnchainPMHelpers helpers;
+contract ScriptHelpersTernaryTest is Test {
+    ScriptHelpers helpers;
 
     function setUp() public {
-        helpers = new OnchainPMHelpers();
+        helpers = new ScriptHelpers();
     }
 
     function testTernaryUint256True() public view {
@@ -252,11 +252,11 @@ contract OnchainPMHelpersTernaryTest is Test {
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
-contract OnchainPMHelpersContextTest is Test {
-    OnchainPMHelpers helpers;
+contract ScriptHelpersContextTest is Test {
+    ScriptHelpers helpers;
 
     function setUp() public {
-        helpers = new OnchainPMHelpers();
+        helpers = new ScriptHelpers();
     }
 
     function testBlockTimestamp() public {
@@ -272,11 +272,11 @@ contract OnchainPMHelpersContextTest is Test {
 
 // ─── ABI decoding ────────────────────────────────────────────────────────────
 
-contract OnchainPMHelpersTupleTest is Test {
-    OnchainPMHelpers helpers;
+contract ScriptHelpersTupleTest is Test {
+    ScriptHelpers helpers;
 
     function setUp() public {
-        helpers = new OnchainPMHelpers();
+        helpers = new ScriptHelpers();
     }
 
     function testExtractElement() public view {
@@ -301,11 +301,11 @@ contract OnchainPMHelpersTupleTest is Test {
 
 // ─── Type casting ────────────────────────────────────────────────────────────
 
-contract OnchainPMHelpersCastTest is Test {
-    OnchainPMHelpers helpers;
+contract ScriptHelpersCastTest is Test {
+    ScriptHelpers helpers;
 
     function setUp() public {
-        helpers = new OnchainPMHelpers();
+        helpers = new ScriptHelpers();
     }
 
     // int256 → uint256
@@ -315,7 +315,7 @@ contract OnchainPMHelpersCastTest is Test {
     }
 
     function testToUint256FromIntNegativeReverts() public {
-        vm.expectRevert(IOnchainPMHelpers.CastOverflow.selector);
+        vm.expectRevert(IScriptHelpers.CastOverflow.selector);
         helpers.toUint256(int256(-1));
     }
 
@@ -326,7 +326,7 @@ contract OnchainPMHelpersCastTest is Test {
     }
 
     function testToInt256OverflowReverts() public {
-        vm.expectRevert(IOnchainPMHelpers.CastOverflow.selector);
+        vm.expectRevert(IScriptHelpers.CastOverflow.selector);
         helpers.toInt256(uint256(type(int256).max) + 1);
     }
 

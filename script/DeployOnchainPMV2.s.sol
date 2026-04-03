@@ -6,7 +6,7 @@ import {EnvConfig, Env, prettyEnvString} from "./utils/EnvConfig.s.sol";
 
 import {AccountingToken} from "../src/managers/spoke/AccountingToken.sol";
 import {FlashLoanHelper} from "../src/managers/spoke/FlashLoanHelper.sol";
-import {OnchainPMHelpers} from "../src/managers/spoke/OnchainPMHelpers.sol";
+import {ScriptHelpers} from "../src/managers/spoke/ScriptHelpers.sol";
 
 import "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
@@ -15,7 +15,7 @@ string constant ONCHAIN_PM_V2_VERSION = "v3.2";
 
 contract DeployOnchainPMV2 is BaseDeployer {
     AccountingToken public accountingToken;
-    OnchainPMHelpers public onchainPMHelpers;
+    ScriptHelpers public scriptHelpers;
     FlashLoanHelper public flashLoanHelper;
     address public onchainPMFactory;
 
@@ -49,10 +49,10 @@ contract DeployOnchainPMV2 is BaseDeployer {
             )
         );
 
-        onchainPMHelpers = OnchainPMHelpers(
+        scriptHelpers = ScriptHelpers(
             create3(
-                createSalt("onchainPMHelpers", ONCHAIN_PM_V2_VERSION),
-                abi.encodePacked(type(OnchainPMHelpers).creationCode)
+                createSalt("scriptHelpers", ONCHAIN_PM_V2_VERSION),
+                abi.encodePacked(type(ScriptHelpers).creationCode)
             )
         );
 
@@ -72,7 +72,7 @@ contract DeployOnchainPMV2 is BaseDeployer {
         );
 
         console.log("accountingToken:   %s", address(accountingToken));
-        console.log("onchainPMHelpers:  %s", address(onchainPMHelpers));
+        console.log("scriptHelpers:  %s", address(scriptHelpers));
         console.log("flashLoanHelper:   %s", address(flashLoanHelper));
         console.log("onchainPMFactory:  %s", onchainPMFactory);
     }
@@ -81,7 +81,7 @@ contract DeployOnchainPMV2 is BaseDeployer {
         string memory path = string.concat("env/", network, ".json");
 
         vm.writeJson(_contractEntry(address(accountingToken)), path, ".contracts.accountingToken");
-        vm.writeJson(_contractEntry(address(onchainPMHelpers)), path, ".contracts.onchainPMHelpers");
+        vm.writeJson(_contractEntry(address(scriptHelpers)), path, ".contracts.scriptHelpers");
         vm.writeJson(_contractEntry(address(flashLoanHelper)), path, ".contracts.flashLoanHelper");
         vm.writeJson(_contractEntry(onchainPMFactory), path, ".contracts.onchainPMFactory");
 

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IOnchainPMHelpers} from "./interfaces/IOnchainPMHelpers.sol";
+import {IScriptHelpers} from "./interfaces/IScriptHelpers.sol";
 
 import {MathLib} from "../../misc/libraries/MathLib.sol";
 
-/// @title  Onchain Portfolio Manager Helpers
+/// @title  Script Helpers
 /// @notice Stateless utility functions for use as weiroll script targets.
 /// @dev    Since weiroll uses CALL (not DELEGATECALL), these run in the helper's context
 ///         and cannot touch the OnchainPM's storage.
-contract OnchainPMHelpers is IOnchainPMHelpers {
+contract ScriptHelpers is IScriptHelpers {
     using MathLib for uint256;
 
     uint256 internal constant BPS_BASE = 10_000;

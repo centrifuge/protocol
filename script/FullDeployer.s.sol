@@ -37,7 +37,7 @@ import {QueueManager} from "../src/managers/spoke/QueueManager.sol";
 import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";
 import {AccountingToken} from "../src/managers/spoke/AccountingToken.sol";
 import {FlashLoanHelper} from "../src/managers/spoke/FlashLoanHelper.sol";
-import {OnchainPMHelpers} from "../src/managers/spoke/OnchainPMHelpers.sol";
+import {ScriptHelpers} from "../src/managers/spoke/ScriptHelpers.sol";
 import {SimplePriceManager} from "../src/managers/hub/SimplePriceManager.sol";
 import {IOnchainPMFactory} from "../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
 
@@ -161,7 +161,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
     QueueManager public queueManager;
     AccountingToken public accountingToken;
-    OnchainPMHelpers public onchainPMHelpers;
+    ScriptHelpers public scriptHelpers;
     FlashLoanHelper public flashLoanHelper;
     IOnchainPMFactory public onchainPMFactory;
     OnOffRampFactory public onOffRampFactory;
@@ -540,8 +540,8 @@ contract FullDeployer is BaseDeployer, Constants {
             )
         );
 
-        onchainPMHelpers = OnchainPMHelpers(
-            create3(createSalt("onchainPMHelpers", V3_1_1), abi.encodePacked(type(OnchainPMHelpers).creationCode))
+        scriptHelpers = ScriptHelpers(
+            create3(createSalt("scriptHelpers", V3_1_1), abi.encodePacked(type(ScriptHelpers).creationCode))
         );
 
         flashLoanHelper = FlashLoanHelper(

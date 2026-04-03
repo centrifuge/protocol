@@ -12,7 +12,7 @@ import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  AccountingToken
-/// @notice ERC6909 multi-token representing in-flight async requests and cross-chain liabilities.
+/// @notice ERC-6909 multi-token representing in-flight async requests and cross-chain liabilities.
 ///         Token IDs encode a pool ID, asset address, and liability flag, so a single deployment
 ///         can be shared across all pools.
 /// @dev    Not fully ERC-6909 compatible: operator support (isOperator, setOperator) is omitted

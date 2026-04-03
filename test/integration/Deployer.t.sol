@@ -669,9 +669,9 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(address(onchainPMFactory.gateway()), address(gateway));
     }
 
-    function testOnchainPMHelpers() public view {
+    function testScriptHelpers() public view {
         // contract deployed
-        assertTrue(address(onchainPMHelpers).code.length > 0);
+        assertTrue(address(scriptHelpers).code.length > 0);
     }
 
     function testFlashLoanHelper() public view {
