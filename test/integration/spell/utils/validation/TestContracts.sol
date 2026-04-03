@@ -31,11 +31,8 @@ import {RedemptionRestrictions} from "../../../../../src/hooks/RedemptionRestric
 
 import {NAVManager} from "../../../../../src/managers/hub/NAVManager.sol";
 import {QueueManager} from "../../../../../src/managers/spoke/QueueManager.sol";
-import {VaultDecoder} from "../../../../../src/managers/spoke/decoders/VaultDecoder.sol";
+import {OnOffRampFactory} from "../../../../../src/managers/spoke/OnOffRamp.sol";
 import {SimplePriceManager} from "../../../../../src/managers/hub/SimplePriceManager.sol";
-import {CircleDecoder} from "../../../../../src/managers/spoke/decoders/CircleDecoder.sol";
-import {OnOfframpManagerFactory} from "../../../../../src/managers/spoke/OnOfframpManager.sol";
-import {MerkleProofManagerFactory} from "../../../../../src/managers/spoke/MerkleProofManager.sol";
 
 import {OracleValuation} from "../../../../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../../../../src/valuations/IdentityValuation.sol";
@@ -113,10 +110,7 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         FreelyTransferable(c.freelyTransferableHook),
         RedemptionRestrictions(c.redemptionRestrictionsHook),
         QueueManager(c.queueManager),
-        OnOfframpManagerFactory(c.onOfframpManagerFactory),
-        MerkleProofManagerFactory(c.merkleProofManagerFactory),
-        VaultDecoder(c.vaultDecoder),
-        CircleDecoder(c.circleDecoder),
+        OnOffRampFactory(c.onOffRampFactory),
         BatchRequestManager(c.batchRequestManager),
         IdentityValuation(c.identityValuation),
         OracleValuation(c.oracleValuation),

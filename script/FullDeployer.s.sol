@@ -34,11 +34,12 @@ import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
 
 import {NAVManager} from "../src/managers/hub/NAVManager.sol";
 import {QueueManager} from "../src/managers/spoke/QueueManager.sol";
-import {VaultDecoder} from "../src/managers/spoke/decoders/VaultDecoder.sol";
+import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";
+import {AccountingToken} from "../src/managers/spoke/AccountingToken.sol";
+import {FlashLoanHelper} from "../src/managers/spoke/FlashLoanHelper.sol";
+import {OnchainPMHelpers} from "../src/managers/spoke/OnchainPMHelpers.sol";
 import {SimplePriceManager} from "../src/managers/hub/SimplePriceManager.sol";
-import {CircleDecoder} from "../src/managers/spoke/decoders/CircleDecoder.sol";
-import {OnOfframpManagerFactory} from "../src/managers/spoke/OnOfframpManager.sol";
-import {MerkleProofManagerFactory} from "../src/managers/spoke/MerkleProofManager.sol";
+import {IOnchainPMFactory} from "../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
 
 import {OracleValuation} from "../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
@@ -71,6 +72,7 @@ import {
 } from "../src/deployment/ActionBatchers.sol";
 
 string constant V3_1 = "v3.1";
+string constant V3_1_1 = "v3.1.1";
 
 struct WormholeInput {
     bool shouldDeploy;
@@ -158,11 +160,11 @@ contract FullDeployer is BaseDeployer, Constants {
     RedemptionRestrictions public redemptionRestrictionsHook;
 
     QueueManager public queueManager;
-    OnOfframpManagerFactory public onOfframpManagerFactory;
-    MerkleProofManagerFactory public merkleProofManagerFactory;
-    VaultDecoder public vaultDecoder;
-    CircleDecoder public circleDecoder;
-
+    AccountingToken public accountingToken;
+    OnchainPMHelpers public onchainPMHelpers;
+    FlashLoanHelper public flashLoanHelper;
+    IOnchainPMFactory public onchainPMFactory;
+    OnOffRampFactory public onOffRampFactory;
     BatchRequestManager public batchRequestManager;
 
     IdentityValuation public identityValuation;
@@ -531,27 +533,38 @@ contract FullDeployer is BaseDeployer, Constants {
             )
         );
 
-        onOfframpManagerFactory = OnOfframpManagerFactory(
+        accountingToken = AccountingToken(
             create3(
-                createSalt("onOfframpManagerFactory", V3_1),
-                abi.encodePacked(type(OnOfframpManagerFactory).creationCode, abi.encode(contractUpdater, balanceSheet))
+                createSalt("accountingToken", V3_1_1),
+                abi.encodePacked(type(AccountingToken).creationCode, abi.encode(contractUpdater))
             )
         );
 
-        merkleProofManagerFactory = MerkleProofManagerFactory(
+        onchainPMHelpers = OnchainPMHelpers(
+            create3(createSalt("onchainPMHelpers", V3_1_1), abi.encodePacked(type(OnchainPMHelpers).creationCode))
+        );
+
+        flashLoanHelper = FlashLoanHelper(
+            create3(createSalt("flashLoanHelper", V3_1_1), abi.encodePacked(type(FlashLoanHelper).creationCode))
+        );
+
+        onchainPMFactory = IOnchainPMFactory(
             create3(
-                createSalt("merkleProofManagerFactory", V3_1),
+                createSalt("onchainPMFactory", V3_1_1),
                 abi.encodePacked(
-                    type(MerkleProofManagerFactory).creationCode, abi.encode(contractUpdater, balanceSheet)
+                    vm.getCode("out-ir/OnchainPM.sol/OnchainPMFactory.json"),
+                    abi.encode(contractUpdater, balanceSheet, gateway)
                 )
             )
         );
 
-        vaultDecoder =
-            VaultDecoder(create3(createSalt("vaultDecoder", V3_1), abi.encodePacked(type(VaultDecoder).creationCode)));
-
-        circleDecoder = CircleDecoder(
-            create3(createSalt("circleDecoder", V3_1), abi.encodePacked(type(CircleDecoder).creationCode))
+        onOffRampFactory = OnOffRampFactory(
+            create3(
+                createSalt("onOffRampFactory", V3_1_1),
+                abi.encodePacked(
+                    type(OnOffRampFactory).creationCode, abi.encode(contractUpdater, balanceSheet, accountingToken)
+                )
+            )
         );
 
         batchRequestManager = BatchRequestManager(
@@ -571,7 +584,7 @@ contract FullDeployer is BaseDeployer, Constants {
         oracleValuation = OracleValuation(
             create3(
                 createSalt("oracleValuation", V3_1),
-                abi.encodePacked(type(OracleValuation).creationCode, abi.encode(hub, hubRegistry))
+                abi.encodePacked(type(OracleValuation).creationCode, abi.encode(hub, hubRegistry, contractUpdater))
             )
         );
 
@@ -698,10 +711,7 @@ contract FullDeployer is BaseDeployer, Constants {
             freelyTransferableHook,
             redemptionRestrictionsHook,
             queueManager,
-            onOfframpManagerFactory,
-            merkleProofManagerFactory,
-            vaultDecoder,
-            circleDecoder,
+            onOffRampFactory,
             batchRequestManager,
             identityValuation,
             oracleValuation,

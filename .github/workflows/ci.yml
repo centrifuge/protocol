@@ -20,6 +20,9 @@ jobs:
         with:
           version: v1.4.4
 
+      - name: Build ir profile
+        run: FOUNDRY_PROFILE=ir forge build
+
       - name: Run tests
         run: forge test --deny warnings --nmp "test/integration/{fork,spell}/**/*.sol"
         env:
@@ -50,6 +53,9 @@ jobs:
           version: v1.4.4
       - name: Load secrets
         run: python3 script/deploy/load_secrets.py
+      - name: Build ir profile
+        run: FOUNDRY_PROFILE=ir forge build
+
       - name: Run fork and spell tests
         run: forge test --match-path "test/integration/{fork,spell}/**/*.sol" -vv
         env:
@@ -219,6 +225,8 @@ jobs:
       - name: Install dependencies (forge)
         run: |
           forge install -j 0 --shallow --color auto
+      - name: Build ir profile
+        run: FOUNDRY_PROFILE=ir forge build
       - name: Deploy Anvil
         run: |
           python3 script/deploy/deploy.py --network anvil
@@ -235,6 +243,9 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: v1.4.4
+
+      - name: Build ir profile
+        run: FOUNDRY_PROFILE=ir forge build
 
       - name: Run coverage
         run: forge coverage --report summary --report lcov --nmp "test/integration/{fork,spell}/**/*.sol"
@@ -300,6 +311,9 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.x"
+
+      - name: Build ir profile
+        run: FOUNDRY_PROFILE=ir forge build
 
       - name: Run benchmarks check
         run: ./script/utils/benchmarks.sh check
