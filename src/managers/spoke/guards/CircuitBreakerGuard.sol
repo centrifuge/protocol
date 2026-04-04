@@ -8,7 +8,6 @@ import {MathLib} from "../../../misc/libraries/MathLib.sol";
 /// @title  CircuitBreakerGuard
 /// @notice Rolling-window circuit breaker for weiroll scripts. Limits cumulative throughput
 ///         (e.g. bridge outflows) and per-update value deviation (e.g. price updates).
-/// @dev    Called via weiroll CALL, so `msg.sender` is the OnchainPM — state is per-instance.
 contract CircuitBreakerGuard is ICircuitBreakerGuard {
     using MathLib for uint256;
 

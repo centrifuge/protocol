@@ -169,9 +169,9 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
 /// @title  Onchain Portfolio Manager Factory
 /// @notice Deploys pool-specific OnchainPM instances deterministically via CREATE2.
 contract OnchainPMFactory is IOnchainPMFactory {
+    IGateway public immutable gateway;
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
-    IGateway public immutable gateway;
 
     constructor(address contractUpdater_, IBalanceSheet balanceSheet_, IGateway gateway_) {
         contractUpdater = contractUpdater_;
