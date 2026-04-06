@@ -18,8 +18,8 @@ case $1 in
     # Checks if GasService must be updated
     RAYON_NUM_THREADS=1 BENCHMARKING_RUN_ID="$(date +%s)" forge test EndToEnd
 
-    tmp="$(mktemp ./src/core/messaging/GasService_temp.XXXXXXX.sol)"
-    cp ./src/core/messaging/GasService.sol "$tmp"
+    tmp="$(mktemp ./src/admin/GasService_temp.XXXXXXX.sol)"
+    cp ./src/admin/GasService.sol "$tmp"
     trap 'rm -f "$tmp"' EXIT
 
     python3 script/utils/update_gas_service_values.py ./snapshots/MessageGasLimits.json "$tmp"
