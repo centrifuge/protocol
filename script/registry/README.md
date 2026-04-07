@@ -22,12 +22,12 @@ Registries use a **delta format**: each version only contains contracts that cha
 | `abi-registry.js` | Builds `registry-*.json` from env files, explorer APIs, and Forge broadcast artifacts. Supports delta (default) or full snapshot. |
 | `pin-to-ipfs.js` | Pins generated registries to Pinata, writes nightly/mainnet/testnet summaries, outputs CID metadata. |
 | `.github/ci-scripts/detect-changed-environments.js` | Detects mainnet/testnet env changes to skip unnecessary CI builds. |
-| `.github/ci-scripts/detect-deployment-commit.js` | Returns the git commit that produced the latest env files so ABIs are built from that revision. |
+| `.github/ci-scripts/detect-deployment-commit.js` | Returns the git commit recorded in env `deploymentInfo` (used as `DEPLOYMENT_COMMIT` / `registry.deploymentInfo.gitCommit`, not for per-contract ABI tags). |
 | `.github/ci-scripts/compute-env-tags.js` | Creates tags (`deploy-${version}-${timestamp}`) when env files change so deployment commits stay reachable after squashing. |
 
 ### Pipelines
 
-- **`registry.yml`** – On env/registry changes: detects changed envs, rebuilds ABIs at deployment commits, generates `registry-mainnet.json` / `registry-testnet.json`, publishes artifacts, pins to IPFS, writes step summaries with CIDs and opens issues when pointers need updates.
+- **`registry.yml`** – On env/registry changes: fetches git tags, runs `abi-registry.js` (which builds per-tag ABI caches via worktrees), sets `DEPLOYMENT_COMMIT` from env files for registry metadata only, generates `registry-mainnet.json` / `registry-testnet.json`, publishes artifacts, pins to IPFS, writes step summaries with CIDs and opens issues when pointers need updates.
 - **`tag-env-updates.yml`** – On any push that touches `env/**/*.json`: runs `compute-env-tags.js` and pushes annotated tags.
 
 ---
