@@ -14,6 +14,16 @@ on:
       - "env/**"
       - "script/registry/**"
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Which registry to regenerate (delta mode only)'
+        required: false
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - mainnet
+          - testnet
 
 env:
   FOUNDRY_PROFILE: ci
@@ -55,12 +65,22 @@ jobs:
       - name: Detect changed environments
         id: changed_environments
         run: |
-          changed=$(node .github/ci-scripts/detect-changed-environments.js)
-          echo "Changed environments: $changed"
-          mainnet_changed=$(echo $changed | jq -r '.mainnet')
-          testnet_changed=$(echo $changed | jq -r '.testnet')
-          echo "mainnet=$mainnet_changed" >> $GITHUB_OUTPUT
-          echo "testnet=$testnet_changed" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            env_input="${{ inputs.environment }}"
+            case "$env_input" in
+              mainnet) echo "mainnet=true" >> $GITHUB_OUTPUT; echo "testnet=false" >> $GITHUB_OUTPUT ;;
+              testnet) echo "mainnet=false" >> $GITHUB_OUTPUT; echo "testnet=true" >> $GITHUB_OUTPUT ;;
+              *)       echo "mainnet=true" >> $GITHUB_OUTPUT; echo "testnet=true" >> $GITHUB_OUTPUT ;;
+            esac
+            echo "workflow_dispatch: environment=$env_input"
+          else
+            changed=$(node .github/ci-scripts/detect-changed-environments.js)
+            echo "Changed environments: $changed"
+            mainnet_changed=$(echo $changed | jq -r '.mainnet')
+            testnet_changed=$(echo $changed | jq -r '.testnet')
+            echo "mainnet=$mainnet_changed" >> $GITHUB_OUTPUT
+            echo "testnet=$testnet_changed" >> $GITHUB_OUTPUT
+          fi
 
       - name: Determine deployment commits
         id: deployment_commits
@@ -232,8 +252,11 @@ jobs:
     name: Pin registry files to IPFS
     runs-on: ubuntu-latest
     if: |
-      github.event_name == 'push' && github.ref == 'refs/heads/main' && 
-      (needs.generate.outputs.mainnet == 'true' || needs.generate.outputs.testnet == 'true')
+      (needs.generate.outputs.mainnet == 'true' || needs.generate.outputs.testnet == 'true') &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        github.event_name == 'workflow_dispatch'
+      )
     permissions:
       contents: read
       issues: write
