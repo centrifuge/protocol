@@ -54,6 +54,10 @@ contract SpokeV3_1_0 is Auth, Recoverable, ReentrancyProtection, ISpokeV3_1_0 {
         bool unpaid,
         address refund
     ) external payable {
+        IRequestManager manager = spokeRegistry.requestManager(poolId);
+        require(address(manager) != address(0), ISpokeV3_1_0.InvalidRequestManager());
+        require(msg.sender == address(manager), NotAuthorized());
+
         spoke.sender().sendRequest{value: msg.value}(poolId, scId, assetId, payload, extraGasLimit, unpaid, refund);
     }
 

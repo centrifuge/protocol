@@ -204,6 +204,9 @@ contract CoreActionBatcher is Constants {
         // Rely spoke
         report.messageDispatcher.rely(address(report.spoke));
 
+        // Rely spokeV3_1_0: needed because SpokeV3_1_0.request() calls messageDispatcher.sendRequest() which has auth
+        report.messageDispatcher.rely(address(report.spokeV3_1_0));
+
         // Rely spokeHandler
         report.spokeHandler.rely(address(report.messageProcessor));
         report.spokeHandler.rely(address(report.messageDispatcher));

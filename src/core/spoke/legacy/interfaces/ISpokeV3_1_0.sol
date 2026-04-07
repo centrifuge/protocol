@@ -3,6 +3,7 @@ pragma solidity >=0.5.0;
 
 import {IShareToken} from "../../interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "../../interfaces/IVault.sol";
+import {IAuth} from "../../../../misc/interfaces/IAuth.sol";
 
 import {D18} from "../../../../misc/types/D18.sol";
 
@@ -24,6 +25,7 @@ interface ISpokeV3_1_0 {
     event File(bytes32 indexed what, address data);
 
     error FileUnrecognizedParam();
+    error InvalidRequestManager();
 
     //----------------------------------------------------------------------------------------------
     // Administration
