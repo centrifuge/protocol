@@ -151,8 +151,7 @@ Below is a **trimmed** illustration of what a delta looks like when some v3.0 co
         "hub": {
           "address": "0xA4A7Bb3831958463b3FE3E27A6a160F764341953",
           "blockNumber": 24319335,
-          "txHash": "0xcd4e039f241549031a78668d74cc76c4cbd7398c2686c42969a69be73c963976",
-          "version": "v3.1"
+          "txHash": "0xcd4e039f241549031a78668d74cc76c4cbd7398c2686c42969a69be73c963976"
         }
       },
       "deployment": {
@@ -216,7 +215,6 @@ interface ChainConfig {
       address: string | null;      // null = contract deprecated in this version
       blockNumber: number | null;  // Block number at contract creation
       txHash: string | null;       // Transaction hash of contract deployment
-      version?: string;            // From env; omitted for deprecated entries
     };
   };
   deployment: {

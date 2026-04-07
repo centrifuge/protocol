@@ -148,7 +148,7 @@ function ensureAbiCache(tag) {
         mkdirSync(join(ABI_CACHE_DIR, "worktrees"), { recursive: true });
         if (existsSync(worktreeDir)) {
             // Clean up stale worktree
-            try { execSync(`git worktree remove --force "${worktreeDir}"`, { stdio: "pipe" }); } catch {}
+            try { execSync(`git worktree remove --force "${worktreeDir}"`, { stdio: "pipe" }); } catch { }
             rmSync(worktreeDir, { recursive: true, force: true });
         }
         execSync(`git worktree add "${worktreeDir}" "${tag}"`, { stdio: "pipe" });
@@ -175,7 +175,7 @@ function ensureAbiCache(tag) {
         console.log(`  ✓ ABI cache populated for tag "${tag}"`);
     } finally {
         // Clean up worktree
-        try { execSync(`git worktree remove --force "${worktreeDir}"`, { stdio: "pipe" }); } catch {}
+        try { execSync(`git worktree remove --force "${worktreeDir}"`, { stdio: "pipe" }); } catch { }
         rmSync(worktreeDir, { recursive: true, force: true });
     }
 }
@@ -637,6 +637,10 @@ async function processContracts(chain, networkFile) {
             const envContract = { address };
             if (blockNumber) envContract.blockNumber = Number(blockNumber);
             if (txHash) envContract.txHash = txHash;
+            // Preserve version (and any future env-only fields) — required for ABI tag resolution / CI
+            if (typeof contractData === "object" && contractData?.version) {
+                envContract.version = contractData.version;
+            }
             chain.contracts[contractName] = envContract;
         }
     }
@@ -882,6 +886,7 @@ async function main() {
 
     // Extract ABIs from per-tag caches (builds from contract version tags)
     registry.abis = packAbis(chains);
+    stripContractVersionsForRegistryOutput(chains);
 
     // Log summary
     if (fullMode) {
@@ -1022,6 +1027,24 @@ function getDeploymentGitCommit(chain) {
 }
 
 /**
+ * Drops per-contract `version` from chains before JSON output.
+ * `version` is only needed during generation (env → git tag → ABI pack); omitting it keeps published registries smaller for indexers.
+ *
+ * @param {Object} chains - Same object later assigned to registry.chains (mutated in place)
+ */
+function stripContractVersionsForRegistryOutput(chains) {
+    for (const chain of Object.values(chains)) {
+        const contracts = chain?.contracts;
+        if (!contracts || typeof contracts !== "object") continue;
+        for (const data of Object.values(contracts)) {
+            if (data && typeof data === "object" && Object.prototype.hasOwnProperty.call(data, "version")) {
+                delete data.version;
+            }
+        }
+    }
+}
+
+/**
  * Extracts ABIs from per-tag ABI caches for deployed contracts.
  *
  * Each contract is mapped to a git tag via its "version" field in the env file.
@@ -1034,11 +1057,11 @@ function getDeploymentGitCommit(chain) {
 // Env contract names that differ from Forge artifact filenames.
 // Key: capitalized env name → Value: Forge artifact name.
 const ABI_NAME_ALIASES = {
-    "Token":                    "ShareToken",
-    "NavManager":               "NAVManager",
-    "FreezeOnlyHook":           "FreezeOnly",
-    "FullRestrictionsHook":     "FullRestrictions",
-    "FreelyTransferableHook":   "FreelyTransferable",
+    "Token": "ShareToken",
+    "NavManager": "NAVManager",
+    "FreezeOnlyHook": "FreezeOnly",
+    "FullRestrictionsHook": "FullRestrictions",
+    "FreelyTransferableHook": "FreelyTransferable",
     "RedemptionRestrictionsHook": "RedemptionRestrictions",
 };
 
