@@ -16,6 +16,7 @@ import {GasService} from "../core/messaging/GasService.sol";
 import {SpokeHandler} from "../core/spoke/SpokeHandler.sol";
 import {AssetId, newAssetId} from "../core/types/AssetId.sol";
 import {SpokeRegistry} from "../core/spoke/SpokeRegistry.sol";
+import {SpokeV3_1_0} from "../core/spoke/legacy/SpokeV3_1_0.sol";
 import {VaultRegistry} from "../core/spoke/VaultRegistry.sol";
 import {MultiAdapter} from "../core/messaging/MultiAdapter.sol";
 import {ContractUpdater} from "../core/utils/ContractUpdater.sol";
@@ -77,6 +78,7 @@ struct CoreReport {
     VaultRegistry vaultRegistry;
     SpokeHandler spokeHandler;
     SpokeRegistry spokeRegistry;
+    SpokeV3_1_0 spokeV3_1_0;
     HubRegistry hubRegistry;
     Accounting accounting;
     Holdings holdings;
@@ -162,6 +164,7 @@ contract CoreActionBatcher is Constants {
         report.vaultRegistry.rely(root);
         report.spokeRegistry.rely(root);
         report.spokeHandler.rely(root);
+        report.spokeV3_1_0.rely(root);
 
         report.hubRegistry.rely(root);
         report.accounting.rely(root);
@@ -272,6 +275,9 @@ contract CoreActionBatcher is Constants {
         report.spoke.file("spokeRegistry", address(report.spokeRegistry));
         report.spoke.file("sender", address(report.messageDispatcher));
 
+        report.spokeV3_1_0.file("spoke", address(report.spoke));
+        report.spokeV3_1_0.file("spokeRegistry", address(report.spokeRegistry));
+
         report.balanceSheet.file("spokeRegistry", address(report.spokeRegistry));
         report.balanceSheet.file("gateway", address(report.gateway));
         report.balanceSheet.file("poolEscrowProvider", address(report.poolEscrowFactory));
@@ -319,6 +325,7 @@ contract CoreActionBatcher is Constants {
         report.poolEscrowFactory.deny(address(this));
         report.spokeRegistry.deny(address(this));
         report.spokeHandler.deny(address(this));
+        report.spokeV3_1_0.deny(address(this));
 
         report.hubRegistry.deny(address(this));
         report.accounting.deny(address(this));
@@ -393,12 +400,11 @@ contract NonCoreActionBatcher {
         // File methods
         report.refundEscrowFactory.file(bytes32("controller"), address(report.subsidyManager));
 
-        report.asyncRequestManager.file("spoke", address(report.core.spoke));
-        report.asyncRequestManager.file("spokeRegistry", address(report.core.spokeRegistry));
+        report.asyncRequestManager.file("spoke", address(report.core.spokeV3_1_0));
         report.asyncRequestManager.file("balanceSheet", address(report.core.balanceSheet));
         report.asyncRequestManager.file("vaultRegistry", address(report.core.vaultRegistry));
 
-        report.syncManager.file("spokeRegistry", address(report.core.spokeRegistry));
+        report.syncManager.file("spoke", address(report.core.spokeV3_1_0));
         report.syncManager.file("balanceSheet", address(report.core.balanceSheet));
         report.syncManager.file("vaultRegistry", address(report.core.vaultRegistry));
 

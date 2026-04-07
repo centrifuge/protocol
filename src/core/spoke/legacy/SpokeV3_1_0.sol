@@ -45,6 +45,45 @@ contract SpokeV3_1_0 is Auth, Recoverable, ReentrancyProtection, ISpokeV3_1_0 {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpokeV3_1_0
+    function crosschainTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount,
+        uint128 extraGasLimit,
+        uint128 remoteExtraGasLimit,
+        address refund
+    ) external payable {
+        spoke.crosschainTransferShares{value: msg.value}(
+            centrifugeId, poolId, scId, receiver, amount, extraGasLimit, remoteExtraGasLimit, refund
+        );
+    }
+
+    /// @inheritdoc ISpokeV3_1_0
+    function crosschainTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount,
+        uint128 remoteExtraGasLimit
+    ) external payable {
+        spoke.crosschainTransferShares{value: msg.value}(
+            centrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit
+        );
+    }
+
+    /// @inheritdoc ISpokeV3_1_0
+    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId, address refund)
+        external
+        payable
+        returns (AssetId assetId)
+    {
+        return spoke.registerAsset{value: msg.value}(centrifugeId, asset, tokenId, refund);
+    }
+
+    /// @inheritdoc ISpokeV3_1_0
     function request(
         PoolId poolId,
         ShareClassId scId,

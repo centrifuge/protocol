@@ -56,12 +56,12 @@ contract SyncManagerTest is SyncManagerBaseTest {
         vm.expectRevert(IBaseRequestManager.FileUnrecognizedParam.selector);
         syncManager.file("random", self);
 
-        assertEq(address(syncManager.spokeRegistry()), address(spokeRegistry));
+        assertEq(address(syncManager.spoke()), address(spokeV3_1_0));
         assertEq(address(syncManager.balanceSheet()), address(balanceSheet));
 
         // success
-        syncManager.file("spokeRegistry", randomUser);
-        assertEq(address(syncManager.spokeRegistry()), randomUser);
+        syncManager.file("spoke", randomUser);
+        assertEq(address(syncManager.spoke()), randomUser);
         syncManager.file("balanceSheet", randomUser);
         assertEq(address(syncManager.balanceSheet()), randomUser);
 

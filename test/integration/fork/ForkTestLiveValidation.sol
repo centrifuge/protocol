@@ -93,6 +93,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     address public balanceSheet;
     address public spoke;
     address public spokeRegistry;
+    address public spokeV3_1_0;
     address public spokeHandler;
     address public vaultRegistry;
     address public contractUpdater;
@@ -951,7 +952,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             );
         }
 
-        assertEq(address(SyncManager(syncManager).spokeRegistry()), spokeRegistry, "SyncManager spokeRegistry mismatch");
+        assertEq(address(SyncManager(syncManager).spoke()), spokeV3_1_0, "SyncManager spoke mismatch");
         assertEq(address(SyncManager(syncManager).balanceSheet()), balanceSheet, "SyncManager balanceSheet mismatch");
         if (vaultRegistry != address(0)) {
             assertEq(

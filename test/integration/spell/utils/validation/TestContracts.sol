@@ -12,6 +12,7 @@ import {BalanceSheet} from "../../../../../src/core/spoke/BalanceSheet.sol";
 import {GasService} from "../../../../../src/core/messaging/GasService.sol";
 import {SpokeHandler} from "../../../../../src/core/spoke/SpokeHandler.sol";
 import {SpokeRegistry} from "../../../../../src/core/spoke/SpokeRegistry.sol";
+import {SpokeV3_1_0} from "../../../../../src/core/spoke/legacy/SpokeV3_1_0.sol";
 import {VaultRegistry} from "../../../../../src/core/spoke/VaultRegistry.sol";
 import {MultiAdapter} from "../../../../../src/core/messaging/MultiAdapter.sol";
 import {ContractUpdater} from "../../../../../src/core/utils/ContractUpdater.sol";
@@ -91,6 +92,7 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         VaultRegistry(c.vaultRegistry),
         SpokeHandler(c.spokeHandler),
         SpokeRegistry(c.spokeRegistry),
+        SpokeV3_1_0(c.spokeV3_1_0),
         HubRegistry(c.hubRegistry),
         Accounting(c.accounting),
         Holdings(c.holdings),

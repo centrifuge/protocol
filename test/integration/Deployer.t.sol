@@ -489,8 +489,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(asyncRequestManager.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(asyncRequestManager.spoke()), address(spoke));
-        assertEq(address(asyncRequestManager.spokeRegistry()), address(spokeRegistry));
+        assertEq(address(asyncRequestManager.spoke()), address(spokeV3_1_0));
         assertEq(address(asyncRequestManager.balanceSheet()), address(balanceSheet));
         assertEq(address(asyncRequestManager.subsidyManager()), address(subsidyManager));
 
@@ -539,7 +538,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(syncManager.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(syncManager.spokeRegistry()), address(spokeRegistry));
+        assertEq(address(syncManager.spoke()), address(spokeV3_1_0));
         assertEq(address(syncManager.balanceSheet()), address(balanceSheet));
     }
 

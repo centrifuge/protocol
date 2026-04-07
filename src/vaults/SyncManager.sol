@@ -22,7 +22,7 @@ import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
-import {ISpokeRegistry} from "../core/spoke/interfaces/ISpokeRegistry.sol";
+import {ISpokeV3_1_0} from "../core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 import {VaultDetails, IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 
@@ -33,7 +33,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     using CastLib for *;
     using BytesLib for bytes;
 
-    ISpokeRegistry public spokeRegistry;
+    ISpokeV3_1_0 public spoke;
     IBalanceSheet public balanceSheet;
     IVaultRegistry public vaultRegistry;
 
@@ -49,7 +49,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
 
     /// @inheritdoc ISyncManager
     function file(bytes32 what, address data) external auth {
-        if (what == "spokeRegistry") spokeRegistry = ISpokeRegistry(data);
+        if (what == "spoke") spoke = ISpokeV3_1_0(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistry(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else revert FileUnrecognizedParam();
@@ -64,14 +64,14 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         TrustedCall kind = TrustedCall(kindValue);
         if (kind == TrustedCall.Valuation) {
             (, bytes32 valuation_) = abi.decode(payload, (uint8, bytes32));
-            require(address(spokeRegistry.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
+            require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
 
             setValuation(poolId, scId, valuation_.toAddress());
         } else if (kind == TrustedCall.MaxReserve) {
             (, uint128 assetId, uint128 maxReserve_) = abi.decode(payload, (uint8, uint128, uint128));
-            require(address(spokeRegistry.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
+            require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
 
-            (address asset, uint256 tokenId) = spokeRegistry.idToAsset(AssetId.wrap(assetId));
+            (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(assetId));
             setMaxReserve(poolId, scId, asset, tokenId, maxReserve_);
         }
     }
@@ -161,7 +161,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
 
         D18 poolPerShare = pricePoolPerShare(vault_.poolId(), vault_.scId());
-        D18 poolPerAsset = spokeRegistry.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
+        D18 poolPerAsset = spoke.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
 
         return poolPerShare.isZero()
             ? 0
@@ -186,7 +186,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         ISyncDepositValuation valuation_ = valuation[poolId][scId];
 
         if (address(valuation_) == address(0)) {
-            price = spokeRegistry.pricePoolPerShare(poolId, scId, true);
+            price = spoke.pricePoolPerShare(poolId, scId, true);
         } else {
             price = valuation_.pricePoolPerShare(poolId, scId);
         }
@@ -238,7 +238,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
 
         D18 poolPerShare = pricePoolPerShare(vault_.poolId(), vault_.scId());
-        D18 poolPerAsset = spokeRegistry.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
+        D18 poolPerAsset = spoke.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
 
         return poolPerAsset.isZero()
             ? 0
@@ -281,7 +281,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         returns (uint128)
     {
         D18 poolPerShare = pricePoolPerShare(vault_.poolId(), vault_.scId());
-        D18 poolPerAsset = spokeRegistry.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
+        D18 poolPerAsset = spoke.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
 
         if (poolPerShare.isZero() || poolPerAsset.isZero()) return 0;
 
