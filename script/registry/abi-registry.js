@@ -58,8 +58,11 @@ import {
     readdirSync,
     mkdirSync,
     existsSync,
+    cpSync,
+    rmSync,
 } from "fs";
 import { dirname, join } from "path";
+import { execSync } from "child_process";
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -112,6 +115,176 @@ const CUSTOM_EXPLORER_CHAINS = new Set([
  */
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ============================================================================
+// Per-contract ABI cache
+// ============================================================================
+
+const ABI_CACHE_DIR = join(process.cwd(), "cache", "abi-registry");
+
+/**
+ * Resolves a git tag for a contract version string.
+ * Tries candidates in order: as-is, v-prefixed, with .0 patch appended,
+ * v-prefixed with .0 patch appended.
+ *
+ * Examples:
+ *   "3"    → tries 3, v3, 3.0, v3.0
+ *   "v3.1" → tries v3.1, v3.1.0
+ *   "v3"   → tries v3, v3.0
+ *
+ * @param {string} version - Version from contract entry (e.g. "3", "v3.1")
+ * @returns {string} The resolved git tag
+ * @throws {Error} If no matching tag exists
+ */
+function resolveVersionTag(version) {
+    const candidates = [version];
+    // Add "v" prefix if not already present
+    if (!version.startsWith("v")) {
+        candidates.push(`v${version}`);
+    }
+    // Append ".0" patch for semver normalization (e.g. v3.1 → v3.1.0)
+    const withPatch = candidates.map((c) => `${c}.0`);
+    candidates.push(...withPatch);
+
+    for (const candidate of candidates) {
+        if (gitTagExists(candidate)) return candidate;
+    }
+
+    // Tags might not be fetched locally yet — try once
+    try {
+        console.log(`  Fetching tags from remote...`);
+        execSync("git fetch --tags --quiet", { stdio: "pipe" });
+    } catch {
+        // Best-effort; may fail in shallow clones
+    }
+    for (const candidate of candidates) {
+        if (gitTagExists(candidate)) return candidate;
+    }
+
+    throw new Error(
+        `No git tag found for contract version "${version}". ` +
+        `Tried: ${candidates.join(", ")}. ` +
+        `Every contract version in env files must have a corresponding git tag.`
+    );
+}
+
+/**
+ * Checks whether a git tag exists locally.
+ */
+function gitTagExists(tag) {
+    try {
+        execSync(`git rev-parse --verify refs/tags/${tag}`, { stdio: "pipe" });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Ensures the ABI cache for a given tag is populated.
+ * If the cache directory already has build artifacts, it is reused.
+ * Otherwise, a git worktree is created at the tag, forge build is run,
+ * and the out/ directory is copied into the cache.
+ *
+ * @param {string} tag - Git tag to build ABIs for
+ */
+function ensureAbiCache(tag) {
+    const cacheOut = join(ABI_CACHE_DIR, tag, "out");
+    if (existsSync(cacheOut)) {
+        console.log(`  ✓ ABI cache hit for tag "${tag}"`);
+        return;
+    }
+
+    console.log(`  Building ABI cache for tag "${tag}"...`);
+
+    const worktreeDir = join(ABI_CACHE_DIR, "worktrees", tag);
+
+    try {
+        // Create worktree at the tag
+        mkdirSync(join(ABI_CACHE_DIR, "worktrees"), { recursive: true });
+        if (existsSync(worktreeDir)) {
+            // Clean up stale worktree
+            try { execSync(`git worktree remove --force "${worktreeDir}"`, { stdio: "pipe" }); } catch {}
+            rmSync(worktreeDir, { recursive: true, force: true });
+        }
+        execSync(`git worktree add "${worktreeDir}" "${tag}"`, { stdio: "pipe" });
+
+        // Initialize submodules in the worktree
+        execSync("git submodule update --init --recursive", {
+            cwd: worktreeDir,
+            stdio: "pipe",
+        });
+
+        // Build
+        execSync("forge build --skip test", {
+            cwd: worktreeDir,
+            stdio: "inherit",
+        });
+
+        // Copy out/ to cache
+        const worktreeOut = join(worktreeDir, "out");
+        if (!existsSync(worktreeOut)) {
+            throw new Error(`Forge build did not produce out/ directory for tag "${tag}"`);
+        }
+        mkdirSync(join(ABI_CACHE_DIR, tag), { recursive: true });
+        cpSync(worktreeOut, cacheOut, { recursive: true });
+        console.log(`  ✓ ABI cache populated for tag "${tag}"`);
+    } finally {
+        // Clean up worktree
+        try { execSync(`git worktree remove --force "${worktreeDir}"`, { stdio: "pipe" }); } catch {}
+        rmSync(worktreeDir, { recursive: true, force: true });
+    }
+}
+
+/**
+ * Collects the set of unique version tags needed across all chains' contracts.
+ * Validates that every non-deprecated contract has a version field.
+ *
+ * @param {Object} chains - The chains object with deployed contracts
+ * @returns {Map<string, string>} Map of contract name (capitalized) → resolved git tag
+ */
+function collectContractTags(chains) {
+    const contractToTag = new Map();
+    const errors = [];
+
+    for (const [chainId, chain] of Object.entries(chains)) {
+        for (const [name, data] of Object.entries(chain.contracts || {})) {
+            if (data?.address === null) continue; // deprecated
+
+            const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
+            if (contractToTag.has(capitalized)) continue; // already resolved
+
+            const version = data?.version;
+            if (!version) {
+                errors.push(`${capitalized} on chain ${chainId} is missing a "version" field`);
+                continue;
+            }
+
+            try {
+                const tag = resolveVersionTag(version);
+                contractToTag.set(capitalized, tag);
+
+                // Factory → also map the base contract to the same tag
+                if (capitalized.endsWith("Factory")) {
+                    const baseName = capitalized.replace(/Factory$/, "");
+                    if (!contractToTag.has(baseName)) {
+                        contractToTag.set(baseName, tag);
+                    }
+                }
+            } catch (err) {
+                errors.push(`${capitalized} (version "${version}"): ${err.message}`);
+            }
+        }
+    }
+
+    if (errors.length > 0) {
+        throw new Error(
+            `Failed to resolve version tags for contracts:\n  - ${errors.join("\n  - ")}`
+        );
+    }
+
+    return contractToTag;
 }
 
 /**
@@ -421,11 +594,13 @@ async function processContracts(chain, networkFile) {
                 : contractData?.address;
             const blockNumber = contractData?.blockNumber || null;
             const txHash = contractData?.txHash || null;
+            const version = contractData?.version || null;
 
             processedContracts[contractName] = {
                 address: address,
                 blockNumber: blockNumber != null ? Number(blockNumber) : null,
                 txHash: txHash || null,
+                ...(version && { version }),
             };
         }
         return { contracts: processedContracts, hasChanges: false };
@@ -504,10 +679,12 @@ async function processContracts(chain, networkFile) {
         }
 
         // Always include blockNumber and txHash fields (null if not found) in the registry
+        const version = contractData?.version || null;
         processedContracts[contractName] = {
             address: address,
             blockNumber: blockNumber != null ? Number(blockNumber) : null,
             txHash: txHash || null,
+            ...(version && { version }),
         };
 
         // Update env file data if we fetched new metadata
@@ -593,6 +770,7 @@ async function main() {
     const deploymentCommits = new Set();
     const versions = new Set();
     let totalChangedContracts = 0;
+    let totalDeprecatedContracts = 0;
     let totalContracts = 0;
 
     // Collect original chainSelector values from all env files (to restore after JSON.stringify)
@@ -663,7 +841,25 @@ async function main() {
                 }
             }
 
-            console.log(`  Found ${changedContractNames.size}/${Object.keys(allContracts).length} changed contracts`);
+            // Detect deprecated contracts: present in live registry but removed from local env
+            let chainDeprecated = 0;
+            if (currentRegistryChain?.contracts) {
+                for (const contractName of Object.keys(currentRegistryChain.contracts)) {
+                    if (!allContracts[contractName]) {
+                        processedContracts[contractName] = {
+                            address: null,
+                            blockNumber: null,
+                            txHash: null,
+                        };
+                        chainDeprecated++;
+                        totalDeprecatedContracts++;
+                        console.log(`    ⊘ ${contractName}: deprecated (removed from env)`);
+                    }
+                }
+            }
+
+            console.log(`  Found ${changedContractNames.size}/${Object.keys(allContracts).length} changed contracts` +
+                (chainDeprecated > 0 ? `, ${chainDeprecated} deprecated` : ""));
 
             // Filter to only include changed contracts in the delta registry
             for (const [name, data] of Object.entries(allProcessedContracts)) {
@@ -738,8 +934,8 @@ async function main() {
         chains: chains,
     };
 
-    // Extract ABIs - all contracts in full mode, only changed contracts in delta mode
-    registry.abis = packAbis(chains, fullMode);
+    // Extract ABIs from per-tag caches (builds from contract version tags)
+    registry.abis = packAbis(chains);
 
     // Log summary
     if (fullMode) {
@@ -753,7 +949,8 @@ async function main() {
         console.log(`\n=== Delta Registry Summary ===`);
         console.log(`  Version: ${resolvedVersion || "unknown"}`);
         console.log(`  Previous version: ${previousVersion || "none (first registry)"}`);
-        console.log(`  Changed contracts: ${totalChangedContracts}/${totalContracts}`);
+        console.log(`  Changed contracts: ${totalChangedContracts}/${totalContracts}` +
+            (totalDeprecatedContracts > 0 ? ` (${totalDeprecatedContracts} deprecated)` : ""));
         console.log(`  Chains with changes: ${Object.keys(chains).length}`);
         console.log(`  ABIs included: ${Object.keys(registry.abis).length}`);
     }
@@ -879,64 +1076,82 @@ function getDeploymentGitCommit(chain) {
 }
 
 /**
- * Extracts ABIs from Forge build artifacts in ./out/ directory.
- * Only includes ABIs for contracts that are actually deployed (based on env file contracts).
+ * Extracts ABIs from per-tag ABI caches for deployed contracts.
+ *
+ * Each contract is mapped to a git tag via its "version" field in the env file.
+ * The ABI cache is built per tag using git worktrees and forge build.
  *
  * @param {Object} chains - The chains object with deployed contracts
- * @param {boolean} fullMode - If true, include ABIs for all contracts. If false, only include changed contracts.
  * @returns {Object} Map of contract names to their ABIs
- * @throws {Error} If ./out/ directory doesn't exist
+ * @throws {Error} If version tags are missing or ABI cannot be found
  */
-function packAbis(chains, fullMode = false) {
-    const outputDir = join(process.cwd(), "out");
+// Env contract names that differ from Forge artifact filenames.
+// Key: capitalized env name → Value: Forge artifact name.
+const ABI_NAME_ALIASES = {
+    "Token":                    "ShareToken",
+    "NavManager":               "NAVManager",
+    "FreezeOnlyHook":           "FreezeOnly",
+    "FullRestrictionsHook":     "FullRestrictions",
+    "FreelyTransferableHook":   "FreelyTransferable",
+    "RedemptionRestrictionsHook": "RedemptionRestrictions",
+};
 
-    if (!existsSync(outputDir)) {
-        throw new Error(
-            "Forge build artifacts not found in ./out. Run `forge build --skip test` for the deployment commit before generating the registry."
-        );
+function packAbis(chains) {
+    // Resolve per-contract version tags and build caches
+    const contractToTag = collectContractTags(chains);
+    const uniqueTags = new Set(contractToTag.values());
+
+    console.log(`\nResolving ABIs for ${contractToTag.size} contracts across ${uniqueTags.size} version tag(s): ${[...uniqueTags].join(", ")}`);
+
+    // Ensure all needed tag caches are populated
+    for (const tag of uniqueTags) {
+        ensureAbiCache(tag);
     }
 
-    // Collect all unique contract names from deployed contracts across chains
-    // Capitalize first letter to match ABI filename (e.g., "hub" → "Hub")
-    // Also include base contracts for factories (e.g., PoolEscrowFactory → PoolEscrow)
-    const deployedContracts = new Set();
-
-    for (const chain of Object.values(chains)) {
-        const contracts = Object.keys(chain.contracts || {});
-        for (const name of contracts) {
-            const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
-            deployedContracts.add(capitalized);
-
-            // If this is a factory, also include the underlying implementation ABI
-            if (capitalized.endsWith("Factory")) {
-                const baseName = capitalized.replace(/Factory$/, "");
-                deployedContracts.add(baseName);
-            }
-        }
-    }
-
+    // Load ABIs from the per-tag caches
     const abis = {};
-    const abiDirs = readdirSync(outputDir);
-    for (const abiDir of abiDirs) {
-        // Skip test files
-        if (abiDir.endsWith(".t.sol")) continue;
+    const missing = [];
 
-        const files = readdirSync(join(outputDir, abiDir));
-        for (const file of files) {
-            if (!file.endsWith(".json")) continue;
-
-            const contractName = file.replace(".json", "");
-            if (!deployedContracts.has(contractName)) continue;
-
-            const contractData = JSON.parse(
-                readFileSync(join(outputDir, abiDir, file), "utf8")
-            );
-            abis[contractName] = contractData.abi;
+    for (const [contractName, tag] of contractToTag) {
+        const cacheOut = join(ABI_CACHE_DIR, tag, "out");
+        // Try the contract name, then its alias (Forge artifact may differ from env name)
+        const artifactName = ABI_NAME_ALIASES[contractName] || contractName;
+        const abi = findAbiInOutput(cacheOut, artifactName);
+        if (abi) {
+            abis[artifactName] = abi;
+        } else {
+            missing.push(`${contractName} (artifact: ${artifactName}, tag: ${tag})`);
         }
+    }
+
+    if (missing.length > 0) {
+        console.warn(`⚠ ABIs not found for: ${missing.join(", ")}`);
     }
 
     console.log(`Packed ${Object.keys(abis).length} ABIs for deployed contracts`);
     return abis;
+}
+
+/**
+ * Searches a Forge out/ directory for a contract's ABI by name.
+ *
+ * @param {string} outputDir - Path to the out/ directory
+ * @param {string} contractName - Capitalized contract name (e.g. "Hub")
+ * @returns {Array|null} The ABI array, or null if not found
+ */
+function findAbiInOutput(outputDir, contractName) {
+    if (!existsSync(outputDir)) return null;
+
+    for (const abiDir of readdirSync(outputDir)) {
+        if (abiDir.endsWith(".t.sol")) continue;
+
+        const filePath = join(outputDir, abiDir, `${contractName}.json`);
+        if (existsSync(filePath)) {
+            const contractData = JSON.parse(readFileSync(filePath, "utf8"));
+            return contractData.abi;
+        }
+    }
+    return null;
 }
 
 main()
