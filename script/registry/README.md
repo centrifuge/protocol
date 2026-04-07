@@ -105,6 +105,65 @@ If (1) works but the script fails at step 1/5, set `CLOUDFLARE_ACCOUNT_ID` to yo
 
 **Single version:** Import the JSON; use `registry.abis.<ContractName>`, `registry.chains[chainId].contracts.<name>.address`, and optional `blockNumber` / `txHash` for deployment metadata.
 
+**Deprecated contracts:** When a contract existed in the previous registry but was removed from `env/*.json` (rename, merge, or retirement), the delta includes that key with `address: null`. No ABI is shipped for that entry in the delta (the prior registry already carried it). Downstream indexers (e.g. [api-v3](https://github.com/centrifuge/api-v3)) must treat `null` as “stop indexing this logical contract from this version’s deployment boundary”; concrete wiring is left to those projects.
+
+---
+
+## Example: delta JSON with deprecated contracts
+
+Below is a **trimmed** illustration of what a delta looks like when some v3.0 contracts were removed or renamed in v3.1. Only chains that have changes appear under `chains`. Deprecated entries sit next to normal ones; `abis` only lists contracts that need new or updated ABIs in this delta (not the deprecated keys).
+
+```json
+{
+  "network": "mainnet",
+  "version": "v3.1",
+  "deploymentInfo": {
+    "gitCommit": "c89c55ff6"
+  },
+  "previousRegistry": {
+    "version": "3",
+    "ipfsHash": "bafybeief457bljpdmydiyizgyck6bwf2a5y2rfnlhxsqzxosdlaecokogu"
+  },
+  "abis": {
+    "Hub": [ "..." ],
+    "Spoke": [ "..." ]
+  },
+  "chains": {
+    "1": {
+      "network": {
+        "chainId": 1,
+        "centrifugeId": 0
+      },
+      "adapters": {},
+      "contracts": {
+        "guardian": {
+          "address": null,
+          "blockNumber": null,
+          "txHash": null
+        },
+        "globalEscrow": {
+          "address": null,
+          "blockNumber": null,
+          "txHash": null
+        },
+        "hub": {
+          "address": "0xA4A7Bb3831958463b3FE3E27A6a160F764341953",
+          "blockNumber": 24319335,
+          "txHash": "0xcd4e039f241549031a78668d74cc76c4cbd7398c2686c42969a69be73c963976",
+          "version": "v3.1"
+        }
+      },
+      "deployment": {
+        "deployedAt": 1737893250,
+        "startBlock": 24319298
+      }
+    }
+  }
+}
+```
+
+**How this is produced:** In delta mode, `abi-registry.js` compares local `env/*.json` to the previous registry (live endpoint or `SOURCE_IPFS=<cid>`). Any contract name present in the previous registry’s chain but **missing** from the current env for that chain is emitted as above with all-null fields. Regenerating against the v3.0 IPFS pin while env reflects v3.1 yields real rows such as `guardian`, `hubHelpers`, `routerEscrow`, and `globalEscrow` on affected chains.
+
 ---
 
 ## Schema
@@ -155,6 +214,7 @@ interface ChainConfig {
       address: string | null;      // null = contract deprecated in this version
       blockNumber: number | null;  // Block number at contract creation
       txHash: string | null;       // Transaction hash of contract deployment
+      version?: string;            // From env; omitted for deprecated entries
     };
   };
   deployment: {
