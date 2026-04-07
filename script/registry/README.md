@@ -19,19 +19,56 @@ Registries use a **delta format**: each version only contains contracts that cha
 
 | Script | Purpose |
 |--------|---------|
-| `abi-registry.js` | Builds `registry-*.json` from env files, explorer APIs, and Forge broadcast artifacts. Supports delta (default) or full snapshot. |
+| `abi-registry.js` | Builds `registry-*.json` from env files, explorer APIs, and per-tag Forge ABI caches. Supports delta (default) or full snapshot. |
 | `utils/abi-cache.js` | Per-tag Forge ABI cache (worktrees + `forge build`); see [ABI cache layout](#abi-cache-layout-repo-root). |
 | `build-abi-cache.js` | CLI to warm the cache: `node script/registry/build-abi-cache.js <git-tag> [...]` (from repo root). |
 | `utils/tag-resolution.js` | Shared helpers: map env contract `version` → git tag (used by `abi-registry.js` and CI). |
 | `utils/validate-env-contract-version-tags.js` | CI pre-check: every mainnet/testnet contract must have `version` and a matching local git tag (run after `git fetch --tags`). |
-| `pin-to-ipfs.js` | Pins generated registries to Pinata, writes nightly/mainnet/testnet summaries, outputs CID metadata. |
+| `validate-env-schema.js` | Validates all `env/*.json` files against the expected schema. Fast-fail gate before generation. |
+| `validate-registry.js` | Validates a generated registry JSON against indexer hard requirements. Produces a sidecar `.validation.json` report for PR comments. |
+| `pin-to-ipfs.js` | Pins generated registries to Pinata, outputs CID metadata. |
+| `validate-api-keys.js` | Read-only validation of Pinata and Cloudflare credentials. |
 | `.github/ci-scripts/detect-changed-environments.js` | Detects mainnet/testnet env changes to skip unnecessary CI builds. |
 | `.github/ci-scripts/detect-deployment-commit.js` | Returns the git commit recorded in env `deploymentInfo` (used as `DEPLOYMENT_COMMIT` / `registry.deploymentInfo.gitCommit`, not for per-contract ABI tags). |
 | `.github/ci-scripts/compute-env-tags.js` | Creates tags (`deploy-${version}-${timestamp}`) when env files change so deployment commits stay reachable after squashing. |
 
-### Pipelines
+### CI Pipeline
 
-- **`registry.yml`** – On env/registry changes: fetches git tags, runs `abi-registry.js` (which builds per-tag ABI caches via worktrees), sets `DEPLOYMENT_COMMIT` from env files for registry metadata only, generates `registry-mainnet.json` / `registry-testnet.json`, publishes artifacts, pins to IPFS, writes step summaries with CIDs and opens issues when pointers need updates.
+The `registry.yml` workflow runs on changes under `env/**`, `script/registry/**`, `.github/ci-scripts/**`, or the workflow file. It fetches git tags, validates env contract versions, runs `abi-registry.js` (per-tag ABI caches via worktrees), validates output, and on pull requests posts a **Registry Preview** comment. Pushes to `main` also pin to IPFS and update Cloudflare DNS.
+
+```
+pull_request  → validate env + versions → generate registry → validate output → post PR comment
+push to main  → same generate/validate path → pin to IPFS → update Cloudflare DNS
+workflow_dispatch → manual run (same pipeline)
+```
+
+**Pipeline flow:**
+
+```mermaid
+flowchart TD
+    subgraph pr [Pull Request]
+        A[paths match] --> B[Validate env schema + version tags]
+        B -->|fail| X1[PR blocked]
+        B -->|pass| C[Detect changed environments]
+        C --> D[Generate registry]
+        D --> E[Validate registry output]
+        E -->|errors| X2[PR blocked]
+        E -->|pass/warnings| F[Post PR comment with preview + findings]
+    end
+    subgraph push [Push to main]
+        G[merge] --> H[Same pipeline]
+        H --> I[Pin to IPFS]
+        I --> J[Update Cloudflare]
+    end
+```
+
+**Validation layers:**
+
+1. **`validate-env-schema.js`** — structural checks on `env/*.json` before generation.
+2. **`validate-env-contract-version-tags.js`** — every mainnet/testnet contract has a `version` that resolves to a git tag (ABIs).
+3. **`validate-registry.js`** — indexer hard requirements on the generated JSON; writes `.validation.json` for the PR comment.
+
+**Other workflows:**
 - **`tag-env-updates.yml`** – On any push that touches `env/**/*.json`: runs `compute-env-tags.js` and pushes annotated tags.
 
 ---
@@ -103,6 +140,20 @@ node script/registry/abi-registry.js testnet
 ```
 
 **Env / flags:** `DEPLOYMENT_COMMIT` (metadata only), `ETHERSCAN_API_KEY` (required), `REGISTRY_MODE=full`, `SOURCE_IPFS`; `--full`, `--source-url=<url>`. For pinning: `PINATA_JWT` (1Password, limited access).
+
+### Validating env files and registries locally
+
+```bash
+# Validate all env/*.json files against expected schema
+node script/registry/validate-env-schema.js
+
+# Validate a generated registry against indexer hard requirements
+node script/registry/validate-registry.js registry/registry-mainnet.json
+node script/registry/validate-registry.js registry/registry-testnet.json
+
+# Skip live registry fetch (offline mode)
+SKIP_LIVE_REGISTRY_CHECK=1 node script/registry/validate-registry.js registry/registry-mainnet.json
+```
 
 ### Testing API keys (no changes made)
 
@@ -208,7 +259,7 @@ Below is a **trimmed** illustration of what a delta looks like when some v3.0 co
 ```typescript
 interface Registry {
   network: "mainnet" | "testnet";
-  version: string;              // Version identifier (e.g., "3.0", "3.1.12")
+  version?: string;             // e.g. "v3.1.0"; omitted if unknown
   deploymentInfo: {
     gitCommit: string;          // Git commit hash used to build the ABIs
   };
@@ -260,10 +311,19 @@ interface ChainConfig {
 }
 ```
 
-### Nullable fields
+### Indexer hard requirements (`validate-registry.js`)
 
-- **`contracts[name].address`** – `null` when the contract was deprecated (removed from env files in this version). Consumers should stop indexing at this version's deployment block.
-- **`contracts[name].blockNumber` / `txHash`** – Filled from broadcast artifacts or explorer APIs. Can be `null` when contract is unverified, chain isn’t on the free Etherscan API (e.g. BNB, Base), or legacy env has no `txHash`.
-- **`deployment.deployedAt`** – `null` if env has no `deploymentInfo.timestamp`.
-- **`deployment.startBlock`** – `null` if env has no `deploymentInfo.startBlock` (expected for future deployments).
-- **`adapters.$adapterName`** – `null` when that adapter isn’t configured for the network.
+These rules apply to **active** contracts (`address` is a non-null string). **Deprecated** delta entries (`address: null`) skip address/blockNumber/ABI checks — they signal retirement; the prior registry already carried the ABI.
+
+| Field | Rule |
+|-------|------|
+| `version` | Non-empty string when present; omitted in JSON if unknown (warning in validation). |
+| `previousRegistry.ipfsHash` | Non-null when a live registry exists for that network (linked list). |
+| `chains.<chainId>.deployment.startBlock` | Must be a number for each chain in the delta. |
+| `chains.<chainId>.contracts.<name>.address` | Non-empty string for active contracts; `null` only for deprecations. |
+| `chains.<chainId>.contracts.<name>.blockNumber` | Must be a number for active contracts. |
+| `abis.<ArtifactName>` | Must exist for every **active** contract in `chains` (artifact names match `utils/abi-cache.js` `resolveArtifactName`, e.g. `NavManager` → `NAVManager`). |
+
+**Other / soft fields:** `txHash`, `deployment.deployedAt`, `deploymentInfo.gitCommit`, `previousRegistry.version`, and `adapters` are not hard-gated the same way; see validator output for warnings.
+
+**Deprecated contracts:** `address`, `blockNumber`, and `txHash` may be `null`; no ABI is required in the delta for that key (see [example](#example-delta-json-with-deprecated-contracts)).

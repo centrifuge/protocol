@@ -11,7 +11,7 @@
  * 2. Reads chain configurations from env/*.json files
  * 3. Compares contracts to detect changes (new or modified addresses/blockNumbers)
  * 4. Fetches contract creation block numbers from Etherscan API (v2) for changed contracts
- * 5. Extracts ABIs from Forge build artifacts (only for changed contracts)
+ * 5. Extracts ABIs from per-tag Forge caches (git tag per env contract `version`)
  * 6. Combines into a delta registry with previousRegistry pointer
  *
  * Usage:
@@ -48,8 +48,8 @@
  *   }
  *
  * Note: The previousRegistry.ipfsHash is set from SOURCE_IPFS if provided.
- * Otherwise, it's set to null and filled in by pin-to-ipfs.js which queries Pinata for the CID
- * of the previous registry.
+ * Otherwise, it's resolved via DNS dnslink lookup on the live registry hostname
+ * (e.g. _dnslink.registry.centrifuge.io → dnslink=/ipfs/<CID>).
  */
 
 import {
@@ -60,6 +60,7 @@ import {
     existsSync,
 } from "fs";
 import { dirname, join } from "path";
+import { resolveTxt } from "dns/promises";
 import {
     collectContractTags,
     ensureAbiCache,
@@ -136,6 +137,50 @@ const REGISTRY_URLS = {
 const IPFS_GATEWAY = "https://gateway.pinata.cloud";
 
 /**
+ * DNS hostnames for dnslink CID resolution.
+ * Cloudflare Web3 hostnames publish a TXT record at _dnslink.<hostname>
+ * with value "dnslink=/ipfs/<CID>".
+ */
+const DNSLINK_HOSTNAMES = {
+    mainnet: "registry.centrifuge.io",
+    testnet: "registry.testnet.centrifuge.io",
+};
+
+/**
+ * Resolves the IPFS CID of the currently live registry via DNS TXT lookup.
+ * This is the source of truth — the dnslink record points to whatever CID
+ * Cloudflare is actually serving.
+ *
+ * @param {string} environment - "mainnet" or "testnet"
+ * @returns {Promise<string|null>} IPFS CID or null if not resolvable
+ */
+async function resolveLiveCid(environment) {
+    const hostname = DNSLINK_HOSTNAMES[environment];
+    if (!hostname) return null;
+
+    const dnslinkHost = `_dnslink.${hostname}`;
+    try {
+        console.log(`  Resolving live CID via DNS: ${dnslinkHost}`);
+        const records = await resolveTxt(dnslinkHost);
+        // records is an array of arrays of strings, e.g. [["dnslink=/ipfs/Qm..."]]
+        for (const record of records) {
+            const txt = record.join("");
+            const match = txt.match(/^dnslink=\/ipfs\/(.+)$/);
+            if (match) {
+                const cid = match[1];
+                console.log(`  ✓ Resolved live CID: ${cid}`);
+                return cid;
+            }
+        }
+        console.warn(`  ⚠ No dnslink record found at ${dnslinkHost}`);
+        return null;
+    } catch (error) {
+        console.warn(`  ⚠ DNS lookup failed for ${dnslinkHost}: ${error.message}`);
+        return null;
+    }
+}
+
+/**
  * Validates that a string is a valid IPFS hash (CID).
  * Supports both v0 (Qm...) and v1 (baf...) CIDs.
  *
@@ -198,27 +243,61 @@ async function fetchCurrentRegistry(environment, ipfsHash = null) {
 }
 
 /**
- * Extracts version string from deploymentInfo in env files.
- * Looks for version in deploy:protocol or other deployment entries.
+ * Normalizes a version string for comparison.
+ * Strips leading "v" and splits into numeric segments.
+ * e.g. "v3.1" → [3, 1], "3" → [3]
+ */
+function parseVersion(v) {
+    return v.replace(/^v/i, "").split(".").map(Number);
+}
+
+/**
+ * Compares two version strings. Returns > 0 if a > b, < 0 if a < b, 0 if equal.
+ */
+function compareVersions(a, b) {
+    const pa = parseVersion(a);
+    const pb = parseVersion(b);
+    const len = Math.max(pa.length, pb.length);
+    for (let i = 0; i < len; i++) {
+        const diff = (pa[i] || 0) - (pb[i] || 0);
+        if (diff !== 0) return diff;
+    }
+    return 0;
+}
+
+/**
+ * Extracts the highest version string from an env file.
+ * Checks deploymentInfo first, then collects all contract-level versions
+ * and returns the highest one (e.g. "v3.1" wins over "3").
  *
  * @param {Object} chain - Chain configuration object from env/*.json
  * @returns {string|null} Version string or null if not found
  */
-function getVersionFromDeploymentInfo(chain) {
+function getVersionFromChain(chain) {
     const info = chain.deploymentInfo;
-    if (!info || typeof info !== "object") return null;
-
-    // First, check deploy:protocol which is the main deployment
-    if (info["deploy:protocol"]?.version) {
-        return info["deploy:protocol"].version;
-    }
-
-    // Fall back to any entry with a version
-    for (const value of Object.values(info)) {
-        if (value?.version) {
-            return value.version;
+    if (info && typeof info === "object") {
+        if (info["deploy:protocol"]?.version) {
+            return info["deploy:protocol"].version;
+        }
+        for (const value of Object.values(info)) {
+            if (value?.version) {
+                return value.version;
+            }
         }
     }
+
+    const contracts = chain.contracts;
+    if (contracts && typeof contracts === "object") {
+        let highest = null;
+        for (const value of Object.values(contracts)) {
+            const v = value?.version;
+            if (v && (!highest || compareVersions(v, highest) > 0)) {
+                highest = v;
+            }
+        }
+        return highest;
+    }
+
     return null;
 }
 
@@ -670,6 +749,11 @@ async function main() {
         } else if (!sourceIpfs && !currentRegistry) {
             console.warn(`  ⚠ Could not fetch current registry for comparison`);
         }
+
+        // Resolve the live CID via DNS if not explicitly provided
+        if (!previousIpfsHash && previousVersion) {
+            previousIpfsHash = await resolveLiveCid(selector);
+        }
     } else {
         console.log(`  Skipping registry fetch (full mode - no comparison)`);
         // In full mode, set previousRegistry to null to mark this as the base registry
@@ -805,7 +889,7 @@ async function main() {
         if (chainCommit) {
             deploymentCommits.add(chainCommit);
         }
-        const chainVersion = getVersionFromDeploymentInfo(chain);
+        const chainVersion = getVersionFromChain(chain);
         if (chainVersion) {
             versions.add(chainVersion);
         }
@@ -858,12 +942,12 @@ async function main() {
         deploymentInfo: {
             gitCommit: resolveDeploymentCommit(deploymentCommitOverride, deploymentCommits),
         },
-        // previousRegistry pointer - ipfsHash filled from SOURCE_IPFS if provided,
-        // otherwise filled by pin-to-ipfs.js via Pinata query
-        // In full mode, set to null to mark this as the base registry
+        // previousRegistry pointer - ipfsHash resolved from SOURCE_IPFS env var,
+        // or via DNS dnslink lookup on the live registry hostname.
+        // In full mode, set to null to mark this as the base registry.
         previousRegistry: previousVersion ? {
             version: previousVersion,
-            ipfsHash: previousIpfsHash || null, // Use provided IPFS hash, or filled by pin-to-ipfs.js via Pinata query
+            ipfsHash: previousIpfsHash || null,
         } : null,
         chains: chains,
     };

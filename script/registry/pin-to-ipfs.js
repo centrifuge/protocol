@@ -3,9 +3,10 @@
  * @fileoverview Pins delta registry files to IPFS using Pinata SDK.
  * 
  * This script handles the pinning of delta registries and manages the version chain:
- * 1. Queries Pinata for the previous registry's CID using env metadata
- * 2. Injects the CID into the previousRegistry.ipfsHash field
- * 3. Pins the updated registry with version metadata for future lookups
+ * 1. If previousRegistry.ipfsHash is missing, resolves it via DNS dnslink lookup
+ *    (falling back to Pinata metadata query)
+ * 2. Pins the registry with version metadata for future lookups
+ * 3. Outputs CID metadata for downstream steps (Cloudflare DNS update)
  * 
  * Usage:
  *   node script/registry/pin-to-ipfs.js [--force=mainnet|testnet] [--update-previous]
@@ -32,6 +33,7 @@
 import { PinataSDK } from "pinata";
 import { readFileSync, existsSync, writeFileSync } from "fs";
 import { join } from "path";
+import { resolveTxt } from "dns/promises";
 import * as core from "@actions/core";
 
 const pinataJwt = process.env.PINATA_JWT;
@@ -64,6 +66,35 @@ if (pinataJwt) {
         pinataJwt: pinataJwt,
         pinataGateway: pinataGateway,
     });
+}
+
+const DNSLINK_HOSTNAMES = {
+    mainnet: "registry.centrifuge.io",
+    testnet: "registry.testnet.centrifuge.io",
+};
+
+/**
+ * Resolves the IPFS CID of the currently live registry via DNS TXT lookup.
+ *
+ * @param {string} env - "mainnet" or "testnet"
+ * @returns {Promise<string|null>} IPFS CID or null if not resolvable
+ */
+async function resolveLiveCid(env) {
+    const hostname = DNSLINK_HOSTNAMES[env];
+    if (!hostname) return null;
+
+    const dnslinkHost = `_dnslink.${hostname}`;
+    try {
+        const records = await resolveTxt(dnslinkHost);
+        for (const record of records) {
+            const txt = record.join("");
+            const match = txt.match(/^dnslink=\/ipfs\/(.+)$/);
+            if (match) return match[1];
+        }
+        return null;
+    } catch {
+        return null;
+    }
 }
 
 /**
@@ -196,42 +227,34 @@ async function pinFile(filePath, name, existingUrl) {
     // Extract version from the registry content
     const version = newContent.version || newContent.deploymentInfo?.gitCommit || null;
 
-    // Only query Pinata for the previous registry's CID if it's not already set
-    // (e.g., when SOURCE_IPFS was provided in abi-registry.js)
-    let previousRegistryInfo = null;
+    // The ipfsHash is normally resolved at generation time via DNS dnslink lookup
+    // in abi-registry.js. If it's still null, try DNS then Pinata as fallback.
     if (newContent.previousRegistry && !newContent.previousRegistry.ipfsHash) {
-        previousRegistryInfo = await findPreviousRegistryCid(inferredEnv);
+        console.log(`  previousRegistry.ipfsHash not set, resolving via DNS...`);
+        let resolvedCid = await resolveLiveCid(inferredEnv);
+        if (!resolvedCid) {
+            console.log(`  DNS failed, falling back to Pinata...`);
+            const info = await findPreviousRegistryCid(inferredEnv);
+            resolvedCid = info?.cid || null;
+        }
+        if (resolvedCid) {
+            newContent.previousRegistry.ipfsHash = resolvedCid;
+            console.log(`  Injected previousRegistry.ipfsHash: ${resolvedCid}`);
+        }
     } else if (newContent.previousRegistry?.ipfsHash) {
         console.log(`  Using existing previousRegistry.ipfsHash: ${newContent.previousRegistry.ipfsHash}`);
     }
 
-    // Inject the previous registry's CID into the content before pinning (if not already set)
-    if (newContent.previousRegistry && previousRegistryInfo?.cid) {
-        newContent.previousRegistry.ipfsHash = previousRegistryInfo.cid;
-        console.log(`  Injected previousRegistry.ipfsHash: ${previousRegistryInfo.cid}`);
-    }
-
-    // Prepare final content for upload
-    // If we modified the content (injected ipfsHash), we need to stringify and restore chainSelector
-    let finalContent;
-    if (previousRegistryInfo?.cid) {
-        // Content was modified, stringify and restore large numbers
-        let stringified = JSON.stringify(newContent, null, 2);
-
-        // Restore chainSelector values from original (corrupted by JSON.parse exceeding MAX_SAFE_INTEGER)
-        const chainSelectorRegex = /"chainSelector":\s*(\d+)/g;
-        const originalMatches = [...originalContent.matchAll(chainSelectorRegex)];
-        let matchIndex = 0;
-        stringified = stringified.replace(chainSelectorRegex, () => {
-            const originalValue = originalMatches[matchIndex++]?.[1];
-            return originalValue ? `"chainSelector": ${originalValue}` : `"chainSelector": 0`;
-        });
-
-        finalContent = stringified;
-    } else {
-        // Content wasn't modified, use original file content as-is
-        finalContent = originalContent;
-    }
+    // Re-stringify content (may have been modified with injected ipfsHash)
+    // and restore chainSelector values corrupted by JSON.parse exceeding MAX_SAFE_INTEGER
+    let finalContent = JSON.stringify(newContent, null, 2);
+    const chainSelectorRegex = /"chainSelector":\s*(\d+)/g;
+    const originalMatches = [...originalContent.matchAll(chainSelectorRegex)];
+    let matchIndex = 0;
+    finalContent = finalContent.replace(chainSelectorRegex, () => {
+        const originalValue = originalMatches[matchIndex++]?.[1];
+        return originalValue ? `"chainSelector": ${originalValue}` : `"chainSelector": 0`;
+    });
 
     // Use JSON upload API, since registry files are JSON documents.
     // Set the visible file name and metadata via the chainable helpers.
@@ -287,17 +310,24 @@ async function updatePreviousRegistry(filePath) {
         return { updated: false, cid: registry.previousRegistry.ipfsHash };
     }
     
-    // Find previous registry CID from Pinata
-    console.log(`  Looking up previous ${env} registry in Pinata...`);
-    const previousRegistryInfo = await findPreviousRegistryCid(env);
+    // Resolve CID: try DNS first, fall back to Pinata
+    console.log(`  Resolving previous ${env} registry CID via DNS...`);
+    let cid = await resolveLiveCid(env);
+    if (cid) {
+        console.log(`  ✓ Resolved via DNS: ${cid}`);
+    } else if (pinata) {
+        console.log(`  DNS lookup failed, falling back to Pinata...`);
+        const previousRegistryInfo = await findPreviousRegistryCid(env);
+        cid = previousRegistryInfo?.cid || null;
+    }
     
-    if (!previousRegistryInfo?.cid) {
-        console.log(`  ⚠ No previous registry found in Pinata for ${env}`);
+    if (!cid) {
+        console.log(`  ⚠ Could not resolve previous registry CID for ${env}`);
         return { updated: false, cid: null };
     }
     
     // Update the registry
-    registry.previousRegistry.ipfsHash = previousRegistryInfo.cid;
+    registry.previousRegistry.ipfsHash = cid;
     
     // Stringify and restore chainSelector values (preserve large numbers)
     let stringified = JSON.stringify(registry, null, 2);
@@ -313,9 +343,9 @@ async function updatePreviousRegistry(filePath) {
     
     // Write back to file
     writeFileSync(filePath, stringified, "utf8");
-    console.log(`  ✓ Updated previousRegistry.ipfsHash to ${previousRegistryInfo.cid}`);
+    console.log(`  ✓ Updated previousRegistry.ipfsHash to ${cid}`);
     
-    return { updated: true, cid: previousRegistryInfo.cid };
+    return { updated: true, cid };
 }
 
 async function writeStepSummary(results) {

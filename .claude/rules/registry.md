@@ -20,6 +20,8 @@ paths:
 | `build-abi-cache.js` | CLI: `node script/registry/build-abi-cache.js <tag> [...]` to warm `cache/abi-registry/`. |
 | `utils/tag-resolution.js` | Maps env contract `version` → local git tag (`resolveVersionTag`, candidates). |
 | `utils/validate-env-contract-version-tags.js` | CI: every mainnet/testnet contract object must have `version` resolving to a git tag. |
+| `validate-env-schema.js` | CI: structural validation of `env/*.json` before generation. |
+| `validate-registry.js` | Post-generation indexer checks; `.validation.json` sidecar for PR comments. Skips ABI/address rules for `address: null` deprecations. |
 | `pin-to-ipfs.js`, `validate-api-keys.js`, etc. | Pinning and local API checks; see README table. |
 
 ## ABI generation
@@ -42,7 +44,7 @@ paths:
 
 ## CI
 
-- `.github/workflows/registry.yml`: `git fetch --tags`, run `validate-env-contract-version-tags.js`, then `abi-registry.js` (no separate pre-build of `./out` at deployment commit).
+- `.github/workflows/registry.yml`: `git fetch --tags`, `validate-env-schema.js`, `validate-env-contract-version-tags.js`, `abi-registry.js`, `validate-registry.js`, PR preview comment (no separate pre-build of `./out` at deployment commit).
 
 ## Cursor vs Claude Code
 
