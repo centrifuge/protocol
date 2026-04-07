@@ -9,7 +9,7 @@ paths:
 
 # Contract registry scripts (`script/registry/`)
 
-**Source of truth for behavior and schema:** [script/registry/README.md](../../script/registry/README.md). Prefer updating that README when behavior or flags change.
+**Source of truth for behavior and schema:** [script/registry/README.md](../../script/registry/README.md). Prefer updating that README when behavior or flags change. **ABI cache directory layout** is documented there (“ABI cache layout (repo root)”) for humans and AI tools.
 
 ## Layout
 

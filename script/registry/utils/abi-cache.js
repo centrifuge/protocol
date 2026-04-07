@@ -1,6 +1,15 @@
 /**
- * Per-tag Forge ABI cache: git worktree at tag → `forge build --skip test` → copy `out/` under
- * `{cacheRoot}/{tag}/out/`. Reusable from registry generation and other tooling.
+ * Per-tag Forge ABI cache (protocol repo root as `cwd`).
+ *
+ * **On-disk layout** (see `script/registry/README.md` → “ABI cache layout”):
+ * - `cache/abi-registry/<git-tag>/out/` — persisted Forge `out/` tree (Foundry JSON artifacts).
+ * - `cache/abi-registry/worktrees/<git-tag>/` — ephemeral; created during `ensureAbiCache`, deleted after copy.
+ *
+ * **Flow:** `ensureAbiCache(tag)` → cache hit if `<tag>/out` exists; else worktree + submodule init +
+ * `forge build --skip test` → copy `out/` → remove worktree.
+ *
+ * **Consumers:** `abi-registry.js` (pack ABIs), `build-abi-cache.js` (CLI warm), or import
+ * `getCachedOutDir`, `findAbiInOutput`, `resolveArtifactName` for custom tooling.
  *
  * @module
  */

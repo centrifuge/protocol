@@ -20,6 +20,8 @@ Registries use a **delta format**: each version only contains contracts that cha
 | Script | Purpose |
 |--------|---------|
 | `abi-registry.js` | Builds `registry-*.json` from env files, explorer APIs, and Forge broadcast artifacts. Supports delta (default) or full snapshot. |
+| `utils/abi-cache.js` | Per-tag Forge ABI cache (worktrees + `forge build`); see [ABI cache layout](#abi-cache-layout-repo-root). |
+| `build-abi-cache.js` | CLI to warm the cache: `node script/registry/build-abi-cache.js <git-tag> [...]` (from repo root). |
 | `utils/tag-resolution.js` | Shared helpers: map env contract `version` → git tag (used by `abi-registry.js` and CI). |
 | `utils/validate-env-contract-version-tags.js` | CI pre-check: every mainnet/testnet contract must have `version` and a matching local git tag (run after `git fetch --tags`). |
 | `pin-to-ipfs.js` | Pins generated registries to Pinata, writes nightly/mainnet/testnet summaries, outputs CID metadata. |
@@ -34,9 +36,43 @@ Registries use a **delta format**: each version only contains contracts that cha
 
 ---
 
+## ABI cache layout (repo root)
+
+All paths are relative to the **protocol repository root** (`process.cwd()` when you run the scripts). The cache is **gitignored** (`/cache/` in `.gitignore`).
+
+```
+cache/abi-registry/                    # getAbiCacheRoot() — stable cache
+  <git-tag>/                           # Resolved tag string, e.g. v3.1.0 or v3
+    out/                               # Full Forge output tree (copied after build)
+      <source-dir>/                    # Mirrors forge artifact paths, e.g. src/core/hub/Hub.sol/
+        <ContractName>.json            # Standard Foundry JSON artifact; use .abi for the ABI array
+      ...
+  worktrees/                           # Only exists briefly while a tag is being built
+    <git-tag>/                         # git worktree at that ref; submodule init + forge build here
+```
+
+**Lifecycle**
+
+1. **`ensureAbiCache(tag)`** (in `utils/abi-cache.js`): if `cache/abi-registry/<tag>/out/` already exists → no-op (cache hit).
+2. Otherwise: create `worktrees/<tag>/` via `git worktree add`, `git submodule update --init --recursive`, `forge build --skip test`, copy `worktrees/<tag>/out/` → `<tag>/out/`, then remove the worktree directory.
+
+**Reading ABIs programmatically**
+
+- Per-tag output directory: **`cache/abi-registry/<tag>/out/`** (same shape as a normal `out/` after `forge build`).
+- Contract JSON basename often matches the Solidity contract name (e.g. `Hub.json`). Env/registry names that differ from artifact names are mapped via **`ABI_NAME_ALIASES`** / **`resolveArtifactName()`** in `utils/abi-cache.js` (e.g. `NavManager` → `NAVManager`).
+- **`findAbiInOutput(outDir, artifactName)`** scans immediate subdirs of `out/` (skips `*.t.sol`), loads `<artifactName>.json`, returns `parsed.abi`.
+
+**Warm cache without generating a registry**
+
+```bash
+node script/registry/build-abi-cache.js v3.1.0 v3
+```
+
+---
+
 ## Generating registries locally
 
-**ABIs are built per contract version tag.** Each contract in `env/*.json` has a `version` field (e.g. `"3"`, `"v3.1"`). The script resolves each version to a git tag, builds ABIs from that tag using a worktree, and caches the `out/` artifacts in `cache/abi-registry/<tag>/out/`. This ensures mixed-version deployments get the correct ABI for every contract. **Every contract version must have a corresponding git tag** or the build will fail.
+**ABIs are built per contract version tag.** Each contract in `env/*.json` has a `version` field (e.g. `"3"`, `"v3.1"`). The script resolves each version to a git tag, builds ABIs from that tag using a worktree, and caches the `out/` artifacts in `cache/abi-registry/<tag>/out/` as described [above](#abi-cache-layout-repo-root). This ensures mixed-version deployments get the correct ABI for every contract. **Every contract version must have a corresponding git tag** or the build will fail.
 
 **No manual `forge build` step is required.** The script handles it automatically per tag. Cached builds are reused on subsequent runs; delete `cache/abi-registry/` to force a full rebuild.
 
