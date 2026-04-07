@@ -63,6 +63,7 @@ import {
 } from "fs";
 import { dirname, join } from "path";
 import { execSync } from "child_process";
+import { resolveVersionTag } from "./tag-resolution.js";
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -122,64 +123,6 @@ function sleep(ms) {
 // ============================================================================
 
 const ABI_CACHE_DIR = join(process.cwd(), "cache", "abi-registry");
-
-/**
- * Resolves a git tag for a contract version string.
- * Tries candidates in order: as-is, v-prefixed, with .0 patch appended,
- * v-prefixed with .0 patch appended.
- *
- * Examples:
- *   "3"    → tries 3, v3, 3.0, v3.0
- *   "v3.1" → tries v3.1, v3.1.0
- *   "v3"   → tries v3, v3.0
- *
- * @param {string} version - Version from contract entry (e.g. "3", "v3.1")
- * @returns {string} The resolved git tag
- * @throws {Error} If no matching tag exists
- */
-function resolveVersionTag(version) {
-    const candidates = [version];
-    // Add "v" prefix if not already present
-    if (!version.startsWith("v")) {
-        candidates.push(`v${version}`);
-    }
-    // Append ".0" patch for semver normalization (e.g. v3.1 → v3.1.0)
-    const withPatch = candidates.map((c) => `${c}.0`);
-    candidates.push(...withPatch);
-
-    for (const candidate of candidates) {
-        if (gitTagExists(candidate)) return candidate;
-    }
-
-    // Tags might not be fetched locally yet — try once
-    try {
-        console.log(`  Fetching tags from remote...`);
-        execSync("git fetch --tags --quiet", { stdio: "pipe" });
-    } catch {
-        // Best-effort; may fail in shallow clones
-    }
-    for (const candidate of candidates) {
-        if (gitTagExists(candidate)) return candidate;
-    }
-
-    throw new Error(
-        `No git tag found for contract version "${version}". ` +
-        `Tried: ${candidates.join(", ")}. ` +
-        `Every contract version in env files must have a corresponding git tag.`
-    );
-}
-
-/**
- * Checks whether a git tag exists locally.
- */
-function gitTagExists(tag) {
-    try {
-        execSync(`git rev-parse --verify refs/tags/${tag}`, { stdio: "pipe" });
-        return true;
-    } catch {
-        return false;
-    }
-}
 
 /**
  * Ensures the ABI cache for a given tag is populated.
@@ -285,80 +228,6 @@ function collectContractTags(chains) {
     }
 
     return contractToTag;
-}
-
-/**
- * Fails fast before registry fetch or chain processing: every contract in env must have
- * a "version" that resolves to an existing git tag (same rules as resolveVersionTag).
- * Also errors if the same logical contract name uses different versions on different chains.
- *
- * @param {string} environment - "mainnet" or "testnet"
- */
-function validateEnvContractVersionTags(environment) {
-    const envDir = join(process.cwd(), "env");
-    const networkFiles = readdirSync(envDir).filter((f) => f.endsWith(".json"));
-    const errors = [];
-    /** @type {Map<string, string>} contract name (capitalized) → version string */
-    const contractVersion = new Map();
-
-    for (const networkFile of networkFiles) {
-        const chain = JSON.parse(readFileSync(join(envDir, networkFile), "utf8"));
-        if (chain.network.environment !== environment) continue;
-        const chainId = chain.network.chainId;
-        if (chainId === 31337) continue;
-
-        const contracts = chain.contracts || {};
-        for (const [name, contractData] of Object.entries(contracts)) {
-            const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
-
-            if (typeof contractData === "string") {
-                errors.push(
-                    `${capitalized} (${networkFile}): expected contract object with "version", not a bare address string`
-                );
-                continue;
-            }
-
-            const version = contractData?.version;
-            if (!version) {
-                errors.push(
-                    `${capitalized} on chain ${chainId} (${networkFile}): missing "version" field`
-                );
-                continue;
-            }
-
-            const prev = contractVersion.get(capitalized);
-            if (prev !== undefined && prev !== version) {
-                errors.push(
-                    `${capitalized}: inconsistent "version" across env files (was "${prev}", now "${version}" in ${networkFile})`
-                );
-            } else {
-                contractVersion.set(capitalized, version);
-            }
-        }
-    }
-
-    const uniqueVersions = [...new Set(contractVersion.values())];
-    for (const version of uniqueVersions) {
-        try {
-            resolveVersionTag(version);
-        } catch (e) {
-            errors.push(String(e.message || e));
-        }
-    }
-
-    if (errors.length > 0) {
-        console.error(
-            `\n✖ Version / git tag validation failed for environment "${environment}":\n`
-        );
-        for (const msg of errors) {
-            console.error(`  - ${msg}`);
-        }
-        console.error(
-            "\nFix: add a matching git tag (e.g. release tag) or correct each contract's \"version\" in env. " +
-                "See script/registry/README.md.\n"
-        );
-        process.exit(1);
-    }
 }
 
 /**
@@ -804,11 +673,6 @@ async function main() {
         console.error(`Expected format: Qm... (v0) or bafy... (v1)`);
         process.exit(1);
     }
-
-    // Fail before network I/O or per-chain work if env versions / git tags are invalid
-    console.log(`Validating contract "version" fields and git tags for ${selector}...`);
-    validateEnvContractVersionTags(selector);
-    console.log(`  ✓ All contract versions resolve to git tags`);
 
     if (!etherscanApiKey) {
         console.warn("⚠ ETHERSCAN_API_KEY not set - contract block numbers will be null");

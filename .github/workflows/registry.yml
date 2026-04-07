@@ -6,6 +6,7 @@ on:
       - ".github/workflows/registry.yml"
       - "env/**"
       - "script/registry/**"
+      - ".github/ci-scripts/**"
   push:
     branches:
       - main
@@ -40,6 +41,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: Validate env contract versions resolve to git tags
+        run: node .github/ci-scripts/validate-env-contract-version-tags.js
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1

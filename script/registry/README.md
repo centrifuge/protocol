@@ -20,6 +20,8 @@ Registries use a **delta format**: each version only contains contracts that cha
 | Script | Purpose |
 |--------|---------|
 | `abi-registry.js` | Builds `registry-*.json` from env files, explorer APIs, and Forge broadcast artifacts. Supports delta (default) or full snapshot. |
+| `tag-resolution.js` | Shared helpers: map env contract `version` → git tag (used by `abi-registry.js` and CI). |
+| `.github/ci-scripts/validate-env-contract-version-tags.js` | CI pre-check: every mainnet/testnet contract must have `version` and a matching local git tag (run after `git fetch --tags`). |
 | `pin-to-ipfs.js` | Pins generated registries to Pinata, writes nightly/mainnet/testnet summaries, outputs CID metadata. |
 | `.github/ci-scripts/detect-changed-environments.js` | Detects mainnet/testnet env changes to skip unnecessary CI builds. |
 | `.github/ci-scripts/detect-deployment-commit.js` | Returns the git commit recorded in env `deploymentInfo` (used as `DEPLOYMENT_COMMIT` / `registry.deploymentInfo.gitCommit`, not for per-contract ABI tags). |
@@ -37,8 +39,6 @@ Registries use a **delta format**: each version only contains contracts that cha
 **ABIs are built per contract version tag.** Each contract in `env/*.json` has a `version` field (e.g. `"3"`, `"v3.1"`). The script resolves each version to a git tag, builds ABIs from that tag using a worktree, and caches the `out/` artifacts in `cache/abi-registry/<tag>/out/`. This ensures mixed-version deployments get the correct ABI for every contract. **Every contract version must have a corresponding git tag** or the build will fail.
 
 **No manual `forge build` step is required.** The script handles it automatically per tag. Cached builds are reused on subsequent runs; delete `cache/abi-registry/` to force a full rebuild.
-
-**Early validation:** Before fetching the live registry or processing chains, the script checks every contract in `env/*.json` for the selected environment has a `version` field, that the same camelCase name does not disagree across files, and that each distinct version string resolves to a **git tag** (same candidate order as ABI builds). If anything fails, the process exits with code 1 and prints all errors—same spirit as missing required env fields.
 
 **Delta (default)** – only contracts that changed since the previous version:
 
