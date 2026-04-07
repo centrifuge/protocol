@@ -288,6 +288,80 @@ function collectContractTags(chains) {
 }
 
 /**
+ * Fails fast before registry fetch or chain processing: every contract in env must have
+ * a "version" that resolves to an existing git tag (same rules as resolveVersionTag).
+ * Also errors if the same logical contract name uses different versions on different chains.
+ *
+ * @param {string} environment - "mainnet" or "testnet"
+ */
+function validateEnvContractVersionTags(environment) {
+    const envDir = join(process.cwd(), "env");
+    const networkFiles = readdirSync(envDir).filter((f) => f.endsWith(".json"));
+    const errors = [];
+    /** @type {Map<string, string>} contract name (capitalized) → version string */
+    const contractVersion = new Map();
+
+    for (const networkFile of networkFiles) {
+        const chain = JSON.parse(readFileSync(join(envDir, networkFile), "utf8"));
+        if (chain.network.environment !== environment) continue;
+        const chainId = chain.network.chainId;
+        if (chainId === 31337) continue;
+
+        const contracts = chain.contracts || {};
+        for (const [name, contractData] of Object.entries(contracts)) {
+            const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
+
+            if (typeof contractData === "string") {
+                errors.push(
+                    `${capitalized} (${networkFile}): expected contract object with "version", not a bare address string`
+                );
+                continue;
+            }
+
+            const version = contractData?.version;
+            if (!version) {
+                errors.push(
+                    `${capitalized} on chain ${chainId} (${networkFile}): missing "version" field`
+                );
+                continue;
+            }
+
+            const prev = contractVersion.get(capitalized);
+            if (prev !== undefined && prev !== version) {
+                errors.push(
+                    `${capitalized}: inconsistent "version" across env files (was "${prev}", now "${version}" in ${networkFile})`
+                );
+            } else {
+                contractVersion.set(capitalized, version);
+            }
+        }
+    }
+
+    const uniqueVersions = [...new Set(contractVersion.values())];
+    for (const version of uniqueVersions) {
+        try {
+            resolveVersionTag(version);
+        } catch (e) {
+            errors.push(String(e.message || e));
+        }
+    }
+
+    if (errors.length > 0) {
+        console.error(
+            `\n✖ Version / git tag validation failed for environment "${environment}":\n`
+        );
+        for (const msg of errors) {
+            console.error(`  - ${msg}`);
+        }
+        console.error(
+            "\nFix: add a matching git tag (e.g. release tag) or correct each contract's \"version\" in env. " +
+                "See script/registry/README.md.\n"
+        );
+        process.exit(1);
+    }
+}
+
+/**
  * Registry URLs for fetching current live registries
  */
 const REGISTRY_URLS = {
@@ -730,6 +804,11 @@ async function main() {
         console.error(`Expected format: Qm... (v0) or bafy... (v1)`);
         process.exit(1);
     }
+
+    // Fail before network I/O or per-chain work if env versions / git tags are invalid
+    console.log(`Validating contract "version" fields and git tags for ${selector}...`);
+    validateEnvContractVersionTags(selector);
+    console.log(`  ✓ All contract versions resolve to git tags`);
 
     if (!etherscanApiKey) {
         console.warn("⚠ ETHERSCAN_API_KEY not set - contract block numbers will be null");

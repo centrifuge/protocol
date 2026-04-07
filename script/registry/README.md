@@ -38,6 +38,8 @@ Registries use a **delta format**: each version only contains contracts that cha
 
 **No manual `forge build` step is required.** The script handles it automatically per tag. Cached builds are reused on subsequent runs; delete `cache/abi-registry/` to force a full rebuild.
 
+**Early validation:** Before fetching the live registry or processing chains, the script checks every contract in `env/*.json` for the selected environment has a `version` field, that the same camelCase name does not disagree across files, and that each distinct version string resolves to a **git tag** (same candidate order as ABI builds). If anything fails, the process exits with code 1 and prints all errors—same spirit as missing required env fields.
+
 **Delta (default)** – only contracts that changed since the previous version:
 
 ```bash
