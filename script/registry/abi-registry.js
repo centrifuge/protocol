@@ -63,7 +63,7 @@ import {
 } from "fs";
 import { dirname, join } from "path";
 import { execSync } from "child_process";
-import { resolveVersionTag } from "./tag-resolution.js";
+import { resolveVersionTag } from "./utils/tag-resolution.js";
 
 // Parse CLI arguments
 const args = process.argv.slice(2);

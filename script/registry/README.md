@@ -20,8 +20,8 @@ Registries use a **delta format**: each version only contains contracts that cha
 | Script | Purpose |
 |--------|---------|
 | `abi-registry.js` | Builds `registry-*.json` from env files, explorer APIs, and Forge broadcast artifacts. Supports delta (default) or full snapshot. |
-| `tag-resolution.js` | Shared helpers: map env contract `version` → git tag (used by `abi-registry.js` and CI). |
-| `.github/ci-scripts/validate-env-contract-version-tags.js` | CI pre-check: every mainnet/testnet contract must have `version` and a matching local git tag (run after `git fetch --tags`). |
+| `utils/tag-resolution.js` | Shared helpers: map env contract `version` → git tag (used by `abi-registry.js` and CI). |
+| `utils/validate-env-contract-version-tags.js` | CI pre-check: every mainnet/testnet contract must have `version` and a matching local git tag (run after `git fetch --tags`). |
 | `pin-to-ipfs.js` | Pins generated registries to Pinata, writes nightly/mainnet/testnet summaries, outputs CID metadata. |
 | `.github/ci-scripts/detect-changed-environments.js` | Detects mainnet/testnet env changes to skip unnecessary CI builds. |
 | `.github/ci-scripts/detect-deployment-commit.js` | Returns the git commit recorded in env `deploymentInfo` (used as `DEPLOYMENT_COMMIT` / `registry.deploymentInfo.gitCommit`, not for per-contract ABI tags). |

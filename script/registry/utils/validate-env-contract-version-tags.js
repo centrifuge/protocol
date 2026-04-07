@@ -3,13 +3,13 @@
  * Fails if any env contract is missing `version` or if `version` does not resolve to a git tag.
  * Run after `git fetch --tags` in CI (see registry.yml).
  *
- * Usage:
- *   node .github/ci-scripts/validate-env-contract-version-tags.js
+ * Usage (repo root):
+ *   node script/registry/utils/validate-env-contract-version-tags.js
  */
 
 import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
-import { resolveVersionTag, versionTagCandidates } from "../../script/registry/tag-resolution.js";
+import { resolveVersionTag, versionTagCandidates } from "./tag-resolution.js";
 
 const envDir = join(process.cwd(), "env");
 const errors = [];

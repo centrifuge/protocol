@@ -43,7 +43,7 @@ jobs:
           node-version: 20
 
       - name: Validate env contract versions resolve to git tags
-        run: node .github/ci-scripts/validate-env-contract-version-tags.js
+        run: node script/registry/utils/validate-env-contract-version-tags.js
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
