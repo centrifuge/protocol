@@ -98,23 +98,6 @@ interface ISpoke {
         address refund
     ) external payable;
 
-    /// @notice Transfers share class tokens to a cross-chain recipient address (legacy)
-    /// @dev Maintained for retrocompatibility. New implementers should use the above
-    /// @param centrifugeId The centrifuge id of chain to where the shares are transferred
-    /// @param poolId The centrifuge pool id
-    /// @param scId The share class id
-    /// @param receiver A bytes32 representation of the receiver address
-    /// @param amount The amount of tokens to transfer
-    /// @param remoteExtraGasLimit Extra gas limit used for computation in the destination chain
-    function crosschainTransferShares(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 receiver,
-        uint128 amount,
-        uint128 remoteExtraGasLimit
-    ) external payable;
-
     /// @notice Registers an ERC-20 or ERC-6909 asset in another chain.
     /// @dev `decimals()` MUST return a `uint8` value between 2 and 18.
     /// @dev `name()` and `symbol()` MAY return no values.

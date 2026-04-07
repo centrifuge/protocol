@@ -16,6 +16,7 @@ import {IVaultFactory} from "../../factories/interfaces/IVaultFactory.sol";
 /// @title  ISpokeV3_1_0
 /// @notice Legacy interface matching the Spoke contract as it existed in protocol v3.1.0,
 ///         before the spoke was split into Spoke and SpokeRegistry.
+///         User interaction methods are omitted (e.g. registerAsset, crosschainTransferShares).
 /// @dev    DEPRECATED: This interface exists solely for backward compatibility with deployed vault
 ///         contracts (AsyncRequestManager, SyncManager) that were built against the pre-refactor
 ///         monolithic Spoke ABI. New contracts should depend on ISpoke and ISpokeRegistry directly.
@@ -32,34 +33,6 @@ interface ISpokeV3_1_0 {
     /// @param what Accepts "spoke" or "spokeRegistry"
     /// @param data The new address
     function file(bytes32 what, address data) external;
-
-    /// @notice See Spoke.crosschainTransferShares
-    function crosschainTransferShares(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 receiver,
-        uint128 amount,
-        uint128 extraGasLimit,
-        uint128 remoteExtraGasLimit,
-        address refund
-    ) external payable;
-
-    /// @notice See Spoke.crosschainTransferShares
-    function crosschainTransferShares(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 receiver,
-        uint128 amount,
-        uint128 remoteExtraGasLimit
-    ) external payable;
-
-    /// @notice See Spoke.registerAsset
-    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId, address refund)
-        external
-        payable
-        returns (AssetId assetId);
 
     /// @notice See Spoke.request
     function request(

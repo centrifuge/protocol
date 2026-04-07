@@ -84,18 +84,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke {
     }
 
     /// @inheritdoc ISpoke
-    function crosschainTransferShares(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 receiver,
-        uint128 amount,
-        uint128 remoteExtraGasLimit
-    ) external payable protected {
-        crosschainTransferShares(centrifugeId, poolId, scId, receiver, amount, 0, remoteExtraGasLimit, msg.sender);
-    }
-
-    /// @inheritdoc ISpoke
     function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId, address refund)
         external
         payable
