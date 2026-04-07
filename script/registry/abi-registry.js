@@ -788,6 +788,9 @@ async function main() {
             let chainDeprecated = 0;
             if (currentRegistryChain?.contracts) {
                 for (const contractName of Object.keys(currentRegistryChain.contracts)) {
+                    const live = currentRegistryChain.contracts[contractName];
+                    // Skip keys already deprecated in the published delta (address null) — do not re-emit every run
+                    if (live?.address === null) continue;
                     if (!allContracts[contractName]) {
                         processedContracts[contractName] = {
                             address: null,
