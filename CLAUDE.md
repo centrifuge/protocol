@@ -345,10 +345,6 @@ When a function exceeds 16 local variable slots, refactor using these techniques
 - [Security](https://docs.centrifuge.io/developer/protocol/security/)
 - [Sherlock Audit (v3.1)](https://audits.sherlock.xyz/contests/1028)
 
-### Contract registry (ABI JSON / CI)
-- **Docs:** [script/registry/README.md](script/registry/README.md) — delta format, env `version` → git tags, deprecation semantics, local commands.
-- **Claude Code:** path-scoped rules in [.claude/rules/registry.md](.claude/rules/registry.md) load when editing `script/registry/`, `env/*.json`, or registry workflows. Cursor uses separate `.cursor/rules` (gitignored here); do not symlink `.cursor` ↔ `.claude` (incompatible rule formats).
-
 ### API & Indexer
 - **GraphQL API**: https://api.centrifuge.io/graphql — indexes all protocol contracts across chains
 - **Source**: https://github.com/centrifuge/api-v3 — Ponder-based event indexer with 40+ entities (pools, vaults, tokens, investor transactions, holdings, cross-chain messages)
