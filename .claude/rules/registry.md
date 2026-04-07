@@ -16,12 +16,15 @@ paths:
 | Area | Role |
 |------|------|
 | `abi-registry.js` | Builds `registry/registry-{mainnet,testnet}.json` from `env/*.json`, explorer APIs, deltas vs live registry or `SOURCE_IPFS`. |
+| `utils/abi-cache.js` | Per-tag Forge ABI cache (worktree + build + `out/` copy); `collectContractTags`, `findAbiInOutput`, aliases — reusable outside the registry script. |
+| `build-abi-cache.js` | CLI: `node script/registry/build-abi-cache.js <tag> [...]` to warm `cache/abi-registry/`. |
 | `utils/tag-resolution.js` | Maps env contract `version` → local git tag (`resolveVersionTag`, candidates). |
 | `utils/validate-env-contract-version-tags.js` | CI: every mainnet/testnet contract object must have `version` resolving to a git tag. |
 | `pin-to-ipfs.js`, `validate-api-keys.js`, etc. | Pinning and local API checks; see README table. |
 
 ## ABI generation
 
+- **`utils/abi-cache.js`** owns the per-tag cache (`ensureAbiCache`, `collectContractTags`, …); `abi-registry.js` and `build-abi-cache.js` call into it.
 - ABIs come from **per-contract `version` in env** → resolved git tag → `cache/abi-registry/<tag>/out/` (worktree + `forge build --skip test`). Not from a single deployment commit’s `out/`.
 - **`DEPLOYMENT_COMMIT`** (env) is metadata only (`registry.deploymentInfo.gitCommit`), not ABI selection.
 - After `packAbis`, **`stripContractVersionsForRegistryOutput`** removes per-contract `version` from serialized JSON (smaller artifacts); **`version` stays in repo `env/*.json`**.

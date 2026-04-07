@@ -40,7 +40,7 @@
  * Output: A JSON file with structure:
  *   {
  *     network: "mainnet" | "testnet",
- *     version: "3.1",
+ *     version: "3.1",  // optional; omitted if unknown
  *     deploymentInfo: { gitCommit: "...", startBlock: ... },
  *     previousRegistry: { version: "3.0", ipfsHash: "Qm..." }, // ipfsHash from SOURCE_IPFS if provided, otherwise filled by pin-to-ipfs.js
  *     abis: { ContractName: [...], ... },
@@ -58,12 +58,16 @@ import {
     readdirSync,
     mkdirSync,
     existsSync,
-    cpSync,
-    rmSync,
 } from "fs";
 import { dirname, join } from "path";
-import { execSync } from "child_process";
-import { resolveVersionTag } from "./utils/tag-resolution.js";
+import {
+    collectContractTags,
+    ensureAbiCache,
+    findAbiInOutput,
+    getAbiCacheRoot,
+    getCachedOutDir,
+    resolveArtifactName,
+} from "./utils/abi-cache.js";
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -116,118 +120,6 @@ const CUSTOM_EXPLORER_CHAINS = new Set([
  */
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// ============================================================================
-// Per-contract ABI cache
-// ============================================================================
-
-const ABI_CACHE_DIR = join(process.cwd(), "cache", "abi-registry");
-
-/**
- * Ensures the ABI cache for a given tag is populated.
- * If the cache directory already has build artifacts, it is reused.
- * Otherwise, a git worktree is created at the tag, forge build is run,
- * and the out/ directory is copied into the cache.
- *
- * @param {string} tag - Git tag to build ABIs for
- */
-function ensureAbiCache(tag) {
-    const cacheOut = join(ABI_CACHE_DIR, tag, "out");
-    if (existsSync(cacheOut)) {
-        console.log(`  ✓ ABI cache hit for tag "${tag}"`);
-        return;
-    }
-
-    console.log(`  Building ABI cache for tag "${tag}"...`);
-
-    const worktreeDir = join(ABI_CACHE_DIR, "worktrees", tag);
-
-    try {
-        // Create worktree at the tag
-        mkdirSync(join(ABI_CACHE_DIR, "worktrees"), { recursive: true });
-        if (existsSync(worktreeDir)) {
-            // Clean up stale worktree
-            try { execSync(`git worktree remove --force "${worktreeDir}"`, { stdio: "pipe" }); } catch { }
-            rmSync(worktreeDir, { recursive: true, force: true });
-        }
-        execSync(`git worktree add "${worktreeDir}" "${tag}"`, { stdio: "pipe" });
-
-        // Initialize submodules in the worktree
-        execSync("git submodule update --init --recursive", {
-            cwd: worktreeDir,
-            stdio: "pipe",
-        });
-
-        // Build
-        execSync("forge build --skip test", {
-            cwd: worktreeDir,
-            stdio: "inherit",
-        });
-
-        // Copy out/ to cache
-        const worktreeOut = join(worktreeDir, "out");
-        if (!existsSync(worktreeOut)) {
-            throw new Error(`Forge build did not produce out/ directory for tag "${tag}"`);
-        }
-        mkdirSync(join(ABI_CACHE_DIR, tag), { recursive: true });
-        cpSync(worktreeOut, cacheOut, { recursive: true });
-        console.log(`  ✓ ABI cache populated for tag "${tag}"`);
-    } finally {
-        // Clean up worktree
-        try { execSync(`git worktree remove --force "${worktreeDir}"`, { stdio: "pipe" }); } catch { }
-        rmSync(worktreeDir, { recursive: true, force: true });
-    }
-}
-
-/**
- * Collects the set of unique version tags needed across all chains' contracts.
- * Validates that every non-deprecated contract has a version field.
- *
- * @param {Object} chains - The chains object with deployed contracts
- * @returns {Map<string, string>} Map of contract name (capitalized) → resolved git tag
- */
-function collectContractTags(chains) {
-    const contractToTag = new Map();
-    const errors = [];
-
-    for (const [chainId, chain] of Object.entries(chains)) {
-        for (const [name, data] of Object.entries(chain.contracts || {})) {
-            if (data?.address === null) continue; // deprecated
-
-            const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
-            if (contractToTag.has(capitalized)) continue; // already resolved
-
-            const version = data?.version;
-            if (!version) {
-                errors.push(`${capitalized} on chain ${chainId} is missing a "version" field`);
-                continue;
-            }
-
-            try {
-                const tag = resolveVersionTag(version);
-                contractToTag.set(capitalized, tag);
-
-                // Factory → also map the base contract to the same tag
-                if (capitalized.endsWith("Factory")) {
-                    const baseName = capitalized.replace(/Factory$/, "");
-                    if (!contractToTag.has(baseName)) {
-                        contractToTag.set(baseName, tag);
-                    }
-                }
-            } catch (err) {
-                errors.push(`${capitalized} (version "${version}"): ${err.message}`);
-            }
-        }
-    }
-
-    if (errors.length > 0) {
-        throw new Error(
-            `Failed to resolve version tags for contracts:\n  - ${errors.join("\n  - ")}`
-        );
-    }
-
-    return contractToTag;
 }
 
 /**
@@ -328,6 +220,82 @@ function getVersionFromDeploymentInfo(chain) {
         }
     }
     return null;
+}
+
+/**
+ * Parses env-style protocol labels ("3", "v3.1", "v3.1.0") for ordering.
+ * @param {string} s
+ * @returns {[number, number, number]}
+ */
+function protocolVersionTuple(s) {
+    const n = String(s)
+        .replace(/^v/i, "")
+        .trim()
+        .split("-")[0];
+    const parts = n.split(".").map((p) => parseInt(p, 10));
+    return [
+        Number.isFinite(parts[0]) ? parts[0] : 0,
+        Number.isFinite(parts[1]) ? parts[1] : 0,
+        Number.isFinite(parts[2]) ? parts[2] : 0,
+    ];
+}
+
+/**
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
+function compareProtocolVersionStrings(a, b) {
+    const ta = protocolVersionTuple(a);
+    const tb = protocolVersionTuple(b);
+    for (let i = 0; i < 3; i++) {
+        if (ta[i] !== tb[i]) return ta[i] - tb[i];
+    }
+    return 0;
+}
+
+/**
+ * Highest label by numeric major.minor.patch (for mixed "3" vs "v3.1" in env).
+ * @param {string[]} strings
+ * @returns {string|null}
+ */
+function maxProtocolVersionLabel(strings) {
+    const uniq = [...new Set(strings.filter((s) => s && typeof s === "string"))];
+    if (uniq.length === 0) return null;
+    uniq.sort(compareProtocolVersionStrings);
+    return uniq[uniq.length - 1] ?? null;
+}
+
+/**
+ * Canonical top-level registry.version for JSON output: always vX.Y.Z (patch explicit).
+ *
+ * @param {string} label - Raw env or deployment label (e.g. "3", "v3.1")
+ * @returns {string|null}
+ */
+function normalizeRegistryVersionToVSemver(label) {
+    if (!label || typeof label !== "string") return null;
+    const [major, minor, patch] = protocolVersionTuple(label);
+    return `v${major}.${minor}.${patch}`;
+}
+
+/**
+ * Max of per-contract `version` across chains (skips deprecated tombstones).
+ * Used when deploymentInfo has no protocol version — api-v3 `update-registry` expects top-level version.
+ *
+ * @param {Object} chains - registry.chains-shaped object before stripContractVersionsForRegistryOutput
+ * @returns {string|null}
+ */
+function deriveHighestContractVersion(chains) {
+    const labels = [];
+    for (const chain of Object.values(chains)) {
+        const contracts = chain?.contracts;
+        if (!contracts || typeof contracts !== "object") continue;
+        for (const data of Object.values(contracts)) {
+            if (!data || typeof data !== "object" || data.address === null) continue;
+            if (data.version && typeof data.version === "string") labels.push(data.version);
+        }
+    }
+    return maxProtocolVersionLabel(labels);
 }
 
 /**
@@ -861,16 +829,32 @@ async function main() {
         }
     }
 
-    // Determine the version for this registry
-    const resolvedVersion = versions.size > 0 ? Array.from(versions)[0] : null;
+    // Top-level version: max of deploymentInfo labels and per-contract versions (indexer codegen expects it).
+    const fromDeploy = maxProtocolVersionLabel(Array.from(versions));
     if (versions.size > 1) {
-        console.warn(`⚠ Multiple versions found across chains: ${Array.from(versions).join(", ")}. Using: ${resolvedVersion}`);
+        console.warn(
+            `⚠ Multiple deploymentInfo versions across chains: ${Array.from(versions).join(", ")}. Using highest: ${fromDeploy}`
+        );
+    }
+    const fromContracts = deriveHighestContractVersion(chains);
+    const resolvedVersionRaw = maxProtocolVersionLabel(
+        [fromDeploy, fromContracts].filter((x) => x != null)
+    );
+    const resolvedVersion = resolvedVersionRaw
+        ? normalizeRegistryVersionToVSemver(resolvedVersionRaw)
+        : null;
+    if (resolvedVersion && !fromDeploy && fromContracts) {
+        console.log(
+            `  Registry version from per-contract env versions: ${resolvedVersionRaw} → ${resolvedVersion} (normalized vX.Y.Z)`
+        );
+    } else if (resolvedVersionRaw && resolvedVersion && resolvedVersionRaw !== resolvedVersion) {
+        console.log(`  Normalized registry version: ${resolvedVersionRaw} → ${resolvedVersion}`);
     }
 
-    // Initialize registry structure
+    // Initialize registry structure (top-level version is optional — omit when unknown)
     const registry = {
         network: selector,
-        version: resolvedVersion,
+        ...(resolvedVersion ? { version: resolvedVersion } : {}),
         deploymentInfo: {
             gitCommit: resolveDeploymentCommit(deploymentCommitOverride, deploymentCommits),
         },
@@ -1054,37 +1038,26 @@ function stripContractVersionsForRegistryOutput(chains) {
  * @returns {Object} Map of contract names to their ABIs
  * @throws {Error} If version tags are missing or ABI cannot be found
  */
-// Env contract names that differ from Forge artifact filenames.
-// Key: capitalized env name → Value: Forge artifact name.
-const ABI_NAME_ALIASES = {
-    "Token": "ShareToken",
-    "NavManager": "NAVManager",
-    "FreezeOnlyHook": "FreezeOnly",
-    "FullRestrictionsHook": "FullRestrictions",
-    "FreelyTransferableHook": "FreelyTransferable",
-    "RedemptionRestrictionsHook": "RedemptionRestrictions",
-};
-
 function packAbis(chains) {
-    // Resolve per-contract version tags and build caches
+    const cwd = process.cwd();
+    const cacheOpts = { cwd };
+
     const contractToTag = collectContractTags(chains);
     const uniqueTags = new Set(contractToTag.values());
 
     console.log(`\nResolving ABIs for ${contractToTag.size} contracts across ${uniqueTags.size} version tag(s): ${[...uniqueTags].join(", ")}`);
+    console.log(`  ABI cache root: ${getAbiCacheRoot(cwd)}`);
 
-    // Ensure all needed tag caches are populated
     for (const tag of uniqueTags) {
-        ensureAbiCache(tag);
+        ensureAbiCache(tag, cacheOpts);
     }
 
-    // Load ABIs from the per-tag caches
     const abis = {};
     const missing = [];
 
     for (const [contractName, tag] of contractToTag) {
-        const cacheOut = join(ABI_CACHE_DIR, tag, "out");
-        // Try the contract name, then its alias (Forge artifact may differ from env name)
-        const artifactName = ABI_NAME_ALIASES[contractName] || contractName;
+        const cacheOut = getCachedOutDir(tag, cwd);
+        const artifactName = resolveArtifactName(contractName);
         const abi = findAbiInOutput(cacheOut, artifactName);
         if (abi) {
             abis[artifactName] = abi;
@@ -1099,28 +1072,6 @@ function packAbis(chains) {
 
     console.log(`Packed ${Object.keys(abis).length} ABIs for deployed contracts`);
     return abis;
-}
-
-/**
- * Searches a Forge out/ directory for a contract's ABI by name.
- *
- * @param {string} outputDir - Path to the out/ directory
- * @param {string} contractName - Capitalized contract name (e.g. "Hub")
- * @returns {Array|null} The ABI array, or null if not found
- */
-function findAbiInOutput(outputDir, contractName) {
-    if (!existsSync(outputDir)) return null;
-
-    for (const abiDir of readdirSync(outputDir)) {
-        if (abiDir.endsWith(".t.sol")) continue;
-
-        const filePath = join(outputDir, abiDir, `${contractName}.json`);
-        if (existsSync(filePath)) {
-            const contractData = JSON.parse(readFileSync(filePath, "utf8"));
-            return contractData.abi;
-        }
-    }
-    return null;
 }
 
 main()
