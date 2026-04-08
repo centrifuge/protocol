@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ISharePriceDeltaManifest, Slot} from "./interfaces/ISharePriceDeltaManifest.sol";
 import {IManifest} from "../interfaces/ISupervisor.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
@@ -13,18 +14,7 @@ import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUp
 /// @notice Limits updateSharePrice to a maximum percentage change per rolling window.
 ///         Anchors to the first price submitted in each window. All subsequent updates within
 ///         the window are compared against that anchor.
-contract SharePriceDeltaManifest is IManifest, ITrustedContractUpdate {
-    struct Slot {
-        uint128 anchor;      // First price in the current window
-        uint64 windowStart;  // When the current window began
-        uint64 window;       // Window duration in seconds
-        uint128 maxDeltaBps; // Max deviation from anchor in bps
-    }
-
-    event SetConfig(PoolId indexed poolId, ShareClassId indexed scId, uint128 maxDeltaBps, uint64 window);
-
-    error NotAuthorized();
-
+contract SharePriceDeltaManifest is ISharePriceDeltaManifest {
     address public immutable contractUpdater;
 
     mapping(PoolId => mapping(ShareClassId => Slot)) public slots;
