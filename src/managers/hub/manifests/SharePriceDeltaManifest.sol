@@ -10,35 +10,26 @@ import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  Share Price Delta Manifest
-/// @notice Manifest hook that limits updateSharePrice to a maximum percentage change per rolling window.
-///         Anchors to the current on-chain price at the start of each window. All updates within the
-///         window are compared against that fixed anchor, preventing death-by-a-thousand-cuts.
-///
-///         Configuration is managed via trustedCall from the ContractUpdater, so config changes
-///         go through the Supervisor's timelock if updateContract is timelocked.
+/// @notice Limits updateSharePrice to a maximum percentage change per rolling window.
+///         Anchors to the first price submitted in each window. All subsequent updates within
+///         the window are compared against that anchor.
 contract SharePriceDeltaManifest is IManifestHook, ITrustedContractUpdate {
-    struct Config {
-        uint128 maxDeltaBps;
-        uint64 window;
-    }
-
-    struct State {
-        uint128 anchor;
-        uint64 windowStart;
+    struct Slot {
+        uint128 anchor;      // First price in the current window
+        uint64 windowStart;  // When the current window began
+        uint64 window;       // Window duration in seconds
+        uint128 maxDeltaBps; // Max deviation from anchor in bps
     }
 
     event SetConfig(PoolId indexed poolId, ShareClassId indexed scId, uint128 maxDeltaBps, uint64 window);
 
     error NotAuthorized();
 
-    IHub public immutable hub;
     address public immutable contractUpdater;
 
-    mapping(PoolId => mapping(ShareClassId => Config)) public config;
-    mapping(PoolId => mapping(ShareClassId => State)) public state;
+    mapping(PoolId => mapping(ShareClassId => Slot)) public slots;
 
-    constructor(IHub hub_, address contractUpdater_) {
-        hub = hub_;
+    constructor(address contractUpdater_) {
         contractUpdater = contractUpdater_;
     }
 
@@ -46,8 +37,7 @@ contract SharePriceDeltaManifest is IManifestHook, ITrustedContractUpdate {
     function trustedCall(PoolId poolId, ShareClassId scId, bytes calldata payload) external {
         require(msg.sender == contractUpdater, NotAuthorized());
         (uint128 maxDeltaBps, uint64 window) = abi.decode(payload, (uint128, uint64));
-        config[poolId][scId] = Config(maxDeltaBps, window);
-        delete state[poolId][scId];
+        slots[poolId][scId] = Slot(0, 0, window, maxDeltaBps);
         emit SetConfig(poolId, scId, maxDeltaBps, window);
     }
 
@@ -58,25 +48,19 @@ contract SharePriceDeltaManifest is IManifestHook, ITrustedContractUpdate {
         (PoolId poolId, ShareClassId scId, D18 newPrice,) =
             abi.decode(data[4:], (PoolId, ShareClassId, D18, uint64));
 
-        Config memory cfg = config[poolId][scId];
-        if (cfg.maxDeltaBps == 0) return true;
+        Slot storage s = slots[poolId][scId];
+        if (s.maxDeltaBps == 0) return true;
 
-        State storage s = state[poolId][scId];
-        uint256 anchor;
+        uint128 newVal = D18.unwrap(newPrice);
 
-        if (s.windowStart == 0 || block.timestamp - s.windowStart > cfg.window) {
-            (D18 currentPrice,) = hub.shareClassManager().pricePoolPerShare(poolId, scId);
-            anchor = D18.unwrap(currentPrice);
-            s.anchor = uint128(anchor);
+        if (s.windowStart == 0 || block.timestamp - s.windowStart > s.window) {
+            s.anchor = newVal;
             s.windowStart = uint64(block.timestamp);
-        } else {
-            anchor = s.anchor;
+            return true;
         }
 
-        if (anchor == 0) return true;
-
-        uint256 newVal = D18.unwrap(newPrice);
+        uint256 anchor = s.anchor;
         uint256 delta = newVal > anchor ? newVal - anchor : anchor - newVal;
-        return delta * 10_000 <= anchor * cfg.maxDeltaBps;
+        return delta * 10_000 <= anchor * s.maxDeltaBps;
     }
 }
