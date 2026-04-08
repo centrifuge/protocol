@@ -305,7 +305,7 @@
   },
   "deploymentInfo": {
     "deploy:protocol": {
-      "gitCommit": "d9db839cc",
+      "gitCommit": "c4dcd1ae",
       "timestamp": "2026-01-28T15:19:10Z",
       "suffix": "",
       "startBlock": 25782262

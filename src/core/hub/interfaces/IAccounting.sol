@@ -95,4 +95,27 @@ interface IAccounting {
     /// @param account The account to check
     /// @return True if the account exists, false otherwise
     function exists(PoolId poolId, AccountId account) external view returns (bool);
+
+    /// @notice Returns the current debited amount in the active transaction
+    /// @dev Transient storage: Only non-zero during an active unlock/lock session
+    /// @return The current debited amount
+    function debited() external view returns (uint128);
+
+    /// @notice Returns the current credited amount in the active transaction
+    /// @dev Transient storage: Only non-zero during an active unlock/lock session
+    /// @return The current credited amount
+    function credited() external view returns (uint128);
+
+    /// @notice Returns the account data for a given pool and account
+    /// @param poolId The pool the account belongs to
+    /// @param account The account identifier
+    /// @return totalDebit The total debit amount
+    /// @return totalCredit The total credit amount
+    /// @return isDebitNormal Whether the account is debit-normal
+    /// @return lastUpdated The timestamp of the last update
+    /// @return metadata The account metadata
+    function accounts(PoolId poolId, AccountId account)
+        external
+        view
+        returns (uint128 totalDebit, uint128 totalCredit, bool isDebitNormal, uint64 lastUpdated, bytes memory metadata);
 }
