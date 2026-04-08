@@ -54,15 +54,23 @@ contract MockHubRegistry {
     }
 }
 
-contract MockManifestHook is IManifest {
-    bool public shouldPass = true;
+contract MockManifest is IManifest {
+    bool public shouldRevert;
+    uint48 public extraDelay;
 
-    function setShouldPass(bool v) external {
-        shouldPass = v;
+    function setShouldRevert(bool v) external {
+        shouldRevert = v;
     }
 
-    function check(PoolId, address, bytes calldata) external returns (bool) {
-        return shouldPass;
+    function setExtraDelay(uint48 d) external {
+        extraDelay = d;
+    }
+
+    error Blocked();
+
+    function check(PoolId, address, bytes calldata) external returns (uint48) {
+        if (shouldRevert) revert Blocked();
+        return extraDelay;
     }
 }
 
@@ -260,12 +268,10 @@ contract SupervisorCancelTest is SupervisorTestBase {
         vm.prank(manager);
         supervisor.submit(data);
 
-        bytes32 operationId = keccak256(data);
-
         vm.prank(manager);
-        supervisor.cancel(operationId);
+        supervisor.cancel(data);
 
-        assertEq(supervisor.pending(operationId), 0);
+        assertEq(supervisor.pending(data), 0);
     }
 
     function testGuardianCanCancel() public {
@@ -274,12 +280,10 @@ contract SupervisorCancelTest is SupervisorTestBase {
         vm.prank(manager);
         supervisor.submit(data);
 
-        bytes32 operationId = keccak256(data);
-
         vm.prank(guardian);
-        supervisor.cancel(operationId);
+        supervisor.cancel(data);
 
-        assertEq(supervisor.pending(operationId), 0);
+        assertEq(supervisor.pending(data), 0);
     }
 
     function testUnauthorizedCannotCancel() public {
@@ -288,17 +292,17 @@ contract SupervisorCancelTest is SupervisorTestBase {
         vm.prank(manager);
         supervisor.submit(data);
 
-        bytes32 operationId = keccak256(data);
-
         vm.expectRevert(ISupervisor.NotManagerOrGuardian.selector);
         vm.prank(unauthorized);
-        supervisor.cancel(operationId);
+        supervisor.cancel(data);
     }
 
     function testCannotCancelNonPending() public {
+        bytes memory data = abi.encodeCall(MockHub.timelocked, (99));
+
         vm.expectRevert(ISupervisor.OperationNotPending.selector);
         vm.prank(manager);
-        supervisor.cancel(bytes32(uint256(1)));
+        supervisor.cancel(data);
     }
 
     function testCancelPreventsExecution() public {
@@ -308,7 +312,7 @@ contract SupervisorCancelTest is SupervisorTestBase {
         supervisor.submit(data);
 
         vm.prank(guardian);
-        supervisor.cancel(keccak256(data));
+        supervisor.cancel(data);
 
         vm.warp(block.timestamp + DELAY);
 
@@ -316,17 +320,43 @@ contract SupervisorCancelTest is SupervisorTestBase {
         vm.prank(manager);
         supervisor.execute(data);
     }
+
+    function testGuardianCannotCancelOwnRemovalWithMultipleGuardians() public {
+        address guardian2 = makeAddr("guardian2");
+        vm.prank(manager);
+        supervisor.addGuardian(guardian2);
+
+        bytes memory data = abi.encodeCall(Supervisor.removeGuardian, (guardian));
+        vm.prank(manager);
+        supervisor.submit(data);
+
+        vm.expectRevert(ISupervisor.CannotSelfCancel.selector);
+        vm.prank(guardian);
+        supervisor.cancel(data);
+    }
+
+    function testSoleGuardianCanCancelOwnRemoval() public {
+        // Only one guardian set (from setUp)
+        bytes memory data = abi.encodeCall(Supervisor.removeGuardian, (guardian));
+        vm.prank(manager);
+        supervisor.submit(data);
+
+        vm.prank(guardian);
+        supervisor.cancel(data);
+
+        assertEq(supervisor.pending(data), 0);
+    }
 }
 
 // ─── Manifest hook ──────────────────────────────────────────────────────────
 
 contract SupervisorManifestHookTest is SupervisorTestBase {
     Supervisor supervisor;
-    MockManifestHook hook;
+    MockManifest hook;
 
     function setUp() public override {
         super.setUp();
-        hook = new MockManifestHook();
+        hook = new MockManifest();
         supervisor = _deploySupervisor(IManifest(address(hook)));
     }
 
@@ -339,16 +369,16 @@ contract SupervisorManifestHookTest is SupervisorTestBase {
         assertEq(hub.lastValue(), 42);
     }
 
-    function testHookBlocksWhenFalse() public {
-        hook.setShouldPass(false);
+    function testHookBlocksWhenReverting() public {
+        hook.setShouldRevert(true);
         bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
 
-        vm.expectRevert(ISupervisor.ManifestCheckFailed.selector);
+        vm.expectRevert(MockManifest.Blocked.selector);
         vm.prank(manager);
         supervisor.execute(data);
     }
 
-    function testHookAllowsWhenTrue() public {
+    function testHookAllowsWhenPassing() public {
         bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
 
         vm.prank(manager);
@@ -424,7 +454,7 @@ contract SupervisorGuardianTest is SupervisorTestBase {
         assertFalse(supervisor.guardians(guardian));
     }
 
-    function testGuardianCanVetoOwnRemoval() public {
+    function testRemoveGuardianTooEarly() public {
         vm.prank(manager);
         supervisor.addGuardian(guardian);
 
@@ -432,9 +462,26 @@ contract SupervisorGuardianTest is SupervisorTestBase {
         vm.prank(manager);
         supervisor.submit(data);
 
-        // Guardian vetoes
+        // Try to execute before delay
+        vm.expectRevert();
+        vm.prank(manager);
+        supervisor.removeGuardian(guardian);
+
+        // Still a guardian
+        assertTrue(supervisor.guardians(guardian));
+    }
+
+    function testSoleGuardianCanVetoOwnRemoval() public {
+        vm.prank(manager);
+        supervisor.addGuardian(guardian);
+
+        bytes memory data = abi.encodeCall(Supervisor.removeGuardian, (guardian));
+        vm.prank(manager);
+        supervisor.submit(data);
+
+        // Sole guardian vetoes
         vm.prank(guardian);
-        supervisor.cancel(keccak256(data));
+        supervisor.cancel(data);
 
         // Now removal fails
         vm.warp(block.timestamp + DELAY);
@@ -445,6 +492,25 @@ contract SupervisorGuardianTest is SupervisorTestBase {
 
         // Still a guardian
         assertTrue(supervisor.guardians(guardian));
+    }
+
+    function testOtherGuardianCanVetoRemoval() public {
+        vm.prank(manager);
+        supervisor.addGuardian(guardian);
+
+        address guardian2 = makeAddr("guardian2");
+        vm.prank(manager);
+        supervisor.addGuardian(guardian2);
+
+        bytes memory data = abi.encodeCall(Supervisor.removeGuardian, (guardian));
+        vm.prank(manager);
+        supervisor.submit(data);
+
+        // Other guardian vetoes (not the one being removed)
+        vm.prank(guardian2);
+        supervisor.cancel(data);
+
+        assertEq(supervisor.pending(data), 0);
     }
 }
 

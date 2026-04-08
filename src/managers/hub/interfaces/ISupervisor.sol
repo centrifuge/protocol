@@ -5,12 +5,17 @@ import {IHub} from "../../../core/hub/interfaces/IHub.sol";
 import {PoolId} from "../../../core/types/PoolId.sol";
 
 interface IManifest {
-    /// @notice Validate whether a Hub call should proceed.
+    /// @notice Validate whether a Hub call should proceed, and optionally extend the timelock.
+    ///         Revert to block the call.
+    /// @dev    The additional delay is added to the base timelock at execution time. Implementations
+    ///         must return consistent values for the same calldata, otherwise an operation submitted
+    ///         with one delay could become unexecutable if the manifest later returns a different value.
     /// @param poolId The pool being operated on.
     /// @param caller The address that initiated the call through the Supervisor.
     /// @param data The full calldata being forwarded to the Hub.
-    /// @return True if the call is allowed.
-    function check(PoolId poolId, address caller, bytes calldata data) external returns (bool);
+    /// @return additionalDelay Extra seconds to add to the base timelock for this call.
+    ///         Only applies to timelocked selectors. Ignored for non-timelocked calls.
+    function check(PoolId poolId, address caller, bytes calldata data) external returns (uint48 additionalDelay);
 }
 
 interface ISupervisor {
@@ -18,7 +23,7 @@ interface ISupervisor {
     // Events
     //----------------------------------------------------------------------------------------------
 
-    event Submit(bytes32 indexed operationId, bytes4 indexed selector, uint48 executeAfter);
+    event Submit(bytes32 indexed operationId, bytes4 indexed selector, uint48 executeAfter, bytes data);
     event Cancel(bytes32 indexed operationId);
     event Execute(bytes32 indexed operationId);
     event AddGuardian(address indexed guardian);
@@ -35,11 +40,11 @@ interface ISupervisor {
     error TimelockExpired();
     error OperationAlreadyPending();
     error OperationNotPending();
-    error ManifestCheckFailed();
     error NotGuardian();
     error AlreadyGuardian();
     error ZeroAddress();
     error ForwardFailed();
+    error CannotSelfCancel();
 
     //----------------------------------------------------------------------------------------------
     // Execution
@@ -50,14 +55,16 @@ interface ISupervisor {
     /// @param data The calldata to forward to the Hub.
     function execute(bytes calldata data) external payable;
 
-    /// @notice Submit a timelocked operation for future execution.
-    /// @param data The calldata to forward to the Hub.
-    /// @return operationId The unique identifier for this pending operation.
-    function submit(bytes calldata data) external returns (bytes32 operationId);
+    /// @notice Submit a timelocked operation for future execution. Accepts both Hub calldata
+    ///         (for timelocked selectors) and `removeGuardian` calldata (always timelocked).
+    ///         After the delay, call `execute(data)` or `removeGuardian(guardian)` respectively.
+    /// @param data The calldata for the timelocked operation.
+    function submit(bytes calldata data) external;
 
     /// @notice Cancel a pending timelocked operation. Callable by pool managers or guardians.
-    /// @param operationId The operation to cancel.
-    function cancel(bytes32 operationId) external;
+    ///         A guardian can only cancel their own removal if they are the sole guardian.
+    /// @param data The pending calldata to cancel.
+    function cancel(bytes calldata data) external;
 
     //----------------------------------------------------------------------------------------------
     // Guardian management
@@ -67,8 +74,8 @@ interface ISupervisor {
     /// @param guardian The address to add as guardian.
     function addGuardian(address guardian) external;
 
-    /// @notice Remove a guardian. Callable by pool managers. Always timelocked.
-    ///         Must be submitted first via submit(), then executed after the delay.
+    /// @notice Remove a guardian. Always timelocked regardless of the timelocked mapping.
+    ///         Flow: `submit(abi.encodeCall(removeGuardian, (guardian)))` → wait → `removeGuardian(guardian)`.
     /// @param guardian The address to remove as guardian.
     function removeGuardian(address guardian) external;
 
@@ -84,7 +91,8 @@ interface ISupervisor {
     function timelocked(bytes4 selector) external view returns (bool);
     function hooked(bytes4 selector) external view returns (bool);
     function guardians(address who) external view returns (bool);
-    function pending(bytes32 operationId) external view returns (uint48);
+    function guardianCount() external view returns (uint256);
+    function pending(bytes calldata data) external view returns (uint48);
 }
 
 interface ISupervisorFactory {

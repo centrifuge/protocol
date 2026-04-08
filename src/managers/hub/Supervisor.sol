@@ -26,7 +26,10 @@ contract Supervisor is ISupervisor {
     mapping(bytes4 => bool) public hooked;
     mapping(bytes4 => bool) public timelocked;
     mapping(address => bool) public guardians;
-    mapping(bytes32 => uint48) public pending;
+    uint256 public guardianCount;
+
+    /// @dev Calldata-as-key timelock storage (Morpho pattern). The pending calldata IS the key.
+    mapping(bytes calldata_ => uint48 executeAfter) public pending;
 
     modifier onlyManager() {
         require(hub.hubRegistry().manager(poolId, msg.sender), NotManager());
@@ -74,25 +77,32 @@ contract Supervisor is ISupervisor {
     }
 
     /// @inheritdoc ISupervisor
-    function submit(bytes calldata data) external onlyManager returns (bytes32 operationId) {
+    function submit(bytes calldata data) external onlyManager {
         bytes4 selector = bytes4(data[:4]);
         require(timelocked[selector] || selector == this.removeGuardian.selector, TimelockNotSet());
-
-        operationId = keccak256(data);
-        require(pending[operationId] == 0, OperationAlreadyPending());
+        require(pending[data] == 0, OperationAlreadyPending());
 
         uint48 executeAfter = uint48(block.timestamp) + delay;
-        pending[operationId] = executeAfter;
+        pending[data] = executeAfter;
 
-        emit Submit(operationId, selector, executeAfter);
+        emit Submit(keccak256(data), selector, executeAfter, data);
     }
 
     /// @inheritdoc ISupervisor
-    function cancel(bytes32 operationId) external onlyManagerOrGuardian {
-        require(pending[operationId] != 0, OperationNotPending());
+    function cancel(bytes calldata data) external onlyManagerOrGuardian {
+        require(pending[data] != 0, OperationNotPending());
 
-        delete pending[operationId];
-        emit Cancel(operationId);
+        // A guardian can only cancel their own removal if they are the sole guardian
+        bytes4 selector = bytes4(data[:4]);
+        if (guardians[msg.sender] && selector == this.removeGuardian.selector) {
+            address target = abi.decode(data[4:], (address));
+            if (target == msg.sender) {
+                require(guardianCount == 1, CannotSelfCancel());
+            }
+        }
+
+        delete pending[data];
+        emit Cancel(keccak256(data));
     }
 
     //----------------------------------------------------------------------------------------------
@@ -105,6 +115,7 @@ contract Supervisor is ISupervisor {
         require(!guardians[guardian], AlreadyGuardian());
 
         guardians[guardian] = true;
+        guardianCount++;
         emit AddGuardian(guardian);
     }
 
@@ -114,6 +125,7 @@ contract Supervisor is ISupervisor {
         _checkHookAndTimelock(msg.sig, msg.data);
 
         guardians[guardian] = false;
+        guardianCount--;
         emit RemoveGuardian(guardian);
     }
 
@@ -122,21 +134,20 @@ contract Supervisor is ISupervisor {
     //----------------------------------------------------------------------------------------------
 
     function _checkHookAndTimelock(bytes4 selector, bytes calldata data) internal {
-        require(
-            address(manifest) == address(0) || !hooked[selector] || manifest.check(poolId, msg.sender, data),
-            ManifestCheckFailed()
-        );
+        uint48 additionalDelay;
+        if (address(manifest) != address(0) && hooked[selector]) {
+            additionalDelay = manifest.check(poolId, msg.sender, data);
+        }
 
         // removeGuardian is always timelocked regardless of the timelocked mapping
         if (timelocked[selector] || selector == this.removeGuardian.selector) {
-            bytes32 operationId = keccak256(data);
-            uint48 executeAfter = pending[operationId];
-            require(executeAfter != 0, OperationNotPending());
+            uint48 executeAfter = pending[data] + additionalDelay;
+            require(pending[data] != 0, OperationNotPending());
             require(block.timestamp >= executeAfter, TimelockNotReady(executeAfter));
             require(block.timestamp <= executeAfter + expiryWindow, TimelockExpired());
 
-            delete pending[operationId];
-            emit Execute(operationId);
+            delete pending[data];
+            emit Execute(keccak256(data));
         }
     }
 
@@ -146,7 +157,6 @@ contract Supervisor is ISupervisor {
             revert IERC7751.WrappedError(address(hub), bytes4(data[:4]), result, "");
         }
     }
-
 }
 
 /// @title  Supervisor Factory
