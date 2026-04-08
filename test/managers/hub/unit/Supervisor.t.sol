@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {ISupervisor, ISupervisorFactory, IManifestHook} from "../../../../src/managers/hub/interfaces/ISupervisor.sol";
+import {ISupervisor, ISupervisorFactory, IManifest} from "../../../../src/managers/hub/interfaces/ISupervisor.sol";
 import {Supervisor, SupervisorFactory} from "../../../../src/managers/hub/Supervisor.sol";
 
 import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
@@ -54,7 +54,7 @@ contract MockHubRegistry {
     }
 }
 
-contract MockManifestHook is IManifestHook {
+contract MockManifestHook is IManifest {
     bool public shouldPass = true;
 
     function setShouldPass(bool v) external {
@@ -84,7 +84,7 @@ abstract contract SupervisorTestBase is Test {
     uint48 constant DELAY = 2 days;
     uint48 constant EXPIRY = 7 days;
 
-    function _deploySupervisor(IManifestHook hook) internal returns (Supervisor) {
+    function _deploySupervisor(IManifest hook) internal returns (Supervisor) {
         bytes4[] memory timelockSels = new bytes4[](1);
         timelockSels[0] = TIMELOCKED_SEL;
 
@@ -108,7 +108,7 @@ contract SupervisorExecuteTest is SupervisorTestBase {
 
     function setUp() public override {
         super.setUp();
-        supervisor = _deploySupervisor(IManifestHook(address(0)));
+        supervisor = _deploySupervisor(IManifest(address(0)));
     }
 
     function testExecuteForwardsToHub() public {
@@ -155,7 +155,7 @@ contract SupervisorTimelockTest is SupervisorTestBase {
 
     function setUp() public override {
         super.setUp();
-        supervisor = _deploySupervisor(IManifestHook(address(0)));
+        supervisor = _deploySupervisor(IManifest(address(0)));
     }
 
     function testTimelockRequiresSubmitFirst() public {
@@ -249,7 +249,7 @@ contract SupervisorCancelTest is SupervisorTestBase {
 
     function setUp() public override {
         super.setUp();
-        supervisor = _deploySupervisor(IManifestHook(address(0)));
+        supervisor = _deploySupervisor(IManifest(address(0)));
         vm.prank(manager);
         supervisor.addGuardian(guardian);
     }
@@ -327,7 +327,7 @@ contract SupervisorManifestHookTest is SupervisorTestBase {
     function setUp() public override {
         super.setUp();
         hook = new MockManifestHook();
-        supervisor = _deploySupervisor(IManifestHook(address(hook)));
+        supervisor = _deploySupervisor(IManifest(address(hook)));
     }
 
     function testHookPassesForNonHookedSelector() public {
@@ -365,7 +365,7 @@ contract SupervisorGuardianTest is SupervisorTestBase {
 
     function setUp() public override {
         super.setUp();
-        supervisor = _deploySupervisor(IManifestHook(address(0)));
+        supervisor = _deploySupervisor(IManifest(address(0)));
     }
 
     function testAddGuardian() public {
@@ -468,7 +468,7 @@ contract SupervisorFactoryTest is Test {
         timelockSels[0] = bytes4(0x12345678);
 
         ISupervisor supervisor =
-            factory.newSupervisor(POOL, timelockSels, new bytes4[](0), 1 days, 7 days, IManifestHook(address(0)));
+            factory.newSupervisor(POOL, timelockSels, new bytes4[](0), 1 days, 7 days, IManifest(address(0)));
 
         assertEq(address(supervisor.hub()), address(hub));
         assertEq(PoolId.unwrap(supervisor.poolId()), PoolId.unwrap(POOL));

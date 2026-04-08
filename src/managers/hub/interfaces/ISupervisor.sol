@@ -4,7 +4,7 @@ pragma solidity >=0.5.0;
 import {IHub} from "../../../core/hub/interfaces/IHub.sol";
 import {PoolId} from "../../../core/types/PoolId.sol";
 
-interface IManifestHook {
+interface IManifest {
     /// @notice Validate whether a Hub call should proceed.
     /// @param poolId The pool being operated on.
     /// @param caller The address that initiated the call through the Supervisor.
@@ -80,7 +80,7 @@ interface ISupervisor {
     function poolId() external view returns (PoolId);
     function delay() external view returns (uint48);
     function expiryWindow() external view returns (uint48);
-    function manifestHook() external view returns (IManifestHook);
+    function manifest() external view returns (IManifest);
     function timelocked(bytes4 selector) external view returns (bool);
     function hooked(bytes4 selector) external view returns (bool);
     function guardians(address who) external view returns (bool);
@@ -98,6 +98,6 @@ interface ISupervisorFactory {
         bytes4[] calldata hookSelectors,
         uint48 delay,
         uint48 expiryWindow,
-        IManifestHook hook
+        IManifest hook
     ) external returns (ISupervisor);
 }

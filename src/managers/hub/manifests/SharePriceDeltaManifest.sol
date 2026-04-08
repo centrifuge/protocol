@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IManifestHook} from "../interfaces/ISupervisor.sol";
+import {IManifest} from "../interfaces/ISupervisor.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
 import {IHub} from "../../../core/hub/interfaces/IHub.sol";
@@ -13,7 +13,7 @@ import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUp
 /// @notice Limits updateSharePrice to a maximum percentage change per rolling window.
 ///         Anchors to the first price submitted in each window. All subsequent updates within
 ///         the window are compared against that anchor.
-contract SharePriceDeltaManifest is IManifestHook, ITrustedContractUpdate {
+contract SharePriceDeltaManifest is IManifest, ITrustedContractUpdate {
     struct Slot {
         uint128 anchor;      // First price in the current window
         uint64 windowStart;  // When the current window began
@@ -41,7 +41,7 @@ contract SharePriceDeltaManifest is IManifestHook, ITrustedContractUpdate {
         emit SetConfig(poolId, scId, maxDeltaBps, window);
     }
 
-    /// @inheritdoc IManifestHook
+    /// @inheritdoc IManifest
     function check(PoolId, address, bytes calldata data) external returns (bool) {
         if (bytes4(data[:4]) != IHub.updateSharePrice.selector) return true;
 

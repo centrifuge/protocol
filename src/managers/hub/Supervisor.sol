@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ISupervisor, ISupervisorFactory, IManifestHook} from "./interfaces/ISupervisor.sol";
+import {ISupervisor, ISupervisorFactory, IManifest} from "./interfaces/ISupervisor.sol";
 
 import {IHub} from "../../core/hub/interfaces/IHub.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
@@ -21,7 +21,7 @@ contract Supervisor is ISupervisor {
     PoolId public immutable poolId;
     uint48 public immutable delay;
     uint48 public immutable expiryWindow;
-    IManifestHook public immutable manifestHook;
+    IManifest public immutable manifest;
 
     mapping(bytes4 => bool) public hooked;
     mapping(bytes4 => bool) public timelocked;
@@ -47,13 +47,13 @@ contract Supervisor is ISupervisor {
         bytes4[] memory hookSelectors,
         uint48 delay_,
         uint48 expiryWindow_,
-        IManifestHook manifestHook_
+        IManifest manifest_
     ) {
         hub = hub_;
         poolId = poolId_;
         delay = delay_;
         expiryWindow = expiryWindow_;
-        manifestHook = manifestHook_;
+        manifest = manifest_;
 
         for (uint256 i; i < timelockSelectors.length; i++) {
             timelocked[timelockSelectors[i]] = true;
@@ -123,7 +123,7 @@ contract Supervisor is ISupervisor {
 
     function _checkHookAndTimelock(bytes4 selector, bytes calldata data) internal {
         require(
-            address(manifestHook) == address(0) || !hooked[selector] || manifestHook.check(poolId, msg.sender, data),
+            address(manifest) == address(0) || !hooked[selector] || manifest.check(poolId, msg.sender, data),
             ManifestCheckFailed()
         );
 
@@ -165,7 +165,7 @@ contract SupervisorFactory is ISupervisorFactory {
         bytes4[] calldata hookSelectors,
         uint48 delay,
         uint48 expiryWindow,
-        IManifestHook hook
+        IManifest hook
     ) external returns (ISupervisor) {
         Supervisor supervisor =
             new Supervisor(hub, poolId, timelockSelectors, hookSelectors, delay, expiryWindow, hook);
