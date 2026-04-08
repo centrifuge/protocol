@@ -33,6 +33,7 @@ import {BalanceSheet} from "../../../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {SpokeHandler} from "../../../src/core/spoke/SpokeHandler.sol";
 import {SpokeRegistry} from "../../../src/core/spoke/SpokeRegistry.sol";
+import {SpokeV3_1_0} from "../../../src/core/spoke/legacy/SpokeV3_1_0.sol";
 import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
 import {IHoldings} from "../../../src/core/hub/interfaces/IHoldings.sol";
 import {IAccounting} from "../../../src/core/hub/interfaces/IAccounting.sol";
@@ -98,6 +99,7 @@ abstract contract Setup is
     AsyncRequestManager asyncRequestManager;
     SyncManager syncManager;
     Spoke spoke;
+    SpokeV3_1_0 spokeV3_1_0;
     SpokeRegistry spokeRegistry;
     SpokeHandler spokeHandler;
     VaultRegistry vaultRegistry;
@@ -211,6 +213,7 @@ abstract contract Setup is
         spokeRegistry = new SpokeRegistry(address(this));
         spokeHandler = new SpokeHandler(spokeRegistry, tokenFactory, poolEscrowFactory, address(this));
         spoke = new Spoke(address(this));
+        spokeV3_1_0 = new SpokeV3_1_0(address(this));
         fullRestrictions = new FullRestrictions(
             address(root),
             address(spokeRegistry),
@@ -234,11 +237,13 @@ abstract contract Setup is
         );
 
         // set dependencies
-        asyncRequestManager.file("spoke", address(spoke));
-        asyncRequestManager.file("spokeRegistry", address(spokeRegistry));
+        asyncRequestManager.file("spoke", address(spokeV3_1_0));
         asyncRequestManager.file("balanceSheet", address(balanceSheet));
         asyncRequestManager.file("vaultRegistry", address(vaultRegistry));
-        syncManager.file("spokeRegistry", address(spokeRegistry));
+        syncManager.file("spoke", address(spokeV3_1_0));
+        spokeV3_1_0.file("spoke", address(spoke));
+        spokeV3_1_0.file("spokeRegistry", address(spokeRegistry));
+        messageDispatcher.rely(address(spokeV3_1_0));
         syncManager.file("balanceSheet", address(balanceSheet));
         syncManager.file("vaultRegistry", address(vaultRegistry));
         vaultRegistry.file("spokeRegistry", address(spokeRegistry));

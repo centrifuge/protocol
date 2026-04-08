@@ -277,7 +277,7 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
         vm.expectEmit();
         emit ISpoke.InitiateTransferShares(REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, ANY, RECEIVER.toBytes32(), AMOUNT);
         spoke.crosschainTransferShares{value: COST}(
-            REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 100
+            REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0, 100, ANY
         );
     }
 }
