@@ -39,39 +39,7 @@ contract LiveValidationForkTest is Test {
         executor.runPreValidation(validators, true);
     }
 
-    function testLiveValidation_Ethereum() external {
-        _testCase("ethereum");
-    }
-
-    function testLiveValidation_Base() external {
-        _testCase("base");
-    }
-
-    function testLiveValidation_Arbitrum() external {
-        _testCase("arbitrum");
-    }
-
-    function testLiveValidation_Plume() external {
-        _testCase("plume");
-    }
-
-    function testLiveValidation_Avalanche() external {
-        _testCase("avalanche");
-    }
-
-    function testLiveValidation_BnbSmartChain() external {
-        _testCase("bnb-smart-chain");
-    }
-
-    function testLiveValidation_Optimism() external {
-        _testCase("optimism");
-    }
-
-    function testLiveValidation_HyperEvm() external {
-        _testCase("hyper-evm");
-    }
-
-    function testLiveValidation_Monad() external {
-        _testCase("monad");
+    function testLiveValidation() external {
+        _testCase(vm.envString("NETWORK"));
     }
 }

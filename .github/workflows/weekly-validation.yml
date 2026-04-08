@@ -34,17 +34,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        chain:
-          - { name: "Ethereum", test: "testLiveValidation_Ethereum" }
-          - { name: "Base", test: "testLiveValidation_Base" }
-          - { name: "Arbitrum", test: "testLiveValidation_Arbitrum" }
-          - { name: "Plume", test: "testLiveValidation_Plume" }
-          - { name: "Avalanche", test: "testLiveValidation_Avalanche" }
-          - { name: "BNB", test: "testLiveValidation_BnbSmartChain" }
-          - { name: "Optimism", test: "testLiveValidation_Optimism" }
-          - { name: "HyperEVM", test: "testLiveValidation_HyperEvm" }
-          - { name: "Monad", test: "testLiveValidation_Monad" }
-    name: "State: ${{ matrix.chain.name }}"
+        network: [ethereum, base, arbitrum, plume, avalanche, bnb-smart-chain, optimism, hyper-evm, monad]
+    name: "State: ${{ matrix.network }}"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -58,7 +49,16 @@ jobs:
         with:
           version: v1.4.4
       - run: python3 script/deploy/load_secrets.py
-      - run: forge test --match-test "${{ matrix.chain.test }}" -vv
+      - run: NETWORK=${{ matrix.network }} forge test --match-test "testLiveValidation" -vv 2>&1 | tee test-output.txt
+      - if: failure()
+        run: echo "${{ matrix.network }}" > failed-chain.txt
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-state-${{ matrix.network }}
+          path: |
+            failed-chain.txt
+            test-output.txt
 
   validate-flows:
     runs-on: ubuntu-latest
@@ -69,17 +69,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        chain:
-          - { name: "Ethereum", test: "testInvestmentFlows_Ethereum" }
-          - { name: "Base", test: "testInvestmentFlows_Base" }
-          - { name: "Arbitrum", test: "testInvestmentFlows_Arbitrum" }
-          - { name: "Plume", test: "testInvestmentFlows_Plume" }
-          - { name: "Avalanche", test: "testInvestmentFlows_Avalanche" }
-          - { name: "BNB", test: "testInvestmentFlows_BnbSmartChain" }
-          - { name: "Optimism", test: "testInvestmentFlows_Optimism" }
-          - { name: "HyperEVM", test: "testInvestmentFlows_HyperEvm" }
-          - { name: "Monad", test: "testInvestmentFlows_Monad" }
-    name: "Flows: ${{ matrix.chain.name }}"
+        network: [ethereum, base, arbitrum, plume, avalanche, bnb-smart-chain, optimism, hyper-evm, monad]
+    name: "Flows: ${{ matrix.network }}"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -93,4 +84,64 @@ jobs:
         with:
           version: v1.4.4
       - run: python3 script/deploy/load_secrets.py
-      - run: forge test --match-test "${{ matrix.chain.test }}" -vv
+      - run: NETWORK=${{ matrix.network }} forge test --match-test "testInvestmentFlows" -vv 2>&1 | tee test-output.txt
+      - if: failure()
+        run: echo "${{ matrix.network }}" > failed-chain.txt
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-flows-${{ matrix.network }}
+          path: |
+            failed-chain.txt
+            test-output.txt
+
+  report-failures:
+    needs: [validate-state, validate-flows]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: failure-*
+          path: failures
+      - name: Build failure summary
+        id: summary
+        run: |
+          CHAINS=""
+          DETAILS=""
+          for dir in failures/failure-*/; do
+            [ -d "$dir" ] || continue
+            chain=$(cat "$dir/failed-chain.txt" 2>/dev/null || echo "unknown")
+            type=$(basename "$dir" | sed 's/failure-//' | sed "s/-${chain}//")
+            CHAINS="${CHAINS}- **${chain}** (${type})\n"
+            DETAILS="${DETAILS}<details><summary>${chain} (${type})</summary>\n\n\`\`\`\n$(tail -50 "$dir/test-output.txt" 2>/dev/null || echo "No output")\n\`\`\`\n</details>\n\n"
+          done
+          {
+            echo "chains<<EOF"
+            echo -e "$CHAINS"
+            echo "EOF"
+            echo "details<<EOF"
+            echo -e "$DETAILS"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Create GitHub issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Weekly Validation Failure — ${new Date().toISOString().slice(0, 10)}`,
+              labels: ['validation-failure'],
+              body: `## Weekly deployment validation failed\n\n` +
+                `**Run:** ${runUrl}\n\n` +
+                `### Failing networks\n\n${process.env.CHAINS}\n` +
+                `### Error details\n\n${process.env.DETAILS}`
+            });
+          env:
+            CHAINS: ${{ steps.summary.outputs.chains }}
+            DETAILS: ${{ steps.summary.outputs.details }}

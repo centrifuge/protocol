@@ -35,37 +35,25 @@ contract Validate_ContractWards is BaseValidator("ContractWards") {
         _checkWard(c.spoke, c.messageDispatcher, "spoke <- messageDispatcher");
         _checkWard(c.balanceSheet, c.messageDispatcher, "balanceSheet <- messageDispatcher");
         _checkWard(c.contractUpdater, c.messageDispatcher, "contractUpdater <- messageDispatcher");
-        if (c.vaultRegistry != address(0)) {
-            _checkWard(c.vaultRegistry, c.messageDispatcher, "vaultRegistry <- messageDispatcher");
-        }
-        if (c.hubHandler != address(0)) {
-            _checkWard(c.hubHandler, c.messageDispatcher, "hubHandler <- messageDispatcher");
-        }
+        _checkWard(c.vaultRegistry, c.messageDispatcher, "vaultRegistry <- messageDispatcher");
+        _checkWard(c.hubHandler, c.messageDispatcher, "hubHandler <- messageDispatcher");
 
         _checkWard(c.messageDispatcher, c.spoke, "messageDispatcher <- spoke");
         _checkWard(c.messageDispatcher, c.balanceSheet, "messageDispatcher <- balanceSheet");
         _checkWard(c.messageDispatcher, c.hub, "messageDispatcher <- hub");
-        if (c.hubHandler != address(0)) {
-            _checkWard(c.messageDispatcher, c.hubHandler, "messageDispatcher <- hubHandler");
-        }
+        _checkWard(c.messageDispatcher, c.hubHandler, "messageDispatcher <- hubHandler");
 
         _checkWard(c.spoke, c.messageProcessor, "spoke <- messageProcessor");
         _checkWard(c.balanceSheet, c.messageProcessor, "balanceSheet <- messageProcessor");
         _checkWard(c.contractUpdater, c.messageProcessor, "contractUpdater <- messageProcessor");
-        if (c.vaultRegistry != address(0)) {
-            _checkWard(c.vaultRegistry, c.messageProcessor, "vaultRegistry <- messageProcessor");
-        }
-        if (c.hubHandler != address(0)) {
-            _checkWard(c.hubHandler, c.messageProcessor, "hubHandler <- messageProcessor");
-        }
+        _checkWard(c.vaultRegistry, c.messageProcessor, "vaultRegistry <- messageProcessor");
+        _checkWard(c.hubHandler, c.messageProcessor, "hubHandler <- messageProcessor");
 
         // ==================== SPOKE SIDE ====================
 
         _checkWard(c.tokenFactory, c.spoke, "tokenFactory <- spoke");
         _checkWard(c.poolEscrowFactory, c.spoke, "poolEscrowFactory <- spoke");
-        if (c.vaultRegistry != address(0)) {
-            _checkWard(c.spoke, c.vaultRegistry, "spoke <- vaultRegistry");
-        }
+        _checkWard(c.spoke, c.vaultRegistry, "spoke <- vaultRegistry");
 
         // ==================== HUB SIDE ====================
 
@@ -74,12 +62,10 @@ contract Validate_ContractWards is BaseValidator("ContractWards") {
         _checkWard(c.hubRegistry, c.hub, "hubRegistry <- hub");
         _checkWard(c.shareClassManager, c.hub, "shareClassManager <- hub");
 
-        if (c.hubHandler != address(0)) {
-            _checkWard(c.hub, c.hubHandler, "hub <- hubHandler");
-            _checkWard(c.hubRegistry, c.hubHandler, "hubRegistry <- hubHandler");
-            _checkWard(c.holdings, c.hubHandler, "holdings <- hubHandler");
-            _checkWard(c.shareClassManager, c.hubHandler, "shareClassManager <- hubHandler");
-        }
+        _checkWard(c.hub, c.hubHandler, "hub <- hubHandler");
+        _checkWard(c.hubRegistry, c.hubHandler, "hubRegistry <- hubHandler");
+        _checkWard(c.holdings, c.hubHandler, "holdings <- hubHandler");
+        _checkWard(c.shareClassManager, c.hubHandler, "shareClassManager <- hubHandler");
 
         // ==================== VAULT SIDE ====================
 
@@ -91,10 +77,8 @@ contract Validate_ContractWards is BaseValidator("ContractWards") {
         _checkWard(c.syncManager, c.contractUpdater, "syncManager <- contractUpdater");
         _checkWard(c.syncManager, c.syncDepositVaultFactory, "syncManager <- syncDepositVaultFactory");
 
-        if (c.vaultRegistry != address(0)) {
-            _checkWard(c.asyncVaultFactory, c.vaultRegistry, "asyncVaultFactory <- vaultRegistry");
-            _checkWard(c.syncDepositVaultFactory, c.vaultRegistry, "syncDepositVaultFactory <- vaultRegistry");
-        }
+        _checkWard(c.asyncVaultFactory, c.vaultRegistry, "asyncVaultFactory <- vaultRegistry");
+        _checkWard(c.syncDepositVaultFactory, c.vaultRegistry, "syncDepositVaultFactory <- vaultRegistry");
 
         // ==================== HOOKS ====================
 
@@ -105,12 +89,8 @@ contract Validate_ContractWards is BaseValidator("ContractWards") {
 
         // ==================== BATCH REQUEST MANAGER ====================
 
-        if (c.batchRequestManager != address(0)) {
-            _checkWard(c.batchRequestManager, c.hub, "batchRequestManager <- hub");
-            if (c.hubHandler != address(0)) {
-                _checkWard(c.batchRequestManager, c.hubHandler, "batchRequestManager <- hubHandler");
-            }
-        }
+        _checkWard(c.batchRequestManager, c.hub, "batchRequestManager <- hub");
+        _checkWard(c.batchRequestManager, c.hubHandler, "batchRequestManager <- hubHandler");
 
         // ==================== GUARDIANS ====================
 

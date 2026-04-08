@@ -127,43 +127,7 @@ contract InvestmentFlowForkTest is Test {
         assertEq(redeemFailures, 0, "Some redeem flows failed");
     }
 
-    // ============================================
-    // Per-Network Test Functions
-    // ============================================
-
-    function testInvestmentFlows_Ethereum() external {
-        _testCase("ethereum");
-    }
-
-    function testInvestmentFlows_Base() external {
-        _testCase("base");
-    }
-
-    function testInvestmentFlows_Arbitrum() external {
-        _testCase("arbitrum");
-    }
-
-    function testInvestmentFlows_Plume() external {
-        _testCase("plume");
-    }
-
-    function testInvestmentFlows_Avalanche() external {
-        _testCase("avalanche");
-    }
-
-    function testInvestmentFlows_BnbSmartChain() external {
-        _testCase("bnb-smart-chain");
-    }
-
-    function testInvestmentFlows_Optimism() external {
-        _testCase("optimism");
-    }
-
-    function testInvestmentFlows_HyperEvm() external {
-        _testCase("hyper-evm");
-    }
-
-    function testInvestmentFlows_Monad() external {
-        _testCase("monad");
+    function testInvestmentFlows() external {
+        _testCase(vm.envString("NETWORK"));
     }
 }

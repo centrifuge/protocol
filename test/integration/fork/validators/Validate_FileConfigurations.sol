@@ -32,7 +32,7 @@ contract Validate_FileConfigurations is BaseValidator("FileConfigurations") {
         EnvConfig memory config = Env.load(ctx.networkName);
         address protocolSafe = config.network.protocolAdmin;
 
-        // Guard: core contracts must have code to avoid full revert on getter calls
+        // Guard: prevents full revert on getter calls if fork URL or env config targets wrong network/block
         if (
             c.gateway.code.length == 0 || c.multiAdapter.code.length == 0 || c.messageDispatcher.code.length == 0
                 || c.messageProcessor.code.length == 0 || c.spoke.code.length == 0 || c.balanceSheet.code.length == 0
