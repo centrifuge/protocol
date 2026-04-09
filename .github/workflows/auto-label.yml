@@ -4,7 +4,7 @@
 # Labeling rules (all matching labels are applied):
 #
 # Scope labels:
-#   scope:contracts  — any file under src/ (excluding src/interfaces/)
+#   scope:contracts  — any file under src/ (excluding */interfaces/ dirs)
 #   scope:tests      — any file under test/
 #   scope:scripts    — any file under script/ (unless scope:tooling applies)
 #   scope:tooling    — ALL files under script/ AND none contain "broadcast" or "deploy"
@@ -71,15 +71,15 @@ jobs:
               const lower = f.toLowerCase();
               let matched = false;
 
-              // Contract source (excluding interfaces)
-              if (f.startsWith('src/') && !f.startsWith('src/interfaces/')) {
+              // Contract source (excluding interface directories scattered
+              // throughout src/, e.g. src/core/hub/interfaces/, src/misc/interfaces/)
+              if (f.startsWith('src/') && !f.includes('/interfaces/')) {
                 hasContract = true;
                 matched = true;
               }
 
-              // Interface-only files under src/interfaces/ are not contracts,
-              // but they are not "other" either — they live in src/ scope
-              if (f.startsWith('src/interfaces/')) {
+              // Interface-only files are not contracts but still belong to src/
+              if (f.startsWith('src/') && f.includes('/interfaces/')) {
                 matched = true;
               }
 
