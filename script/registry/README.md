@@ -139,6 +139,25 @@ SOURCE_IPFS=<previous-cid> \
 node script/registry/abi-registry.js testnet
 ```
 
+**Finding the `SOURCE_IPFS` value**
+
+In normal delta mode you don't need it — the script resolves the current live CID automatically via the `_dnslink` TXT record on the registry hostname. `SOURCE_IPFS` is only needed when you want to compare against a **specific** older version (e.g. to regenerate a broken delta or test against a pinned CID).
+
+The three ways to find it:
+
+```bash
+# 1. DNS dnslink — what the live endpoint currently points to (same as the script uses internally)
+dig TXT _dnslink.registry.centrifuge.io +short          # mainnet
+dig TXT _dnslink.registry.testnet.centrifuge.io +short  # testnet
+# Returns: "dnslink=/ipfs/<CID>" → use the <CID> part
+
+# 2. Live registry JSON — the CID of the *previous* version in the linked chain
+curl -s https://registry.centrifuge.io | jq '.previousRegistry.ipfsHash'
+
+# 3. Walk the chain — to go further back, follow .previousRegistry.ipfsHash recursively
+curl -s https://ipfs.centrifuge.io/ipfs/<CID> | jq '.previousRegistry.ipfsHash'
+```
+
 **Env / flags:** `DEPLOYMENT_COMMIT` (metadata only), `ETHERSCAN_API_KEY` (required), `REGISTRY_MODE=full`, `SOURCE_IPFS`; `--full`, `--source-url=<url>`. For pinning: `PINATA_JWT` (1Password, limited access).
 
 ### Validating env files and registries locally
