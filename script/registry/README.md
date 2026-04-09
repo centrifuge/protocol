@@ -174,6 +174,20 @@ node script/registry/validate-registry.js registry/registry-testnet.json
 SKIP_LIVE_REGISTRY_CHECK=1 node script/registry/validate-registry.js registry/registry-mainnet.json
 ```
 
+### Validating env files and registries locally
+
+```bash
+# Validate all env/*.json files against expected schema
+node script/registry/validate-env-schema.js
+
+# Validate a generated registry against indexer hard requirements
+node script/registry/validate-registry.js registry/registry-mainnet.json
+node script/registry/validate-registry.js registry/registry-testnet.json
+
+# Skip live registry fetch (offline mode)
+SKIP_LIVE_REGISTRY_CHECK=1 node script/registry/validate-registry.js registry/registry-mainnet.json
+```
+
 ### Testing API keys (no changes made)
 
 To confirm Pinata and Cloudflare credentials work without modifying DNS or pinning new files:
