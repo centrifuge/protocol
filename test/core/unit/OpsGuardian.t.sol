@@ -10,6 +10,7 @@ import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapte
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
 import {ICreatePool} from "../../../src/admin/interfaces/ICreatePool.sol";
+import {IGasService} from "../../../src/admin/interfaces/IGasService.sol";
 import {IOpsGuardian} from "../../../src/admin/interfaces/IOpsGuardian.sol";
 import {IAdapterWiring} from "../../../src/admin/interfaces/IAdapterWiring.sol";
 
@@ -180,6 +181,41 @@ contract OpsGuardianTestFile is OpsGuardianTest {
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
         opsGuardian.file("opsSafe", makeAddr("address"));
+    }
+}
+
+contract OpsGuardianTestSetGasService is OpsGuardianTest {
+    IGasService immutable gasService = IGasService(makeAddr("gasService"));
+
+    function testSetGasServiceSuccess() public {
+        vm.mockCall(
+            address(gateway),
+            abi.encodeWithSelector(IGateway.file.selector, bytes32("messageProperties"), address(gasService)),
+            abi.encode()
+        );
+        vm.mockCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.file.selector, bytes32("messageProperties"), address(gasService)),
+            abi.encode()
+        );
+
+        vm.expectCall(
+            address(gateway),
+            abi.encodeWithSelector(IGateway.file.selector, bytes32("messageProperties"), address(gasService))
+        );
+        vm.expectCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.file.selector, bytes32("messageProperties"), address(gasService))
+        );
+
+        vm.prank(address(SAFE));
+        opsGuardian.setGasService(gasService);
+    }
+
+    function testSetGasServiceRevertWhenNotSafe() public {
+        vm.prank(UNAUTHORIZED);
+        vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
+        opsGuardian.setGasService(gasService);
     }
 }
 

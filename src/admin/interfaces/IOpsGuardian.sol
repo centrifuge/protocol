@@ -9,6 +9,7 @@ import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
 import {IMultiAdapter} from "../../core/messaging/interfaces/IMultiAdapter.sol";
+import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
 
 interface IOpsGuardian {
     error NotTheAuthorizedSafe();
@@ -36,7 +37,7 @@ interface IOpsGuardian {
     function wire(address adapter, uint16 centrifugeId, bytes memory data) external;
 
     /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'opsSafe', 'hub', or 'multiAdapter'
+    /// @param what Accepts a bytes32 representation of 'opsSafe', 'hub', 'gateway', or 'multiAdapter'
     /// @param data New value for the parameter
     function file(bytes32 what, address data) external;
 
@@ -56,6 +57,9 @@ interface IOpsGuardian {
 
     /// @notice Hub contract called to register new pools
     function hub() external view returns (ICreatePool);
+
+    /// @notice Gateway contract used to update the GasService
+    function gateway() external view returns (IGateway);
 
     /// @notice MultiAdapter used for first-time adapter initialization and wiring on new networks
     function multiAdapter() external view returns (IMultiAdapter);

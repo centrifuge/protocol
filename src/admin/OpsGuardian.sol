@@ -44,12 +44,13 @@ contract OpsGuardian is IOpsGuardian {
     function file(bytes32 what, address data) external onlySafe {
         if (what == "opsSafe") opsSafe = ISafe(data);
         else if (what == "hub") hub = ICreatePool(data);
-        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "gateway") gateway = IGateway(data);
+        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 
+    /// @inheritdoc IOpsGuardian
     function setGasService(IGasService gasService) external onlySafe {
         gateway.file("messageProperties", address(gasService));
         multiAdapter.file("messageProperties", address(gasService));
