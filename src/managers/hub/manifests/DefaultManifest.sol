@@ -39,6 +39,8 @@ contract DefaultManifest is IDefaultManifest {
 
     /// @inheritdoc IManifest
     function check(PoolId, address, bytes calldata data) external returns (uint48) {
+        require(msg.sender == supervisor, NotAuthorized());
+
         bytes4 selector = bytes4(data[:4]);
 
         if (selector == IHub.updateSharePrice.selector) return _checkPriceDelta(data);
@@ -61,15 +63,19 @@ contract DefaultManifest is IDefaultManifest {
 
         uint128 newVal = D18.unwrap(newPrice);
 
+        // Always check delta against anchor (even at window boundary)
+        if (s.anchor != 0) {
+            uint256 anchor = s.anchor;
+            uint256 delta = newVal > anchor ? newVal - anchor : anchor - newVal;
+            require(delta * 10_000 <= anchor * s.maxDeltaBps, DeltaExceeded(anchor, newVal, s.maxDeltaBps));
+        }
+
+        // Reset window if expired or first update
         if (s.windowStart == 0 || block.timestamp - s.windowStart > s.window) {
             s.anchor = newVal;
             s.windowStart = uint64(block.timestamp);
-            return 0;
         }
 
-        uint256 anchor = s.anchor;
-        uint256 delta = newVal > anchor ? newVal - anchor : anchor - newVal;
-        require(delta * 10_000 <= anchor * s.maxDeltaBps, DeltaExceeded(anchor, newVal, s.maxDeltaBps));
         return 0;
     }
 
@@ -85,7 +91,7 @@ contract DefaultManifest is IDefaultManifest {
 
     function _checkBalanceSheetManager(bytes calldata data) internal view returns (uint48) {
         (,, bytes32 who, bool canManage,) = abi.decode(data[4:], (PoolId, uint16, bytes32, bool, address));
-        require(who != bytes32(uint256(uint160(supervisor))) || canManage, CannotRemoveSupervisor());
+        require(who != bytes32(bytes20(supervisor)) || canManage, CannotRemoveSupervisor());
         return canManage ? grantManagerDelay : 0;
     }
 }

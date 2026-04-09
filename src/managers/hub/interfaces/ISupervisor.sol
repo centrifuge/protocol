@@ -18,6 +18,14 @@ interface IManifest {
     function check(PoolId poolId, address caller, bytes calldata data) external returns (uint48 additionalDelay);
 }
 
+struct SupervisorConfig {
+    bytes4[] timelockSelectors;
+    bytes4[] hookSelectors;
+    uint48 delay;
+    uint48 expiryWindow;
+    IManifest manifest;
+}
+
 interface ISupervisor {
     //----------------------------------------------------------------------------------------------
     // Events
@@ -45,6 +53,7 @@ interface ISupervisor {
     error ZeroAddress();
     error ForwardFailed();
     error CannotSelfCancel();
+    error MulticallBlocked();
 
     //----------------------------------------------------------------------------------------------
     // Execution
@@ -58,6 +67,7 @@ interface ISupervisor {
     /// @notice Submit a timelocked operation for future execution. Accepts both Hub calldata
     ///         (for timelocked selectors) and `removeGuardian` calldata (always timelocked).
     ///         After the delay, call `execute(data)` or `removeGuardian(guardian)` respectively.
+    ///         Expired operations must be canceled before the same calldata can be re-submitted.
     /// @param data The calldata for the timelocked operation.
     function submit(bytes calldata data) external;
 
@@ -100,12 +110,5 @@ interface ISupervisorFactory {
 
     function hub() external view returns (IHub);
 
-    function newSupervisor(
-        PoolId poolId,
-        bytes4[] calldata timelockSelectors,
-        bytes4[] calldata hookSelectors,
-        uint48 delay,
-        uint48 expiryWindow,
-        IManifest hook
-    ) external returns (ISupervisor);
+    function newSupervisor(PoolId poolId, SupervisorConfig calldata config) external returns (ISupervisor);
 }

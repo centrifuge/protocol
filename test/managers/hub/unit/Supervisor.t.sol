@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {ISupervisor, ISupervisorFactory, IManifest} from "../../../../src/managers/hub/interfaces/ISupervisor.sol";
+import {ISupervisor, ISupervisorFactory, IManifest, SupervisorConfig} from
+    "../../../../src/managers/hub/interfaces/ISupervisor.sol";
 import {Supervisor, SupervisorFactory} from "../../../../src/managers/hub/Supervisor.sol";
 
 import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
@@ -99,7 +100,10 @@ abstract contract SupervisorTestBase is Test {
         bytes4[] memory hookSels = new bytes4[](1);
         hookSels[0] = HOOKED_SEL;
 
-        return new Supervisor(IHub(address(hub)), POOL, timelockSels, hookSels, DELAY, EXPIRY, hook);
+        SupervisorConfig memory config =
+            SupervisorConfig(timelockSels, hookSels, DELAY, EXPIRY, hook);
+
+        return new Supervisor(IHub(address(hub)), POOL, config);
     }
 
     function setUp() public virtual {
@@ -533,8 +537,9 @@ contract SupervisorFactoryTest is Test {
         bytes4[] memory timelockSels = new bytes4[](1);
         timelockSels[0] = bytes4(0x12345678);
 
-        ISupervisor supervisor =
-            factory.newSupervisor(POOL, timelockSels, new bytes4[](0), 1 days, 7 days, IManifest(address(0)));
+        SupervisorConfig memory config =
+            SupervisorConfig(timelockSels, new bytes4[](0), 1 days, 7 days, IManifest(address(0)));
+        ISupervisor supervisor = factory.newSupervisor(POOL, config);
 
         assertEq(address(supervisor.hub()), address(hub));
         assertEq(PoolId.unwrap(supervisor.poolId()), PoolId.unwrap(POOL));

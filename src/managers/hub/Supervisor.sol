@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ISupervisor, ISupervisorFactory, IManifest} from "./interfaces/ISupervisor.sol";
+import {ISupervisor, ISupervisorFactory, IManifest, SupervisorConfig} from "./interfaces/ISupervisor.sol";
 
 import {IHub} from "../../core/hub/interfaces/IHub.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
@@ -43,26 +43,18 @@ contract Supervisor is ISupervisor {
         _;
     }
 
-    constructor(
-        IHub hub_,
-        PoolId poolId_,
-        bytes4[] memory timelockSelectors,
-        bytes4[] memory hookSelectors,
-        uint48 delay_,
-        uint48 expiryWindow_,
-        IManifest manifest_
-    ) {
+    constructor(IHub hub_, PoolId poolId_, SupervisorConfig memory config) {
         hub = hub_;
         poolId = poolId_;
-        delay = delay_;
-        expiryWindow = expiryWindow_;
-        manifest = manifest_;
+        delay = config.delay;
+        expiryWindow = config.expiryWindow;
+        manifest = config.manifest;
 
-        for (uint256 i; i < timelockSelectors.length; i++) {
-            timelocked[timelockSelectors[i]] = true;
+        for (uint256 i; i < config.timelockSelectors.length; i++) {
+            timelocked[config.timelockSelectors[i]] = true;
         }
-        for (uint256 i; i < hookSelectors.length; i++) {
-            hooked[hookSelectors[i]] = true;
+        for (uint256 i; i < config.hookSelectors.length; i++) {
+            hooked[config.hookSelectors[i]] = true;
         }
     }
 
@@ -70,8 +62,12 @@ contract Supervisor is ISupervisor {
     // Execution
     //----------------------------------------------------------------------------------------------
 
+    /// @dev multicall(bytes[]) selector, blocked to prevent bypassing timelocks via nested calls
+    bytes4 private constant MULTICALL_SELECTOR = 0xac9650d8;
+
     /// @inheritdoc ISupervisor
     function execute(bytes calldata data) external payable onlyManager {
+        require(bytes4(data[:4]) != MULTICALL_SELECTOR, MulticallBlocked());
         _checkHookAndTimelock(bytes4(data[:4]), data);
         _forward(data);
     }
@@ -81,6 +77,12 @@ contract Supervisor is ISupervisor {
         bytes4 selector = bytes4(data[:4]);
         require(timelocked[selector] || selector == this.removeGuardian.selector, TimelockNotSet());
         require(pending[data] == 0, OperationAlreadyPending());
+
+        // Validate removeGuardian target is currently a guardian
+        if (selector == this.removeGuardian.selector) {
+            address target = abi.decode(data[4:], (address));
+            require(guardians[target], NotGuardian());
+        }
 
         uint48 executeAfter = uint48(block.timestamp) + delay;
         pending[data] = executeAfter;
@@ -169,16 +171,8 @@ contract SupervisorFactory is ISupervisorFactory {
     }
 
     /// @inheritdoc ISupervisorFactory
-    function newSupervisor(
-        PoolId poolId,
-        bytes4[] calldata timelockSelectors,
-        bytes4[] calldata hookSelectors,
-        uint48 delay,
-        uint48 expiryWindow,
-        IManifest hook
-    ) external returns (ISupervisor) {
-        Supervisor supervisor =
-            new Supervisor(hub, poolId, timelockSelectors, hookSelectors, delay, expiryWindow, hook);
+    function newSupervisor(PoolId poolId, SupervisorConfig calldata config) external returns (ISupervisor) {
+        Supervisor supervisor = new Supervisor(hub, poolId, config);
 
         emit DeploySupervisor(poolId, address(supervisor));
         return ISupervisor(address(supervisor));
