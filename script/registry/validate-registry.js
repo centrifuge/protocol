@@ -8,12 +8,15 @@
  *
  * Hard requirements (errors — break the indexer):
  *   - version: must be a non-empty string
- *   - previousRegistry.ipfsHash: must be non-null unless no live registry exists
+ *   - previousRegistry.ipfsHash: must be non-null when a live registry exists for that network
  *   - chains.<chainId>.deployment.startBlock: must be a number (large gap vs env contract
- *     blocks is rejected by validate-env-schema.js before abi-registry runs)
- *   - chains.<chainId>.contracts.<name>.address: must be a non-empty string
- *   - chains.<chainId>.contracts.<name>.blockNumber: must be a number
- *   - abis: every contract in chains must have a corresponding ABI entry
+ *     `blockNumber` is rejected by validate-env-schema.js before abi-registry runs)
+ *   - chains.<chainId>.contracts.<name>.address: non-empty string for **active** contracts
+ *   - chains.<chainId>.contracts.<name>.blockNumber: must be a number for active contracts
+ *   - abis: every **active** contract must have matching ABI entries (artifact basenames via
+ *     {@link artifactNamesForContractKey} in `utils/abi-cache.js` — same rules as `packAbis`)
+ *
+ * Deprecated delta rows (`address: null`) skip address/blockNumber/ABI checks.
  *
  * Soft requirements (warnings — shown but don't fail CI):
  *   - zero chains in a delta registry
@@ -32,6 +35,7 @@
  */
 
 import { readFileSync, writeFileSync } from "fs";
+import { artifactNamesForContractKey } from "./utils/abi-cache.js";
 
 const REGISTRY_URLS = {
     mainnet: "https://registry.centrifuge.io",
@@ -85,7 +89,10 @@ async function validate(registryPath) {
 
     // --- version ---
     if (!registry.version || typeof registry.version !== "string") {
-        errors.push({ path: "version", message: `Must be a non-empty string, got ${JSON.stringify(registry.version)}` });
+        errors.push({
+            path: "version",
+            message: `Must be a non-empty string, got ${JSON.stringify(registry.version)}`,
+        });
     }
 
     // --- previousRegistry.ipfsHash ---
@@ -106,18 +113,7 @@ async function validate(registryPath) {
         warnings.push({ path: "chains", message: "Delta registry has zero chains — nothing changed?" });
     }
 
-    // Same overrides as abi-registry.js packAbis — keeps validator in sync
-    const ABI_NAME_OVERRIDES = {
-        "NavManager": "NAVManager",
-        "FreezeOnlyHook": "FreezeOnly",
-        "FullRestrictionsHook": "FullRestrictions",
-        "FreelyTransferableHook": "FreelyTransferable",
-        "RedemptionRestrictionsHook": "RedemptionRestrictions",
-    };
-    const FACTORY_BASE_OVERRIDES = {
-        "TokenFactory": "ShareToken",
-    };
-
+    /** Artifact basenames required in `abis`, aligned with `abi-registry.js` `packAbis`. */
     const allContractNames = new Set();
     let totalContracts = 0;
 
@@ -136,14 +132,14 @@ async function validate(registryPath) {
         const contracts = chain.contracts || {};
         for (const [name, contract] of Object.entries(contracts)) {
             totalContracts++;
-            const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1);
-            const resolvedName = ABI_NAME_OVERRIDES[capitalizedName] || capitalizedName;
-            allContractNames.add(resolvedName);
 
-            if (capitalizedName.endsWith("Factory")) {
-                const baseName = FACTORY_BASE_OVERRIDES[capitalizedName]
-                    || capitalizedName.replace(/Factory$/, "");
-                allContractNames.add(baseName);
+            // Deprecation tombstone: no address / blockNumber / ABI requirements in deltas
+            if (contract && typeof contract === "object" && contract.address === null) {
+                continue;
+            }
+
+            for (const artifact of artifactNamesForContractKey(name)) {
+                allContractNames.add(artifact);
             }
 
             // address
@@ -157,17 +153,16 @@ async function validate(registryPath) {
             } else if (typeof contract.blockNumber !== "number") {
                 errors.push({ path: `chains.${chainId}.contracts.${name}.blockNumber`, message: `Must be a number, got ${typeof contract.blockNumber}: ${JSON.stringify(contract.blockNumber)}` });
             }
-
         }
     }
 
-    // --- abis completeness ---
+    // --- abis completeness (active contracts only) ---
     const abis = registry.abis || {};
     const abiNames = new Set(Object.keys(abis));
 
     for (const needed of allContractNames) {
         if (!abiNames.has(needed)) {
-            errors.push({ path: `abis.${needed}`, message: `Missing ABI — contract appears in chains but has no ABI entry` });
+            errors.push({ path: `abis.${needed}`, message: `Missing ABI — active contract in chains but no ABI entry` });
         }
     }
 
@@ -177,6 +172,10 @@ async function validate(registryPath) {
         abis: abiNames.size,
         errors: errors.length,
         warnings: warnings.length,
+        // publishable: true only when the registry passes all hard requirements AND contains
+        // actual contract changes (non-empty chains). Used by CI to decide whether to pin and
+        // update Cloudflare automatically on push to main.
+        publishable: errors.length === 0 && chainIds.length > 0,
     };
 
     return { errors, warnings, summary };
