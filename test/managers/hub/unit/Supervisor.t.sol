@@ -84,7 +84,7 @@ abstract contract SupervisorTestBase is Test {
     MockHubRegistry registry;
 
     address manager = makeAddr("manager");
-    address guardian = makeAddr("guardian");
+    address sentinel = makeAddr("sentinel");
     address unauthorized = makeAddr("unauthorized");
 
     bytes4 constant TIMELOCKED_SEL = MockHub.timelocked.selector;
@@ -263,7 +263,7 @@ contract SupervisorCancelTest is SupervisorTestBase {
         super.setUp();
         supervisor = _deploySupervisor(IManifest(address(0)));
         vm.prank(manager);
-        supervisor.addGuardian(guardian);
+        supervisor.addSentinel(sentinel);
     }
 
     function testManagerCanCancel() public {
@@ -278,13 +278,13 @@ contract SupervisorCancelTest is SupervisorTestBase {
         assertEq(supervisor.pending(data), 0);
     }
 
-    function testGuardianCanCancel() public {
+    function testSentinelCanCancel() public {
         bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
 
         vm.prank(manager);
         supervisor.submit(data);
 
-        vm.prank(guardian);
+        vm.prank(sentinel);
         supervisor.cancel(data);
 
         assertEq(supervisor.pending(data), 0);
@@ -296,7 +296,7 @@ contract SupervisorCancelTest is SupervisorTestBase {
         vm.prank(manager);
         supervisor.submit(data);
 
-        vm.expectRevert(ISupervisor.NotManagerOrGuardian.selector);
+        vm.expectRevert(ISupervisor.NotManagerOrSentinel.selector);
         vm.prank(unauthorized);
         supervisor.cancel(data);
     }
@@ -315,7 +315,7 @@ contract SupervisorCancelTest is SupervisorTestBase {
         vm.prank(manager);
         supervisor.submit(data);
 
-        vm.prank(guardian);
+        vm.prank(sentinel);
         supervisor.cancel(data);
 
         vm.warp(block.timestamp + DELAY);
@@ -325,27 +325,27 @@ contract SupervisorCancelTest is SupervisorTestBase {
         supervisor.execute(data);
     }
 
-    function testGuardianCannotCancelOwnRemovalWithMultipleGuardians() public {
-        address guardian2 = makeAddr("guardian2");
+    function testSentinelCannotCancelOwnRemovalWithMultipleSentinels() public {
+        address sentinel2 = makeAddr("sentinel2");
         vm.prank(manager);
-        supervisor.addGuardian(guardian2);
+        supervisor.addSentinel(sentinel2);
 
-        bytes memory data = abi.encodeCall(Supervisor.removeGuardian, (guardian));
+        bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
         vm.prank(manager);
         supervisor.submit(data);
 
         vm.expectRevert(ISupervisor.CannotSelfCancel.selector);
-        vm.prank(guardian);
+        vm.prank(sentinel);
         supervisor.cancel(data);
     }
 
-    function testSoleGuardianCanCancelOwnRemoval() public {
-        // Only one guardian set (from setUp)
-        bytes memory data = abi.encodeCall(Supervisor.removeGuardian, (guardian));
+    function testSoleSentinelCanCancelOwnRemoval() public {
+        // Only one sentinel set (from setUp)
+        bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
         vm.prank(manager);
         supervisor.submit(data);
 
-        vm.prank(guardian);
+        vm.prank(sentinel);
         supervisor.cancel(data);
 
         assertEq(supervisor.pending(data), 0);
@@ -392,9 +392,9 @@ contract SupervisorManifestHookTest is SupervisorTestBase {
     }
 }
 
-// ─── Guardian management ────────────────────────────────────────────────────
+// ─── Sentinel management ────────────────────────────────────────────────────
 
-contract SupervisorGuardianTest is SupervisorTestBase {
+contract SupervisorSentinelTest is SupervisorTestBase {
     Supervisor supervisor;
 
     function setUp() public override {
@@ -402,49 +402,49 @@ contract SupervisorGuardianTest is SupervisorTestBase {
         supervisor = _deploySupervisor(IManifest(address(0)));
     }
 
-    function testAddGuardian() public {
+    function testAddSentinel() public {
         vm.prank(manager);
-        supervisor.addGuardian(guardian);
+        supervisor.addSentinel(sentinel);
 
-        assertTrue(supervisor.guardians(guardian));
+        assertTrue(supervisor.sentinels(sentinel));
     }
 
-    function testAddGuardianRevertsForNonManager() public {
+    function testAddSentinelRevertsForNonManager() public {
         vm.expectRevert(ISupervisor.NotManager.selector);
         vm.prank(unauthorized);
-        supervisor.addGuardian(guardian);
+        supervisor.addSentinel(sentinel);
     }
 
-    function testAddGuardianRevertsForZeroAddress() public {
+    function testAddSentinelRevertsForZeroAddress() public {
         vm.expectRevert(ISupervisor.ZeroAddress.selector);
         vm.prank(manager);
-        supervisor.addGuardian(address(0));
+        supervisor.addSentinel(address(0));
     }
 
-    function testAddGuardianRevertsIfAlreadyGuardian() public {
+    function testAddSentinelRevertsIfAlreadySentinel() public {
         vm.prank(manager);
-        supervisor.addGuardian(guardian);
+        supervisor.addSentinel(sentinel);
 
-        vm.expectRevert(ISupervisor.AlreadyGuardian.selector);
+        vm.expectRevert(ISupervisor.AlreadySentinel.selector);
         vm.prank(manager);
-        supervisor.addGuardian(guardian);
+        supervisor.addSentinel(sentinel);
     }
 
-    function testRemoveGuardianRequiresTimelock() public {
+    function testRemoveSentinelRequiresTimelock() public {
         vm.prank(manager);
-        supervisor.addGuardian(guardian);
+        supervisor.addSentinel(sentinel);
 
         vm.expectRevert(ISupervisor.OperationNotPending.selector);
         vm.prank(manager);
-        supervisor.removeGuardian(guardian);
+        supervisor.removeSentinel(sentinel);
     }
 
-    function testRemoveGuardianFullFlow() public {
+    function testRemoveSentinelFullFlow() public {
         vm.prank(manager);
-        supervisor.addGuardian(guardian);
+        supervisor.addSentinel(sentinel);
 
-        // Submit the removeGuardian call
-        bytes memory data = abi.encodeCall(Supervisor.removeGuardian, (guardian));
+        // Submit the removeSentinel call
+        bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
         vm.prank(manager);
         supervisor.submit(data);
 
@@ -453,38 +453,38 @@ contract SupervisorGuardianTest is SupervisorTestBase {
 
         // Execute
         vm.prank(manager);
-        supervisor.removeGuardian(guardian);
+        supervisor.removeSentinel(sentinel);
 
-        assertFalse(supervisor.guardians(guardian));
+        assertFalse(supervisor.sentinels(sentinel));
     }
 
-    function testRemoveGuardianTooEarly() public {
+    function testRemoveSentinelTooEarly() public {
         vm.prank(manager);
-        supervisor.addGuardian(guardian);
+        supervisor.addSentinel(sentinel);
 
-        bytes memory data = abi.encodeCall(Supervisor.removeGuardian, (guardian));
+        bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
         vm.prank(manager);
         supervisor.submit(data);
 
         // Try to execute before delay
         vm.expectRevert();
         vm.prank(manager);
-        supervisor.removeGuardian(guardian);
+        supervisor.removeSentinel(sentinel);
 
-        // Still a guardian
-        assertTrue(supervisor.guardians(guardian));
+        // Still a sentinel
+        assertTrue(supervisor.sentinels(sentinel));
     }
 
-    function testSoleGuardianCanVetoOwnRemoval() public {
+    function testSoleSentinelCanVetoOwnRemoval() public {
         vm.prank(manager);
-        supervisor.addGuardian(guardian);
+        supervisor.addSentinel(sentinel);
 
-        bytes memory data = abi.encodeCall(Supervisor.removeGuardian, (guardian));
+        bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
         vm.prank(manager);
         supervisor.submit(data);
 
-        // Sole guardian vetoes
-        vm.prank(guardian);
+        // Sole sentinel vetoes
+        vm.prank(sentinel);
         supervisor.cancel(data);
 
         // Now removal fails
@@ -492,26 +492,26 @@ contract SupervisorGuardianTest is SupervisorTestBase {
 
         vm.expectRevert(ISupervisor.OperationNotPending.selector);
         vm.prank(manager);
-        supervisor.removeGuardian(guardian);
+        supervisor.removeSentinel(sentinel);
 
-        // Still a guardian
-        assertTrue(supervisor.guardians(guardian));
+        // Still a sentinel
+        assertTrue(supervisor.sentinels(sentinel));
     }
 
-    function testOtherGuardianCanVetoRemoval() public {
+    function testOtherSentinelCanVetoRemoval() public {
         vm.prank(manager);
-        supervisor.addGuardian(guardian);
+        supervisor.addSentinel(sentinel);
 
-        address guardian2 = makeAddr("guardian2");
+        address sentinel2 = makeAddr("sentinel2");
         vm.prank(manager);
-        supervisor.addGuardian(guardian2);
+        supervisor.addSentinel(sentinel2);
 
-        bytes memory data = abi.encodeCall(Supervisor.removeGuardian, (guardian));
+        bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
         vm.prank(manager);
         supervisor.submit(data);
 
-        // Other guardian vetoes (not the one being removed)
-        vm.prank(guardian2);
+        // Other sentinel vetoes (not the one being removed)
+        vm.prank(sentinel2);
         supervisor.cancel(data);
 
         assertEq(supervisor.pending(data), 0);

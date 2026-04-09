@@ -34,22 +34,22 @@ interface ISupervisor {
     event Submit(bytes32 indexed operationId, bytes4 indexed selector, uint48 executeAfter, bytes data);
     event Cancel(bytes32 indexed operationId);
     event Execute(bytes32 indexed operationId);
-    event AddGuardian(address indexed guardian);
-    event RemoveGuardian(address indexed guardian);
+    event AddSentinel(address indexed sentinel);
+    event RemoveSentinel(address indexed sentinel);
 
     //----------------------------------------------------------------------------------------------
     // Errors
     //----------------------------------------------------------------------------------------------
 
-    error NotManagerOrGuardian();
+    error NotManagerOrSentinel();
     error NotManager();
     error TimelockNotSet();
     error TimelockNotReady(uint48 executeAfter);
     error TimelockExpired();
     error OperationAlreadyPending();
     error OperationNotPending();
-    error NotGuardian();
-    error AlreadyGuardian();
+    error NotSentinel();
+    error AlreadySentinel();
     error ZeroAddress();
     error ForwardFailed();
     error CannotSelfCancel();
@@ -65,29 +65,29 @@ interface ISupervisor {
     function execute(bytes calldata data) external payable;
 
     /// @notice Submit a timelocked operation for future execution. Accepts both Hub calldata
-    ///         (for timelocked selectors) and `removeGuardian` calldata (always timelocked).
-    ///         After the delay, call `execute(data)` or `removeGuardian(guardian)` respectively.
+    ///         (for timelocked selectors) and `removeSentinel` calldata (always timelocked).
+    ///         After the delay, call `execute(data)` or `removeSentinel(sentinel)` respectively.
     ///         Expired operations must be canceled before the same calldata can be re-submitted.
     /// @param data The calldata for the timelocked operation.
     function submit(bytes calldata data) external;
 
-    /// @notice Cancel a pending timelocked operation. Callable by pool managers or guardians.
-    ///         A guardian can only cancel their own removal if they are the sole guardian.
+    /// @notice Cancel a pending timelocked operation. Callable by pool managers or sentinels.
+    ///         A sentinel can only cancel their own removal if they are the sole sentinel.
     /// @param data The pending calldata to cancel.
     function cancel(bytes calldata data) external;
 
     //----------------------------------------------------------------------------------------------
-    // Guardian management
+    // Sentinel management
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Add a guardian. Callable by pool managers. Immediate, no timelock.
-    /// @param guardian The address to add as guardian.
-    function addGuardian(address guardian) external;
+    /// @notice Add a sentinel. Callable by pool managers. Immediate, no timelock.
+    /// @param sentinel The address to add as sentinel.
+    function addSentinel(address sentinel) external;
 
-    /// @notice Remove a guardian. Always timelocked regardless of the timelocked mapping.
-    ///         Flow: `submit(abi.encodeCall(removeGuardian, (guardian)))` → wait → `removeGuardian(guardian)`.
-    /// @param guardian The address to remove as guardian.
-    function removeGuardian(address guardian) external;
+    /// @notice Remove a sentinel. Always timelocked regardless of the timelocked mapping.
+    ///         Flow: `submit(abi.encodeCall(removeSentinel, (sentinel)))` → wait → `removeSentinel(sentinel)`.
+    /// @param sentinel The address to remove as sentinel.
+    function removeSentinel(address sentinel) external;
 
     //----------------------------------------------------------------------------------------------
     // View methods
@@ -100,8 +100,8 @@ interface ISupervisor {
     function manifest() external view returns (IManifest);
     function timelocked(bytes4 selector) external view returns (bool);
     function hooked(bytes4 selector) external view returns (bool);
-    function guardians(address who) external view returns (bool);
-    function guardianCount() external view returns (uint256);
+    function sentinels(address who) external view returns (bool);
+    function sentinelCount() external view returns (uint256);
     function pending(bytes calldata data) external view returns (uint48);
 }
 
