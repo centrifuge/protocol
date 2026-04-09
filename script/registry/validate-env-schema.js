@@ -6,6 +6,12 @@
  * issues (field renames, missing required keys, type mismatches) that would
  * cause abi-registry.js to silently skip chains or crash.
  *
+ * When any contract has a numeric `blockNumber`, requires `deploymentInfo.*.startBlock`
+ * (indexers use it for chain-level block polling). Validates that startBlock is not
+ * wildly earlier than the earliest contract deployment block (gap threshold below).
+ * The generated registry copies this from env (`abi-registry.js`); no duplicate check
+ * in validate-registry.js.
+ *
  * Usage:
  *   node script/registry/validate-env-schema.js
  *
@@ -13,7 +19,7 @@
  */
 
 import { readdirSync, readFileSync } from "fs";
-import { join } from "path";
+import { basename, join } from "path";
 
 const envDir = join(process.cwd(), "env");
 
@@ -25,6 +31,59 @@ const KNOWN_TOP_LEVEL_KEYS = new Set([
     "deploymentInfo",
 ]);
 const ADDRESS_REGEX = /^0x[0-9a-fA-F]{40}$/;
+
+/** Same scan order as abi-registry.js `getDeploymentStartBlock`. */
+function getDeploymentStartBlockFromEnv(chain) {
+    const info = chain.deploymentInfo;
+    if (!info || typeof info !== "object") return null;
+    for (const value of Object.values(info)) {
+        if (value && typeof value === "object" && typeof value.startBlock === "number") {
+            return value.startBlock;
+        }
+    }
+    return null;
+}
+
+function minActiveContractBlockNumber(contracts) {
+    if (!contracts || typeof contracts !== "object") return null;
+    let min = null;
+    for (const contract of Object.values(contracts)) {
+        if (!contract || typeof contract !== "object") continue;
+        if (contract.address === null) continue;
+        if (typeof contract.blockNumber !== "number") continue;
+        if (min === null || contract.blockNumber < min) min = contract.blockNumber;
+    }
+    return min;
+}
+
+function startBlockGapErrorThreshold(minContractBlock) {
+    return Math.max(5_000_000, Math.floor(minContractBlock * 0.005));
+}
+
+/** @returns {string[]} human-readable errors (empty if ok) */
+function startBlockGapErrors(envLabel, startBlock, contracts) {
+    const minBlock = minActiveContractBlockNumber(contracts);
+    if (minBlock == null || typeof startBlock !== "number" || !Number.isFinite(startBlock)) {
+        return [];
+    }
+    const gap = minBlock - startBlock;
+    const threshold = startBlockGapErrorThreshold(minBlock);
+    if (gap < threshold) return [];
+    return [
+        `${envLabel} deploymentInfo.startBlock: startBlock (${startBlock}) lies far before the earliest active contract deployment (min blockNumber ${minBlock}, gap ${gap} blocks ≥ threshold ${threshold}). ` +
+            `Chain-level block listeners use deployment.startBlock (e.g. hourly snapshots); align it when merging env/latest (deploymentStartBlock / broadcast fallback).`,
+    ];
+}
+
+function hasAnyNumericContractBlockNumber(chain) {
+    if (!chain.contracts || typeof chain.contracts !== "object") return false;
+    for (const value of Object.values(chain.contracts)) {
+        if (typeof value === "object" && value !== null && typeof value.blockNumber === "number") {
+            return true;
+        }
+    }
+    return false;
+}
 
 /**
  * Validates a single env file. Returns an array of error strings (empty = valid).
@@ -117,7 +176,24 @@ function validateEnvFile(filePath) {
             for (const [key, value] of Object.entries(chain.deploymentInfo)) {
                 if (typeof value !== "object" || value === null) {
                     errors.push(`deploymentInfo.${key}: must be an object`);
+                } else if (value.startBlock != null && typeof value.startBlock !== "number") {
+                    errors.push(`deploymentInfo.${key}.startBlock: must be a number`);
                 }
+            }
+        }
+    }
+
+    const envLabel = basename(filePath);
+    if (hasAnyNumericContractBlockNumber(chain)) {
+        const startBlock = getDeploymentStartBlockFromEnv(chain);
+        if (startBlock == null) {
+            errors.push(
+                `${envLabel}: missing deploymentInfo.*.startBlock — required when any contract has blockNumber ` +
+                    `(indexers use it for chain-level block listeners, e.g. hourly snapshots; see script/registry/README.md)`
+            );
+        } else {
+            for (const msg of startBlockGapErrors(envLabel, startBlock, chain.contracts || {})) {
+                errors.push(msg);
             }
         }
     }

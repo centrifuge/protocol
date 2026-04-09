@@ -20,7 +20,7 @@ Registries use a **delta format**: each version only contains contracts that cha
 | Script | Purpose |
 |--------|---------|
 | `abi-registry.js` | Builds `registry-*.json` from env files, explorer APIs, and Forge build artifacts. Supports delta (default) or full snapshot. |
-| `validate-env-schema.js` | Validates all `env/*.json` files against the expected schema. Fast-fail gate before generation. |
+| `validate-env-schema.js` | Validates all `env/*.json` files against the expected schema, including `deploymentInfo.*.startBlock` vs contract `blockNumber` gap (chain-level indexer listeners). Fast-fail gate before generation. |
 | `validate-registry.js` | Validates a generated registry JSON against indexer hard requirements. Produces a sidecar `.validation.json` report. |
 | `pin-to-ipfs.js` | Pins generated registries to Pinata, outputs CID metadata. |
 | `validate-api-keys.js` | Read-only validation of Pinata and Cloudflare credentials. |
@@ -60,7 +60,7 @@ flowchart TD
 
 **Validation layers:**
 
-1. **`validate-env-schema.js`** (pre-generation) — catches broken JSON, missing `network.chainId`, invalid addresses, structural renames. Fails the workflow immediately.
+1. **`validate-env-schema.js`** (pre-generation) — catches broken JSON, missing `network.chainId`, invalid addresses, structural renames, and **`deploymentInfo.*.startBlock` vs contract `blockNumber` gap**. Fails the workflow immediately.
 2. **`validate-registry.js`** (post-generation) — checks the generated registry against indexer hard requirements. Posts errors/warnings in the PR comment.
 
 **Other workflows:**
@@ -231,7 +231,7 @@ These fields are required by the Ponder/indexer pipeline. Missing any of them wi
 |-------|------|
 | `version` | Non-empty string. Identifies the registry in the ordered version chain. |
 | `previousRegistry.ipfsHash` | Non-null for any registry after the first. Forms the linked list the indexer walks. |
-| `chains.<chainId>.deployment.startBlock` | Must be a number. Tells the indexer which block range this registry covers. |
+| `chains.<chainId>.deployment.startBlock` | Must be a number in the generated registry. Source: `env/*.json` → `deploymentInfo.*.startBlock`. **Gap rule** (not far before min active contract `blockNumber`; indexers use this for chain-level block listeners, e.g. hourly snapshots): enforced in **`validate-env-schema.js`** before generation. Update when merging `env/latest/<chainId>-latest.json` after deploy (`script/utils/JsonRegistry.s.sol` / `script/deploy/lib/verifier.py`). |
 | `chains.<chainId>.contracts.<name>.address` | Non-empty string. The contract address to track. |
 | `chains.<chainId>.contracts.<name>.blockNumber` | Must be a number. When the contract was deployed; used for event listening start. |
 | `abis.<ContractName>` | Must exist for every contract in `chains`. Without ABIs the indexer cannot decode events. |

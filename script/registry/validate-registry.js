@@ -9,7 +9,8 @@
  * Hard requirements (errors — break the indexer):
  *   - version: must be a non-empty string
  *   - previousRegistry.ipfsHash: must be non-null unless no live registry exists
- *   - chains.<chainId>.deployment.startBlock: must be a number
+ *   - chains.<chainId>.deployment.startBlock: must be a number (large gap vs env contract
+ *     blocks is rejected by validate-env-schema.js before abi-registry runs)
  *   - chains.<chainId>.contracts.<name>.address: must be a non-empty string
  *   - chains.<chainId>.contracts.<name>.blockNumber: must be a number
  *   - abis: every contract in chains must have a corresponding ABI entry
@@ -31,7 +32,6 @@
  */
 
 import { readFileSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
 
 const REGISTRY_URLS = {
     mainnet: "https://registry.centrifuge.io",
