@@ -172,6 +172,10 @@ async function validate(registryPath) {
         abis: abiNames.size,
         errors: errors.length,
         warnings: warnings.length,
+        // publishable: true only when the registry passes all hard requirements AND contains
+        // actual contract changes (non-empty chains). Used by CI to decide whether to pin and
+        // update Cloudflare automatically on push to main.
+        publishable: errors.length === 0 && chainIds.length > 0,
     };
 
     return { errors, warnings, summary };

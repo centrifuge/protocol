@@ -18,6 +18,15 @@ on:
       - "script/registry/**"
       - ".github/ci-scripts/**"
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Which registry to publish (mainnet, testnet, or both)'
+        required: true
+        type: choice
+        options:
+          - both
+          - mainnet
+          - testnet
 
 env:
   FOUNDRY_PROFILE: ci
@@ -67,10 +76,17 @@ jobs:
       - name: Detect changed environments
         id: changed_environments
         run: |
-          changed=$(node .github/ci-scripts/detect-changed-environments.js)
-          echo "Changed environments: $changed"
-          mainnet_changed=$(echo $changed | jq -r '.mainnet')
-          testnet_changed=$(echo $changed | jq -r '.testnet')
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            env_input="${{ github.event.inputs.environment }}"
+            mainnet_changed=$([[ "$env_input" == "both" || "$env_input" == "mainnet" ]] && echo true || echo false)
+            testnet_changed=$([[ "$env_input" == "both" || "$env_input" == "testnet" ]] && echo true || echo false)
+            echo "Manual dispatch: environment=$env_input"
+          else
+            changed=$(node .github/ci-scripts/detect-changed-environments.js)
+            mainnet_changed=$(echo $changed | jq -r '.mainnet')
+            testnet_changed=$(echo $changed | jq -r '.testnet')
+          fi
+          echo "Changed environments: mainnet=$mainnet_changed, testnet=$testnet_changed"
           echo "mainnet=$mainnet_changed" >> $GITHUB_OUTPUT
           echo "testnet=$testnet_changed" >> $GITHUB_OUTPUT
 
@@ -181,7 +197,7 @@ jobs:
             body="${body}No registry files were generated (no env changes detected for mainnet or testnet).\n"
           fi
 
-          body="${body}---\n*Preview only — IPFS upload happens on merge to main.*"
+          body="${body}---\n*Preview only — IPFS pin and Cloudflare update happen automatically on merge to main (when contracts changed).*"
 
           # Post or update the comment
           pr_number=${{ github.event.pull_request.number }}
@@ -204,13 +220,19 @@ jobs:
             registry/registry-testnet.json
           if-no-files-found: ignore
           retention-days: 90
+
   pin-to-ipfs:
     needs: [generate]
     name: Pin registry files to IPFS
     runs-on: ubuntu-latest
     if: |
-      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
-      (needs.generate.outputs.mainnet == 'true' || needs.generate.outputs.testnet == 'true')
+      github.ref == 'refs/heads/main' && (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'push' && (
+          needs.generate.outputs.mainnet == 'true' ||
+          needs.generate.outputs.testnet == 'true'
+        ))
+      )
     permissions:
       contents: read
       issues: write
@@ -235,11 +257,36 @@ jobs:
           name: contract-registries
           path: registry
 
+      - name: Validate and gate publish
+        run: |
+          set -euo pipefail
+          is_dispatch="${{ github.event_name == 'workflow_dispatch' }}"
+
+          # Re-run validate-registry.js on the downloaded artifacts (fast, no live registry fetch).
+          # For push events: removes registries that aren't publishable so pin-to-ipfs.js skips them.
+          # For workflow_dispatch: keeps all registries regardless (manual override for corrections).
+          for env_name in mainnet testnet; do
+            registry_file="registry/registry-${env_name}.json"
+            [ ! -f "$registry_file" ] && continue
+
+            SKIP_LIVE_REGISTRY_CHECK=1 node script/registry/validate-registry.js "$registry_file" || true
+            publishable=$(jq -r '.summary.publishable' "registry/registry-${env_name}.validation.json")
+
+            if [ "$publishable" = "true" ] || [ "$is_dispatch" = "true" ]; then
+              echo "${env_name}: publishable=${publishable} (dispatch=${is_dispatch}) — will pin"
+            else
+              echo "${env_name}: publishable=false — removing from pin set (no contract changes or validation errors)"
+              rm -f "$registry_file"
+            fi
+          done
+
       - name: Pin registry files to IPFS
         id: upload_to_ipfs
         env:
           PINATA_JWT: ${{ secrets.PINATA_JWT }}
           GITHUB_SHA: ${{ github.sha }}
+          # For workflow_dispatch, force-pin whichever envs were requested (bypasses zero-chains guard).
+          FORCE_PIN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || '' }}
         run: |
           set -euo pipefail
 
@@ -265,7 +312,9 @@ jobs:
           fi
           echo "testnet_changed=$testnet_changed" >> $GITHUB_OUTPUT
       - name: Update Cloudflare Web3 URL
-        if: steps.upload_to_ipfs.outputs.mainnet != '' || steps.upload_to_ipfs.outputs.testnet != ''
+        if: |
+          github.event_name == 'push' &&
+          (steps.upload_to_ipfs.outputs.mainnet != '' || steps.upload_to_ipfs.outputs.testnet != '')
         env:
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
