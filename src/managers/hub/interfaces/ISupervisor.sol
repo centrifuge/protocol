@@ -53,7 +53,7 @@ interface ISupervisor {
     error ZeroAddress();
     error ForwardFailed();
     error CannotSelfCancel();
-    error MulticallBlocked();
+    error MulticallBlocked(uint256 index, bytes4 selector, bool isTimelocked);
 
     //----------------------------------------------------------------------------------------------
     // Execution

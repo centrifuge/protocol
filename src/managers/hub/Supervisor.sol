@@ -5,6 +5,7 @@ import {ISupervisor, ISupervisorFactory, IManifest, SupervisorConfig} from "./in
 
 import {IHub} from "../../core/hub/interfaces/IHub.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
+import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 import {IERC7751} from "../../misc/interfaces/IERC7751.sol";
 import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
 
@@ -17,18 +18,18 @@ import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
 ///         be added freely, but removing a sentinel is always timelocked (so the sentinel can veto
 ///         their own removal).
 contract Supervisor is ISupervisor {
+    bytes4 private constant MULTICALL_SELECTOR = 0xac9650d8;
+
     IHub public immutable hub;
     PoolId public immutable poolId;
     uint48 public immutable delay;
-    uint48 public immutable expiryWindow;
     IManifest public immutable manifest;
+    uint48 public immutable expiryWindow;
 
+    uint256 public sentinelCount;
     mapping(bytes4 => bool) public hooked;
     mapping(bytes4 => bool) public timelocked;
     mapping(address => bool) public sentinels;
-    uint256 public sentinelCount;
-
-    /// @dev Calldata-as-key timelock storage (Morpho pattern). The pending calldata IS the key.
     mapping(bytes calldata_ => uint48 executeAfter) public pending;
 
     modifier onlyManager() {
@@ -62,13 +63,11 @@ contract Supervisor is ISupervisor {
     // Execution
     //----------------------------------------------------------------------------------------------
 
-    /// @dev multicall(bytes[]) selector, blocked to prevent bypassing timelocks via nested calls
-    bytes4 private constant MULTICALL_SELECTOR = 0xac9650d8;
-
     /// @inheritdoc ISupervisor
     function execute(bytes calldata data) external payable onlyManager {
-        require(bytes4(data[:4]) != MULTICALL_SELECTOR, MulticallBlocked());
-        _checkHookAndTimelock(bytes4(data[:4]), data);
+        bytes4 selector = bytes4(data[:4]);
+        if (selector == MULTICALL_SELECTOR) _checkMulticall(data);
+        else _checkHookAndTimelock(selector, data);
         _forward(data);
     }
 
@@ -134,6 +133,18 @@ contract Supervisor is ISupervisor {
     //----------------------------------------------------------------------------------------------
     // Internal
     //----------------------------------------------------------------------------------------------
+
+    function _checkMulticall(bytes calldata data) internal {
+        bytes[] memory innerCalls = abi.decode(data[4:], (bytes[]));
+        for (uint256 i; i < innerCalls.length; i++) {
+            bytes4 innerSel = bytes4(BytesLib.slice(innerCalls[i], 0, 4));
+            require(!timelocked[innerSel], MulticallBlocked(i, innerSel, true));
+            if (address(manifest) != address(0) && hooked[innerSel]) {
+                uint48 extra = manifest.check(poolId, msg.sender, innerCalls[i]);
+                require(extra == 0, MulticallBlocked(i, innerSel, false));
+            }
+        }
+    }
 
     function _checkHookAndTimelock(bytes4 selector, bytes calldata data) internal {
         uint48 additionalDelay;

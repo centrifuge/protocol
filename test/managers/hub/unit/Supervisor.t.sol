@@ -41,6 +41,13 @@ contract MockHub {
     function alwaysReverts() external pure {
         revert("hub reverted");
     }
+
+    function multicall(bytes[] calldata data) external payable {
+        for (uint256 i; i < data.length; i++) {
+            (bool success,) = address(this).delegatecall(data[i]);
+            require(success);
+        }
+    }
 }
 
 contract MockHubRegistry {
@@ -155,6 +162,94 @@ contract SupervisorExecuteTest is SupervisorTestBase {
         bytes memory data = abi.encodeCall(MockHub.alwaysReverts, ());
 
         vm.expectRevert();
+        vm.prank(manager);
+        supervisor.execute(data);
+    }
+}
+
+// ─── Multicall ─────────────────────────────────────────────────────────────
+
+contract SupervisorMulticallTest is SupervisorTestBase {
+    Supervisor supervisor;
+
+    function setUp() public override {
+        super.setUp();
+        supervisor = _deploySupervisor(IManifest(address(0)));
+    }
+
+    function testMulticallWithSafeCalls() public {
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeCall(MockHub.doSomething, (10));
+        calls[1] = abi.encodeCall(MockHub.doSomething, (42));
+        bytes memory data = abi.encodeCall(MockHub.multicall, (calls));
+
+        vm.prank(manager);
+        supervisor.execute(data);
+
+        assertEq(hub.lastValue(), 42);
+    }
+
+    function testMulticallBlockedWithTimelocked() public {
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeCall(MockHub.doSomething, (10));
+        calls[1] = abi.encodeCall(MockHub.timelocked, (42));
+        bytes memory data = abi.encodeCall(MockHub.multicall, (calls));
+
+        vm.expectRevert(abi.encodeWithSelector(ISupervisor.MulticallBlocked.selector, 1, MockHub.timelocked.selector, true));
+        vm.prank(manager);
+        supervisor.execute(data);
+    }
+
+    function testMulticallAllowsHookedWithZeroDelay() public {
+        // Deploy supervisor with a manifest that returns 0 delay
+        MockManifest hook = new MockManifest();
+        Supervisor hookedSupervisor = _deploySupervisor(IManifest(address(hook)));
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeCall(MockHub.doSomething, (10));
+        calls[1] = abi.encodeCall(MockHub.hookedFn, (42));
+        bytes memory data = abi.encodeCall(MockHub.multicall, (calls));
+
+        vm.prank(manager);
+        hookedSupervisor.execute(data);
+
+        assertEq(hub.lastValue(), 42);
+    }
+
+    function testMulticallBlockedWithHookedExtraDelay() public {
+        MockManifest hook = new MockManifest();
+        hook.setExtraDelay(1 days);
+        Supervisor hookedSupervisor = _deploySupervisor(IManifest(address(hook)));
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeCall(MockHub.doSomething, (10));
+        calls[1] = abi.encodeCall(MockHub.hookedFn, (42));
+        bytes memory data = abi.encodeCall(MockHub.multicall, (calls));
+
+        vm.expectRevert(abi.encodeWithSelector(ISupervisor.MulticallBlocked.selector, 1, MockHub.hookedFn.selector, false));
+        vm.prank(manager);
+        hookedSupervisor.execute(data);
+    }
+
+    function testMulticallBlockedWithHookedRevert() public {
+        MockManifest hook = new MockManifest();
+        hook.setShouldRevert(true);
+        Supervisor hookedSupervisor = _deploySupervisor(IManifest(address(hook)));
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeCall(MockHub.doSomething, (10));
+        calls[1] = abi.encodeCall(MockHub.hookedFn, (42));
+        bytes memory data = abi.encodeCall(MockHub.multicall, (calls));
+
+        vm.expectRevert(MockManifest.Blocked.selector);
+        vm.prank(manager);
+        hookedSupervisor.execute(data);
+    }
+
+    function testMulticallEmptyCallsSucceeds() public {
+        bytes[] memory calls = new bytes[](0);
+        bytes memory data = abi.encodeCall(MockHub.multicall, (calls));
+
         vm.prank(manager);
         supervisor.execute(data);
     }
