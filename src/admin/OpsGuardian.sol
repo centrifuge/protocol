@@ -3,12 +3,14 @@ pragma solidity 0.8.28;
 
 import {ISafe} from "./interfaces/ISafe.sol";
 import {ICreatePool} from "./interfaces/ICreatePool.sol";
+import {IGasService} from "./interfaces/IGasService.sol";
 import {IOpsGuardian} from "./interfaces/IOpsGuardian.sol";
 import {IAdapterWiring} from "./interfaces/IAdapterWiring.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
 import {IAdapter} from "../core/messaging/interfaces/IAdapter.sol";
+import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
 import {IMultiAdapter} from "../core/messaging/interfaces/IMultiAdapter.sol";
 
 /// @title  OpsGuardian
@@ -20,11 +22,13 @@ contract OpsGuardian is IOpsGuardian {
     ISafe public opsSafe;
     ICreatePool public hub;
     IMultiAdapter public multiAdapter;
+    IGateway public gateway;
 
-    constructor(ISafe opsSafe_, ICreatePool hub_, IMultiAdapter multiAdapter_) {
+    constructor(ISafe opsSafe_, ICreatePool hub_, IMultiAdapter multiAdapter_, IGateway gateway_) {
         opsSafe = opsSafe_;
         hub = hub_;
         multiAdapter = multiAdapter_;
+        gateway = gateway_;
     }
 
     modifier onlySafe() {
@@ -40,9 +44,16 @@ contract OpsGuardian is IOpsGuardian {
     function file(bytes32 what, address data) external onlySafe {
         if (what == "opsSafe") opsSafe = ISafe(data);
         else if (what == "hub") hub = ICreatePool(data);
+        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
+    }
+
+    /// @inheritdoc IOpsGuardian
+    function setGasService(IGasService gasService) external onlySafe {
+        gateway.file("messageProperties", address(gasService));
+        multiAdapter.file("messageProperties", address(gasService));
     }
 
     //----------------------------------------------------------------------------------------------

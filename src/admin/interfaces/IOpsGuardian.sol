@@ -3,11 +3,13 @@ pragma solidity >=0.5.0;
 
 import {ISafe} from "./ISafe.sol";
 import {ICreatePool} from "./ICreatePool.sol";
+import {IGasService} from "./IGasService.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
 import {IMultiAdapter} from "../../core/messaging/interfaces/IMultiAdapter.sol";
+import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
 
 interface IOpsGuardian {
     error NotTheAuthorizedSafe();
@@ -35,9 +37,13 @@ interface IOpsGuardian {
     function wire(address adapter, uint16 centrifugeId, bytes memory data) external;
 
     /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'opsSafe', 'hub', or 'multiAdapter'
+    /// @param what Accepts a bytes32 representation of 'opsSafe', 'hub', 'gateway', or 'multiAdapter'
     /// @param data New value for the parameter
     function file(bytes32 what, address data) external;
+
+    /// @notice Updates the gas service
+    /// @param gasService the new gas service to use
+    function setGasService(IGasService gasService) external;
 
     /// @notice Registers a new pool
     /// @param poolId The pool identifier
@@ -51,6 +57,9 @@ interface IOpsGuardian {
 
     /// @notice Hub contract called to register new pools
     function hub() external view returns (ICreatePool);
+
+    /// @notice Gateway contract used to update the GasService
+    function gateway() external view returns (IGateway);
 
     /// @notice MultiAdapter used for first-time adapter initialization and wiring on new networks
     function multiAdapter() external view returns (IMultiAdapter);

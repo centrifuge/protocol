@@ -9,10 +9,10 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AccountId} from "../../../../src/core/types/AccountId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
-import {MAX_MESSAGE_COST} from "../../../../src/core/messaging/interfaces/IGasService.sol";
 import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
 import {ISafe} from "../../../../src/admin/interfaces/ISafe.sol";
+import {MAX_MESSAGE_COST} from "../../../../src/admin/interfaces/IGasService.sol";
 
 import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../../../script/FullDeployer.s.sol";
 

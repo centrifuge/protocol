@@ -4,11 +4,13 @@ pragma solidity 0.8.28;
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
 import {ICreatePool} from "../../../src/admin/interfaces/ICreatePool.sol";
+import {IGasService} from "../../../src/admin/interfaces/IGasService.sol";
 import {IOpsGuardian} from "../../../src/admin/interfaces/IOpsGuardian.sol";
 import {IAdapterWiring} from "../../../src/admin/interfaces/IAdapterWiring.sol";
 
@@ -20,6 +22,7 @@ contract OpsGuardianTest is Test {
     ISafe immutable SAFE = ISafe(address(new IsContract()));
     ICreatePool immutable hub = ICreatePool(address(new IsContract()));
     IMultiAdapter immutable multiAdapter = IMultiAdapter(address(new IsContract()));
+    IGateway immutable gateway = IGateway(address(new IsContract()));
 
     address immutable UNAUTHORIZED = makeAddr("unauthorized");
     address immutable ADMIN = makeAddr("admin");
@@ -33,13 +36,14 @@ contract OpsGuardianTest is Test {
     OpsGuardian opsGuardian;
 
     function setUp() public virtual {
-        opsGuardian = new OpsGuardian(SAFE, hub, multiAdapter);
+        opsGuardian = new OpsGuardian(SAFE, hub, multiAdapter, gateway);
     }
 
     function testOpsGuardian() public view {
         assertEq(address(opsGuardian.opsSafe()), address(SAFE));
         assertEq(address(opsGuardian.hub()), address(hub));
         assertEq(address(opsGuardian.multiAdapter()), address(multiAdapter));
+        assertEq(address(opsGuardian.gateway()), address(gateway));
     }
 }
 
@@ -164,7 +168,7 @@ contract OpsGuardianTestFile is OpsGuardianTest {
     function testFileRevertWhenProtocolSpecificParam() public {
         vm.prank(address(SAFE));
         vm.expectRevert(IOpsGuardian.FileUnrecognizedParam.selector);
-        opsGuardian.file("gateway", makeAddr("address"));
+        opsGuardian.file("sender", makeAddr("address"));
     }
 
     function testFileRevertWhenSafeParam() public {
@@ -177,6 +181,41 @@ contract OpsGuardianTestFile is OpsGuardianTest {
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
         opsGuardian.file("opsSafe", makeAddr("address"));
+    }
+}
+
+contract OpsGuardianTestSetGasService is OpsGuardianTest {
+    IGasService immutable gasService = IGasService(makeAddr("gasService"));
+
+    function testSetGasServiceSuccess() public {
+        vm.mockCall(
+            address(gateway),
+            abi.encodeWithSelector(IGateway.file.selector, bytes32("messageProperties"), address(gasService)),
+            abi.encode()
+        );
+        vm.mockCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.file.selector, bytes32("messageProperties"), address(gasService)),
+            abi.encode()
+        );
+
+        vm.expectCall(
+            address(gateway),
+            abi.encodeWithSelector(IGateway.file.selector, bytes32("messageProperties"), address(gasService))
+        );
+        vm.expectCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.file.selector, bytes32("messageProperties"), address(gasService))
+        );
+
+        vm.prank(address(SAFE));
+        opsGuardian.setGasService(gasService);
+    }
+
+    function testSetGasServiceRevertWhenNotSafe() public {
+        vm.prank(UNAUTHORIZED);
+        vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
+        opsGuardian.setGasService(gasService);
     }
 }
 
