@@ -1094,22 +1094,6 @@ function getDeploymentGitCommit(chain) {
     return null;
 }
 
-// Env contract keys whose capitalized form doesn't match the Forge artifact name.
-// Maps capitalized env key → actual Solidity contract name in out/.
-const ABI_NAME_OVERRIDES = {
-    "NavManager": "NAVManager",
-    "FreezeOnlyHook": "FreezeOnly",
-    "FullRestrictionsHook": "FullRestrictions",
-    "FreelyTransferableHook": "FreelyTransferable",
-    "RedemptionRestrictionsHook": "RedemptionRestrictions",
-};
-
-// Factory base name overrides: when stripping "Factory" suffix produces a name
-// that doesn't match the actual artifact (e.g. TokenFactory → ShareToken, not Token).
-const FACTORY_BASE_OVERRIDES = {
-    "TokenFactory": "ShareToken",
-};
-
 /**
  * Drops per-contract `version` from chains before JSON output.
  * `version` is only needed during generation (env → git tag → ABI pack); omitting it keeps published registries smaller for indexers.
