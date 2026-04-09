@@ -6,17 +6,17 @@
  * break the Ponder/indexer pipeline. Produces a structured JSON report
  * (errors + warnings + summary) written to a sidecar file for the PR comment step.
  *
- * Hard requirements (errors — break the indexer) for **active** contracts only:
- *   - previousRegistry.ipfsHash: must be non-null when a live registry exists
- *   - chains.<chainId>.deployment.startBlock: must be a number
- *   - chains.<chainId>.contracts.<name>.address: non-empty string (not deprecated)
+ * Hard requirements (errors — break the indexer):
+ *   - version: must be a non-empty string
+ *   - previousRegistry.ipfsHash: must be non-null when a live registry exists for that network
+ *   - chains.<chainId>.deployment.startBlock: must be a number (large gap vs env contract
+ *     `blockNumber` is rejected by validate-env-schema.js before abi-registry runs)
+ *   - chains.<chainId>.contracts.<name>.address: non-empty string for **active** contracts
  *   - chains.<chainId>.contracts.<name>.blockNumber: must be a number for active contracts
- *   - abis: every **active** chain contract must have a corresponding ABI (artifact names via resolveArtifactName)
+ *   - abis: every **active** contract must have matching ABI entries (artifact basenames via
+ *     {@link artifactNamesForContractKey} in `utils/abi-cache.js` — same rules as `packAbis`)
  *
  * Deprecated delta rows (`address: null`) skip address/blockNumber/ABI checks.
- *
- * Warnings:
- *   - top-level version omitted or empty (optional in published JSON)
  *
  * Soft requirements (warnings — shown but don't fail CI):
  *   - zero chains in a delta registry
@@ -35,7 +35,7 @@
  */
 
 import { readFileSync, writeFileSync } from "fs";
-import { resolveArtifactName } from "./utils/abi-cache.js";
+import { artifactNamesForContractKey } from "./utils/abi-cache.js";
 
 const REGISTRY_URLS = {
     mainnet: "https://registry.centrifuge.io",
@@ -87,11 +87,11 @@ async function validate(registryPath) {
         return { errors, warnings, summary: {} };
     }
 
-    // --- version (optional in generator output; warn if missing) ---
+    // --- version ---
     if (!registry.version || typeof registry.version !== "string") {
-        warnings.push({
+        errors.push({
             path: "version",
-            message: `Omitted or not a string (${JSON.stringify(registry.version)}) — indexers prefer a top-level version label`,
+            message: `Must be a non-empty string, got ${JSON.stringify(registry.version)}`,
         });
     }
 
@@ -113,7 +113,7 @@ async function validate(registryPath) {
         warnings.push({ path: "chains", message: "Delta registry has zero chains — nothing changed?" });
     }
 
-    /** Artifact names required in `abis`, aligned with `abi-registry.js` packAbis + collectContractTags. */
+    /** Artifact basenames required in `abis`, aligned with `abi-registry.js` `packAbis`. */
     const allContractNames = new Set();
     let totalContracts = 0;
 
@@ -138,12 +138,8 @@ async function validate(registryPath) {
                 continue;
             }
 
-            const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1);
-            allContractNames.add(resolveArtifactName(capitalizedName));
-
-            if (capitalizedName.endsWith("Factory")) {
-                const baseName = capitalizedName.replace(/Factory$/, "");
-                allContractNames.add(resolveArtifactName(baseName));
+            for (const artifact of artifactNamesForContractKey(name)) {
+                allContractNames.add(artifact);
             }
 
             // address

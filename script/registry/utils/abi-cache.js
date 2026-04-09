@@ -8,8 +8,8 @@
  * **Flow:** `ensureAbiCache(tag)` → cache hit if `<tag>/out` exists; else worktree + submodule init +
  * `forge build --skip test` → copy `out/` → remove worktree.
  *
- * **Consumers:** `abi-registry.js` (pack ABIs), `build-abi-cache.js` (CLI warm), or import
- * `getCachedOutDir`, `findAbiInOutput`, `resolveArtifactName` for custom tooling.
+ * **Consumers:** `abi-registry.js` (pack ABIs), `build-abi-cache.js` (CLI warm), `validate-registry.js`,
+ * or import `getCachedOutDir`, `findAbiInOutput`, `resolveArtifactName`, `artifactNamesForContractKey`.
  *
  * @module
  */
@@ -26,7 +26,14 @@ import { join } from "path";
 import { execSync } from "child_process";
 import { resolveVersionTag } from "./tag-resolution.js";
 
-/** Env-style name → Forge artifact JSON basename (without .json). */
+/**
+ * Capitalized env/registry contract key → Forge artifact JSON basename (without `.json`).
+ *
+ * Registry `chains.*.contracts` keys are camelCase (e.g. `fullRestrictionsHook`); the first
+ * letter is uppercased for lookup here. When that string does not match the Solidity contract
+ * / artifact name, map it here so `packAbis`, `validate-registry.js`, and any other consumer
+ * stay aligned without duplicating tables.
+ */
 export const ABI_NAME_ALIASES = {
     Token: "ShareToken",
     NavManager: "NAVManager",
@@ -209,4 +216,22 @@ export function findAbiInOutput(outputDir, contractName) {
  */
 export function resolveArtifactName(capitalizedName) {
     return ABI_NAME_ALIASES[capitalizedName] || capitalizedName;
+}
+
+/**
+ * Forge artifact basenames required in `registry.abis` for one `chains.*.contracts` key (camelCase).
+ * Includes the factory implementation when the key ends with `Factory` (e.g. `tokenFactory` →
+ * `TokenFactory` + `ShareToken`).
+ *
+ * @param {string} envContractKey - e.g. `fullRestrictionsHook`, `tokenFactory`
+ * @returns {string[]}
+ */
+export function artifactNamesForContractKey(envContractKey) {
+    const capitalized = envContractKey.charAt(0).toUpperCase() + envContractKey.slice(1);
+    const names = [resolveArtifactName(capitalized)];
+    if (capitalized.endsWith("Factory")) {
+        const base = capitalized.replace(/Factory$/, "");
+        names.push(resolveArtifactName(base));
+    }
+    return names;
 }

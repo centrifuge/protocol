@@ -16,7 +16,7 @@ paths:
 | Area | Role |
 |------|------|
 | `abi-registry.js` | Builds `registry/registry-{mainnet,testnet}.json` from `env/*.json`, explorer APIs, deltas vs live registry or `SOURCE_IPFS`. |
-| `utils/abi-cache.js` | Per-tag Forge ABI cache (worktree + build + `out/` copy); `collectContractTags`, `findAbiInOutput`, aliases — reusable outside the registry script. |
+| `utils/abi-cache.js` | Per-tag Forge ABI cache (worktree + build + `out/` copy); `collectContractTags`, `findAbiInOutput`, `resolveArtifactName` / `artifactNamesForContractKey` (single `ABI_NAME_ALIASES` table) — reusable outside the registry script. |
 | `build-abi-cache.js` | CLI: `node script/registry/build-abi-cache.js <tag> [...]` to warm `cache/abi-registry/`. |
 | `utils/tag-resolution.js` | Maps env contract `version` → local git tag (`resolveVersionTag`, candidates). |
 | `utils/validate-env-contract-version-tags.js` | CI: every mainnet/testnet contract object must have `version` resolving to a git tag. |

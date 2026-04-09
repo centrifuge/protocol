@@ -20,12 +20,12 @@ Registries use a **delta format**: each version only contains contracts that cha
 | Script | Purpose |
 |--------|---------|
 | `abi-registry.js` | Builds `registry-*.json` from env files, explorer APIs, and per-tag Forge ABI caches. Supports delta (default) or full snapshot. |
-| `utils/abi-cache.js` | Per-tag Forge ABI cache (worktrees + `forge build`); see [ABI cache layout](#abi-cache-layout-repo-root). |
+| `utils/abi-cache.js` | Per-tag Forge ABI cache (worktrees + `forge build`); env key → artifact names (`ABI_NAME_ALIASES` / `resolveArtifactName` / `artifactNamesForContractKey`). See [ABI cache layout](#abi-cache-layout-repo-root). |
 | `build-abi-cache.js` | CLI to warm the cache: `node script/registry/build-abi-cache.js <git-tag> [...]` (from repo root). |
 | `utils/tag-resolution.js` | Shared helpers: map env contract `version` → git tag (used by `abi-registry.js` and CI). |
 | `utils/validate-env-contract-version-tags.js` | CI pre-check: every mainnet/testnet contract must have `version` and a matching local git tag (run after `git fetch --tags`). |
-| `validate-env-schema.js` | Validates all `env/*.json` files against the expected schema. Fast-fail gate before generation. |
-| `validate-registry.js` | Validates a generated registry JSON against indexer hard requirements. Produces a sidecar `.validation.json` report for PR comments. |
+| `validate-env-schema.js` | Validates all `env/*.json` against the expected schema, including `deploymentInfo.*.startBlock` vs contract `blockNumber` gap (chain-level indexer listeners). Fast-fail gate before generation. |
+| `validate-registry.js` | Validates generated registry JSON against indexer hard requirements. Sidecar `.validation.json` for PR comments. Uses the same artifact naming as `packAbis` via `utils/abi-cache.js`. |
 | `pin-to-ipfs.js` | Pins generated registries to Pinata, outputs CID metadata. |
 | `validate-api-keys.js` | Read-only validation of Pinata and Cloudflare credentials. |
 | `.github/ci-scripts/detect-changed-environments.js` | Detects mainnet/testnet env changes to skip unnecessary CI builds. |
@@ -64,9 +64,9 @@ flowchart TD
 
 **Validation layers:**
 
-1. **`validate-env-schema.js`** — structural checks on `env/*.json` before generation.
-2. **`validate-env-contract-version-tags.js`** — every mainnet/testnet contract has a `version` that resolves to a git tag (ABIs).
-3. **`validate-registry.js`** — indexer hard requirements on the generated JSON; writes `.validation.json` for the PR comment.
+1. **`validate-env-schema.js`** (pre-generation) — broken JSON, missing `network.chainId`, invalid addresses, structural renames, and **`deploymentInfo.*.startBlock` vs contract `blockNumber` gap**. Fails the workflow immediately.
+2. **`validate-env-contract-version-tags.js`** — every mainnet/testnet contract has a `version` that resolves to a local git tag (ABI cache). Requires `git fetch --tags` in CI.
+3. **`validate-registry.js`** (post-generation) — indexer hard requirements on the generated JSON; writes `.validation.json` for the PR comment.
 
 **Other workflows:**
 - **`tag-env-updates.yml`** – On any push that touches `env/**/*.json`: runs `compute-env-tags.js` and pushes annotated tags.
@@ -96,7 +96,7 @@ cache/abi-registry/                    # getAbiCacheRoot() — stable cache
 **Reading ABIs programmatically**
 
 - Per-tag output directory: **`cache/abi-registry/<tag>/out/`** (same shape as a normal `out/` after `forge build`).
-- Contract JSON basename often matches the Solidity contract name (e.g. `Hub.json`). Env/registry names that differ from artifact names are mapped via **`ABI_NAME_ALIASES`** / **`resolveArtifactName()`** in `utils/abi-cache.js` (e.g. `NavManager` → `NAVManager`).
+- Contract JSON basename usually matches the Solidity contract name (e.g. `Hub.json`). Env/registry keys that differ from artifact names use **`ABI_NAME_ALIASES`** → **`resolveArtifactName()`** → **`artifactNamesForContractKey()`** in `utils/abi-cache.js` (single table; `validate-registry.js` and `packAbis` share it). Example: `fullRestrictionsHook` → `FullRestrictions`.
 - **`findAbiInOutput(outDir, artifactName)`** scans immediate subdirs of `out/` (skips `*.t.sol`), loads `<artifactName>.json`, returns `parsed.abi`.
 
 **Warm cache without generating a registry**
@@ -317,12 +317,12 @@ These rules apply to **active** contracts (`address` is a non-null string). **De
 
 | Field | Rule |
 |-------|------|
-| `version` | Non-empty string when present; omitted in JSON if unknown (warning in validation). |
-| `previousRegistry.ipfsHash` | Non-null when a live registry exists for that network (linked list). |
-| `chains.<chainId>.deployment.startBlock` | Must be a number for each chain in the delta. |
-| `chains.<chainId>.contracts.<name>.address` | Non-empty string for active contracts; `null` only for deprecations. |
+| `version` | Non-empty string. Identifies the registry in the ordered version chain. |
+| `previousRegistry.ipfsHash` | Non-null when a live registry exists for that network (linked list); omit only for the first/base registry. |
+| `chains.<chainId>.deployment.startBlock` | Must be a number. Source: `env/*.json` → `deploymentInfo.*.startBlock`. **Gap rule** vs contract `blockNumber` values: enforced in **`validate-env-schema.js`** before generation (chain-level listeners / snapshots). |
+| `chains.<chainId>.contracts.<name>.address` | Non-empty string for **active** contracts; `null` only for deprecations. |
 | `chains.<chainId>.contracts.<name>.blockNumber` | Must be a number for active contracts. |
-| `abis.<ArtifactName>` | Must exist for every **active** contract in `chains` (artifact names match `utils/abi-cache.js` `resolveArtifactName`, e.g. `NavManager` → `NAVManager`). |
+| `abis.<ArtifactName>` | Must exist for every **active** contract in `chains` (and factory implementation ABIs where applicable). Artifact basenames = `artifactNamesForContractKey()` / `resolveArtifactName()` in `utils/abi-cache.js` — same as `packAbis` (e.g. `fullRestrictionsHook` → `FullRestrictions`). |
 
 **Other / soft fields:** `txHash`, `deployment.deployedAt`, `deploymentInfo.gitCommit`, `previousRegistry.version`, and `adapters` are not hard-gated the same way; see validator output for warnings.
 
