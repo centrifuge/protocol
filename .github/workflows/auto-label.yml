@@ -6,10 +6,12 @@
 # Scope labels:
 #   scope:contracts  — any file under src/ (excluding */interfaces/ dirs)
 #   scope:tests      — any file under test/
+#   scope:invariant  — invariant/fuzz test files (test/**/recon*, echidna.yaml, medusa.json)
 #   scope:scripts    — any file under script/ (unless scope:tooling applies)
-#   scope:tooling    — ALL files under script/ AND none contain "broadcast" or "deploy"
-#   scope:infra      — .github/, lib/, env/, foundry.toml, slither.config.json,
+#   scope:tooling    — ALL files under script/ AND none contain "deploy" in path
+#   scope:infra      — .github/, lib/, foundry.toml, slither.config.json,
 #                       remappings.txt, .gitmodules
+#   scope:env        — any file under env/
 #
 # Audit flag:
 #   audit:needed     — if scope:contracts was applied
@@ -58,14 +60,18 @@ jobs:
             const INFRA_EXACT = new Set([
               'foundry.toml', 'slither.config.json', 'remappings.txt', '.gitmodules'
             ]);
+            // Fuzzer config files at repo root
+            const INVARIANT_EXACT = new Set(['echidna.yaml', 'medusa.json']);
 
             let hasContract = false;
             let hasTest = false;
+            let hasInvariant = false;   // recon/echidna/medusa invariant tests
             let hasScript = false;
-            let hasScriptDeploy = false;  // script file with "broadcast" or "deploy" in path
+            let hasScriptDeploy = false; // script file with "deploy" in path
             let hasInfra = false;
+            let hasEnv = false;
             let hasDocs = false;
-            let hasOther = false;         // files that don't fit any category above
+            let hasOther = false;        // files that don't fit any category above
 
             for (const f of filenames) {
               const lower = f.toLowerCase();
@@ -87,25 +93,42 @@ jobs:
               if (f.startsWith('test/')) {
                 hasTest = true;
                 matched = true;
+                // Invariant/fuzz tests live under test/**/recon*
+                if (f.includes('/recon')) {
+                  hasInvariant = true;
+                }
+              }
+
+              // Root-level fuzzer configs (echidna.yaml, medusa.json)
+              if (INVARIANT_EXACT.has(f)) {
+                hasInvariant = true;
+                hasTest = true;
+                matched = true;
               }
 
               // Scripts
               if (f.startsWith('script/')) {
                 hasScript = true;
                 matched = true;
-                if (lower.includes('broadcast') || lower.includes('deploy')) {
+                // broadcast/ is gitignored so only "deploy" matters here
+                if (lower.includes('deploy')) {
                   hasScriptDeploy = true;
                 }
               }
 
-              // Infra: .github/, lib/, env/, or specific root config files
+              // Infra: .github/, lib/, or specific root config files
               if (
                 f.startsWith('.github/') ||
                 f.startsWith('lib/') ||
-                f.startsWith('env/') ||
                 INFRA_EXACT.has(f)
               ) {
                 hasInfra = true;
+                matched = true;
+              }
+
+              // Env: deployment addresses and network configs
+              if (f.startsWith('env/')) {
+                hasEnv = true;
                 matched = true;
               }
 
@@ -131,6 +154,10 @@ jobs:
               labels.push('scope:tests');
             }
 
+            if (hasInvariant) {
+              labels.push('scope:invariant');
+            }
+
             // scope:tooling vs scope:scripts — mutually exclusive
             if (hasScript) {
               const allFilesAreScripts = filenames.every(f => f.startsWith('script/'));
@@ -145,22 +172,26 @@ jobs:
               labels.push('scope:infra');
             }
 
+            if (hasEnv) {
+              labels.push('scope:env');
+            }
+
             // ── Step 4: Audit flag ──
             if (hasContract) {
               labels.push('audit:needed');
             }
 
             // ── Step 5: Type labels (at most one) ──
-            // type:test — only non-infra files are tests
-            if (hasTest && !hasContract && !hasScript && !hasDocs && !hasOther) {
+            // type:test — only non-infra files are tests (includes invariant)
+            if (hasTest && !hasContract && !hasScript && !hasDocs && !hasEnv && !hasOther) {
               labels.push('type:test');
             }
             // type:docs — every file is .md or under docs/
-            else if (hasDocs && !hasContract && !hasTest && !hasScript && !hasInfra && !hasOther) {
+            else if (hasDocs && !hasContract && !hasTest && !hasScript && !hasInfra && !hasEnv && !hasOther) {
               labels.push('type:docs');
             }
             // type:chore — every file is infra/config
-            else if (hasInfra && !hasContract && !hasTest && !hasScript && !hasDocs && !hasOther) {
+            else if (hasInfra && !hasContract && !hasTest && !hasScript && !hasDocs && !hasEnv && !hasOther) {
               labels.push('type:chore');
             }
 
