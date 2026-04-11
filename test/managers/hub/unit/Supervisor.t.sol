@@ -7,8 +7,6 @@ import {Supervisor, SupervisorFactory} from "../../../../src/managers/hub/Superv
 
 import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
-import {IERC7751} from "../../../../src/misc/interfaces/IERC7751.sol";
-import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 
 import "forge-std/Test.sol";
 

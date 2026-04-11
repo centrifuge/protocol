@@ -7,7 +7,6 @@ import {IHub} from "../../core/hub/interfaces/IHub.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 import {IERC7751} from "../../misc/interfaces/IERC7751.sol";
-import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
 
 /// @title  Supervisor
 /// @notice Sits between pool managers and the Hub, adding optional per-function timelocks and a
