@@ -898,7 +898,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         );
 
         assertEq(
-            address(BalanceSheet(balanceSheet).spokeRegistry()), spokeRegistry, "BalanceSheet spokeRegistry mismatch"
+            address(BalanceSheet(balanceSheet).spoke()), spokeRegistry, "BalanceSheet spoke mismatch"
         );
         assertEq(address(BalanceSheet(balanceSheet).gateway()), gateway, "BalanceSheet gateway mismatch");
         assertEq(

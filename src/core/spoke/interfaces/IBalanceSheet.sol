@@ -384,7 +384,7 @@ interface IBalanceSheet is IBatchedMulticall {
 
     /// @notice Returns the spoke registry contract
     /// @return The spoke registry contract instance
-    function spokeRegistry() external view returns (ISpokeRegistry);
+    function spoke() external view returns (ISpokeRegistry);
 
     /// @notice Returns the message sender contract
     /// @return The message sender contract instance

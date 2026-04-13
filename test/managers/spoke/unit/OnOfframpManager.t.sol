@@ -55,10 +55,10 @@ contract OnOfframpManagerTest is Test {
     }
 
     function _setupMocks() internal {
-        // Mock balanceSheet.spokeRegistry() to return our spoke mock
+        // Mock balanceSheet.spoke() to return our spoke mock
         vm.mockCall(
             address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.spokeRegistry.selector),
+            abi.encodeWithSelector(IBalanceSheet.spoke.selector),
             abi.encode(spokeRegistry)
         );
 

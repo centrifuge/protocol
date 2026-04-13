@@ -120,7 +120,7 @@ contract BalanceSheetTest is Test {
         );
 
         vm.startPrank(AUTH);
-        balanceSheet.file("spokeRegistry", address(spokeRegistry));
+        balanceSheet.file("spoke", address(spokeRegistry));
         balanceSheet.file("sender", address(sender));
         balanceSheet.file("poolEscrowProvider", address(escrowProvider));
         balanceSheet.file("gateway", address(gateway));
@@ -226,7 +226,7 @@ contract BalanceSheetTestFile is BalanceSheetTest {
 
     function testFile() public view {
         // Data initialized in setUp
-        assertEq(address(balanceSheet.spokeRegistry()), address(spokeRegistry));
+        assertEq(address(balanceSheet.spoke()), address(spokeRegistry));
         assertEq(address(balanceSheet.sender()), address(sender));
         assertEq(address(balanceSheet.poolEscrowProvider()), address(escrowProvider));
         assertEq(address(balanceSheet.gateway()), address(gateway));

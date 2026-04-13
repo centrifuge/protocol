@@ -246,7 +246,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(balanceSheet.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(balanceSheet.spokeRegistry()), address(spokeRegistry));
+        assertEq(address(balanceSheet.spoke()), address(spokeRegistry));
         assertEq(address(balanceSheet.sender()), address(messageDispatcher));
         assertEq(address(balanceSheet.poolEscrowProvider()), address(poolEscrowFactory));
 

@@ -249,7 +249,7 @@ abstract contract Setup is
         vaultRegistry.file("spokeRegistry", address(spokeRegistry));
         spoke.file("spokeRegistry", address(spokeRegistry));
         spoke.file("sender", address(messageDispatcher));
-        balanceSheet.file("spokeRegistry", address(spokeRegistry));
+        balanceSheet.file("spoke", address(spokeRegistry));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
 

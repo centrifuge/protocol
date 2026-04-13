@@ -281,7 +281,7 @@ contract CoreActionBatcher is Constants {
         report.spokeV3_1_0.file("spoke", address(report.spoke));
         report.spokeV3_1_0.file("spokeRegistry", address(report.spokeRegistry));
 
-        report.balanceSheet.file("spokeRegistry", address(report.spokeRegistry));
+        report.balanceSheet.file("spoke", address(report.spokeRegistry));
         report.balanceSheet.file("gateway", address(report.gateway));
         report.balanceSheet.file("poolEscrowProvider", address(report.poolEscrowFactory));
         report.balanceSheet.file("sender", address(report.messageDispatcher));

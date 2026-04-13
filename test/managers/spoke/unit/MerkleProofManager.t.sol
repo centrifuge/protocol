@@ -159,7 +159,7 @@ contract MerkleProofManagerFactoryTest is Test {
 
         vm.mockCall(
             address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.spokeRegistry.selector),
+            abi.encodeWithSelector(IBalanceSheet.spoke.selector),
             abi.encode(spokeRegistry)
         );
 
