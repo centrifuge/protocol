@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IFeeHook} from "./IFeeHook.sol";
 import {IValuation} from "./IValuation.sol";
 import {IHubRegistry} from "./IHubRegistry.sol";
 import {ISnapshotHook} from "./ISnapshotHook.sol";
@@ -13,6 +14,7 @@ import {D18} from "../../../misc/types/D18.sol";
 
 import {IAdapter} from "../../messaging/interfaces/IAdapter.sol";
 import {VaultUpdateKind} from "../../messaging/libraries/MessageLib.sol";
+import {IMultiAdapter} from "../../messaging/interfaces/IMultiAdapter.sol";
 import {IHubMessageSender} from "../../messaging/interfaces/IGatewaySenders.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
@@ -128,6 +130,12 @@ interface IHub is IBatchedMulticall {
     /// @notice Returns the share class manager contract
     /// @return The share class manager contract instance
     function shareClassManager() external view returns (IShareClassManager);
+
+    /// @notice Hook that calculates and applies protocol fees on NAV updates
+    function feeHook() external view returns (IFeeHook);
+
+    /// @notice Handles multi-protocol message verification and routing for cross-chain communication
+    function multiAdapter() external view returns (IMultiAdapter);
 
     /// @notice Updates a contract parameter
     /// @param what Name of the parameter to update (accepts 'hubRegistry', 'accounting', 'holdings', 'gateway', 'sender')

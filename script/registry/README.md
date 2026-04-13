@@ -19,15 +19,51 @@ Registries use a **delta format**: each version only contains contracts that cha
 
 | Script | Purpose |
 |--------|---------|
-| `abi-registry.js` | Builds `registry-*.json` from env files, explorer APIs, and Forge broadcast artifacts. Supports delta (default) or full snapshot. |
-| `pin-to-ipfs.js` | Pins generated registries to Pinata, writes nightly/mainnet/testnet summaries, outputs CID metadata. |
+| `abi-registry.js` | Builds `registry-*.json` from env files, explorer APIs, and Forge build artifacts. Supports delta (default) or full snapshot. |
+| `validate-env-schema.js` | Validates all `env/*.json` files against the expected schema, including `deploymentInfo.*.startBlock` vs contract `blockNumber` gap (chain-level indexer listeners). Fast-fail gate before generation. |
+| `validate-registry.js` | Validates a generated registry JSON against indexer hard requirements. Produces a sidecar `.validation.json` report. |
+| `pin-to-ipfs.js` | Pins generated registries to Pinata, outputs CID metadata. |
+| `validate-api-keys.js` | Read-only validation of Pinata and Cloudflare credentials. |
 | `.github/ci-scripts/detect-changed-environments.js` | Detects mainnet/testnet env changes to skip unnecessary CI builds. |
 | `.github/ci-scripts/detect-deployment-commit.js` | Returns the git commit that produced the latest env files so ABIs are built from that revision. |
 | `.github/ci-scripts/compute-env-tags.js` | Creates tags (`deploy-${version}-${timestamp}`) when env files change so deployment commits stay reachable after squashing. |
 
-### Pipelines
+### CI Pipeline
 
-- **`registry.yml`** – On env/registry changes: detects changed envs, rebuilds ABIs at deployment commits, generates `registry-mainnet.json` / `registry-testnet.json`, publishes artifacts, pins to IPFS, writes step summaries with CIDs and opens issues when pointers need updates.
+The `registry.yml` workflow only triggers when `env/**`, `script/registry/**`, or the workflow file itself changes. Env file changes are the canonical signal that a registry update is needed.
+
+```
+pull_request  → validate env schemas → generate registry → validate output → post PR comment
+push to main  → same pipeline → pin to IPFS → update Cloudflare DNS
+workflow_dispatch → manual escape hatch (same pipeline)
+```
+
+**Pipeline flow:**
+
+```mermaid
+flowchart TD
+    subgraph pr [Pull Request]
+        A[env file changed] --> B[Validate env schemas]
+        B -->|fail| X1[PR blocked]
+        B -->|pass| C[Detect changed environments]
+        C --> D[Generate registry]
+        D --> E[Validate registry output]
+        E -->|errors| X2[PR blocked]
+        E -->|pass/warnings| F[Post PR comment with preview + findings]
+    end
+    subgraph push [Push to main]
+        G[env file merged] --> H[Same pipeline]
+        H --> I[Pin to IPFS]
+        I --> J[Update Cloudflare]
+    end
+```
+
+**Validation layers:**
+
+1. **`validate-env-schema.js`** (pre-generation) — catches broken JSON, missing `network.chainId`, invalid addresses, structural renames, and **`deploymentInfo.*.startBlock` vs contract `blockNumber` gap**. Fails the workflow immediately.
+2. **`validate-registry.js`** (post-generation) — checks the generated registry against indexer hard requirements. Posts errors/warnings in the PR comment.
+
+**Other workflows:**
 - **`tag-env-updates.yml`** – On any push that touches `env/**/*.json`: runs `compute-env-tags.js` and pushes annotated tags.
 
 ---
@@ -74,6 +110,20 @@ node script/registry/abi-registry.js testnet
 ```
 
 **Env / flags:** `DEPLOYMENT_COMMIT`, `ETHERSCAN_API_KEY` (required), `REGISTRY_MODE=full`, `REGISTRY_SOURCE_URL`; `--full`, `--source-url=<url>`. For pinning: `PINATA_JWT` (1Password, limited access).
+
+### Validating env files and registries locally
+
+```bash
+# Validate all env/*.json files against expected schema
+node script/registry/validate-env-schema.js
+
+# Validate a generated registry against indexer hard requirements
+node script/registry/validate-registry.js registry/registry-mainnet.json
+node script/registry/validate-registry.js registry/registry-testnet.json
+
+# Skip live registry fetch (offline mode)
+SKIP_LIVE_REGISTRY_CHECK=1 node script/registry/validate-registry.js registry/registry-mainnet.json
+```
 
 ### Testing API keys (no changes made)
 
@@ -173,9 +223,27 @@ interface ChainConfig {
 }
 ```
 
-### Nullable fields
+### Indexer hard requirements
 
-- **`contracts[name].blockNumber` / `txHash`** – Filled from broadcast artifacts or explorer APIs. Can be `null` when contract is unverified, chain isn’t on the free Etherscan API (e.g. BNB, Base), or legacy env has no `txHash`.
-- **`deployment.deployedAt`** – `null` if env has no `deploymentInfo.timestamp`.
-- **`deployment.startBlock`** – `null` if env has no `deploymentInfo.startBlock` (expected for future deployments).
-- **`adapters.$adapterName`** – `null` when that adapter isn’t configured for the network.
+These fields are required by the Ponder/indexer pipeline. Missing any of them will fail the `validate-registry.js` check and block the PR.
+
+| Field | Rule |
+|-------|------|
+| `version` | Non-empty string. Identifies the registry in the ordered version chain. |
+| `previousRegistry.ipfsHash` | Non-null for any registry after the first. Forms the linked list the indexer walks. |
+| `chains.<chainId>.deployment.startBlock` | Must be a number in the generated registry. Source: `env/*.json` → `deploymentInfo.*.startBlock`. **Gap rule** (not far before min active contract `blockNumber`; indexers use this for chain-level block listeners, e.g. hourly snapshots): enforced in **`validate-env-schema.js`** before generation. Update when merging `env/latest/<chainId>-latest.json` after deploy (`script/utils/JsonRegistry.s.sol` / `script/deploy/lib/verifier.py`). |
+| `chains.<chainId>.contracts.<name>.address` | Non-empty string. The contract address to track. |
+| `chains.<chainId>.contracts.<name>.blockNumber` | Must be a number. When the contract was deployed; used for event listening start. |
+| `abis.<ContractName>` | Must exist for every contract in `chains`. Without ABIs the indexer cannot decode events. |
+
+### Other fields (not validated)
+
+These are present in the registry but not used by the indexer. They are not checked by the validator.
+
+| Field | Notes |
+|-------|-------|
+| `contracts[name].txHash` | Traceability metadata |
+| `deployment.deployedAt` | Deployment timestamp |
+| `deploymentInfo.gitCommit` | Source commit metadata |
+| `previousRegistry.version` | Human-readable; indexer follows `ipfsHash` |
+| `adapters.$adapterName` | `null` when that adapter is not configured for the network |

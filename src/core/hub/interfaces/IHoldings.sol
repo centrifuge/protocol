@@ -2,6 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {IValuation} from "./IValuation.sol";
+import {IHubRegistry} from "./IHubRegistry.sol";
 import {ISnapshotHook} from "./ISnapshotHook.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
@@ -287,4 +288,20 @@ interface IHoldings {
     /// @param assetId The asset identifier
     /// @return Whether the holding is initialized
     function isInitialized(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool);
+
+    /// @notice Registry of pools, assets, and manager permissions on the hub chain
+    function hubRegistry() external view returns (IHubRegistry);
+
+    /// @notice Returns the holding data for a given pool, share class and asset
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param assetId The asset identifier
+    /// @return assetAmount The amount of assets held
+    /// @return assetAmountValue The value of assets held in pool currency
+    /// @return valuation The valuation contract used for pricing
+    /// @return isLiability Whether the holding represents a liability
+    function holding(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        view
+        returns (uint128 assetAmount, uint128 assetAmountValue, IValuation valuation, bool isLiability);
 }
