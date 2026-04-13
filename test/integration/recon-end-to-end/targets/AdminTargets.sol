@@ -148,6 +148,17 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     }
 
     function hub_approveRedeems_clamped(uint32 nowRedeemEpochId, uint128 maxApproval) public {
+        IBaseVault vault = _getVault();
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = _getAssetId();
+
+        // Clamp epochId to current redeem epoch
+        nowRedeemEpochId = batchRequestManager.nowRedeemEpoch(poolId, scId, assetId);
+        // Clamp maxApproval to pending redeem amount (+1 for modulo exploration)
+        uint128 pending = batchRequestManager.pendingRedeem(poolId, scId, assetId);
+        maxApproval = uint128(between(maxApproval, 0, pending));
+
         hub_approveRedeems(nowRedeemEpochId, maxApproval);
     }
 
@@ -286,6 +297,16 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     }
 
     function hub_issueShares_clamped(uint32 nowIssueEpochId, uint128 navPerShare) public {
+        IBaseVault vault = _getVault();
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = _getAssetId();
+
+        // Clamp epochId to current issue epoch
+        nowIssueEpochId = batchRequestManager.nowIssueEpoch(poolId, scId, assetId);
+        // Clamp navPerShare to realistic range (1e15 to 2e18 — 0.001 to 2.0 in D18)
+        navPerShare = uint128(between(navPerShare, 1e15, 2e18));
+
         hub_issueShares(nowIssueEpochId, navPerShare);
     }
 
@@ -441,6 +462,8 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
 
     /// NOTE: When using NAVManager/Accounting, changing isLiability requires the corresponding accountId
     ///       to be set, otherwise holdings value won't be tracked in accounting.
+    /// @dev Early return is intentional — calling without a configured accountId always reverts in Hub,
+    ///      so the guard avoids wasting fuzzer cycles on guaranteed reverts (not a clamping concern).
     function hub_updateHoldingIsLiability_clamped(bool isLiability) public {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
@@ -450,7 +473,6 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         AccountId accountId = holdings.accountId(poolId, scId, assetId, targetAccountType);
 
         if (accountId.raw() == 0) {
-            // Skip because AccountId not configured for this account type
             return;
         }
 
@@ -556,17 +578,11 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         uint8 accountToUpdate,
         uint128 debitAmount,
         uint128 creditAmount
-    ) public updateGhosts {
+    ) public {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
 
-        AccountId accountId = createdAccountIds[accountToUpdate % createdAccountIds.length];
-        JournalEntry[] memory debits = new JournalEntry[](1);
-        debits[0] = JournalEntry({value: debitAmount, accountId: accountId});
-        JournalEntry[] memory credits = new JournalEntry[](1);
-        credits[0] = JournalEntry({value: creditAmount, accountId: accountId});
-
-        hub.updateJournal(poolId, debits, credits);
+        hub_updateJournal(uint64(PoolId.unwrap(poolId)), accountToUpdate, debitAmount, creditAmount);
     }
 
     // === RestrictedTransfers === ///
