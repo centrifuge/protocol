@@ -49,7 +49,9 @@ jobs:
         with:
           version: v1.4.4
       - run: python3 script/deploy/load_secrets.py
-      - run: NETWORK=${{ matrix.network }} forge test --match-test "testLiveValidation" -vv 2>&1 | tee test-output.txt
+      - run: forge test --match-test "testLiveValidation" -vv 2>&1 | tee test-output.txt
+        env:
+          NETWORK: ${{ matrix.network }}
       - if: failure()
         run: echo "${{ matrix.network }}" > failed-chain.txt
       - if: failure()
@@ -84,7 +86,9 @@ jobs:
         with:
           version: v1.4.4
       - run: python3 script/deploy/load_secrets.py
-      - run: NETWORK=${{ matrix.network }} forge test --match-test "testInvestmentFlows" -vv 2>&1 | tee test-output.txt
+      - run: forge test --match-test "testInvestmentFlows" -vv 2>&1 | tee test-output.txt
+        env:
+          NETWORK: ${{ matrix.network }}
       - if: failure()
         run: echo "${{ matrix.network }}" > failed-chain.txt
       - if: failure()
@@ -99,7 +103,7 @@ jobs:
     needs: [validate-state, validate-flows]
     if: failure()
     runs-on: ubuntu-latest
-    permissions:
+    permissions:q
       contents: read
       issues: write
     steps:
