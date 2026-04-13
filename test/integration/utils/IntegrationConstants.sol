@@ -100,6 +100,7 @@ library IntegrationConstants {
     address constant BNB_USDC = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
     address constant PLUME_USDC = 0x222365EF19F7947e5484218551B56bb3965Aa7aF;
     address constant PLUME_PUSD = 0xdddD73F5Df1F0DC31373357beAC77545dC5A6f3F;
+    address constant PLUME_VALUATION_CONTRACT = 0x0074949f14aA3DD72C3C77b715ED60e03B4A5bC9;
 
     // Pool admins
     address constant ETH_DEFAULT_POOL_ADMIN = 0x742d100011fFbC6e509E39DbcB0334159e86be1e;
