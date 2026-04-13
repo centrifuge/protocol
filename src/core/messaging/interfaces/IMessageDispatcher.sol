@@ -28,14 +28,17 @@ interface IMessageDispatcher is IScheduleAuthMessageSender, ISpokeMessageSender,
     // View methods
     //----------------------------------------------------------------------------------------------
 
+    /// @notice The chain identifier of the local Centrifuge chain
+    function localCentrifugeId() external view returns (uint16);
+
     /// @notice Routes and batches cross-chain messages between hub and spoke
     function gateway() external view returns (IGateway);
 
     /// @notice Handles multi-protocol message verification and routing for cross-chain communication
     function multiAdapter() external view returns (IMultiAdapter);
 
-    /// @notice Spoke-side handler for pool, share class, and vault operations
-    function spoke() external view returns (ISpokeGatewayHandler);
+    /// @notice Processes administrative cross-chain messages for pool, share class, and vault operations
+    function spokeHandler() external view returns (ISpokeGatewayHandler);
 
     /// @notice Processes timelocked rely/deny operations received from remote chains
     function scheduleAuth() external view returns (IScheduleAuth);

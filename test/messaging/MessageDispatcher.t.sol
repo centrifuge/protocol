@@ -156,12 +156,12 @@ contract TestFile is TestCommon {
         assertEq(address(dispatcher.hubHandler()), address(23));
     }
 
-    function testFileSpoke() public {
+    function testFileSpokeHandler() public {
         vm.prank(address(AUTH));
         vm.expectEmit();
-        emit IMessageDispatcher.File("spoke", address(23));
-        dispatcher.file("spoke", address(23));
-        assertEq(address(dispatcher.spoke()), address(23));
+        emit IMessageDispatcher.File("spokeHandler", address(23));
+        dispatcher.file("spokeHandler", address(23));
+        assertEq(address(dispatcher.spokeHandler()), address(23));
     }
 
     function testFileBalanceSheet() public {

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ISpoke} from "./interfaces/ISpoke.sol";
 import {IPoolEscrow} from "./interfaces/IPoolEscrow.sol";
 import {IShareToken} from "./interfaces/IShareToken.sol";
 import {IEndorsements} from "./interfaces/IEndorsements.sol";
+import {ISpokeRegistry} from "./interfaces/ISpokeRegistry.sol";
 import {IPoolEscrowProvider} from "./factories/interfaces/IPoolEscrowFactory.sol";
 import {IBalanceSheet, ShareQueueAmount, AssetQueueAmount, WithdrawMode} from "./interfaces/IBalanceSheet.sol";
 
@@ -39,7 +39,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     using MathLib for *;
     using CastLib for bytes32;
 
-    ISpoke public spoke;
+    ISpokeRegistry public spoke;
     ISpokeMessageSender public sender;
     IEndorsements public immutable endorsements;
     IPoolEscrowProvider public poolEscrowProvider;
@@ -64,7 +64,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
 
     /// @inheritdoc IBalanceSheet
     function file(bytes32 what, address data) external auth {
-        if (what == "spoke") spoke = ISpoke(data);
+        if (what == "spoke") spoke = ISpokeRegistry(data);
         else if (what == "sender") sender = ISpokeMessageSender(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);

@@ -94,6 +94,8 @@ contract BaseTest is FullDeployer, Test {
         poolEscrowFactory.rely(address(this));
         tokenFactory.rely(address(this));
         spoke.rely(address(this));
+        spokeRegistry.rely(address(this));
+        spokeHandler.rely(address(this));
         balanceSheet.rely(address(this));
         contractUpdater.rely(address(this));
         vaultRegistry.rely(address(this));
@@ -129,7 +131,7 @@ contract BaseTest is FullDeployer, Test {
         testAdapters.push(adapter2);
         testAdapters.push(adapter3);
 
-        centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, vaultRegistry, syncManager);
+        centrifugeChain = new MockCentrifugeChain(testAdapters, spokeHandler, vaultRegistry, syncManager);
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
@@ -158,17 +160,17 @@ contract BaseTest is FullDeployer, Test {
         uint256 assetTokenId,
         uint16 /* TODO: destinationChain */
     ) public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
-        try spoke.shareToken(POOL_A, ShareClassId.wrap(scId)) {}
+        try spokeRegistry.shareToken(POOL_A, ShareClassId.wrap(scId)) {}
         catch {
-            if (spoke.pool(POOL_A) == 0) {
+            if (!spokeRegistry.isPoolActive(POOL_A)) {
                 centrifugeChain.addPool(POOL_A.raw());
             }
             centrifugeChain.addShareClass(POOL_A.raw(), scId, "name", "symbol", shareTokenDecimals, hook);
             centrifugeChain.updatePricePoolPerShare(POOL_A.raw(), scId, uint128(10 ** 18), uint64(block.timestamp));
         }
 
-        try spoke.assetToId(asset, assetTokenId) {
-            assetId = spoke.assetToId(asset, assetTokenId).raw();
+        try spokeRegistry.assetToId(asset, assetTokenId) {
+            assetId = spokeRegistry.assetToId(asset, assetTokenId).raw();
         } catch {
             assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, assetTokenId, address(this)).raw();
             centrifugeChain.updatePricePoolPerAsset(
@@ -177,8 +179,8 @@ contract BaseTest is FullDeployer, Test {
         }
 
         // Only set request manager if not already set
-        if (address(spoke.requestManager(POOL_A)) == address(0)) {
-            spoke.setRequestManager(POOL_A, asyncRequestManager);
+        if (address(spokeRegistry.requestManager(POOL_A)) == address(0)) {
+            spokeRegistry.setRequestManager(POOL_A, asyncRequestManager);
         }
         balanceSheet.updateManager(POOL_A, address(asyncRequestManager), true);
         balanceSheet.updateManager(POOL_A, address(syncManager), true);
@@ -191,7 +193,7 @@ contract BaseTest is FullDeployer, Test {
             POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(vaultFactory), VaultUpdateKind.DeployAndLink
         );
 
-        vaultAddress = IShareToken(spoke.shareToken(POOL_A, ShareClassId.wrap(scId))).vault(asset);
+        vaultAddress = IShareToken(spokeRegistry.shareToken(POOL_A, ShareClassId.wrap(scId))).vault(asset);
         poolId = POOL_A.raw();
     }
 
@@ -231,7 +233,7 @@ contract BaseTest is FullDeployer, Test {
         erc20.approve(_vault, amount); // add allowance
         vault.requestDeposit(amount, _investor, _investor);
         // trigger executed collectInvest
-        uint128 assetId = spoke.assetToId(address(erc20), erc20TokenId).raw();
+        uint128 assetId = spokeRegistry.assetToId(address(erc20), erc20TokenId).raw();
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId().raw(),
             vault.scId().raw(),

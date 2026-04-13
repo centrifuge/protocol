@@ -18,6 +18,7 @@ import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
 import {BatchedMulticall} from "../core/utils/BatchedMulticall.sol";
+import {ISpokeRegistry} from "../core/spoke/interfaces/ISpokeRegistry.sol";
 import {VaultDetails, IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
 
 /// @title  VaultRouter
@@ -35,13 +36,18 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
     uint256 private constant REQUEST_ID = 0;
 
     ISpoke public immutable spoke;
+    ISpokeRegistry public immutable spokeRegistry;
     IVaultRegistry public immutable vaultRegistry;
 
-    constructor(IGateway gateway_, ISpoke spoke_, IVaultRegistry vaultRegistry_, address deployer)
-        Auth(deployer)
-        BatchedMulticall(gateway_)
-    {
+    constructor(
+        IGateway gateway_,
+        ISpoke spoke_,
+        ISpokeRegistry spokeRegistry_,
+        IVaultRegistry vaultRegistry_,
+        address deployer
+    ) Auth(deployer) BatchedMulticall(gateway_) {
         spoke = spoke_;
+        spokeRegistry = spokeRegistry_;
         vaultRegistry = vaultRegistry_;
     }
 
@@ -191,7 +197,7 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
 
     /// @inheritdoc IVaultRouter
     function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address) {
-        return ISpoke(spoke).shareToken(poolId, scId).vault(asset);
+        return spokeRegistry.shareToken(poolId, scId).vault(asset);
     }
 
     /// @inheritdoc IVaultRouter

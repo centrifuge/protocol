@@ -7,10 +7,10 @@ import {IBaseRequestManager} from "./IBaseRequestManager.sol";
 import {D18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
-import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {IVaultRegistry} from "../../core/spoke/interfaces/IVaultRegistry.sol";
+import {ISpokeV3_1_0} from "../../core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 import {ISubsidyManager} from "../../utils/interfaces/ISubsidyManager.sol";
@@ -248,7 +248,7 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
     }
 
     /// @notice Updates contract parameters of type address.
-    /// @param what The bytes32 representation of 'gateway' or 'spoke'.
+    /// @param what The bytes32 representation of 'spokeRegistry', etc.
     /// @param data The new contract address.
     function file(bytes32 what, address data) external;
 
@@ -276,7 +276,7 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
         external;
 
     /// @notice Spoke-side entry point for this chain's pool and share class operations
-    function spoke() external view returns (ISpoke);
+    function spoke() external view returns (ISpokeV3_1_0);
 
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
     function balanceSheet() external view returns (IBalanceSheet);

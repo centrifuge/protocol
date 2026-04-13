@@ -7,10 +7,10 @@ import {IERC20Metadata} from "../../../src/misc/interfaces/IERC20.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
-import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {ISpokeV3_1_0} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 import {VaultDetails, IVaultRegistry} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
 
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
@@ -26,7 +26,7 @@ abstract contract SyncManagerBaseTest is Test {
     address immutable AUTH = makeAddr("AUTH");
     address immutable USER = makeAddr("USER");
 
-    ISpoke spoke = ISpoke(address(new IsContract()));
+    ISpokeV3_1_0 spoke = ISpokeV3_1_0(address(new IsContract()));
     IBalanceSheet balanceSheet = IBalanceSheet(address(new IsContract()));
     IVaultRegistry vaultRegistry = IVaultRegistry(address(new IsContract()));
     IShareToken shareToken = IShareToken(address(new IsContract()));
@@ -78,13 +78,13 @@ abstract contract SyncManagerBaseTest is Test {
     function _setupPrices(D18 poolPerShare, D18 poolPerAsset) internal {
         vm.mockCall(
             address(spoke),
-            abi.encodeWithSelector(ISpoke.pricePoolPerShare.selector, POOL_ID, SC_ID, true),
+            abi.encodeWithSelector(ISpokeV3_1_0.pricePoolPerShare.selector, POOL_ID, SC_ID, true),
             abi.encode(poolPerShare)
         );
 
         vm.mockCall(
             address(spoke),
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_ID, SC_ID, ASSET_ID, true),
+            abi.encodeWithSelector(ISpokeV3_1_0.pricePoolPerAsset.selector, POOL_ID, SC_ID, ASSET_ID, true),
             abi.encode(poolPerAsset)
         );
     }
