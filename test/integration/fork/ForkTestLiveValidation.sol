@@ -11,37 +11,46 @@ import {Hub} from "../../../src/core/hub/Hub.sol";
 import {Spoke} from "../../../src/core/spoke/Spoke.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {Holdings} from "../../../src/core/hub/Holdings.sol";
+import {Accounting} from "../../../src/core/hub/Accounting.sol";
 import {Gateway} from "../../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../../src/core/hub/HubHandler.sol";
-import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
+import {HubRegistry} from "../../../src/core/hub/HubRegistry.sol";
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {BalanceSheet} from "../../../src/core/spoke/BalanceSheet.sol";
+import {GasService} from "../../../src/core/messaging/GasService.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {SpokeHandler} from "../../../src/core/spoke/SpokeHandler.sol";
 import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
 import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
+import {ContractUpdater} from "../../../src/core/utils/ContractUpdater.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {ShareClassManager} from "../../../src/core/hub/ShareClassManager.sol";
 import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
+import {TokenFactory} from "../../../src/core/spoke/factories/TokenFactory.sol";
 import {IRequestManager} from "../../../src/core/interfaces/IRequestManager.sol";
 import {MessageProcessor} from "../../../src/core/messaging/MessageProcessor.sol";
 import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.sol";
+import {ISpokeRegistry} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {IVaultRegistry} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
+import {PoolEscrowFactory} from "../../../src/core/spoke/factories/PoolEscrowFactory.sol";
 
 import {Root} from "../../../src/admin/Root.sol";
 import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../../../src/admin/ProtocolGuardian.sol";
 
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
+import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
-
-import {NonCoreReport as MainContracts} from "../../../script/FullDeployer.s.sol";
 
 import {VMLabeling} from "../utils/VMLabeling.sol";
 import {ChainConfigs} from "../utils/ChainConfigs.sol";
 import {AxelarAdapter} from "../../../src/adapters/AxelarAdapter.sol";
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
+import {NonCoreReport} from "../../../src/deployment/ActionBatchers.sol";
 import {WormholeAdapter} from "../../../src/adapters/WormholeAdapter.sol";
 import {LayerZeroAdapter} from "../../../src/adapters/LayerZeroAdapter.sol";
 import {RefundEscrowFactory} from "../../../src/utils/RefundEscrowFactory.sol";
@@ -56,11 +65,70 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     uint256 constant SUPPORTED_CHAINS_COUNT = 6;
 
     //----------------------------------------------------------------------------------------------
-    // NON-ENV STATE (admin safe, vault/share token addresses)
+    // CORE SYSTEM CONTRACTS
     //----------------------------------------------------------------------------------------------
+
+    address public root;
+    address public protocolGuardian;
+    address public opsGuardian;
+    address public gateway;
+    address public gasService;
+    address public tokenRecoverer;
+    address public messageProcessor;
+    address public messageDispatcher;
+    address public multiAdapter;
+
+    // Hub contracts
+    address public hubRegistry;
+    address public accounting;
+    address public holdings;
+    address public shareClassManager;
+    address public hub;
+    address public hubHandler;
+    address public batchRequestManager;
+    address public identityValuation;
+
+    // Spoke contracts
+    address public tokenFactory;
+    address public balanceSheet;
+    address public spoke;
+    address public spokeRegistry;
+    address public spokeV3_1_0;
+    address public spokeHandler;
+    address public vaultRegistry;
+    address public contractUpdater;
+    address public poolEscrowFactory;
+
+    // Vault system
+    address public router;
+    address public asyncRequestManager;
+    address public syncManager;
+    address public refundEscrowFactory;
+    address public subsidyManager;
+
+    // Adapters
+    address public wormholeAdapter;
+    address public axelarAdapter;
+    address public layerZeroAdapter;
 
     // Admin
     address public protocolSafe;
+
+    //----------------------------------------------------------------------------------------------
+    // FACTORY CONTRACTS
+    //----------------------------------------------------------------------------------------------
+
+    address public asyncVaultFactory;
+    address public syncDepositVaultFactory;
+
+    //----------------------------------------------------------------------------------------------
+    // HOOK CONTRACTS
+    //----------------------------------------------------------------------------------------------
+
+    address public freezeOnlyHook;
+    address public fullRestrictionsHook;
+    address public freelyTransferableHook;
+    address public redemptionRestrictionsHook;
 
     //----------------------------------------------------------------------------------------------
     // VAULT CONTRACTS (Chain-specific, populated in _initializeContractAddresses)
@@ -142,6 +210,12 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     address public plumeTestShareToken;
 
     //----------------------------------------------------------------------------------------------
+    // MULTICHAIN CONFIG
+    //----------------------------------------------------------------------------------------------
+
+    uint16 internal localCentrifugeId;
+
+    //----------------------------------------------------------------------------------------------
     // SETUP
     //----------------------------------------------------------------------------------------------
 
@@ -155,22 +229,72 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     /// @param protocolSafe_ The admin safe address for this chain
     /// @param centrifugeId_ The centrifuge chain ID
     function _configureChain(address protocolSafe_, uint16 centrifugeId_) public {
-        config.network.centrifugeId = centrifugeId_;
+        localCentrifugeId = centrifugeId_;
         protocolSafe = protocolSafe_;
     }
 
     /// @notice Detects if the deployment is v3.1 or v3.0.1
     function isV3_1() internal view returns (bool) {
-        return config.contracts.vaultRegistry != address(0) && config.contracts.vaultRegistry.code.length > 0;
+        return vaultRegistry != address(0) && vaultRegistry.code.length > 0;
     }
 
     /// @notice Helper function to determine if current chain is Ethereum
     function isEthereum() internal view returns (bool) {
-        return config.network.centrifugeId == IntegrationConstants.ETH_CENTRIFUGE_ID;
+        return localCentrifugeId == IntegrationConstants.ETH_CENTRIFUGE_ID;
     }
 
-    /// @notice Initialize vault/share token addresses from IntegrationConstants
+    /// @notice Initialize all contract addresses from IntegrationConstants
     function _initializeContractAddresses() public virtual {
+        // Core system contracts
+        root = IntegrationConstants.ROOT;
+        protocolGuardian = IntegrationConstants.PROTOCOL_GUARDIAN;
+        opsGuardian = IntegrationConstants.OPS_GUARDIAN;
+        gateway = IntegrationConstants.GATEWAY;
+        gasService = IntegrationConstants.GAS_SERVICE;
+        tokenRecoverer = IntegrationConstants.TOKEN_RECOVERER;
+        messageProcessor = IntegrationConstants.MESSAGE_PROCESSOR;
+        messageDispatcher = IntegrationConstants.MESSAGE_DISPATCHER;
+        multiAdapter = IntegrationConstants.MULTI_ADAPTER;
+
+        // Hub contracts
+        hubRegistry = IntegrationConstants.HUB_REGISTRY;
+        accounting = IntegrationConstants.ACCOUNTING;
+        holdings = IntegrationConstants.HOLDINGS;
+        shareClassManager = IntegrationConstants.SHARE_CLASS_MANAGER;
+        hub = IntegrationConstants.HUB;
+        hubHandler = IntegrationConstants.HUB_HANDLER;
+        batchRequestManager = IntegrationConstants.BATCH_REQUEST_MANAGER;
+        identityValuation = IntegrationConstants.IDENTITY_VALUATION;
+
+        // Spoke contracts
+        tokenFactory = IntegrationConstants.TOKEN_FACTORY;
+        balanceSheet = IntegrationConstants.BALANCE_SHEET;
+        spoke = IntegrationConstants.SPOKE;
+        vaultRegistry = IntegrationConstants.VAULT_REGISTRY;
+        contractUpdater = IntegrationConstants.CONTRACT_UPDATER;
+        poolEscrowFactory = IntegrationConstants.POOL_ESCROW_FACTORY;
+
+        // Vault system
+        router = IntegrationConstants.ROUTER;
+        asyncRequestManager = IntegrationConstants.ASYNC_REQUEST_MANAGER;
+        syncManager = IntegrationConstants.SYNC_MANAGER;
+        refundEscrowFactory = IntegrationConstants.REFUND_ESCROW_FACTORY;
+
+        // Adapters
+        wormholeAdapter = IntegrationConstants.WORMHOLE_ADAPTER;
+        axelarAdapter = IntegrationConstants.AXELAR_ADAPTER;
+        layerZeroAdapter = IntegrationConstants.LAYER_ZERO_ADAPTER;
+
+        // Factory contracts
+        asyncVaultFactory = IntegrationConstants.ASYNC_VAULT_FACTORY;
+        syncDepositVaultFactory = IntegrationConstants.SYNC_DEPOSIT_VAULT_FACTORY;
+
+        // Hook contracts
+        freezeOnlyHook = IntegrationConstants.FREEZE_ONLY_HOOK;
+        fullRestrictionsHook = IntegrationConstants.FULL_RESTRICTIONS_HOOK;
+        freelyTransferableHook = IntegrationConstants.FREELY_TRANSFERABLE_HOOK;
+        redemptionRestrictionsHook = IntegrationConstants.REDEMPTION_RESTRICTIONS_HOOK;
+
         // Vault contracts (chain-specific)
         // Ethereum
         ethJaaaVault = IntegrationConstants.ETH_JAAA_VAULT;
@@ -244,66 +368,68 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         plumeAcrdxShareToken = IntegrationConstants.PLUME_ACRDX_SHARE_TOKEN;
         plumeTestShareToken = IntegrationConstants.PLUME_TEST_SHARE_TOKEN;
 
-        // Admin safe (default for standalone tests)
-        protocolSafe = IntegrationConstants.ETH_ADMIN_SAFE;
+        // Multichain config
+        localCentrifugeId = IntegrationConstants.ETH_CENTRIFUGE_ID;
+        protocolSafe = IntegrationConstants.ETH_ADMIN_SAFE; // Default for standalone tests
     }
 
     /// @notice Load contract addresses from a FullDeployer instance (for pre-migration testing)
-    /// @dev Alternative to env config loading when testing fresh deployments
+    /// @dev Alternative to _initializeContractAddresses() when testing fresh deployments
     ///      Use this when validating a freshly deployed v3.1 system in fork (e.g., MigrationV3_1Test)
-    /// @param report The MainContracts instance that comes from the deployed v3.1 contracts
-    function loadContractsFromDeployer(MainContracts memory report, address protocolSafe_) public virtual {
+    ///      Use _initializeContractAddresses() when validating live on-chain state (post-migration)
+    /// @param report The NonCoreReport instance that comes from the deployed v3.1 contracts
+    function loadContractsFromDeployer(NonCoreReport memory report, address protocolSafe_) public virtual {
         // Core system contracts
-        config.contracts.root = address(report.core.root);
-        config.contracts.protocolGuardian = address(report.core.protocolGuardian);
-        config.contracts.opsGuardian = address(report.core.opsGuardian);
-        config.contracts.gateway = address(report.core.gateway);
-        config.contracts.gasService = address(report.core.gasService);
-        config.contracts.tokenRecoverer = address(report.core.tokenRecoverer);
-        config.contracts.messageProcessor = address(report.core.messageProcessor);
-        config.contracts.messageDispatcher = address(report.core.messageDispatcher);
-        config.contracts.multiAdapter = address(report.core.multiAdapter);
+        root = address(report.core.root);
+        protocolGuardian = address(report.core.protocolGuardian);
+        opsGuardian = address(report.core.opsGuardian);
+        gateway = address(report.core.gateway);
+        gasService = address(report.core.gasService);
+        tokenRecoverer = address(report.core.tokenRecoverer);
+        messageProcessor = address(report.core.messageProcessor);
+        messageDispatcher = address(report.core.messageDispatcher);
+        multiAdapter = address(report.core.multiAdapter);
 
         // Hub contracts
-        config.contracts.hubRegistry = address(report.core.hubRegistry);
-        config.contracts.accounting = address(report.core.accounting);
-        config.contracts.holdings = address(report.core.holdings);
-        config.contracts.shareClassManager = address(report.core.shareClassManager);
-        config.contracts.hub = address(report.core.hub);
-        config.contracts.hubHandler = address(report.core.hubHandler);
-        config.contracts.batchRequestManager = address(report.batchRequestManager);
-        config.contracts.identityValuation = address(report.identityValuation);
+        hubRegistry = address(report.core.hubRegistry);
+        accounting = address(report.core.accounting);
+        holdings = address(report.core.holdings);
+        shareClassManager = address(report.core.shareClassManager);
+        hub = address(report.core.hub);
+        hubHandler = address(report.core.hubHandler);
+        batchRequestManager = address(report.batchRequestManager);
+        identityValuation = address(report.identityValuation);
 
         // Spoke contracts
-        config.contracts.tokenFactory = address(report.core.tokenFactory);
-        config.contracts.balanceSheet = address(report.core.balanceSheet);
-        config.contracts.spoke = address(report.core.spoke);
-        config.contracts.vaultRegistry = address(report.core.vaultRegistry);
-        config.contracts.contractUpdater = address(report.core.contractUpdater);
-        config.contracts.poolEscrowFactory = address(report.core.poolEscrowFactory);
+        tokenFactory = address(report.core.tokenFactory);
+        balanceSheet = address(report.core.balanceSheet);
+        spoke = address(report.core.spoke);
+        vaultRegistry = address(report.core.vaultRegistry);
+        contractUpdater = address(report.core.contractUpdater);
+        poolEscrowFactory = address(report.core.poolEscrowFactory);
 
         // Vault system
-        config.contracts.vaultRouter = address(report.vaultRouter);
-        config.contracts.asyncRequestManager = address(report.asyncRequestManager);
-        config.contracts.syncManager = address(report.syncManager);
-        config.contracts.refundEscrowFactory = address(report.refundEscrowFactory);
-        config.contracts.subsidyManager = address(report.subsidyManager);
+        router = address(report.vaultRouter);
+        asyncRequestManager = address(report.asyncRequestManager);
+        syncManager = address(report.syncManager);
+        refundEscrowFactory = address(report.refundEscrowFactory);
+        subsidyManager = address(report.subsidyManager);
 
         // Skip wormholeAdapter, axelarAdapter, layerZeroAdapter due to not being public in FullDeployer
         // Can be queried via multiAdapter.adapters()
 
         // Factory contracts
-        config.contracts.asyncVaultFactory = address(report.asyncVaultFactory);
-        config.contracts.syncDepositVaultFactory = address(report.syncDepositVaultFactory);
+        asyncVaultFactory = address(report.asyncVaultFactory);
+        syncDepositVaultFactory = address(report.syncDepositVaultFactory);
 
         // Hook contracts
-        config.contracts.freezeOnlyHook = address(report.freezeOnlyHook);
-        config.contracts.fullRestrictionsHook = address(report.fullRestrictionsHook);
-        config.contracts.freelyTransferableHook = address(report.freelyTransferableHook);
-        config.contracts.redemptionRestrictionsHook = address(report.redemptionRestrictionsHook);
+        freezeOnlyHook = address(report.freezeOnlyHook);
+        fullRestrictionsHook = address(report.fullRestrictionsHook);
+        freelyTransferableHook = address(report.freelyTransferableHook);
+        redemptionRestrictionsHook = address(report.redemptionRestrictionsHook);
 
         // Multichain config - from deployed contracts
-        config.network.centrifugeId = report.core.messageDispatcher.localCentrifugeId();
+        localCentrifugeId = report.core.messageDispatcher.localCentrifugeId();
         protocolSafe = protocolSafe_;
     }
 
@@ -313,36 +439,36 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         super._setupVMLabels();
 
         // Additional labels for instance variables (if they differ from constants)
-        vm.label(config.contracts.root, "Root");
-        vm.label(config.contracts.protocolGuardian, "ProtocolGuardian");
-        vm.label(config.contracts.gateway, "Gateway");
-        vm.label(config.contracts.gasService, "GasService");
-        vm.label(config.contracts.tokenRecoverer, "TokenRecoverer");
-        vm.label(config.contracts.messageProcessor, "MessageProcessor");
-        vm.label(config.contracts.messageDispatcher, "MessageDispatcher");
-        vm.label(config.contracts.multiAdapter, "MultiAdapter");
-        vm.label(config.contracts.hubRegistry, "HubRegistry");
-        vm.label(config.contracts.accounting, "Accounting");
-        vm.label(config.contracts.holdings, "Holdings");
-        vm.label(config.contracts.shareClassManager, "ShareClassManager");
-        vm.label(config.contracts.hub, "Hub");
-        vm.label(config.contracts.identityValuation, "IdentityValuation");
-        vm.label(config.contracts.tokenFactory, "TokenFactory");
-        vm.label(config.contracts.balanceSheet, "BalanceSheet");
-        vm.label(config.contracts.spoke, "Spoke");
-        vm.label(config.contracts.contractUpdater, "ContractUpdater");
-        vm.label(config.contracts.poolEscrowFactory, "PoolEscrowFactory");
-        vm.label(config.contracts.vaultRouter, "VaultRouter");
-        vm.label(config.contracts.asyncRequestManager, "AsyncRequestManager");
-        vm.label(config.contracts.syncManager, "SyncManager");
-        vm.label(config.contracts.wormholeAdapter, "WormholeAdapter");
-        vm.label(config.contracts.axelarAdapter, "AxelarAdapter");
-        vm.label(config.contracts.asyncVaultFactory, "AsyncVaultFactory");
-        vm.label(config.contracts.syncDepositVaultFactory, "SyncDepositVaultFactory");
-        vm.label(config.contracts.freezeOnlyHook, "FreezeOnlyHook");
-        vm.label(config.contracts.fullRestrictionsHook, "FullRestrictionsHook");
-        vm.label(config.contracts.freelyTransferableHook, "FreelyTransferableHook");
-        vm.label(config.contracts.redemptionRestrictionsHook, "RedemptionRestrictionsHook");
+        vm.label(root, "Root");
+        vm.label(protocolGuardian, "ProtocolGuardian");
+        vm.label(gateway, "Gateway");
+        vm.label(gasService, "GasService");
+        vm.label(tokenRecoverer, "TokenRecoverer");
+        vm.label(messageProcessor, "MessageProcessor");
+        vm.label(messageDispatcher, "MessageDispatcher");
+        vm.label(multiAdapter, "MultiAdapter");
+        vm.label(hubRegistry, "HubRegistry");
+        vm.label(accounting, "Accounting");
+        vm.label(holdings, "Holdings");
+        vm.label(shareClassManager, "ShareClassManager");
+        vm.label(hub, "Hub");
+        vm.label(identityValuation, "IdentityValuation");
+        vm.label(tokenFactory, "TokenFactory");
+        vm.label(balanceSheet, "BalanceSheet");
+        vm.label(spoke, "Spoke");
+        vm.label(contractUpdater, "ContractUpdater");
+        vm.label(poolEscrowFactory, "PoolEscrowFactory");
+        vm.label(router, "VaultRouter");
+        vm.label(asyncRequestManager, "AsyncRequestManager");
+        vm.label(syncManager, "SyncManager");
+        vm.label(wormholeAdapter, "WormholeAdapter");
+        vm.label(axelarAdapter, "AxelarAdapter");
+        vm.label(asyncVaultFactory, "AsyncVaultFactory");
+        vm.label(syncDepositVaultFactory, "SyncDepositVaultFactory");
+        vm.label(freezeOnlyHook, "FreezeOnlyHook");
+        vm.label(fullRestrictionsHook, "FullRestrictionsHook");
+        vm.label(freelyTransferableHook, "FreelyTransferableHook");
+        vm.label(redemptionRestrictionsHook, "RedemptionRestrictionsHook");
     }
 
     //----------------------------------------------------------------------------------------------
@@ -351,7 +477,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
     function test_validateCompleteDeployment() public virtual {
         vm.skip(true); // Skip until v3.1 is deployed - v3.0.1 has different ward relationships
-        if (config.network.centrifugeId == 0) {
+        if (localCentrifugeId == 0) {
             _configureChain(IntegrationConstants.ETH_ADMIN_SAFE, IntegrationConstants.ETH_CENTRIFUGE_ID);
         }
         validateDeployment(false);
@@ -394,55 +520,51 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     /// @notice Validates that all deployed contracts have Root as a ward
     function _validateV3RootPermissions() internal view virtual {
         // From CoreDeployer - Core messaging
-        _validateRootWard(config.contracts.gateway);
-        _validateRootWard(config.contracts.multiAdapter);
-        _validateRootWard(config.contracts.messageDispatcher);
-        _validateRootWard(config.contracts.messageProcessor);
+        _validateRootWard(gateway);
+        _validateRootWard(multiAdapter);
+        _validateRootWard(messageDispatcher);
+        _validateRootWard(messageProcessor);
 
         // From CoreDeployer - Spoke contracts
-        _validateRootWard(config.contracts.poolEscrowFactory);
-        _validateRootWard(config.contracts.tokenFactory);
-        _validateRootWard(config.contracts.spoke);
-        _validateRootWard(config.contracts.balanceSheet);
-        _validateRootWard(config.contracts.contractUpdater);
-        if (config.contracts.vaultRegistry != address(0)) _validateRootWard(config.contracts.vaultRegistry);
+        _validateRootWard(poolEscrowFactory);
+        _validateRootWard(tokenFactory);
+        _validateRootWard(spoke);
+        _validateRootWard(balanceSheet);
+        _validateRootWard(contractUpdater);
+        if (vaultRegistry != address(0)) _validateRootWard(vaultRegistry); // TODO: Remove condition when constant added
 
         // From CoreDeployer - Hub contracts
-        _validateRootWard(config.contracts.hubRegistry);
-        _validateRootWard(config.contracts.accounting);
-        _validateRootWard(config.contracts.holdings);
-        _validateRootWard(config.contracts.shareClassManager);
-        _validateRootWard(config.contracts.hub);
-        if (config.contracts.hubHandler != address(0)) _validateRootWard(config.contracts.hubHandler);
+        _validateRootWard(hubRegistry);
+        _validateRootWard(accounting);
+        _validateRootWard(holdings);
+        _validateRootWard(shareClassManager);
+        _validateRootWard(hub);
+        if (hubHandler != address(0)) _validateRootWard(hubHandler); // TODO: Remove condition when constant added
 
         // From FullDeployer - Admin & escrows
-        _validateRootWard(config.contracts.tokenRecoverer);
-        if (config.contracts.refundEscrowFactory != address(0)) {
-            _validateRootWard(config.contracts.refundEscrowFactory);
-        }
+        _validateRootWard(tokenRecoverer);
+        if (refundEscrowFactory != address(0)) _validateRootWard(refundEscrowFactory); // TODO: Remove condition when constant added
 
         // From FullDeployer - Vault system
-        _validateRootWard(config.contracts.asyncVaultFactory);
-        _validateRootWard(config.contracts.asyncRequestManager);
-        _validateRootWard(config.contracts.syncDepositVaultFactory);
-        _validateRootWard(config.contracts.syncManager);
-        _validateRootWard(config.contracts.vaultRouter);
+        _validateRootWard(asyncVaultFactory);
+        _validateRootWard(asyncRequestManager);
+        _validateRootWard(syncDepositVaultFactory);
+        _validateRootWard(syncManager);
+        _validateRootWard(router);
 
         // From FullDeployer - Hooks
-        _validateRootWard(config.contracts.freezeOnlyHook);
-        _validateRootWard(config.contracts.fullRestrictionsHook);
-        _validateRootWard(config.contracts.freelyTransferableHook);
-        _validateRootWard(config.contracts.redemptionRestrictionsHook);
+        _validateRootWard(freezeOnlyHook);
+        _validateRootWard(fullRestrictionsHook);
+        _validateRootWard(freelyTransferableHook);
+        _validateRootWard(redemptionRestrictionsHook);
 
         // From FullDeployer - Batch request manager
-        if (config.contracts.batchRequestManager != address(0)) {
-            _validateRootWard(config.contracts.batchRequestManager);
-        }
+        if (batchRequestManager != address(0)) _validateRootWard(batchRequestManager); // TODO: Remove condition when constant added
 
         // From FullDeployer - Adapters
-        if (config.contracts.wormholeAdapter != address(0)) _validateRootWard(config.contracts.wormholeAdapter);
-        if (config.contracts.axelarAdapter != address(0)) _validateRootWard(config.contracts.axelarAdapter);
-        if (config.contracts.layerZeroAdapter != address(0)) _validateRootWard(config.contracts.layerZeroAdapter);
+        if (wormholeAdapter != address(0)) _validateRootWard(wormholeAdapter);
+        if (axelarAdapter != address(0)) _validateRootWard(axelarAdapter);
+        if (layerZeroAdapter != address(0)) _validateRootWard(layerZeroAdapter);
 
         // Chain-specific vaults and share tokens
         if (isEthereum()) {
@@ -458,7 +580,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             if (ethJtrsyShareToken != address(0)) _validateRootWard(ethJtrsyShareToken);
             if (ethDejtrsyShareToken != address(0)) _validateRootWard(ethDejtrsyShareToken);
             if (ethDejaaaShareToken != address(0)) _validateRootWard(ethDejaaaShareToken);
-        } else if (config.network.centrifugeId == IntegrationConstants.BASE_CENTRIFUGE_ID) {
+        } else if (localCentrifugeId == IntegrationConstants.BASE_CENTRIFUGE_ID) {
             if (baseJaaaUsdcVault != address(0)) _validateRootWard(baseJaaaUsdcVault);
             if (baseDejaaaUsdcVault != address(0)) _validateRootWard(baseDejaaaUsdcVault);
             if (baseDejaaaJaaaVault != address(0)) _validateRootWard(baseDejaaaJaaaVault);
@@ -469,11 +591,11 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             if (baseDejaaaShareToken != address(0)) _validateRootWard(baseDejaaaShareToken);
             if (baseDejtrsyShareToken != address(0)) _validateRootWard(baseDejtrsyShareToken);
             if (baseSpxaShareToken != address(0)) _validateRootWard(baseSpxaShareToken);
-        } else if (config.network.centrifugeId == IntegrationConstants.ARBITRUM_CENTRIFUGE_ID) {
+        } else if (localCentrifugeId == IntegrationConstants.ARBITRUM_CENTRIFUGE_ID) {
             if (arbitrumJtrsyShareToken != address(0)) _validateRootWard(arbitrumJtrsyShareToken);
             if (arbitrumDejaaaShareToken != address(0)) _validateRootWard(arbitrumDejaaaShareToken);
             if (arbitrumDejtrsyShareToken != address(0)) _validateRootWard(arbitrumDejtrsyShareToken);
-        } else if (config.network.centrifugeId == IntegrationConstants.AVAX_CENTRIFUGE_ID) {
+        } else if (localCentrifugeId == IntegrationConstants.AVAX_CENTRIFUGE_ID) {
             if (avaxJaaaVault != address(0)) _validateRootWard(avaxJaaaVault);
             if (avaxJaaaUsdcVault != address(0)) _validateRootWard(avaxJaaaUsdcVault);
             if (avaxDejtrsyUsdcVault != address(0)) _validateRootWard(avaxDejtrsyUsdcVault);
@@ -486,10 +608,10 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             if (avaxJtrsyShareToken != address(0)) _validateRootWard(avaxJtrsyShareToken);
             if (avaxDejaaaShareToken != address(0)) _validateRootWard(avaxDejaaaShareToken);
             if (avaxDejtrsyShareToken != address(0)) _validateRootWard(avaxDejtrsyShareToken);
-        } else if (config.network.centrifugeId == IntegrationConstants.BNB_CENTRIFUGE_ID) {
+        } else if (localCentrifugeId == IntegrationConstants.BNB_CENTRIFUGE_ID) {
             if (bnbJaaaShareToken != address(0)) _validateRootWard(bnbJaaaShareToken);
             if (bnbJtrsyShareToken != address(0)) _validateRootWard(bnbJtrsyShareToken);
-        } else if (config.network.centrifugeId == IntegrationConstants.PLUME_CENTRIFUGE_ID) {
+        } else if (localCentrifugeId == IntegrationConstants.PLUME_CENTRIFUGE_ID) {
             if (plumeSyncDepositVault != address(0)) _validateRootWard(plumeSyncDepositVault);
 
             if (plumeJtrsyShareToken != address(0)) _validateRootWard(plumeJtrsyShareToken);
@@ -503,7 +625,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             contractAddr.code.length > 0, string(abi.encodePacked("Contract has no code: ", vm.toString(contractAddr)))
         );
         assertEq(
-            IAuth(contractAddr).wards(config.contracts.root),
+            IAuth(contractAddr).wards(root),
             1,
             string(abi.encodePacked("Root not ward of: ", vm.toString(contractAddr)))
         );
@@ -519,164 +641,136 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         // ==================== CORE MESSAGING (CoreDeployer) ====================
 
         if (!skipNewRootChecks) {
-            _validateWard(config.contracts.root, config.contracts.messageProcessor);
-            _validateWard(config.contracts.root, config.contracts.messageDispatcher);
+            _validateWard(root, messageProcessor);
+            _validateWard(root, messageDispatcher);
         }
 
-        _validateWard(config.contracts.multiAdapter, config.contracts.gateway);
-        _validateWard(config.contracts.gateway, config.contracts.multiAdapter);
-        _validateWard(config.contracts.gateway, config.contracts.messageDispatcher);
+        _validateWard(multiAdapter, gateway);
+        _validateWard(gateway, multiAdapter);
+        _validateWard(gateway, messageDispatcher);
         // NOTE: gateway.rely(messageProcessor) is set in v3.1 CoreDeployer, not in v3.0.1
         if (!skipNewRootChecks) {
-            _validateWard(config.contracts.gateway, config.contracts.messageProcessor);
+            _validateWard(gateway, messageProcessor);
         }
-        _validateWard(config.contracts.gateway, config.contracts.spoke);
+        _validateWard(gateway, spoke);
 
-        _validateWard(config.contracts.messageProcessor, config.contracts.gateway);
+        _validateWard(messageProcessor, gateway);
         // NOTE: multiAdapter.rely(messageProcessor) is set in v3.1 CoreDeployer, not in v3.0.1
         if (!skipNewRootChecks) {
-            _validateWard(config.contracts.multiAdapter, config.contracts.messageProcessor);
+            _validateWard(multiAdapter, messageProcessor);
         }
-        _validateWard(config.contracts.multiAdapter, config.contracts.hub);
+        _validateWard(multiAdapter, hub);
 
-        _validateWard(config.contracts.spoke, config.contracts.messageDispatcher);
-        _validateWard(config.contracts.balanceSheet, config.contracts.messageDispatcher);
-        _validateWard(config.contracts.contractUpdater, config.contracts.messageDispatcher);
-        if (config.contracts.vaultRegistry != address(0)) {
-            _validateWard(config.contracts.vaultRegistry, config.contracts.messageDispatcher);
-        }
-        if (config.contracts.hubHandler != address(0)) {
-            _validateWard(config.contracts.hubHandler, config.contracts.messageDispatcher);
-        }
-        _validateWard(config.contracts.messageDispatcher, config.contracts.spoke);
-        _validateWard(config.contracts.messageDispatcher, config.contracts.balanceSheet);
-        _validateWard(config.contracts.messageDispatcher, config.contracts.hub);
-        if (config.contracts.hubHandler != address(0)) {
-            _validateWard(config.contracts.messageDispatcher, config.contracts.hubHandler);
-        }
+        _validateWard(spoke, messageDispatcher);
+        _validateWard(balanceSheet, messageDispatcher);
+        _validateWard(contractUpdater, messageDispatcher);
+        if (vaultRegistry != address(0)) _validateWard(vaultRegistry, messageDispatcher);
+        if (hubHandler != address(0)) _validateWard(hubHandler, messageDispatcher);
+        _validateWard(messageDispatcher, spoke);
+        _validateWard(messageDispatcher, balanceSheet);
+        _validateWard(messageDispatcher, hub);
+        if (hubHandler != address(0)) _validateWard(messageDispatcher, hubHandler);
 
         // NOTE: gateway.rely(messageProcessor) is set in v3.1 CoreDeployer, not in v3.0.1
         if (!skipNewRootChecks) {
-            _validateWard(config.contracts.gateway, config.contracts.messageProcessor);
+            _validateWard(gateway, messageProcessor);
         }
-        _validateWard(config.contracts.spoke, config.contracts.messageProcessor);
-        _validateWard(config.contracts.balanceSheet, config.contracts.messageProcessor);
-        _validateWard(config.contracts.contractUpdater, config.contracts.messageProcessor);
-        if (config.contracts.vaultRegistry != address(0)) {
-            _validateWard(config.contracts.vaultRegistry, config.contracts.messageProcessor);
-        }
-        if (config.contracts.hubHandler != address(0)) {
-            _validateWard(config.contracts.hubHandler, config.contracts.messageProcessor);
-        }
+        _validateWard(spoke, messageProcessor);
+        _validateWard(balanceSheet, messageProcessor);
+        _validateWard(contractUpdater, messageProcessor);
+        if (vaultRegistry != address(0)) _validateWard(vaultRegistry, messageProcessor);
+        if (hubHandler != address(0)) _validateWard(hubHandler, messageProcessor);
 
         // ==================== SPOKE SIDE (CoreDeployer) ====================
 
-        _validateWard(config.contracts.messageDispatcher, config.contracts.spoke);
-        _validateWard(config.contracts.tokenFactory, config.contracts.spoke);
-        _validateWard(config.contracts.poolEscrowFactory, config.contracts.spoke);
-        if (config.contracts.vaultRegistry != address(0)) {
-            _validateWard(config.contracts.spoke, config.contracts.vaultRegistry);
-        }
+        _validateWard(messageDispatcher, spoke);
+        _validateWard(tokenFactory, spoke);
+        _validateWard(poolEscrowFactory, spoke);
+        if (vaultRegistry != address(0)) _validateWard(spoke, vaultRegistry);
 
-        _validateWard(config.contracts.messageDispatcher, config.contracts.balanceSheet);
+        _validateWard(messageDispatcher, balanceSheet);
 
         // ==================== HUB SIDE (CoreDeployer) ====================
 
-        _validateWard(config.contracts.accounting, config.contracts.hub);
-        _validateWard(config.contracts.holdings, config.contracts.hub);
-        _validateWard(config.contracts.hubRegistry, config.contracts.hub);
-        _validateWard(config.contracts.shareClassManager, config.contracts.hub);
-        _validateWard(config.contracts.messageDispatcher, config.contracts.hub);
-        if (config.contracts.hubHandler != address(0)) {
-            _validateWard(config.contracts.hub, config.contracts.hubHandler);
-        }
+        _validateWard(accounting, hub);
+        _validateWard(holdings, hub);
+        _validateWard(hubRegistry, hub);
+        _validateWard(shareClassManager, hub);
+        _validateWard(messageDispatcher, hub);
+        if (hubHandler != address(0)) _validateWard(hub, hubHandler);
 
-        if (config.contracts.hubHandler != address(0)) {
-            _validateWard(config.contracts.hubRegistry, config.contracts.hubHandler);
-            _validateWard(config.contracts.holdings, config.contracts.hubHandler);
-            _validateWard(config.contracts.shareClassManager, config.contracts.hubHandler);
-            _validateWard(config.contracts.messageDispatcher, config.contracts.hubHandler);
+        if (hubHandler != address(0)) {
+            _validateWard(hubRegistry, hubHandler);
+            _validateWard(holdings, hubHandler);
+            _validateWard(shareClassManager, hubHandler);
+            _validateWard(messageDispatcher, hubHandler);
         }
 
         // ==================== VAULT SIDE (FullDeployer) ====================
 
-        _validateWard(config.contracts.asyncRequestManager, config.contracts.spoke);
-        _validateWard(config.contracts.asyncRequestManager, config.contracts.contractUpdater);
-        _validateWard(config.contracts.asyncRequestManager, config.contracts.asyncVaultFactory);
-        _validateWard(config.contracts.asyncRequestManager, config.contracts.syncDepositVaultFactory);
+        _validateWard(asyncRequestManager, spoke);
+        _validateWard(asyncRequestManager, contractUpdater);
+        _validateWard(asyncRequestManager, asyncVaultFactory);
+        _validateWard(asyncRequestManager, syncDepositVaultFactory);
 
-        _validateWard(config.contracts.syncManager, config.contracts.contractUpdater);
-        _validateWard(config.contracts.syncManager, config.contracts.syncDepositVaultFactory);
+        _validateWard(syncManager, contractUpdater);
+        _validateWard(syncManager, syncDepositVaultFactory);
 
-        if (config.contracts.vaultRegistry != address(0)) {
-            _validateWard(config.contracts.asyncVaultFactory, config.contracts.vaultRegistry);
-            _validateWard(config.contracts.syncDepositVaultFactory, config.contracts.vaultRegistry);
+        if (vaultRegistry != address(0)) {
+            _validateWard(asyncVaultFactory, vaultRegistry);
+            _validateWard(syncDepositVaultFactory, vaultRegistry);
         }
 
         // ==================== HOOK (FullDeployer) ====================
 
-        _validateWard(config.contracts.freezeOnlyHook, config.contracts.spoke);
-        _validateWard(config.contracts.fullRestrictionsHook, config.contracts.spoke);
-        _validateWard(config.contracts.freelyTransferableHook, config.contracts.spoke);
-        _validateWard(config.contracts.redemptionRestrictionsHook, config.contracts.spoke);
+        _validateWard(freezeOnlyHook, spoke);
+        _validateWard(fullRestrictionsHook, spoke);
+        _validateWard(freelyTransferableHook, spoke);
+        _validateWard(redemptionRestrictionsHook, spoke);
 
         // ==================== BATCH REQUEST MANAGER (FullDeployer) ====================
 
-        if (config.contracts.batchRequestManager != address(0)) {
-            _validateWard(config.contracts.batchRequestManager, config.contracts.hub);
-            if (config.contracts.hubHandler != address(0)) {
-                _validateWard(config.contracts.batchRequestManager, config.contracts.hubHandler);
-            }
+        if (batchRequestManager != address(0)) {
+            _validateWard(batchRequestManager, hub);
+            if (hubHandler != address(0)) _validateWard(batchRequestManager, hubHandler);
         }
 
         // ==================== GUARDIAN (FullDeployer) ====================
 
-        if (config.contracts.protocolGuardian != address(0)) {
-            _validateWard(config.contracts.gateway, config.contracts.protocolGuardian);
-            _validateWard(config.contracts.multiAdapter, config.contracts.protocolGuardian);
-            _validateWard(config.contracts.messageDispatcher, config.contracts.protocolGuardian);
+        if (protocolGuardian != address(0)) {
+            _validateWard(gateway, protocolGuardian);
+            _validateWard(multiAdapter, protocolGuardian);
+            _validateWard(messageDispatcher, protocolGuardian);
             if (!skipNewRootChecks) {
-                _validateWard(config.contracts.root, config.contracts.protocolGuardian);
+                _validateWard(root, protocolGuardian);
             }
-            _validateWard(config.contracts.tokenRecoverer, config.contracts.protocolGuardian);
-            if (config.contracts.wormholeAdapter != address(0)) {
-                _validateWard(config.contracts.wormholeAdapter, config.contracts.protocolGuardian);
-            }
-            if (config.contracts.axelarAdapter != address(0)) {
-                _validateWard(config.contracts.axelarAdapter, config.contracts.protocolGuardian);
-            }
-            if (config.contracts.layerZeroAdapter != address(0)) {
-                _validateWard(config.contracts.layerZeroAdapter, config.contracts.protocolGuardian);
-            }
+            _validateWard(tokenRecoverer, protocolGuardian);
+            if (wormholeAdapter != address(0)) _validateWard(wormholeAdapter, protocolGuardian);
+            if (axelarAdapter != address(0)) _validateWard(axelarAdapter, protocolGuardian);
+            if (layerZeroAdapter != address(0)) _validateWard(layerZeroAdapter, protocolGuardian);
         }
 
-        if (config.contracts.opsGuardian != address(0)) {
-            _validateWard(config.contracts.multiAdapter, config.contracts.opsGuardian);
-            _validateWard(config.contracts.hub, config.contracts.opsGuardian);
+        if (opsGuardian != address(0)) {
+            _validateWard(multiAdapter, opsGuardian);
+            _validateWard(hub, opsGuardian);
 
             // Temporal wards for initial adapter wiring
-            if (config.contracts.wormholeAdapter != address(0)) {
-                _validateWard(config.contracts.wormholeAdapter, config.contracts.opsGuardian);
-            }
-            if (config.contracts.axelarAdapter != address(0)) {
-                _validateWard(config.contracts.axelarAdapter, config.contracts.opsGuardian);
-            }
-            if (config.contracts.layerZeroAdapter != address(0)) {
-                _validateWard(config.contracts.layerZeroAdapter, config.contracts.opsGuardian);
-            }
+            if (wormholeAdapter != address(0)) _validateWard(wormholeAdapter, opsGuardian);
+            if (axelarAdapter != address(0)) _validateWard(axelarAdapter, opsGuardian);
+            if (layerZeroAdapter != address(0)) _validateWard(layerZeroAdapter, opsGuardian);
         }
 
-        if (config.contracts.layerZeroAdapter != address(0) && protocolSafe != address(0)) {
-            _validateWard(config.contracts.layerZeroAdapter, protocolSafe);
+        if (layerZeroAdapter != address(0) && protocolSafe != address(0)) {
+            _validateWard(layerZeroAdapter, protocolSafe);
         }
 
         // ==================== TOKEN RECOVERER (FullDeployer) ====================
 
         if (!skipNewRootChecks) {
-            _validateWard(config.contracts.root, config.contracts.tokenRecoverer);
+            _validateWard(root, tokenRecoverer);
         }
-        _validateWard(config.contracts.tokenRecoverer, config.contracts.messageDispatcher);
-        _validateWard(config.contracts.tokenRecoverer, config.contracts.messageProcessor);
+        _validateWard(tokenRecoverer, messageDispatcher);
+        _validateWard(tokenRecoverer, messageProcessor);
     }
 
     /// @notice Helper to validate a ward relationship
@@ -697,233 +791,188 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     function _validateFileConfigurations(bool preMigration) internal view virtual {
         // ==================== CORE MESSAGING (CoreDeployer) ====================
 
+        assertEq(address(Gateway(payable(gateway)).adapter()), multiAdapter, "Gateway adapter mismatch");
         assertEq(
-            address(Gateway(payable(config.contracts.gateway)).adapter()),
-            config.contracts.multiAdapter,
-            "Gateway adapter mismatch"
+            address(Gateway(payable(gateway)).messageProperties()), gasService, "Gateway messageProperties mismatch"
         );
-        assertEq(
-            address(Gateway(payable(config.contracts.gateway)).messageProperties()),
-            config.contracts.gasService,
-            "Gateway messageProperties mismatch"
-        );
-        assertEq(
-            address(Gateway(payable(config.contracts.gateway)).processor()),
-            config.contracts.messageProcessor,
-            "Gateway processor mismatch"
-        );
+        assertEq(address(Gateway(payable(gateway)).processor()), messageProcessor, "Gateway processor mismatch");
 
         assertEq(
-            address(MultiAdapter(config.contracts.multiAdapter).messageProperties()),
-            config.contracts.gasService,
+            address(MultiAdapter(multiAdapter).messageProperties()),
+            gasService,
             "MultiAdapter messageProperties mismatch"
         );
 
         assertEq(
-            address(MessageDispatcher(config.contracts.messageDispatcher).spoke()),
-            config.contracts.spoke,
-            "MessageDispatcher spoke mismatch"
+            address(MessageDispatcher(messageDispatcher).spokeHandler()),
+            spokeHandler,
+            "MessageDispatcher spokeHandler mismatch"
         );
         assertEq(
-            address(MessageDispatcher(config.contracts.messageDispatcher).balanceSheet()),
-            config.contracts.balanceSheet,
+            address(MessageDispatcher(messageDispatcher).balanceSheet()),
+            balanceSheet,
             "MessageDispatcher balanceSheet mismatch"
         );
         assertEq(
-            address(MessageDispatcher(config.contracts.messageDispatcher).contractUpdater()),
-            config.contracts.contractUpdater,
+            address(MessageDispatcher(messageDispatcher).contractUpdater()),
+            contractUpdater,
             "MessageDispatcher contractUpdater mismatch"
         );
         assertEq(
-            address(MessageDispatcher(config.contracts.messageDispatcher).tokenRecoverer()),
-            config.contracts.tokenRecoverer,
+            address(MessageDispatcher(messageDispatcher).tokenRecoverer()),
+            tokenRecoverer,
             "MessageDispatcher tokenRecoverer mismatch"
         );
-        if (config.contracts.vaultRegistry != address(0)) {
+        if (vaultRegistry != address(0)) {
             assertEq(
-                address(MessageDispatcher(config.contracts.messageDispatcher).vaultRegistry()),
-                config.contracts.vaultRegistry,
+                address(MessageDispatcher(messageDispatcher).vaultRegistry()),
+                vaultRegistry,
                 "MessageDispatcher vaultRegistry mismatch"
             );
         }
-        if (config.contracts.hubHandler != address(0)) {
+        if (hubHandler != address(0)) {
             assertEq(
-                address(MessageDispatcher(config.contracts.messageDispatcher).hubHandler()),
-                config.contracts.hubHandler,
+                address(MessageDispatcher(messageDispatcher).hubHandler()),
+                hubHandler,
                 "MessageDispatcher hubHandler mismatch"
             );
         }
 
         assertEq(
-            address(MessageProcessor(config.contracts.messageProcessor).multiAdapter()),
-            config.contracts.multiAdapter,
+            address(MessageProcessor(messageProcessor).multiAdapter()),
+            multiAdapter,
             "MessageProcessor multiAdapter mismatch"
         );
+        assertEq(address(MessageProcessor(messageProcessor).gateway()), gateway, "MessageProcessor gateway mismatch");
         assertEq(
-            address(MessageProcessor(config.contracts.messageProcessor).gateway()),
-            config.contracts.gateway,
-            "MessageProcessor gateway mismatch"
+            address(MessageProcessor(messageProcessor).spokeHandler()),
+            spokeHandler,
+            "MessageProcessor spokeHandler mismatch"
         );
         assertEq(
-            address(MessageProcessor(config.contracts.messageProcessor).spoke()),
-            config.contracts.spoke,
-            "MessageProcessor spoke mismatch"
-        );
-        assertEq(
-            address(MessageProcessor(config.contracts.messageProcessor).balanceSheet()),
-            config.contracts.balanceSheet,
+            address(MessageProcessor(messageProcessor).balanceSheet()),
+            balanceSheet,
             "MessageProcessor balanceSheet mismatch"
         );
         assertEq(
-            address(MessageProcessor(config.contracts.messageProcessor).contractUpdater()),
-            config.contracts.contractUpdater,
+            address(MessageProcessor(messageProcessor).contractUpdater()),
+            contractUpdater,
             "MessageProcessor contractUpdater mismatch"
         );
         assertEq(
-            address(MessageProcessor(config.contracts.messageProcessor).tokenRecoverer()),
-            config.contracts.tokenRecoverer,
+            address(MessageProcessor(messageProcessor).tokenRecoverer()),
+            tokenRecoverer,
             "MessageProcessor tokenRecoverer mismatch"
         );
-        if (config.contracts.vaultRegistry != address(0)) {
+        if (vaultRegistry != address(0)) {
             assertEq(
-                address(MessageProcessor(config.contracts.messageProcessor).vaultRegistry()),
-                config.contracts.vaultRegistry,
+                address(MessageProcessor(messageProcessor).vaultRegistry()),
+                vaultRegistry,
                 "MessageProcessor vaultRegistry mismatch"
             );
         }
-        if (config.contracts.hubHandler != address(0)) {
+        if (hubHandler != address(0)) {
             assertEq(
-                address(MessageProcessor(config.contracts.messageProcessor).hubHandler()),
-                config.contracts.hubHandler,
+                address(MessageProcessor(messageProcessor).hubHandler()),
+                hubHandler,
                 "MessageProcessor hubHandler mismatch"
             );
         }
 
         // ==================== SPOKE SIDE (CoreDeployer) ====================
 
-        assertEq(address(Spoke(config.contracts.spoke).gateway()), config.contracts.gateway, "Spoke gateway mismatch");
-        assertEq(
-            address(Spoke(config.contracts.spoke).poolEscrowFactory()),
-            config.contracts.poolEscrowFactory,
-            "Spoke poolEscrowFactory mismatch"
-        );
+        assertEq(address(Spoke(spoke).spokeRegistry()), spokeRegistry, "Spoke spokeRegistry mismatch");
         // NOTE: spoke.sender is set by MigrationSpell, not CoreDeployer (when reusing existing Root)
         if (!preMigration) {
-            assertEq(
-                address(Spoke(config.contracts.spoke).sender()),
-                config.contracts.messageDispatcher,
-                "Spoke sender mismatch"
-            );
+            assertEq(address(Spoke(spoke).sender()), messageDispatcher, "Spoke sender mismatch");
         }
 
         assertEq(
-            address(BalanceSheet(config.contracts.balanceSheet).spoke()),
-            config.contracts.spoke,
-            "BalanceSheet spoke mismatch"
+            address(SpokeHandler(spokeHandler).spokeRegistry()), spokeRegistry, "SpokeHandler spokeRegistry mismatch"
         );
+        assertEq(address(SpokeHandler(spokeHandler).tokenFactory()), tokenFactory, "SpokeHandler tokenFactory mismatch");
         assertEq(
-            address(BalanceSheet(config.contracts.balanceSheet).gateway()),
-            config.contracts.gateway,
-            "BalanceSheet gateway mismatch"
-        );
-        assertEq(
-            address(BalanceSheet(config.contracts.balanceSheet).poolEscrowProvider()),
-            config.contracts.poolEscrowFactory,
-            "BalanceSheet poolEscrowProvider mismatch"
-        );
-        assertEq(
-            address(BalanceSheet(config.contracts.balanceSheet).sender()),
-            config.contracts.messageDispatcher,
-            "BalanceSheet sender mismatch"
+            address(SpokeHandler(spokeHandler).poolEscrowFactory()),
+            poolEscrowFactory,
+            "SpokeHandler poolEscrowFactory mismatch"
         );
 
-        if (config.contracts.vaultRegistry != address(0)) {
+        assertEq(
+            address(BalanceSheet(balanceSheet).spoke()), spokeRegistry, "BalanceSheet spoke mismatch"
+        );
+        assertEq(address(BalanceSheet(balanceSheet).gateway()), gateway, "BalanceSheet gateway mismatch");
+        assertEq(
+            address(BalanceSheet(balanceSheet).poolEscrowProvider()),
+            poolEscrowFactory,
+            "BalanceSheet poolEscrowProvider mismatch"
+        );
+        assertEq(address(BalanceSheet(balanceSheet).sender()), messageDispatcher, "BalanceSheet sender mismatch");
+
+        if (vaultRegistry != address(0)) {
             assertEq(
-                address(VaultRegistry(config.contracts.vaultRegistry).spoke()),
-                config.contracts.spoke,
-                "VaultRegistry spoke mismatch"
+                address(VaultRegistry(vaultRegistry).spokeRegistry()),
+                spokeRegistry,
+                "VaultRegistry spokeRegistry mismatch"
             );
         }
 
         // ==================== HUB SIDE (CoreDeployer) ====================
 
-        assertEq(address(Hub(config.contracts.hub).sender()), config.contracts.messageDispatcher, "Hub sender mismatch");
+        assertEq(address(Hub(hub).sender()), messageDispatcher, "Hub sender mismatch");
 
-        if (config.contracts.hubHandler != address(0)) {
-            assertEq(
-                address(HubHandler(config.contracts.hubHandler).sender()),
-                config.contracts.messageDispatcher,
-                "HubHandler sender mismatch"
-            );
+        if (hubHandler != address(0)) {
+            assertEq(address(HubHandler(hubHandler).sender()), messageDispatcher, "HubHandler sender mismatch");
         }
 
         // ==================== VAULT SIDE (FullDeployer) ====================
 
-        if (config.contracts.refundEscrowFactory != address(0) && config.contracts.subsidyManager != address(0)) {
+        if (refundEscrowFactory != address(0) && subsidyManager != address(0)) {
             assertEq(
-                address(RefundEscrowFactory(config.contracts.refundEscrowFactory).controller()),
-                config.contracts.subsidyManager,
+                address(RefundEscrowFactory(refundEscrowFactory).controller()),
+                subsidyManager,
                 "RefundEscrowFactory controller mismatch"
             );
         }
 
         assertEq(
-            address(AsyncRequestManager(payable(config.contracts.asyncRequestManager)).spoke()),
-            config.contracts.spoke,
+            address(AsyncRequestManager(payable(asyncRequestManager)).spoke()),
+            spoke,
             "AsyncRequestManager spoke mismatch"
         );
         assertEq(
-            address(AsyncRequestManager(payable(config.contracts.asyncRequestManager)).balanceSheet()),
-            config.contracts.balanceSheet,
+            address(AsyncRequestManager(payable(asyncRequestManager)).balanceSheet()),
+            balanceSheet,
             "AsyncRequestManager balanceSheet mismatch"
         );
-        if (config.contracts.vaultRegistry != address(0)) {
+        if (vaultRegistry != address(0)) {
             assertEq(
-                address(AsyncRequestManager(payable(config.contracts.asyncRequestManager)).vaultRegistry()),
-                config.contracts.vaultRegistry,
+                address(AsyncRequestManager(payable(asyncRequestManager)).vaultRegistry()),
+                vaultRegistry,
                 "AsyncRequestManager vaultRegistry mismatch"
             );
         }
 
-        assertEq(
-            address(SyncManager(config.contracts.syncManager).spoke()),
-            config.contracts.spoke,
-            "SyncManager spoke mismatch"
-        );
-        assertEq(
-            address(SyncManager(config.contracts.syncManager).balanceSheet()),
-            config.contracts.balanceSheet,
-            "SyncManager balanceSheet mismatch"
-        );
-        if (config.contracts.vaultRegistry != address(0)) {
+        assertEq(address(SyncManager(syncManager).spoke()), spokeV3_1_0, "SyncManager spoke mismatch");
+        assertEq(address(SyncManager(syncManager).balanceSheet()), balanceSheet, "SyncManager balanceSheet mismatch");
+        if (vaultRegistry != address(0)) {
             assertEq(
-                address(SyncManager(config.contracts.syncManager).vaultRegistry()),
-                config.contracts.vaultRegistry,
-                "SyncManager vaultRegistry mismatch"
+                address(SyncManager(syncManager).vaultRegistry()), vaultRegistry, "SyncManager vaultRegistry mismatch"
             );
         }
 
-        if (config.contracts.batchRequestManager != address(0)) {
-            assertEq(
-                address(BatchRequestManager(config.contracts.batchRequestManager).hub()),
-                config.contracts.hub,
-                "BatchRequestManager hub mismatch"
-            );
+        if (batchRequestManager != address(0)) {
+            assertEq(address(BatchRequestManager(batchRequestManager).hub()), hub, "BatchRequestManager hub mismatch");
         }
 
         // ==================== GUARDIAN  ====================
 
-        if (config.contracts.opsGuardian != address(0)) {
-            address opsSafeAddr = address(OpsGuardian(config.contracts.opsGuardian).opsSafe());
+        if (opsGuardian != address(0)) {
+            address opsSafeAddr = address(OpsGuardian(opsGuardian).opsSafe());
             assertTrue(opsSafeAddr != address(0), "OpsGuardian opsSafe not configured");
         }
 
-        if (config.contracts.protocolGuardian != address(0) && protocolSafe != address(0)) {
-            assertEq(
-                address(ProtocolGuardian(config.contracts.protocolGuardian).safe()),
-                protocolSafe,
-                "ProtocolGuardian safe mismatch"
-            );
+        if (protocolGuardian != address(0) && protocolSafe != address(0)) {
+            assertEq(address(ProtocolGuardian(protocolGuardian).safe()), protocolSafe, "ProtocolGuardian safe mismatch");
         }
     }
 
@@ -933,16 +982,9 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
     /// @notice Validates Root endorsements
     function _validateEndorsements() internal view {
-        assertTrue(
-            Root(config.contracts.root).endorsed(config.contracts.balanceSheet), "BalanceSheet not endorsed by Root"
-        );
-        assertTrue(
-            Root(config.contracts.root).endorsed(config.contracts.asyncRequestManager),
-            "AsyncRequestManager not endorsed by Root"
-        );
-        assertTrue(
-            Root(config.contracts.root).endorsed(config.contracts.vaultRouter), "VaultRouter not endorsed by Root"
-        );
+        assertTrue(Root(root).endorsed(balanceSheet), "BalanceSheet not endorsed by Root");
+        assertTrue(Root(root).endorsed(asyncRequestManager), "AsyncRequestManager not endorsed by Root");
+        assertTrue(Root(root).endorsed(router), "VaultRouter not endorsed by Root");
     }
 
     //----------------------------------------------------------------------------------------------
@@ -951,7 +993,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
     /// @notice Validates MultiAdapter configurations for all connected chains (GLOBAL_POOL only)
     function _validateGuardianAdapterConfigurations() internal view virtual {
-        MultiAdapter multiAdapterContract = MultiAdapter(config.contracts.multiAdapter);
+        MultiAdapter multiAdapterContract = MultiAdapter(multiAdapter);
         ChainConfigs.ChainConfig[SUPPORTED_CHAINS_COUNT] memory chains = ChainConfigs.getAllChains();
         PoolId globalPool = PoolId.wrap(0);
 
@@ -970,37 +1012,29 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         for (uint256 i = 0; i < chains.length; i++) {
             if (_shouldValidateChain(chains[i].centrifugeId)) {
                 // Always validate Wormhole mapping
-                if (config.contracts.wormholeAdapter != address(0)) {
+                if (wormholeAdapter != address(0)) {
                     _validateWormholeMapping(
-                        WormholeAdapter(config.contracts.wormholeAdapter),
-                        chains[i].wormholeId,
-                        chains[i].centrifugeId,
-                        chains[i].name
+                        WormholeAdapter(wormholeAdapter), chains[i].wormholeId, chains[i].centrifugeId, chains[i].name
                     );
                 }
 
                 // Validate Axelar mapping if both current chain and target chain support it
                 if (
-                    config.contracts.axelarAdapter != address(0)
-                        && config.network.centrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID
+                    axelarAdapter != address(0) && localCentrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID
                         && chains[i].hasAxelar
                 ) {
                     _validateAxelarMapping(
-                        AxelarAdapter(config.contracts.axelarAdapter),
-                        chains[i].axelarId,
-                        chains[i].centrifugeId,
-                        chains[i].name
+                        AxelarAdapter(axelarAdapter), chains[i].axelarId, chains[i].centrifugeId, chains[i].name
                     );
                 }
 
                 // Validate LayerZero mapping if both current chain and target chain support it
                 if (
-                    config.contracts.layerZeroAdapter != address(0)
-                        && config.network.centrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID
+                    layerZeroAdapter != address(0) && localCentrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID
                         && chains[i].hasLayerZero
                 ) {
                     _validateLayerZeroMapping(
-                        LayerZeroAdapter(config.contracts.layerZeroAdapter),
+                        LayerZeroAdapter(layerZeroAdapter),
                         chains[i].layerZeroEid,
                         chains[i].centrifugeId,
                         chains[i].name
@@ -1020,10 +1054,10 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     /// @return true if adapters are deployed and wired, false otherwise
     function _shouldValidateAdapters() internal view returns (bool) {
         // If wormholeAdapter is not set, assume adapters aren't deployed yet
-        if (config.contracts.wormholeAdapter == address(0)) return false;
+        if (wormholeAdapter == address(0)) return false;
 
         // Check if adapters are wired (quorum > 0 for any chain)
-        MultiAdapter multiAdapterContract = MultiAdapter(config.contracts.multiAdapter);
+        MultiAdapter multiAdapterContract = MultiAdapter(multiAdapter);
         PoolId globalPool = PoolId.wrap(0);
         uint8 sampleQuorum = multiAdapterContract.quorum(IntegrationConstants.BASE_CENTRIFUGE_ID, globalPool);
         return sampleQuorum > 0;
@@ -1033,7 +1067,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     /// @param targetChainId The Centrifuge ID of the target chain
     /// @return true if the chain should be validated from the current chain
     function _shouldValidateChain(uint16 targetChainId) internal view returns (bool) {
-        if (config.network.centrifugeId == targetChainId) {
+        if (localCentrifugeId == targetChainId) {
             return false;
         }
         return true;
@@ -1077,8 +1111,8 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
     /// @notice Calculates expected quorum based on source and target chain capabilities
     function _calculateExpectedQuorum(ChainConfigs.ChainConfig memory chainConfig) internal view returns (uint8) {
-        bool sourceSupportsAxelar = config.network.centrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID;
-        bool sourceSupportsLayerZero = config.contracts.layerZeroAdapter != address(0);
+        bool sourceSupportsAxelar = localCentrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID;
+        bool sourceSupportsLayerZero = layerZeroAdapter != address(0);
 
         uint8 expectedQuorum = 1; // Wormhole (always)
         if (sourceSupportsAxelar && chainConfig.hasAxelar) expectedQuorum++;
@@ -1098,19 +1132,19 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         IAdapter primaryAdapter = multiAdapterContract.adapters(centrifugeId, poolId, 0);
         assertEq(
             address(primaryAdapter),
-            config.contracts.wormholeAdapter,
+            wormholeAdapter,
             _formatAdapterError("MultiAdapter", "primary adapter", chainConfig.name)
         );
 
         uint8 adapterIndex = 1;
-        bool sourceSupportsAxelar = config.network.centrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID;
-        bool sourceSupportsLayerZero = config.contracts.layerZeroAdapter != address(0);
+        bool sourceSupportsAxelar = localCentrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID;
+        bool sourceSupportsLayerZero = layerZeroAdapter != address(0);
 
         if (sourceSupportsAxelar && chainConfig.hasAxelar) {
             IAdapter axelarAdapterInterface = multiAdapterContract.adapters(centrifugeId, poolId, adapterIndex);
             assertEq(
                 address(axelarAdapterInterface),
-                config.contracts.axelarAdapter,
+                axelarAdapter,
                 _formatAdapterError("MultiAdapter", "Axelar adapter", chainConfig.name)
             );
             adapterIndex++;
@@ -1119,7 +1153,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             IAdapter lzAdapterInterface = multiAdapterContract.adapters(centrifugeId, poolId, adapterIndex);
             assertEq(
                 address(lzAdapterInterface),
-                config.contracts.layerZeroAdapter,
+                layerZeroAdapter,
                 _formatAdapterError("MultiAdapter", "LayerZero adapter", chainConfig.name)
             );
         }
@@ -1137,22 +1171,14 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         assertEq(
             sourceCentrifugeId, centrifugeId, _formatAdapterError("WormholeAdapter", "source centrifugeId", chainName)
         );
-        assertEq(
-            sourceAddr,
-            config.contracts.wormholeAdapter,
-            _formatAdapterError("WormholeAdapter", "source address", chainName)
-        );
+        assertEq(sourceAddr, wormholeAdapter, _formatAdapterError("WormholeAdapter", "source address", chainName));
 
         // Validate destination (outbound) mapping
         (uint16 destWormholeId, address destAddr) = wormholeAdapterContract.destinations(centrifugeId);
         assertEq(
             destWormholeId, wormholeId, _formatAdapterError("WormholeAdapter", "destination wormholeId", chainName)
         );
-        assertEq(
-            destAddr,
-            config.contracts.wormholeAdapter,
-            _formatAdapterError("WormholeAdapter", "destination address", chainName)
-        );
+        assertEq(destAddr, wormholeAdapter, _formatAdapterError("WormholeAdapter", "destination address", chainName));
     }
 
     /// @notice Helper function to validate Axelar adapter source/destination mappings
@@ -1170,7 +1196,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             string(abi.encodePacked("AxelarAdapter source centrifugeId mismatch for ", chainName))
         );
         // Note: addressHash is keccak256 of the remote adapter address string
-        bytes32 expectedAddressHash = keccak256(abi.encodePacked(vm.toString(config.contracts.axelarAdapter)));
+        bytes32 expectedAddressHash = keccak256(abi.encodePacked(vm.toString(axelarAdapter)));
         assertEq(
             sourceAddressHash,
             expectedAddressHash,
@@ -1186,7 +1212,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         );
         assertEq(
             keccak256(bytes(destAddr)),
-            keccak256(abi.encodePacked(vm.toString(config.contracts.axelarAdapter))),
+            keccak256(abi.encodePacked(vm.toString(axelarAdapter))),
             _formatAdapterError("AxelarAdapter", "destination address", chainName)
         );
     }
@@ -1203,11 +1229,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         assertEq(
             sourceCentrifugeId, centrifugeId, _formatAdapterError("LayerZeroAdapter", "source centrifugeId", chainName)
         );
-        assertEq(
-            sourceAddr,
-            config.contracts.layerZeroAdapter,
-            _formatAdapterError("LayerZeroAdapter", "source address", chainName)
-        );
+        assertEq(sourceAddr, layerZeroAdapter, _formatAdapterError("LayerZeroAdapter", "source address", chainName));
 
         // Validate destination (outbound) mapping
         (uint32 destLayerZeroEid, address destAddr) = layerZeroAdapterContract.destinations(centrifugeId);
@@ -1216,11 +1238,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             layerZeroEid,
             _formatAdapterError("LayerZeroAdapter", "destination layerZeroEid", chainName)
         );
-        assertEq(
-            destAddr,
-            config.contracts.layerZeroAdapter,
-            _formatAdapterError("LayerZeroAdapter", "destination address", chainName)
-        );
+        assertEq(destAddr, layerZeroAdapter, _formatAdapterError("LayerZeroAdapter", "destination address", chainName));
     }
 
     /// @notice Formats standardized adapter error messages
@@ -1249,11 +1267,11 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         address vaultAddress,
         string memory tokenName
     ) public view virtual {
-        _validateShareTokenWards(shareToken, config.contracts.balanceSheet, config.contracts.spoke, tokenName);
+        _validateShareTokenWards(shareToken, balanceSheet, spoke, tokenName);
 
         _validateSpokeDeploymentChanges(poolId, shareClassId, shareToken, vaultAddress, tokenName);
 
-        if (config.contracts.asyncRequestManager != address(0) && vaultAddress != address(0)) {
+        if (asyncRequestManager != address(0) && vaultAddress != address(0)) {
             _validateVaultRegistration(poolId, shareClassId, assetId, vaultAddress, tokenName);
         }
 
@@ -1261,10 +1279,8 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         _validateDeployedV3Vault(shareToken, assetId, poolId, shareClassId, tokenName);
 
-        if (config.contracts.asyncRequestManager != address(0)) {
-            _validateBalanceSheetManager(
-                poolId, config.contracts.asyncRequestManager, config.contracts.balanceSheet, tokenName
-            );
+        if (asyncRequestManager != address(0)) {
+            _validateBalanceSheetManager(poolId, asyncRequestManager, balanceSheet, tokenName);
         }
     }
 
@@ -1276,7 +1292,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         string memory tokenName
     ) internal view virtual {
         assertEq(
-            IAuth(address(shareToken)).wards(config.contracts.root),
+            IAuth(address(shareToken)).wards(root),
             1,
             string(abi.encodePacked(tokenName, " share token should have ROOT as ward"))
         );
@@ -1301,14 +1317,14 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         string memory tokenName
     ) internal view virtual {
         if (isV3_1()) {
-            IShareToken linkedShareToken = ISpoke(config.contracts.spoke).shareToken(poolId, shareClassId);
+            IShareToken linkedShareToken = ISpokeRegistry(spokeRegistry).shareToken(poolId, shareClassId);
             assertEq(
                 address(linkedShareToken),
                 address(shareToken),
                 string(abi.encodePacked(tokenName, " share token should be linked to pool/share class in spoke"))
             );
         } else {
-            address linkedShareToken = IV3_0_1_Spoke(config.contracts.spoke).shareToken(poolId, shareClassId);
+            address linkedShareToken = IV3_0_1_Spoke(spoke).shareToken(poolId, shareClassId);
             assertEq(
                 linkedShareToken,
                 address(shareToken),
@@ -1318,26 +1334,26 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         if (isV3_1()) {
             assertTrue(
-                ISpoke(config.contracts.spoke).isPoolActive(poolId),
+                ISpokeRegistry(spokeRegistry).isPoolActive(poolId),
                 string(abi.encodePacked(tokenName, " pool should be active on spoke"))
             );
         } else {
             assertTrue(
-                IV3_0_1_Spoke(config.contracts.spoke).isPoolActive(poolId),
+                IV3_0_1_Spoke(spoke).isPoolActive(poolId),
                 string(abi.encodePacked(tokenName, " pool should be active on spoke"))
             );
         }
 
         if (isV3_1()) {
             assertTrue(
-                IVaultRegistry(config.contracts.vaultRegistry).isLinked(IVault(vaultAddress)),
+                IVaultRegistry(vaultRegistry).isLinked(IVault(vaultAddress)),
                 string(
                     abi.encodePacked("Deployed V3 ", tokenName, " vault should be marked as linked in VaultRegistry")
                 )
             );
         } else {
             assertTrue(
-                IV3_0_1_Spoke(config.contracts.spoke).isLinked(vaultAddress),
+                IV3_0_1_Spoke(spoke).isLinked(vaultAddress),
                 string(abi.encodePacked("Deployed V3 ", tokenName, " vault should be marked as linked in spoke"))
             );
         }
@@ -1355,12 +1371,10 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         if (isV3_1()) {
             actualVault = address(
-                IVaultRegistry(config.contracts.vaultRegistry)
-                    .vault(poolId, shareClassId, assetId, IRequestManager(config.contracts.asyncRequestManager))
+                IVaultRegistry(vaultRegistry).vault(poolId, shareClassId, assetId, IRequestManager(asyncRequestManager))
             );
         } else {
-            actualVault =
-                IV3_0_1_AsyncRequestManager(config.contracts.asyncRequestManager).vault(poolId, shareClassId, assetId);
+            actualVault = IV3_0_1_AsyncRequestManager(asyncRequestManager).vault(poolId, shareClassId, assetId);
         }
 
         assertEq(
@@ -1386,9 +1400,9 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         address assetAddress;
 
         if (isV3_1()) {
-            (assetAddress,) = ISpoke(config.contracts.spoke).idToAsset(assetId);
+            (assetAddress,) = ISpokeRegistry(spokeRegistry).idToAsset(assetId);
         } else {
-            (assetAddress,) = IV3_0_1_Spoke(config.contracts.spoke).idToAsset(assetId);
+            (assetAddress,) = IV3_0_1_Spoke(spoke).idToAsset(assetId);
         }
 
         address vaultFromShareToken;
@@ -1421,9 +1435,9 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         address assetAddress;
 
         if (isV3_1()) {
-            (assetAddress,) = ISpoke(config.contracts.spoke).idToAsset(assetId);
+            (assetAddress,) = ISpokeRegistry(spokeRegistry).idToAsset(assetId);
         } else {
-            (assetAddress,) = IV3_0_1_Spoke(config.contracts.spoke).idToAsset(assetId);
+            (assetAddress,) = IV3_0_1_Spoke(spoke).idToAsset(assetId);
         }
 
         address v3VaultAddress;
@@ -1478,20 +1492,20 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     // VAULT VALIDATION (Chain-Specific)
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Validates vaults for the current chain based on centrifugeId
+    /// @notice Validates vaults for the current chain based on localCentrifugeId
     /// @dev Only called for production environments (testnets are skipped at the caller level)
     function _validateVaults() internal view {
-        if (config.network.centrifugeId == IntegrationConstants.ETH_CENTRIFUGE_ID) {
+        if (localCentrifugeId == IntegrationConstants.ETH_CENTRIFUGE_ID) {
             _validateEthereumVaults();
-        } else if (config.network.centrifugeId == IntegrationConstants.BASE_CENTRIFUGE_ID) {
+        } else if (localCentrifugeId == IntegrationConstants.BASE_CENTRIFUGE_ID) {
             _validateBaseVaults();
-        } else if (config.network.centrifugeId == IntegrationConstants.ARBITRUM_CENTRIFUGE_ID) {
+        } else if (localCentrifugeId == IntegrationConstants.ARBITRUM_CENTRIFUGE_ID) {
             _validateArbitrumVaults();
-        } else if (config.network.centrifugeId == IntegrationConstants.AVAX_CENTRIFUGE_ID) {
+        } else if (localCentrifugeId == IntegrationConstants.AVAX_CENTRIFUGE_ID) {
             _validateAvalancheVaults();
-        } else if (config.network.centrifugeId == IntegrationConstants.BNB_CENTRIFUGE_ID) {
+        } else if (localCentrifugeId == IntegrationConstants.BNB_CENTRIFUGE_ID) {
             _validateBNBVaults();
-        } else if (config.network.centrifugeId == IntegrationConstants.PLUME_CENTRIFUGE_ID) {
+        } else if (localCentrifugeId == IntegrationConstants.PLUME_CENTRIFUGE_ID) {
             _validatePlumeVaults();
         }
     }
@@ -1502,14 +1516,13 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         AssetId jtrsyAssetId;
         AssetId jaaaAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpoke(config.contracts.spoke).assetToId(IntegrationConstants.ETH_USDC, 0);
-            jtrsyAssetId = ISpoke(config.contracts.spoke).assetToId(IntegrationConstants.ETH_JTRSY_SHARE_TOKEN, 0);
-            jaaaAssetId = ISpoke(config.contracts.spoke).assetToId(IntegrationConstants.ETH_JAAA_SHARE_TOKEN, 0);
+            usdcAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.ETH_USDC, 0);
+            jtrsyAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.ETH_JTRSY_SHARE_TOKEN, 0);
+            jaaaAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.ETH_JAAA_SHARE_TOKEN, 0);
         } else {
-            usdcAssetId = IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.ETH_USDC, 0);
-            jtrsyAssetId =
-                IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.ETH_JTRSY_SHARE_TOKEN, 0);
-            jaaaAssetId = IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.ETH_JAAA_SHARE_TOKEN, 0);
+            usdcAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.ETH_USDC, 0);
+            jtrsyAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.ETH_JTRSY_SHARE_TOKEN, 0);
+            jaaaAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.ETH_JAAA_SHARE_TOKEN, 0);
         }
 
         if (ethJaaaVault != address(0) && ethJaaaShareToken != address(0)) {
@@ -1605,9 +1618,9 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     function _validateBaseVaults() internal view {
         AssetId usdcAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpoke(config.contracts.spoke).assetToId(IntegrationConstants.BASE_USDC, 0);
+            usdcAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.BASE_USDC, 0);
         } else {
-            usdcAssetId = IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.BASE_USDC, 0);
+            usdcAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.BASE_USDC, 0);
         }
 
         if (baseDejaaaUsdcVault != address(0) && baseDejaaaShareToken != address(0)) {
@@ -1650,9 +1663,9 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     function _validateAvalancheVaults() internal view {
         AssetId usdcAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpoke(config.contracts.spoke).assetToId(IntegrationConstants.AVAX_USDC, 0);
+            usdcAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.AVAX_USDC, 0);
         } else {
-            usdcAssetId = IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.AVAX_USDC, 0);
+            usdcAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.AVAX_USDC, 0);
         }
 
         if (avaxJaaaVault != address(0) && avaxJaaaShareToken != address(0)) {
@@ -1712,9 +1725,9 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         AssetId usdcAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpoke(config.contracts.spoke).assetToId(IntegrationConstants.ARBITRUM_USDC, 0);
+            usdcAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.ARBITRUM_USDC, 0);
         } else {
-            usdcAssetId = IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.ARBITRUM_USDC, 0);
+            usdcAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.ARBITRUM_USDC, 0);
         }
 
         if (arbitrumJtrsyUsdcVault != address(0) && arbitrumJtrsyShareToken != address(0)) {
@@ -1740,9 +1753,9 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         AssetId usdcAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpoke(config.contracts.spoke).assetToId(IntegrationConstants.BNB_USDC, 0);
+            usdcAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.BNB_USDC, 0);
         } else {
-            usdcAssetId = IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.BNB_USDC, 0);
+            usdcAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.BNB_USDC, 0);
         }
 
         // NOTE: BNB_JTRSY_USDC vault (0x5aa84705a2CB2054ed303565336F188e6bfFbAF5) skipped due to unset BalanceSheet.manager(IntegrationConstants.JTRSY_POOL_ID, vault)
@@ -1762,11 +1775,11 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         AssetId usdcAssetId;
         AssetId pusdAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpoke(config.contracts.spoke).assetToId(IntegrationConstants.PLUME_USDC, 0);
-            pusdAssetId = ISpoke(config.contracts.spoke).assetToId(IntegrationConstants.PLUME_PUSD, 0);
+            usdcAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.PLUME_USDC, 0);
+            pusdAssetId = ISpokeRegistry(spokeRegistry).assetToId(IntegrationConstants.PLUME_PUSD, 0);
         } else {
-            usdcAssetId = IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.PLUME_USDC, 0);
-            pusdAssetId = IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.PLUME_PUSD, 0);
+            usdcAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.PLUME_USDC, 0);
+            pusdAssetId = IV3_0_1_Spoke(spoke).assetToId(IntegrationConstants.PLUME_PUSD, 0);
         }
 
         if (plumeAcrdxUsdcVault != address(0) && plumeAcrdxShareToken != address(0)) {

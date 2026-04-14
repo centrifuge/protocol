@@ -9,7 +9,7 @@ import {IERC7575} from "../../../src/misc/interfaces/IERC7575.sol";
 import {IERC20Metadata} from "../../../src/misc/interfaces/IERC20.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
+import {ISpokeV3_1_0} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
@@ -57,7 +57,7 @@ contract AsyncRequestManagerTest is Test {
     address immutable RECEIVER = makeAddr("RECEIVER");
     address immutable CONTROLLER = makeAddr("CONTROLLER");
 
-    ISpoke spoke = ISpoke(address(new IsContract()));
+    ISpokeV3_1_0 spoke = ISpokeV3_1_0(address(new IsContract()));
     IBalanceSheet balanceSheet = IBalanceSheet(address(new IsContract()));
     IVaultRegistry vaultRegistry = IVaultRegistry(address(new IsContract()));
     ISubsidyManager subsidyManager = ISubsidyManager(address(new IsContract()));
@@ -99,13 +99,19 @@ contract AsyncRequestManagerTest is Test {
 
     function _setupMocks() internal {
         vm.mockCall(
-            address(spoke), abi.encodeWithSelector(spoke.shareToken.selector, POOL_A, SC_1), abi.encode(shareToken)
+            address(spoke),
+            abi.encodeWithSelector(spoke.shareToken.selector, POOL_A, SC_1),
+            abi.encode(shareToken)
         );
         vm.mockCall(
-            address(spoke), abi.encodeWithSelector(spoke.idToAsset.selector, ASSET_ID), abi.encode(asset, TOKEN_ID)
+            address(spoke),
+            abi.encodeWithSelector(spoke.idToAsset.selector, ASSET_ID),
+            abi.encode(asset, TOKEN_ID)
         );
         vm.mockCall(
-            address(spoke), abi.encodeWithSelector(spoke.pricesPoolPer.selector), abi.encode(d18(1e18), d18(1e18))
+            address(spoke),
+            abi.encodeWithSelector(spoke.pricesPoolPer.selector),
+            abi.encode(d18(1e18), d18(1e18))
         );
 
         vm.mockCall(
@@ -310,7 +316,11 @@ contract AsyncRequestManagerTestRequestRedeem is AsyncRequestManagerTest {
         vm.prank(AUTH);
         manager.requestRedeem(asyncVault, SHARES, CONTROLLER, USER, address(0), false);
 
-        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.pricesPoolPer.selector), abi.encode(d18(1), d18(1)));
+        vm.mockCall(
+            address(spoke),
+            abi.encodeWithSelector(spoke.pricesPoolPer.selector),
+            abi.encode(d18(1), d18(1))
+        );
 
         vm.prank(AUTH);
         manager.cancelRedeemRequest(asyncVault, CONTROLLER, address(0));
@@ -471,7 +481,11 @@ contract AsyncRequestManagerTestCancelRedeemRequest is AsyncRequestManagerTest {
         vm.prank(AUTH);
         manager.requestRedeem(asyncVault, SHARES, CONTROLLER, USER, address(0), false);
 
-        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.pricesPoolPer.selector), abi.encode(d18(1), d18(1)));
+        vm.mockCall(
+            address(spoke),
+            abi.encodeWithSelector(spoke.pricesPoolPer.selector),
+            abi.encode(d18(1), d18(1))
+        );
 
         vm.prank(AUTH);
         manager.cancelRedeemRequest(asyncVault, CONTROLLER, address(0));
@@ -488,7 +502,11 @@ contract AsyncRequestManagerTestCancelRedeemRequest is AsyncRequestManagerTest {
         vm.prank(AUTH);
         manager.requestRedeem(asyncVault, SHARES, CONTROLLER, USER, address(0), false);
 
-        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.pricesPoolPer.selector), abi.encode(d18(1), d18(1)));
+        vm.mockCall(
+            address(spoke),
+            abi.encodeWithSelector(spoke.pricesPoolPer.selector),
+            abi.encode(d18(1), d18(1))
+        );
 
         vm.prank(AUTH);
         manager.cancelRedeemRequest(asyncVault, CONTROLLER, address(0));
@@ -600,10 +618,14 @@ contract AsyncRequestManagerTestRevokedShares is AsyncRequestManagerTest {
 
     function testRevokedShares() public {
         vm.mockCall(
-            address(spoke), abi.encodeWithSelector(spoke.idToAsset.selector, ASSET_ID), abi.encode(asset, TOKEN_ID)
+            address(spoke),
+            abi.encodeWithSelector(spoke.idToAsset.selector, ASSET_ID),
+            abi.encode(asset, TOKEN_ID)
         );
         vm.mockCall(
-            address(spoke), abi.encodeWithSelector(spoke.shareToken.selector, POOL_A, SC_1), abi.encode(shareToken)
+            address(spoke),
+            abi.encodeWithSelector(spoke.shareToken.selector, POOL_A, SC_1),
+            abi.encode(shareToken)
         );
 
         vm.mockCall(
@@ -897,7 +919,11 @@ contract AsyncRequestManagerTestFulfillRedeemRequest is AsyncRequestManagerTest 
         vm.prank(AUTH);
         manager.requestRedeem(IBaseVault(address(asyncVault)), SHARES, USER, USER, address(0), false);
 
-        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.pricesPoolPer.selector), abi.encode(d18(1), d18(1)));
+        vm.mockCall(
+            address(spoke),
+            abi.encodeWithSelector(spoke.pricesPoolPer.selector),
+            abi.encode(d18(1), d18(1))
+        );
 
         vm.prank(AUTH);
         manager.cancelRedeemRequest(IBaseVault(address(asyncVault)), USER, address(0));

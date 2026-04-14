@@ -258,7 +258,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
 
-        address shareToken = address(spoke.shareToken(poolId, scId));
+        address shareToken = address(spokeRegistry.shareToken(poolId, scId));
         uint256 escrowSharesBefore = IShareToken(shareToken).balanceOf(_getPoolEscrowAddress());
 
         batchRequestManager.issueShares{value: MAX_MESSAGE_COST}(
@@ -355,7 +355,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         AssetId payoutAssetId = _getAssetId();
 
-        address shareToken = address(spoke.shareToken(poolId, scId));
+        address shareToken = address(spokeRegistry.shareToken(poolId, scId));
         uint256 sharesBefore = IShareToken(shareToken).balanceOf(_getPoolEscrowAddress());
 
         batchRequestManager.revokeShares{value: MAX_MESSAGE_COST}(

@@ -381,7 +381,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         // Approve and revoke
         IBaseVault vault = IBaseVault(_getVault());
         vm.startPrank(_getActor());
-        spoke.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
+        spokeRegistry.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
         vm.stopPrank();
 
         balanceSheet_revoke(100e18);
@@ -458,7 +458,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         // Approve for revocations
         IBaseVault vault = IBaseVault(_getVault());
         vm.startPrank(_getActor());
-        spoke.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
+        spokeRegistry.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
         vm.stopPrank();
 
         // Execute sequence

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {HookData, ITransferHook} from "../../core/spoke/interfaces/ITransferHook.sol";
 import {IPoolEscrowProvider} from "../../core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
@@ -37,9 +36,6 @@ interface IBaseTransferHook is ITransferHook {
 
     /// @notice Root authority that manages ward permissions and timelocked upgrades
     function root() external view returns (IRoot);
-
-    /// @notice Spoke-side entry point, used to resolve escrow and balance sheet addresses
-    function spoke() external view returns (ISpoke);
 
     /// @notice Pre-configured escrow address for single-pool hook deployments (address(0) if multi-pool)
     function poolEscrow() external view returns (address);

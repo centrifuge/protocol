@@ -14,10 +14,10 @@ import {IERC165} from "../misc/interfaces/IERC7575.sol";
 import {BitmapLib} from "../misc/libraries/BitmapLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
-import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
+import {ISpokeRegistry} from "../core/spoke/interfaces/ISpokeRegistry.sol";
 import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 import {IPoolEscrowProvider} from "../core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
@@ -43,7 +43,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
     uint8 public constant FREEZE_BIT = 0;
 
     IRoot public immutable root;
-    ISpoke public immutable spoke;
+    ISpokeRegistry public immutable spokeRegistry;
     address public immutable poolEscrow;
     address public immutable crosschainSource;
     IBalanceSheet public immutable balanceSheet;
@@ -53,7 +53,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
 
     constructor(
         address root_,
-        address spoke_,
+        address spokeRegistry_,
         address balanceSheet_,
         address crosschainSource_,
         address deployer,
@@ -63,7 +63,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
         require(balanceSheet_ != crosschainSource_, InvalidInputs());
 
         root = IRoot(root_);
-        spoke = ISpoke(spoke_);
+        spokeRegistry = ISpokeRegistry(spokeRegistry_);
         balanceSheet = IBalanceSheet(balanceSheet_);
         crosschainSource = crosschainSource_;
         poolEscrowProvider = IPoolEscrowProvider(poolEscrowProvider_);
@@ -189,7 +189,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITrustedCon
         TrustedCall kind = TrustedCall(kindValue);
         if (kind == TrustedCall.UpdateHookManager) {
             (, bytes32 manager_, bool canManage) = abi.decode(payload, (uint8, bytes32, bool));
-            address token = address(spoke.shareToken(poolId, scId));
+            address token = address(spokeRegistry.shareToken(poolId, scId));
             require(token != address(0), ShareTokenDoesNotExist());
 
             manager[token][manager_.toAddress()] = canManage;

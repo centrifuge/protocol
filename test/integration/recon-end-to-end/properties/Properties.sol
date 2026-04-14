@@ -1763,7 +1763,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
 
-        try spoke.shareToken(poolId, scId) returns (IShareToken shareToken) {
+        try spokeRegistry.shareToken(poolId, scId) returns (IShareToken shareToken) {
             uint256 actualSupply = shareToken.totalSupply();
             // escrow holds tokens that have been redeemed
             uint256 balancesSummed = shareToken.balanceOf(_getPoolEscrowAddress());
@@ -1797,7 +1797,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
         if (!poolHasShareClass) return;
 
-        try spoke.shareToken(poolId, scId) returns (
+        try spokeRegistry.shareToken(poolId, scId) returns (
             IShareToken /* shareToken */
         ) {}
         catch Error(string memory reason) {
@@ -1842,12 +1842,12 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
                     // EXACT INVARIANT: Use theoretical bounds instead of arbitrary tolerances
                     // Fetch prices for direct PricingLib calls (handles zero prices internally)
-                    D18 pricePerAsset = spoke.pricePoolPerAsset(poolId, shareClasses[j], assetId, true);
-                    D18 pricePerShare = spoke.pricePoolPerShare(poolId, shareClasses[j], false);
+                    D18 pricePerAsset = spokeRegistry.pricePoolPerAsset(poolId, shareClasses[j], assetId, true);
+                    D18 pricePerShare = spokeRegistry.pricePoolPerShare(poolId, shareClasses[j], false);
 
                     // Get real addresses for proper decimal handling
-                    address shareToken = address(spoke.shareToken(poolId, shareClasses[j]));
-                    (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
+                    address shareToken = address(spokeRegistry.shareToken(poolId, shareClasses[j]));
+                    (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
 
                     // Calculate theoretical bounds only if prices are non-zero
                     uint256 maxTheoreticalShares = (D18.unwrap(pricePerAsset) == 0 || D18.unwrap(pricePerShare) == 0)
@@ -1926,16 +1926,18 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                     // Only validate if we have both withdrawals and revocations
                     if (cumulativeWithdrawn > 0 && cumulativeRevoked > 0) {
                         // Core Invariant 1: Get current prices for proportionality validation
-                        try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 pricePerShare) {
-                            try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 pricePerAsset) {
+                        try spokeRegistry.pricePoolPerShare(poolId, scId, false) returns (D18 pricePerShare) {
+                            try spokeRegistry.pricePoolPerAsset(poolId, scId, assetId, true) returns (
+                                D18 pricePerAsset
+                            ) {
                                 // Skip validation if either price is 0 (uninitialized state)
                                 if (D18.unwrap(pricePerShare) == 0 || D18.unwrap(pricePerAsset) == 0) {
                                     continue;
                                 }
 
                                 // Get real addresses for proper decimal handling
-                                address shareToken = address(spoke.shareToken(poolId, scId));
-                                (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
+                                address shareToken = address(spokeRegistry.shareToken(poolId, scId));
+                                (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
 
                                 // Calculate theoretical bounds only if prices are non-zero
                                 uint256 maxTheoreticalAssets = (D18.unwrap(pricePerShare) == 0

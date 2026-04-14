@@ -58,7 +58,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ghost_depositProportionalityTracked[assetKey] = true;
 
         // Get current exchange rate (price per asset in pool terms)
-        try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 pricePerAsset) {
+        try spokeRegistry.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 pricePerAsset) {
             // Store weighted average exchange rate
             uint256 totalOps = 1; // Simplified tracking
             if (totalOps == 1) {

@@ -193,7 +193,7 @@ abstract contract TargetFunctions is
         // 6. Set max reserve for sync vaults to maximum value to allow unlimited deposits (instead of default zero
         // max deposit)
         if (!isAsyncVault) {
-            (address asset, uint256 tokenId) = spoke.idToAsset(_getAssetId());
+            (address asset, uint256 tokenId) = spokeRegistry.idToAsset(_getAssetId());
             syncManager.setMaxReserve(_getPool(), _getShareClassId(), asset, tokenId, type(uint128).max);
         }
 
