@@ -108,7 +108,7 @@ async function findPreviousRegistryCid(env) {
     if (!pinata) {
         throw new Error("Pinata SDK not initialized. PINATA_JWT is required.");
     }
-    
+
     try {
         console.log(`Querying Pinata for previous ${env} registry...`);
 
@@ -203,12 +203,22 @@ async function pinFile(filePath, name, existingUrl) {
             ? "testnet"
             : "mainnet";
 
-    // Check if force is enabled for this specific environment
-    const shouldForce = (forceEnv === inferredEnv) || (forcePinEnv === inferredEnv);
+    // Check if force is enabled for this specific environment ("both" forces all envs)
+    const shouldForce = (forceEnv === inferredEnv || forceEnv === "both") ||
+                        (forcePinEnv === inferredEnv || forcePinEnv === "both");
 
     // Read original content as text to preserve large numbers like chainSelector
     const originalContent = readFileSync(filePath, "utf8");
     const newContent = JSON.parse(originalContent);
+
+    // Guard: skip pinning when the delta has no contract changes (empty chains).
+    // An empty delta means only metadata changed (env cleanup, CI scripts, etc.) — nothing
+    // the indexer depends on. Force-pin bypasses this to allow manual corrections.
+    const chainCount = Object.keys(newContent.chains || {}).length;
+    if (chainCount === 0 && !shouldForce) {
+        console.log(`Registry has zero chains (no contract changes), skipping pin for ${name}`);
+        return { cid: null, changed: false };
+    }
 
     // Fetch and compare with existing registry (skip if force flag is set for this env)
     if (!shouldForce) {
@@ -295,21 +305,21 @@ async function updatePreviousRegistry(filePath) {
     // Read original content as text to preserve large numbers like chainSelector
     const originalContent = readFileSync(filePath, "utf8");
     const registry = JSON.parse(originalContent);
-    
+
     // Determine environment from registry
     const env = registry.network || "testnet";
-    
+
     // Check if previousRegistry exists and needs updating
     if (!registry.previousRegistry) {
         console.log(`  No previousRegistry field found in ${filePath}`);
         return { updated: false, cid: null };
     }
-    
+
     if (registry.previousRegistry.ipfsHash) {
         console.log(`  previousRegistry.ipfsHash already set: ${registry.previousRegistry.ipfsHash}`);
         return { updated: false, cid: registry.previousRegistry.ipfsHash };
     }
-    
+
     // Resolve CID: try DNS first, fall back to Pinata
     console.log(`  Resolving previous ${env} registry CID via DNS...`);
     let cid = await resolveLiveCid(env);
@@ -320,18 +330,18 @@ async function updatePreviousRegistry(filePath) {
         const previousRegistryInfo = await findPreviousRegistryCid(env);
         cid = previousRegistryInfo?.cid || null;
     }
-    
+
     if (!cid) {
         console.log(`  ⚠ Could not resolve previous registry CID for ${env}`);
         return { updated: false, cid: null };
     }
-    
+
     // Update the registry
     registry.previousRegistry.ipfsHash = cid;
-    
+
     // Stringify and restore chainSelector values (preserve large numbers)
     let stringified = JSON.stringify(registry, null, 2);
-    
+
     // Restore chainSelector values from original (corrupted by JSON.parse exceeding MAX_SAFE_INTEGER)
     const chainSelectorRegex = /"chainSelector":\s*(\d+)/g;
     const originalMatches = [...originalContent.matchAll(chainSelectorRegex)];
@@ -340,11 +350,11 @@ async function updatePreviousRegistry(filePath) {
         const originalValue = originalMatches[matchIndex++]?.[1];
         return originalValue ? `"chainSelector": ${originalValue}` : `"chainSelector": 0`;
     });
-    
+
     // Write back to file
     writeFileSync(filePath, stringified, "utf8");
     console.log(`  ✓ Updated previousRegistry.ipfsHash to ${cid}`);
-    
+
     return { updated: true, cid };
 }
 
@@ -418,19 +428,19 @@ async function main() {
                 console.error("See: https://docs.pinata.cloud/frameworks/node-js");
                 process.exit(1);
             }
-            
+
             console.log("\n=== Updating previousRegistry.ipfsHash in local files ===\n");
-            
+
             if (mainnetExists) {
                 const mainnetResult = await updatePreviousRegistry(mainnetPath);
                 results.mainnet = { cid: mainnetResult.cid, changed: mainnetResult.updated };
             }
-            
+
             if (testnetExists) {
                 const testnetResult = await updatePreviousRegistry(testnetPath);
                 results.testnet = { cid: testnetResult.cid, changed: testnetResult.updated };
             }
-            
+
             console.log("\n✓ Update complete");
             console.log(JSON.stringify(results));
             return;
