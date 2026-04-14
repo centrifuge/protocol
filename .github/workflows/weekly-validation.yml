@@ -1,13 +1,13 @@
 # Weekly Deployment Validation
 #
-# Runs live fork tests from the `live-validators` branch against all deployed networks.
-# The `live-validators` branch is pinned to the latest deployed protocol version.
+# Runs live fork tests from the `live` branch against all deployed networks.
+# The `live` branch is pinned to the latest deployed protocol version.
 #
 # To update after a new deployment:
-#   git push origin <release-tag-or-commit>:refs/heads/live-validators --force
+#   git push origin <release-tag-or-commit>:refs/heads/live --force
 #
 # Schedule triggers only fire on the default branch (main), so this file must
-# live on main even though it checks out `live-validators` for test execution.
+# live on main even though it checks out `live` for test execution.
 
 name: Weekly Deployment Validation
 
@@ -17,9 +17,9 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch to validate (default: live-validators)"
+        description: "Branch to validate (default: live)"
         required: false
-        default: "live-validators"
+        default: "live"
 
 env:
   FOUNDRY_PROFILE: ci
@@ -39,7 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.branch || 'live-validators' }}
+          ref: ${{ inputs.branch || 'live' }}
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WIP }}
@@ -76,7 +76,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.branch || 'live-validators' }}
+          ref: ${{ inputs.branch || 'live' }}
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WIP }}
