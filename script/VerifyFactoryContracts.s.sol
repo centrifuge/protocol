@@ -154,7 +154,7 @@ contract VerifyFactoryContracts is Script {
             " --constructor-args ",
             vm.toString(constructorArgs),
             " --watch",
-            " 2>&1 || true" // Capture output; exit 0 so ffi doesn't revert
+            " 2>&1 | tail -c 4096; true" // Truncate to last 4KB (status msgs at end); exit 0
         );
 
         // Wait before hitting the Etherscan API again via forge verify-contract
@@ -163,7 +163,7 @@ contract VerifyFactoryContracts is Script {
         bytes memory output = vm.ffi(cmd);
         if (_containsSubstring(output, "successfully verified")) {
             result.status = VerificationStatus.NewlyVerified;
-        } else if (_containsSubstring(output, "already verified")) {
+        } else if (_containsSubstring(output, "already verified") || _containsSubstring(output, "This contract is verified")) {
             result.status = VerificationStatus.AlreadyVerified;
         } else {
             result.status = VerificationStatus.NotVerified;
