@@ -1,71 +1,151 @@
-name: Weekly Chain Validation
+# Weekly Deployment Validation
+#
+# Runs live fork tests from the `live` branch against all deployed networks.
+# The `live` branch is pinned to the latest deployed protocol version.
+#
+# To update after a new deployment:
+#   git push origin <release-tag-or-commit>:refs/heads/live --force
+#
+# Schedule triggers only fire on the default branch (main), so this file must
+# live on main even though it checks out `live` for test execution.
+
+name: Weekly Deployment Validation
 
 on:
   schedule:
-    # Run every Monday at 6:00 AM UTC (7:00 AM CET)
-    - cron: "0 6 * * 1"
+    - cron: "15 6 * * 1" # Monday 6:15 AM UTC
   workflow_dispatch:
-    # Allow manual triggering for testing
+    inputs:
+      branch:
+        description: "Branch to validate (default: live)"
+        required: false
+        default: "live"
+
+env:
+  FOUNDRY_PROFILE: ci
 
 jobs:
-  validate-chains:
+  validate-state:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    permissions:
+      contents: "read"
+      id-token: "write"
     strategy:
+      fail-fast: false
       matrix:
-        chain:
-          - name: "Ethereum"
-            test: "test_validateEthereum"
-            emoji: "🌐"
-            # rpc_secret: "ETH_RPC_URL"
-          - name: "Base"
-            test: "test_validateBase"
-            emoji: "🔵"
-            # rpc_secret: "BASE_RPC_URL"
-          - name: "Arbitrum"
-            test: "test_validateArbitrum"
-            emoji: "🔶"
-            # rpc_secret: "ARBITRUM_RPC_URL"
-          - name: "Avalanche"
-            test: "test_validateAvalanche"
-            emoji: "🏔️"
-            # rpc_secret: "AVAX_RPC_URL"
-          - name: "BNB"
-            test: "test_validateBNB"
-            emoji: "🟡"
-            # rpc_secret: "BNB_RPC_URL"
-          - name: "Plume"
-            test: "test_validatePlume"
-            emoji: "🟣"
-            # rpc_secret: "PLUME_RPC_URL"
-
-    name: "Validate ${{ matrix.chain.name }}"
-
+        network: [ethereum, base, arbitrum, plume, avalanche, bnb-smart-chain, optimism, hyper-evm, monad]
+    name: "State: ${{ matrix.network }}"
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/checkout@v4
         with:
-          version: v1.4.1
-
-      - name: Create build cache
-        uses: actions/cache@v4
+          ref: ${{ inputs.branch || 'live' }}
+      - uses: google-github-actions/auth@v2
         with:
+          workload_identity_provider: ${{ secrets.GCP_WIP }}
+          service_account: ${{ secrets.GCP_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.4
+      - run: python3 script/deploy/load_secrets.py
+      - run: forge test --match-test "testLiveValidation" -vv 2>&1 | tee test-output.txt
+        env:
+          NETWORK: ${{ matrix.network }}
+      - if: failure()
+        run: echo "${{ matrix.network }}" > failed-chain.txt
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-state-${{ matrix.network }}
           path: |
-            cache
-            out
-          key: ${{ runner.os }}-foundry-${{ hashFiles('lib/**', 'src/**', 'test/**') }}
-          restore-keys: |
-            ${{ runner.os }}-foundry-
+            failed-chain.txt
+            test-output.txt
 
-      - name: Install dependencies
-        run: forge install --no-commit
+  validate-flows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: "read"
+      id-token: "write"
+    strategy:
+      fail-fast: false
+      matrix:
+        network: [ethereum, base, arbitrum, plume, avalanche, bnb-smart-chain, optimism, hyper-evm, monad]
+    name: "Flows: ${{ matrix.network }}"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch || 'live' }}
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIP }}
+          service_account: ${{ secrets.GCP_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.4
+      - run: python3 script/deploy/load_secrets.py
+      - run: forge test --match-test "testInvestmentFlows" -vv 2>&1 | tee test-output.txt
+        env:
+          NETWORK: ${{ matrix.network }}
+      - if: failure()
+        run: echo "${{ matrix.network }}" > failed-chain.txt
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-flows-${{ matrix.network }}
+          path: |
+            failed-chain.txt
+            test-output.txt
 
-      - name: Validate ${{ matrix.chain.name }} deployment
-        # env:
-        #   ${{ matrix.chain.rpc_secret }}: ${{ secrets[matrix.chain.rpc_secret] }}
+  report-failures:
+    needs: [validate-state, validate-flows]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:q
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: failure-*
+          path: failures
+      - name: Build failure summary
+        id: summary
         run: |
-          echo "${{ matrix.chain.emoji }} Validating ${{ matrix.chain.name }} deployment..."
-          forge test --match-test ${{ matrix.chain.test }} -vv
+          CHAINS=""
+          DETAILS=""
+          for dir in failures/failure-*/; do
+            [ -d "$dir" ] || continue
+            chain=$(cat "$dir/failed-chain.txt" 2>/dev/null || echo "unknown")
+            type=$(basename "$dir" | sed 's/failure-//' | sed "s/-${chain}//")
+            CHAINS="${CHAINS}- **${chain}** (${type})\n"
+            DETAILS="${DETAILS}<details><summary>${chain} (${type})</summary>\n\n\`\`\`\n$(tail -50 "$dir/test-output.txt" 2>/dev/null || echo "No output")\n\`\`\`\n</details>\n\n"
+          done
+          {
+            echo "chains<<EOF"
+            echo -e "$CHAINS"
+            echo "EOF"
+            echo "details<<EOF"
+            echo -e "$DETAILS"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Create GitHub issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Weekly Validation Failure — ${new Date().toISOString().slice(0, 10)}`,
+              labels: ['validation-failure'],
+              body: `## Weekly deployment validation failed\n\n` +
+                `**Run:** ${runUrl}\n\n` +
+                `### Failing networks\n\n${process.env.CHAINS}\n` +
+                `### Error details\n\n${process.env.DETAILS}`
+            });
+          env:
+            CHAINS: ${{ steps.summary.outputs.chains }}
+            DETAILS: ${{ steps.summary.outputs.details }}

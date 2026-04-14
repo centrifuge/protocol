@@ -167,7 +167,11 @@ contract InvestmentFlowExecutor is Test {
                 _executeLocalAsync(ctx, index, result);
             }
         } else if (result.kind == VaultKind.SyncDepositAsyncRedeem) {
-            _executeSyncDeposit(ctx, index, result);
+            if (result.isCrossChain) {
+                _executeCrossChainSyncDeposit(ctx, index, result);
+            } else {
+                _executeSyncDeposit(ctx, index, result);
+            }
         }
     }
 
@@ -263,6 +267,13 @@ contract InvestmentFlowExecutor is Test {
             _whitelistInvestor(
                 ctx.report, stMeta.poolId, stMeta.scId, investor, ctx.gql.hubManager, ctx.localCentrifugeId
             );
+            // Whitelist the de-vault's pool escrow as a member on the asset's share token.
+            // In production, governance does this. The pool escrow passes updateMember's
+            // !isPoolEscrow(user) guard because the asset's hook doesn't recognise it as its own pool escrow.
+            address poolEscrow = address(ctx.report.core.balanceSheet.escrow(ctx.poolId));
+            _whitelistInvestor(
+                ctx.report, stMeta.poolId, stMeta.scId, poolEscrow, ctx.gql.hubManager, ctx.localCentrifugeId
+            );
         }
 
         _whitelistInvestor(ctx.report, ctx.poolId, ctx.scId, investor, ctx.gql.hubManager, ctx.localCentrifugeId);
@@ -352,9 +363,8 @@ contract InvestmentFlowExecutor is Test {
 
         // Known issue: Plume SyncManager valuation misconfigured
         if (ctx.localCentrifugeId == IntegrationConstants.PLUME_CENTRIFUGE_ID) {
-            address valuationContract = 0x0074949f14aA3DD72C3C77b715ED60e03B4A5bC9;
             vm.mockCall(
-                valuationContract,
+                IntegrationConstants.PLUME_VALUATION_CONTRACT,
                 abi.encodeWithSelector(bytes4(keccak256("pricePoolPerShare(uint64,bytes16)")), ctx.poolId, ctx.scId),
                 abi.encode(IntegrationConstants.identityPrice())
             );
@@ -383,6 +393,112 @@ contract InvestmentFlowExecutor is Test {
         assertTrue(
             ctx.report.core.spoke.shareToken(ctx.poolId, ctx.scId).balanceOf(investor) > initialShares,
             "Investor should have received shares"
+        );
+    }
+
+    // ============================================
+    // Cross-Chain Sync Deposit Flows
+    // ============================================
+
+    function _executeCrossChainSyncDeposit(
+        InvestmentFlowContext memory ctx,
+        uint256 index,
+        InvestmentFlowResult memory result
+    ) internal {
+        address investor = makeAddr(string.concat("XC_SYNC_", vm.toString(index)));
+
+        try this.tryCrossChainSyncDeposit(ctx, investor) {
+            result.depositPassed = true;
+        } catch Error(string memory reason) {
+            result.depositError = reason;
+        } catch (bytes memory data) {
+            result.depositError = _formatRevertData(data);
+        }
+
+        try this.tryCrossChainSyncDepositThenRedeem(ctx, investor) {
+            result.redeemPassed = true;
+        } catch Error(string memory reason) {
+            result.redeemError = reason;
+        } catch (bytes memory data) {
+            result.redeemError = _formatRevertData(data);
+        }
+    }
+
+    function tryCrossChainSyncDeposit(InvestmentFlowContext memory ctx, address investor) external {
+        _simulateHubNotifyPrices(ctx);
+        _simulateUpdateContractSyncDeposit(ctx);
+        _simulateWhitelistMember(ctx, investor);
+        _deployRefundEscrowIfNeeded(ctx);
+        _configureHubAdaptersIfNeeded(ctx);
+
+        _crossChainSyncDepositFlow(ctx, investor);
+    }
+
+    function tryCrossChainSyncDepositThenRedeem(InvestmentFlowContext memory ctx, address investor) external {
+        // Different investor for isolation
+        address redeemInvestor = makeAddr(string.concat("XC_SYNC_REDEEM_", vm.toString(uint256(uint160(investor)))));
+
+        _simulateHubNotifyPrices(ctx);
+        _simulateUpdateContractSyncDeposit(ctx);
+        _simulateWhitelistMember(ctx, redeemInvestor);
+        _deployRefundEscrowIfNeeded(ctx);
+        _configureHubAdaptersIfNeeded(ctx);
+
+        _crossChainSyncDepositFlow(ctx, redeemInvestor);
+        _crossChainAsyncRedeemFlow(ctx, redeemInvestor, ctx.testAmount);
+    }
+
+    function _crossChainSyncDepositFlow(InvestmentFlowContext memory ctx, address investor) internal {
+        IBaseVault vault = IBaseVault(ctx.gql.vault);
+        uint256 initialShares = ctx.report.core.spoke.shareToken(ctx.poolId, ctx.scId).balanceOf(investor);
+
+        // Known issue: Plume SyncManager valuation misconfigured
+        if (ctx.localCentrifugeId == IntegrationConstants.PLUME_CENTRIFUGE_ID) {
+            vm.mockCall(
+                IntegrationConstants.PLUME_VALUATION_CONTRACT,
+                abi.encodeWithSelector(bytes4(keccak256("pricePoolPerShare(uint64,bytes16)")), ctx.poolId, ctx.scId),
+                abi.encode(IntegrationConstants.identityPrice())
+            );
+        }
+
+        deal(ctx.gql.assetAddress, investor, ctx.testAmount, true);
+
+        vm.startPrank(investor);
+        ERC20(vault.asset()).approve(ctx.gql.vault, ctx.testAmount);
+        vault.deposit(ctx.testAmount, investor);
+        vm.stopPrank();
+
+        assertTrue(
+            ctx.report.core.spoke.shareToken(ctx.poolId, ctx.scId).balanceOf(investor) > initialShares,
+            "Investor should have received shares"
+        );
+    }
+
+    function _crossChainAsyncRedeemFlow(InvestmentFlowContext memory ctx, address investor, uint128 assetAmount)
+        internal
+    {
+        IAsyncVault vault = IAsyncVault(ctx.gql.vault);
+
+        uint128 sharesToRedeem = uint128(ERC20(ctx.shareToken).balanceOf(investor));
+        assertTrue(sharesToRedeem > 0, "Investor should have shares to redeem");
+
+        vm.startPrank(investor);
+        vault.requestRedeem(sharesToRedeem, investor, investor);
+        vm.stopPrank();
+
+        _simulateHubRedeemSequence(ctx, investor, assetAmount, sharesToRedeem, 0);
+
+        uint256 initialAssets = ERC20(ctx.gql.assetAddress).balanceOf(investor);
+        uint256 maxWithdrawable = vault.maxWithdraw(investor);
+        assertTrue(maxWithdrawable > 0, "Should have assets to withdraw after Hub fulfillment");
+
+        vm.startPrank(investor);
+        vault.withdraw(maxWithdrawable, investor, investor);
+        vm.stopPrank();
+
+        assertTrue(
+            ERC20(ctx.gql.assetAddress).balanceOf(investor) > initialAssets,
+            "Investor should have received assets from redeem"
         );
     }
 
@@ -420,19 +536,17 @@ contract InvestmentFlowExecutor is Test {
         IAsyncVault vault = IAsyncVault(ctx.gql.vault);
 
         _simulateHubNotifyPrices(ctx);
-        deal(ctx.gql.assetAddress, investor, IntegrationConstants.DEFAULT_USDC_AMOUNT);
+        _fundInvestor(ctx, investor);
         _simulateWhitelistMember(ctx, investor);
         _deployRefundEscrowIfNeeded(ctx);
         _configureHubAdaptersIfNeeded(ctx);
 
         vm.startPrank(investor);
-        ERC20(ctx.gql.assetAddress).approve(ctx.gql.vault, IntegrationConstants.DEFAULT_USDC_AMOUNT);
-        vault.requestDeposit(IntegrationConstants.DEFAULT_USDC_AMOUNT, investor, investor);
+        ERC20(ctx.gql.assetAddress).approve(ctx.gql.vault, ctx.testAmount);
+        vault.requestDeposit(ctx.testAmount, investor, investor);
         vm.stopPrank();
 
-        _simulateHubDepositSequence(
-            ctx, investor, IntegrationConstants.DEFAULT_USDC_AMOUNT, IntegrationConstants.DEFAULT_USDC_AMOUNT, 0
-        );
+        _simulateHubDepositSequence(ctx, investor, ctx.testAmount, ctx.testAmount, 0);
 
         uint256 initialShares = ERC20(ctx.shareToken).balanceOf(investor);
         uint256 maxMintable = vault.maxMint(investor);
@@ -447,30 +561,7 @@ contract InvestmentFlowExecutor is Test {
 
     function tryCrossChainAsyncRedeem(InvestmentFlowContext memory ctx, uint256 index) external {
         address investor = this.tryCrossChainAsyncDeposit(ctx, index + UNIQUE_INVESTOR_OFFSET);
-
-        IAsyncVault vault = IAsyncVault(ctx.gql.vault);
-
-        uint128 sharesToRedeem = uint128(ERC20(ctx.shareToken).balanceOf(investor));
-        assertTrue(sharesToRedeem > 0, "Investor should have shares to redeem");
-
-        vm.startPrank(investor);
-        vault.requestRedeem(sharesToRedeem, investor, investor);
-        vm.stopPrank();
-
-        _simulateHubRedeemSequence(ctx, investor, IntegrationConstants.DEFAULT_USDC_AMOUNT, sharesToRedeem, 0);
-
-        uint256 initialAssets = ERC20(ctx.gql.assetAddress).balanceOf(investor);
-        uint256 maxWithdrawable = vault.maxWithdraw(investor);
-        assertTrue(maxWithdrawable > 0, "Should have assets to withdraw after Hub fulfillment");
-
-        vm.startPrank(investor);
-        vault.withdraw(maxWithdrawable, investor, investor);
-        vm.stopPrank();
-
-        assertTrue(
-            ERC20(ctx.gql.assetAddress).balanceOf(investor) > initialAssets,
-            "Investor should have received assets from redeem"
-        );
+        _crossChainAsyncRedeemFlow(ctx, investor, ctx.testAmount);
     }
 
     // ============================================
@@ -597,7 +688,8 @@ contract InvestmentFlowExecutor is Test {
 
         if (nowDepositEpoch != nowIssueEpoch) {
             vm.startPrank(ctx.gql.hubManager);
-            while (nowIssueEpoch < nowDepositEpoch) {
+            uint256 iter;
+            while (nowIssueEpoch < nowDepositEpoch && iter++ < 100) {
                 (D18 sharePrice,) = ctx.report.core.shareClassManager.pricePoolPerShare(ctx.poolId, ctx.scId);
                 ctx.report.batchRequestManager.issueShares{value: GAS}(
                     ctx.poolId, ctx.scId, ctx.assetId, nowIssueEpoch, sharePrice, HOOK_GAS, address(this)
@@ -605,6 +697,7 @@ contract InvestmentFlowExecutor is Test {
                 nowIssueEpoch = ctx.report.batchRequestManager.nowIssueEpoch(ctx.poolId, ctx.scId, ctx.assetId);
             }
             vm.stopPrank();
+            require(iter <= 100, "Deposit epoch alignment exceeded max iterations");
         }
     }
 
@@ -614,7 +707,8 @@ contract InvestmentFlowExecutor is Test {
 
         if (nowRedeemEpoch != nowRevokeEpoch) {
             vm.startPrank(ctx.gql.hubManager);
-            while (nowRevokeEpoch < nowRedeemEpoch) {
+            uint256 iter;
+            while (nowRevokeEpoch < nowRedeemEpoch && iter++ < 100) {
                 (D18 sharePrice,) = ctx.report.core.shareClassManager.pricePoolPerShare(ctx.poolId, ctx.scId);
                 ctx.report.batchRequestManager.revokeShares{value: GAS}(
                     ctx.poolId, ctx.scId, ctx.assetId, nowRevokeEpoch, sharePrice, HOOK_GAS, address(this)
@@ -622,6 +716,7 @@ contract InvestmentFlowExecutor is Test {
                 nowRevokeEpoch = ctx.report.batchRequestManager.nowRevokeEpoch(ctx.poolId, ctx.scId, ctx.assetId);
             }
             vm.stopPrank();
+            require(iter <= 100, "Redeem epoch alignment exceeded max iterations");
         }
     }
 
@@ -670,6 +765,22 @@ contract InvestmentFlowExecutor is Test {
 
         vm.startPrank(address(ctx.report.core.gateway));
         ctx.report.core.messageProcessor.handle(1, updateRestrictionMessage);
+        vm.stopPrank();
+    }
+
+    function _simulateUpdateContractSyncDeposit(InvestmentFlowContext memory ctx) internal {
+        bytes memory payload = _updateContractSyncDepositMaxReserveMsg(ctx.assetId, type(uint128).max);
+
+        bytes memory message = MessageLib.TrustedContractUpdate({
+                poolId: ctx.poolId.raw(),
+                scId: ctx.scId.raw(),
+                target: address(ctx.report.syncManager).toBytes32(),
+                extraGasLimit: HOOK_GAS,
+                payload: payload
+            }).serialize();
+
+        vm.startPrank(address(ctx.report.core.gateway));
+        ctx.report.core.messageProcessor.handle(ctx.gql.hubCentrifugeId, message);
         vm.stopPrank();
     }
 
@@ -803,7 +914,7 @@ contract InvestmentFlowExecutor is Test {
     }
 
     function _calculateTestAmount(uint8 decimals) internal pure returns (uint128) {
-        if (decimals > 38) return type(uint128).max;
+        if (decimals > 35) return type(uint128).max;
         return uint128(1000 * (10 ** uint256(decimals)));
     }
 
@@ -828,7 +939,7 @@ contract InvestmentFlowExecutor is Test {
     }
 
     function _fundInvestorForSync(InvestmentFlowContext memory ctx, address investor) internal {
-        deal(ctx.gql.assetAddress, investor, ctx.testAmount, true);
+        _fundInvestor(ctx, investor);
     }
 
     function _updateRestrictionMemberMsg(address addr) internal pure returns (bytes memory) {
