@@ -2,13 +2,15 @@
 pragma solidity 0.8.28;
 
 import {IDefaultManifest, PriceDeltaSlot} from "./interfaces/IDefaultManifest.sol";
-import {IManifest} from "../interfaces/ISupervisor.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
-import {IHub} from "../../../core/hub/interfaces/IHub.sol";
+
 import {PoolId} from "../../../core/types/PoolId.sol";
+import {IHub} from "../../../core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUpdate.sol";
+
+import {IManifest} from "../interfaces/ISupervisor.sol";
 
 /// @title  Default Manifest
 /// @notice Combined manifest providing:

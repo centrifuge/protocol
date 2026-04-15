@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {ISupervisor, ISupervisorFactory, IManifest, SupervisorConfig} from
-    "../../../../src/managers/hub/interfaces/ISupervisor.sol";
-import {Supervisor, SupervisorFactory} from "../../../../src/managers/hub/Supervisor.sol";
-
-import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
+import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
+import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
+
+import {Supervisor, SupervisorFactory} from "../../../../src/managers/hub/Supervisor.sol";
+import {ISupervisor, IManifest, SupervisorConfig} from "../../../../src/managers/hub/interfaces/ISupervisor.sol";
 
 import "forge-std/Test.sol";
 
@@ -14,14 +15,20 @@ import "forge-std/Test.sol";
 
 contract MockHub {
     address public hubRegistry_;
+    address public gateway_;
     uint256 public lastValue;
 
-    constructor(address hubRegistry) {
+    constructor(address hubRegistry, address gateway) {
         hubRegistry_ = hubRegistry;
+        gateway_ = gateway;
     }
 
     function hubRegistry() external view returns (IHubRegistry) {
         return IHubRegistry(hubRegistry_);
+    }
+
+    function gateway() external view returns (IGateway) {
+        return IGateway(gateway_);
     }
 
     function doSomething(uint256 val) external payable {
@@ -38,13 +45,6 @@ contract MockHub {
 
     function alwaysReverts() external pure {
         revert("hub reverted");
-    }
-
-    function multicall(bytes[] calldata data) external payable {
-        for (uint256 i; i < data.length; i++) {
-            (bool success,) = address(this).delegatecall(data[i]);
-            require(success);
-        }
     }
 }
 
@@ -113,7 +113,7 @@ abstract contract SupervisorTestBase is Test {
 
     function setUp() public virtual {
         registry = new MockHubRegistry();
-        hub = new MockHub(address(registry));
+        hub = new MockHub(address(registry), makeAddr("gateway"));
         registry.setManager(POOL, manager, true);
     }
 }
@@ -160,94 +160,6 @@ contract SupervisorExecuteTest is SupervisorTestBase {
         bytes memory data = abi.encodeCall(MockHub.alwaysReverts, ());
 
         vm.expectRevert();
-        vm.prank(manager);
-        supervisor.execute(data);
-    }
-}
-
-// ─── Multicall ─────────────────────────────────────────────────────────────
-
-contract SupervisorMulticallTest is SupervisorTestBase {
-    Supervisor supervisor;
-
-    function setUp() public override {
-        super.setUp();
-        supervisor = _deploySupervisor(IManifest(address(0)));
-    }
-
-    function testMulticallWithSafeCalls() public {
-        bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeCall(MockHub.doSomething, (10));
-        calls[1] = abi.encodeCall(MockHub.doSomething, (42));
-        bytes memory data = abi.encodeCall(MockHub.multicall, (calls));
-
-        vm.prank(manager);
-        supervisor.execute(data);
-
-        assertEq(hub.lastValue(), 42);
-    }
-
-    function testMulticallBlockedWithTimelocked() public {
-        bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeCall(MockHub.doSomething, (10));
-        calls[1] = abi.encodeCall(MockHub.timelocked, (42));
-        bytes memory data = abi.encodeCall(MockHub.multicall, (calls));
-
-        vm.expectRevert(abi.encodeWithSelector(ISupervisor.MulticallBlocked.selector, 1, MockHub.timelocked.selector, true));
-        vm.prank(manager);
-        supervisor.execute(data);
-    }
-
-    function testMulticallAllowsHookedWithZeroDelay() public {
-        // Deploy supervisor with a manifest that returns 0 delay
-        MockManifest hook = new MockManifest();
-        Supervisor hookedSupervisor = _deploySupervisor(IManifest(address(hook)));
-
-        bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeCall(MockHub.doSomething, (10));
-        calls[1] = abi.encodeCall(MockHub.hookedFn, (42));
-        bytes memory data = abi.encodeCall(MockHub.multicall, (calls));
-
-        vm.prank(manager);
-        hookedSupervisor.execute(data);
-
-        assertEq(hub.lastValue(), 42);
-    }
-
-    function testMulticallBlockedWithHookedExtraDelay() public {
-        MockManifest hook = new MockManifest();
-        hook.setExtraDelay(1 days);
-        Supervisor hookedSupervisor = _deploySupervisor(IManifest(address(hook)));
-
-        bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeCall(MockHub.doSomething, (10));
-        calls[1] = abi.encodeCall(MockHub.hookedFn, (42));
-        bytes memory data = abi.encodeCall(MockHub.multicall, (calls));
-
-        vm.expectRevert(abi.encodeWithSelector(ISupervisor.MulticallBlocked.selector, 1, MockHub.hookedFn.selector, false));
-        vm.prank(manager);
-        hookedSupervisor.execute(data);
-    }
-
-    function testMulticallBlockedWithHookedRevert() public {
-        MockManifest hook = new MockManifest();
-        hook.setShouldRevert(true);
-        Supervisor hookedSupervisor = _deploySupervisor(IManifest(address(hook)));
-
-        bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeCall(MockHub.doSomething, (10));
-        calls[1] = abi.encodeCall(MockHub.hookedFn, (42));
-        bytes memory data = abi.encodeCall(MockHub.multicall, (calls));
-
-        vm.expectRevert(MockManifest.Blocked.selector);
-        vm.prank(manager);
-        hookedSupervisor.execute(data);
-    }
-
-    function testMulticallEmptyCallsSucceeds() public {
-        bytes[] memory calls = new bytes[](0);
-        bytes memory data = abi.encodeCall(MockHub.multicall, (calls));
-
         vm.prank(manager);
         supervisor.execute(data);
     }
@@ -622,7 +534,7 @@ contract SupervisorFactoryTest is Test {
 
     function setUp() public {
         registry = new MockHubRegistry();
-        hub = new MockHub(address(registry));
+        hub = new MockHub(address(registry), makeAddr("gateway"));
         factory = new SupervisorFactory(IHub(address(hub)));
     }
 

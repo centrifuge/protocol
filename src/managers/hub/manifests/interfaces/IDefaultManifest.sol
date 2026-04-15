@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IManifest} from "../../interfaces/ISupervisor.sol";
-
 import {PoolId} from "../../../../core/types/PoolId.sol";
 import {ShareClassId} from "../../../../core/types/ShareClassId.sol";
 import {ITrustedContractUpdate} from "../../../../core/utils/interfaces/IContractUpdate.sol";
+
+import {IManifest} from "../../interfaces/ISupervisor.sol";
 
 struct PriceDeltaSlot {
     uint128 anchor;

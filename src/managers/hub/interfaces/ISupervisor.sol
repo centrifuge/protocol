@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IHub} from "../../../core/hub/interfaces/IHub.sol";
 import {PoolId} from "../../../core/types/PoolId.sol";
+import {IHub} from "../../../core/hub/interfaces/IHub.sol";
 
 interface IManifest {
     /// @notice Validate whether a Hub call should proceed, and optionally extend the timelock.
@@ -51,9 +51,7 @@ interface ISupervisor {
     error NotSentinel();
     error AlreadySentinel();
     error ZeroAddress();
-    error ForwardFailed();
     error CannotSelfCancel();
-    error MulticallBlocked(uint256 index, bytes4 selector, bool isTimelocked);
 
     //----------------------------------------------------------------------------------------------
     // Execution

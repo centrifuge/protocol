@@ -3,10 +3,12 @@ pragma solidity 0.8.28;
 
 import {ISupervisor, ISupervisorFactory, IManifest, SupervisorConfig} from "./interfaces/ISupervisor.sol";
 
-import {IHub} from "../../core/hub/interfaces/IHub.sol";
-import {PoolId} from "../../core/types/PoolId.sol";
-import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 import {IERC7751} from "../../misc/interfaces/IERC7751.sol";
+
+import {PoolId} from "../../core/types/PoolId.sol";
+import {IHub} from "../../core/hub/interfaces/IHub.sol";
+import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
+import {BatchedMulticall} from "../../core/utils/BatchedMulticall.sol";
 
 /// @title  Supervisor
 /// @notice Sits between pool managers and the Hub, adding optional per-function timelocks and a
@@ -16,9 +18,10 @@ import {IERC7751} from "../../misc/interfaces/IERC7751.sol";
 ///         are all set at construction. The one mutable piece is sentinel management: sentinels can
 ///         be added freely, but removing a sentinel is always timelocked (so the sentinel can veto
 ///         their own removal).
-contract Supervisor is ISupervisor {
-    bytes4 private constant MULTICALL_SELECTOR = 0xac9650d8;
-
+///
+///         Inherits BatchedMulticall so managers can batch multiple execute/submit calls atomically,
+///         with cross-chain messages from all inner calls aggregated into a single gateway batch.
+contract Supervisor is ISupervisor, BatchedMulticall {
     IHub public immutable hub;
     PoolId public immutable poolId;
     uint48 public immutable delay;
@@ -32,18 +35,18 @@ contract Supervisor is ISupervisor {
     mapping(bytes calldata_ => uint48 executeAfter) public pending;
 
     modifier onlyManager() {
-        require(hub.hubRegistry().manager(poolId, msg.sender), NotManager());
+        require(hub.hubRegistry().manager(poolId, msgSender()), NotManager());
         _;
     }
 
     modifier onlyManagerOrSentinel() {
-        if (!sentinels[msg.sender]) {
-            require(hub.hubRegistry().manager(poolId, msg.sender), NotManagerOrSentinel());
+        if (!sentinels[msgSender()]) {
+            require(hub.hubRegistry().manager(poolId, msgSender()), NotManagerOrSentinel());
         }
         _;
     }
 
-    constructor(IHub hub_, PoolId poolId_, SupervisorConfig memory config) {
+    constructor(IHub hub_, PoolId poolId_, SupervisorConfig memory config) BatchedMulticall(hub_.gateway()) {
         hub = hub_;
         poolId = poolId_;
         delay = config.delay;
@@ -64,10 +67,9 @@ contract Supervisor is ISupervisor {
 
     /// @inheritdoc ISupervisor
     function execute(bytes calldata data) external payable onlyManager {
-        bytes4 selector = bytes4(data[:4]);
-        if (selector == MULTICALL_SELECTOR) _checkMulticall(data);
-        else _checkHookAndTimelock(selector, data);
-        _forward(data);
+        _checkHookAndTimelock(bytes4(data[:4]), data);
+        (bool success, bytes memory result) = address(hub).call{value: msgValue()}(data);
+        if (!success) revert IERC7751.WrappedError(address(hub), bytes4(data[:4]), result, "");
     }
 
     /// @inheritdoc ISupervisor
@@ -94,9 +96,9 @@ contract Supervisor is ISupervisor {
 
         // A sentinel can only cancel their own removal if they are the sole sentinel
         bytes4 selector = bytes4(data[:4]);
-        if (sentinels[msg.sender] && selector == this.removeSentinel.selector) {
+        if (sentinels[msgSender()] && selector == this.removeSentinel.selector) {
             address target = abi.decode(data[4:], (address));
-            if (target == msg.sender) {
+            if (target == msgSender()) {
                 require(sentinelCount == 1, CannotSelfCancel());
             }
         }
@@ -133,22 +135,10 @@ contract Supervisor is ISupervisor {
     // Internal
     //----------------------------------------------------------------------------------------------
 
-    function _checkMulticall(bytes calldata data) internal {
-        bytes[] memory innerCalls = abi.decode(data[4:], (bytes[]));
-        for (uint256 i; i < innerCalls.length; i++) {
-            bytes4 innerSel = bytes4(BytesLib.slice(innerCalls[i], 0, 4));
-            require(!timelocked[innerSel], MulticallBlocked(i, innerSel, true));
-            if (address(manifest) != address(0) && hooked[innerSel]) {
-                uint48 extra = manifest.check(poolId, msg.sender, innerCalls[i]);
-                require(extra == 0, MulticallBlocked(i, innerSel, false));
-            }
-        }
-    }
-
     function _checkHookAndTimelock(bytes4 selector, bytes calldata data) internal {
         uint48 additionalDelay;
         if (address(manifest) != address(0) && hooked[selector]) {
-            additionalDelay = manifest.check(poolId, msg.sender, data);
+            additionalDelay = manifest.check(poolId, msgSender(), data);
         }
 
         // removeSentinel is always timelocked regardless of the timelocked mapping
@@ -163,12 +153,6 @@ contract Supervisor is ISupervisor {
         }
     }
 
-    function _forward(bytes calldata data) internal {
-        (bool success, bytes memory result) = address(hub).call{value: msg.value}(data);
-        if (!success) {
-            revert IERC7751.WrappedError(address(hub), bytes4(data[:4]), result, "");
-        }
-    }
 }
 
 /// @title  Supervisor Factory
