@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {CentrifugeIntegrationTest} from "../../../integration/Integration.t.sol";
+import {CentrifugeIntegrationTest} from "../Integration.t.sol";
 
-import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
-import {PoolId} from "../../../../src/core/types/PoolId.sol";
-import {MAX_MESSAGE_COST} from "../../../../src/core/messaging/interfaces/IGasService.sol";
+import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {MAX_MESSAGE_COST} from "../../../src/core/messaging/interfaces/IGasService.sol";
 
 contract TestBatchingAndPayment is CentrifugeIntegrationTest {
     // Arbitrary target chain — only needs a registered mock adapter to accept sends
