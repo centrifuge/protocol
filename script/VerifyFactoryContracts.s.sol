@@ -163,7 +163,9 @@ contract VerifyFactoryContracts is Script {
         bytes memory output = vm.ffi(cmd);
         if (_containsSubstring(output, "successfully verified")) {
             result.status = VerificationStatus.NewlyVerified;
-        } else if (_containsSubstring(output, "already verified") || _containsSubstring(output, "This contract is verified")) {
+        } else if (
+            _containsSubstring(output, "already verified") || _containsSubstring(output, "This contract is verified")
+        ) {
             result.status = VerificationStatus.AlreadyVerified;
         } else {
             result.status = VerificationStatus.NotVerified;
