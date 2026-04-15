@@ -15,7 +15,8 @@ import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
 import {JournalEntry} from "../../../../src/core/hub/interfaces/IAccounting.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
-import {MAX_MESSAGE_COST} from "../../../../src/core/messaging/interfaces/IGasService.sol";
+
+import {MAX_MESSAGE_COST} from "../../../../src/admin/interfaces/IGasService.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 

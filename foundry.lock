@@ -10,5 +10,8 @@
       "name": "v0.0.17",
       "rev": "c057d167139dc4878f10ab7133a8c069fa6b1601"
     }
+  },
+  "lib/setup-helpers": {
+    "rev": "0b6c2c1a478a34a8f284ebabd57b951085952cdf"
   }
 }

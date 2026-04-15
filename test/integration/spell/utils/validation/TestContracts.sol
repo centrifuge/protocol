@@ -9,7 +9,6 @@ import {Gateway} from "../../../../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../../../../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../../../../../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../../../../../src/core/spoke/BalanceSheet.sol";
-import {GasService} from "../../../../../src/core/messaging/GasService.sol";
 import {VaultRegistry} from "../../../../../src/core/spoke/VaultRegistry.sol";
 import {MultiAdapter} from "../../../../../src/core/messaging/MultiAdapter.sol";
 import {ContractUpdater} from "../../../../../src/core/utils/ContractUpdater.sol";
@@ -20,6 +19,7 @@ import {MessageDispatcher} from "../../../../../src/core/messaging/MessageDispat
 import {PoolEscrowFactory} from "../../../../../src/core/spoke/factories/PoolEscrowFactory.sol";
 
 import {Root} from "../../../../../src/admin/Root.sol";
+import {GasService} from "../../../../../src/admin/GasService.sol";
 import {OpsGuardian} from "../../../../../src/admin/OpsGuardian.sol";
 import {TokenRecoverer} from "../../../../../src/admin/TokenRecoverer.sol";
 import {ProtocolGuardian} from "../../../../../src/admin/ProtocolGuardian.sol";
@@ -78,7 +78,6 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
     CoreReport memory core = CoreReport(
         Gateway(c.gateway),
         MultiAdapter(c.multiAdapter),
-        GasService(c.gasService),
         MessageProcessor(c.messageProcessor),
         MessageDispatcher(c.messageDispatcher),
         PoolEscrowFactory(c.poolEscrowFactory),
@@ -96,7 +95,8 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         Root(c.root),
         TokenRecoverer(c.tokenRecoverer),
         ProtocolGuardian(c.protocolGuardian),
-        OpsGuardian(c.opsGuardian)
+        OpsGuardian(c.opsGuardian),
+        GasService(c.gasService)
     );
 
     MainContracts memory main = MainContracts(

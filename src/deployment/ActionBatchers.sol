@@ -12,7 +12,6 @@ import {Gateway} from "../core/messaging/Gateway.sol";
 import {HubHandler} from "../core/hub/HubHandler.sol";
 import {HubRegistry} from "../core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../core/spoke/BalanceSheet.sol";
-import {GasService} from "../core/messaging/GasService.sol";
 import {AssetId, newAssetId} from "../core/types/AssetId.sol";
 import {VaultRegistry} from "../core/spoke/VaultRegistry.sol";
 import {MultiAdapter} from "../core/messaging/MultiAdapter.sol";
@@ -26,6 +25,7 @@ import {PoolEscrowFactory} from "../core/spoke/factories/PoolEscrowFactory.sol";
 import {MAX_ADAPTER_COUNT} from "../core/messaging/interfaces/IMultiAdapter.sol";
 
 import {Root} from "../admin/Root.sol";
+import {GasService} from "../admin/GasService.sol";
 import {ISafe} from "../admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../admin/OpsGuardian.sol";
 import {TokenRecoverer} from "../admin/TokenRecoverer.sol";
@@ -64,7 +64,6 @@ import {RefundEscrowFactory} from "../utils/RefundEscrowFactory.sol";
 struct CoreReport {
     Gateway gateway;
     MultiAdapter multiAdapter;
-    GasService gasService;
     MessageProcessor messageProcessor;
     MessageDispatcher messageDispatcher;
     PoolEscrowFactory poolEscrowFactory;
@@ -83,6 +82,7 @@ struct CoreReport {
     TokenRecoverer tokenRecoverer;
     ProtocolGuardian protocolGuardian;
     OpsGuardian opsGuardian;
+    GasService gasService;
 }
 
 struct NonCoreReport {
@@ -230,6 +230,7 @@ contract CoreActionBatcher is Constants {
 
         // Rely opsGuardian
         report.multiAdapter.rely(address(report.opsGuardian));
+        report.gateway.rely(address(report.opsGuardian));
         report.hub.rely(address(report.opsGuardian));
 
         // Rely tokenRecoverer

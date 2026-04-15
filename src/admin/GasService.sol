@@ -2,11 +2,11 @@
 pragma solidity 0.8.28;
 
 import {IGasService} from "./interfaces/IGasService.sol";
-import {PROCESS_FAIL_MESSAGE_GAS} from "./interfaces/IGateway.sol";
-import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
-import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
-import {PoolId} from "../types/PoolId.sol";
+import {PoolId} from "../core/types/PoolId.sol";
+import {PROCESS_FAIL_MESSAGE_GAS} from "../core/messaging/interfaces/IGateway.sol";
+import {IMessageProperties} from "../core/messaging/interfaces/IMessageProperties.sol";
+import {MessageLib, MessageType, VaultUpdateKind} from "../core/messaging/libraries/MessageLib.sol";
 
 /// @title  GasService
 /// @notice This contract stores the gas limits (in gas units) for cross-chain message execution.
