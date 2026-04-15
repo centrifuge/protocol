@@ -41,8 +41,8 @@ interface ISupervisor {
     // Errors
     //----------------------------------------------------------------------------------------------
 
-    error NotManagerOrSentinel();
-    error NotManager();
+    error NotOperatorOrSentinel();
+    error NotOperator();
     error TimelockNotSet();
     error TimelockNotReady(uint48 executeAfter);
     error TimelockExpired();
@@ -62,14 +62,14 @@ interface ISupervisor {
     /// @param data The calldata to forward to the Hub.
     function execute(bytes calldata data) external payable;
 
-    /// @notice Submit a timelocked operation for future execution. Accepts both Hub calldata
-    ///         (for timelocked selectors) and `removeSentinel` calldata (always timelocked).
-    ///         After the delay, call `execute(data)` or `removeSentinel(sentinel)` respectively.
+    /// @notice Submit a timelocked operation for future execution. Accepts Hub calldata (for
+    ///         timelocked selectors), `addSentinel` calldata, and `removeSentinel` calldata.
+    ///         After the delay, call the corresponding function to execute.
     ///         Expired operations must be canceled before the same calldata can be re-submitted.
     /// @param data The calldata for the timelocked operation.
     function submit(bytes calldata data) external;
 
-    /// @notice Cancel a pending timelocked operation. Callable by pool managers or sentinels.
+    /// @notice Cancel a pending timelocked operation. Callable by the operator or sentinels.
     ///         A sentinel can only cancel their own removal if they are the sole sentinel.
     /// @param data The pending calldata to cancel.
     function cancel(bytes calldata data) external;
@@ -78,11 +78,12 @@ interface ISupervisor {
     // Sentinel management
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Add a sentinel. Callable by pool managers. Immediate, no timelock.
+    /// @notice Add a sentinel. Always timelocked.
+    ///         Flow: `submit(abi.encodeCall(addSentinel, (sentinel)))` → wait → `addSentinel(sentinel)`.
     /// @param sentinel The address to add as sentinel.
     function addSentinel(address sentinel) external;
 
-    /// @notice Remove a sentinel. Always timelocked regardless of the timelocked mapping.
+    /// @notice Remove a sentinel. Always timelocked.
     ///         Flow: `submit(abi.encodeCall(removeSentinel, (sentinel)))` → wait → `removeSentinel(sentinel)`.
     /// @param sentinel The address to remove as sentinel.
     function removeSentinel(address sentinel) external;
@@ -93,6 +94,7 @@ interface ISupervisor {
 
     function hub() external view returns (IHub);
     function poolId() external view returns (PoolId);
+    function operator() external view returns (address);
     function delay() external view returns (uint48);
     function expiryWindow() external view returns (uint48);
     function manifest() external view returns (IManifest);
@@ -108,5 +110,7 @@ interface ISupervisorFactory {
 
     function hub() external view returns (IHub);
 
-    function newSupervisor(PoolId poolId, SupervisorConfig calldata config) external returns (ISupervisor);
+    function newSupervisor(PoolId poolId, address operator, SupervisorConfig calldata config)
+        external
+        returns (ISupervisor);
 }

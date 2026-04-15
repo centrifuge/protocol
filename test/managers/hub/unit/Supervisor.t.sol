@@ -88,7 +88,7 @@ abstract contract SupervisorTestBase is Test {
     MockHub hub;
     MockHubRegistry registry;
 
-    address manager = makeAddr("manager");
+    address operator = makeAddr("operator");
     address sentinel = makeAddr("sentinel");
     address unauthorized = makeAddr("unauthorized");
 
@@ -108,13 +108,22 @@ abstract contract SupervisorTestBase is Test {
         SupervisorConfig memory config =
             SupervisorConfig(timelockSels, hookSels, DELAY, EXPIRY, hook);
 
-        return new Supervisor(IHub(address(hub)), POOL, config);
+        return new Supervisor(IHub(address(hub)), POOL, operator, config);
     }
 
     function setUp() public virtual {
         registry = new MockHubRegistry();
         hub = new MockHub(address(registry), makeAddr("gateway"));
-        registry.setManager(POOL, manager, true);
+    }
+
+    /// @dev Helper to add a sentinel through the timelock flow.
+    function _addSentinel(Supervisor supervisor, address s) internal {
+        bytes memory data = abi.encodeCall(Supervisor.addSentinel, (s));
+        vm.prank(operator);
+        supervisor.submit(data);
+        vm.warp(block.timestamp + DELAY);
+        vm.prank(operator);
+        supervisor.addSentinel(s);
     }
 }
 
@@ -131,7 +140,7 @@ contract SupervisorExecuteTest is SupervisorTestBase {
     function testExecuteForwardsToHub() public {
         bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
 
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.execute(data);
 
         assertEq(hub.lastValue(), 42);
@@ -140,8 +149,8 @@ contract SupervisorExecuteTest is SupervisorTestBase {
     function testExecuteForwardsValue() public {
         bytes memory data = abi.encodeCall(MockHub.doSomething, (99));
 
-        vm.deal(manager, 1 ether);
-        vm.prank(manager);
+        vm.deal(operator, 1 ether);
+        vm.prank(operator);
         supervisor.execute{value: 0.5 ether}(data);
 
         assertEq(hub.lastValue(), 99);
@@ -151,7 +160,7 @@ contract SupervisorExecuteTest is SupervisorTestBase {
     function testExecuteRevertsForNonManager() public {
         bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
 
-        vm.expectRevert(ISupervisor.NotManager.selector);
+        vm.expectRevert(ISupervisor.NotOperator.selector);
         vm.prank(unauthorized);
         supervisor.execute(data);
     }
@@ -160,7 +169,7 @@ contract SupervisorExecuteTest is SupervisorTestBase {
         bytes memory data = abi.encodeCall(MockHub.alwaysReverts, ());
 
         vm.expectRevert();
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.execute(data);
     }
 }
@@ -179,24 +188,24 @@ contract SupervisorTimelockTest is SupervisorTestBase {
         bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
 
         vm.expectRevert(ISupervisor.OperationNotPending.selector);
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.execute(data);
     }
 
     function testTimelockFullFlow() public {
         bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
 
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
 
         // Too early
         vm.expectRevert();
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.execute(data);
 
         // After delay
         vm.warp(block.timestamp + DELAY);
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.execute(data);
 
         assertEq(hub.lastValue(), 42);
@@ -205,40 +214,40 @@ contract SupervisorTimelockTest is SupervisorTestBase {
     function testTimelockExpires() public {
         bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
 
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
 
         vm.warp(block.timestamp + DELAY + EXPIRY + 1);
 
         vm.expectRevert(ISupervisor.TimelockExpired.selector);
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.execute(data);
     }
 
     function testTimelockCannotSubmitTwice() public {
         bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
 
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
 
         vm.expectRevert(ISupervisor.OperationAlreadyPending.selector);
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
     }
 
     function testTimelockCannotReplay() public {
         bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
 
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
 
         vm.warp(block.timestamp + DELAY);
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.execute(data);
 
         // Second execute should fail
         vm.expectRevert(ISupervisor.OperationNotPending.selector);
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.execute(data);
     }
 
@@ -246,14 +255,14 @@ contract SupervisorTimelockTest is SupervisorTestBase {
         bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
 
         vm.expectRevert(ISupervisor.TimelockNotSet.selector);
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
     }
 
     function testSubmitRevertsForNonManager() public {
         bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
 
-        vm.expectRevert(ISupervisor.NotManager.selector);
+        vm.expectRevert(ISupervisor.NotOperator.selector);
         vm.prank(unauthorized);
         supervisor.submit(data);
     }
@@ -267,17 +276,16 @@ contract SupervisorCancelTest is SupervisorTestBase {
     function setUp() public override {
         super.setUp();
         supervisor = _deploySupervisor(IManifest(address(0)));
-        vm.prank(manager);
-        supervisor.addSentinel(sentinel);
+        _addSentinel(supervisor, sentinel);
     }
 
     function testManagerCanCancel() public {
         bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
 
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
 
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.cancel(data);
 
         assertEq(supervisor.pending(data), 0);
@@ -286,7 +294,7 @@ contract SupervisorCancelTest is SupervisorTestBase {
     function testSentinelCanCancel() public {
         bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
 
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
 
         vm.prank(sentinel);
@@ -298,10 +306,10 @@ contract SupervisorCancelTest is SupervisorTestBase {
     function testUnauthorizedCannotCancel() public {
         bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
 
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
 
-        vm.expectRevert(ISupervisor.NotManagerOrSentinel.selector);
+        vm.expectRevert(ISupervisor.NotOperatorOrSentinel.selector);
         vm.prank(unauthorized);
         supervisor.cancel(data);
     }
@@ -310,14 +318,14 @@ contract SupervisorCancelTest is SupervisorTestBase {
         bytes memory data = abi.encodeCall(MockHub.timelocked, (99));
 
         vm.expectRevert(ISupervisor.OperationNotPending.selector);
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.cancel(data);
     }
 
     function testCancelPreventsExecution() public {
         bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
 
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
 
         vm.prank(sentinel);
@@ -326,17 +334,16 @@ contract SupervisorCancelTest is SupervisorTestBase {
         vm.warp(block.timestamp + DELAY);
 
         vm.expectRevert(ISupervisor.OperationNotPending.selector);
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.execute(data);
     }
 
     function testSentinelCannotCancelOwnRemovalWithMultipleSentinels() public {
         address sentinel2 = makeAddr("sentinel2");
-        vm.prank(manager);
-        supervisor.addSentinel(sentinel2);
+        _addSentinel(supervisor, sentinel2);
 
         bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
 
         vm.expectRevert(ISupervisor.CannotSelfCancel.selector);
@@ -347,7 +354,7 @@ contract SupervisorCancelTest is SupervisorTestBase {
     function testSoleSentinelCanCancelOwnRemoval() public {
         // Only one sentinel set (from setUp)
         bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
 
         vm.prank(sentinel);
@@ -372,7 +379,7 @@ contract SupervisorManifestHookTest is SupervisorTestBase {
     function testHookPassesForNonHookedSelector() public {
         bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
 
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.execute(data);
 
         assertEq(hub.lastValue(), 42);
@@ -383,14 +390,14 @@ contract SupervisorManifestHookTest is SupervisorTestBase {
         bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
 
         vm.expectRevert(MockManifest.Blocked.selector);
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.execute(data);
     }
 
     function testHookAllowsWhenPassing() public {
         bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
 
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.execute(data);
 
         assertEq(hub.lastValue(), 42);
@@ -407,115 +414,112 @@ contract SupervisorSentinelTest is SupervisorTestBase {
         supervisor = _deploySupervisor(IManifest(address(0)));
     }
 
-    function testAddSentinel() public {
-        vm.prank(manager);
+    function testAddSentinelRequiresTimelock() public {
+        vm.expectRevert(ISupervisor.OperationNotPending.selector);
+        vm.prank(operator);
         supervisor.addSentinel(sentinel);
-
-        assertTrue(supervisor.sentinels(sentinel));
     }
 
-    function testAddSentinelRevertsForNonManager() public {
-        vm.expectRevert(ISupervisor.NotManager.selector);
+    function testAddSentinelFullFlow() public {
+        _addSentinel(supervisor, sentinel);
+        assertTrue(supervisor.sentinels(sentinel));
+        assertEq(supervisor.sentinelCount(), 1);
+    }
+
+    function testAddSentinelRevertsForNonOperator() public {
+        bytes memory data = abi.encodeCall(Supervisor.addSentinel, (sentinel));
+        vm.expectRevert(ISupervisor.NotOperator.selector);
         vm.prank(unauthorized);
-        supervisor.addSentinel(sentinel);
+        supervisor.submit(data);
     }
 
     function testAddSentinelRevertsForZeroAddress() public {
+        bytes memory data = abi.encodeCall(Supervisor.addSentinel, (address(0)));
+        vm.prank(operator);
+        supervisor.submit(data);
+        vm.warp(block.timestamp + DELAY);
+
         vm.expectRevert(ISupervisor.ZeroAddress.selector);
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.addSentinel(address(0));
     }
 
     function testAddSentinelRevertsIfAlreadySentinel() public {
-        vm.prank(manager);
-        supervisor.addSentinel(sentinel);
+        _addSentinel(supervisor, sentinel);
+
+        bytes memory data = abi.encodeCall(Supervisor.addSentinel, (sentinel));
+        vm.prank(operator);
+        supervisor.submit(data);
+        vm.warp(block.timestamp + DELAY);
 
         vm.expectRevert(ISupervisor.AlreadySentinel.selector);
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.addSentinel(sentinel);
     }
 
     function testRemoveSentinelRequiresTimelock() public {
-        vm.prank(manager);
-        supervisor.addSentinel(sentinel);
+        _addSentinel(supervisor, sentinel);
 
         vm.expectRevert(ISupervisor.OperationNotPending.selector);
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.removeSentinel(sentinel);
     }
 
     function testRemoveSentinelFullFlow() public {
-        vm.prank(manager);
-        supervisor.addSentinel(sentinel);
+        _addSentinel(supervisor, sentinel);
 
-        // Submit the removeSentinel call
         bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
-
-        // Wait for delay
         vm.warp(block.timestamp + DELAY);
-
-        // Execute
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.removeSentinel(sentinel);
 
         assertFalse(supervisor.sentinels(sentinel));
     }
 
     function testRemoveSentinelTooEarly() public {
-        vm.prank(manager);
-        supervisor.addSentinel(sentinel);
+        _addSentinel(supervisor, sentinel);
 
         bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
 
-        // Try to execute before delay
         vm.expectRevert();
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.removeSentinel(sentinel);
 
-        // Still a sentinel
         assertTrue(supervisor.sentinels(sentinel));
     }
 
     function testSoleSentinelCanVetoOwnRemoval() public {
-        vm.prank(manager);
-        supervisor.addSentinel(sentinel);
+        _addSentinel(supervisor, sentinel);
 
         bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
 
-        // Sole sentinel vetoes
         vm.prank(sentinel);
         supervisor.cancel(data);
 
-        // Now removal fails
         vm.warp(block.timestamp + DELAY);
 
         vm.expectRevert(ISupervisor.OperationNotPending.selector);
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.removeSentinel(sentinel);
 
-        // Still a sentinel
         assertTrue(supervisor.sentinels(sentinel));
     }
 
     function testOtherSentinelCanVetoRemoval() public {
-        vm.prank(manager);
-        supervisor.addSentinel(sentinel);
-
+        _addSentinel(supervisor, sentinel);
         address sentinel2 = makeAddr("sentinel2");
-        vm.prank(manager);
-        supervisor.addSentinel(sentinel2);
+        _addSentinel(supervisor, sentinel2);
 
         bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
-        vm.prank(manager);
+        vm.prank(operator);
         supervisor.submit(data);
 
-        // Other sentinel vetoes (not the one being removed)
         vm.prank(sentinel2);
         supervisor.cancel(data);
 
@@ -544,7 +548,7 @@ contract SupervisorFactoryTest is Test {
 
         SupervisorConfig memory config =
             SupervisorConfig(timelockSels, new bytes4[](0), 1 days, 7 days, IManifest(address(0)));
-        ISupervisor supervisor = factory.newSupervisor(POOL, config);
+        ISupervisor supervisor = factory.newSupervisor(POOL, makeAddr("operator"), config);
 
         assertEq(address(supervisor.hub()), address(hub));
         assertEq(PoolId.unwrap(supervisor.poolId()), PoolId.unwrap(POOL));
