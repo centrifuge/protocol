@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {d18} from "../../../../src/misc/types/D18.sol";
+import {CentrifugeIntegrationTest} from "../../../integration/Integration.t.sol";
 
-import {AssetId, BaseTest, IAdapter, PoolId, d18, newAssetId} from "../../../core/hub/integration/BaseTest.sol";
+import {d18} from "../../../../src/misc/types/D18.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
@@ -14,15 +14,19 @@ import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClas
 
 import {INAVHook} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
 
-contract NAVManagerIntegrationTest is BaseTest {
-    PoolId constant POOL_A = PoolId.wrap(1);
+contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
+    // Logical network IDs for NAV segregation — not actual deployed chains
+    uint16 constant CHAIN_CP = 5;
+    uint16 constant CHAIN_CV = 6;
 
+    PoolId POOL_A;
     ShareClassId scId;
 
     address manager = makeAddr("manager");
+    address FM = makeAddr("FM");
 
-    AssetId asset1 = USDC_C2;
-    AssetId asset2 = EUR_STABLE_C2;
+    AssetId asset1 = newAssetId(CHAIN_CV, 1);
+    AssetId asset2 = newAssetId(CHAIN_CV, 2);
     AssetId asset3 = newAssetId(CHAIN_CP, 1);
     AssetId liabilityAsset = newAssetId(CHAIN_CP, 2);
     // differing decimals to test conversion
@@ -33,14 +37,14 @@ contract NAVManagerIntegrationTest is BaseTest {
     function setUp() public override {
         super.setUp();
 
-        cv.registerAsset(asset1, asset1Decimals);
-        cv.registerAsset(asset2, asset2Decimals);
+        POOL_A = hubRegistry.poolId(LOCAL_CENTRIFUGE_ID, 1);
 
-        vm.prank(address(root));
+        vm.startPrank(address(root));
+        hubRegistry.registerAsset(asset1, asset1Decimals);
+        hubRegistry.registerAsset(asset2, asset2Decimals);
         hubRegistry.registerAsset(asset3, asset3Decimals);
-
-        vm.prank(address(root));
         hubRegistry.registerAsset(liabilityAsset, 18);
+        vm.stopPrank();
 
         _setupMocks();
         _setupPool();
@@ -50,25 +54,26 @@ contract NAVManagerIntegrationTest is BaseTest {
 
     function _setupMocks() internal {
         vm.mockCall(address(hub), abi.encodeWithSelector(hub.notifySharePrice.selector), abi.encode(uint256(0)));
+        vm.mockCall(
+            address(messageDispatcher),
+            abi.encodeWithSignature(
+                "sendExecuteTransferShares(uint16,uint16,uint64,bytes16,bytes32,uint128,uint128,address)"
+            ),
+            abi.encode(uint256(0))
+        );
     }
 
     function _setupPool() internal {
-        vm.prank(address(root));
-        hubRegistry.registerPool(POOL_A, FM, USD_ID);
+        vm.prank(address(opsGuardian.opsSafe()));
+        opsGuardian.createPool(POOL_A, FM, USD_ID);
 
         vm.startPrank(FM);
         scId = hub.addShareClass(POOL_A, "Test Share Class", "TSC", bytes32(bytes8(POOL_A.raw())));
-
-        IAdapter[] memory adapters = new IAdapter[](1);
-        adapters[0] = cv;
-        hub.setAdapters{value: GAS}(POOL_A, CHAIN_CV, adapters, new bytes32[](0), 1, 1, REFUND);
         hub.setSnapshotHook(POOL_A, ISnapshotHook(address(navManager)));
         hub.updateHubManager(POOL_A, address(navManager), true);
         hub.updateHubManager(POOL_A, address(simplePriceManager), true);
         navManager.updateManager(POOL_A, manager, true);
-
         navManager.setNAVHook(POOL_A, INAVHook(address(simplePriceManager)));
-
         vm.stopPrank();
 
         valuation.setPrice(POOL_A, scId, asset1, d18(1, 1));
@@ -86,14 +91,21 @@ contract NAVManagerIntegrationTest is BaseTest {
         navManager.initializeHolding(POOL_A, scId, asset2, IValuation(address(valuation)));
         navManager.initializeHolding(POOL_A, scId, asset3, IValuation(address(valuation)));
         navManager.initializeLiability(POOL_A, scId, liabilityAsset, IValuation(address(valuation)));
+        vm.stopPrank();
 
-        cv.updateHoldingAmount(POOL_A, scId, asset1, uint128(1000 * 10 ** asset1Decimals), d18(1, 1), true, false, 0);
-        cv.updateHoldingAmount(POOL_A, scId, asset2, uint128(2300 * 10 ** asset2Decimals), d18(1, 1), true, false, 1);
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(
+            CHAIN_CV, POOL_A, scId, asset1, uint128(1000 * 10 ** asset1Decimals), d18(1, 1), true, false, 0
+        );
+
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(
+            CHAIN_CV, POOL_A, scId, asset2, uint128(2300 * 10 ** asset2Decimals), d18(1, 1), true, false, 1
+        );
 
         vm.expectCall(address(hub), abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(1, 1)));
-        cv.updateShares(POOL_A, scId, 3300e18, true, true, 2);
-
-        vm.stopPrank();
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateShares(CHAIN_CV, POOL_A, scId, 3300e18, true, true, 2);
 
         vm.prank(address(messageDispatcher));
         hubHandler.updateHoldingAmount(
@@ -101,7 +113,6 @@ contract NAVManagerIntegrationTest is BaseTest {
         );
 
         vm.expectCall(address(hub), abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(1, 1)));
-
         vm.prank(address(messageDispatcher));
         hubHandler.updateShares(CHAIN_CP, POOL_A, scId, 500e18, true, true, 1);
 
