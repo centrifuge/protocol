@@ -8,8 +8,8 @@ import {IGasService} from "./IGasService.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
-import {IMultiAdapter} from "../../core/messaging/interfaces/IMultiAdapter.sol";
 import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
+import {IMultiAdapter} from "../../core/messaging/interfaces/IMultiAdapter.sol";
 
 interface IOpsGuardian {
     error NotTheAuthorizedSafe();
