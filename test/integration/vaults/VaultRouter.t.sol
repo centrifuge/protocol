@@ -11,7 +11,7 @@ import {IERC7540Deposit} from "../../../src/misc/interfaces/IERC7540.sol";
 import {
     AssetId,
     AsyncVault,
-    BaseTest,
+    VaultBaseTest as BaseTest,
     ERC20,
     IShareToken,
     MessageLib,
@@ -19,14 +19,12 @@ import {
     PoolId,
     SyncDepositVault,
     VaultKind
-} from "../../core/spoke/integration/BaseTest.sol";
+} from "./VaultBaseTest.sol";
 
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
-import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
-import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "../../../src/vaults/interfaces/IVaultRouter.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";

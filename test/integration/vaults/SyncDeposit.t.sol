@@ -17,20 +17,16 @@ import {
 
 import {
     AssetId,
-    BaseTest,
+    VaultBaseTest as BaseTest,
     IShareToken,
     MessageLib,
     PoolId,
     ShareClassId,
     SyncDepositVault,
     VaultKind
-} from "../../core/spoke/integration/BaseTest.sol";
+} from "./VaultBaseTest.sol";
 
-import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
-import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {VaultDetails} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
 

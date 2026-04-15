@@ -7,19 +7,15 @@ import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
 import {
     AssetId,
-    BaseTest,
+    VaultBaseTest as BaseTest,
     MessageLib,
     PoolId,
     ShareClassId,
     SyncDepositVault,
     VaultKind
-} from "../../core/spoke/integration/BaseTest.sol";
-
-import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
+} from "./VaultBaseTest.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
-import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
-import {IBaseRequestManager} from "../../../src/vaults/interfaces/IBaseRequestManager.sol";
 import {ISyncManager, ISyncDepositValuation} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 
 contract SyncManagerBaseTest is BaseTest {
@@ -49,28 +45,6 @@ contract SyncManagerBaseTest is BaseTest {
 
 contract SyncManagerTest is SyncManagerBaseTest {
     using MessageLib for *;
-
-    // --- Administration ---
-    function testFile() public {
-        // fail: unrecognized param
-        vm.expectRevert(IBaseRequestManager.FileUnrecognizedParam.selector);
-        syncManager.file("random", self);
-
-        assertEq(address(syncManager.spoke()), address(spoke));
-        assertEq(address(syncManager.balanceSheet()), address(balanceSheet));
-
-        // success
-        syncManager.file("spoke", randomUser);
-        assertEq(address(syncManager.spoke()), randomUser);
-        syncManager.file("balanceSheet", randomUser);
-        assertEq(address(syncManager.balanceSheet()), randomUser);
-
-        // remove self from wards
-        syncManager.deny(self);
-        // auth fail
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        syncManager.file("spoke", randomUser);
-    }
 
     // --- Simple Errors ---
     function testMintUnlinkedVault() public {

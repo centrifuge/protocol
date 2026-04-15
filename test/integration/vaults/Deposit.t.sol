@@ -9,7 +9,7 @@ import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 import {
     AssetId,
     AsyncVault,
-    BaseTest,
+    VaultBaseTest as BaseTest,
     ERC20,
     IShareToken,
     MessageLib,
@@ -17,11 +17,7 @@ import {
     PoolId,
     ShareClassId,
     VaultKind
-} from "../../core/spoke/integration/BaseTest.sol";
-
-import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {AssetId} from "../../../src/core/types/AssetId.sol";
-import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+} from "./VaultBaseTest.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";

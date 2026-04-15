@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 pragma abicoder v2;
 
-import {BaseTest, IShareToken, VaultKind} from "../../core/spoke/integration/BaseTest.sol";
+import {VaultBaseTest as BaseTest, IShareToken, VaultKind} from "./VaultBaseTest.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";

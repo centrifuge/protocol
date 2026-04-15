@@ -12,7 +12,7 @@ import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../
 
 import "forge-std/Test.sol";
 
-import {IntegrationConstants} from "../../integration/utils/IntegrationConstants.sol";
+import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 
 contract MockPoolEscrow {
     PoolId public immutable poolId;

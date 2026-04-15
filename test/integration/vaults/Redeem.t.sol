@@ -8,18 +8,14 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {
     AssetId,
     AsyncVault,
-    BaseTest,
+    VaultBaseTest as BaseTest,
     ERC20,
     IShareToken,
     MessageLib,
     PoolId,
     ShareClassId,
     VaultKind
-} from "../../core/spoke/integration/BaseTest.sol";
-
-import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {AssetId} from "../../../src/core/types/AssetId.sol";
-import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+} from "./VaultBaseTest.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {RequestMessageLib} from "../../../src/vaults/libraries/RequestMessageLib.sol";
