@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CentrifugeIntegrationTest} from "../../Integration.t.sol";
-
 import {d18} from "../../../../src/misc/types/D18.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
@@ -13,6 +11,8 @@ import {ISnapshotHook} from "../../../../src/core/hub/interfaces/ISnapshotHook.s
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
 
 import {INAVHook} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
+
+import {CentrifugeIntegrationTest} from "../../Integration.t.sol";
 
 contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
     // Logical network IDs for NAV segregation — not actual deployed chains

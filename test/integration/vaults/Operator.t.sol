@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
-
 import {AsyncVault, VaultBaseTest as BaseTest, IShareToken, VaultKind} from "./VaultBaseTest.sol";
+
+import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";

@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18, d18} from "../../../src/misc/types/D18.sol";
-import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
-import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
-
 import {
     AssetId,
     VaultBaseTest as BaseTest,
@@ -14,6 +10,10 @@ import {
     SyncDepositVault,
     VaultKind
 } from "./VaultBaseTest.sol";
+
+import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
+import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {ISyncManager, ISyncDepositValuation} from "../../../src/vaults/interfaces/IVaultManagers.sol";

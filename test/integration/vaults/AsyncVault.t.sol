@@ -1,18 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
+import {AsyncVault, VaultBaseTest as BaseTest, IShareToken, PoolId, ShareClassId, VaultKind} from "./VaultBaseTest.sol";
 
 import {ERC20} from "../../../src/misc/ERC20.sol";
-
-import {
-    AsyncVault,
-    VaultBaseTest as BaseTest,
-    IShareToken,
-    PoolId,
-    ShareClassId,
-    VaultKind
-} from "./VaultBaseTest.sol";
+import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 
@@ -75,9 +67,8 @@ contract AsyncVaultTest is BaseTest {
         ERC20 asset18 = _newErc20("18Dec Asset", "A18", 18);
         bytes16 scId = bytes16(bytes("6dec"));
 
-        (uint64 poolId, address vaultAddr, uint128 assetId) = deployVault(
-            VaultKind.Async, 6, address(fullRestrictionsHook), scId, address(asset18), 0, OTHER_CHAIN_ID
-        );
+        (uint64 poolId, address vaultAddr, uint128 assetId) =
+            deployVault(VaultKind.Async, 6, address(fullRestrictionsHook), scId, address(asset18), 0, OTHER_CHAIN_ID);
         AsyncVault vault = AsyncVault(vaultAddr);
 
         // At 1:1 price: 1 full share (1e6 units) costs 1 full 18-dec asset (1e18 units)
@@ -95,7 +86,9 @@ contract AsyncVaultTest is BaseTest {
         vault.requestDeposit(investmentAmount, investor, investor);
         vm.stopPrank();
 
-        centrifugeChain.isFulfilledDepositRequest(poolId, scId, bytes32(bytes20(investor)), assetId, investmentAmount, shares, 0);
+        centrifugeChain.isFulfilledDepositRequest(
+            poolId, scId, bytes32(bytes20(investor)), assetId, investmentAmount, shares, 0
+        );
 
         vm.prank(investor);
         vault.deposit(investmentAmount, investor);

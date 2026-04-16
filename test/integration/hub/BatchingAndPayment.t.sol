@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {CentrifugeIntegrationTest} from "../Integration.t.sol";
-
-import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {MAX_MESSAGE_COST} from "../../../src/core/messaging/interfaces/IGasService.sol";
+
+import {CentrifugeIntegrationTest} from "../Integration.t.sol";
 
 contract TestBatchingAndPayment is CentrifugeIntegrationTest {
     // Arbitrary target chain — only needs a registered mock adapter to accept sends
@@ -23,9 +23,7 @@ contract TestBatchingAndPayment is CentrifugeIntegrationTest {
 
         // Configure a mock adapter for TARGET_CHAIN so hub can route cross-chain messages
         address mockAdapter = makeAddr("mockAdapter");
-        vm.mockCall(
-            mockAdapter, abi.encodeWithSignature("estimate(uint16,bytes,uint256)"), abi.encode(uint256(GAS))
-        );
+        vm.mockCall(mockAdapter, abi.encodeWithSignature("estimate(uint16,bytes,uint256)"), abi.encode(uint256(GAS)));
         vm.mockCall(mockAdapter, abi.encodeWithSignature("send(uint16,bytes,uint256,address)"), abi.encode(bytes32(0)));
 
         mockAdapters = new IAdapter[](1);

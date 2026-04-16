@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {
+    AssetId,
+    VaultBaseTest as BaseTest,
+    IShareToken,
+    MessageLib,
+    PoolId,
+    ShareClassId,
+    SyncDepositVault,
+    VaultKind
+} from "./VaultBaseTest.sol";
+
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
@@ -14,17 +25,6 @@ import {
     IERC7741,
     IERC7887Redeem
 } from "../../../src/misc/interfaces/IERC7540.sol";
-
-import {
-    AssetId,
-    VaultBaseTest as BaseTest,
-    IShareToken,
-    MessageLib,
-    PoolId,
-    ShareClassId,
-    SyncDepositVault,
-    VaultKind
-} from "./VaultBaseTest.sol";
 
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";

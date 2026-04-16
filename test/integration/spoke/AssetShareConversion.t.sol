@@ -1,24 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {CentrifugeIntegrationTest} from "../Integration.t.sol";
-
+import {ERC20} from "../../../src/misc/ERC20.sol";
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
-
-import {ERC20} from "../../../src/misc/ERC20.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
-import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
-
-import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
+
+import {CentrifugeIntegrationTest} from "../Integration.t.sol";
 
 contract AssetShareConversionTest is CentrifugeIntegrationTest {
     using CastLib for *;
@@ -75,11 +73,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
 
         // Allow asyncRequestManager to call balance sheet operations for this pool
         hub.updateBalanceSheetManager{value: 0}(
-            POOL_A,
-            LOCAL_CENTRIFUGE_ID,
-            bytes32(bytes20(address(asyncRequestManager))),
-            true,
-            address(this)
+            POOL_A, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(asyncRequestManager))), true, address(this)
         );
 
         // Deploy and link vault (same-chain short-circuit: goes directly to vaultRegistry)
@@ -104,7 +98,8 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
             POOL_A,
             SC_1,
             assetId,
-            RequestCallbackMessageLib.ApprovedDeposits({assetAmount: assetAmount, pricePoolPerAsset: d18(1, 1).raw()}).serialize()
+            RequestCallbackMessageLib.ApprovedDeposits({assetAmount: assetAmount, pricePoolPerAsset: d18(1, 1).raw()})
+                .serialize()
         );
 
         vm.prank(address(messageProcessor));
@@ -112,7 +107,8 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
             POOL_A,
             SC_1,
             assetId,
-            RequestCallbackMessageLib.IssuedShares({shareAmount: shareAmount, pricePoolPerShare: d18(1, 1).raw()}).serialize()
+            RequestCallbackMessageLib.IssuedShares({shareAmount: shareAmount, pricePoolPerShare: d18(1, 1).raw()})
+                .serialize()
         );
 
         vm.prank(address(messageProcessor));
@@ -121,11 +117,11 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
             SC_1,
             assetId,
             RequestCallbackMessageLib.FulfilledDepositRequest({
-                investor: investor.toBytes32(),
-                fulfilledAssetAmount: assetAmount,
-                fulfilledShareAmount: shareAmount,
-                cancelledAssetAmount: 0
-            }).serialize()
+                    investor: investor.toBytes32(),
+                    fulfilledAssetAmount: assetAmount,
+                    fulfilledShareAmount: shareAmount,
+                    cancelledAssetAmount: 0
+                }).serialize()
         );
     }
 
@@ -155,7 +151,8 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
             POOL_A,
             SC_1,
             LOCAL_CENTRIFUGE_ID,
-            UpdateRestrictionMessageLib.UpdateRestrictionMember(address(this).toBytes32(), type(uint64).max).serialize(),
+            UpdateRestrictionMessageLib.UpdateRestrictionMember(address(this).toBytes32(), type(uint64).max)
+                .serialize(),
             0,
             address(this)
         );
@@ -200,8 +197,6 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
         assertEq(vault.convertToAssets(vault.convertToShares(240000000000000000000)), 240000000000000000000);
         assertEq(vault.pricePerShare(), 2.4e6);
     }
-
-
 
     /// forge-config: default.isolate = true
     function testPriceWorksAfterRemovingVault() public {

@@ -5,17 +5,17 @@ import {IAuth} from "../../../../src/misc/Auth.sol";
 import {D18, d18} from "../../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
-import {AssetId, VaultBaseTest as BaseTest, ERC20, ShareClassId} from "../../vaults/VaultBaseTest.sol";
-
 import {BalanceSheet} from "../../../../src/core/spoke/BalanceSheet.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
+import {MerkleTreeLib} from "../../../managers/spoke/libraries/MerkleTreeLib.sol";
 
 import {VaultDecoder} from "../../../../src/managers/spoke/decoders/VaultDecoder.sol";
 import {MerkleProofManager, PolicyLeaf, Call} from "../../../../src/managers/spoke/MerkleProofManager.sol";
 import {IMerkleProofManager, IERC7751} from "../../../../src/managers/spoke/interfaces/IMerkleProofManager.sol";
 
-import {MerkleTreeLib} from "../../../managers/spoke/libraries/MerkleTreeLib.sol";
+import {AssetId, VaultBaseTest as BaseTest, ERC20, ShareClassId} from "../../vaults/VaultBaseTest.sol";
 
 abstract contract MerkleProofManagerBaseTest is BaseTest {
     using CastLib for *;

@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {AsyncVault, VaultBaseTest as BaseTest, IShareToken, VaultKind} from "../vaults/VaultBaseTest.sol";
-
 import {ITransferHook} from "../../../src/core/spoke/interfaces/ITransferHook.sol";
+
+import {AsyncVault, VaultBaseTest as BaseTest, IShareToken, VaultKind} from "../vaults/VaultBaseTest.sol";
 
 contract FreezeOnlyTest is BaseTest {
     using CastLib for *;

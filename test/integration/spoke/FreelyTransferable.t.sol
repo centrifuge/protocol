@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {AsyncVault, VaultBaseTest as BaseTest, IShareToken, VaultKind} from "../vaults/VaultBaseTest.sol";
-
 import {FreelyTransferable} from "../../../src/hooks/FreelyTransferable.sol";
+
+import {AsyncVault, VaultBaseTest as BaseTest, IShareToken, VaultKind} from "../vaults/VaultBaseTest.sol";
 
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 

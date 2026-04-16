@@ -1,25 +1,23 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {CentrifugeIntegrationTest} from "../Integration.t.sol";
-
-import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
-
 import {ERC20} from "../../../src/misc/ERC20.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
-import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-
-import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
-import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {ShareToken} from "../../../src/core/spoke/ShareToken.sol";
+import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {VaultDetails} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
 
-import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
-import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
-
 import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
+import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
+import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
+
+import {CentrifugeIntegrationTest} from "../Integration.t.sol";
 
 contract SpokeRestrictionTest is CentrifugeIntegrationTest {
     using CastLib for *;

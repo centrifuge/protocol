@@ -2,40 +2,40 @@
 pragma solidity 0.8.28;
 
 // Re-exported for test files importing from VaultBaseTest
-import {D18, d18} from "../../../src/misc/types/D18.sol";
-import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
-import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
-import {ERC20} from "../../../src/misc/ERC20.sol";
-import {IERC6909Fungible} from "../../../src/misc/interfaces/IERC6909.sol";
-
-import {PoolId, newPoolId} from "../../../src/core/types/PoolId.sol";
-import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
-import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {VaultKind} from "../../../src/core/spoke/interfaces/IVault.sol";
-import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
-import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
-import {MAX_MESSAGE_COST} from "../../../src/core/messaging/interfaces/IGasService.sol";
-import {MessageLib, VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
-import {IVaultFactory} from "../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
-import {VaultDetails} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
-import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
-import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
-
-import {Spoke} from "../../../src/core/spoke/Spoke.sol";
-import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
-
-import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
-import {ISyncManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
-import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
-import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
-import {SyncManager} from "../../../src/vaults/SyncManager.sol";
-
-import {CentrifugeIntegrationTest} from "../Integration.t.sol";
-import {MockAdapter} from "../../core/mocks/MockAdapter.sol";
 import {MockERC6909} from "../../misc/mocks/MockERC6909.sol";
 
+import {ERC20} from "../../../src/misc/ERC20.sol";
+import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+import {IERC6909Fungible} from "../../../src/misc/interfaces/IERC6909.sol";
+
+import {MockAdapter} from "../../core/mocks/MockAdapter.sol";
+
+import {Spoke} from "../../../src/core/spoke/Spoke.sol";
+import {PoolId, newPoolId} from "../../../src/core/types/PoolId.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
+import {VaultKind} from "../../../src/core/spoke/interfaces/IVault.sol";
+import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
+import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
+import {VaultDetails} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
+import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
+import {MAX_MESSAGE_COST} from "../../../src/core/messaging/interfaces/IGasService.sol";
+import {IVaultFactory} from "../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
+
+import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
+import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
+import {SyncManager} from "../../../src/vaults/SyncManager.sol";
+import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
+import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
+import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
+
 import "forge-std/Test.sol";
+
+import {CentrifugeIntegrationTest} from "../Integration.t.sol";
 
 /// @dev Direct centrifuge chain simulator — calls spoke/vaultRegistry/syncManager directly as a ward
 ///      instead of routing through adapters. Replaces MockCentrifugeChain in VaultBaseTest.
@@ -78,9 +78,7 @@ contract MockCentrifugeChainDirect is Test {
         uint8 decimals,
         address hook
     ) public {
-        addShareClass(
-            poolId, scId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, scId)), hook
-        );
+        addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, scId)), hook);
     }
 
     function updateMember(uint64 poolId, bytes16 scId, address user, uint64 validUntil) public {
@@ -136,11 +134,11 @@ contract MockCentrifugeChainDirect is Test {
             ShareClassId.wrap(scId),
             AssetId.wrap(assetId),
             RequestCallbackMessageLib.FulfilledDepositRequest({
-                investor: investor,
-                fulfilledAssetAmount: fulfilledAssetAmount,
-                fulfilledShareAmount: fulfilledShareAmount,
-                cancelledAssetAmount: cancelledAssetAmount
-            }).serialize()
+                    investor: investor,
+                    fulfilledAssetAmount: fulfilledAssetAmount,
+                    fulfilledShareAmount: fulfilledShareAmount,
+                    cancelledAssetAmount: cancelledAssetAmount
+                }).serialize()
         );
     }
 
@@ -152,9 +150,8 @@ contract MockCentrifugeChainDirect is Test {
             ShareClassId.wrap(scId),
             AssetId.wrap(assetId),
             RequestCallbackMessageLib.ApprovedDeposits({
-                assetAmount: assets,
-                pricePoolPerAsset: pricePoolPerAsset.raw()
-            }).serialize()
+                    assetAmount: assets, pricePoolPerAsset: pricePoolPerAsset.raw()
+                }).serialize()
         );
     }
 
@@ -186,11 +183,11 @@ contract MockCentrifugeChainDirect is Test {
             ShareClassId.wrap(scId),
             AssetId.wrap(assetId),
             RequestCallbackMessageLib.FulfilledRedeemRequest({
-                investor: investor,
-                fulfilledAssetAmount: fulfilledAssetAmount,
-                fulfilledShareAmount: fulfilledShareAmount,
-                cancelledShareAmount: cancelledShareAmount
-            }).serialize()
+                    investor: investor,
+                    fulfilledAssetAmount: fulfilledAssetAmount,
+                    fulfilledShareAmount: fulfilledShareAmount,
+                    cancelledShareAmount: cancelledShareAmount
+                }).serialize()
         );
     }
 
@@ -207,10 +204,8 @@ contract MockCentrifugeChainDirect is Test {
             ShareClassId.wrap(scId),
             AssetId.wrap(assetId),
             RequestCallbackMessageLib.RevokedShares({
-                assetAmount: assets,
-                shareAmount: shareAmount,
-                pricePoolPerShare: pricePoolPerShare.raw()
-            }).serialize()
+                    assetAmount: assets, shareAmount: shareAmount, pricePoolPerShare: pricePoolPerShare.raw()
+                }).serialize()
         );
     }
 
@@ -366,8 +361,7 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         try spoke.assetToId(asset, assetTokenId) {
             assetId = spoke.assetToId(asset, assetTokenId).raw();
         } catch {
-            assetId =
-                spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, assetTokenId, address(this)).raw();
+            assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, assetTokenId, address(this)).raw();
             centrifugeChain.updatePricePoolPerAsset(
                 POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)
             );
@@ -383,11 +377,7 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
 
         IVaultFactory vaultFactory = _vaultKindToVaultFactory(vaultKind);
         vaultRegistry.updateVault(
-            POOL_A,
-            ShareClassId.wrap(scId),
-            AssetId.wrap(assetId),
-            address(vaultFactory),
-            VaultUpdateKind.DeployAndLink
+            POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(vaultFactory), VaultUpdateKind.DeployAndLink
         );
 
         vaultAddress = IShareToken(spoke.shareToken(POOL_A, ShareClassId.wrap(scId))).vault(asset);

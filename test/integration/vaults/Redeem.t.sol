@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18} from "../../../src/misc/types/D18.sol";
-import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
-import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
-
 import {
     AssetId,
     AsyncVault,
@@ -16,6 +12,10 @@ import {
     ShareClassId,
     VaultKind
 } from "./VaultBaseTest.sol";
+
+import {D18} from "../../../src/misc/types/D18.sol";
+import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {RequestMessageLib} from "../../../src/vaults/libraries/RequestMessageLib.sol";
