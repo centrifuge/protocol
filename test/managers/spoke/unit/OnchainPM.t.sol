@@ -989,8 +989,8 @@ contract OnchainPMEthForwardingTests is OnchainPMTest {
         assertEq(address(executor).balance, 0);
     }
 
-    function testExecuteWithExcessMsgValue() public {
-        // Send more ETH than the script uses — remainder stays in executor
+    function testExecuteWithExcessMsgValueRefunded() public {
+        // Send more ETH than the script uses — remainder is refunded to the strategist
         bytes32[] memory commands = new bytes32[](1);
         commands[0] = _valueCallCommand(WeirollTarget.setValuePayable.selector, 0, 1, address(target));
 
@@ -1007,7 +1007,23 @@ contract OnchainPMEthForwardingTests is OnchainPMTest {
         executor.execute{value: 2 ether}(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
 
         assertEq(address(target).balance, 0.5 ether);
-        assertEq(address(executor).balance, 1.5 ether);
+        assertEq(address(executor).balance, 0);
+        assertEq(strategist.balance, 1.5 ether);
+    }
+
+    function testExecuteNoETHRemainsWithoutMsgValue() public {
+        // Execute without sending ETH — executor balance stays zero
+        bytes32[] memory commands = new bytes32[](0);
+        bytes[] memory state = new bytes[](0);
+        uint128 bitmap = 0;
+
+        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, NO_CALLBACKS);
+        _setPolicy(strategist, scriptHash);
+
+        vm.prank(strategist);
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
+
+        assertEq(address(executor).balance, 0);
     }
 }
 

@@ -19,6 +19,8 @@ import {VM} from "enso-weiroll/VM.sol";
 /// @title  Onchain Portfolio Manager
 /// @notice Weiroll VM-based execution engine with script-level Merkle authorization and a state bitmap
 ///         for selectively fixing hub-manager-approved state elements.
+/// @notice ETH sent with `execute()` is forwarded to VALUECALL commands and any remainder is
+///         returned to the caller. No ETH should ever remain in this contract between calls.
 /// @dev    Compiled with `via_ir` to handle the weiroll VM's stack depth. The VM only supports
 ///         CALL, STATICCALL, and VALUECALL to external targets (never DELEGATECALL), so the
 ///         OnchainPM's storage (policy mapping) cannot be overwritten by target contracts.
@@ -81,20 +83,23 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
         bytes32 scriptHash = computeScriptHash(commands, state, stateBitmap, callbacks);
         require(MerkleProofLib.verify(proof, root, scriptHash), InvalidProof());
 
+        // Initialize callback state
         activeStrategist = msgSender();
         for (uint256 i; i < callbacks.length; i++) {
             TransientArrayLib.push(CALLBACK_HASHES_SLOT, callbacks[i].hash);
             TransientArrayLib.push(CALLBACK_CALLERS_SLOT, callbacks[i].caller);
         }
 
-        bytes[] memory mState = _copyState(state);
-        _execute(commands, mState);
+        // Execute script
+        _execute(commands, _copyState(state));
         require(callbackIdx == TransientArrayLib.length(CALLBACK_HASHES_SLOT), UnconsumedCallbacks());
 
+        // Cleanup state and refund ETH
         callbackIdx = 0;
-        activeStrategist = address(0);
         TransientArrayLib.clear(CALLBACK_HASHES_SLOT);
         TransientArrayLib.clear(CALLBACK_CALLERS_SLOT);
+        _refund();
+        activeStrategist = address(0);
 
         emit ExecuteScript(msgSender(), scriptHash);
     }
@@ -114,8 +119,7 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
         require(scriptHash == expected, InvalidCallback());
 
         callbackIdx = idx + 1;
-        bytes[] memory mState = _copyState(state);
-        _execute(commands, mState);
+        _execute(commands, _copyState(state));
 
         emit ExecuteCallback(activeStrategist, scriptHash);
     }
@@ -124,6 +128,7 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
     // Helpers
     //----------------------------------------------------------------------------------------------
 
+    /// @inheritdoc IOnchainPM
     function computeScriptHash(
         bytes32[] calldata commands,
         bytes[] calldata state,
@@ -165,6 +170,15 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
         }
 
         return keccak256(abi.encodePacked(hashes));
+    }
+
+    /// @dev Transfers all ETH held by this contract back to the caller.
+    function _refund() internal {
+        uint256 balance = address(this).balance;
+        if (balance > 0) {
+            (bool success,) = payable(msgSender()).call{value: balance}("");
+            require(success, ETHRefundFailed());
+        }
     }
 }
 

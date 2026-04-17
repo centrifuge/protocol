@@ -30,12 +30,14 @@ interface IOnchainPM is IBatchedMulticall, ITrustedContractUpdate {
     error InvalidBitmap();
     error NotInExecution();
     error AlreadyExecuting();
+    error ETHRefundFailed();
 
     function poolId() external view returns (PoolId);
     function contractUpdater() external view returns (address);
     function policy(address strategist) external view returns (bytes32);
     function activeStrategist() external view returns (address);
     function callbackIdx() external view returns (uint256);
+
 
     /// @notice Execute a weiroll script authorized by a Merkle proof.
     /// @param commands     Weiroll command bytes (selector + flags + indices + output + target).
@@ -50,6 +52,14 @@ interface IOnchainPM is IBatchedMulticall, ITrustedContractUpdate {
         Callback[] calldata callbacks,
         bytes32[] calldata proof
     ) external payable;
+
+    /// @notice Compute the script hash committed to by `execute()` or `executeCallback()`.
+    function computeScriptHash(
+        bytes32[] calldata commands,
+        bytes[] calldata state,
+        uint128 stateBitmap,
+        Callback[] memory callbacks
+    ) external pure returns (bytes32);
 
     /// @notice Execute a callback script during an active `execute()`. Bound to the outer script
     ///         via a pre-committed hash — no separate Merkle proof needed.
