@@ -151,6 +151,8 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
 
     /// @dev Hash all state slots whose bit is set in `bitmap`. Returns keccak256("") when bitmap is zero.
     function _hashBitmapSlots(bytes[] memory state, uint128 bitmap) internal pure returns (bytes32) {
+        require(bitmap >> state.length == 0, InvalidBitmap());
+
         uint256 count;
         for (uint256 i; i < state.length; i++) {
             if (bitmap & (1 << i) != 0) count++;

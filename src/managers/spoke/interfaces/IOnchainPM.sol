@@ -27,6 +27,7 @@ interface IOnchainPM is IBatchedMulticall, ITrustedContractUpdate {
     error InvalidPoolId();
     error NotAuthorized();
     error StateLengthOverflow();
+    error InvalidBitmap();
     error NotInExecution();
     error AlreadyExecuting();
 
