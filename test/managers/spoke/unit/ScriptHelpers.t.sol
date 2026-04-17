@@ -100,21 +100,21 @@ contract ScriptHelpersMathTest is Test {
 
     function testScaleDecimalsUp() public view {
         // 1e6 USDC (6 dec) → 1e18 DAI (18 dec)
-        assertEq(helpers.scaleDecimals(1e6, 6, 18), 1e18);
+        assertEq(helpers.scaleDecimals(1e6, 6, 18, MathLib.Rounding.Down), 1e18);
     }
 
     function testScaleDecimalsDown() public view {
         // 1e18 DAI (18 dec) → 1e6 USDC (6 dec)
-        assertEq(helpers.scaleDecimals(1e18, 18, 6), 1e6);
+        assertEq(helpers.scaleDecimals(1e18, 18, 6, MathLib.Rounding.Down), 1e6);
     }
 
     function testScaleDecimalsSame() public view {
-        assertEq(helpers.scaleDecimals(42, 18, 18), 42);
+        assertEq(helpers.scaleDecimals(42, 18, 18, MathLib.Rounding.Down), 42);
     }
 
     function testScaleDecimalsRounding() public view {
         // 1.5e6 USDC (6 dec) scaled down to 2 decimals → truncates
-        assertEq(helpers.scaleDecimals(1_500_000, 6, 2), 150);
+        assertEq(helpers.scaleDecimals(1_500_000, 6, 2, MathLib.Rounding.Down), 150);
     }
 
     function testFuzzAdd(uint128 a, uint128 b) public view {

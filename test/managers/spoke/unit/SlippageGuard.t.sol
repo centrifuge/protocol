@@ -12,6 +12,7 @@ import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet
 
 import {SlippageGuard} from "../../../../src/managers/spoke/guards/SlippageGuard.sol";
 import {ISlippageGuard, AssetEntry} from "../../../../src/managers/spoke/guards/interfaces/ISlippageGuard.sol";
+import {IOnchainPMFactory} from "../../../../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
 
 import "forge-std/Test.sol";
 
@@ -27,6 +28,7 @@ contract SlippageGuardTest is Test {
     address spoke = makeAddr("spoke");
     address balanceSheet = makeAddr("balanceSheet");
     address contractUpdater = makeAddr("contractUpdater");
+    address onchainPMFactory = makeAddr("onchainPMFactory");
     address shareToken = makeAddr("shareToken");
     address assetA = makeAddr("assetA");
     address assetB = makeAddr("assetB");
@@ -35,7 +37,14 @@ contract SlippageGuardTest is Test {
 
     function setUp() public virtual {
         _setupMocks();
-        guard = new SlippageGuard(ISpoke(spoke), IBalanceSheet(balanceSheet), contractUpdater);
+        guard = new SlippageGuard(
+            ISpoke(spoke), IBalanceSheet(balanceSheet), contractUpdater, IOnchainPMFactory(onchainPMFactory)
+        );
+        vm.mockCall(
+            onchainPMFactory,
+            abi.encodeWithSelector(IOnchainPMFactory.getAddress.selector, POOL_A),
+            abi.encode(address(this))
+        );
     }
 
     function _setupMocks() internal {
@@ -102,7 +111,8 @@ contract SlippageGuardOpenerTest is SlippageGuardTest {
         _mockBalance(assetA, 0, 1000e18);
         guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
 
-        vm.expectRevert(ISlippageGuard.NotOpener.selector);
+        // onlyOnchainPM fires before NotOpener — attacker is not the pool's OnchainPM
+        vm.expectRevert(ISlippageGuard.NotAuthorized.selector);
         vm.prank(makeAddr("attacker"));
         guard.close(POOL_A, SC_1, 100);
     }
@@ -117,7 +127,13 @@ contract SlippageGuardOpenerTest is SlippageGuardTest {
         _mockBalance(assetA, 0, 1000e18);
         guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
 
-        vm.expectRevert(ISlippageGuard.ContextMismatch.selector);
+        // onlyOnchainPM fires before ContextMismatch — address(this) is not pool 99's OnchainPM
+        vm.mockCall(
+            onchainPMFactory,
+            abi.encodeWithSelector(IOnchainPMFactory.getAddress.selector, PoolId.wrap(99)),
+            abi.encode(makeAddr("pool99PM"))
+        );
+        vm.expectRevert(ISlippageGuard.NotAuthorized.selector);
         guard.close(PoolId.wrap(99), SC_1, 100);
     }
 
@@ -582,5 +598,60 @@ contract SlippageGuardConstructorTest is SlippageGuardTest {
         assertEq(address(guard.spoke()), spoke);
         assertEq(address(guard.balanceSheet()), balanceSheet);
         assertEq(guard.contractUpdater(), contractUpdater);
+    }
+}
+
+// --- Zero price ---
+
+contract SlippageGuardZeroPriceTest is SlippageGuardTest {
+    D18 constant PRICE_ZERO = D18.wrap(0);
+
+    function testWithdrawalWithZeroPriceReverts() public {
+        // Override assetA price to zero
+        vm.mockCall(
+            spoke,
+            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
+            abi.encode(PRICE_ZERO)
+        );
+
+        _mockBalance(assetA, 0, 1000e18);
+        guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
+
+        // Balance decreased: this is a withdrawal — zero price must revert
+        _mockBalance(assetA, 0, 500e18);
+
+        vm.expectRevert(ISlippageGuard.ZeroPrice.selector);
+        guard.close(POOL_A, SC_1, 500);
+    }
+
+    function testDepositWithZeroPriceSucceeds() public {
+        // Override assetA price to zero
+        vm.mockCall(
+            spoke,
+            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
+            abi.encode(PRICE_ZERO)
+        );
+
+        _mockBalance(assetA, 0, 500e18);
+        guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
+
+        // Balance increased: deposit-only with zero price is conservative (gain = 0) but not dangerous
+        _mockBalance(assetA, 0, 1000e18);
+
+        guard.close(POOL_A, SC_1, 500);
+    }
+
+    function testNoChangeWithZeroPriceSucceeds() public {
+        // Override assetA price to zero
+        vm.mockCall(
+            spoke,
+            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
+            abi.encode(PRICE_ZERO)
+        );
+
+        _mockBalance(assetA, 0, 1000e18);
+        guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
+        // No balance change — price irrelevant
+        guard.close(POOL_A, SC_1, 0);
     }
 }

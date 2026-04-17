@@ -31,6 +31,7 @@ interface ISlippageGuard is ITrustedContractUpdate {
     error NotOpener();
     error ContextMismatch();
     error NotAuthorized();
+    error ZeroPrice();
 
     event SetConfig(PoolId indexed poolId, ShareClassId indexed scId, uint128 maxPeriodLoss, uint32 periodDuration);
 

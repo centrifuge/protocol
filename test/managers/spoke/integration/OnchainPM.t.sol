@@ -12,6 +12,7 @@ import {IBatchedMulticall} from "../../../../src/core/utils/interfaces/IBatchedM
 
 import {FlashLoanHelper} from "../../../../src/managers/spoke/FlashLoanHelper.sol";
 import {IOnchainPM} from "../../../../src/managers/spoke/interfaces/IOnchainPM.sol";
+import {IOnchainPMFactory} from "../../../../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
 import {SlippageGuard} from "../../../../src/managers/spoke/guards/SlippageGuard.sol";
 import {IFlashLoanHelper} from "../../../../src/managers/spoke/interfaces/IFlashLoanHelper.sol";
 import {IAaveV3FlashLoanReceiver} from "../../../../src/managers/spoke/interfaces/IAaveV3Pool.sol";
@@ -232,6 +233,7 @@ contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
 
     address spoke = makeAddr("spoke");
     address balanceSheet = makeAddr("balanceSheet");
+    address onchainPMFactory = makeAddr("onchainPMFactory");
     address shareToken = makeAddr("shareToken");
     address assetA = makeAddr("assetA");
     address assetB = makeAddr("assetB");
@@ -246,7 +248,14 @@ contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
             deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, contractUpdater, address(mockGateway)))
         );
         target = new WeirollTarget();
-        guard = new SlippageGuard(ISpoke(spoke), IBalanceSheet(balanceSheet), contractUpdater);
+        guard = new SlippageGuard(
+            ISpoke(spoke), IBalanceSheet(balanceSheet), contractUpdater, IOnchainPMFactory(onchainPMFactory)
+        );
+        vm.mockCall(
+            onchainPMFactory,
+            abi.encodeWithSelector(IOnchainPMFactory.getAddress.selector, POOL_A),
+            abi.encode(address(executor))
+        );
 
         // Setup mocks for the guard
         vm.mockCall(spoke, abi.encodeWithSelector(ISpoke.shareToken.selector, POOL_A, SC_1), abi.encode(shareToken));
@@ -425,6 +434,7 @@ contract OnchainPMFlashLoanTest is OnchainPMTestBase {
 
     address contractUpdater = makeAddr("contractUpdater");
     address strategist = makeAddr("strategist");
+    address onchainPMFactory = makeAddr("onchainPMFactory");
     MockGateway mockGateway;
     IOnchainPM executor;
     WeirollTarget target;
@@ -438,9 +448,14 @@ contract OnchainPMFlashLoanTest is OnchainPMTestBase {
             deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, contractUpdater, address(mockGateway)))
         );
         target = new WeirollTarget();
-        flashReceiver = new FlashLoanHelper();
+        flashReceiver = new FlashLoanHelper(IOnchainPMFactory(onchainPMFactory));
         aavePool = new SimpleAavePool();
         token = new SimpleToken();
+        vm.mockCall(
+            onchainPMFactory,
+            abi.encodeWithSelector(IOnchainPMFactory.getAddress.selector, POOL_A),
+            abi.encode(address(executor))
+        );
 
         // Fund the pool for flash loans
         token.mint(address(aavePool), 10_000e18);
