@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {ISlippageGuard, AssetEntry, SlippageConfig, PeriodState} from "./interfaces/ISlippageGuard.sol";
+import {IOnchainPMFactory} from "../interfaces/IOnchainPMFactory.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
 import {MathLib} from "../../../misc/libraries/MathLib.sol";
@@ -33,14 +34,21 @@ contract SlippageGuard is ISlippageGuard {
     ISpoke public immutable spoke;
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
+    IOnchainPMFactory public immutable onchainPMFactory;
 
     mapping(PoolId => mapping(ShareClassId => PeriodState)) public period;
     mapping(PoolId => mapping(ShareClassId => SlippageConfig)) public config;
 
-    constructor(ISpoke spoke_, IBalanceSheet balanceSheet_, address contractUpdater_) {
+    constructor(ISpoke spoke_, IBalanceSheet balanceSheet_, address contractUpdater_, IOnchainPMFactory onchainPMFactory_) {
         spoke = spoke_;
         balanceSheet = balanceSheet_;
         contractUpdater = contractUpdater_;
+        onchainPMFactory = onchainPMFactory_;
+    }
+
+    modifier onlyOnchainPM(PoolId poolId) {
+        require(msg.sender == onchainPMFactory.getAddress(poolId), NotAuthorized());
+        _;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -62,7 +70,7 @@ contract SlippageGuard is ISlippageGuard {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISlippageGuard
-    function open(PoolId poolId, ShareClassId scId, AssetEntry[] calldata assets) external {
+    function open(PoolId poolId, ShareClassId scId, AssetEntry[] calldata assets) external onlyOnchainPM(poolId) {
         require(TransientArrayLib.length(ASSETS_SLOT) == 0, InProgress());
         TransientStorageLib.tstore(OPENER_SLOT, uint256(uint160(msg.sender)));
         TransientStorageLib.tstore(POOL_ID_SLOT, uint256(poolId.raw()));
@@ -87,7 +95,7 @@ contract SlippageGuard is ISlippageGuard {
     ///      zero-slippage swap may produce a phantom loss of up to 1 wei per asset. Consequently,
     ///      setting `maxSlippageBps = 0` effectively disables all swaps. Use at least 1 bps if any
     ///      balance change is expected.
-    function close(PoolId poolId, ShareClassId scId, uint16 maxSlippageBps) external {
+    function close(PoolId poolId, ShareClassId scId, uint16 maxSlippageBps) external onlyOnchainPM(poolId) {
         require(TransientArrayLib.length(ASSETS_SLOT) > 0, NotOpen());
         require(msg.sender == address(uint160(TransientStorageLib.tloadUint256(OPENER_SLOT))), NotOpener());
         require(
