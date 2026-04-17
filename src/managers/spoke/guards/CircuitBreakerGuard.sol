@@ -34,7 +34,7 @@ contract CircuitBreakerGuard is ICircuitBreakerGuard {
 
         uint256 anchor;
         ReferenceState storage s = refs[msg.sender][key][window];
-        if (s.windowStart == 0 || block.timestamp - s.windowStart > window) {
+        if (block.timestamp - s.windowStart > window) {
             anchor = currentValue;
             s.anchor = currentValue.toUint128();
             s.windowStart = uint64(block.timestamp);
