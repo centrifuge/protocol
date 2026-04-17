@@ -25,7 +25,6 @@ interface IOnOffRamp is IDepositManager, IWithdrawManager, ITrustedContractUpdat
     event TrustedWithdraw(address indexed asset, uint256 amount, address receiver);
 
     error NotAllowedOnrampAsset();
-    error InvalidAmount();
     error InvalidOfframpDestination();
     error InvalidPoolId();
     error InvalidShareClassId();
