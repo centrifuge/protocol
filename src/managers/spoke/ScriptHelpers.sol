@@ -72,10 +72,18 @@ contract ScriptHelpers is IScriptHelpers {
     }
 
     /// @notice Converts an amount between token decimal representations.
-    function scaleDecimals(uint256 amount, uint8 fromDecimals, uint8 toDecimals) external pure returns (uint256) {
+    /// @param  rounding 0 = Down (floor), 1 = Up (ceil). Only applies when reducing decimals.
+    function scaleDecimals(uint256 amount, uint8 fromDecimals, uint8 toDecimals, MathLib.Rounding rounding)
+        external
+        pure
+        returns (uint256)
+    {
         if (fromDecimals == toDecimals) return amount;
         if (fromDecimals < toDecimals) return amount * 10 ** (toDecimals - fromDecimals);
-        return amount / 10 ** (fromDecimals - toDecimals);
+        uint256 divisor = 10 ** (fromDecimals - toDecimals);
+        uint256 result = amount / divisor;
+        if (rounding == MathLib.Rounding.Up && amount % divisor != 0) result++;
+        return result;
     }
 
     //----------------------------------------------------------------------------------------------
