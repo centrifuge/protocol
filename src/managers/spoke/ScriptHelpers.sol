@@ -196,7 +196,8 @@ contract ScriptHelpers is IScriptHelpers {
     }
 
     function abs(int256 value) external pure returns (uint256) {
-        return value >= 0 ? uint256(value) : uint256(-value);
+        if (value >= 0) return uint256(value);
+        return ~uint256(value) + 1;
     }
 
     function toAddress(bytes32 value) external pure returns (address) {
