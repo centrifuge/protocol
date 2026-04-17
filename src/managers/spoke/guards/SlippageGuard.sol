@@ -71,6 +71,7 @@ contract SlippageGuard is ISlippageGuard {
 
     /// @inheritdoc ISlippageGuard
     function open(PoolId poolId, ShareClassId scId, AssetEntry[] calldata assets) external onlyOnchainPM(poolId) {
+        require(assets.length > 0, EmptyAssets());
         require(TransientArrayLib.length(ASSETS_SLOT) == 0, InProgress());
         TransientStorageLib.tstore(OPENER_SLOT, uint256(uint160(msg.sender)));
         TransientStorageLib.tstore(POOL_ID_SLOT, uint256(poolId.raw()));

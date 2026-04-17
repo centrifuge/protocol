@@ -25,6 +25,7 @@ struct PeriodState {
 interface ISlippageGuard is ITrustedContractUpdate {
     error SlippageExceeded(uint256 withdrawn, uint256 deposited, uint16 maxBps);
     error PeriodLossExceeded(uint128 accumulated, uint128 maxPeriodLoss);
+    error EmptyAssets();
     error InProgress();
     error NotOpen();
     error NotOpener();
