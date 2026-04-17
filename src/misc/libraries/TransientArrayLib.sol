@@ -7,6 +7,8 @@ import {TransientStorageLib} from "./TransientStorageLib.sol";
 library TransientArrayLib {
     using TransientStorageLib for bytes32;
 
+    error IndexOutOfBounds();
+
     function push(bytes32 key, bytes32 value) internal {
         bytes32 lengthSlot = keccak256(abi.encodePacked(key));
         uint256 length_ = lengthSlot.tloadUint256();
@@ -35,6 +37,7 @@ library TransientArrayLib {
     }
 
     function at(bytes32 key, uint256 index) internal view returns (bytes32) {
+        require(index < length(key), IndexOutOfBounds());
         uint256 baseSlot = uint256(keccak256(abi.encodePacked(key)));
         return bytes32(baseSlot + index + 1).tloadBytes32();
     }
