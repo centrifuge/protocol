@@ -3,7 +3,7 @@ hide empty members
 
 note "Each deployer has associated its own ActionBatcher and Report\nfollowing the same shown pattern" as N1
 
-class JsonRegistry
+class DeploymentMetadata
 class CreateXScript
 
 class CommonDeployer
@@ -27,7 +27,7 @@ class FullDeployer {
 class CommonInput << (S,application) JsonConfig >>
 class AdaptersInput << (S,application) JsonConfig >>
 
-CommonDeployer -up-|> JsonRegistry
+CommonDeployer -up-|> DeploymentMetadata
 CommonDeployer -up-|> CreateXScript
 HubDeployer -up-|> CommonDeployer
 SpokeDeployer -up-|> CommonDeployer

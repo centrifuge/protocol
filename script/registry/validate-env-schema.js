@@ -71,7 +71,7 @@ function startBlockGapErrors(envLabel, startBlock, contracts) {
     if (gap < threshold) return [];
     return [
         `${envLabel} deploymentInfo.startBlock: startBlock (${startBlock}) lies far before the earliest active contract deployment (min blockNumber ${minBlock}, gap ${gap} blocks ≥ threshold ${threshold}). ` +
-            `Chain-level block listeners use deployment.startBlock (e.g. hourly snapshots); align it when merging env/latest (deploymentStartBlock / broadcast fallback).`,
+            `Chain-level block listeners use deployment.startBlock (e.g. hourly snapshots); align it when merging deployment metadata (deploymentStartBlock / broadcast fallback).`,
     ];
 }
 
