@@ -35,9 +35,9 @@ import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
 import {NAVManager} from "../src/managers/hub/NAVManager.sol";
 import {QueueManager} from "../src/managers/spoke/QueueManager.sol";
 import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";
+import {ScriptHelpers} from "../src/managers/spoke/ScriptHelpers.sol";
 import {AccountingToken} from "../src/managers/spoke/AccountingToken.sol";
 import {FlashLoanHelper} from "../src/managers/spoke/FlashLoanHelper.sol";
-import {ScriptHelpers} from "../src/managers/spoke/ScriptHelpers.sol";
 import {SimplePriceManager} from "../src/managers/hub/SimplePriceManager.sol";
 import {IOnchainPMFactory} from "../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
 
@@ -59,17 +59,7 @@ import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
 import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 import {RefundEscrowFactory} from "../src/utils/RefundEscrowFactory.sol";
-import {
-    Constants,
-    CoreReport,
-    CoreActionBatcher,
-    NonCoreActionBatcher,
-    AdapterActionBatcher,
-    NonCoreReport,
-    AdaptersReport,
-    AdapterConnections,
-    SetConfigParam
-} from "../src/deployment/ActionBatchers.sol";
+import { Constants, CoreReport, CoreActionBatcher, NonCoreActionBatcher, AdapterActionBatcher, NonCoreReport, AdaptersReport, AdapterConnections, SetConfigParam } from "../src/deployment/ActionBatchers.sol";
 
 string constant V3_1 = "v3.1";
 string constant V3_1_1 = "v3.1.1";
@@ -544,10 +534,6 @@ contract FullDeployer is BaseDeployer, Constants {
             create3(createSalt("scriptHelpers", V3_1_1), abi.encodePacked(type(ScriptHelpers).creationCode))
         );
 
-        flashLoanHelper = FlashLoanHelper(
-            create3(createSalt("flashLoanHelper", V3_1_1), abi.encodePacked(type(FlashLoanHelper).creationCode))
-        );
-
         onchainPMFactory = IOnchainPMFactory(
             create3(
                 createSalt("onchainPMFactory", V3_1_1),
@@ -555,6 +541,13 @@ contract FullDeployer is BaseDeployer, Constants {
                     vm.getCode("out-ir/OnchainPM.sol/OnchainPMFactory.json"),
                     abi.encode(contractUpdater, balanceSheet, gateway)
                 )
+            )
+        );
+
+        flashLoanHelper = FlashLoanHelper(
+            create3(
+                createSalt("flashLoanHelper", V3_1_1),
+                abi.encodePacked(type(FlashLoanHelper).creationCode, abi.encode(onchainPMFactory))
             )
         );
 

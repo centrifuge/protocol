@@ -1194,7 +1194,7 @@ contract OnchainPMFactoryDeployTest is OnchainPMFactoryTest {
         assertEq(predicted, address(deployed));
     }
 
-    function testGetAddressDifferentPools() public {
+    function testGetAddressDifferentPools() public view {
         address addrA = factory.getAddress(POOL_A);
         address addrB = factory.getAddress(POOL_B);
 

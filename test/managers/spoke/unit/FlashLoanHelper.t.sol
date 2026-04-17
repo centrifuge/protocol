@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+import {PoolId} from "../../../../src/core/types/PoolId.sol";
+
 import {FlashLoanHelper} from "../../../../src/managers/spoke/FlashLoanHelper.sol";
 import {IOnchainPM} from "../../../../src/managers/spoke/interfaces/IOnchainPM.sol";
 import {IFlashLoanHelper} from "../../../../src/managers/spoke/interfaces/IFlashLoanHelper.sol";
 import {IOnchainPMFactory} from "../../../../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
 import {IAaveV3Pool, IAaveV3FlashLoanReceiver} from "../../../../src/managers/spoke/interfaces/IAaveV3Pool.sol";
-
-import {PoolId} from "../../../../src/core/types/PoolId.sol";
 
 import "forge-std/Test.sol";
 
@@ -120,7 +120,7 @@ contract FlashLoanHelperTest is Test {
         receiver.requestFlashLoan(IAaveV3Pool(address(pool)), address(token), 0, IOnchainPM(address(mockPM)), "");
     }
 
-    function testRequestFlashLoanRevertsInvalidOnchainPM() public {
+    function testRequestFlashLoanRevertsNotAuthorized() public {
         MockOnchainPM mockPM = new MockOnchainPM(POOL_A, address(token), address(receiver), 0);
 
         // Factory returns a different address — mockPM is not factory-deployed
@@ -131,7 +131,7 @@ contract FlashLoanHelperTest is Test {
         );
 
         vm.prank(address(mockPM));
-        vm.expectRevert(IFlashLoanHelper.InvalidOnchainPM.selector);
+        vm.expectRevert(IFlashLoanHelper.NotAuthorized.selector);
         receiver.requestFlashLoan(IAaveV3Pool(address(pool)), address(token), 0, IOnchainPM(address(mockPM)), "");
     }
 

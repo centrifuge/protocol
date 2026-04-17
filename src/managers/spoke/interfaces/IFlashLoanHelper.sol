@@ -13,7 +13,7 @@ interface IFlashLoanHelper {
     error NotActive();
     error AlreadyActive();
     error NotOnchainPM();
-    error InvalidOnchainPM();
+    error NotAuthorized();
 
     function factory() external view returns (IOnchainPMFactory);
 

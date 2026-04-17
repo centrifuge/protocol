@@ -39,7 +39,7 @@ contract FlashLoanHelper is IFlashLoanHelper, IAaveV3FlashLoanReceiver {
     ) external {
         require(_pool == address(0), AlreadyActive());
         require(msg.sender == address(onchainPM), NotOnchainPM());
-        require(factory.getAddress(onchainPM.poolId()) == address(onchainPM), InvalidOnchainPM());
+        require(factory.getAddress(onchainPM.poolId()) == address(onchainPM), NotAuthorized());
         _pool = address(pool);
         _onchainPM = address(onchainPM);
         emit FlashLoan(address(pool), token, amount, address(onchainPM));
