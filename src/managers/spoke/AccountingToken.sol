@@ -99,6 +99,8 @@ contract AccountingToken is IAccountingToken {
     }
 
     /// @inheritdoc IERC6909ExclOperator
+    /// @notice Allowance always decreases on transferFrom, including when set to type(uint256).max.
+    ///         There is no infinite-approval shortcut; max uint256 is a large finite budget.
     function approve(address spender, uint256 id, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender][id] = amount;
         emit Approval(msg.sender, spender, id, amount);
