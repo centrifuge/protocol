@@ -98,7 +98,7 @@ contract OnOffRamp is IOnOffRamp {
             address receiver = receiverAddress.toAddress();
 
             require(offramp[asset][receiver], InvalidOfframpDestination());
-            balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount, WithdrawMode.Full);
+            _withdraw(asset, amount, receiver);
             emit TrustedWithdraw(asset, amount, receiver);
         }
     }
@@ -141,7 +141,10 @@ contract OnOffRamp is IOnOffRamp {
     {
         require(relayer[msg.sender], NotRelayer());
         require(receiver != address(0) && offramp[asset][receiver], InvalidOfframpDestination());
+        _withdraw(asset, amount, receiver);
+    }
 
+    function _withdraw(address asset, uint128 amount, address receiver) internal {
         // Withdraw real asset to receiver
         balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount, WithdrawMode.Full);
 
