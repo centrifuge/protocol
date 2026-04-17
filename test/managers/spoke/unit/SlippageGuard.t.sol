@@ -445,6 +445,31 @@ contract SlippageGuardPeriodLossTest is SlippageGuardTest {
         assertEq(newStart, uint48(block.timestamp));
     }
 
+    function testConfigChangePreservesPeriodState() public {
+        // Script 1: accumulate 90e18 loss under the 500e18 limit
+        _doSwapWithLoss(1000e18, 910e18);
+
+        (uint128 lossBefore, uint48 startBefore) = guard.period(POOL_A, SC_1);
+        assertEq(lossBefore, 90e18);
+
+        // Tighten the config to 50e18 — period state must NOT be wiped
+        vm.prank(contractUpdater);
+        guard.trustedCall(POOL_A, SC_1, abi.encode(uint128(50e18), uint32(1 days)));
+
+        (uint128 lossAfter, uint48 startAfter) = guard.period(POOL_A, SC_1);
+        assertEq(lossAfter, lossBefore, "cumulativeLoss must be preserved across config change");
+        assertEq(startAfter, startBefore, "periodStart must be preserved across config change");
+
+        // Any further loss in the same period should now be rejected because 90e18 > new 50e18 cap
+        _mockBalance(assetA, 0, 910e18);
+        _mockBalance(assetB, 0, 0);
+        guard.open(POOL_A, SC_1, _twoAssetEntries(assetA, assetB));
+        _mockBalance(assetA, 0, 0);
+        _mockBalance(assetB, 0, 909e18);
+        vm.expectRevert(abi.encodeWithSelector(ISlippageGuard.PeriodLossExceeded.selector, 91e18, uint128(50e18)));
+        guard.close(POOL_A, SC_1, 10_000);
+    }
+
     function testPeriodDisabledWhenZeroDuration() public {
         // Override config with zero duration (disabled)
         vm.prank(contractUpdater);
