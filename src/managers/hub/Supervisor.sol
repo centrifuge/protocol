@@ -23,21 +23,16 @@ import {BatchedMulticall} from "../../core/utils/BatchedMulticall.sol";
 ///         pool. Otherwise, the operator (or any other Hub manager) can bypass the Supervisor by
 ///         calling the Hub directly.
 ///
-///         The operator should be a multisig or other secure address, since it has sole authority
-///         to submit/execute/cancel operations. Compromising the operator gives the attacker the
-///         ability to execute any non-timelocked Hub call immediately, and any timelocked Hub call
-///         after the delay (unless blocked by sentinel veto or the manifest).
-///
 ///         Inherits BatchedMulticall so the operator can batch multiple execute/submit calls
 ///         atomically, with cross-chain messages from all inner calls aggregated into a single
 ///         gateway batch.
 contract Supervisor is ISupervisor, BatchedMulticall {
     IHub public immutable hub;
+    uint48 public immutable delay;
     PoolId public immutable poolId;
     address public immutable operator;
-    uint48 public immutable delay;
-    IManifest public immutable manifest;
     uint48 public immutable expiryWindow;
+    IManifest public immutable manifest;
 
     uint256 public sentinelCount;
     mapping(bytes4 => bool) public hooked;
@@ -59,20 +54,19 @@ contract Supervisor is ISupervisor, BatchedMulticall {
     constructor(IHub hub_, PoolId poolId_, address operator_, SupervisorConfig memory config)
         BatchedMulticall(hub_.gateway())
     {
-        require(operator_ != address(0), ZeroAddress());
         hub = hub_;
         poolId = poolId_;
-        operator = operator_;
         delay = config.delay;
-        expiryWindow = config.expiryWindow;
+        operator = operator_;
         manifest = config.manifest;
+        expiryWindow = config.expiryWindow;
 
-        for (uint256 i; i < config.timelockSelectors.length; i++) {
-            timelocked[config.timelockSelectors[i]] = true;
-        }
-        for (uint256 i; i < config.hookSelectors.length; i++) {
-            hooked[config.hookSelectors[i]] = true;
-        }
+        for (uint256 i; i < config.timelockSelectors.length; i++) timelocked[config.timelockSelectors[i]] = true;
+        for (uint256 i; i < config.hookSelectors.length; i++) hooked[config.hookSelectors[i]] = true;
+
+        // Sentinel management is always timelocked
+        timelocked[this.addSentinel.selector] = true;
+        timelocked[this.removeSentinel.selector] = true;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -89,10 +83,7 @@ contract Supervisor is ISupervisor, BatchedMulticall {
     /// @inheritdoc ISupervisor
     function submit(bytes calldata data) external onlyOperator {
         bytes4 selector = bytes4(data[:4]);
-        require(
-            timelocked[selector] || selector == this.addSentinel.selector || selector == this.removeSentinel.selector,
-            TimelockNotSet()
-        );
+        require(timelocked[selector], TimelockNotSet());
         require(pending[data] == 0, OperationAlreadyPending());
 
         // Validate removeSentinel target is currently a sentinel
@@ -103,7 +94,6 @@ contract Supervisor is ISupervisor, BatchedMulticall {
 
         uint48 executeAfter = uint48(block.timestamp) + delay;
         pending[data] = executeAfter;
-
         emit Submit(keccak256(data), selector, executeAfter, data);
     }
 
@@ -111,14 +101,10 @@ contract Supervisor is ISupervisor, BatchedMulticall {
     function cancel(bytes calldata data) external onlyOperatorOrSentinel {
         require(pending[data] != 0, OperationNotPending());
 
-        // A sentinel can only cancel their own removal if they are the sole sentinel
-        bytes4 selector = bytes4(data[:4]);
-        if (sentinels[msgSender()] && selector == this.removeSentinel.selector) {
-            address target = abi.decode(data[4:], (address));
-            if (target == msgSender()) {
-                require(sentinelCount == 1, CannotSelfCancel());
-            }
-        }
+        bool isOperator = msgSender() == operator;
+        bool isSelfRemoval =
+            bytes4(data[:4]) == this.removeSentinel.selector && abi.decode(data[4:], (address)) == msgSender();
+        require(isOperator || !isSelfRemoval || sentinelCount == 1, CannotSelfCancel());
 
         delete pending[data];
         emit Cancel(keccak256(data));
@@ -134,8 +120,8 @@ contract Supervisor is ISupervisor, BatchedMulticall {
         require(!sentinels[sentinel], AlreadySentinel());
         _checkHookAndTimelock(msg.sig, msg.data);
 
-        sentinels[sentinel] = true;
         sentinelCount++;
+        sentinels[sentinel] = true;
         emit AddSentinel(sentinel);
     }
 
@@ -144,8 +130,8 @@ contract Supervisor is ISupervisor, BatchedMulticall {
         require(sentinels[sentinel], NotSentinel());
         _checkHookAndTimelock(msg.sig, msg.data);
 
-        sentinels[sentinel] = false;
         sentinelCount--;
+        sentinels[sentinel] = false;
         emit RemoveSentinel(sentinel);
     }
 
@@ -159,10 +145,7 @@ contract Supervisor is ISupervisor, BatchedMulticall {
             additionalDelay = manifest.check(poolId, msgSender(), data);
         }
 
-        // addSentinel and removeSentinel are always timelocked regardless of the timelocked mapping
-        if (
-            timelocked[selector] || selector == this.addSentinel.selector || selector == this.removeSentinel.selector
-        ) {
+        if (timelocked[selector]) {
             uint48 executeAfter = pending[data] + additionalDelay;
             require(pending[data] != 0, OperationNotPending());
             require(block.timestamp >= executeAfter, TimelockNotReady(executeAfter));
