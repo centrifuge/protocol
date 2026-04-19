@@ -61,8 +61,8 @@ contract Supervisor is ISupervisor, BatchedMulticall {
         manifest = config.manifest;
         expiryWindow = config.expiryWindow;
 
-        for (uint256 i; i < config.timelockSelectors.length; i++) timelocked[config.timelockSelectors[i]] = true;
         for (uint256 i; i < config.hookSelectors.length; i++) hooked[config.hookSelectors[i]] = true;
+        for (uint256 i; i < config.timelockSelectors.length; i++) timelocked[config.timelockSelectors[i]] = true;
 
         // Sentinel management is always timelocked
         timelocked[this.addSentinel.selector] = true;
