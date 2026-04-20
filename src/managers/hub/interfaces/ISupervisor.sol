@@ -7,7 +7,9 @@ import {IHub} from "../../../core/hub/interfaces/IHub.sol";
 interface IManifest {
     /// @notice Validate whether a Hub call should proceed, and optionally extend the timelock.
     ///         Revert to block the call.
-    /// @dev    The additional delay is added to the base timelock at execution time. Implementations
+    /// @dev    Not marked `view` because implementations may need state reads or side effects.
+    ///         The manifest is immutable per Supervisor, so the operator cannot swap it to bypass checks.
+    ///         The additional delay is added to the base timelock at execution time. Implementations
     ///         must return consistent values for the same calldata, otherwise an operation submitted
     ///         with one delay could become unexecutable if the manifest later returns a different value.
     /// @param poolId The pool being operated on.

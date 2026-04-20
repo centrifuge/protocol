@@ -13,6 +13,26 @@ import "forge-std/Test.sol";
 
 // ─── Mock contracts ─────────────────────────────────────────────────────────
 
+contract MockGateway {
+    address private _batcher;
+
+    function withBatch(bytes memory data, address) external payable {
+        _batcher = msg.sender;
+        (bool success, bytes memory ret) = msg.sender.call{value: msg.value}(data);
+        if (!success) {
+            assembly {
+                revert(add(32, ret), mload(ret))
+            }
+        }
+        require(_batcher == address(0), "callback not locked");
+    }
+
+    function lockCallback() external {
+        require(msg.sender == _batcher, "not batcher");
+        _batcher = address(0);
+    }
+}
+
 contract MockHub {
     address public hubRegistry_;
     address public gateway_;
@@ -87,6 +107,7 @@ abstract contract SupervisorTestBase is Test {
 
     MockHub hub;
     MockHubRegistry registry;
+    MockGateway mockGateway;
 
     address operator = makeAddr("operator");
     address sentinel = makeAddr("sentinel");
@@ -112,8 +133,9 @@ abstract contract SupervisorTestBase is Test {
     }
 
     function setUp() public virtual {
+        mockGateway = new MockGateway();
         registry = new MockHubRegistry();
-        hub = new MockHub(address(registry), makeAddr("gateway"));
+        hub = new MockHub(address(registry), address(mockGateway));
     }
 
     /// @dev Helper to add a sentinel through the timelock flow.
@@ -524,6 +546,130 @@ contract SupervisorSentinelTest is SupervisorTestBase {
         supervisor.cancel(data);
 
         assertEq(supervisor.pending(data), 0);
+    }
+}
+
+// ─── Multicall ─────────────────────────────────────────────────────────────
+
+contract SupervisorMulticallTest is SupervisorTestBase {
+    Supervisor supervisor;
+
+    function setUp() public override {
+        super.setUp();
+        supervisor = _deploySupervisor(IManifest(address(0)));
+    }
+
+    function testMulticallBatchesExecuteCalls() public {
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeCall(Supervisor.execute, (abi.encodeCall(MockHub.doSomething, (1))));
+        calls[1] = abi.encodeCall(Supervisor.execute, (abi.encodeCall(MockHub.doSomething, (2))));
+
+        vm.prank(operator);
+        supervisor.multicall(calls);
+
+        // Last call wins
+        assertEq(hub.lastValue(), 2);
+    }
+
+    function testMulticallSubmitAndCancel() public {
+        bytes memory timelockData = abi.encodeCall(MockHub.timelocked, (42));
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeCall(Supervisor.submit, (timelockData));
+        calls[1] = abi.encodeCall(Supervisor.cancel, (timelockData));
+
+        vm.prank(operator);
+        supervisor.multicall(calls);
+
+        assertEq(supervisor.pending(timelockData), 0);
+    }
+
+    function testMulticallRevertsForNonOperator() public {
+        bytes[] memory calls = new bytes[](1);
+        calls[0] = abi.encodeCall(Supervisor.execute, (abi.encodeCall(MockHub.doSomething, (1))));
+
+        vm.expectRevert();
+        vm.prank(unauthorized);
+        supervisor.multicall(calls);
+    }
+}
+
+// ─── Manifest additional delay ─────────────────────────────────────────────
+
+contract SupervisorManifestDelayTest is SupervisorTestBase {
+    Supervisor supervisor;
+    MockManifest hook;
+
+    function setUp() public override {
+        super.setUp();
+        hook = new MockManifest();
+        // Deploy with timelocked + hooked on same selector
+        bytes4[] memory timelockSels = new bytes4[](1);
+        timelockSels[0] = MockHub.hookedFn.selector;
+        bytes4[] memory hookSels = new bytes4[](1);
+        hookSels[0] = MockHub.hookedFn.selector;
+
+        SupervisorConfig memory config =
+            SupervisorConfig(timelockSels, hookSels, DELAY, EXPIRY, IManifest(address(hook)));
+        supervisor = new Supervisor(IHub(address(hub)), POOL, operator, config);
+    }
+
+    function testAdditionalDelayExtendsTimelock() public {
+        uint48 extra = 1 days;
+        hook.setExtraDelay(extra);
+
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
+
+        vm.prank(operator);
+        supervisor.submit(data);
+
+        // Warp past base delay but not additional delay
+        vm.warp(block.timestamp + DELAY);
+
+        vm.expectRevert();
+        vm.prank(operator);
+        supervisor.execute(data);
+
+        // Warp past additional delay
+        vm.warp(block.timestamp + extra);
+        vm.prank(operator);
+        supervisor.execute(data);
+
+        assertEq(hub.lastValue(), 42);
+    }
+
+    function testAdditionalDelayExpiryWindowStartsAfterFullDelay() public {
+        uint48 extra = 1 days;
+        hook.setExtraDelay(extra);
+
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
+
+        vm.prank(operator);
+        supervisor.submit(data);
+
+        // Warp past base delay + additional delay + expiry window
+        vm.warp(block.timestamp + DELAY + extra + EXPIRY + 1);
+
+        vm.expectRevert(ISupervisor.TimelockExpired.selector);
+        vm.prank(operator);
+        supervisor.execute(data);
+    }
+
+    function testAdditionalDelayExecutableWithinExpiryWindow() public {
+        uint48 extra = 1 days;
+        hook.setExtraDelay(extra);
+
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
+
+        vm.prank(operator);
+        supervisor.submit(data);
+
+        // Warp to end of expiry window (should still work)
+        vm.warp(block.timestamp + DELAY + extra + EXPIRY);
+        vm.prank(operator);
+        supervisor.execute(data);
+
+        assertEq(hub.lastValue(), 42);
     }
 }
 
