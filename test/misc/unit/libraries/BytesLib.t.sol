@@ -5,6 +5,16 @@ import {BytesLib} from "../../../../src/misc/libraries/BytesLib.sol";
 
 import "forge-std/Test.sol";
 
+contract DecodeCallHarness {
+    using BytesLib for bytes;
+
+    function decodeCall(bytes calldata data) external pure returns (bytes4 selector, bytes memory payload) {
+        bytes calldata payload_;
+        (selector, payload_) = data.decodeCall();
+        payload = payload_;
+    }
+}
+
 contract BytesLibTest is Test {
     function testSlice(bytes memory data, bytes memory randomStart, bytes memory randomEnd) public pure {
         bytes memory value = bytes.concat(bytes.concat(randomStart, abi.encodePacked(data)), randomEnd);
@@ -68,5 +78,21 @@ contract BytesLibTest is Test {
     function testToBytes16(bytes16 data, bytes memory randomStart, bytes memory randomEnd) public pure {
         bytes memory value = bytes.concat(bytes.concat(randomStart, abi.encodePacked(data)), randomEnd);
         assertEq(BytesLib.toBytes16(value, randomStart.length), data);
+    }
+
+    function testDecodeCall(bytes4 selector, bytes memory payload) public {
+        DecodeCallHarness harness = new DecodeCallHarness();
+        bytes memory data = abi.encodePacked(selector, payload);
+        (bytes4 gotSelector, bytes memory gotPayload) = harness.decodeCall(data);
+        assertEq(gotSelector, selector);
+        assertEq(gotPayload, payload);
+    }
+
+    function testDecodeCallEmptyPayload(bytes4 selector) public {
+        DecodeCallHarness harness = new DecodeCallHarness();
+        bytes memory data = abi.encodePacked(selector);
+        (bytes4 gotSelector, bytes memory gotPayload) = harness.decodeCall(data);
+        assertEq(gotSelector, selector);
+        assertEq(gotPayload.length, 0);
     }
 }

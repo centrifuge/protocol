@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {ISupervisor, ISupervisorFactory, IManifest, SupervisorConfig} from "./interfaces/ISupervisor.sol";
 
 import {IERC7751} from "../../misc/interfaces/IERC7751.sol";
+import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {IHub} from "../../core/hub/interfaces/IHub.sol";
@@ -27,6 +28,8 @@ import {BatchedMulticall} from "../../core/utils/BatchedMulticall.sol";
 ///         atomically, with cross-chain messages from all inner calls aggregated into a single
 ///         gateway batch.
 contract Supervisor is ISupervisor, BatchedMulticall {
+    using BytesLib for bytes;
+
     IHub public immutable hub;
     uint48 public immutable delay;
     PoolId public immutable poolId;
@@ -75,21 +78,21 @@ contract Supervisor is ISupervisor, BatchedMulticall {
 
     /// @inheritdoc ISupervisor
     function execute(bytes calldata data) external payable onlyOperator {
-        _checkHookAndTimelock(bytes4(data[:4]), data);
+        (bytes4 selector,) = data.decodeCall();
+        _checkHookAndTimelock(selector, data);
         (bool success, bytes memory result) = address(hub).call{value: msgValue()}(data);
-        if (!success) revert IERC7751.WrappedError(address(hub), bytes4(data[:4]), result, "");
+        if (!success) revert IERC7751.WrappedError(address(hub), selector, result, "");
     }
 
     /// @inheritdoc ISupervisor
     function submit(bytes calldata data) external onlyOperator {
-        bytes4 selector = bytes4(data[:4]);
+        (bytes4 selector, bytes calldata payload) = data.decodeCall();
         require(timelocked[selector], TimelockNotSet());
         require(pending[data] == 0, OperationAlreadyPending());
 
         // Validate removeSentinel target is currently a sentinel
         if (selector == this.removeSentinel.selector) {
-            address target = abi.decode(data[4:], (address));
-            require(sentinels[target], NotSentinel());
+            require(sentinels[abi.decode(payload, (address))], NotSentinel());
         }
 
         uint48 executeAfter = uint48(block.timestamp) + delay;
@@ -101,10 +104,15 @@ contract Supervisor is ISupervisor, BatchedMulticall {
     function cancel(bytes calldata data) external onlyOperatorOrSentinel {
         require(pending[data] != 0, OperationNotPending());
 
-        bool isOperator = msgSender() == operator;
-        bool isSelfRemoval =
-            bytes4(data[:4]) == this.removeSentinel.selector && abi.decode(data[4:], (address)) == msgSender();
-        require(isOperator || !isSelfRemoval || sentinelCount == 1, CannotSelfCancel());
+        if (msgSender() != operator) {
+            (bytes4 selector, bytes calldata payload) = data.decodeCall();
+            require(
+                selector != this.removeSentinel.selector // not a removal
+                    || abi.decode(payload, (address)) != msgSender() // not removing self
+                    || sentinelCount == 1, // last sentinel
+                CannotSelfCancel()
+            );
+        }
 
         delete pending[data];
         emit Cancel(keccak256(data));
