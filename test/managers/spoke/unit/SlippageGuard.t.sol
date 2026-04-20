@@ -95,6 +95,16 @@ contract SlippageGuardTest is Test {
     }
 }
 
+// --- Empty assets ---
+
+contract SlippageGuardEmptyAssetsTest is SlippageGuardTest {
+    function testOpenWithEmptyAssetsReverts() public {
+        AssetEntry[] memory empty = new AssetEntry[](0);
+        vm.expectRevert(ISlippageGuard.EmptyAssets.selector);
+        guard.open(POOL_A, SC_1, empty);
+    }
+}
+
 // --- Close without open ---
 
 contract SlippageGuardCloseWithoutOpenTest is SlippageGuardTest {
@@ -649,7 +659,7 @@ contract SlippageGuardZeroPriceTest is SlippageGuardTest {
         guard.close(POOL_A, SC_1, 500);
     }
 
-    function testDepositWithZeroPriceSucceeds() public {
+    function testDepositWithZeroPriceReverts() public {
         // Override assetA price to zero
         vm.mockCall(
             spoke,
@@ -660,9 +670,10 @@ contract SlippageGuardZeroPriceTest is SlippageGuardTest {
         _mockBalance(assetA, 0, 500e18);
         guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
 
-        // Balance increased: deposit-only with zero price is conservative (gain = 0) but not dangerous
+        // Balance increased: zero price would mask a real gain
         _mockBalance(assetA, 0, 1000e18);
 
+        vm.expectRevert(ISlippageGuard.ZeroPrice.selector);
         guard.close(POOL_A, SC_1, 500);
     }
 

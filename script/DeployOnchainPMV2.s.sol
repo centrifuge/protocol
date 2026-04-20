@@ -6,6 +6,7 @@ import {EnvConfig, Env, prettyEnvString} from "./utils/EnvConfig.s.sol";
 
 import {AccountingToken} from "../src/managers/spoke/AccountingToken.sol";
 import {FlashLoanHelper} from "../src/managers/spoke/FlashLoanHelper.sol";
+import {IOnchainPMFactory} from "../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
 import {ScriptHelpers} from "../src/managers/spoke/ScriptHelpers.sol";
 
 import "forge-std/Script.sol";
@@ -56,13 +57,6 @@ contract DeployOnchainPMV2 is BaseDeployer {
             )
         );
 
-        flashLoanHelper = FlashLoanHelper(
-            create3(
-                createSalt("flashLoanHelper", ONCHAIN_PM_V2_VERSION),
-                abi.encodePacked(type(FlashLoanHelper).creationCode)
-            )
-        );
-
         onchainPMFactory = create3(
             createSalt("onchainPMFactory", ONCHAIN_PM_V2_VERSION),
             abi.encodePacked(
@@ -71,10 +65,17 @@ contract DeployOnchainPMV2 is BaseDeployer {
             )
         );
 
+        flashLoanHelper = FlashLoanHelper(
+            create3(
+                createSalt("flashLoanHelper", ONCHAIN_PM_V2_VERSION),
+                abi.encodePacked(type(FlashLoanHelper).creationCode, abi.encode(onchainPMFactory))
+            )
+        );
+
         console.log("accountingToken:   %s", address(accountingToken));
         console.log("scriptHelpers:  %s", address(scriptHelpers));
-        console.log("flashLoanHelper:   %s", address(flashLoanHelper));
         console.log("onchainPMFactory:  %s", onchainPMFactory);
+        console.log("flashLoanHelper:   %s", address(flashLoanHelper));
     }
 
     function _updateEnvFile(string memory network) internal {

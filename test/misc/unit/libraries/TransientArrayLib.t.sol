@@ -5,6 +5,20 @@ import {TransientArrayLib} from "../../../../src/misc/libraries/TransientArrayLi
 
 import "forge-std/Test.sol";
 
+contract TransientArrayHarness {
+    function push(bytes32 key, bytes32 value) external {
+        TransientArrayLib.push(key, value);
+    }
+
+    function at(bytes32 key, uint256 index) external view returns (bytes32) {
+        return TransientArrayLib.at(key, index);
+    }
+
+    function length(bytes32 key) external view returns (uint256) {
+        return TransientArrayLib.length(key);
+    }
+}
+
 contract TransientArrayLibTest is Test {
     function testTransientArray(bytes32 invalidKey) public {
         bytes32 key = keccak256(abi.encode("key"));
@@ -43,5 +57,26 @@ contract TransientArrayLibTest is Test {
         assertEq(stored.length, 0);
 
         assertEq(TransientArrayLib.length(invalidKey), 0);
+    }
+
+    function testAtOutOfBoundsReverts() public {
+        TransientArrayHarness harness = new TransientArrayHarness();
+        bytes32 key = keccak256(abi.encode("key"));
+
+        vm.expectRevert(TransientArrayLib.IndexOutOfBounds.selector);
+        harness.at(key, 0);
+    }
+
+    function testAtOutOfBoundsAfterPushReverts() public {
+        TransientArrayHarness harness = new TransientArrayHarness();
+        bytes32 key = keccak256(abi.encode("key"));
+        harness.push(key, bytes32("1"));
+
+        // Index 0 should work
+        assertEq(harness.at(key, 0), bytes32("1"));
+
+        // Index 1 should revert
+        vm.expectRevert(TransientArrayLib.IndexOutOfBounds.selector);
+        harness.at(key, 1);
     }
 }

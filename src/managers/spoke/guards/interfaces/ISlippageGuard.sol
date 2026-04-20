@@ -6,6 +6,7 @@ import {ISpoke} from "../../../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../../../core/spoke/interfaces/IBalanceSheet.sol";
 import {ITrustedContractUpdate} from "../../../../core/utils/interfaces/IContractUpdate.sol";
+import {IOnchainPMFactory} from "../../interfaces/IOnchainPMFactory.sol";
 
 struct AssetEntry {
     address asset;
@@ -54,6 +55,7 @@ interface ISlippageGuard is ITrustedContractUpdate {
     function spoke() external view returns (ISpoke);
     function balanceSheet() external view returns (IBalanceSheet);
     function contractUpdater() external view returns (address);
+    function onchainPMFactory() external view returns (IOnchainPMFactory);
     function config(PoolId poolId, ShareClassId scId)
         external
         view

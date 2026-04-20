@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {ISlippageGuard, AssetEntry, SlippageConfig, PeriodState} from "./interfaces/ISlippageGuard.sol";
 import {IOnchainPMFactory} from "../interfaces/IOnchainPMFactory.sol";
 
-import {D18, isZero} from "../../../misc/types/D18.sol";
+import {D18} from "../../../misc/types/D18.sol";
 import {MathLib} from "../../../misc/libraries/MathLib.sol";
 import {IERC20Metadata} from "../../../misc/interfaces/IERC20.sol";
 import {IERC6909MetadataExt} from "../../../misc/interfaces/IERC6909.sol";
@@ -143,11 +143,12 @@ contract SlippageGuard is ISlippageGuard {
                 tokenId == 0 ? IERC20Metadata(asset).decimals() : IERC6909MetadataExt(asset).decimals(tokenId);
 
             if (post < pre) {
-                require(!isZero(price), ZeroPrice());
+                require(price.isNotZero(), ZeroPrice());
                 withdrawn += PricingLib.assetToPoolAmount(
                     pre - post, assetDecimals, poolDecimals, price, MathLib.Rounding.Up
                 );
             } else if (post > pre) {
+                require(price.isNotZero(), ZeroPrice());
                 deposited += PricingLib.assetToPoolAmount(
                     post - pre, assetDecimals, poolDecimals, price, MathLib.Rounding.Down
                 );

@@ -140,11 +140,11 @@ contract OnOffRamp is IOnOffRamp {
         external
     {
         require(relayer[msg.sender], NotRelayer());
-        require(receiver != address(0) && offramp[asset][receiver], InvalidOfframpDestination());
         _withdraw(asset, amount, receiver);
     }
 
     function _withdraw(address asset, uint128 amount, address receiver) internal {
+        require(receiver != address(0) && offramp[asset][receiver], InvalidOfframpDestination());
         // Withdraw real asset to receiver
         balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount, WithdrawMode.Full);
 

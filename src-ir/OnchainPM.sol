@@ -91,6 +91,7 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
         }
 
         // Execute script
+        uint256 preBalance = address(this).balance - msg.value;
         _execute(commands, _copyState(state));
         require(callbackIdx == TransientArrayLib.length(CALLBACK_HASHES_SLOT), UnconsumedCallbacks());
 
@@ -98,7 +99,7 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
         callbackIdx = 0;
         TransientArrayLib.clear(CALLBACK_HASHES_SLOT);
         TransientArrayLib.clear(CALLBACK_CALLERS_SLOT);
-        _refund();
+        _refund(preBalance);
         activeStrategist = address(0);
 
         emit ExecuteScript(msgSender(), scriptHash);
@@ -172,11 +173,11 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
         return keccak256(abi.encodePacked(hashes));
     }
 
-    /// @dev Transfers all ETH held by this contract back to the caller.
-    function _refund() internal {
+    /// @dev Transfers excess native tokens held by this contract back to the caller.
+    function _refund(uint256 preBalance) internal {
         uint256 balance = address(this).balance;
-        if (balance > 0) {
-            (bool success,) = payable(msgSender()).call{value: balance}("");
+        if (balance > preBalance) {
+            (bool success,) = payable(msgSender()).call{value: balance - preBalance}("");
             require(success, ETHRefundFailed());
         }
     }
