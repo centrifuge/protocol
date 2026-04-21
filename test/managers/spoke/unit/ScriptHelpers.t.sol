@@ -335,6 +335,22 @@ contract ScriptHelpersCastTest is Test {
         assertEq(helpers.abs(int256(42)), 42);
         assertEq(helpers.abs(int256(-42)), 42);
         assertEq(helpers.abs(int256(0)), 0);
+        assertEq(helpers.abs(type(int256).min), uint256(type(int256).max) + 1);
+        assertEq(helpers.abs(type(int256).max), uint256(type(int256).max));
+    }
+
+    function testAbsFuzz(int256 value) public view {
+        uint256 result = helpers.abs(value);
+        // Result is always non-negative
+        assertTrue(result >= 0);
+        // Result matches the magnitude
+        if (value >= 0) {
+            assertEq(result, uint256(value));
+        } else if (value == type(int256).min) {
+            assertEq(result, uint256(type(int256).max) + 1);
+        } else {
+            assertEq(result, uint256(-value));
+        }
     }
 
     // bytes32 ↔ address
