@@ -6,7 +6,9 @@
     "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "batchLimit": 15,
-    "baseRpcUrl": "https://api.zan.top/node/v1/pharos/mainnet/"
+    "baseRpcUrl": "https://api.zan.top/node/v1/pharos/mainnet/",
+    "verifier": "blockscout",
+    "verifierUrl": "https://api.socialscan.io/pharos-mainnet/v1/explorer/command_api/contract"
   },
   "adapters": {
     "layerZero": {
