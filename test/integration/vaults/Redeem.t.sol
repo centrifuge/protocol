@@ -12,11 +12,11 @@ import {
     VaultKind
 } from "./VaultBaseTest.sol";
 
-import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
-
 import {D18} from "../../../src/misc/types/D18.sol";
 import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+
+import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {RequestMessageLib} from "../../../src/vaults/libraries/RequestMessageLib.sol";

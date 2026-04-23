@@ -11,8 +11,6 @@ import {
     VaultKind
 } from "./VaultBaseTest.sol";
 
-import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
-
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
@@ -28,6 +26,7 @@ import {
 } from "../../../src/misc/interfaces/IERC7540.sol";
 
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
+import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {VaultDetails} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
 

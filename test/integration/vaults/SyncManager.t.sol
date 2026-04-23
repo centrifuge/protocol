@@ -10,11 +10,11 @@ import {
     VaultKind
 } from "./VaultBaseTest.sol";
 
-import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
-
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
+
+import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {ISyncManager, ISyncDepositValuation} from "../../../src/vaults/interfaces/IVaultManagers.sol";

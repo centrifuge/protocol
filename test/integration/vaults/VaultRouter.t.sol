@@ -13,8 +13,6 @@ import {
     VaultKind
 } from "./VaultBaseTest.sol";
 
-import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
-
 import "../../../src/misc/interfaces/IERC7575.sol";
 import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
@@ -23,6 +21,7 @@ import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 import {IERC7540Deposit} from "../../../src/misc/interfaces/IERC7540.sol";
 
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
+import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
