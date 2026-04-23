@@ -4,12 +4,13 @@ pragma solidity 0.8.28;
 import {
     AssetId,
     VaultBaseTest as BaseTest,
-    MessageLib,
     PoolId,
     ShareClassId,
     SyncDepositVault,
     VaultKind
 } from "./VaultBaseTest.sol";
+
+import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";

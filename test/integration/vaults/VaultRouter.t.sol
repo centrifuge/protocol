@@ -7,12 +7,13 @@ import {
     VaultBaseTest as BaseTest,
     ERC20,
     IShareToken,
-    MessageLib,
     MockAdapter,
     PoolId,
     SyncDepositVault,
     VaultKind
 } from "./VaultBaseTest.sol";
+
+import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import "../../../src/misc/interfaces/IERC7575.sol";
 import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
