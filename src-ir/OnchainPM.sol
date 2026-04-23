@@ -17,13 +17,13 @@ import {IOnchainPMFactory} from "../src/managers/spoke/interfaces/IOnchainPMFact
 import {VM} from "enso-weiroll/VM.sol";
 
 /// @title  Onchain Portfolio Manager
-/// @notice Weiroll VM-based execution engine with script-level Merkle authorization and a state bitmap
-///         for selectively fixing hub-manager-approved state elements.
-/// @notice ETH sent with `execute()` is forwarded to VALUECALL commands and any remainder is
-///         returned to the caller. No ETH should ever remain in this contract between calls.
-/// @dev    Compiled with `via_ir` to handle the weiroll VM's stack depth. The VM only supports
-///         CALL, STATICCALL, and VALUECALL to external targets (never DELEGATECALL), so the
-///         OnchainPM's storage (policy mapping) cannot be overwritten by target contracts.
+/// @notice Per-pool execution engine that allows strategists to run pre-approved multi-step onchain
+///         workflows (supply, withdraw, swap, bridge) for a Centrifuge pool. Scripts are
+///         authored as weiroll command sequences and authorized via a Merkle proof policy set by
+///         trusted calls from the hub manager. A state bitmap lets governance pin specific state slots so strategists
+///         cannot modify them at execution time.
+/// @dev    Native tokens sent with `execute()` are forwarded to VALUECALL commands and any remainder
+///         is returned to the caller. No native tokens should ever remain in this contract between calls.
 contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
     using CastLib for *;
 
