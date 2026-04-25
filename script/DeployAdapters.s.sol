@@ -22,7 +22,7 @@ contract DeployAdapters is BaseDeployer {
         EnvConfig memory config = Env.load(vm.envString("NETWORK"));
 
         vm.startBroadcast();
-        startDeploymentOutput();
+        initDeploymentMetadata();
 
         _init(vm.envOr("SUFFIX", string("")), msg.sender);
 
@@ -101,7 +101,7 @@ contract DeployAdapters is BaseDeployer {
             chainlinkAdapter.deny(msg.sender);
         }
 
-        saveDeploymentOutput();
         vm.stopBroadcast();
+        saveDeploymentMetadata("DeployAdapters.s.sol");
     }
 }

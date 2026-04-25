@@ -19,7 +19,7 @@ import "forge-std/Script.sol";
 contract LaunchDeployer is FullDeployer {
     function run() public virtual {
         vm.startBroadcast();
-        startDeploymentOutput();
+        initDeploymentMetadata();
 
         EnvConfig memory config = Env.load(prettyEnvString("NETWORK"));
 
@@ -60,7 +60,7 @@ contract LaunchDeployer is FullDeployer {
             require(msg.sender == 0x926702C7f1af679a8f99A40af8917DDd82fD6F6c, "wrong deployer");
         }
 
-        saveDeploymentOutput();
         vm.stopBroadcast();
+        saveDeploymentMetadata("LaunchDeployer.s.sol");
     }
 }

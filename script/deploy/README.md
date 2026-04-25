@@ -41,7 +41,7 @@ Any `env/<network>.json` (e.g. `sepolia`, `base-sepolia`, `arbitrum-sepolia`, `p
 ls env/*.json
 ```
 
-(Exclude `env/latest` and the `spell/` directory.)
+(Exclude the `spell/` directory.)
 
 ### Steps
 
@@ -103,14 +103,14 @@ python3 script/deploy/deploy.py anvil deploy:full
 
 ### `update_network_config.py`
 
-Copies contract addresses (and block numbers from broadcast artifacts) from `env/latest/<chain_id>-latest.json` into `env/<network>.json`.
+Reads deployment metadata from `broadcast/<script>/<chain_id>/run-latest.json` and merges contract addresses, block numbers, and versions into `env/<network>.json`.
 
 ```bash
-python3 script/deploy/update_network_config.py <network_name> [--script PATH]
+python3 script/deploy/update_network_config.py <network_name> --script <script_name>
 ```
 
 - `network_name` – e.g. `sepolia`, `plume`.
-- `--script` – Optional path to the deployment script (e.g. `script/LaunchDeployer.s.sol`) to derive block numbers from broadcast artifacts.
+- `--script` – Required. Deployment script name (e.g. `LaunchDeployer`) to locate the broadcast file.
 
 ### `load_secrets.py`
 
@@ -206,4 +206,4 @@ RPC URL is built from `baseRpcUrl` plus the appropriate API key from GCP when th
 
 - Forge/validation logs: `script/deploy/logs/` (e.g. `forge-validate-<network>.log`).
 - Release state (for `release:sepolia`): `script/deploy/logs/release_state.json`.
-- Partial deployment (non verified): `env/latest/${CHAIN_ID}-latest.json`
+- Deployment data: `broadcast/<Script>.s.sol/${CHAIN_ID}/run-latest.json` (includes `deploymentMetadata` key with logical names and versions)

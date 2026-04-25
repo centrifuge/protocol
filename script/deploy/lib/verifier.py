@@ -22,11 +22,111 @@ from .load_config import EnvironmentLoader
 class ContractVerifier:
     def __init__(self, env_loader: EnvironmentLoader, args: argparse.Namespace):
         self.env_loader = env_loader
-        self.latest_deployment = env_loader.root_dir / "env" / "latest" / f"{env_loader.chain_id}-latest.json"
         self.args = args
         self.root_dir = env_loader.root_dir
         self.rpc_url = self.env_loader.rpc_url
         self.etherscan_api_key = self.env_loader.etherscan_api_key
+
+    def _get_broadcast_dir(self, deployment_script: str) -> pathlib.Path:
+        """Get the broadcast directory for a deployment script."""
+        if not deployment_script:
+            return None
+
+        script_path = deployment_script.split(":")[0] if ":" in deployment_script else deployment_script
+        script_filename = pathlib.Path(script_path).name
+        if not script_filename.endswith(".s.sol"):
+            script_filename = f"{script_filename}.s.sol"
+
+        return self.root_dir / "broadcast" / script_filename / str(self.env_loader.chain_id)
+
+    def _get_broadcast_file(self, deployment_script: str) -> pathlib.Path:
+        """Get the path to the broadcast run-latest.json file."""
+        broadcast_dir = self._get_broadcast_dir(deployment_script)
+        if not broadcast_dir:
+            return None
+        return broadcast_dir / "run-latest.json"
+
+    def _merge_deployment_metadata(self, deployment_script: str) -> bool:
+        """Merge the deployment-metadata.json sidecar into run-latest.json, then delete the sidecar."""
+        broadcast_dir = self._get_broadcast_dir(deployment_script)
+        if not broadcast_dir:
+            return False
+
+        sidecar = broadcast_dir / "deployment-metadata.json"
+        broadcast_file = broadcast_dir / "run-latest.json"
+
+        if not sidecar.exists():
+            return False
+
+        if not broadcast_file.exists():
+            return False
+
+        try:
+            with open(sidecar, 'r') as f:
+                metadata = json.load(f)
+            with open(broadcast_file, 'r') as f:
+                broadcast_data = json.load(f)
+
+            broadcast_data['deploymentMetadata'] = metadata
+
+            with open(broadcast_file, 'w') as f:
+                json.dump(broadcast_data, f, indent=2)
+
+            sidecar.unlink()
+            print_step("Merged deployment metadata into broadcast file")
+            return True
+        except (json.JSONDecodeError, IOError) as e:
+            print_warning(f"Failed to merge deployment metadata into broadcast file: {e}")
+            return False
+
+    def _broadcast_has_deployment_metadata(self, deployment_script: str) -> bool:
+        """Check whether the broadcast file already contains embedded deployment metadata."""
+        broadcast_file = self._get_broadcast_file(deployment_script)
+        if not broadcast_file or not broadcast_file.exists():
+            return False
+
+        try:
+            with open(broadcast_file, 'r') as f:
+                data = json.load(f)
+            return bool(data.get('deploymentMetadata'))
+        except (json.JSONDecodeError, IOError) as e:
+            print_warning(f"Failed to parse broadcast file: {e}")
+            return False
+
+    def finalize_broadcast_metadata(self, deployment_script: str) -> bool:
+        """Ensure deployment metadata lives in run-latest.json before follow-up tooling reads it."""
+        if not deployment_script:
+            return False
+
+        if self._merge_deployment_metadata(deployment_script):
+            return True
+
+        return self._broadcast_has_deployment_metadata(deployment_script)
+
+    def _load_deployment_metadata(self, deployment_script: str) -> dict:
+        """Load deployment metadata (logical names, addresses, versions) from the broadcast file.
+        
+        If a stale deployment-metadata.json sidecar exists, merge it into
+        run-latest.json before reading.
+        """
+        self.finalize_broadcast_metadata(deployment_script)
+
+        broadcast_file = self._get_broadcast_file(deployment_script)
+        if not broadcast_file or not broadcast_file.exists():
+            print_warning(f"Broadcast file not found: {broadcast_file}")
+            return {}
+
+        try:
+            with open(broadcast_file, 'r') as f:
+                data = json.load(f)
+            metadata = data.get('deploymentMetadata')
+            if not metadata:
+                print_warning(f"No deploymentMetadata found in {broadcast_file}")
+                return {}
+            return metadata
+        except (json.JSONDecodeError, IOError) as e:
+            print_warning(f"Failed to parse broadcast file: {e}")
+            return {}
     
     def _get_broadcast_deployment_info(self, deployment_script: str) -> dict:
         """
@@ -44,25 +144,13 @@ class ContractVerifier:
 
         Returns a dict mapping lowercase addresses to { blockNumber, txHash }.
         """
-        # Find the broadcast file
-        # deployment_script can be one of:
-        # - "script/SomeScript.s.sol:ScriptName"
-        # - "script/SomeScript.s.sol"
-        # - "SomeScript.s.sol" (e.g. "LaunchDeployer.s.sol")
-        # - "SomeScript" (e.g. "LaunchDeployer")
         if not deployment_script:
             print_warning("No deployment script provided; skipping broadcast deployment info extraction")
             return {}
 
-        script_path = deployment_script.split(":")[0] if ":" in deployment_script else deployment_script
-        script_filename = pathlib.Path(script_path).name  # e.g., "LaunchDeployer.s.sol" or "LaunchDeployer"
-        if not script_filename.endswith(".s.sol"):
-            script_filename = f"{script_filename}.s.sol"
+        broadcast_file = self._get_broadcast_file(deployment_script)
 
-        broadcast_dir = self.root_dir / "broadcast" / script_filename / str(self.env_loader.chain_id)
-        broadcast_file = broadcast_dir / "run-latest.json"
-
-        if not broadcast_file.exists():
+        if not broadcast_file or not broadcast_file.exists():
             print_warning(f"Broadcast file not found: {broadcast_file}")
             return {}
 
@@ -150,23 +238,19 @@ class ContractVerifier:
             return {}
 
     def verify_contracts(self, deployment_script: str) -> bool:
-        """Verify contracts on Etherscan"""
-        # Always use -latest.json for verification
-        if not self.latest_deployment.exists():
-            print_error(f"Deployment file not found: {self.latest_deployment}")
+        """Verify contracts on Etherscan using deployment metadata from the broadcast file."""
+        metadata = self._load_deployment_metadata(deployment_script)
+        if not metadata:
+            print_error(f"Deployment metadata not found for script: {deployment_script}")
             return False
 
-        contracts_file = self.latest_deployment
-        relative_path = format_path(contracts_file, self.root_dir)
+        broadcast_file = self._get_broadcast_file(deployment_script)
+        relative_path = format_path(broadcast_file, self.root_dir)
         print_step(f"Checking contracts from {relative_path}")
 
         if not self.args.dry_run:
-            with open(contracts_file, 'r') as f:
-                data = json.load(f)
-                contracts = data.get("contracts", {})
-                contract_addresses = { k: v for k, v in contracts.items() }
-
-            if not contract_addresses:
+            contracts = metadata.get("contracts", {})
+            if not contracts:
                 print_error(f"No contracts found in {relative_path}")
                 return False
 
@@ -174,7 +258,8 @@ class ContractVerifier:
             undeployed_contracts = []
             verified_count = 0
             deployed_count = 0
-            for contract_name, contract_address in contract_addresses.items():
+            for contract_name, contract_data in contracts.items():
+                contract_address = contract_data.get('address') if isinstance(contract_data, dict) else contract_data
                 # First check if it is deployed
                 if self._is_contract_deployed(contract_address):
                     print_success(f"{contract_name} ({contract_address}) is deployed")
@@ -191,8 +276,8 @@ class ContractVerifier:
                     unverified_contracts.append(f"{contract_name}:{contract_address}")
                 time.sleep(0.2)  # Rate limiting
 
-            print_info(f"Deployment check complete: {deployed_count}/{len(contract_addresses)} contracts deployed")
-            print_info(f"Verification check complete: {verified_count}/{len(contract_addresses)} contracts verified")
+            print_info(f"Deployment check complete: {deployed_count}/{len(contracts)} contracts deployed")
+            print_info(f"Verification check complete: {verified_count}/{len(contracts)} contracts verified")
 
             if unverified_contracts or undeployed_contracts:
                 print_error("Some contracts failed checks")
@@ -200,8 +285,8 @@ class ContractVerifier:
             else:
                 print_success("All contracts checks passed!")
                 print_info(f"Trying to update network config now...")
-                # Check if -latest.json is old before updating main config
-                if self._is_deployment_old():
+                # Check if metadata is old before updating main config
+                if self._is_deployment_old(deployment_script):
                         print_info("Skipping update of main config file")
                         return True
                 else:
@@ -211,20 +296,22 @@ class ContractVerifier:
 
         return True
 
-    def config_has_latest_contracts(self) -> bool:
-        """Fast check: are contracts from env/latest already merged into env/<network>.json?"""
+    def config_has_latest_contracts(self, deployment_script: str = None) -> bool:
+        """Fast check: are contracts from deployment metadata already merged into env/<network>.json?"""
         try:
-            if not self.latest_deployment.exists():
+            metadata = self._load_deployment_metadata(deployment_script)
+            if not metadata:
                 return False
-            with open(self.latest_deployment, 'r') as f:
-                latest = json.load(f)
             with open(self.env_loader.config_file, 'r') as f:
                 cfg = json.load(f)
-            latest_contracts = latest.get('contracts', {}) or {}
+            latest_contracts = metadata.get('contracts', {}) or {}
             config_contracts = cfg.get('contracts', {}) or {}
-            # Require every contract in latest to exist in config with identical address
-            for name, addr in latest_contracts.items():
-                if name not in config_contracts or config_contracts[name].lower() != addr.lower():
+            # Require every contract in metadata to exist in config with identical address
+            for name, contract_data in latest_contracts.items():
+                addr = contract_data.get('address') if isinstance(contract_data, dict) else contract_data
+                cfg_entry = config_contracts.get(name)
+                cfg_addr = cfg_entry.get('address') if isinstance(cfg_entry, dict) else cfg_entry
+                if not cfg_addr or cfg_addr.lower() != addr.lower():
                     return False
             return True if latest_contracts else False
         except Exception:
@@ -277,10 +364,16 @@ class ContractVerifier:
             return False
 
     def update_network_config(self, deployment_script: str = None):
-        """Update network config with deployment output"""
+        """Update network config with deployment output from the broadcast directory."""
         relative_path = format_path(self.env_loader.config_file, self.root_dir)
         print_step(f"Merging contract addresses to {relative_path}")
         network_config = self.env_loader.config_file
+
+        # Load deployment metadata from broadcast directory
+        metadata = self._load_deployment_metadata(deployment_script)
+        if not metadata:
+            print_error(f"Deployment metadata not found for script: {deployment_script}")
+            return False
 
         # Create a backup of the current config
         backup_config = pathlib.Path(str(network_config) + ".bak")
@@ -305,19 +398,17 @@ class ContractVerifier:
             broadcast_deployment_info = self._get_broadcast_deployment_info(deployment_script)
 
         try:
-            # Load both files
+            # Load network config
             with open(network_config, 'r') as f:
                 config_data = json.load(f)
-            with open(self.latest_deployment, 'r') as f:
-                latest_data = json.load(f)
 
             # Merge the contracts section
             if 'contracts' not in config_data:
                 config_data['contracts'] = {}
 
-            # Update contracts with new deployments
-            contracts_from_latest = latest_data.get('contracts', {})
-            for contract_name, contract_data in contracts_from_latest.items():
+            # Update contracts with new deployments from metadata
+            contracts_from_metadata = metadata.get('contracts', {})
+            for contract_name, contract_data in contracts_from_metadata.items():
                 # Extract address from either format
                 if isinstance(contract_data, dict):
                     contract_address = contract_data.get('address')
@@ -366,10 +457,11 @@ class ContractVerifier:
                     entry['version'] = version_out
                 config_data['contracts'][contract_name] = entry
 
+            # Get deployment timestamp from broadcast file
+            broadcast_file = self._get_broadcast_file(deployment_script)
+            broadcast_stat = broadcast_file.stat()
+            deployment_timestamp = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(broadcast_stat.st_mtime))
 
-            # Get deployment timestamp from latest deployment file
-            latest_stat = self.latest_deployment.stat()
-            deployment_timestamp = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(latest_stat.st_mtime))
             # Set deployment info
             if 'deploymentInfo' not in config_data:
                 config_data['deploymentInfo'] = {}
@@ -395,17 +487,17 @@ class ContractVerifier:
                 config_data['deploymentInfo'][deployment_step] = {}
             config_data['deploymentInfo'][deployment_step]['suffix'] = os.environ.get("SUFFIX", "")
             
-            # Get startBlock from deployment mechanism (-latest.json file) if available
+            # Get startBlock from deployment metadata if available
             # Only calculate from contract block numbers if not provided by deployment
-            deployment_start_block = latest_data.get('deploymentStartBlock')
+            deployment_start_block = metadata.get('deploymentStartBlock')
             if deployment_start_block is not None:
-                # Use startBlock from deployment mechanism
+                # Use startBlock from deployment metadata
                 config_data['deploymentInfo'][deployment_step]['startBlock'] = int(deployment_start_block)
             else:
                 # Fallback: Calculate from deployed contract block numbers
                 # Collect all block numbers from this deployment (from broadcast artifacts)
                 deployed_block_numbers = []
-                for contract_name, contract_data in contracts_from_latest.items():
+                for contract_name, contract_data in contracts_from_metadata.items():
                     if isinstance(contract_data, dict):
                         contract_address = contract_data.get('address')
                     else:
@@ -497,31 +589,23 @@ class ContractVerifier:
         # If no large gap found, all blocks are likely from the same deployment
         return sorted_blocks[0]
 
-    def _check_deployment_age(self) -> bool:
-        """Check if -latest.json is old and should warn user"""
-        if not self.latest_deployment.exists():
+    def _is_deployment_old(self, deployment_script: str) -> bool:
+        """Check if the broadcast file is old and should warn user.
+           Returns True if deployment is old, False if not (or if user wants to proceed)."""
+        broadcast_file = self._get_broadcast_file(deployment_script)
+        if not broadcast_file or not broadcast_file.exists():
             return False
 
-        latest_file_age = int(time.time() - self.latest_deployment.stat().st_mtime)
-        one_day_in_seconds = 86400
-
-        return latest_file_age > one_day_in_seconds
-
-    def _is_deployment_old(self) -> bool:
-        """Check if -latest.json is old and should warn user
-           Returns True deployment is old, False if not (or if user wants to proceed)"""
-
-        latest_deploy_file = format_path(self.latest_deployment, self.root_dir)
         deploy_config = format_path(self.env_loader.config_file, self.root_dir)
-        latest_file_age = int(time.time() - self.latest_deployment.stat().st_mtime)
+        broadcast_display = format_path(broadcast_file, self.root_dir)
+        file_age = int(time.time() - broadcast_file.stat().st_mtime)
         one_day_in_seconds = 86400
 
-        if latest_file_age < one_day_in_seconds:
+        if file_age < one_day_in_seconds:
             return False
-        # else
 
-        print_warning(f"{latest_deploy_file} is old (age: {latest_file_age // 3600} hours)")
-        print_warning(f"This will replace contracts in {deploy_config} with addresses from {latest_deploy_file}")
+        print_warning(f"{broadcast_display} is old (age: {file_age // 3600} hours)")
+        print_warning(f"This will replace contracts in {deploy_config} with addresses from {broadcast_display}")
 
         while True:
             try:

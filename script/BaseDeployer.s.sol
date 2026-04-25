@@ -4,11 +4,11 @@ pragma solidity 0.8.28;
 import {ICreateX} from "./utils/ICreateX.sol";
 import {CREATEX_ADDRESS} from "./utils/CreateX.d.sol";
 import {CreateXScript} from "./utils/CreateXScript.sol";
-import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
+import {DeploymentMetadata} from "./utils/DeploymentMetadata.s.sol";
 
 import "forge-std/Script.sol";
 
-contract BaseDeployer is Script, JsonRegistry, CreateXScript {
+contract BaseDeployer is Script, DeploymentMetadata, CreateXScript {
     string internal suffix;
     address public deployer;
 
