@@ -7,8 +7,8 @@ import {console} from "forge-std/console.sol";
 /// @title DeploymentMetadata
 /// @notice Accumulates contract metadata (logical name, address, version) during deployment
 ///         and writes it as a temporary sidecar file alongside the Forge broadcast output.
-///         The Python tooling then merges this into run-latest.json (under a `deploymentMetadata`
-///         key) and deletes the sidecar, resulting in a single file with all deployment info.
+///         Forge writes run-latest.json only after the script completes, so the deploy tooling
+///         folds this sidecar into run-latest.json immediately after the command finishes.
 ///         Replaces JsonRegistry by consolidating all deployment info into the broadcast directory.
 contract DeploymentMetadata is Script {
     string deploymentOutput;

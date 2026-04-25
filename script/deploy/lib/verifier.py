@@ -46,26 +46,20 @@ class ContractVerifier:
             return None
         return broadcast_dir / "run-latest.json"
 
-    def _merge_deployment_metadata(self, deployment_script: str):
-        """Merge the deployment-metadata.json sidecar into run-latest.json, then delete the sidecar.
-        
-        The sidecar is written by the Solidity script during execution because
-        run-latest.json does not exist yet at that point (Forge writes it after
-        the script returns). This method merges the sidecar into the broadcast
-        file so that all deployment info lives in a single file.
-        """
+    def _merge_deployment_metadata(self, deployment_script: str) -> bool:
+        """Merge the deployment-metadata.json sidecar into run-latest.json, then delete the sidecar."""
         broadcast_dir = self._get_broadcast_dir(deployment_script)
         if not broadcast_dir:
-            return
+            return False
 
         sidecar = broadcast_dir / "deployment-metadata.json"
         broadcast_file = broadcast_dir / "run-latest.json"
 
         if not sidecar.exists():
-            return  # Already merged or no metadata
+            return False
 
         if not broadcast_file.exists():
-            return  # No broadcast file to merge into
+            return False
 
         try:
             with open(sidecar, 'r') as f:
@@ -80,17 +74,42 @@ class ContractVerifier:
 
             sidecar.unlink()
             print_step("Merged deployment metadata into broadcast file")
+            return True
         except (json.JSONDecodeError, IOError) as e:
             print_warning(f"Failed to merge deployment metadata into broadcast file: {e}")
+            return False
+
+    def _broadcast_has_deployment_metadata(self, deployment_script: str) -> bool:
+        """Check whether the broadcast file already contains embedded deployment metadata."""
+        broadcast_file = self._get_broadcast_file(deployment_script)
+        if not broadcast_file or not broadcast_file.exists():
+            return False
+
+        try:
+            with open(broadcast_file, 'r') as f:
+                data = json.load(f)
+            return bool(data.get('deploymentMetadata'))
+        except (json.JSONDecodeError, IOError) as e:
+            print_warning(f"Failed to parse broadcast file: {e}")
+            return False
+
+    def finalize_broadcast_metadata(self, deployment_script: str) -> bool:
+        """Ensure deployment metadata lives in run-latest.json before follow-up tooling reads it."""
+        if not deployment_script:
+            return False
+
+        if self._merge_deployment_metadata(deployment_script):
+            return True
+
+        return self._broadcast_has_deployment_metadata(deployment_script)
 
     def _load_deployment_metadata(self, deployment_script: str) -> dict:
         """Load deployment metadata (logical names, addresses, versions) from the broadcast file.
         
-        If a deployment-metadata.json sidecar exists (written by the Solidity script),
-        it is first merged into run-latest.json and deleted.
+        If a stale deployment-metadata.json sidecar exists, merge it into
+        run-latest.json before reading.
         """
-        # Merge sidecar into broadcast file if it exists
-        self._merge_deployment_metadata(deployment_script)
+        self.finalize_broadcast_metadata(deployment_script)
 
         broadcast_file = self._get_broadcast_file(deployment_script)
         if not broadcast_file or not broadcast_file.exists():
