@@ -338,10 +338,10 @@
   },
   "deploymentInfo": {
     "deploy:protocol": {
-      "gitCommit": "41e19975",
-      "timestamp": "2026-04-27T13:31:15Z",
+      "gitCommit": "24032569",
+      "timestamp": "2026-01-28T14:47:33Z",
       "suffix": "rev2",
-      "startBlock": 10742866
+      "startBlock": 10142072
     }
   }
 }

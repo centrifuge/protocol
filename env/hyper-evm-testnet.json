@@ -304,10 +304,10 @@
   },
   "deploymentInfo": {
     "deploy:protocol": {
-      "gitCommit": "41e19975",
-      "timestamp": "2026-04-27T13:48:00Z",
+      "gitCommit": "24032569",
+      "timestamp": "2026-01-21T07:45:00Z",
       "suffix": "rev2",
-      "startBlock": 51997424
+      "startBlock": 43580227
     }
   }
 }
