@@ -331,8 +331,8 @@
     },
     "onchainPMFactory": {
       "address": "0xF3c808e6D7C25B19c97a9597CaAcFB8Ba780a580",
-      "blockNumber": null,
-      "txHash": null,
+      "blockNumber": 10742867,
+      "txHash": "0x7f52e8161460427ed2d80a8cb7d78d0c68db35fa2a56124b3731776cfd9c8c8b",
       "version": "v3.2"
     }
   },

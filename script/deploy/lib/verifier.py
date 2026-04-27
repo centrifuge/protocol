@@ -97,11 +97,14 @@ class ContractVerifier:
                 txhash_to_block[tx_hash.lower()] = block_int
 
             # Build address -> tx hashes from transactions (top-level + additionalContracts)
-            # Only include entries with a contractName, to avoid mistakenly capturing call targets.
             address_to_txhashes = {}
 
-            def _add_contract(contract_name, contract_address, parent_tx_hash):
-                if not contract_name or not contract_address or not parent_tx_hash:
+            def _add_contract(contract_address, parent_tx_hash, contract_name=None, require_name=True):
+                # Top-level transactions can be CALL or CREATE — require contractName to filter out calls.
+                # additionalContracts are always deployments, so require_name=False is safe there.
+                if require_name and not contract_name:
+                    return
+                if not contract_address or not parent_tx_hash:
                     return
                 addr_l = contract_address.lower()
                 tx_l = parent_tx_hash.lower()
@@ -111,11 +114,12 @@ class ContractVerifier:
 
             for tx in transactions:
                 parent_hash = tx.get("hash") or tx.get("transactionHash")
-                _add_contract(tx.get("contractName"), tx.get("contractAddress"), parent_hash)
+                _add_contract(tx.get("contractAddress"), parent_hash, contract_name=tx.get("contractName"))
 
                 for extra in tx.get("additionalContracts", []) or []:
-                    # additionalContracts use "address" not "contractAddress"
-                    _add_contract(extra.get("contractName"), extra.get("address"), parent_hash)
+                    # additionalContracts are always deployments (e.g. contracts deployed via raw bytecode
+                    # through a factory like CreateX won't have a contractName — include them regardless).
+                    _add_contract(extra.get("address"), parent_hash, require_name=False)
 
             # Compute per-address deployment info from associated tx hashes.
             # If an address maps to multiple tx hashes, pick the youngest/max blockNumber.

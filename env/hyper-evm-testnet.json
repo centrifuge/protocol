@@ -291,8 +291,8 @@
     },
     "onchainPMFactory": {
       "address": "0xF3c808e6D7C25B19c97a9597CaAcFB8Ba780a580",
-      "blockNumber": null,
-      "txHash": null,
+      "blockNumber": 51997501,
+      "txHash": "0x36f89ac0b319f13110e76e1b18fe42de251772ffec42af7b0884a980466385bf",
       "version": "v3.2"
     },
     "flashLoanHelper": {
