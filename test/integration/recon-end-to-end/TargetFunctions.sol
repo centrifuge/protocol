@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 // Recon Deps
 
 import {HubTargets} from "./targets/HubTargets.sol";
+import {HookTargets} from "./targets/HookTargets.sol";
 import {Properties} from "./properties/Properties.sol";
 import {AdminTargets} from "./targets/AdminTargets.sol";
 import {SpokeTargets} from "./targets/SpokeTargets.sol";
@@ -41,7 +42,8 @@ abstract contract TargetFunctions is
     HubTargets,
     BalanceSheetTargets,
     AdminTargets,
-    DoomsdayTargets
+    DoomsdayTargets,
+    HookTargets
 {
     bool hasDoneADeploy;
 
@@ -340,7 +342,7 @@ abstract contract TargetFunctions is
         uint256 userShareBalance = MockERC20(address(vault.share())).balanceOf(_getActor());
 
         // Request 2x shares to ensure sufficient pending after claiming the approved amount
-        // But clamp to available balance
+        // NOTE: if-guard is correct here (shortcut, not clamped handler) — ensures requestShares <= balance
         uint256 requestShares = shares * 2;
         if (requestShares > userShareBalance) {
             requestShares = userShareBalance;
@@ -503,43 +505,31 @@ abstract contract TargetFunctions is
     // === PRICE CONTROL HANDLERS === //
 
     /// @dev Force price to zero for testing zero-price scenarios
-    function hub_setPriceZero() public asAdmin {
+    function hub_setSharePrice(uint128 price) public asAdmin {
         IBaseVault vault = _getVault();
-        if (address(vault) == address(0)) return;
-
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
-        hub.updateSharePrice{value: 0.1 ether}(poolId, scId, D18.wrap(0), uint64(block.timestamp));
+        hub.updateSharePrice{value: 0.1 ether}(poolId, scId, D18.wrap(price), uint64(block.timestamp));
     }
 
-    /// @dev Set non-zero price with proper clamping for realistic testing
-    function hub_setPriceNonZero_clamped(uint256 price) public asAdmin {
-        if (price == 0) price = 1;
-        if (price > type(uint128).max) price = type(uint128).max;
-
-        IBaseVault vault = _getVault();
-        if (address(vault) == address(0)) return;
-
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-
-        hub.updateSharePrice{value: 0.1 ether}(poolId, scId, D18.wrap(uint128(price)), uint64(block.timestamp));
+    /// @dev Force price to zero for testing zero-price scenarios
+    function hub_setPriceZero() public {
+        hub_setSharePrice(0);
     }
 
-    /// @dev Set price to realistic range for testing normal operations
-    function hub_setPriceRealistic_clamped(uint256 price) public asAdmin {
-        // NOTE: Realistic DeFi price range (0.001 to 1M). Use hub_setPrice for extreme cases.
-        if (price < 1e15) price = 1e15;
-        if (price > 1e24) price = 1e24;
+    /// @dev Set non-zero price with modulo clamping
+    function hub_setPriceNonZero_clamped(uint128 price) public {
+        price = uint128((uint256(price) % type(uint128).max) + 1);
+        hub_setSharePrice(price);
+    }
 
-        IBaseVault vault = _getVault();
-        if (address(vault) == address(0)) return;
-
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-
-        hub.updateSharePrice{value: 0.1 ether}(poolId, scId, D18.wrap(uint128(price)), uint64(block.timestamp));
+    /// @dev Set price to realistic DeFi range (0.001 to 1M)
+    function hub_setPriceRealistic_clamped(uint128 price) public {
+        uint128 minPrice = 1e15;
+        uint128 maxPrice = 1e24;
+        price = minPrice + uint128(uint256(price) % (maxPrice - minPrice + 1));
+        hub_setSharePrice(price);
     }
 
     /// === Toggling State Variables === ///

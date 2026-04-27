@@ -299,12 +299,6 @@
       "txHash": "0x414efa3c46ff68ab5d580a636f02f5e07a3810e9db5a5c98e323f9e6391e679e",
       "version": "v3.1"
     },
-    "tokenBridge": {
-      "address": "0xc59317b5F543ac93ACD31900b45a62a6E5B30038",
-      "blockNumber": 9851723,
-      "txHash": "0x95f3a25f0143cbae6938bd437c3ae3715a5cf6a00bbd5e0c01cbb0171252dc6e",
-      "version": "v3.1"
-    },
     "subsidyManager": {
       "address": "0xE5419F74f8875C401C3a2f4C68846d9d410e1677",
       "blockNumber": 10142075,

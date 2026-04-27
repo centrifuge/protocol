@@ -29,7 +29,8 @@ struct AddressesToVerify {
 enum VerificationStatus {
     NotDeployed,
     NotVerified,
-    Verified
+    AlreadyVerified,
+    NewlyVerified
 }
 
 struct VerificationResult {
@@ -37,20 +38,22 @@ struct VerificationResult {
     VerificationStatus status;
 }
 
-contract ValidateContractsFromFactories is Script {
+contract VerifyFactoryContracts is Script {
     using stdJson for string;
     using JsonUtils for *;
+
+    error VerificationFailed(uint256 notVerified);
 
     EnvConfig config;
     GraphQLQuery indexer;
 
     constructor() {
         config = Env.load(vm.envString("NETWORK"));
-        indexer = new GraphQLQuery(config.network.graphQLApi());
     }
 
     function run() public {
         vm.createSelectFork(config.network.rpcUrl());
+        indexer = new GraphQLQuery(config.network.graphQLApi());
 
         AddressesToVerify memory addr = _fetchAddresses();
 
@@ -63,7 +66,7 @@ contract ValidateContractsFromFactories is Script {
         results[4] = _verifyContract(addr.refundEscrow, "RefundEscrow");
         results[5] = _verifyContract(addr.onOfframpManager, "OnOffRamp");
 
-        // Log summary
+        // Log summary and revert if any contract failed verification
         _logSummary(results);
     }
 
@@ -79,7 +82,7 @@ contract ValidateContractsFromFactories is Script {
         string memory orderBy =
             string.concat("orderBy: ", "createdAt".asJsonString(), ", orderDirection: ", "desc".asJsonString());
 
-        string memory centrifugeIdValue = vm.toString(config.network.centrifugeId);
+        string memory centrifugeIdValue = vm.toString(config.network.centrifugeId).asJsonString();
 
         // forgefmt: disable-next-item
         string memory json = indexer.queryGraphQL(string.concat(
@@ -121,8 +124,8 @@ contract ValidateContractsFromFactories is Script {
         }
 
         VerificationStatus status = _verificationStatus(contractAddress);
-        if (status == VerificationStatus.Verified) {
-            result.status = VerificationStatus.Verified;
+        if (status == VerificationStatus.AlreadyVerified) {
+            result.status = VerificationStatus.AlreadyVerified;
             return result;
         }
 
@@ -144,12 +147,18 @@ contract ValidateContractsFromFactories is Script {
             " --constructor-args ",
             vm.toString(constructorArgs),
             " --watch",
-            " >/dev/tty 2>&1" //Redirect to terminal directly
+            " 2>&1 || true" // Capture output; exit 0 so ffi doesn't revert
         );
 
-        try vm.ffi(cmd) returns (bytes memory) {
-            result.status = VerificationStatus.Verified;
-        } catch {
+        // Wait before hitting the Etherscan API again via forge verify-contract
+        vm.sleep(400);
+
+        bytes memory output = vm.ffi(cmd);
+        if (_containsSubstring(output, "successfully verified")) {
+            result.status = VerificationStatus.NewlyVerified;
+        } else if (_containsSubstring(output, "already verified")) {
+            result.status = VerificationStatus.AlreadyVerified;
+        } else {
             result.status = VerificationStatus.NotVerified;
         }
     }
@@ -158,6 +167,9 @@ contract ValidateContractsFromFactories is Script {
         if (contractAddress == address(0)) {
             return VerificationStatus.NotDeployed;
         }
+
+        // Rate-limit Etherscan API calls to avoid 3/sec limit
+        vm.sleep(400);
 
         string[] memory cmd = new string[](3);
         cmd[0] = "bash";
@@ -185,7 +197,7 @@ contract ValidateContractsFromFactories is Script {
             return VerificationStatus.NotVerified;
         }
 
-        return VerificationStatus.Verified;
+        return VerificationStatus.AlreadyVerified;
     }
 
     /// @notice Get constructor args by reading from contract storage
@@ -249,6 +261,21 @@ contract ValidateContractsFromFactories is Script {
         return abi.encode(m.poolId(), m.scId(), m.contractUpdater(), address(m.balanceSheet()));
     }
 
+    function _containsSubstring(bytes memory data, bytes memory needle) internal pure returns (bool) {
+        if (data.length < needle.length) return false;
+        for (uint256 i = 0; i <= data.length - needle.length; i++) {
+            bool found = true;
+            for (uint256 j = 0; j < needle.length; j++) {
+                if (data[i + j] != needle[j]) {
+                    found = false;
+                    break;
+                }
+            }
+            if (found) return true;
+        }
+        return false;
+    }
+
     // ANSI color codes
     string constant GREEN = "\x1b[32m";
     string constant RED = "\x1b[31m";
@@ -268,7 +295,10 @@ contract ValidateContractsFromFactories is Script {
 
         for (uint256 i = 0; i < results.length; i++) {
             string memory statusStr;
-            if (results[i].status == VerificationStatus.Verified) {
+            if (results[i].status == VerificationStatus.NewlyVerified) {
+                statusStr = string.concat(GREEN, "[OK]", RESET, " Verified (new)");
+                verified++;
+            } else if (results[i].status == VerificationStatus.AlreadyVerified) {
                 statusStr = string.concat(GREEN, "[OK]", RESET, " Verified");
                 verified++;
             } else if (results[i].status == VerificationStatus.NotVerified) {
@@ -289,5 +319,9 @@ contract ValidateContractsFromFactories is Script {
         console.log(string.concat("Not Deployed: ", vm.toString(notDeployed)));
         console.log("----------------------------------------");
         console.log("");
+
+        if (notVerified > 0) {
+            revert VerificationFailed(notVerified);
+        }
     }
 }

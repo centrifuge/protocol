@@ -58,6 +58,16 @@ fail_on_revert = false
 
 [profile.echidna]
 dynamic_test_linking = false # Enabling this would lead to foundry-pp/DeployHelper*.sol files that crytic-compile can't resolve
+# Override bytecode_hash for fuzzer coverage: "none" causes crytic-compile to treat every
+# sequence as new coverage (metadata hash instability), leading to unbounded corpus growth and OOM.
+# Production builds (default profile) keep "none" for deterministic bytecode.
+bytecode_hash = "ipfs"
+cbor_metadata = true
+
+[profile.medusa]
+dynamic_test_linking = false
+bytecode_hash = "ipfs"
+cbor_metadata = true
 
 # Compile weiroll VM with via_ir (stack-depth workaround)
 [profile.ir]

@@ -2,21 +2,38 @@ name: "Registry"
 
 on:
   pull_request:
+    branches:
+      - main
     paths:
       - ".github/workflows/registry.yml"
+      - "env/**"
+      - "script/registry/**"
+      - ".github/ci-scripts/**"
   push:
     branches:
       - main
-  release:
-    types: [published]
+    paths:
+      - ".github/workflows/registry.yml"
+      - "env/**"
+      - "script/registry/**"
+      - ".github/ci-scripts/**"
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Which registry to publish (mainnet, testnet, or both)'
+        required: true
+        type: choice
+        options:
+          - both
+          - mainnet
+          - testnet
 
 env:
   FOUNDRY_PROFILE: ci
 
 jobs:
   generate:
-    name: Build registry ABI files
+    name: Generate contract registry (per-tag ABIs)
     runs-on: ubuntu-latest
     outputs:
       mainnet: ${{ steps.changed_environments.outputs.mainnet }}
@@ -24,15 +41,24 @@ jobs:
     permissions:
       contents: read
       issues: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
+      # Per-contract ABIs are built inside abi-registry.js from git version tags (v3, v3.1.0, …).
+      # fetch-depth: 0 does not always populate tags; ensure they exist for worktree builds.
+      - name: Fetch git tags for ABI cache
+        run: git fetch --tags --force origin
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: Validate env contract versions resolve to git tags
+        run: node script/registry/utils/validate-env-contract-version-tags.js
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -44,48 +70,37 @@ jobs:
           sudo apt-get update && sudo apt-get install -y jq
           cd script/registry && npm install
 
+      - name: Validate env file schemas
+        run: node script/registry/validate-env-schema.js
+
       - name: Detect changed environments
         id: changed_environments
         run: |
-          changed=$(node .github/ci-scripts/detect-changed-environments.js)
-          echo "Changed environments: $changed"
-          mainnet_changed=$(echo $changed | jq -r '.mainnet')
-          testnet_changed=$(echo $changed | jq -r '.testnet')
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            env_input="${{ github.event.inputs.environment }}"
+            mainnet_changed=$([[ "$env_input" == "both" || "$env_input" == "mainnet" ]] && echo true || echo false)
+            testnet_changed=$([[ "$env_input" == "both" || "$env_input" == "testnet" ]] && echo true || echo false)
+            echo "Manual dispatch: environment=$env_input"
+          else
+            changed=$(node .github/ci-scripts/detect-changed-environments.js)
+            mainnet_changed=$(echo $changed | jq -r '.mainnet')
+            testnet_changed=$(echo $changed | jq -r '.testnet')
+          fi
+          echo "Changed environments: mainnet=$mainnet_changed, testnet=$testnet_changed"
           echo "mainnet=$mainnet_changed" >> $GITHUB_OUTPUT
           echo "testnet=$testnet_changed" >> $GITHUB_OUTPUT
 
       - name: Determine deployment commits
         id: deployment_commits
         run: |
-          # Note: Deployment SHAs remain fetchable because the tag-env-updates workflow
-          # automatically creates tags (deploy-${version}-${timestamp}) whenever env files
-          # are updated. These tags preserve the commit SHAs in git history even after
-          # branch deletion or rebasing.
-          # The script returns full 40-character SHAs, expanding short SHAs if needed.
+          # Used for registry.deploymentInfo.gitCommit metadata (not for ABI selection).
+          # Per-contract ABIs come from env contract "version" → git tag → cache/abi-registry/.
           mainnet_commit=$(node .github/ci-scripts/detect-deployment-commit.js mainnet)
           testnet_commit=$(node .github/ci-scripts/detect-deployment-commit.js testnet)
           echo "Mainnet deployment commit: $mainnet_commit"
           echo "Testnet deployment commit: $testnet_commit"
           echo "mainnet=$mainnet_commit" >> $GITHUB_OUTPUT
           echo "testnet=$testnet_commit" >> $GITHUB_OUTPUT
-
-      - name: Fetch deployment commits
-        run: |
-          # Fetch the specific commits (script already returns full SHAs)
-          git fetch origin ${{ steps.deployment_commits.outputs.mainnet }} --depth=1 
-          git fetch origin ${{ steps.deployment_commits.outputs.testnet }} --depth=1
-
-      - name: Build contracts at mainnet deployment commit
-        if: steps.changed_environments.outputs.mainnet == 'true'
-        run: |
-          git worktree add /tmp/mainnet-build ${{ steps.deployment_commits.outputs.mainnet }}
-          pushd /tmp/mainnet-build
-          forge --version
-          forge build --skip test
-          popd
-          mkdir -p out-mainnet
-          cp -R /tmp/mainnet-build/out/* ./out-mainnet/
-          git worktree remove /tmp/mainnet-build --force
 
       - name: Generate mainnet registry
         if: steps.changed_environments.outputs.mainnet == 'true'
@@ -94,21 +109,8 @@ jobs:
           ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
         run: |
           set -euo pipefail
-          rm -rf out
-          cp -R out-mainnet out
-          node script/registry/abi-registry.js mainnet
-
-      - name: Build contracts at testnet deployment commit
-        if: steps.changed_environments.outputs.testnet == 'true'
-        run: |
-          git worktree add /tmp/testnet-build ${{ steps.deployment_commits.outputs.testnet }}
-          pushd /tmp/testnet-build
           forge --version
-          forge build --skip test
-          popd
-          mkdir -p out-testnet
-          cp -R /tmp/testnet-build/out/* ./out-testnet/
-          git worktree remove /tmp/testnet-build --force
+          node script/registry/abi-registry.js mainnet
 
       - name: Generate testnet registry
         if: steps.changed_environments.outputs.testnet == 'true'
@@ -117,9 +119,97 @@ jobs:
           ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
         run: |
           set -euo pipefail
-          rm -rf out
-          cp -R out-testnet out
+          forge --version
           node script/registry/abi-registry.js testnet
+
+      - name: Validate mainnet registry
+        if: steps.changed_environments.outputs.mainnet == 'true'
+        run: node script/registry/validate-registry.js registry/registry-mainnet.json
+
+      - name: Validate testnet registry
+        if: steps.changed_environments.outputs.testnet == 'true'
+        run: node script/registry/validate-registry.js registry/registry-testnet.json
+
+      - name: Post PR preview comment
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          body="## Registry Preview\n\n"
+          has_content=false
+
+          for env_name in mainnet testnet; do
+            registry_file="registry/registry-${env_name}.json"
+            validation_file="registry/registry-${env_name}.validation.json"
+
+            if [ ! -f "$registry_file" ]; then
+              continue
+            fi
+            has_content=true
+
+            # Extract summary from registry
+            version=$(jq -r '.version // "unknown"' "$registry_file")
+            chain_count=$(jq '.chains | length' "$registry_file")
+            contract_count=$(jq '[.chains[].contracts | length] | add // 0' "$registry_file")
+            abi_count=$(jq '.abis | length' "$registry_file")
+
+            body="${body}### ${env_name}\n\n"
+            body="${body}| Metric | Value |\n|--------|-------|\n"
+            body="${body}| Version | \`${version}\` |\n"
+            body="${body}| Chains with changes | ${chain_count} |\n"
+            body="${body}| Contracts in delta | ${contract_count} |\n"
+            body="${body}| ABIs included | ${abi_count} |\n\n"
+
+            # Include validation findings if sidecar exists
+            if [ -f "$validation_file" ]; then
+              error_count=$(jq '.errors | length' "$validation_file")
+              warning_count=$(jq '.warnings | length' "$validation_file")
+
+              if [ "$error_count" -gt 0 ]; then
+                body="${body}<details><summary>❌ ${error_count} error(s) — will break the indexer</summary>\n\n"
+                body="${body}| Path | Message |\n|------|---------|"
+                while IFS=$'\t' read -r path msg; do
+                  body="${body}\n| \`${path}\` | ${msg} |"
+                done < <(jq -r '.errors[] | [.path, .message] | @tsv' "$validation_file")
+                body="${body}\n\n</details>\n\n"
+              fi
+
+              if [ "$warning_count" -gt 0 ]; then
+                body="${body}<details><summary>⚠️ ${warning_count} warning(s)</summary>\n\n"
+                body="${body}| Path | Message |\n|------|---------|"
+                while IFS=$'\t' read -r path msg; do
+                  body="${body}\n| \`${path}\` | ${msg} |"
+                done < <(jq -r '.warnings[] | [.path, .message] | @tsv' "$validation_file")
+                body="${body}\n\n</details>\n\n"
+              fi
+
+              if [ "$error_count" -eq 0 ] && [ "$warning_count" -eq 0 ]; then
+                body="${body}✅ Passes all indexer requirements\n\n"
+              elif [ "$error_count" -eq 0 ]; then
+                body="${body}✅ Passes all indexer hard requirements\n\n"
+              fi
+            fi
+          done
+
+          if [ "$has_content" = false ]; then
+            body="${body}No registry files were generated (no env changes detected for mainnet or testnet).\n"
+          fi
+
+          body="${body}---\n*Preview only — IPFS pin and Cloudflare update happen automatically on merge to main (when contracts changed).*"
+
+          # Post or update the comment
+          pr_number=${{ github.event.pull_request.number }}
+          existing_comment=$(gh api "repos/${{ github.repository }}/issues/${pr_number}/comments" \
+            --jq '.[] | select(.body | startswith("## Registry Preview")) | .id' | head -1)
+
+          if [ -n "$existing_comment" ]; then
+            printf '%b' "$body" | gh api "repos/${{ github.repository }}/issues/comments/${existing_comment}" \
+              -X PATCH --field "body=@-"
+          else
+            printf '%b' "$body" | gh pr comment "${pr_number}" --body-file -
+          fi
 
       - name: Upload registry artifacts
         uses: actions/upload-artifact@v4
@@ -130,14 +220,19 @@ jobs:
             registry/registry-testnet.json
           if-no-files-found: ignore
           retention-days: 90
+
   pin-to-ipfs:
     needs: [generate]
     name: Pin registry files to IPFS
     runs-on: ubuntu-latest
     if: |
-      (github.event_name == 'release') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main' && 
-       (needs.generate.outputs.mainnet == 'true' || needs.generate.outputs.testnet == 'true'))
+      github.ref == 'refs/heads/main' && (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'push' && (
+          needs.generate.outputs.mainnet == 'true' ||
+          needs.generate.outputs.testnet == 'true'
+        ))
+      )
     permissions:
       contents: read
       issues: write
@@ -162,11 +257,36 @@ jobs:
           name: contract-registries
           path: registry
 
+      - name: Validate and gate publish
+        run: |
+          set -euo pipefail
+          is_dispatch="${{ github.event_name == 'workflow_dispatch' }}"
+
+          # Re-run validate-registry.js on the downloaded artifacts (fast, no live registry fetch).
+          # For push events: removes registries that aren't publishable so pin-to-ipfs.js skips them.
+          # For workflow_dispatch: keeps all registries regardless (manual override for corrections).
+          for env_name in mainnet testnet; do
+            registry_file="registry/registry-${env_name}.json"
+            [ ! -f "$registry_file" ] && continue
+
+            SKIP_LIVE_REGISTRY_CHECK=1 node script/registry/validate-registry.js "$registry_file" || true
+            publishable=$(jq -r '.summary.publishable' "registry/registry-${env_name}.validation.json")
+
+            if [ "$publishable" = "true" ] || [ "$is_dispatch" = "true" ]; then
+              echo "${env_name}: publishable=${publishable} (dispatch=${is_dispatch}) — will pin"
+            else
+              echo "${env_name}: publishable=false — removing from pin set (no contract changes or validation errors)"
+              rm -f "$registry_file"
+            fi
+          done
+
       - name: Pin registry files to IPFS
         id: upload_to_ipfs
         env:
           PINATA_JWT: ${{ secrets.PINATA_JWT }}
           GITHUB_SHA: ${{ github.sha }}
+          # For workflow_dispatch, force-pin whichever envs were requested (bypasses zero-chains guard).
+          FORCE_PIN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || '' }}
         run: |
           set -euo pipefail
 
@@ -192,7 +312,9 @@ jobs:
           fi
           echo "testnet_changed=$testnet_changed" >> $GITHUB_OUTPUT
       - name: Update Cloudflare Web3 URL
-        if: steps.upload_to_ipfs.outputs.mainnet != '' || steps.upload_to_ipfs.outputs.testnet != ''
+        if: |
+          github.event_name == 'push' &&
+          (steps.upload_to_ipfs.outputs.mainnet != '' || steps.upload_to_ipfs.outputs.testnet != '')
         env:
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

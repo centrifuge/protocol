@@ -399,6 +399,16 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         }
     }
 
+    /// @dev Clamped reserve: bounds amount to available escrow balance
+    function balanceSheet_reserve_clamped(uint128 amount) public {
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        uint128 available = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), 0);
+        amount = uint128(uint256(amount) % (uint256(available) + 1));
+        balanceSheet_reserve(0, amount);
+    }
+
     /// @dev Property: unreserve causes an underflow revert
     function balanceSheet_unreserve(uint256 tokenId, uint128 amount) public updateGhosts asAdmin {
         IBaseVault vault = IBaseVault(_getVault());
