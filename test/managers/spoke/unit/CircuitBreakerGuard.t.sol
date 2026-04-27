@@ -130,6 +130,9 @@ contract CircuitBreakerDeltaTest is Test {
 
     function setUp() public {
         guard = new CircuitBreakerGuard();
+        // Ensure block.timestamp > WINDOW so first delta call treats uninitialized
+        // windowStart (== 0) as an expired window and anchors to currentValue.
+        vm.warp(WINDOW + 1);
     }
 
     function testFirstCallAnchorsToCurrentValue() public {
@@ -229,13 +232,14 @@ contract CircuitBreakerDeltaTest is Test {
         assertEq(anchorOther, 2000);
     }
 
-    function testZeroCurrentValueSkipsValidation() public {
-        // currentValue == 0 skips validation entirely — no anchor is set, no revert
+    function testZeroCurrentValueReverts() public {
+        vm.expectRevert(ICircuitBreakerGuard.ZeroAnchor.selector);
         guard.delta(key, 0, 0, MAX_BPS, WINDOW);
-        guard.delta(key, 0, 1_000_000, MAX_BPS, WINDOW); // no revert even with huge deviation
-        (uint128 anchor, uint64 windowStart) = guard.refs(address(this), key, WINDOW);
-        assertEq(anchor, 0);
-        assertEq(windowStart, 0);
+    }
+
+    function testZeroCurrentValueWithDeviationReverts() public {
+        vm.expectRevert(ICircuitBreakerGuard.ZeroAnchor.selector);
+        guard.delta(key, 0, 1_000_000, MAX_BPS, WINDOW);
     }
 
     function testDeltaMaxBpsZeroAllowsOnlyExactMatch() public {

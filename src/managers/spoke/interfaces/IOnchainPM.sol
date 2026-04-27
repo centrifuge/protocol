@@ -27,8 +27,10 @@ interface IOnchainPM is IBatchedMulticall, ITrustedContractUpdate {
     error InvalidPoolId();
     error NotAuthorized();
     error StateLengthOverflow();
+    error InvalidBitmap();
     error NotInExecution();
     error AlreadyExecuting();
+    error ETHRefundFailed();
 
     function poolId() external view returns (PoolId);
     function contractUpdater() external view returns (address);
@@ -50,9 +52,22 @@ interface IOnchainPM is IBatchedMulticall, ITrustedContractUpdate {
         bytes32[] calldata proof
     ) external payable;
 
+    /// @notice Compute the script hash committed to by `execute()` or `executeCallback()`.
+    function computeScriptHash(
+        bytes32[] calldata commands,
+        bytes[] calldata state,
+        uint128 stateBitmap,
+        Callback[] memory callbacks
+    ) external pure returns (bytes32);
+
     /// @notice Execute a callback script during an active `execute()`. Bound to the outer script
     ///         via a pre-committed hash — no separate Merkle proof needed.
     /// @dev    Guarded by `activeStrategist != 0` and the pre-committed caller check.
+    /// @dev    Limitation: callbacks are validated in sequence (index 0, 1, …) but not tied to a
+    ///         specific top-level command index. If a command indirectly triggers `executeCallback`
+    ///         (e.g. via a token transfer hook), the callback is consumed out of the intended order.
+    ///         Scripts must ensure that no command can indirectly invoke `executeCallback` unless the
+    ///         callback ordering invariant is guaranteed by the calling protocol.
     /// @param commands     Weiroll command bytes for the callback script.
     /// @param state        Weiroll state array for the callback script.
     /// @param stateBitmap  State bitmap: set bits are included in hash.

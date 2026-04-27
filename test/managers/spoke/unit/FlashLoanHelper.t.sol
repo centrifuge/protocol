@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+import {PoolId} from "../../../../src/core/types/PoolId.sol";
+
 import {FlashLoanHelper} from "../../../../src/managers/spoke/FlashLoanHelper.sol";
 import {IOnchainPM} from "../../../../src/managers/spoke/interfaces/IOnchainPM.sol";
 import {IFlashLoanHelper} from "../../../../src/managers/spoke/interfaces/IFlashLoanHelper.sol";
+import {IOnchainPMFactory} from "../../../../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
 import {IAaveV3Pool, IAaveV3FlashLoanReceiver} from "../../../../src/managers/spoke/interfaces/IAaveV3Pool.sol";
 
 import "forge-std/Test.sol";
@@ -72,78 +75,95 @@ contract MockAavePool {
 // ─── FlashLoanHelper Tests ─────────────────────────────────────────────────
 
 contract FlashLoanHelperTest is Test {
+    PoolId constant POOL_A = PoolId.wrap(1);
+
     FlashLoanHelper receiver;
     MockAavePool pool;
     MockToken token;
-    address executor;
+    address factory;
 
     function setUp() public {
-        receiver = new FlashLoanHelper();
+        factory = makeAddr("factory");
+        receiver = new FlashLoanHelper(IOnchainPMFactory(factory));
         pool = new MockAavePool();
         token = new MockToken();
-        executor = makeAddr("executor");
     }
 
-    function testOnFlashLoanRevertsNotPool() public {
+    function _mockFactory(address onchainPM) internal {
+        PoolId poolId = MockOnchainPM(onchainPM).poolId();
+        vm.mockCall(
+            factory, abi.encodeWithSelector(IOnchainPMFactory.getAddress.selector, poolId), abi.encode(onchainPM)
+        );
+    }
+
+    function testExecuteOperationRevertsNotPool() public {
         vm.expectRevert(IFlashLoanHelper.NotPool.selector);
         receiver.executeOperation(address(token), 100, 1, address(receiver), "");
     }
 
-    function testOnFlashLoanRevertsNotInitiator() public {
-        // Mock a pool call where initiator is wrong
-        // We need to simulate being in a requestFlashLoan context with _pool set
-        // Since _pool is transient and only set during requestFlashLoan, direct call will fail with NotPool
-        // if msg.sender != _pool. But _pool is address(0) outside requestFlashLoan, so this also reverts NotPool.
-        // To test NotInitiator specifically, we need to call from the pool address with wrong initiator.
-
-        // Deploy a custom pool that passes wrong initiator
+    function testExecuteOperationRevertsNotInitiator() public {
         WrongInitiatorPool wrongPool = new WrongInitiatorPool();
+        MockOnchainPM mockPM = new MockOnchainPM(POOL_A, address(token), address(receiver), 0);
+        _mockFactory(address(mockPM));
 
+        vm.prank(address(mockPM));
         vm.expectRevert(IFlashLoanHelper.NotInitiator.selector);
-        receiver.requestFlashLoan(IAaveV3Pool(address(wrongPool)), address(token), 100, IOnchainPM(executor), "");
+        receiver.requestFlashLoan(IAaveV3Pool(address(wrongPool)), address(token), 100, IOnchainPM(address(mockPM)), "");
     }
 
-    function testOnFlashLoanRevertsNotActive() public {
-        // Direct call to executeOperation without requestFlashLoan context
-        // _pool is address(0), so msg.sender != _pool → NotPool
-        // To get NotActive we need _pool == msg.sender but _executor == address(0)
-        // This can't happen in normal flow since requestFlashLoan sets both.
-        // Test via a pool that calls executeOperation after we clear state.
+    function testRequestFlashLoanRevertsNotOnchainPM() public {
+        MockOnchainPM mockPM = new MockOnchainPM(POOL_A, address(token), address(receiver), 0);
+        _mockFactory(address(mockPM));
 
-        // Simpler: just verify the direct call reverts (NotPool, which is the first check)
-        vm.expectRevert(IFlashLoanHelper.NotPool.selector);
-        vm.prank(address(pool));
-        receiver.executeOperation(address(token), 100, 1, address(receiver), "");
+        // Call from address that is not the onchainPM
+        vm.expectRevert(IFlashLoanHelper.NotOnchainPM.selector);
+        receiver.requestFlashLoan(IAaveV3Pool(address(pool)), address(token), 0, IOnchainPM(address(mockPM)), "");
+    }
+
+    function testRequestFlashLoanRevertsNotAuthorized() public {
+        MockOnchainPM mockPM = new MockOnchainPM(POOL_A, address(token), address(receiver), 0);
+
+        // Factory returns a different address — mockPM is not factory-deployed
+        vm.mockCall(
+            factory,
+            abi.encodeWithSelector(IOnchainPMFactory.getAddress.selector, POOL_A),
+            abi.encode(makeAddr("other"))
+        );
+
+        vm.prank(address(mockPM));
+        vm.expectRevert(IFlashLoanHelper.NotAuthorized.selector);
+        receiver.requestFlashLoan(IAaveV3Pool(address(pool)), address(token), 0, IOnchainPM(address(mockPM)), "");
+    }
+
+    function testRequestFlashLoanRevertsAlreadyActive() public {
+        MockOnchainPM mockPM = new MockOnchainPM(POOL_A, address(token), address(receiver), 0);
+        _mockFactory(address(mockPM));
+        ReentrantPool reentrantPool = new ReentrantPool(receiver, mockPM);
+
+        vm.prank(address(mockPM));
+        vm.expectRevert(IFlashLoanHelper.AlreadyActive.selector);
+        receiver.requestFlashLoan(
+            IAaveV3Pool(address(reentrantPool)), address(token), 0, IOnchainPM(address(mockPM)), ""
+        );
     }
 
     function testFullFlashLoanFlow() public {
         uint256 loanAmount = 1000e18;
         uint256 fee = loanAmount * 9 / 10_000; // 0.09%
 
-        // Fund the pool with tokens for the loan
         token.mint(address(pool), loanAmount);
 
-        // Fund the executor mock with tokens for repayment (amount + fee)
-        // In the real flow, the inner script would generate these via swaps/operations
-        // Here we pre-fund the executor and have the inner script transfer back
-        token.mint(executor, loanAmount + fee);
+        MockOnchainPM mockPM = new MockOnchainPM(POOL_A, address(token), address(receiver), loanAmount + fee);
+        token.mint(address(mockPM), loanAmount + fee);
+        _mockFactory(address(mockPM));
 
-        // Build inner callback script: transfer (loanAmount + fee) tokens from executor back to receiver
-        // Inner script: token.transfer(receiver, loanAmount + fee)
-        // But we need to mock the executor's executeCallback to actually do the transfer
-
-        // Use a real mock executor that simulates the callback
-        MockOnchainPM mockExecutor = new MockOnchainPM(address(token), address(receiver), loanAmount + fee);
-        token.mint(address(mockExecutor), loanAmount + fee);
-
-        // Callback data (will be passed to executeCallback)
         bytes memory callbackData = abi.encode(new bytes32[](0), new bytes[](0), uint128(0));
 
+        vm.prank(address(mockPM));
         receiver.requestFlashLoan(
-            IAaveV3Pool(address(pool)), address(token), loanAmount, IOnchainPM(address(mockExecutor)), callbackData
+            IAaveV3Pool(address(pool)), address(token), loanAmount, IOnchainPM(address(mockPM)), callbackData
         );
 
-        // Pool should have been repaid: original + fee
         assertEq(token.balanceOf(address(pool)), loanAmount + fee);
     }
 }
@@ -165,12 +185,32 @@ contract WrongInitiatorPool {
     }
 }
 
+/// @dev Attempts to re-enter requestFlashLoan during the flash loan callback, triggering AlreadyActive.
+///      AlreadyActive is the first check, so it fires regardless of who the caller is.
+contract ReentrantPool {
+    FlashLoanHelper immutable helper;
+    MockOnchainPM immutable onchainPM;
+
+    constructor(FlashLoanHelper helper_, MockOnchainPM onchainPM_) {
+        helper = helper_;
+        onchainPM = onchainPM_;
+    }
+
+    function flashLoanSimple(address, address asset, uint256, bytes calldata, uint16) external {
+        // Re-enter requestFlashLoan — _pool is already set so AlreadyActive fires first,
+        // before the msg.sender == onchainPM check.
+        helper.requestFlashLoan(IAaveV3Pool(address(this)), asset, 0, IOnchainPM(address(onchainPM)), "");
+    }
+}
+
 contract MockOnchainPM {
+    PoolId public poolId;
     address public token;
     address public recipient;
     uint256 public amount;
 
-    constructor(address token_, address recipient_, uint256 amount_) {
+    constructor(PoolId poolId_, address token_, address recipient_, uint256 amount_) {
+        poolId = poolId_;
         token = token_;
         recipient = recipient_;
         amount = amount_;

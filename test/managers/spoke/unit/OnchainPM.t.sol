@@ -989,8 +989,8 @@ contract OnchainPMEthForwardingTests is OnchainPMTest {
         assertEq(address(executor).balance, 0);
     }
 
-    function testExecuteWithExcessMsgValue() public {
-        // Send more ETH than the script uses — remainder stays in executor
+    function testExecuteWithExcessMsgValueRefunded() public {
+        // Send more ETH than the script uses — remainder is refunded to the strategist
         bytes32[] memory commands = new bytes32[](1);
         commands[0] = _valueCallCommand(WeirollTarget.setValuePayable.selector, 0, 1, address(target));
 
@@ -1007,7 +1007,68 @@ contract OnchainPMEthForwardingTests is OnchainPMTest {
         executor.execute{value: 2 ether}(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
 
         assertEq(address(target).balance, 0.5 ether);
-        assertEq(address(executor).balance, 1.5 ether);
+        assertEq(address(executor).balance, 0);
+        assertEq(strategist.balance, 1.5 ether);
+    }
+
+    function testExecuteNoETHRemainsWithoutMsgValue() public {
+        // Execute without sending ETH — executor balance stays zero
+        bytes32[] memory commands = new bytes32[](0);
+        bytes[] memory state = new bytes[](0);
+        uint128 bitmap = 0;
+
+        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, NO_CALLBACKS);
+        _setPolicy(strategist, scriptHash);
+
+        vm.prank(strategist);
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
+
+        assertEq(address(executor).balance, 0);
+    }
+
+    function testPreExistingETHNotDrained() public {
+        // Seed executor with pre-existing ETH (e.g. from a previous receive)
+        vm.deal(address(executor), 5 ether);
+
+        bytes32[] memory commands = new bytes32[](0);
+        bytes[] memory state = new bytes[](0);
+        uint128 bitmap = 0;
+
+        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, NO_CALLBACKS);
+        _setPolicy(strategist, scriptHash);
+
+        vm.prank(strategist);
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
+
+        // Pre-existing ETH must remain in the contract
+        assertEq(address(executor).balance, 5 ether);
+        assertEq(strategist.balance, 0);
+    }
+
+    function testPreExistingETHNotDrainedWithMsgValue() public {
+        // Seed executor with pre-existing ETH
+        vm.deal(address(executor), 5 ether);
+
+        // Script uses 0.5 ETH via valuecall, strategist sends 1 ETH
+        bytes32[] memory commands = new bytes32[](1);
+        commands[0] = _valueCallCommand(WeirollTarget.setValuePayable.selector, 0, 1, address(target));
+
+        bytes[] memory state = new bytes[](2);
+        state[0] = abi.encode(uint256(0.5 ether));
+        state[1] = abi.encode(uint256(42));
+        uint128 bitmap = 3;
+
+        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, NO_CALLBACKS);
+        _setPolicy(strategist, scriptHash);
+
+        vm.deal(strategist, 1 ether);
+        vm.prank(strategist);
+        executor.execute{value: 1 ether}(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
+
+        // 0.5 ETH used by script, 0.5 ETH refunded, pre-existing 5 ETH untouched
+        assertEq(address(target).balance, 0.5 ether);
+        assertEq(address(executor).balance, 5 ether);
+        assertEq(strategist.balance, 0.5 ether);
     }
 }
 
@@ -1096,6 +1157,75 @@ contract OnchainPMReentrancyTests is OnchainPMTestBase {
     }
 }
 
+// ─── InvalidBitmap ──────────────────────────────────────────────────────────
+
+contract OnchainPMInvalidBitmapTests is OnchainPMTest {
+    function testInvalidBitmapReverts() public {
+        bytes32[] memory commands = new bytes32[](0);
+        bytes[] memory state = new bytes[](1);
+        state[0] = abi.encode(uint256(42));
+        // bitmap has bit 1 set but state only has 1 element (index 0), so bit 1 is out of range
+        uint128 bitmap = 2;
+
+        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap);
+        _setPolicy(strategist, scriptHash);
+
+        vm.expectRevert(IOnchainPM.InvalidBitmap.selector);
+        vm.prank(strategist);
+        executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
+    }
+}
+
+// ─── ETHRefundFailed ────────────────────────────────────────────────────────
+
+contract ETHRefundRejecter {
+    IOnchainPM public executor;
+    address public contractUpdater;
+
+    constructor(IOnchainPM executor_, address contractUpdater_) {
+        executor = executor_;
+        contractUpdater = contractUpdater_;
+    }
+
+    function trigger(bytes32[] calldata commands, bytes[] calldata state, uint128 bitmap, bytes32[] calldata proof)
+        external
+        payable
+    {
+        executor.execute{value: msg.value}(commands, state, bitmap, new IOnchainPM.Callback[](0), proof);
+    }
+
+    // No receive/fallback — rejects ETH refund
+}
+
+contract OnchainPMETHRefundFailedTests is OnchainPMTestBase {
+    IGateway gateway = IGateway(makeAddr("gateway"));
+    address contractUpdater = makeAddr("contractUpdater");
+
+    IOnchainPM executor;
+    ETHRefundRejecter rejecter;
+
+    function setUp() public {
+        executor = IOnchainPM(
+            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, contractUpdater, address(gateway)))
+        );
+        rejecter = new ETHRefundRejecter(executor, contractUpdater);
+    }
+
+    function testETHRefundFailedReverts() public {
+        bytes32[] memory commands = new bytes32[](0);
+        bytes[] memory state = new bytes[](0);
+        uint128 bitmap = 0;
+
+        bytes32 scriptHash = _computeScriptHash(commands, state, bitmap);
+        _setPolicy(executor, address(rejecter), scriptHash, contractUpdater);
+
+        vm.deal(address(rejecter), 1 ether);
+        // Rejecter sends ETH but can't receive refund
+        vm.expectRevert(IOnchainPM.ETHRefundFailed.selector);
+        rejecter.trigger{value: 1 ether}(commands, state, bitmap, new bytes32[](0));
+    }
+}
+
 // ─── Factory ──────────────────────────────────────────────────────────────────
 
 contract OnchainPMFactoryTest is Test {
@@ -1178,7 +1308,7 @@ contract OnchainPMFactoryDeployTest is OnchainPMFactoryTest {
         assertEq(predicted, address(deployed));
     }
 
-    function testGetAddressDifferentPools() public {
+    function testGetAddressDifferentPools() public view {
         address addrA = factory.getAddress(POOL_A);
         address addrB = factory.getAddress(POOL_B);
 

@@ -4,9 +4,9 @@ pragma solidity 0.8.28;
 import {BaseDeployer} from "./BaseDeployer.s.sol";
 import {EnvConfig, Env, prettyEnvString} from "./utils/EnvConfig.s.sol";
 
+import {ScriptHelpers} from "../src/managers/spoke/ScriptHelpers.sol";
 import {AccountingToken} from "../src/managers/spoke/AccountingToken.sol";
 import {FlashLoanHelper} from "../src/managers/spoke/FlashLoanHelper.sol";
-import {ScriptHelpers} from "../src/managers/spoke/ScriptHelpers.sol";
 
 import "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
@@ -51,15 +51,7 @@ contract DeployOnchainPMV2 is BaseDeployer {
 
         scriptHelpers = ScriptHelpers(
             create3(
-                createSalt("scriptHelpers", ONCHAIN_PM_V2_VERSION),
-                abi.encodePacked(type(ScriptHelpers).creationCode)
-            )
-        );
-
-        flashLoanHelper = FlashLoanHelper(
-            create3(
-                createSalt("flashLoanHelper", ONCHAIN_PM_V2_VERSION),
-                abi.encodePacked(type(FlashLoanHelper).creationCode)
+                createSalt("scriptHelpers", ONCHAIN_PM_V2_VERSION), abi.encodePacked(type(ScriptHelpers).creationCode)
             )
         );
 
@@ -71,10 +63,17 @@ contract DeployOnchainPMV2 is BaseDeployer {
             )
         );
 
+        flashLoanHelper = FlashLoanHelper(
+            create3(
+                createSalt("flashLoanHelper", ONCHAIN_PM_V2_VERSION),
+                abi.encodePacked(type(FlashLoanHelper).creationCode, abi.encode(onchainPMFactory))
+            )
+        );
+
         console.log("accountingToken:   %s", address(accountingToken));
         console.log("scriptHelpers:  %s", address(scriptHelpers));
-        console.log("flashLoanHelper:   %s", address(flashLoanHelper));
         console.log("onchainPMFactory:  %s", onchainPMFactory);
+        console.log("flashLoanHelper:   %s", address(flashLoanHelper));
     }
 
     function _updateEnvFile(string memory network) internal {

@@ -11,6 +11,7 @@ import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 
 import {SlippageGuard} from "../../../../src/managers/spoke/guards/SlippageGuard.sol";
+import {IOnchainPMFactory} from "../../../../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
 import {ISlippageGuard, AssetEntry} from "../../../../src/managers/spoke/guards/interfaces/ISlippageGuard.sol";
 
 import "forge-std/Test.sol";
@@ -27,6 +28,7 @@ contract SlippageGuardTest is Test {
     address spoke = makeAddr("spoke");
     address balanceSheet = makeAddr("balanceSheet");
     address contractUpdater = makeAddr("contractUpdater");
+    address onchainPMFactory = makeAddr("onchainPMFactory");
     address shareToken = makeAddr("shareToken");
     address assetA = makeAddr("assetA");
     address assetB = makeAddr("assetB");
@@ -35,7 +37,14 @@ contract SlippageGuardTest is Test {
 
     function setUp() public virtual {
         _setupMocks();
-        guard = new SlippageGuard(ISpoke(spoke), IBalanceSheet(balanceSheet), contractUpdater);
+        guard = new SlippageGuard(
+            ISpoke(spoke), IBalanceSheet(balanceSheet), contractUpdater, IOnchainPMFactory(onchainPMFactory)
+        );
+        vm.mockCall(
+            onchainPMFactory,
+            abi.encodeWithSelector(IOnchainPMFactory.getAddress.selector, POOL_A),
+            abi.encode(address(this))
+        );
     }
 
     function _setupMocks() internal {
@@ -86,6 +95,16 @@ contract SlippageGuardTest is Test {
     }
 }
 
+// --- Empty assets ---
+
+contract SlippageGuardEmptyAssetsTest is SlippageGuardTest {
+    function testOpenWithEmptyAssetsReverts() public {
+        AssetEntry[] memory empty = new AssetEntry[](0);
+        vm.expectRevert(ISlippageGuard.EmptyAssets.selector);
+        guard.open(POOL_A, SC_1, empty);
+    }
+}
+
 // --- Close without open ---
 
 contract SlippageGuardCloseWithoutOpenTest is SlippageGuardTest {
@@ -102,7 +121,8 @@ contract SlippageGuardOpenerTest is SlippageGuardTest {
         _mockBalance(assetA, 0, 1000e18);
         guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
 
-        vm.expectRevert(ISlippageGuard.NotOpener.selector);
+        // onlyOnchainPM fires before NotOpener — attacker is not the pool's OnchainPM
+        vm.expectRevert(ISlippageGuard.NotAuthorized.selector);
         vm.prank(makeAddr("attacker"));
         guard.close(POOL_A, SC_1, 100);
     }
@@ -117,7 +137,13 @@ contract SlippageGuardOpenerTest is SlippageGuardTest {
         _mockBalance(assetA, 0, 1000e18);
         guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
 
-        vm.expectRevert(ISlippageGuard.ContextMismatch.selector);
+        // onlyOnchainPM fires before ContextMismatch — address(this) is not pool 99's OnchainPM
+        vm.mockCall(
+            onchainPMFactory,
+            abi.encodeWithSelector(IOnchainPMFactory.getAddress.selector, PoolId.wrap(99)),
+            abi.encode(makeAddr("pool99PM"))
+        );
+        vm.expectRevert(ISlippageGuard.NotAuthorized.selector);
         guard.close(PoolId.wrap(99), SC_1, 100);
     }
 
@@ -429,6 +455,31 @@ contract SlippageGuardPeriodLossTest is SlippageGuardTest {
         assertEq(newStart, uint48(block.timestamp));
     }
 
+    function testConfigChangePreservesPeriodState() public {
+        // Script 1: accumulate 90e18 loss under the 500e18 limit
+        _doSwapWithLoss(1000e18, 910e18);
+
+        (uint128 lossBefore, uint48 startBefore) = guard.period(POOL_A, SC_1);
+        assertEq(lossBefore, 90e18);
+
+        // Tighten the config to 50e18 — period state must NOT be wiped
+        vm.prank(contractUpdater);
+        guard.trustedCall(POOL_A, SC_1, abi.encode(uint128(50e18), uint32(1 days)));
+
+        (uint128 lossAfter, uint48 startAfter) = guard.period(POOL_A, SC_1);
+        assertEq(lossAfter, lossBefore, "cumulativeLoss must be preserved across config change");
+        assertEq(startAfter, startBefore, "periodStart must be preserved across config change");
+
+        // Any further loss in the same period should now be rejected because 90e18 > new 50e18 cap
+        _mockBalance(assetA, 0, 910e18);
+        _mockBalance(assetB, 0, 0);
+        guard.open(POOL_A, SC_1, _twoAssetEntries(assetA, assetB));
+        _mockBalance(assetA, 0, 0);
+        _mockBalance(assetB, 0, 909e18);
+        vm.expectRevert(abi.encodeWithSelector(ISlippageGuard.PeriodLossExceeded.selector, 91e18, uint128(50e18)));
+        guard.close(POOL_A, SC_1, 10_000);
+    }
+
     function testPeriodDisabledWhenZeroDuration() public {
         // Override config with zero duration (disabled)
         vm.prank(contractUpdater);
@@ -582,5 +633,61 @@ contract SlippageGuardConstructorTest is SlippageGuardTest {
         assertEq(address(guard.spoke()), spoke);
         assertEq(address(guard.balanceSheet()), balanceSheet);
         assertEq(guard.contractUpdater(), contractUpdater);
+    }
+}
+
+// --- Zero price ---
+
+contract SlippageGuardZeroPriceTest is SlippageGuardTest {
+    D18 constant PRICE_ZERO = D18.wrap(0);
+
+    function testWithdrawalWithZeroPriceReverts() public {
+        // Override assetA price to zero
+        vm.mockCall(
+            spoke,
+            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
+            abi.encode(PRICE_ZERO)
+        );
+
+        _mockBalance(assetA, 0, 1000e18);
+        guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
+
+        // Balance decreased: this is a withdrawal — zero price must revert
+        _mockBalance(assetA, 0, 500e18);
+
+        vm.expectRevert(ISlippageGuard.ZeroPrice.selector);
+        guard.close(POOL_A, SC_1, 500);
+    }
+
+    function testDepositWithZeroPriceReverts() public {
+        // Override assetA price to zero
+        vm.mockCall(
+            spoke,
+            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
+            abi.encode(PRICE_ZERO)
+        );
+
+        _mockBalance(assetA, 0, 500e18);
+        guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
+
+        // Balance increased: zero price would mask a real gain
+        _mockBalance(assetA, 0, 1000e18);
+
+        vm.expectRevert(ISlippageGuard.ZeroPrice.selector);
+        guard.close(POOL_A, SC_1, 500);
+    }
+
+    function testNoChangeWithZeroPriceSucceeds() public {
+        // Override assetA price to zero
+        vm.mockCall(
+            spoke,
+            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
+            abi.encode(PRICE_ZERO)
+        );
+
+        _mockBalance(assetA, 0, 1000e18);
+        guard.open(POOL_A, SC_1, _singleAssetEntries(assetA));
+        // No balance change — price irrelevant
+        guard.close(POOL_A, SC_1, 0);
     }
 }

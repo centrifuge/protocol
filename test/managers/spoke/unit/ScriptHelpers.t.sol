@@ -100,21 +100,21 @@ contract ScriptHelpersMathTest is Test {
 
     function testScaleDecimalsUp() public view {
         // 1e6 USDC (6 dec) → 1e18 DAI (18 dec)
-        assertEq(helpers.scaleDecimals(1e6, 6, 18), 1e18);
+        assertEq(helpers.scaleDecimals(1e6, 6, 18, MathLib.Rounding.Down), 1e18);
     }
 
     function testScaleDecimalsDown() public view {
         // 1e18 DAI (18 dec) → 1e6 USDC (6 dec)
-        assertEq(helpers.scaleDecimals(1e18, 18, 6), 1e6);
+        assertEq(helpers.scaleDecimals(1e18, 18, 6, MathLib.Rounding.Down), 1e6);
     }
 
     function testScaleDecimalsSame() public view {
-        assertEq(helpers.scaleDecimals(42, 18, 18), 42);
+        assertEq(helpers.scaleDecimals(42, 18, 18, MathLib.Rounding.Down), 42);
     }
 
     function testScaleDecimalsRounding() public view {
         // 1.5e6 USDC (6 dec) scaled down to 2 decimals → truncates
-        assertEq(helpers.scaleDecimals(1_500_000, 6, 2), 150);
+        assertEq(helpers.scaleDecimals(1_500_000, 6, 2, MathLib.Rounding.Down), 150);
     }
 
     function testFuzzAdd(uint128 a, uint128 b) public view {
@@ -335,6 +335,22 @@ contract ScriptHelpersCastTest is Test {
         assertEq(helpers.abs(int256(42)), 42);
         assertEq(helpers.abs(int256(-42)), 42);
         assertEq(helpers.abs(int256(0)), 0);
+        assertEq(helpers.abs(type(int256).min), uint256(type(int256).max) + 1);
+        assertEq(helpers.abs(type(int256).max), uint256(type(int256).max));
+    }
+
+    function testAbsFuzz(int256 value) public view {
+        uint256 result = helpers.abs(value);
+        // Result is always non-negative
+        assertTrue(result >= 0);
+        // Result matches the magnitude
+        if (value >= 0) {
+            assertEq(result, uint256(value));
+        } else if (value == type(int256).min) {
+            assertEq(result, uint256(type(int256).max) + 1);
+        } else {
+            assertEq(result, uint256(-value));
+        }
     }
 
     // bytes32 ↔ address

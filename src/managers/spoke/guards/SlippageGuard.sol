@@ -17,6 +17,8 @@ import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../../core/spoke/interfaces/IBalanceSheet.sol";
 import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUpdate.sol";
 
+import {IOnchainPMFactory} from "../interfaces/IOnchainPMFactory.sol";
+
 /// @title  SlippageGuard
 /// @notice Standalone bookend contract for OnchainPM scripts. Call `open()` at the start and `close()` at the end
 ///         of a script to verify that the net value change across all touched assets stays within a slippage bound.
@@ -33,14 +35,26 @@ contract SlippageGuard is ISlippageGuard {
     ISpoke public immutable spoke;
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
+    IOnchainPMFactory public immutable onchainPMFactory;
 
     mapping(PoolId => mapping(ShareClassId => PeriodState)) public period;
     mapping(PoolId => mapping(ShareClassId => SlippageConfig)) public config;
 
-    constructor(ISpoke spoke_, IBalanceSheet balanceSheet_, address contractUpdater_) {
+    constructor(
+        ISpoke spoke_,
+        IBalanceSheet balanceSheet_,
+        address contractUpdater_,
+        IOnchainPMFactory onchainPMFactory_
+    ) {
         spoke = spoke_;
         balanceSheet = balanceSheet_;
         contractUpdater = contractUpdater_;
+        onchainPMFactory = onchainPMFactory_;
+    }
+
+    modifier onlyOnchainPM(PoolId poolId) {
+        require(msg.sender == onchainPMFactory.getAddress(poolId), NotAuthorized());
+        _;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -53,7 +67,6 @@ contract SlippageGuard is ISlippageGuard {
 
         (uint128 maxPeriodLoss, uint32 periodDuration) = abi.decode(payload, (uint128, uint32));
         config[poolId][scId] = SlippageConfig(maxPeriodLoss, periodDuration);
-        delete period[poolId][scId];
         emit SetConfig(poolId, scId, maxPeriodLoss, periodDuration);
     }
 
@@ -62,7 +75,8 @@ contract SlippageGuard is ISlippageGuard {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISlippageGuard
-    function open(PoolId poolId, ShareClassId scId, AssetEntry[] calldata assets) external {
+    function open(PoolId poolId, ShareClassId scId, AssetEntry[] calldata assets) external onlyOnchainPM(poolId) {
+        require(assets.length > 0, EmptyAssets());
         require(TransientArrayLib.length(ASSETS_SLOT) == 0, InProgress());
         TransientStorageLib.tstore(OPENER_SLOT, uint256(uint160(msg.sender)));
         TransientStorageLib.tstore(POOL_ID_SLOT, uint256(poolId.raw()));
@@ -87,7 +101,7 @@ contract SlippageGuard is ISlippageGuard {
     ///      zero-slippage swap may produce a phantom loss of up to 1 wei per asset. Consequently,
     ///      setting `maxSlippageBps = 0` effectively disables all swaps. Use at least 1 bps if any
     ///      balance change is expected.
-    function close(PoolId poolId, ShareClassId scId, uint16 maxSlippageBps) external {
+    function close(PoolId poolId, ShareClassId scId, uint16 maxSlippageBps) external onlyOnchainPM(poolId) {
         require(TransientArrayLib.length(ASSETS_SLOT) > 0, NotOpen());
         require(msg.sender == address(uint160(TransientStorageLib.tloadUint256(OPENER_SLOT))), NotOpener());
         require(
@@ -135,10 +149,12 @@ contract SlippageGuard is ISlippageGuard {
                 tokenId == 0 ? IERC20Metadata(asset).decimals() : IERC6909MetadataExt(asset).decimals(tokenId);
 
             if (post < pre) {
+                require(price.isNotZero(), ZeroPrice());
                 withdrawn += PricingLib.assetToPoolAmount(
                     pre - post, assetDecimals, poolDecimals, price, MathLib.Rounding.Up
                 );
             } else if (post > pre) {
+                require(price.isNotZero(), ZeroPrice());
                 deposited += PricingLib.assetToPoolAmount(
                     post - pre, assetDecimals, poolDecimals, price, MathLib.Rounding.Down
                 );

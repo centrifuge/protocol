@@ -17,11 +17,13 @@ import {IOnchainPMFactory} from "../src/managers/spoke/interfaces/IOnchainPMFact
 import {VM} from "enso-weiroll/VM.sol";
 
 /// @title  Onchain Portfolio Manager
-/// @notice Weiroll VM-based execution engine with script-level Merkle authorization and a state bitmap
-///         for selectively fixing hub-manager-approved state elements.
-/// @dev    Compiled with `via_ir` to handle the weiroll VM's stack depth. The VM only supports
-///         CALL, STATICCALL, and VALUECALL to external targets (never DELEGATECALL), so the
-///         OnchainPM's storage (policy mapping) cannot be overwritten by target contracts.
+/// @notice Per-pool execution engine that allows strategists to run pre-approved multi-step onchain
+///         workflows (supply, withdraw, swap, bridge) for a Centrifuge pool. Scripts are
+///         authored as weiroll command sequences and authorized via a Merkle proof policy set by
+///         trusted calls from the hub manager. A state bitmap lets governance pin specific state slots so strategists
+///         cannot modify them at execution time.
+/// @dev    Native tokens sent with `execute()` are forwarded to VALUECALL commands and any remainder
+///         is returned to the caller. No native tokens should ever remain in this contract between calls.
 contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
     using CastLib for *;
 
@@ -81,20 +83,24 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
         bytes32 scriptHash = computeScriptHash(commands, state, stateBitmap, callbacks);
         require(MerkleProofLib.verify(proof, root, scriptHash), InvalidProof());
 
+        // Initialize callback state
         activeStrategist = msgSender();
         for (uint256 i; i < callbacks.length; i++) {
             TransientArrayLib.push(CALLBACK_HASHES_SLOT, callbacks[i].hash);
             TransientArrayLib.push(CALLBACK_CALLERS_SLOT, callbacks[i].caller);
         }
 
-        bytes[] memory mState = _copyState(state);
-        _execute(commands, mState);
+        // Execute script
+        uint256 preBalance = address(this).balance - msg.value;
+        _execute(commands, _copyState(state));
         require(callbackIdx == TransientArrayLib.length(CALLBACK_HASHES_SLOT), UnconsumedCallbacks());
 
+        // Cleanup state and refund ETH
         callbackIdx = 0;
-        activeStrategist = address(0);
         TransientArrayLib.clear(CALLBACK_HASHES_SLOT);
         TransientArrayLib.clear(CALLBACK_CALLERS_SLOT);
+        _refund(preBalance);
+        activeStrategist = address(0);
 
         emit ExecuteScript(msgSender(), scriptHash);
     }
@@ -114,8 +120,7 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
         require(scriptHash == expected, InvalidCallback());
 
         callbackIdx = idx + 1;
-        bytes[] memory mState = _copyState(state);
-        _execute(commands, mState);
+        _execute(commands, _copyState(state));
 
         emit ExecuteCallback(activeStrategist, scriptHash);
     }
@@ -124,6 +129,7 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
     // Helpers
     //----------------------------------------------------------------------------------------------
 
+    /// @inheritdoc IOnchainPM
     function computeScriptHash(
         bytes32[] calldata commands,
         bytes[] calldata state,
@@ -151,6 +157,8 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
 
     /// @dev Hash all state slots whose bit is set in `bitmap`. Returns keccak256("") when bitmap is zero.
     function _hashBitmapSlots(bytes[] memory state, uint128 bitmap) internal pure returns (bytes32) {
+        require(bitmap >> state.length == 0, InvalidBitmap());
+
         uint256 count;
         for (uint256 i; i < state.length; i++) {
             if (bitmap & (1 << i) != 0) count++;
@@ -163,6 +171,15 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
         }
 
         return keccak256(abi.encodePacked(hashes));
+    }
+
+    /// @dev Transfers excess native tokens held by this contract back to the caller.
+    function _refund(uint256 preBalance) internal {
+        uint256 balance = address(this).balance;
+        if (balance > preBalance) {
+            (bool success,) = payable(msgSender()).call{value: balance - preBalance}("");
+            require(success, ETHRefundFailed());
+        }
     }
 }
 

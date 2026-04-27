@@ -30,11 +30,11 @@ contract CircuitBreakerGuard is ICircuitBreakerGuard {
 
     /// @inheritdoc ICircuitBreakerGuard
     function delta(bytes32 key, uint256 currentValue, uint256 newValue, uint256 maxDeltaBps, uint256 window) external {
-        if (currentValue == 0) return;
+        require(currentValue != 0, ZeroAnchor());
 
         uint256 anchor;
         ReferenceState storage s = refs[msg.sender][key][window];
-        if (s.windowStart == 0 || block.timestamp - s.windowStart > window) {
+        if (block.timestamp - s.windowStart > window) {
             anchor = currentValue;
             s.anchor = currentValue.toUint128();
             s.windowStart = uint64(block.timestamp);

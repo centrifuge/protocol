@@ -67,15 +67,22 @@ contract ScriptHelpers is IScriptHelpers {
 
     /// @notice Returns amount * (10_000 + bps) / 10_000. Upper bound calculation.
     function addBps(uint256 amount, uint256 bps) external pure returns (uint256) {
-        require(bps <= BPS_BASE, InvalidBps());
         return amount * (BPS_BASE + bps) / BPS_BASE;
     }
 
     /// @notice Converts an amount between token decimal representations.
-    function scaleDecimals(uint256 amount, uint8 fromDecimals, uint8 toDecimals) external pure returns (uint256) {
+    /// @param  rounding 0 = Down (floor), 1 = Up (ceil). Only applies when reducing decimals.
+    function scaleDecimals(uint256 amount, uint8 fromDecimals, uint8 toDecimals, MathLib.Rounding rounding)
+        external
+        pure
+        returns (uint256)
+    {
         if (fromDecimals == toDecimals) return amount;
         if (fromDecimals < toDecimals) return amount * 10 ** (toDecimals - fromDecimals);
-        return amount / 10 ** (fromDecimals - toDecimals);
+        uint256 divisor = 10 ** (fromDecimals - toDecimals);
+        uint256 result = amount / divisor;
+        if (rounding == MathLib.Rounding.Up && amount % divisor != 0) result++;
+        return result;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -189,7 +196,8 @@ contract ScriptHelpers is IScriptHelpers {
     }
 
     function abs(int256 value) external pure returns (uint256) {
-        return value >= 0 ? uint256(value) : uint256(-value);
+        if (value >= 0) return uint256(value);
+        return ~uint256(value) + 1;
     }
 
     function toAddress(bytes32 value) external pure returns (address) {

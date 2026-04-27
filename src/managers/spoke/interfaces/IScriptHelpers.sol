@@ -35,7 +35,10 @@ interface IScriptHelpers {
     function mulDiv(uint256 a, uint256 b, uint256 c, MathLib.Rounding rounding) external pure returns (uint256);
     function subBps(uint256 amount, uint256 bps) external pure returns (uint256);
     function addBps(uint256 amount, uint256 bps) external pure returns (uint256);
-    function scaleDecimals(uint256 amount, uint8 fromDecimals, uint8 toDecimals) external pure returns (uint256);
+    function scaleDecimals(uint256 amount, uint8 fromDecimals, uint8 toDecimals, MathLib.Rounding rounding)
+        external
+        pure
+        returns (uint256);
 
     //----------------------------------------------------------------------------------------------
     // Comparisons
