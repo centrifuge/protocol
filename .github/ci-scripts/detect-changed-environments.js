@@ -18,31 +18,63 @@ import { execSync } from "child_process";
 const envDir = join(process.cwd(), "env");
 const changedEnvs = { mainnet: false, testnet: false };
 
-// Get list of changed env files
+/**
+ * Resolves a ref name to something `git rev-parse` recognises in this checkout.
+ * In CI (`actions/checkout@v3`) only remote-tracking refs like `origin/main` exist;
+ * `GITHUB_BASE_REF=main` alone fails with "bad revision 'main'", which used to drop
+ * the script into the "all env files changed" fallback (false positive: mainnet=true).
+ */
+function resolveRef(rawRef) {
+    if (!rawRef) return null;
+    for (const candidate of [rawRef, `origin/${rawRef}`, `refs/remotes/origin/${rawRef}`]) {
+        try {
+            execSync(`git rev-parse --verify ${candidate}^{commit}`, { stdio: "pipe" });
+            return candidate;
+        } catch {
+            /* try next */
+        }
+    }
+    return null;
+}
+
 let changedFiles = [];
 try {
-    // For push events, compare with previous commit
-    // For PRs, compare with base branch
-    const baseRef = process.env.GITHUB_BASE_REF || "HEAD^";
-    const headRef = process.env.GITHUB_HEAD_REF || "HEAD";
-    
-    // Try to get changed files (use "env/" so git lists any changed file under env/, not literal globs)
+    // For PRs (`pull_request` event): GITHUB_BASE_REF is the target branch name (e.g. "main").
+    // For push events: GITHUB_BASE_REF is empty, so we diff HEAD^..HEAD.
+    const rawBase = process.env.GITHUB_BASE_REF;
+    const baseRef = rawBase ? resolveRef(rawBase) : "HEAD^";
+    const headRef = "HEAD"; // checkout points HEAD at the PR merge ref / push commit
+
+    if (rawBase && !baseRef) {
+        // PR base is set but neither `main` nor `origin/main` resolved — abort to "both"
+        // so we don't silently produce a wrong answer.
+        console.warn(
+            `Could not resolve base ref "${rawBase}" (tried local + origin/); assuming both environments changed`
+        );
+        changedEnvs.mainnet = true;
+        changedEnvs.testnet = true;
+        console.log(JSON.stringify(changedEnvs));
+        process.exit(0);
+    }
+
     try {
         const diff = execSync(
             `git diff --name-only ${baseRef} ${headRef} -- env/`,
-            { encoding: "utf8", cwd: process.cwd() }
+            { encoding: "utf8", cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"] }
         );
         changedFiles = diff.trim().split("\n").filter(Boolean);
     } catch (error) {
-        // If diff fails (e.g., first commit), check all files
-        console.warn("Could not determine changed files, checking all env files");
+        // First commit / shallow clone / detached state — fall back to all files (loud warning,
+        // not silent). Caller can still inspect the log line in CI.
+        console.warn(
+            `Could not determine changed files via "git diff ${baseRef} ${headRef}", checking all env files: ${error.message}`
+        );
         changedFiles = readdirSync(envDir)
             .filter(f => f.endsWith(".json"))
             .map(f => join("env", f));
     }
 } catch (error) {
-    // Fallback: if we can't determine changes, assume both changed
-    console.warn("Could not detect changed files, assuming both environments changed");
+    console.warn(`Could not detect changed files (${error.message}); assuming both environments changed`);
     changedEnvs.mainnet = true;
     changedEnvs.testnet = true;
     console.log(JSON.stringify(changedEnvs));

@@ -16,6 +16,7 @@
 
 import {
     readFileSync,
+    writeFileSync,
     readdirSync,
     mkdirSync,
     existsSync,
@@ -75,13 +76,26 @@ export function getCachedOutDir(tag, cwd = process.cwd()) {
  * @param {string} tag - Git tag (e.g. v3.1.0)
  * @param {EnsureAbiCacheOptions} [options]
  */
+/** Written when `FOUNDRY_PROFILE=ir` build is unavailable or fails (old tags / no src-ir). */
+const IR_ABI_SKIPPED_MARKER = ".ir-abi-skipped";
+
 export function ensureAbiCache(tag, options = {}) {
     const cwd = options.cwd ?? process.cwd();
     const cacheRoot = options.cacheRoot ?? getAbiCacheRoot(cwd);
-    const cacheOut = join(cacheRoot, tag, "out");
-    if (existsSync(cacheOut)) {
+    const cacheTagDir = join(cacheRoot, tag);
+    const cacheOut = join(cacheTagDir, "out");
+    const cacheOutIr = join(cacheTagDir, "out-ir");
+    const cacheIrSkippedMarker = join(cacheTagDir, IR_ABI_SKIPPED_MARKER);
+
+    if (existsSync(cacheOut) && (existsSync(cacheOutIr) || existsSync(cacheIrSkippedMarker))) {
         console.log(`  ✓ ABI cache hit for tag "${tag}"`);
         return;
+    }
+
+    // Old caches only copied default `out/`; src-ir contracts (e.g. OnchainPM) live under `out-ir/`.
+    if (existsSync(cacheOut) && !existsSync(cacheOutIr) && !existsSync(cacheIrSkippedMarker)) {
+        console.log(`  Rebuilding ABI cache for tag "${tag}" (include ir profile output)...`);
+        rmSync(cacheTagDir, { recursive: true, force: true });
     }
 
     console.log(`  Building ABI cache for tag "${tag}"...`);
@@ -110,12 +124,33 @@ export function ensureAbiCache(tag, options = {}) {
             stdio: "inherit",
         });
 
+        try {
+            execSync("forge build --skip test", {
+                cwd: worktreeDir,
+                stdio: "inherit",
+                env: { ...process.env, FOUNDRY_PROFILE: "ir" },
+            });
+        } catch {
+            console.warn(
+                `  ⚠ FOUNDRY_PROFILE=ir forge build failed for tag "${tag}" (no src-ir at this ref, or compile error)`
+            );
+        }
+
         const worktreeOut = join(worktreeDir, "out");
         if (!existsSync(worktreeOut)) {
             throw new Error(`Forge build did not produce out/ directory for tag "${tag}"`);
         }
-        mkdirSync(join(cacheRoot, tag), { recursive: true });
+        mkdirSync(cacheTagDir, { recursive: true });
         cpSync(worktreeOut, cacheOut, { recursive: true });
+
+        const worktreeOutIr = join(worktreeDir, "out-ir");
+        if (existsSync(worktreeOutIr)) {
+            cpSync(worktreeOutIr, cacheOutIr, { recursive: true });
+            console.log(`  ✓ ABI cache includes out-ir (via_ir / src-ir artifacts)`);
+        } else {
+            writeFileSync(cacheIrSkippedMarker, "");
+        }
+
         console.log(`  ✓ ABI cache populated for tag "${tag}"`);
     } finally {
         try {
@@ -187,22 +222,29 @@ export function collectContractTags(chains) {
 }
 
 /**
- * Reads ABI array from Forge JSON artifact under `out/`.
+ * Reads ABI array from Forge JSON artifacts under `out/` and, when present, sibling `out-ir/`
+ * (Foundry profile `ir` — e.g. OnchainPM in src-ir).
  *
- * @param {string} outputDir - Forge `out/` directory
+ * @param {string} outputDir - Forge default profile `out/` directory (ABI cache: …/tag/out)
  * @param {string} contractName - Artifact basename (e.g. Hub → Hub.json)
  * @returns {object[]|null}
  */
 export function findAbiInOutput(outputDir, contractName) {
-    if (!existsSync(outputDir)) return null;
+    const roots = [];
+    if (existsSync(outputDir)) roots.push(outputDir);
+    const outIrSibling = join(outputDir, "..", "out-ir");
+    if (existsSync(outIrSibling)) roots.push(outIrSibling);
+    if (roots.length === 0) return null;
 
-    for (const abiDir of readdirSync(outputDir)) {
-        if (abiDir.endsWith(".t.sol")) continue;
+    for (const root of roots) {
+        for (const abiDir of readdirSync(root)) {
+            if (abiDir.endsWith(".t.sol")) continue;
 
-        const filePath = join(outputDir, abiDir, `${contractName}.json`);
-        if (existsSync(filePath)) {
-            const contractData = JSON.parse(readFileSync(filePath, "utf8"));
-            return contractData.abi;
+            const filePath = join(root, abiDir, `${contractName}.json`);
+            if (existsSync(filePath)) {
+                const contractData = JSON.parse(readFileSync(filePath, "utf8"));
+                return contractData.abi;
+            }
         }
     }
     return null;

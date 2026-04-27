@@ -310,6 +310,30 @@
       "blockNumber": 10142076,
       "txHash": "0x75e63ed0a0504573c58677e9bc79d8df0adc39edd92001233eea1c18dd8f6d5a",
       "version": "v3.1"
+    },
+    "accountingToken": {
+      "address": "0x5ba3F068ceFa1e84aDAFcB7191bf4C02C3b724f8",
+      "blockNumber": 10742867,
+      "txHash": "0x5204ebcb9828a5dea91162b48b9035488c9f69e9a46e0e3b836bc20a9622ce6e",
+      "version": "v3.2"
+    },
+    "scriptHelpers": {
+      "address": "0xba5f99EbFAde72174b41137EEe0714F7099fa806",
+      "blockNumber": 10742867,
+      "txHash": "0xe4a1fe8f90e3b5d43887e72268c4e737e9c2843fcf41c4c18d703b49c4e217e2",
+      "version": "v3.2"
+    },
+    "flashLoanHelper": {
+      "address": "0xB106e8Ad482df0088E28E7bD268AC1ea9609716c",
+      "blockNumber": 10742867,
+      "txHash": "0x65b539ff63ccc075cd64c1f85e16607c14d7be91d542259c01737a07fbaacaec",
+      "version": "v3.2"
+    },
+    "onchainPMFactory": {
+      "address": "0xF3c808e6D7C25B19c97a9597CaAcFB8Ba780a580",
+      "blockNumber": null,
+      "txHash": null,
+      "version": "v3.2"
     }
   },
   "deploymentInfo": {
