@@ -39,8 +39,11 @@ interface IOracleValuation is IValuation {
     /// @notice Registry of pools, assets, and manager permissions on the hub chain
     function hubRegistry() external view returns (IHubRegistry);
 
-    /// @notice Whether an address is authorized to submit price updates for a given pool
-    function feeder(PoolId poolId, address addr) external view returns (bool);
+    /// @notice Whether a feeder identifier is authorized to submit price updates for a pool from a given chain
+    /// @param poolId The pool identifier
+    /// @param centrifugeId The source chain ID (0 for local feeders)
+    /// @param feeder_ The identifier of the feeder (bytes32 — supports cross-chain feeders)
+    function feeder(PoolId poolId, uint16 centrifugeId, bytes32 feeder_) external view returns (bool);
 
     /// @notice Latest oracle-supplied price for an asset within a pool's share class
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId)
