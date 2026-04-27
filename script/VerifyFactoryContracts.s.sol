@@ -147,7 +147,7 @@ contract VerifyFactoryContracts is Script {
             " --constructor-args ",
             vm.toString(constructorArgs),
             " --watch",
-            " 2>&1 || true" // Capture output; exit 0 so ffi doesn't revert
+            " 2>&1 | tail -c 4096; true" // Truncate to last 4KB (status msgs at end); exit 0
         );
 
         // Wait before hitting the Etherscan API again via forge verify-contract
@@ -156,7 +156,9 @@ contract VerifyFactoryContracts is Script {
         bytes memory output = vm.ffi(cmd);
         if (_containsSubstring(output, "successfully verified")) {
             result.status = VerificationStatus.NewlyVerified;
-        } else if (_containsSubstring(output, "already verified")) {
+        } else if (
+            _containsSubstring(output, "already verified") || _containsSubstring(output, "This contract is verified")
+        ) {
             result.status = VerificationStatus.AlreadyVerified;
         } else {
             result.status = VerificationStatus.NotVerified;
@@ -168,14 +170,11 @@ contract VerifyFactoryContracts is Script {
             return VerificationStatus.NotDeployed;
         }
 
-        // Rate-limit Etherscan API calls to avoid 3/sec limit
-        vm.sleep(400);
-
         string[] memory cmd = new string[](3);
         cmd[0] = "bash";
         cmd[1] = "-c";
         cmd[2] = string.concat(
-            "curl -s '",
+            "curl -s --max-time 30 '",
             config.network.verifierUrl,
             _urlQuerySeparator(config.network.verifierUrl),
             "module=contract&action=getsourcecode&address=",
@@ -185,19 +184,29 @@ contract VerifyFactoryContracts is Script {
             "'"
         );
 
-        string memory response = string(vm.ffi(cmd));
+        // Retry on transient API errors (rate limits, server errors, timeouts).
+        // Only treat status="1" responses as definitive — status="0" means an API-level
+        // error, not that the contract is unverified.
+        for (uint256 i = 0; i < 3; i++) {
+            vm.sleep(i == 0 ? 400 : 2000); // base delay, then backoff on retry
 
-        // Check if SourceCode field exists and has content
-        if (!vm.keyExists(response, ".result[0].SourceCode")) {
-            return VerificationStatus.NotVerified;
+            string memory response = string(vm.ffi(cmd));
+
+            // Skip malformed or error responses (rate limit, 503, empty, etc.)
+            if (!vm.keyExists(response, ".status")) continue;
+            if (keccak256(bytes(response.readString(".status"))) != keccak256(bytes("1"))) continue;
+
+            // status=1: definitive answer from the API
+            if (!vm.keyExists(response, ".result[0].SourceCode")) {
+                return VerificationStatus.NotVerified;
+            }
+
+            string memory sourceCode = response.readString(".result[0].SourceCode");
+            return bytes(sourceCode).length > 0 ? VerificationStatus.AlreadyVerified : VerificationStatus.NotVerified;
         }
 
-        string memory sourceCode = response.readString(".result[0].SourceCode");
-        if (bytes(sourceCode).length == 0) {
-            return VerificationStatus.NotVerified;
-        }
-
-        return VerificationStatus.AlreadyVerified;
+        // All retries exhausted — let forge verify-contract make the final determination
+        return VerificationStatus.NotVerified;
     }
 
     /// @notice Get constructor args by reading from contract storage
