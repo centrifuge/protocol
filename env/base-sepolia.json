@@ -342,7 +342,7 @@
     "deploy:protocol": {
       "gitCommit": "41e19975",
       "timestamp": "2026-04-27T13:39:47Z",
-      "suffix": "",
+      "suffix": "rev2",
       "startBlock": 40764449
     }
   }
