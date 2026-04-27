@@ -9,8 +9,7 @@ import {IERC20Metadata} from "../src/misc/interfaces/IERC20.sol";
 
 import {PoolEscrow} from "../src/core/spoke/PoolEscrow.sol";
 
-import {OnOfframpManager} from "../src/managers/spoke/OnOfframpManager.sol";
-import {MerkleProofManager} from "../src/managers/spoke/MerkleProofManager.sol";
+import {OnOffRamp} from "../src/managers/spoke/OnOffRamp.sol";
 
 import {AsyncVault} from "../src/vaults/AsyncVault.sol";
 import {SyncDepositVault} from "../src/vaults/SyncDepositVault.sol";
@@ -25,7 +24,6 @@ struct AddressesToVerify {
     address poolEscrow;
     address refundEscrow;
     address onOfframpManager;
-    address merkleProofManager;
 }
 
 enum VerificationStatus {
@@ -60,14 +58,13 @@ contract VerifyFactoryContracts is Script {
         AddressesToVerify memory addr = _fetchAddresses();
 
         // Collect verification results
-        VerificationResult[] memory results = new VerificationResult[](7);
+        VerificationResult[] memory results = new VerificationResult[](6);
         results[0] = _verifyContract(addr.asyncVault, "AsyncVault");
         results[1] = _verifyContract(addr.syncDepositVault, "SyncDepositVault");
         results[2] = _verifyContract(addr.shareToken, "ShareToken");
         results[3] = _verifyContract(addr.poolEscrow, "PoolEscrow");
         results[4] = _verifyContract(addr.refundEscrow, "RefundEscrow");
-        results[5] = _verifyContract(addr.onOfframpManager, "OnOfframpManager");
-        results[6] = _verifyContract(addr.merkleProofManager, "MerkleProofManager");
+        results[5] = _verifyContract(addr.onOfframpManager, "OnOffRamp");
 
         // Log summary and revert if any contract failed verification
         _logSummary(results);
@@ -92,9 +89,6 @@ contract VerifyFactoryContracts is Script {
             "onOffRampManagers(limit: 1, ", orderBy, ", where: {",
             "  centrifugeId: ", centrifugeIdValue,
             "}) { items { address } }",
-            "merkleProofManagers(limit: 1, ", orderBy, ", where: {",
-            "  centrifugeId: ", centrifugeIdValue,
-            "}) { items { address } }",
             "escrows(limit: 1, ", orderBy, ", where: {",
             "  centrifugeId: ", centrifugeIdValue,
             "}) { items { address } }",
@@ -112,7 +106,6 @@ contract VerifyFactoryContracts is Script {
         ));
 
         addr.onOfframpManager = json.readAddressOr(".data.onOffRampManagers.items[0].address", address(0));
-        addr.merkleProofManager = json.readAddressOr(".data.merkleProofManagers.items[0].address", address(0));
         addr.poolEscrow = json.readAddressOr(".data.escrows.items[0].address", address(0));
         addr.shareToken = json.readAddressOr(".data.tokenInstances.items[0].address", address(0));
         addr.asyncVault = json.readAddressOr(".data.asyncVaults.items[0].id", address(0));
@@ -225,10 +218,8 @@ contract VerifyFactoryContracts is Script {
             return _getPoolEscrowArgs(contractAddress);
         } else if (nameHash == keccak256("RefundEscrow")) {
             return _getRefundEscrowArgs();
-        } else if (nameHash == keccak256("OnOfframpManager")) {
-            return _getOnOfframpManagerArgs(contractAddress);
-        } else if (nameHash == keccak256("MerkleProofManager")) {
-            return _getMerkleProofManagerArgs(contractAddress);
+        } else if (nameHash == keccak256("OnOffRamp")) {
+            return _getOnOffRampArgs(contractAddress);
         }
 
         revert(string.concat("Unknown contract: ", contractName));
@@ -265,14 +256,9 @@ contract VerifyFactoryContracts is Script {
         return "";
     }
 
-    function _getOnOfframpManagerArgs(address manager) internal view returns (bytes memory) {
-        OnOfframpManager m = OnOfframpManager(manager);
+    function _getOnOffRampArgs(address manager) internal view returns (bytes memory) {
+        OnOffRamp m = OnOffRamp(manager);
         return abi.encode(m.poolId(), m.scId(), m.contractUpdater(), address(m.balanceSheet()));
-    }
-
-    function _getMerkleProofManagerArgs(address manager) internal view returns (bytes memory) {
-        MerkleProofManager m = MerkleProofManager(payable(manager));
-        return abi.encode(m.poolId(), m.contractUpdater());
     }
 
     function _containsSubstring(bytes memory data, bytes memory needle) internal pure returns (bool) {

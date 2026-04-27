@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IOnOfframpManager} from "./interfaces/IOnOfframpManager.sol";
-import {IOnOfframpManagerFactory} from "./interfaces/IOnOfframpManagerFactory.sol";
+import {IOnOffRamp} from "./interfaces/IOnOffRamp.sol";
+import {IAccountingToken} from "./interfaces/IAccountingToken.sol";
+import {IOnOffRampFactory} from "./interfaces/IOnOffRampFactory.sol";
 import {IDepositManager, IWithdrawManager} from "./interfaces/IBalanceSheetManager.sol";
 
 import {CastLib} from "../../misc/libraries/CastLib.sol";
@@ -15,29 +16,39 @@ import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 import {IBalanceSheet, WithdrawMode} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 
-/// @title  OnOfframpManager
-/// @notice Balance sheet manager for depositing and withdrawing ERC20 assets.
+/// @title  OnOffRamp
+/// @notice Balance sheet manager for depositing and withdrawing ERC20 assets with accounting token support.
 ///         - Onramping is permissionless: once an asset is allowed to be onramped and ERC20 assets have been
 ///           transferred to the manager, anyone can trigger the balance sheet deposit.
 ///         - Offramping is permissioned: only predefined relayers can trigger withdrawals to predefined
 ///           offramp accounts.
-contract OnOfframpManager is IOnOfframpManager {
+///         - Deposit mints a liability accounting token alongside the real asset deposit.
+///         - Withdraw mints a non-liability accounting token as a receipt for the withdrawn asset.
+contract OnOffRamp is IOnOffRamp {
     using CastLib for *;
 
     PoolId public immutable poolId;
     address public immutable contractUpdater;
     ShareClassId public immutable scId;
     IBalanceSheet public immutable balanceSheet;
+    IAccountingToken public immutable accountingToken;
 
     mapping(address asset => bool) public onramp;
     mapping(address relayer => bool) public relayer;
     mapping(address asset => mapping(address receiver => bool isEnabled)) public offramp;
 
-    constructor(PoolId poolId_, ShareClassId scId_, address contractUpdater_, IBalanceSheet balanceSheet_) {
+    constructor(
+        PoolId poolId_,
+        ShareClassId scId_,
+        address contractUpdater_,
+        IBalanceSheet balanceSheet_,
+        IAccountingToken accountingToken_
+    ) {
         poolId = poolId_;
         scId = scId_;
         contractUpdater = contractUpdater_;
         balanceSheet = balanceSheet_;
+        accountingToken = accountingToken_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -87,7 +98,7 @@ contract OnOfframpManager is IOnOfframpManager {
             address receiver = receiverAddress.toAddress();
 
             require(offramp[asset][receiver], InvalidOfframpDestination());
-            balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount, WithdrawMode.Full);
+            _withdraw(asset, amount, receiver);
             emit TrustedWithdraw(asset, amount, receiver);
         }
     }
@@ -108,7 +119,14 @@ contract OnOfframpManager is IOnOfframpManager {
     {
         require(onramp[asset], NotAllowedOnrampAsset());
 
+        // Deposit real asset
         balanceSheet.deposit(poolId, scId, asset, 0, amount);
+
+        // Mint liability accounting token and deposit to BalanceSheet
+        uint256 liabTokenId = accountingToken.toTokenId(poolId, asset, true);
+        accountingToken.mint(address(this), liabTokenId, amount, scId);
+        accountingToken.approve(address(balanceSheet), liabTokenId, amount);
+        balanceSheet.deposit(poolId, scId, address(accountingToken), liabTokenId, amount);
     }
 
     /// @inheritdoc IWithdrawManager
@@ -122,9 +140,19 @@ contract OnOfframpManager is IOnOfframpManager {
         external
     {
         require(relayer[msg.sender], NotRelayer());
-        require(receiver != address(0) && offramp[asset][receiver], InvalidOfframpDestination());
+        _withdraw(asset, amount, receiver);
+    }
 
+    function _withdraw(address asset, uint128 amount, address receiver) internal {
+        require(receiver != address(0) && offramp[asset][receiver], InvalidOfframpDestination());
+        // Withdraw real asset to receiver
         balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount, WithdrawMode.Full);
+
+        // Mint non-liability accounting token and deposit to BalanceSheet
+        uint256 accTokenId = accountingToken.toTokenId(poolId, asset, false);
+        accountingToken.mint(address(this), accTokenId, amount, scId);
+        accountingToken.approve(address(balanceSheet), accTokenId, amount);
+        balanceSheet.deposit(poolId, scId, address(accountingToken), accTokenId, amount);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -138,24 +166,26 @@ contract OnOfframpManager is IOnOfframpManager {
     }
 }
 
-contract OnOfframpManagerFactory is IOnOfframpManagerFactory {
+contract OnOffRampFactory is IOnOffRampFactory {
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
+    IAccountingToken public immutable accountingToken;
 
-    constructor(address contractUpdater_, IBalanceSheet balanceSheet_) {
+    constructor(address contractUpdater_, IBalanceSheet balanceSheet_, IAccountingToken accountingToken_) {
         contractUpdater = contractUpdater_;
         balanceSheet = balanceSheet_;
+        accountingToken = accountingToken_;
     }
 
-    /// @inheritdoc IOnOfframpManagerFactory
-    function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOfframpManager) {
+    /// @inheritdoc IOnOffRampFactory
+    function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOffRamp) {
         balanceSheet.spoke().shareToken(poolId, scId); // Check for existence
 
-        OnOfframpManager manager = new OnOfframpManager{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
-            poolId, scId, contractUpdater, balanceSheet
+        OnOffRamp manager = new OnOffRamp{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
+            poolId, scId, contractUpdater, balanceSheet, accountingToken
         );
 
-        emit DeployOnOfframpManager(poolId, scId, address(manager));
-        return IOnOfframpManager(manager);
+        emit DeployOnOffRamp(poolId, scId, address(manager));
+        return IOnOffRamp(manager);
     }
 }

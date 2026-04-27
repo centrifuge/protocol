@@ -610,16 +610,11 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(address(fullRestrictionsHook.root()), address(root));
     }
 
-    function testOnOfframpManagerFactory() public view {
+    function testOnOffRampFactory() public view {
         // dependencies set correctly
-        assertEq(address(onOfframpManagerFactory.contractUpdater()), address(contractUpdater));
-        assertEq(address(onOfframpManagerFactory.balanceSheet()), address(balanceSheet));
-    }
-
-    function testMerkleProofManagerFactory() public view {
-        // dependencies set correctly
-        assertEq(address(merkleProofManagerFactory.contractUpdater()), address(contractUpdater));
-        assertEq(address(merkleProofManagerFactory.balanceSheet()), address(balanceSheet));
+        assertEq(address(onOffRampFactory.contractUpdater()), address(contractUpdater));
+        assertEq(address(onOffRampFactory.balanceSheet()), address(balanceSheet));
+        assertEq(address(onOffRampFactory.accountingToken()), address(accountingToken));
     }
 
     function testQueueManager() public view {
@@ -638,6 +633,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(oracleValuation.hubRegistry()), address(hubRegistry));
         assertEq(address(oracleValuation.hub()), address(hub));
+        assertEq(oracleValuation.contractUpdater(), address(contractUpdater));
     }
 
     function testNavManager() public view {
@@ -664,6 +660,23 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(batchRequestManager.wards(address(hub)), 1);
         assertEq(batchRequestManager.wards(address(hubHandler)), 1);
         assertEq(batchRequestManager.wards(nonWard), 0);
+    }
+
+    function testOnchainPMFactory() public view {
+        // dependencies set correctly
+        assertEq(onchainPMFactory.contractUpdater(), address(contractUpdater));
+        assertEq(address(onchainPMFactory.balanceSheet()), address(balanceSheet));
+        assertEq(address(onchainPMFactory.gateway()), address(gateway));
+    }
+
+    function testScriptHelpers() public view {
+        // contract deployed
+        assertTrue(address(scriptHelpers).code.length > 0);
+    }
+
+    function testFlashLoanHelper() public view {
+        // contract deployed
+        assertTrue(address(flashLoanHelper).code.length > 0);
     }
 }
 

@@ -75,9 +75,7 @@ src/
 │   │   ├── NAVManager.sol # NAV automation
 │   │   └── SimplePriceManager.sol # Price automation
 │   └── spoke/
-│       ├── QueueManager.sol # Queue automation
-│       ├── OnOfframpManager.sol # On/off ramp
-│       └── MerkleProofManager.sol # Merkle proofs
+│       └── QueueManager.sol # Queue automation
 ├── vaults/                # Vault implementations
 │   ├── BatchRequestManager.sol # Batch request handling
 │   ├── AsyncRequestManager.sol # Async requests
