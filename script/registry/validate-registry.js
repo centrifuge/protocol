@@ -12,7 +12,9 @@
  *   - chains.<chainId>.deployment.startBlock: must be a number (large gap vs env contract
  *     `blockNumber` is rejected by validate-env-schema.js before abi-registry runs)
  *   - chains.<chainId>.contracts.<name>.address: non-empty string for **active** contracts
- *   - chains.<chainId>.contracts.<name>.blockNumber: must be a number for active contracts
+ *   - chains.<chainId>.contracts.<name>.blockNumber: must be a number for active contracts,
+ *     unless `chains.<chainId>.deployment.startBlock` is set (api-v3 falls back for version
+ *     boundaries); then a **warning** only — prefer filling blockNumber when explorers allow it
  *   - abis: every **active** contract must have matching ABI entries (artifact basenames via
  *     {@link artifactNamesForContractKey} in `utils/abi-cache.js` — same rules as `packAbis`)
  *
@@ -147,11 +149,30 @@ async function validate(registryPath) {
                 errors.push({ path: `chains.${chainId}.contracts.${name}.address`, message: `Must be a non-empty string, got ${JSON.stringify(contract.address)}` });
             }
 
-            // blockNumber
+            // blockNumber — api-v3 uses contract.blockNumber ?? chain.deployment.startBlock for
+            // end-block logic; Ponder start blocks use deployment.startBlock. Allow null when the
+            // chain has a numeric deployment start (e.g. CREATE3 / src-ir where creation APIs fail).
+            const deploymentStart = chain.deployment?.startBlock;
+            const hasDeploymentStartBlock =
+                typeof deploymentStart === "number" && Number.isFinite(deploymentStart);
             if (contract.blockNumber == null) {
-                errors.push({ path: `chains.${chainId}.contracts.${name}.blockNumber`, message: "Required by indexer, got null/undefined" });
+                if (hasDeploymentStartBlock) {
+                    warnings.push({
+                        path: `chains.${chainId}.contracts.${name}.blockNumber`,
+                        message:
+                            "Null blockNumber — allowed because chain.deployment.startBlock is set (indexer fallback); add blockNumber when creation data is available",
+                    });
+                } else {
+                    errors.push({
+                        path: `chains.${chainId}.contracts.${name}.blockNumber`,
+                        message: "Required by indexer, got null/undefined (no chain.deployment.startBlock fallback)",
+                    });
+                }
             } else if (typeof contract.blockNumber !== "number") {
-                errors.push({ path: `chains.${chainId}.contracts.${name}.blockNumber`, message: `Must be a number, got ${typeof contract.blockNumber}: ${JSON.stringify(contract.blockNumber)}` });
+                errors.push({
+                    path: `chains.${chainId}.contracts.${name}.blockNumber`,
+                    message: `Must be a number, got ${typeof contract.blockNumber}: ${JSON.stringify(contract.blockNumber)}`,
+                });
             }
         }
     }
