@@ -32,7 +32,6 @@ contract DeployOnchainPMV2 is BaseDeployer {
         _deploy(config.contracts.contractUpdater, config.contracts.balanceSheet, config.contracts.gateway);
 
         saveDeploymentOutput();
-        _updateEnvFile(network);
 
         vm.stopBroadcast();
     }
@@ -74,20 +73,5 @@ contract DeployOnchainPMV2 is BaseDeployer {
         console.log("scriptHelpers:  %s", address(scriptHelpers));
         console.log("onchainPMFactory:  %s", onchainPMFactory);
         console.log("flashLoanHelper:   %s", address(flashLoanHelper));
-    }
-
-    function _updateEnvFile(string memory network) internal {
-        string memory path = string.concat("env/", network, ".json");
-
-        vm.writeJson(_contractEntry(address(accountingToken)), path, ".contracts.accountingToken");
-        vm.writeJson(_contractEntry(address(scriptHelpers)), path, ".contracts.scriptHelpers");
-        vm.writeJson(_contractEntry(address(flashLoanHelper)), path, ".contracts.flashLoanHelper");
-        vm.writeJson(_contractEntry(onchainPMFactory), path, ".contracts.onchainPMFactory");
-
-        console.log("Env file updated: %s", path);
-    }
-
-    function _contractEntry(address addr) internal pure returns (string memory) {
-        return string.concat('{"address":"', vm.toString(addr), '","version":"', ONCHAIN_PM_V2_VERSION, '"}');
     }
 }
