@@ -80,7 +80,7 @@ interface IPolymerAdapter is IAdapter, IAdapterWiring {
     function prover() external view returns (ICrossL2ProverV2);
 
     /// @notice Current outbound nonce (incremented on each send)
-    function nonce() external view returns (uint256);
+    function currentNonce() external view returns (uint256);
 
     /// @notice Returns whether a given nonce from a given source has been processed
     /// @param polymerChainId The source Polymer chain ID

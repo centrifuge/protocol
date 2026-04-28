@@ -90,7 +90,7 @@ contract PolymerAdapterTest is PolymerAdapterTestBase {
         assertEq(address(adapter.entrypoint()), address(GATEWAY));
         assertEq(address(adapter.prover()), address(mockProver));
         assertEq(adapter.wards(address(this)), 1);
-        assertEq(adapter.nonce(), 0);
+        assertEq(adapter.currentNonce(), 0);
     }
 
     function testEstimate() public {
@@ -123,7 +123,7 @@ contract PolymerAdapterTest is PolymerAdapterTestBase {
         vm.prank(address(GATEWAY));
         bytes32 adapterData = adapter.send(CENTRIFUGE_ID, payload, 0, address(0));
         assertEq(adapterData, bytes32(uint256(0)));
-        assertEq(adapter.nonce(), 1);
+        assertEq(adapter.currentNonce(), 1);
 
         // Second send increments nonce
         vm.expectEmit();
@@ -131,7 +131,7 @@ contract PolymerAdapterTest is PolymerAdapterTestBase {
         vm.prank(address(GATEWAY));
         adapterData = adapter.send(CENTRIFUGE_ID, payload, 0, address(0));
         assertEq(adapterData, bytes32(uint256(1)));
-        assertEq(adapter.nonce(), 2);
+        assertEq(adapter.currentNonce(), 2);
     }
 
     function testIncomingReceiveMessage() public {
