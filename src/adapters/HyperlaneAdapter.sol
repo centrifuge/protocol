@@ -27,8 +27,6 @@ import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 ///         Replay protection is enforced by the Hyperlane Mailbox, which tracks
 ///         delivered message IDs and reverts on duplicate delivery.
 ///         See https://docs.hyperlane.xyz/docs/protocol/core/mailbox#replay-protection
-///
-///         Message ordering is not enforced.
 contract HyperlaneAdapter is Auth, IHyperlaneAdapter {
     using CastLib for *;
 
