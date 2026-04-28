@@ -20,6 +20,8 @@ import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 
 /// @title  Axelar Adapter
 /// @notice Routing contract that integrates with an Axelar Gateway
+/// @dev    Replay protection is enforced by the Axelar Gateway via `validateContractCall()`,
+///         which marks each command ID as consumed and reverts on reuse.
 contract AxelarAdapter is Auth, IAxelarAdapter {
     using CastLib for *;
 

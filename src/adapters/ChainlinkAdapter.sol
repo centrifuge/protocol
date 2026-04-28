@@ -21,6 +21,8 @@ import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 
 /// @title  Chainlink Adapter
 /// @notice Routing contract that integrates with Chainlink CCIP
+/// @dev    Replay protection is enforced by the CCIP stack (Router/OffRamp),
+///         which tracks message IDs and prevents duplicate delivery.
 contract ChainlinkAdapter is Auth, IChainlinkAdapter {
     /// @dev Cost of executing `ccipReceive()` except entrypoint.handle()
     uint256 public constant RECEIVE_COST = 4000;
