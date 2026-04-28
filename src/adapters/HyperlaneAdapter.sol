@@ -35,14 +35,10 @@ contract HyperlaneAdapter is Auth, IHyperlaneAdapter {
     /// @dev Cost of executing `handle()` except entrypoint.handle()
     uint256 public constant RECEIVE_COST = 4000;
 
-    /// @dev StandardHookMetadata variant identifier
-    uint16 internal constant METADATA_VARIANT = 1;
-
-    IMessageHandler public immutable entrypoint;
     IMailbox public immutable mailbox;
+    IMessageHandler public immutable entrypoint;
 
     IInterchainSecurityModule public interchainSecurityModule;
-
     mapping(uint32 hyperlaneDomain => HyperlaneSource) public sources;
     mapping(uint16 centrifugeId => HyperlaneDestination) public destinations;
 
@@ -129,6 +125,8 @@ contract HyperlaneAdapter is Auth, IHyperlaneAdapter {
     //----------------------------------------------------------------------------------------------
     // StandardHookMetadata builder
     //----------------------------------------------------------------------------------------------
+
+    uint16 internal constant METADATA_VARIANT = 1;
 
     /// @dev Build StandardHookMetadata for the Hyperlane Mailbox.
     ///      Layout (packed, NOT abi-encoded):
