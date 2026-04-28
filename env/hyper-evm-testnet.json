@@ -300,6 +300,12 @@
       "blockNumber": 51997501,
       "txHash": "0x352970c6321893f658d52d3b7353a1056f4968efe793f59a8d40b4e6a024e0c3",
       "version": "v3.2"
+    },
+    "onOffRampFactory": {
+      "address": "0x6Af53A7f79c32c09C73b745c591058Cdd97457DB",
+      "blockNumber": 52074971,
+      "txHash": "0xb9e822996b790e1762d704015b3255e1a7a4f6c839e91f1f82d189301b0ef7cd",
+      "version": "v3.2"
     }
   },
   "deploymentInfo": {

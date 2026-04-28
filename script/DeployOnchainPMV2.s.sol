@@ -7,6 +7,7 @@ import {EnvConfig, Env, prettyEnvString} from "./utils/EnvConfig.s.sol";
 import {ScriptHelpers} from "../src/managers/spoke/ScriptHelpers.sol";
 import {AccountingToken} from "../src/managers/spoke/AccountingToken.sol";
 import {FlashLoanHelper} from "../src/managers/spoke/FlashLoanHelper.sol";
+import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";
 
 import "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
@@ -18,6 +19,7 @@ contract DeployOnchainPMV2 is BaseDeployer {
     ScriptHelpers public scriptHelpers;
     FlashLoanHelper public flashLoanHelper;
     address public onchainPMFactory;
+    OnOffRampFactory public onOffRampFactory;
 
     function run() public {
         string memory network = prettyEnvString("NETWORK");
@@ -69,9 +71,19 @@ contract DeployOnchainPMV2 is BaseDeployer {
             )
         );
 
+        onOffRampFactory = OnOffRampFactory(
+            create3(
+                createSalt("onOffRampFactory", ONCHAIN_PM_V2_VERSION),
+                abi.encodePacked(
+                    type(OnOffRampFactory).creationCode, abi.encode(contractUpdater_, balanceSheet_, accountingToken)
+                )
+            )
+        );
+
         console.log("accountingToken:   %s", address(accountingToken));
-        console.log("scriptHelpers:  %s", address(scriptHelpers));
+        console.log("scriptHelpers:     %s", address(scriptHelpers));
         console.log("onchainPMFactory:  %s", onchainPMFactory);
         console.log("flashLoanHelper:   %s", address(flashLoanHelper));
+        console.log("onOffRampFactory:  %s", address(onOffRampFactory));
     }
 }
