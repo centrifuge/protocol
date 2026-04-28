@@ -142,7 +142,7 @@ contract PolymerAdapterTest is PolymerAdapterTestBase {
 
         // Encode topics: [eventSelector, centrifugeId (destination), adapter (destination), nonce]
         bytes memory topics = abi.encode(
-            adapter.SEND_MESSAGE_SELECTOR(),
+            IPolymerAdapter.SendMessage.selector,
             uint16(CENTRIFUGE_ID),
             address(adapter),
             sourceNonce
@@ -169,7 +169,7 @@ contract PolymerAdapterTest is PolymerAdapterTestBase {
         uint256 sourceNonce = 1;
 
         bytes memory topics =
-            abi.encode(adapter.SEND_MESSAGE_SELECTOR(), uint16(CENTRIFUGE_ID), address(adapter), sourceNonce);
+            abi.encode(IPolymerAdapter.SendMessage.selector, uint16(CENTRIFUGE_ID), address(adapter), sourceNonce);
         bytes memory unindexedData = abi.encode(payload);
 
         mockProver.setReturn(POLYMER_CHAIN_ID, REMOTE_ADAPTER, topics, unindexedData);
@@ -206,7 +206,7 @@ contract PolymerAdapterTest is PolymerAdapterTestBase {
     function testIncomingInvalidSource() public {
         // Not wired — source.addr is address(0)
         bytes memory topics = abi.encode(
-            adapter.SEND_MESSAGE_SELECTOR(), uint16(CENTRIFUGE_ID), address(adapter), uint256(0)
+            IPolymerAdapter.SendMessage.selector, uint16(CENTRIFUGE_ID), address(adapter), uint256(0)
         );
         mockProver.setReturn(POLYMER_CHAIN_ID, REMOTE_ADAPTER, topics, abi.encode("payload"));
 
@@ -218,7 +218,7 @@ contract PolymerAdapterTest is PolymerAdapterTestBase {
         adapter.wire(CENTRIFUGE_ID, abi.encode(POLYMER_CHAIN_ID, REMOTE_ADAPTER));
 
         bytes memory topics = abi.encode(
-            adapter.SEND_MESSAGE_SELECTOR(), uint16(CENTRIFUGE_ID), address(adapter), uint256(0)
+            IPolymerAdapter.SendMessage.selector, uint16(CENTRIFUGE_ID), address(adapter), uint256(0)
         );
         // Emitting contract doesn't match the wired source adapter
         mockProver.setReturn(POLYMER_CHAIN_ID, makeAddr("wrongEmitter"), topics, abi.encode("payload"));
@@ -232,7 +232,7 @@ contract PolymerAdapterTest is PolymerAdapterTestBase {
 
         // adapter field in event points to wrong address
         bytes memory topics = abi.encode(
-            adapter.SEND_MESSAGE_SELECTOR(),
+            IPolymerAdapter.SendMessage.selector,
             uint16(CENTRIFUGE_ID),
             makeAddr("wrongAdapter"),
             uint256(0)

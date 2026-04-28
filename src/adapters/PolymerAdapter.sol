@@ -28,12 +28,8 @@ import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 ///         The Polymer prover validates proof authenticity but does not track consumption,
 ///         so nonce-based deduplication is required at the adapter level.
 contract PolymerAdapter is Auth, IPolymerAdapter {
-    /// @dev Event selector for `SendMessage(uint16,address,uint256,bytes)`.
-    ///      Used to validate the proven event matches expectations.
-    bytes32 public immutable SEND_MESSAGE_SELECTOR = SendMessage.selector;
-
-    IMessageHandler public immutable entrypoint;
     ICrossL2ProverV2 public immutable prover;
+    IMessageHandler public immutable entrypoint;
 
     uint256 public currentNonce;
     mapping(uint16 centrifugeId => PolymerDestination) public destinations;
@@ -74,7 +70,7 @@ contract PolymerAdapter is Auth, IPolymerAdapter {
         require(topics.length == 128, InvalidProof());
         (bytes32 eventSelector,, address destAdapter, uint256 sourceNonce) =
             abi.decode(topics, (bytes32, uint16, address, uint256));
-        require(eventSelector == SEND_MESSAGE_SELECTOR && destAdapter == address(this), InvalidProof());
+        require(eventSelector == SendMessage.selector && destAdapter == address(this), InvalidProof());
 
         PolymerSource memory source = sources[chainId];
         require(source.addr != address(0) && source.addr == emittingContract, InvalidSource());
