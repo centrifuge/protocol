@@ -12,7 +12,7 @@ verbosity = 3
 
 ffi = true
 fs_permissions = [
-  { access = "read-write", path = "./env/latest" },
+  { access = "read-write", path = "./broadcast" },
   { access = "read", path = "env" },
   { access = "read-write", path = "snapshots" },
   { access = "read-write", path = "spell-cache" },

@@ -186,7 +186,7 @@ def main():
             print_section("Running Protocol Deployment")
             already_deployed = False
             if "--resume" in args.forge_args and not args.dry_run:
-                already_deployed = verifier.config_has_latest_contracts()
+                already_deployed = verifier.config_has_latest_contracts("LaunchDeployer")
 
             # Why did we need to build before running forge script?
             # if "--resume" not in args.forge_args and not already_deployed:
@@ -248,7 +248,7 @@ def main():
         elif args.step == "deploy:adapters":
             print_section(f"Deploying adapters only for {args.network}")
             deploy_success = runner.run_deploy("DeployAdapters")
-            # After deploying with forge, also run our verifier to merge env/latest into env/<network>.json
+            # After deploying with forge, also run our verifier to merge deployment metadata into env/<network>.json
             if deploy_success and not args.dry_run:
                 print_section(f"Verifying deployment for {args.network}")
                 verify_success = verifier.verify_contracts("DeployAdapters")

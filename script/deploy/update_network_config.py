@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copy contract addresses from $CHAIN_ID/run-latest.json to the associated network json file
+# Copy contract addresses from broadcast deployment metadata to the associated network json file
 import pathlib
 import argparse
 from lib.load_config import EnvironmentLoader
@@ -11,8 +11,8 @@ root_dir = pathlib.Path(__file__).parent.parent.parent
 parser = argparse.ArgumentParser(description="Update network configuration.")
 parser.add_argument("network_name")
 parser.add_argument("--script", "-s", 
-                    help="Deployment script path (e.g., script/LaunchDeployer.s.sol) to extract real block numbers from broadcast artifacts",
-                    default=None)
+                    help="Deployment script name (e.g., LaunchDeployer) to locate deployment metadata in broadcast directory",
+                    required=True)
 args_cli = parser.parse_args()
 network_name = args_cli.network_name
 

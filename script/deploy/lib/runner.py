@@ -25,9 +25,12 @@ from typing import List
 from .formatter import *
 from .load_config import EnvironmentLoader
 from .ledger import LedgerManager
+from .verifier import ContractVerifier
 
 
 class DeploymentRunner:
+    METADATA_SCRIPTS = {"LaunchDeployer", "DeployAdapters"}
+
     def __init__(self, env_loader: EnvironmentLoader, args: argparse.Namespace):
         self.env_loader = env_loader
         self.args = args
@@ -87,6 +90,8 @@ class DeploymentRunner:
             if not self._run_command(base_cmd):
                 return False
             print_success("Forge contracts deployed successfully")
+
+            verify_success = True
             # 2. Verify (only for protocol and adapter scripts, and NOT in dry-run mode)
             if (not self.args.dry_run and 
                 not self.env_loader.network_name.startswith("anvil") and 
@@ -98,13 +103,29 @@ class DeploymentRunner:
                 # This doesn't really work:
                 # cmd.extend(["--skip", "FullActionBatcher", "--skip", "HubActionBatcher", "--skip", "ExtendedSpokeActionBatcher"])
                 print_step(f"Verifying contracts with forge")
-                if not self._run_command(cmd):
-                    return False
-                print_success("Forge contracts verified successfully")
+                verify_success = self._run_command(cmd)
+                if verify_success:
+                    print_success("Forge contracts verified successfully")
             elif self.args.dry_run:
                 print_info("⏭️  Dry-run mode: skipping verification (would broadcast transactions)")
+
+            if script_name in self.METADATA_SCRIPTS and not self._finalize_broadcast_metadata(script_name):
+                return False
+
+            if not verify_success:
+                return False
             
         return True
+
+    def _finalize_broadcast_metadata(self, script_name: str) -> bool:
+        """Collapse temporary deployment metadata into run-latest.json after Forge finishes."""
+        verifier = ContractVerifier(self.env_loader, self.args)
+        if verifier.finalize_broadcast_metadata(script_name):
+            print_success("Deployment metadata finalized in broadcast/run-latest.json")
+            return True
+
+        print_error("Failed to finalize deployment metadata in broadcast/run-latest.json")
+        return False
 
 
     def _setup_auth_args(self) -> List[str]:
