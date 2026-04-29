@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {ISupervisor, ISupervisorFactory, IManifest, SupervisorConfig} from "./interfaces/ISupervisor.sol";
 
 import {IERC7751} from "../../misc/interfaces/IERC7751.sol";
+import {IMulticall} from "../../misc/interfaces/IMulticall.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
@@ -80,6 +81,8 @@ contract Supervisor is ISupervisor, BatchedMulticall {
     function execute(bytes calldata data) external payable onlyOperator {
         (bytes4 selector,) = data.decodeCall();
         _checkHookAndTimelock(selector, data);
+        require(selector != IMulticall.multicall.selector, MulticallForbidden());
+        
         (bool success, bytes memory result) = address(hub).call{value: msgValue()}(data);
         if (!success) revert IERC7751.WrappedError(address(hub), selector, result, "");
     }
@@ -89,6 +92,7 @@ contract Supervisor is ISupervisor, BatchedMulticall {
         (bytes4 selector, bytes calldata payload) = data.decodeCall();
         require(timelocked[selector], TimelockNotSet());
         require(pending[data] == 0, OperationAlreadyPending());
+        require(selector != IMulticall.multicall.selector, MulticallForbidden());
 
         // Validate removeSentinel target is currently a sentinel
         if (selector == this.removeSentinel.selector) {

@@ -54,6 +54,7 @@ interface ISupervisor {
     error AlreadySentinel();
     error ZeroAddress();
     error CannotSelfCancel();
+    error MulticallForbidden();
 
     //----------------------------------------------------------------------------------------------
     // Execution

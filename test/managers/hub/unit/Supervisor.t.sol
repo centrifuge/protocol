@@ -673,6 +673,38 @@ contract SupervisorManifestDelayTest is SupervisorTestBase {
     }
 }
 
+// ─── Multicall forbidden ──────────────────────────────────────────────────
+
+contract SupervisorMulticallForbiddenTest is SupervisorTestBase {
+    Supervisor supervisor;
+
+    function setUp() public override {
+        super.setUp();
+        supervisor = _deploySupervisor(IManifest(address(0)));
+    }
+
+    function testExecuteRevertsForMulticallSelector() public {
+        bytes[] memory inner = new bytes[](1);
+        inner[0] = abi.encodeCall(MockHub.doSomething, (42));
+        bytes memory multicallData = abi.encodeWithSignature("multicall(bytes[])", inner);
+
+        vm.expectRevert(ISupervisor.MulticallForbidden.selector);
+        vm.prank(operator);
+        supervisor.execute(multicallData);
+    }
+
+    function testSubmitRevertsForMulticallSelector() public {
+        bytes[] memory inner = new bytes[](1);
+        inner[0] = abi.encodeCall(MockHub.doSomething, (42));
+        bytes memory multicallData = abi.encodeWithSignature("multicall(bytes[])", inner);
+
+        // TimelockNotSet fires first since multicall isn't in the timelock set
+        vm.expectRevert(ISupervisor.TimelockNotSet.selector);
+        vm.prank(operator);
+        supervisor.submit(multicallData);
+    }
+}
+
 // ─── Factory ────────────────────────────────────────────────────────────────
 
 contract SupervisorFactoryTest is Test {
