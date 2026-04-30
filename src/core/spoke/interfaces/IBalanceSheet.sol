@@ -37,7 +37,7 @@ enum WithdrawMode {
     TransferOnly,
     /// @dev Escrow accounting + transfer, skip Hub queue (ARM after noteWithdraw)
     EscrowAndTransfer,
-    /// @dev Full accounting (Default): escrow + Hub queue + transfer (OnOfframpManager)
+    /// @dev Full accounting (Default): escrow + Hub queue + transfer (OnOffRamp)
     Full
 }
 
@@ -321,7 +321,7 @@ interface IBalanceSheet is IBatchedMulticall {
     /// @dev Behavior depends on WithdrawMode:
     ///      - TransferOnly: Transfer only, no escrow accounting, no Hub queue (ARM cancel flows)
     ///      - EscrowAndTransfer: Escrow accounting + transfer, skip Hub queue (ARM after noteWithdraw)
-    ///      - Full: Full accounting - escrow + Hub queue + transfer (OnOfframpManager)
+    ///      - Full: Full accounting - escrow + Hub queue + transfer (OnOffRamp)
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param asset The asset address

@@ -104,6 +104,7 @@ struct ContractsConfig {
     // Spoke managers
     address onOfframpManagerFactory;
     address merkleProofManagerFactory;
+    address onOffRampFactory;
     // Valuations
     address identityValuation;
     address oracleValuation;
@@ -261,6 +262,7 @@ library Env {
         // Spoke managers
         config.onOfframpManagerFactory = _parseContractAddress(json, "onOfframpManagerFactory");
         config.merkleProofManagerFactory = _parseContractAddress(json, "merkleProofManagerFactory");
+        config.onOffRampFactory = _tryParseContractAddress(json, "onOffRampFactory");
 
         // Valuations
         config.identityValuation = _parseContractAddress(json, "identityValuation");
