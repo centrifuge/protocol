@@ -10,6 +10,8 @@ import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {IBatchedMulticall} from "../../../../src/core/utils/interfaces/IBatchedMulticall.sol";
 
+import {WeirollTarget, OnchainPMTestBase} from "../../../managers/spoke/OnchainPMTestBase.sol";
+
 import {FlashLoanHelper} from "../../../../src/managers/spoke/FlashLoanHelper.sol";
 import {IOnchainPM} from "../../../../src/managers/spoke/interfaces/IOnchainPM.sol";
 import {SlippageGuard} from "../../../../src/managers/spoke/guards/SlippageGuard.sol";
@@ -19,8 +21,6 @@ import {IAaveV3FlashLoanReceiver} from "../../../../src/managers/spoke/interface
 import {ISlippageGuard, AssetEntry} from "../../../../src/managers/spoke/guards/interfaces/ISlippageGuard.sol";
 
 import "forge-std/Test.sol";
-
-import {WeirollTarget, OnchainPMTestBase} from "../../../managers/spoke/OnchainPMTestBase.sol";
 
 // ─── Mock gateway simulating withBatch/lockCallback ──────────────────────────
 
