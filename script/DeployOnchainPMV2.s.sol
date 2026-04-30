@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {BaseDeployer} from "./BaseDeployer.s.sol";
 import {EnvConfig, Env, prettyEnvString} from "./utils/EnvConfig.s.sol";
 
+import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";
 import {ScriptHelpers} from "../src/managers/spoke/ScriptHelpers.sol";
 import {AccountingToken} from "../src/managers/spoke/AccountingToken.sol";
 import {FlashLoanHelper} from "../src/managers/spoke/FlashLoanHelper.sol";
@@ -18,6 +19,7 @@ contract DeployOnchainPMV2 is BaseDeployer {
     ScriptHelpers public scriptHelpers;
     FlashLoanHelper public flashLoanHelper;
     address public onchainPMFactory;
+    OnOffRampFactory public onOffRampFactory;
 
     function run() public {
         string memory network = prettyEnvString("NETWORK");
@@ -32,7 +34,6 @@ contract DeployOnchainPMV2 is BaseDeployer {
         _deploy(config.contracts.contractUpdater, config.contracts.balanceSheet, config.contracts.gateway);
 
         saveDeploymentOutput();
-        _updateEnvFile(network);
 
         vm.stopBroadcast();
     }
@@ -70,24 +71,19 @@ contract DeployOnchainPMV2 is BaseDeployer {
             )
         );
 
+        onOffRampFactory = OnOffRampFactory(
+            create3(
+                createSalt("onOffRampFactory", ONCHAIN_PM_V2_VERSION),
+                abi.encodePacked(
+                    type(OnOffRampFactory).creationCode, abi.encode(contractUpdater_, balanceSheet_, accountingToken)
+                )
+            )
+        );
+
         console.log("accountingToken:   %s", address(accountingToken));
-        console.log("scriptHelpers:  %s", address(scriptHelpers));
+        console.log("scriptHelpers:     %s", address(scriptHelpers));
         console.log("onchainPMFactory:  %s", onchainPMFactory);
         console.log("flashLoanHelper:   %s", address(flashLoanHelper));
-    }
-
-    function _updateEnvFile(string memory network) internal {
-        string memory path = string.concat("env/", network, ".json");
-
-        vm.writeJson(_contractEntry(address(accountingToken)), path, ".contracts.accountingToken");
-        vm.writeJson(_contractEntry(address(scriptHelpers)), path, ".contracts.scriptHelpers");
-        vm.writeJson(_contractEntry(address(flashLoanHelper)), path, ".contracts.flashLoanHelper");
-        vm.writeJson(_contractEntry(onchainPMFactory), path, ".contracts.onchainPMFactory");
-
-        console.log("Env file updated: %s", path);
-    }
-
-    function _contractEntry(address addr) internal pure returns (string memory) {
-        return string.concat('{"address":"', vm.toString(addr), '","version":"', ONCHAIN_PM_V2_VERSION, '"}');
+        console.log("onOffRampFactory:  %s", address(onOffRampFactory));
     }
 }
