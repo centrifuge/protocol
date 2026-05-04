@@ -116,7 +116,7 @@ abstract contract SupervisorTestBase is Test {
     bytes4 constant TIMELOCKED_SEL = MockHub.timelocked.selector;
     bytes4 constant HOOKED_SEL = MockHub.hookedFn.selector;
 
-    uint48 constant DELAY = 2 days;
+    uint48 constant TIMELOCK = 2 days;
     uint48 constant EXPIRY = 7 days;
 
     function _deploySupervisor(IManifest hook) internal returns (Supervisor) {
@@ -127,7 +127,7 @@ abstract contract SupervisorTestBase is Test {
         hookSels[0] = HOOKED_SEL;
 
         SupervisorConfig memory config =
-            SupervisorConfig(timelockSels, hookSels, DELAY, EXPIRY, hook);
+            SupervisorConfig(timelockSels, hookSels, TIMELOCK, EXPIRY, hook);
 
         return new Supervisor(IHub(address(hub)), POOL, operator, config);
     }
@@ -143,7 +143,7 @@ abstract contract SupervisorTestBase is Test {
         bytes memory data = abi.encodeCall(Supervisor.addSentinel, (s));
         vm.prank(operator);
         supervisor.submit(data);
-        vm.warp(block.timestamp + DELAY);
+        vm.warp(block.timestamp + TIMELOCK);
         vm.prank(operator);
         supervisor.addSentinel(s);
     }
@@ -226,7 +226,7 @@ contract SupervisorTimelockTest is SupervisorTestBase {
         supervisor.execute(data);
 
         // After delay
-        vm.warp(block.timestamp + DELAY);
+        vm.warp(block.timestamp + TIMELOCK);
         vm.prank(operator);
         supervisor.execute(data);
 
@@ -239,7 +239,7 @@ contract SupervisorTimelockTest is SupervisorTestBase {
         vm.prank(operator);
         supervisor.submit(data);
 
-        vm.warp(block.timestamp + DELAY + EXPIRY + 1);
+        vm.warp(block.timestamp + TIMELOCK + EXPIRY + 1);
 
         vm.expectRevert(ISupervisor.TimelockExpired.selector);
         vm.prank(operator);
@@ -263,7 +263,7 @@ contract SupervisorTimelockTest is SupervisorTestBase {
         vm.prank(operator);
         supervisor.submit(data);
 
-        vm.warp(block.timestamp + DELAY);
+        vm.warp(block.timestamp + TIMELOCK);
         vm.prank(operator);
         supervisor.execute(data);
 
@@ -353,7 +353,7 @@ contract SupervisorCancelTest is SupervisorTestBase {
         vm.prank(sentinel);
         supervisor.cancel(data);
 
-        vm.warp(block.timestamp + DELAY);
+        vm.warp(block.timestamp + TIMELOCK);
 
         vm.expectRevert(ISupervisor.OperationNotPending.selector);
         vm.prank(operator);
@@ -459,7 +459,7 @@ contract SupervisorSentinelTest is SupervisorTestBase {
         bytes memory data = abi.encodeCall(Supervisor.addSentinel, (address(0)));
         vm.prank(operator);
         supervisor.submit(data);
-        vm.warp(block.timestamp + DELAY);
+        vm.warp(block.timestamp + TIMELOCK);
 
         vm.expectRevert(ISupervisor.ZeroAddress.selector);
         vm.prank(operator);
@@ -472,7 +472,7 @@ contract SupervisorSentinelTest is SupervisorTestBase {
         bytes memory data = abi.encodeCall(Supervisor.addSentinel, (sentinel));
         vm.prank(operator);
         supervisor.submit(data);
-        vm.warp(block.timestamp + DELAY);
+        vm.warp(block.timestamp + TIMELOCK);
 
         vm.expectRevert(ISupervisor.AlreadySentinel.selector);
         vm.prank(operator);
@@ -493,7 +493,7 @@ contract SupervisorSentinelTest is SupervisorTestBase {
         bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
         vm.prank(operator);
         supervisor.submit(data);
-        vm.warp(block.timestamp + DELAY);
+        vm.warp(block.timestamp + TIMELOCK);
         vm.prank(operator);
         supervisor.removeSentinel(sentinel);
 
@@ -524,7 +524,7 @@ contract SupervisorSentinelTest is SupervisorTestBase {
         vm.prank(sentinel);
         supervisor.cancel(data);
 
-        vm.warp(block.timestamp + DELAY);
+        vm.warp(block.timestamp + TIMELOCK);
 
         vm.expectRevert(ISupervisor.OperationNotPending.selector);
         vm.prank(operator);
@@ -610,7 +610,7 @@ contract SupervisorManifestDelayTest is SupervisorTestBase {
         hookSels[0] = MockHub.hookedFn.selector;
 
         SupervisorConfig memory config =
-            SupervisorConfig(timelockSels, hookSels, DELAY, EXPIRY, IManifest(address(hook)));
+            SupervisorConfig(timelockSels, hookSels, TIMELOCK, EXPIRY, IManifest(address(hook)));
         supervisor = new Supervisor(IHub(address(hub)), POOL, operator, config);
     }
 
@@ -624,7 +624,7 @@ contract SupervisorManifestDelayTest is SupervisorTestBase {
         supervisor.submit(data);
 
         // Warp past base delay but not additional delay
-        vm.warp(block.timestamp + DELAY);
+        vm.warp(block.timestamp + TIMELOCK);
 
         vm.expectRevert();
         vm.prank(operator);
@@ -648,7 +648,7 @@ contract SupervisorManifestDelayTest is SupervisorTestBase {
         supervisor.submit(data);
 
         // Warp past base delay + additional delay + expiry window
-        vm.warp(block.timestamp + DELAY + extra + EXPIRY + 1);
+        vm.warp(block.timestamp + TIMELOCK + extra + EXPIRY + 1);
 
         vm.expectRevert(ISupervisor.TimelockExpired.selector);
         vm.prank(operator);
@@ -665,7 +665,7 @@ contract SupervisorManifestDelayTest is SupervisorTestBase {
         supervisor.submit(data);
 
         // Warp to end of expiry window (should still work)
-        vm.warp(block.timestamp + DELAY + extra + EXPIRY);
+        vm.warp(block.timestamp + TIMELOCK + extra + EXPIRY);
         vm.prank(operator);
         supervisor.execute(data);
 
@@ -729,7 +729,7 @@ contract SupervisorFactoryTest is Test {
 
         assertEq(address(supervisor.hub()), address(hub));
         assertEq(PoolId.unwrap(supervisor.poolId()), PoolId.unwrap(POOL));
-        assertEq(supervisor.delay(), 1 days);
+        assertEq(supervisor.timelock(), 1 days);
         assertEq(supervisor.expiryWindow(), 7 days);
         assertTrue(supervisor.timelocked(bytes4(0x12345678)));
     }

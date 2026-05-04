@@ -15,15 +15,15 @@ interface IManifest {
     /// @param poolId The pool being operated on.
     /// @param caller The address that initiated the call through the Supervisor.
     /// @param data The full calldata being forwarded to the Hub.
-    /// @return additionalDelay Extra seconds to add to the base timelock for this call.
+    /// @return escalation Extra seconds to add to the base timelock for this call.
     ///         Only applies to timelocked selectors. Ignored for non-timelocked calls.
-    function check(PoolId poolId, address caller, bytes calldata data) external returns (uint48 additionalDelay);
+    function check(PoolId poolId, address caller, bytes calldata data) external returns (uint48 escalation);
 }
 
 struct SupervisorConfig {
     bytes4[] timelockSelectors;
     bytes4[] hookSelectors;
-    uint48 delay;
+    uint48 timelock;
     uint48 expiryWindow;
     IManifest manifest;
 }
@@ -67,7 +67,7 @@ interface ISupervisor {
 
     /// @notice Submit a timelocked operation for future execution. Accepts Hub calldata (for
     ///         timelocked selectors), `addSentinel` calldata, and `removeSentinel` calldata.
-    ///         After the delay, call the corresponding function to execute.
+    ///         After the timelock, call the corresponding function to execute.
     ///         Expired operations must be canceled before the same calldata can be re-submitted.
     /// @param data The calldata for the timelocked operation.
     function submit(bytes calldata data) external;
@@ -98,7 +98,7 @@ interface ISupervisor {
     function hub() external view returns (IHub);
     function poolId() external view returns (PoolId);
     function operator() external view returns (address);
-    function delay() external view returns (uint48);
+    function timelock() external view returns (uint48);
     function expiryWindow() external view returns (uint48);
     function manifest() external view returns (IManifest);
     function timelocked(bytes4 selector) external view returns (bool);

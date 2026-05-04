@@ -17,7 +17,7 @@ import {BatchedMulticall} from "../../core/utils/BatchedMulticall.sol";
 ///         manifest hook for custom validation. Sentinels can veto pending timelocked operations.
 ///
 ///         The Supervisor is pool-scoped and immutable. Hub, poolId, operator, timelocks, hook
-///         config, delay, and manifest are all set at construction. To change any of these, deploy
+///         config, timelock, and manifest are all set at construction. To change any of these, deploy
 ///         a new Supervisor. The only mutable state is the sentinel set, and both adding and
 ///         removing sentinels are timelocked.
 ///
@@ -32,7 +32,7 @@ contract Supervisor is ISupervisor, BatchedMulticall {
     using BytesLib for bytes;
 
     IHub public immutable hub;
-    uint48 public immutable delay;
+    uint48 public immutable timelock;
     PoolId public immutable poolId;
     address public immutable operator;
     uint48 public immutable expiryWindow;
@@ -60,7 +60,7 @@ contract Supervisor is ISupervisor, BatchedMulticall {
     {
         hub = hub_;
         poolId = poolId_;
-        delay = config.delay;
+        timelock = config.timelock;
         operator = operator_;
         manifest = config.manifest;
         expiryWindow = config.expiryWindow;
@@ -104,12 +104,12 @@ contract Supervisor is ISupervisor, BatchedMulticall {
             require(sentinels[abi.decode(payload, (address))], NotSentinel());
         }
 
-        uint48 additionalDelay;
+        uint48 escalation;
         if (address(manifest) != address(0) && hooked[selector]) {
-            additionalDelay = manifest.check(poolId, msgSender(), data);
+            escalation = manifest.check(poolId, msgSender(), data);
         }
 
-        uint48 executeAfter = uint48(block.timestamp) + delay + additionalDelay;
+        uint48 executeAfter = uint48(block.timestamp) + timelock + escalation;
         pending[data] = executeAfter;
         emit Submit(keccak256(data), selector, executeAfter, data);
     }
