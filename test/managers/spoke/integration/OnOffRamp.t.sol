@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {D18, d18} from "../../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
+import {IERC6909ExclOperator} from "../../../../src/misc/interfaces/IERC6909.sol";
 
 import {AssetId, BaseTest, ShareClassId} from "../../../core/spoke/integration/BaseTest.sol";
 
@@ -11,10 +12,11 @@ import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
-import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
+import {OnOffRampFactory} from "../../../../src/managers/spoke/OnOffRamp.sol";
+import {IOnOffRamp} from "../../../../src/managers/spoke/interfaces/IOnOffRamp.sol";
+import {IAccountingToken} from "../../../../src/managers/spoke/interfaces/IAccountingToken.sol";
 
-abstract contract OnOfframpManagerBaseTest is BaseTest {
+abstract contract OnOffRampBaseTest is BaseTest {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
 
@@ -24,8 +26,10 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
     AssetId assetId;
     ShareClassId defaultTypedShareClassId;
 
-    OnOfframpManagerFactory factory;
-    IOnOfframpManager manager;
+    IAccountingToken mockAccountingToken = IAccountingToken(makeAddr("accountingToken"));
+
+    OnOffRampFactory factory;
+    IOnOffRamp manager;
 
     address relayer = makeAddr("relayer");
     address receiver = makeAddr("receiver");
@@ -62,7 +66,29 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
                 }).serialize()
         );
 
-        factory = new OnOfframpManagerFactory(address(contractUpdater), balanceSheet);
+        // Mock accountingToken calls used by OnOffRamp.deposit() and withdraw()
+        vm.mockCall(
+            address(mockAccountingToken),
+            abi.encodeWithSelector(IAccountingToken.toTokenId.selector),
+            abi.encode(uint256(1))
+        );
+        vm.mockCall(address(mockAccountingToken), abi.encodeWithSelector(IAccountingToken.mint.selector), abi.encode());
+        vm.mockCall(
+            address(mockAccountingToken),
+            abi.encodeWithSelector(IERC6909ExclOperator.approve.selector),
+            abi.encode(true)
+        );
+
+        // Mock the BalanceSheet deposit for the accounting token (so it doesn't try to register the asset)
+        vm.mockCall(
+            address(balanceSheet),
+            abi.encodeWithSelector(
+                balanceSheet.deposit.selector, POOL_A, defaultTypedShareClassId, address(mockAccountingToken)
+            ),
+            abi.encode()
+        );
+
+        factory = new OnOffRampFactory(address(contractUpdater), balanceSheet, mockAccountingToken);
         manager = factory.newManager(POOL_A, defaultTypedShareClassId);
     }
 
@@ -73,7 +99,7 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
     }
 }
 
-contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
+contract OnOffRampIntegrationTest is OnOffRampBaseTest {
     using CastLib for *;
 
     function testDepositAndWithdrawHappyPath() public {
@@ -82,9 +108,7 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
         // Enable onramp
         vm.prank(address(contractUpdater));
         manager.trustedCall(
-            POOL_A,
-            defaultTypedShareClassId,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Onramp), defaultAssetId, true)
+            POOL_A, defaultTypedShareClassId, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), defaultAssetId, true)
         );
 
         // Enable relayer
@@ -92,7 +116,7 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
         manager.trustedCall(
             POOL_A,
             defaultTypedShareClassId,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Relayer), relayer.toBytes32(), true)
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Relayer), relayer.toBytes32(), true)
         );
 
         // Enable offramp destination
@@ -100,7 +124,7 @@ contract OnOfframpManagerIntegrationTest is OnOfframpManagerBaseTest {
         manager.trustedCall(
             POOL_A,
             defaultTypedShareClassId,
-            abi.encode(uint8(IOnOfframpManager.TrustedCall.Offramp), defaultAssetId, receiver.toBytes32(), true)
+            abi.encode(uint8(IOnOffRamp.TrustedCall.Offramp), defaultAssetId, receiver.toBytes32(), true)
         );
 
         // Set manager permissions

@@ -14,4 +14,9 @@
 [submodule "lib/safe-utils"]
 	path = lib/safe-utils
 	url = https://github.com/Recon-Fuzz/safe-utils
-s
+[submodule "lib/halmos-cheatcodes"]
+	path = lib/halmos-cheatcodes
+	url = https://github.com/a16z/halmos-cheatcodes
+[submodule "lib/enso-weiroll"]
+	path = lib/enso-weiroll
+	url = https://github.com/ensobuild/enso-weiroll

@@ -38,11 +38,8 @@ import {RedemptionRestrictions} from "../hooks/RedemptionRestrictions.sol";
 
 import {NAVManager} from "../managers/hub/NAVManager.sol";
 import {QueueManager} from "../managers/spoke/QueueManager.sol";
-import {VaultDecoder} from "../managers/spoke/decoders/VaultDecoder.sol";
+import {OnOffRampFactory} from "../managers/spoke/OnOffRamp.sol";
 import {SimplePriceManager} from "../managers/hub/SimplePriceManager.sol";
-import {CircleDecoder} from "../managers/spoke/decoders/CircleDecoder.sol";
-import {OnOfframpManagerFactory} from "../managers/spoke/OnOfframpManager.sol";
-import {MerkleProofManagerFactory} from "../managers/spoke/MerkleProofManager.sol";
 
 import {OracleValuation} from "../valuations/OracleValuation.sol";
 import {IdentityValuation} from "../valuations/IdentityValuation.sol";
@@ -99,10 +96,7 @@ struct NonCoreReport {
     FreelyTransferable freelyTransferableHook;
     RedemptionRestrictions redemptionRestrictionsHook;
     QueueManager queueManager;
-    OnOfframpManagerFactory onOfframpManagerFactory;
-    MerkleProofManagerFactory merkleProofManagerFactory;
-    VaultDecoder vaultDecoder;
-    CircleDecoder circleDecoder;
+    OnOffRampFactory onOffRampFactory;
     BatchRequestManager batchRequestManager;
     IdentityValuation identityValuation;
     OracleValuation oracleValuation;
