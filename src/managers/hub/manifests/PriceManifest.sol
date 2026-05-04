@@ -18,13 +18,14 @@ import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 ///            revoking access passes through instantly.
 ///         2. Blocks removing the Supervisor itself as a Hub manager.
 ///         3. Rate-limits share price updates. If the price change per second exceeds a
-///            threshold, an additional timelock delay is returned.
+///            threshold, a fixed additional delay is returned.
 contract PriceManifest is IPriceManifest {
     using BytesLib for bytes;
-    uint48 public immutable grantManagerDelay;
-    uint48 public immutable additionalDelay;
-    uint128 public immutable thresholdPerSecond;
+    
     address public immutable supervisor;
+    uint48 public immutable additionalDelay;
+    uint48 public immutable grantManagerDelay;
+    uint128 public immutable thresholdPerSecond;
     IShareClassManager public immutable shareClassManager;
 
     mapping(PoolId => mapping(ShareClassId => uint48)) public lastPriceUpdate;
@@ -73,8 +74,7 @@ contract PriceManifest is IPriceManifest {
         return canManage ? grantManagerDelay : 0;
     }
 
-    /// @dev Returns additional delay when price change per second exceeds the configured threshold.
-    ///      Uses block.timestamp for elapsed calculation to prevent gaming via computedAt.
+    /// @dev Returns additionalDelay if the price change per second exceeds the threshold.
     function _checkSharePrice(PoolId poolId, bytes calldata payload) internal returns (uint48) {
         (, ShareClassId scId, D18 newPrice,) = abi.decode(payload, (PoolId, ShareClassId, D18, uint64));
 

@@ -80,9 +80,14 @@ contract Supervisor is ISupervisor, BatchedMulticall {
     /// @inheritdoc ISupervisor
     function execute(bytes calldata data) external payable onlyOperator {
         (bytes4 selector,) = data.decodeCall();
-        _checkHookAndTimelock(selector, data);
         require(selector != IMulticall.multicall.selector, MulticallForbidden());
-        
+
+        if (timelocked[selector]) {
+            _consumeTimelock(data);
+        } else if (address(manifest) != address(0) && hooked[selector]) {
+            manifest.check(poolId, msgSender(), data);
+        }
+
         (bool success, bytes memory result) = address(hub).call{value: msgValue()}(data);
         if (!success) revert IERC7751.WrappedError(address(hub), selector, result, "");
     }
@@ -90,16 +95,21 @@ contract Supervisor is ISupervisor, BatchedMulticall {
     /// @inheritdoc ISupervisor
     function submit(bytes calldata data) external onlyOperator {
         (bytes4 selector, bytes calldata payload) = data.decodeCall();
+        require(selector != IMulticall.multicall.selector, MulticallForbidden());
         require(timelocked[selector], TimelockNotSet());
         require(pending[data] == 0, OperationAlreadyPending());
-        require(selector != IMulticall.multicall.selector, MulticallForbidden());
 
         // Validate removeSentinel target is currently a sentinel
         if (selector == this.removeSentinel.selector) {
             require(sentinels[abi.decode(payload, (address))], NotSentinel());
         }
 
-        uint48 executeAfter = uint48(block.timestamp) + delay;
+        uint48 additionalDelay;
+        if (address(manifest) != address(0) && hooked[selector]) {
+            additionalDelay = manifest.check(poolId, msgSender(), data);
+        }
+
+        uint48 executeAfter = uint48(block.timestamp) + delay + additionalDelay;
         pending[data] = executeAfter;
         emit Submit(keccak256(data), selector, executeAfter, data);
     }
@@ -130,7 +140,7 @@ contract Supervisor is ISupervisor, BatchedMulticall {
     function addSentinel(address sentinel) external onlyOperator {
         require(sentinel != address(0), ZeroAddress());
         require(!sentinels[sentinel], AlreadySentinel());
-        _checkHookAndTimelock(msg.sig, msg.data);
+        _consumeTimelock(msg.data);
 
         sentinelCount++;
         sentinels[sentinel] = true;
@@ -140,7 +150,7 @@ contract Supervisor is ISupervisor, BatchedMulticall {
     /// @inheritdoc ISupervisor
     function removeSentinel(address sentinel) external onlyOperator {
         require(sentinels[sentinel], NotSentinel());
-        _checkHookAndTimelock(msg.sig, msg.data);
+        _consumeTimelock(msg.data);
 
         sentinelCount--;
         sentinels[sentinel] = false;
@@ -151,21 +161,14 @@ contract Supervisor is ISupervisor, BatchedMulticall {
     // Internal
     //----------------------------------------------------------------------------------------------
 
-    function _checkHookAndTimelock(bytes4 selector, bytes calldata data) internal {
-        uint48 additionalDelay;
-        if (address(manifest) != address(0) && hooked[selector]) {
-            additionalDelay = manifest.check(poolId, msgSender(), data);
-        }
+    function _consumeTimelock(bytes calldata data) internal {
+        uint48 executeAfter = pending[data];
+        require(executeAfter != 0, OperationNotPending());
+        require(block.timestamp >= executeAfter, TimelockNotReady(executeAfter));
+        require(block.timestamp <= executeAfter + expiryWindow, TimelockExpired());
 
-        if (timelocked[selector]) {
-            uint48 executeAfter = pending[data] + additionalDelay;
-            require(pending[data] != 0, OperationNotPending());
-            require(block.timestamp >= executeAfter, TimelockNotReady(executeAfter));
-            require(block.timestamp <= executeAfter + expiryWindow, TimelockExpired());
-
-            delete pending[data];
-            emit Execute(keccak256(data));
-        }
+        delete pending[data];
+        emit Execute(keccak256(data));
     }
 }
 

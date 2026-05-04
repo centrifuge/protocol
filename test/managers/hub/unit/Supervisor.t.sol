@@ -698,8 +698,7 @@ contract SupervisorMulticallForbiddenTest is SupervisorTestBase {
         inner[0] = abi.encodeCall(MockHub.doSomething, (42));
         bytes memory multicallData = abi.encodeWithSignature("multicall(bytes[])", inner);
 
-        // TimelockNotSet fires first since multicall isn't in the timelock set
-        vm.expectRevert(ISupervisor.TimelockNotSet.selector);
+        vm.expectRevert(ISupervisor.MulticallForbidden.selector);
         vm.prank(operator);
         supervisor.submit(multicallData);
     }
