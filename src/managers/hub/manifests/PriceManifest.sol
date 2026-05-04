@@ -18,12 +18,12 @@ import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 ///            revoking access passes through instantly.
 ///         2. Blocks removing the Supervisor itself as a Hub manager.
 ///         3. Rate-limits share price updates. If the price change per second exceeds a
-///            threshold, a fixed additional delay is returned.
+///            threshold, a fixed escalation delay is returned.
 contract PriceManifest is IPriceManifest {
     using BytesLib for bytes;
     
     address public immutable supervisor;
-    uint48 public immutable additionalDelay;
+    uint48 public immutable escalation;
     uint48 public immutable grantManagerDelay;
     uint128 public immutable thresholdPerSecond;
     IShareClassManager public immutable shareClassManager;
@@ -31,16 +31,16 @@ contract PriceManifest is IPriceManifest {
     mapping(PoolId => mapping(ShareClassId => uint48)) public lastPriceUpdate;
 
     constructor(
-        uint48 grantManagerDelay_,
-        uint48 additionalDelay_,
-        uint128 thresholdPerSecond_,
         address supervisor_,
+        uint48 escalation_,
+        uint48 grantManagerDelay_,
+        uint128 thresholdPerSecond_,
         IShareClassManager shareClassManager_
     ) {
-        grantManagerDelay = grantManagerDelay_;
-        additionalDelay = additionalDelay_;
-        thresholdPerSecond = thresholdPerSecond_;
         supervisor = supervisor_;
+        escalation = escalation_;
+        grantManagerDelay = grantManagerDelay_;
+        thresholdPerSecond = thresholdPerSecond_;
         shareClassManager = shareClassManager_;
     }
 
@@ -74,7 +74,13 @@ contract PriceManifest is IPriceManifest {
         return canManage ? grantManagerDelay : 0;
     }
 
-    /// @dev Returns additionalDelay if the price change per second exceeds the threshold.
+    /// @dev Returns escalation delay if the price change per second exceeds the threshold.
+    ///
+    ///      Interleaving attack: An operator can submit N compliant intermediate price updates
+    ///      (each just below the threshold) to achieve a cumulative move of up to N * threshold * elapsed.
+    ///      Each intermediate update resets `lastPriceUpdate`, so the next step is measured from a fresh
+    ///      baseline. The maximum undetected move per step is `thresholdPerSecond * elapsed - 1`, bounded
+    ///      by the timelock delay between submissions. Sentinels can veto any suspicious sequence.
     function _checkSharePrice(PoolId poolId, bytes calldata payload) internal returns (uint48) {
         (, ShareClassId scId, D18 newPrice,) = abi.decode(payload, (PoolId, ShareClassId, D18, uint64));
 
@@ -93,8 +99,8 @@ contract PriceManifest is IPriceManifest {
         uint128 lastRaw = D18.unwrap(lastPrice);
         uint256 delta = newRaw > lastRaw ? newRaw - lastRaw : lastRaw - newRaw;
 
-        if (delta / elapsed > thresholdPerSecond) {
-            return additionalDelay;
+        if (delta / elapsed >= thresholdPerSecond) {
+            return escalation;
         }
         return 0;
     }

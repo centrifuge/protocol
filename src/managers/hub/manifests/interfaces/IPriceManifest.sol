@@ -12,7 +12,7 @@ interface IPriceManifest is IManifest {
 
     function supervisor() external view returns (address);
     function grantManagerDelay() external view returns (uint48);
-    function additionalDelay() external view returns (uint48);
+    function escalation() external view returns (uint48);
     function thresholdPerSecond() external view returns (uint128);
     function shareClassManager() external view returns (IShareClassManager);
     function lastPriceUpdate(PoolId poolId, ShareClassId scId) external view returns (uint48);
