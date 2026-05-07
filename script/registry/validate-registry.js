@@ -7,7 +7,10 @@
  * (errors + warnings + summary) written to a sidecar file for the PR comment step.
  *
  * Hard requirements (errors — break the indexer):
- *   - version: must be a non-empty string
+ *   - version: must be a non-empty string **OR** null when this is a patch layer (i.e.
+ *     `previousRegistry.ipfsHash` is set). Null patches are merged into their predecessor by
+ *     `api-v3/scripts/fetch-registry.mjs::mergeNullVersionPatchesIntoPredecessors`, so the
+ *     oldest registry in the chain (no `previousRegistry`) must still have a string version.
  *   - previousRegistry.ipfsHash: must be non-null when a live registry exists for that network
  *   - chains.<chainId>.deployment.startBlock: must be a number (large gap vs env contract
  *     `blockNumber` is rejected by validate-env-schema.js before abi-registry runs)
@@ -89,11 +92,38 @@ async function validate(registryPath) {
         return { errors, warnings, summary: {} };
     }
 
+    // --- mode classification --- (for the sidecar / PR comment; also informs the version rule)
+    const hasPreviousRegistryHash =
+        registry.previousRegistry &&
+        typeof registry.previousRegistry === "object" &&
+        typeof registry.previousRegistry.ipfsHash === "string" &&
+        registry.previousRegistry.ipfsHash.length > 0;
+    const versionIsString =
+        typeof registry.version === "string" && registry.version.length > 0;
+    let mode;
+    if (registry.previousRegistry == null) {
+        mode = "full";
+    } else if (registry.version === null && hasPreviousRegistryHash) {
+        mode = "patch";
+    } else {
+        mode = "delta";
+    }
+
     // --- version ---
-    if (!registry.version || typeof registry.version !== "string") {
+    if (mode === "patch") {
+        if (registry.version !== null) {
+            errors.push({
+                path: "version",
+                message: `Patch registries must have version: null, got ${JSON.stringify(registry.version)}`,
+            });
+        }
+    } else if (!versionIsString) {
         errors.push({
             path: "version",
-            message: `Must be a non-empty string, got ${JSON.stringify(registry.version)}`,
+            message:
+                mode === "full"
+                    ? `Full snapshot must have a non-empty string version, got ${JSON.stringify(registry.version)}`
+                    : `Delta registries must have a non-empty string version, got ${JSON.stringify(registry.version)} (use a null version only when this is a patch layer with previousRegistry.ipfsHash set)`,
         });
     }
 
@@ -188,6 +218,7 @@ async function validate(registryPath) {
     }
 
     const summary = {
+        mode, // "full" | "delta" | "patch"
         chains: chainIds.length,
         contracts: totalContracts,
         abis: abiNames.size,
@@ -219,6 +250,9 @@ async function main() {
 
     // Print summary
     console.log(`\n=== Validation Summary ===`);
+    if (report.summary.mode) {
+        console.log(`  Mode: ${report.summary.mode}`);
+    }
     console.log(`  Chains: ${report.summary.chains}`);
     console.log(`  Contracts: ${report.summary.contracts}`);
     console.log(`  ABIs: ${report.summary.abis}`);

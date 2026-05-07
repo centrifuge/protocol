@@ -14,20 +14,41 @@
  * 5. Extracts ABIs from per-tag Forge caches (git tag per env contract `version`)
  * 6. Combines into a delta registry with previousRegistry pointer
  *
+ * Output shape ("modes"):
+ *   - delta:  normal append onto the live tip; `registry.version` is the new resolved version;
+ *             `previousRegistry` points at the live. Used when the new version is strictly newer
+ *             than the live (the common case).
+ *   - patch:  same `previousRegistry` (live), but `registry.version` is **null**. The indexer
+ *             (`api-v3/scripts/fetch-registry.mjs::mergeNullVersionPatchesIntoPredecessors`)
+ *             merges a null-version layer into its chronological predecessor — so a patch
+ *             effectively "replaces the last registry" without orphaning anything.
+ *             Used when the local-resolved version equals the live tip's version (e.g. a
+ *             follow-up PR adding more contracts to the same protocol version, or fixing up
+ *             a contract missed in the previous publish).
+ *   - full:   no `previousRegistry`; the registry is a base snapshot of all contracts.
+ *
+ * Auto-mode picks `patch` when local version matches the live version, otherwise `delta`.
+ *
  * Usage:
- *   # Delta mode (default):
+ *   # Auto-mode (default — picks delta or patch based on version match):
  *   DEPLOYMENT_COMMIT=<commit> ETHERSCAN_API_KEY=<key> node script/registry/abi-registry.js [mainnet|testnet]
  *
- *   # Full snapshot mode (rebuild from scratch):
+ *   # Force a normal delta append even when versions match:
+ *   REGISTRY_MODE=delta DEPLOYMENT_COMMIT=<commit> ETHERSCAN_API_KEY=<key> node script/registry/abi-registry.js [mainnet|testnet]
+ *
+ *   # Force a null-version patch (only meaningful when there is a live to patch onto):
+ *   REGISTRY_MODE=patch DEPLOYMENT_COMMIT=<commit> ETHERSCAN_API_KEY=<key> node script/registry/abi-registry.js [mainnet|testnet]
+ *
+ *   # Full snapshot mode (rebuild from scratch, no previousRegistry):
  *   DEPLOYMENT_COMMIT=<commit> ETHERSCAN_API_KEY=<key> node script/registry/abi-registry.js [mainnet|testnet] --full
  *
- *   # Delta mode with IPFS hash (regenerate against specific previous registry):
+ *   # Delta with explicit previous IPFS hash (rare; e.g. regenerate against a pinned older version):
  *   DEPLOYMENT_COMMIT=<commit> ETHERSCAN_API_KEY=<key> SOURCE_IPFS=Qm... node script/registry/abi-registry.js [mainnet|testnet]
  *
  * Environment Variables:
  *   - DEPLOYMENT_COMMIT: Git commit hash used to build the ABIs (required in CI)
  *   - ETHERSCAN_API_KEY: API key for Etherscan v2 API (required for block number fetching)
- *   - REGISTRY_MODE: Set to "full" to generate a full snapshot (alternative to --full flag)
+ *   - REGISTRY_MODE: One of "auto" (default), "delta", "patch", "full". Overrides --full when set.
  *   - SOURCE_IPFS: IPFS hash (CID) of previous registry to compare against (Qm... or bafy...)
  *
  * CLI Arguments:
@@ -84,9 +105,27 @@ for (const arg of args) {
     }
 }
 
-// Check for REGISTRY_MODE env var (overrides --full flag)
-if (process.env.REGISTRY_MODE === "full") {
+// Mode selection — the union of --full (CLI) and REGISTRY_MODE (env). Env takes precedence
+// when set to a recognised value. Valid values:
+//   - "auto"  : default; pick patch when local version equals live, otherwise delta.
+//   - "delta" : force delta append (skip patch promotion even when versions match).
+//   - "patch" : force a null-version patch (errors out if no live to patch onto).
+//   - "full"  : force full snapshot (no previousRegistry; same as --full).
+const VALID_MODES = new Set(["auto", "delta", "patch", "full"]);
+let registryMode = "auto";
+if (process.env.REGISTRY_MODE != null && process.env.REGISTRY_MODE !== "") {
+    const requested = String(process.env.REGISTRY_MODE).toLowerCase();
+    if (!VALID_MODES.has(requested)) {
+        console.error(
+            `Invalid REGISTRY_MODE "${process.env.REGISTRY_MODE}". Expected one of: ${[...VALID_MODES].join(", ")}.`
+        );
+        process.exit(1);
+    }
+    registryMode = requested;
+}
+if (registryMode === "full" || fullMode) {
     fullMode = true;
+    registryMode = "full";
 }
 
 // Get SOURCE_IPFS from environment
@@ -760,6 +799,15 @@ async function main() {
         previousVersion = null;
     }
 
+    // Forced-patch mode requires a live to patch onto.
+    if (registryMode === "patch" && !currentRegistry) {
+        console.error(
+            `REGISTRY_MODE=patch but no live registry was found for ${selector}. ` +
+            `A patch must point at an existing previousRegistry.`
+        );
+        process.exit(1);
+    }
+
     // Process all chain configurations from env/*.json files
     const networkFiles = readdirSync(join(process.cwd(), "env")).filter((file) =>
         file.endsWith(".json")
@@ -935,16 +983,60 @@ async function main() {
         console.log(`  Normalized registry version: ${resolvedVersionRaw} → ${resolvedVersion}`);
     }
 
-    // Initialize registry structure (top-level version is optional — omit when unknown)
+    // Resolve the effective output mode now that we know both the live tip's version and the
+    // version computed from the local env. Auto-mode picks `patch` when versions match (so the
+    // indexer's null-version merge layer "replaces the last registry" without orphaning it),
+    // otherwise `delta`. Forced modes (delta/patch/full) are honoured if reachable.
+    const liveVersion = currentRegistry?.version ?? null;
+    let effectiveMode = registryMode;
+    if (effectiveMode === "auto") {
+        if (
+            currentRegistry &&
+            typeof resolvedVersion === "string" &&
+            typeof liveVersion === "string" &&
+            compareProtocolVersionStrings(resolvedVersion, liveVersion) === 0
+        ) {
+            effectiveMode = "patch";
+        } else {
+            effectiveMode = "delta";
+        }
+    }
+    if (effectiveMode === "patch" && !currentRegistry) {
+        // Should be unreachable after the earlier guard, but keep an explicit check.
+        console.error("Patch mode selected but no live registry to patch onto — aborting.");
+        process.exit(1);
+    }
+
+    if (effectiveMode === "patch") {
+        if (typeof liveVersion === "string" && typeof resolvedVersion === "string") {
+            console.log(
+                `\nMode: patch — local ${resolvedVersion} matches live ${liveVersion}; ` +
+                `emitting a null-version patch (indexer will merge it into the live).`
+            );
+        } else {
+            console.log("\nMode: patch — emitting a null-version patch.");
+        }
+    } else if (effectiveMode === "delta") {
+        console.log(
+            `\nMode: delta — local ${resolvedVersion || "unknown"} append onto live ` +
+            `${liveVersion || "(none)"}.`
+        );
+    } else if (effectiveMode === "full") {
+        console.log("\nMode: full — base snapshot, no previousRegistry.");
+    }
+
+    // Initialize registry structure. In patch mode the top-level version is intentionally null:
+    // api-v3 fetch-registry treats a null-version layer as a patch on the chronologically previous
+    // entry. In delta/full mode we emit the resolved version.
+    const emitVersion = effectiveMode === "patch" ? null : resolvedVersion || null;
     const registry = {
         network: selector,
-        ...(resolvedVersion ? { version: resolvedVersion } : {}),
+        version: emitVersion,
         deploymentInfo: {
             gitCommit: resolveDeploymentCommit(deploymentCommitOverride, deploymentCommits),
         },
-        // previousRegistry pointer - ipfsHash resolved from SOURCE_IPFS env var,
-        // or via DNS dnslink lookup on the live registry hostname.
-        // In full mode, set to null to mark this as the base registry.
+        // previousRegistry pointer — ipfsHash resolved from SOURCE_IPFS env var, or via DNS
+        // dnslink lookup on the live registry hostname. Null in full mode.
         previousRegistry: previousVersion ? {
             version: previousVersion,
             ipfsHash: previousIpfsHash || null,
@@ -957,17 +1049,29 @@ async function main() {
     stripContractVersionsForRegistryOutput(chains);
 
     // Log summary
-    if (fullMode) {
+    if (effectiveMode === "full") {
         console.log(`\n=== Full Registry Summary ===`);
+        console.log(`  Mode: full (base snapshot)`);
         console.log(`  Version: ${resolvedVersion || "unknown"}`);
         console.log(`  Previous version: none (base registry)`);
         console.log(`  Total contracts: ${totalContracts}`);
         console.log(`  Chains included: ${Object.keys(chains).length}`);
         console.log(`  ABIs included: ${Object.keys(registry.abis).length}`);
     } else {
-        console.log(`\n=== Delta Registry Summary ===`);
-        console.log(`  Version: ${resolvedVersion || "unknown"}`);
-        console.log(`  Previous version: ${previousVersion || "none (first registry)"}`);
+        const headerMode =
+            effectiveMode === "patch" ? "Patch (null-version)" : "Delta";
+        console.log(`\n=== ${headerMode} Registry Summary ===`);
+        console.log(`  Mode: ${effectiveMode}`);
+        if (effectiveMode === "patch") {
+            console.log(
+                `  Patching live: ${liveVersion || "unknown"} ` +
+                `(local resolved as ${resolvedVersion || "unknown"})`
+            );
+            console.log(`  Output version: null (indexer merges patch into predecessor)`);
+        } else {
+            console.log(`  Version: ${resolvedVersion || "unknown"}`);
+            console.log(`  Previous version: ${previousVersion || "none (first registry)"}`);
+        }
         console.log(`  Changed contracts: ${totalChangedContracts}/${totalContracts}` +
             (totalDeprecatedContracts > 0 ? ` (${totalDeprecatedContracts} deprecated)` : ""));
         console.log(`  Chains with changes: ${Object.keys(chains).length}`);
@@ -988,11 +1092,13 @@ async function main() {
     }
 
     writeFileSync(outputPath, registryContent, "utf8");
-    if (fullMode) {
-        console.log(`\nFull registry written to ${outputPath}`);
-    } else {
-        console.log(`\nDelta registry written to ${outputPath}`);
-    }
+    const writtenLabel =
+        effectiveMode === "full"
+            ? "Full"
+            : effectiveMode === "patch"
+                ? "Patch (null-version)"
+                : "Delta";
+    console.log(`\n${writtenLabel} registry written to ${outputPath}`);
 }
 
 /**
