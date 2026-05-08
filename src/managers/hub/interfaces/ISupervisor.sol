@@ -5,25 +5,23 @@ import {PoolId} from "../../../core/types/PoolId.sol";
 import {IHub} from "../../../core/hub/interfaces/IHub.sol";
 
 interface IManifest {
-    /// @notice Validate whether a Hub call should proceed, and optionally extend the timelock.
-    ///         Revert to block the call.
+    /// @notice Validate whether a Hub call should proceed, and return the timelock duration.
+    ///         Revert to block the call. Return 0 for immediate execution.
     /// @dev    Not marked `view` because implementations may need state reads or side effects.
     ///         The manifest is immutable per Supervisor, so the operator cannot swap it to bypass checks.
-    ///         The additional delay is added to the base timelock at execution time. Implementations
-    ///         must return consistent values for the same calldata, otherwise an operation submitted
-    ///         with one delay could become unexecutable if the manifest later returns a different value.
+    ///         Implementations must return consistent values for the same calldata, otherwise an
+    ///         operation submitted with one timelock could become unexecutable if the manifest later
+    ///         returns a different value.
     /// @param poolId The pool being operated on.
     /// @param caller The address that initiated the call through the Supervisor.
     /// @param data The full calldata being forwarded to the Hub.
-    /// @return escalation Extra seconds to add to the base timelock for this call.
-    ///         Only applies to timelocked selectors. Ignored for non-timelocked calls.
-    function check(PoolId poolId, address caller, bytes calldata data) external returns (uint48 escalation);
+    /// @return timelock Seconds the operation must wait before execution. 0 = immediate.
+    function check(PoolId poolId, address caller, bytes calldata data) external returns (uint48 timelock);
 }
 
 struct SupervisorConfig {
-    bytes4[] timelockSelectors;
     bytes4[] hookSelectors;
-    uint48 timelock;
+    uint48 sentinelTimelock;
     uint48 expiryWindow;
     IManifest manifest;
 }
@@ -45,7 +43,6 @@ interface ISupervisor {
 
     error NotOperatorOrSentinel();
     error NotOperator();
-    error TimelockNotSet();
     error TimelockNotReady(uint48 executeAfter);
     error TimelockExpired();
     error OperationAlreadyPending();
@@ -55,19 +52,21 @@ interface ISupervisor {
     error ZeroAddress();
     error CannotSelfCancel();
     error MulticallForbidden();
+    error NotHooked();
+    error ManifestRequired();
 
     //----------------------------------------------------------------------------------------------
     // Execution
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Execute a Hub call. If the function has a timelock, it must have been submitted first.
-    ///         If no timelock is set, the call is forwarded immediately.
+    /// @notice Execute a Hub call. For hooked selectors, the manifest determines the timelock:
+    ///         if 0, executes immediately; if > 0, must have been submitted first.
+    ///         Non-hooked selectors are forwarded directly.
     /// @param data The calldata to forward to the Hub.
     function execute(bytes calldata data) external payable;
 
-    /// @notice Submit a timelocked operation for future execution. Accepts Hub calldata (for
-    ///         timelocked selectors), `addSentinel` calldata, and `removeSentinel` calldata.
-    ///         After the timelock, call the corresponding function to execute.
+    /// @notice Submit an operation for future execution. The manifest determines the timelock
+    ///         duration for Hub calls. Sentinel management uses a fixed sentinelTimelock.
     ///         Expired operations must be canceled before the same calldata can be re-submitted.
     /// @param data The calldata for the timelocked operation.
     function submit(bytes calldata data) external;
@@ -81,12 +80,12 @@ interface ISupervisor {
     // Sentinel management
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Add a sentinel. Always timelocked.
+    /// @notice Add a sentinel. Always timelocked with sentinelTimelock.
     ///         Flow: `submit(abi.encodeCall(addSentinel, (sentinel)))` → wait → `addSentinel(sentinel)`.
     /// @param sentinel The address to add as sentinel.
     function addSentinel(address sentinel) external;
 
-    /// @notice Remove a sentinel. Always timelocked.
+    /// @notice Remove a sentinel. Always timelocked with sentinelTimelock.
     ///         Flow: `submit(abi.encodeCall(removeSentinel, (sentinel)))` → wait → `removeSentinel(sentinel)`.
     /// @param sentinel The address to remove as sentinel.
     function removeSentinel(address sentinel) external;
@@ -98,10 +97,9 @@ interface ISupervisor {
     function hub() external view returns (IHub);
     function poolId() external view returns (PoolId);
     function operator() external view returns (address);
-    function timelock() external view returns (uint48);
+    function sentinelTimelock() external view returns (uint48);
     function expiryWindow() external view returns (uint48);
     function manifest() external view returns (IManifest);
-    function timelocked(bytes4 selector) external view returns (bool);
     function hooked(bytes4 selector) external view returns (bool);
     function sentinels(address who) external view returns (bool);
     function sentinelCount() external view returns (uint256);

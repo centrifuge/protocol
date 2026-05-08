@@ -55,10 +55,6 @@ contract MockHub {
         lastValue = val;
     }
 
-    function timelocked(uint256 val) external payable {
-        lastValue = val;
-    }
-
     function hookedFn(uint256 val) external payable {
         lastValue = val;
     }
@@ -82,21 +78,21 @@ contract MockHubRegistry {
 
 contract MockManifest is IManifest {
     bool public shouldRevert;
-    uint48 public extraDelay;
+    uint48 public returnedTimelock;
 
     function setShouldRevert(bool v) external {
         shouldRevert = v;
     }
 
-    function setExtraDelay(uint48 d) external {
-        extraDelay = d;
+    function setReturnedTimelock(uint48 d) external {
+        returnedTimelock = d;
     }
 
     error Blocked();
 
     function check(PoolId, address, bytes calldata) external returns (uint48) {
         if (shouldRevert) revert Blocked();
-        return extraDelay;
+        return returnedTimelock;
     }
 }
 
@@ -113,21 +109,17 @@ abstract contract SupervisorTestBase is Test {
     address sentinel = makeAddr("sentinel");
     address unauthorized = makeAddr("unauthorized");
 
-    bytes4 constant TIMELOCKED_SEL = MockHub.timelocked.selector;
     bytes4 constant HOOKED_SEL = MockHub.hookedFn.selector;
 
-    uint48 constant TIMELOCK = 2 days;
+    uint48 constant SENTINEL_TIMELOCK = 2 days;
     uint48 constant EXPIRY = 7 days;
 
-    function _deploySupervisor(IManifest hook) internal returns (Supervisor) {
-        bytes4[] memory timelockSels = new bytes4[](1);
-        timelockSels[0] = TIMELOCKED_SEL;
-
+    function _deploySupervisor(IManifest manifest) internal returns (Supervisor) {
         bytes4[] memory hookSels = new bytes4[](1);
         hookSels[0] = HOOKED_SEL;
 
         SupervisorConfig memory config =
-            SupervisorConfig(timelockSels, hookSels, TIMELOCK, EXPIRY, hook);
+            SupervisorConfig(hookSels, SENTINEL_TIMELOCK, EXPIRY, manifest);
 
         return new Supervisor(IHub(address(hub)), POOL, operator, config);
     }
@@ -143,13 +135,13 @@ abstract contract SupervisorTestBase is Test {
         bytes memory data = abi.encodeCall(Supervisor.addSentinel, (s));
         vm.prank(operator);
         supervisor.submit(data);
-        vm.warp(block.timestamp + TIMELOCK);
+        vm.warp(block.timestamp + SENTINEL_TIMELOCK);
         vm.prank(operator);
         supervisor.addSentinel(s);
     }
 }
 
-// ─── Execute (non-timelocked) ───────────────────────────────────────────────
+// ─── Execute (non-hooked) ─────────────────────────────────────────────────
 
 contract SupervisorExecuteTest is SupervisorTestBase {
     Supervisor supervisor;
@@ -196,196 +188,6 @@ contract SupervisorExecuteTest is SupervisorTestBase {
     }
 }
 
-// ─── Timelock ───────────────────────────────────────────────────────────────
-
-contract SupervisorTimelockTest is SupervisorTestBase {
-    Supervisor supervisor;
-
-    function setUp() public override {
-        super.setUp();
-        supervisor = _deploySupervisor(IManifest(address(0)));
-    }
-
-    function testTimelockRequiresSubmitFirst() public {
-        bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
-
-        vm.expectRevert(ISupervisor.OperationNotPending.selector);
-        vm.prank(operator);
-        supervisor.execute(data);
-    }
-
-    function testTimelockFullFlow() public {
-        bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
-
-        vm.prank(operator);
-        supervisor.submit(data);
-
-        // Too early
-        vm.expectRevert();
-        vm.prank(operator);
-        supervisor.execute(data);
-
-        // After delay
-        vm.warp(block.timestamp + TIMELOCK);
-        vm.prank(operator);
-        supervisor.execute(data);
-
-        assertEq(hub.lastValue(), 42);
-    }
-
-    function testTimelockExpires() public {
-        bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
-
-        vm.prank(operator);
-        supervisor.submit(data);
-
-        vm.warp(block.timestamp + TIMELOCK + EXPIRY + 1);
-
-        vm.expectRevert(ISupervisor.TimelockExpired.selector);
-        vm.prank(operator);
-        supervisor.execute(data);
-    }
-
-    function testTimelockCannotSubmitTwice() public {
-        bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
-
-        vm.prank(operator);
-        supervisor.submit(data);
-
-        vm.expectRevert(ISupervisor.OperationAlreadyPending.selector);
-        vm.prank(operator);
-        supervisor.submit(data);
-    }
-
-    function testTimelockCannotReplay() public {
-        bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
-
-        vm.prank(operator);
-        supervisor.submit(data);
-
-        vm.warp(block.timestamp + TIMELOCK);
-        vm.prank(operator);
-        supervisor.execute(data);
-
-        // Second execute should fail
-        vm.expectRevert(ISupervisor.OperationNotPending.selector);
-        vm.prank(operator);
-        supervisor.execute(data);
-    }
-
-    function testSubmitRevertsForNonTimelocked() public {
-        bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
-
-        vm.expectRevert(ISupervisor.TimelockNotSet.selector);
-        vm.prank(operator);
-        supervisor.submit(data);
-    }
-
-    function testSubmitRevertsForNonManager() public {
-        bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
-
-        vm.expectRevert(ISupervisor.NotOperator.selector);
-        vm.prank(unauthorized);
-        supervisor.submit(data);
-    }
-}
-
-// ─── Cancel ─────────────────────────────────────────────────────────────────
-
-contract SupervisorCancelTest is SupervisorTestBase {
-    Supervisor supervisor;
-
-    function setUp() public override {
-        super.setUp();
-        supervisor = _deploySupervisor(IManifest(address(0)));
-        _addSentinel(supervisor, sentinel);
-    }
-
-    function testManagerCanCancel() public {
-        bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
-
-        vm.prank(operator);
-        supervisor.submit(data);
-
-        vm.prank(operator);
-        supervisor.cancel(data);
-
-        assertEq(supervisor.pending(data), 0);
-    }
-
-    function testSentinelCanCancel() public {
-        bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
-
-        vm.prank(operator);
-        supervisor.submit(data);
-
-        vm.prank(sentinel);
-        supervisor.cancel(data);
-
-        assertEq(supervisor.pending(data), 0);
-    }
-
-    function testUnauthorizedCannotCancel() public {
-        bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
-
-        vm.prank(operator);
-        supervisor.submit(data);
-
-        vm.expectRevert(ISupervisor.NotOperatorOrSentinel.selector);
-        vm.prank(unauthorized);
-        supervisor.cancel(data);
-    }
-
-    function testCannotCancelNonPending() public {
-        bytes memory data = abi.encodeCall(MockHub.timelocked, (99));
-
-        vm.expectRevert(ISupervisor.OperationNotPending.selector);
-        vm.prank(operator);
-        supervisor.cancel(data);
-    }
-
-    function testCancelPreventsExecution() public {
-        bytes memory data = abi.encodeCall(MockHub.timelocked, (42));
-
-        vm.prank(operator);
-        supervisor.submit(data);
-
-        vm.prank(sentinel);
-        supervisor.cancel(data);
-
-        vm.warp(block.timestamp + TIMELOCK);
-
-        vm.expectRevert(ISupervisor.OperationNotPending.selector);
-        vm.prank(operator);
-        supervisor.execute(data);
-    }
-
-    function testSentinelCannotCancelOwnRemovalWithMultipleSentinels() public {
-        address sentinel2 = makeAddr("sentinel2");
-        _addSentinel(supervisor, sentinel2);
-
-        bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
-        vm.prank(operator);
-        supervisor.submit(data);
-
-        vm.expectRevert(ISupervisor.CannotSelfCancel.selector);
-        vm.prank(sentinel);
-        supervisor.cancel(data);
-    }
-
-    function testSoleSentinelCanCancelOwnRemoval() public {
-        // Only one sentinel set (from setUp)
-        bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
-        vm.prank(operator);
-        supervisor.submit(data);
-
-        vm.prank(sentinel);
-        supervisor.cancel(data);
-
-        assertEq(supervisor.pending(data), 0);
-    }
-}
-
 // ─── Manifest hook ──────────────────────────────────────────────────────────
 
 contract SupervisorManifestHookTest is SupervisorTestBase {
@@ -416,13 +218,232 @@ contract SupervisorManifestHookTest is SupervisorTestBase {
         supervisor.execute(data);
     }
 
-    function testHookAllowsWhenPassing() public {
+    function testHookAllowsImmediateWhenZeroTimelock() public {
         bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
 
         vm.prank(operator);
         supervisor.execute(data);
 
         assertEq(hub.lastValue(), 42);
+    }
+
+    function testHookRequiresSubmitWhenTimelockReturned() public {
+        hook.setReturnedTimelock(1 days);
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
+
+        vm.expectRevert();
+        vm.prank(operator);
+        supervisor.execute(data);
+    }
+
+    function testHookTimelockFullFlow() public {
+        uint48 manifestTimelock = 1 days;
+        hook.setReturnedTimelock(manifestTimelock);
+
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
+
+        vm.prank(operator);
+        supervisor.submit(data);
+
+        // Too early
+        vm.expectRevert();
+        vm.prank(operator);
+        supervisor.execute(data);
+
+        // After manifest timelock
+        vm.warp(block.timestamp + manifestTimelock);
+        vm.prank(operator);
+        supervisor.execute(data);
+
+        assertEq(hub.lastValue(), 42);
+    }
+
+    function testHookTimelockExpiry() public {
+        uint48 manifestTimelock = 1 days;
+        hook.setReturnedTimelock(manifestTimelock);
+
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
+
+        vm.prank(operator);
+        supervisor.submit(data);
+
+        vm.warp(block.timestamp + manifestTimelock + EXPIRY + 1);
+
+        vm.expectRevert(ISupervisor.TimelockExpired.selector);
+        vm.prank(operator);
+        supervisor.execute(data);
+    }
+
+    function testHookTimelockExecutableWithinExpiryWindow() public {
+        uint48 manifestTimelock = 1 days;
+        hook.setReturnedTimelock(manifestTimelock);
+
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
+
+        vm.prank(operator);
+        supervisor.submit(data);
+
+        vm.warp(block.timestamp + manifestTimelock + EXPIRY);
+        vm.prank(operator);
+        supervisor.execute(data);
+
+        assertEq(hub.lastValue(), 42);
+    }
+
+    function testSubmitRevertsForNonHookedSelector() public {
+        bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
+
+        vm.expectRevert(ISupervisor.NotHooked.selector);
+        vm.prank(operator);
+        supervisor.submit(data);
+    }
+
+    function testSubmitRevertsForNonOperator() public {
+        hook.setReturnedTimelock(1 days);
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
+
+        vm.expectRevert(ISupervisor.NotOperator.selector);
+        vm.prank(unauthorized);
+        supervisor.submit(data);
+    }
+
+    function testCannotSubmitTwice() public {
+        hook.setReturnedTimelock(1 days);
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
+
+        vm.prank(operator);
+        supervisor.submit(data);
+
+        vm.expectRevert(ISupervisor.OperationAlreadyPending.selector);
+        vm.prank(operator);
+        supervisor.submit(data);
+    }
+
+    function testCannotReplayAfterExecution() public {
+        hook.setReturnedTimelock(1 days);
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
+
+        vm.prank(operator);
+        supervisor.submit(data);
+
+        vm.warp(block.timestamp + 1 days);
+        vm.prank(operator);
+        supervisor.execute(data);
+
+        // Second execute hits manifest again, not pending path
+        vm.expectRevert();
+        vm.prank(operator);
+        supervisor.execute(data);
+    }
+
+    function testManifestRequiredForHookedSelector() public {
+        // Deploy without manifest
+        Supervisor noManifest = _deploySupervisor(IManifest(address(0)));
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
+
+        vm.expectRevert(ISupervisor.ManifestRequired.selector);
+        vm.prank(operator);
+        noManifest.execute(data);
+    }
+}
+
+// ─── Cancel ─────────────────────────────────────────────────────────────────
+
+contract SupervisorCancelTest is SupervisorTestBase {
+    Supervisor supervisor;
+    MockManifest hook;
+
+    function setUp() public override {
+        super.setUp();
+        hook = new MockManifest();
+        hook.setReturnedTimelock(1 days);
+        supervisor = _deploySupervisor(IManifest(address(hook)));
+        _addSentinel(supervisor, sentinel);
+    }
+
+    function testManagerCanCancel() public {
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
+
+        vm.prank(operator);
+        supervisor.submit(data);
+
+        vm.prank(operator);
+        supervisor.cancel(data);
+
+        assertEq(supervisor.pending(data), 0);
+    }
+
+    function testSentinelCanCancel() public {
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
+
+        vm.prank(operator);
+        supervisor.submit(data);
+
+        vm.prank(sentinel);
+        supervisor.cancel(data);
+
+        assertEq(supervisor.pending(data), 0);
+    }
+
+    function testUnauthorizedCannotCancel() public {
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
+
+        vm.prank(operator);
+        supervisor.submit(data);
+
+        vm.expectRevert(ISupervisor.NotOperatorOrSentinel.selector);
+        vm.prank(unauthorized);
+        supervisor.cancel(data);
+    }
+
+    function testCannotCancelNonPending() public {
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (99));
+
+        vm.expectRevert(ISupervisor.OperationNotPending.selector);
+        vm.prank(operator);
+        supervisor.cancel(data);
+    }
+
+    function testCancelPreventsExecution() public {
+        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
+
+        vm.prank(operator);
+        supervisor.submit(data);
+
+        vm.prank(sentinel);
+        supervisor.cancel(data);
+
+        vm.warp(block.timestamp + 1 days);
+
+        // After cancel, execute hits manifest again (not pending path)
+        vm.expectRevert();
+        vm.prank(operator);
+        supervisor.execute(data);
+    }
+
+    function testSentinelCannotCancelOwnRemovalWithMultipleSentinels() public {
+        address sentinel2 = makeAddr("sentinel2");
+        _addSentinel(supervisor, sentinel2);
+
+        bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
+        vm.prank(operator);
+        supervisor.submit(data);
+
+        vm.expectRevert(ISupervisor.CannotSelfCancel.selector);
+        vm.prank(sentinel);
+        supervisor.cancel(data);
+    }
+
+    function testSoleSentinelCanCancelOwnRemoval() public {
+        // Only one sentinel set (from setUp)
+        bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
+        vm.prank(operator);
+        supervisor.submit(data);
+
+        vm.prank(sentinel);
+        supervisor.cancel(data);
+
+        assertEq(supervisor.pending(data), 0);
     }
 }
 
@@ -459,7 +480,7 @@ contract SupervisorSentinelTest is SupervisorTestBase {
         bytes memory data = abi.encodeCall(Supervisor.addSentinel, (address(0)));
         vm.prank(operator);
         supervisor.submit(data);
-        vm.warp(block.timestamp + TIMELOCK);
+        vm.warp(block.timestamp + SENTINEL_TIMELOCK);
 
         vm.expectRevert(ISupervisor.ZeroAddress.selector);
         vm.prank(operator);
@@ -472,7 +493,7 @@ contract SupervisorSentinelTest is SupervisorTestBase {
         bytes memory data = abi.encodeCall(Supervisor.addSentinel, (sentinel));
         vm.prank(operator);
         supervisor.submit(data);
-        vm.warp(block.timestamp + TIMELOCK);
+        vm.warp(block.timestamp + SENTINEL_TIMELOCK);
 
         vm.expectRevert(ISupervisor.AlreadySentinel.selector);
         vm.prank(operator);
@@ -493,7 +514,7 @@ contract SupervisorSentinelTest is SupervisorTestBase {
         bytes memory data = abi.encodeCall(Supervisor.removeSentinel, (sentinel));
         vm.prank(operator);
         supervisor.submit(data);
-        vm.warp(block.timestamp + TIMELOCK);
+        vm.warp(block.timestamp + SENTINEL_TIMELOCK);
         vm.prank(operator);
         supervisor.removeSentinel(sentinel);
 
@@ -524,7 +545,7 @@ contract SupervisorSentinelTest is SupervisorTestBase {
         vm.prank(sentinel);
         supervisor.cancel(data);
 
-        vm.warp(block.timestamp + TIMELOCK);
+        vm.warp(block.timestamp + SENTINEL_TIMELOCK);
 
         vm.expectRevert(ISupervisor.OperationNotPending.selector);
         vm.prank(operator);
@@ -571,19 +592,6 @@ contract SupervisorMulticallTest is SupervisorTestBase {
         assertEq(hub.lastValue(), 2);
     }
 
-    function testMulticallSubmitAndCancel() public {
-        bytes memory timelockData = abi.encodeCall(MockHub.timelocked, (42));
-
-        bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeCall(Supervisor.submit, (timelockData));
-        calls[1] = abi.encodeCall(Supervisor.cancel, (timelockData));
-
-        vm.prank(operator);
-        supervisor.multicall(calls);
-
-        assertEq(supervisor.pending(timelockData), 0);
-    }
-
     function testMulticallRevertsForNonOperator() public {
         bytes[] memory calls = new bytes[](1);
         calls[0] = abi.encodeCall(Supervisor.execute, (abi.encodeCall(MockHub.doSomething, (1))));
@@ -591,85 +599,6 @@ contract SupervisorMulticallTest is SupervisorTestBase {
         vm.expectRevert();
         vm.prank(unauthorized);
         supervisor.multicall(calls);
-    }
-}
-
-// ─── Manifest additional delay ─────────────────────────────────────────────
-
-contract SupervisorManifestDelayTest is SupervisorTestBase {
-    Supervisor supervisor;
-    MockManifest hook;
-
-    function setUp() public override {
-        super.setUp();
-        hook = new MockManifest();
-        // Deploy with timelocked + hooked on same selector
-        bytes4[] memory timelockSels = new bytes4[](1);
-        timelockSels[0] = MockHub.hookedFn.selector;
-        bytes4[] memory hookSels = new bytes4[](1);
-        hookSels[0] = MockHub.hookedFn.selector;
-
-        SupervisorConfig memory config =
-            SupervisorConfig(timelockSels, hookSels, TIMELOCK, EXPIRY, IManifest(address(hook)));
-        supervisor = new Supervisor(IHub(address(hub)), POOL, operator, config);
-    }
-
-    function testAdditionalDelayExtendsTimelock() public {
-        uint48 extra = 1 days;
-        hook.setExtraDelay(extra);
-
-        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
-
-        vm.prank(operator);
-        supervisor.submit(data);
-
-        // Warp past base delay but not additional delay
-        vm.warp(block.timestamp + TIMELOCK);
-
-        vm.expectRevert();
-        vm.prank(operator);
-        supervisor.execute(data);
-
-        // Warp past additional delay
-        vm.warp(block.timestamp + extra);
-        vm.prank(operator);
-        supervisor.execute(data);
-
-        assertEq(hub.lastValue(), 42);
-    }
-
-    function testAdditionalDelayExpiryWindowStartsAfterFullDelay() public {
-        uint48 extra = 1 days;
-        hook.setExtraDelay(extra);
-
-        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
-
-        vm.prank(operator);
-        supervisor.submit(data);
-
-        // Warp past base delay + additional delay + expiry window
-        vm.warp(block.timestamp + TIMELOCK + extra + EXPIRY + 1);
-
-        vm.expectRevert(ISupervisor.TimelockExpired.selector);
-        vm.prank(operator);
-        supervisor.execute(data);
-    }
-
-    function testAdditionalDelayExecutableWithinExpiryWindow() public {
-        uint48 extra = 1 days;
-        hook.setExtraDelay(extra);
-
-        bytes memory data = abi.encodeCall(MockHub.hookedFn, (42));
-
-        vm.prank(operator);
-        supervisor.submit(data);
-
-        // Warp to end of expiry window (should still work)
-        vm.warp(block.timestamp + TIMELOCK + extra + EXPIRY);
-        vm.prank(operator);
-        supervisor.execute(data);
-
-        assertEq(hub.lastValue(), 42);
     }
 }
 
@@ -720,17 +649,13 @@ contract SupervisorFactoryTest is Test {
     }
 
     function testNewSupervisor() public {
-        bytes4[] memory timelockSels = new bytes4[](1);
-        timelockSels[0] = bytes4(0x12345678);
-
         SupervisorConfig memory config =
-            SupervisorConfig(timelockSels, new bytes4[](0), 1 days, 7 days, IManifest(address(0)));
+            SupervisorConfig(new bytes4[](0), 1 days, 7 days, IManifest(address(0)));
         ISupervisor supervisor = factory.newSupervisor(POOL, makeAddr("operator"), config);
 
         assertEq(address(supervisor.hub()), address(hub));
         assertEq(PoolId.unwrap(supervisor.poolId()), PoolId.unwrap(POOL));
-        assertEq(supervisor.timelock(), 1 days);
+        assertEq(supervisor.sentinelTimelock(), 1 days);
         assertEq(supervisor.expiryWindow(), 7 days);
-        assertTrue(supervisor.timelocked(bytes4(0x12345678)));
     }
 }

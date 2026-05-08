@@ -13,13 +13,17 @@ import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
 import {BatchedMulticall} from "../../core/utils/BatchedMulticall.sol";
 
 /// @title  Supervisor
-/// @notice Sits between the pool operator and the Hub, adding optional per-function timelocks and a
-///         manifest hook for custom validation. Sentinels can veto pending timelocked operations.
+/// @notice Sits between the pool operator and the Hub, adding manifest-driven timelocks and
+///         custom validation. Sentinels can veto pending timelocked operations.
 ///
-///         The Supervisor is pool-scoped and immutable. Hub, poolId, operator, timelocks, hook
-///         config, timelock, and manifest are all set at construction. To change any of these, deploy
-///         a new Supervisor. The only mutable state is the sentinel set, and both adding and
+///         The Supervisor is pool-scoped and immutable. Hub, poolId, operator, hook config,
+///         and manifest are all set at construction. To change any of these, deploy a new
+///         Supervisor. The only mutable state is the sentinel set, and both adding and
 ///         removing sentinels are timelocked.
+///
+///         For hooked selectors, the manifest determines the timelock: returning 0 means
+///         immediate execution, returning > 0 requires a submit→wait→execute flow.
+///         Sentinel management uses a fixed sentinelTimelock independent of the manifest.
 ///
 ///         SECURITY: The Supervisor must be the ONLY address registered as a Hub manager for the
 ///         pool. Otherwise, the operator (or any other Hub manager) can bypass the Supervisor by
@@ -32,15 +36,14 @@ contract Supervisor is ISupervisor, BatchedMulticall {
     using BytesLib for bytes;
 
     IHub public immutable hub;
-    uint48 public immutable timelock;
     PoolId public immutable poolId;
     address public immutable operator;
+    uint48 public immutable sentinelTimelock;
     uint48 public immutable expiryWindow;
     IManifest public immutable manifest;
 
     uint256 public sentinelCount;
     mapping(bytes4 => bool) public hooked;
-    mapping(bytes4 => bool) public timelocked;
     mapping(address => bool) public sentinels;
     mapping(bytes calldata_ => uint48 executeAfter) public pending;
 
@@ -60,17 +63,12 @@ contract Supervisor is ISupervisor, BatchedMulticall {
     {
         hub = hub_;
         poolId = poolId_;
-        timelock = config.timelock;
         operator = operator_;
         manifest = config.manifest;
         expiryWindow = config.expiryWindow;
+        sentinelTimelock = config.sentinelTimelock;
 
         for (uint256 i; i < config.hookSelectors.length; i++) hooked[config.hookSelectors[i]] = true;
-        for (uint256 i; i < config.timelockSelectors.length; i++) timelocked[config.timelockSelectors[i]] = true;
-
-        // Sentinel management is always timelocked
-        timelocked[this.addSentinel.selector] = true;
-        timelocked[this.removeSentinel.selector] = true;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -82,10 +80,12 @@ contract Supervisor is ISupervisor, BatchedMulticall {
         (bytes4 selector,) = data.decodeCall();
         require(selector != IMulticall.multicall.selector, MulticallForbidden());
 
-        if (timelocked[selector]) {
+        if (pending[data] != 0) {
             _consumeTimelock(data);
-        } else if (address(manifest) != address(0) && hooked[selector]) {
-            manifest.check(poolId, msgSender(), data);
+        } else if (hooked[selector]) {
+            require(address(manifest) != address(0), ManifestRequired());
+            uint48 timelock = manifest.check(poolId, msgSender(), data);
+            require(timelock == 0, TimelockNotReady(uint48(block.timestamp) + timelock));
         }
 
         (bool success, bytes memory result) = address(hub).call{value: msgValue()}(data);
@@ -96,20 +96,22 @@ contract Supervisor is ISupervisor, BatchedMulticall {
     function submit(bytes calldata data) external onlyOperator {
         (bytes4 selector, bytes calldata payload) = data.decodeCall();
         require(selector != IMulticall.multicall.selector, MulticallForbidden());
-        require(timelocked[selector], TimelockNotSet());
         require(pending[data] == 0, OperationAlreadyPending());
 
-        // Validate removeSentinel target is currently a sentinel
-        if (selector == this.removeSentinel.selector) {
-            require(sentinels[abi.decode(payload, (address))], NotSentinel());
+        uint48 timelock;
+        if (selector == this.addSentinel.selector || selector == this.removeSentinel.selector) {
+            timelock = sentinelTimelock;
+            // Validate removeSentinel target is currently a sentinel
+            if (selector == this.removeSentinel.selector) {
+                require(sentinels[abi.decode(payload, (address))], NotSentinel());
+            }
+        } else {
+            require(hooked[selector], NotHooked());
+            require(address(manifest) != address(0), ManifestRequired());
+            timelock = manifest.check(poolId, msgSender(), data);
         }
 
-        uint48 escalation;
-        if (address(manifest) != address(0) && hooked[selector]) {
-            escalation = manifest.check(poolId, msgSender(), data);
-        }
-
-        uint48 executeAfter = uint48(block.timestamp) + timelock + escalation;
+        uint48 executeAfter = uint48(block.timestamp) + timelock;
         pending[data] = executeAfter;
         emit Submit(keccak256(data), selector, executeAfter, data);
     }

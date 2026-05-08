@@ -18,12 +18,12 @@ import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 ///            revoking access passes through instantly.
 ///         2. Blocks removing the Supervisor itself as a Hub manager.
 ///         3. Rate-limits share price updates. If the price change per second exceeds a
-///            threshold, a fixed escalation delay is returned.
+///            threshold, a fixed timelock delay is returned.
 contract PriceManifest is IPriceManifest {
     using BytesLib for bytes;
     
     address public immutable supervisor;
-    uint48 public immutable escalation;
+    uint48 public immutable timelock;
     uint48 public immutable grantManagerDelay;
     uint128 public immutable thresholdPerSecond;
     IShareClassManager public immutable shareClassManager;
@@ -32,13 +32,13 @@ contract PriceManifest is IPriceManifest {
 
     constructor(
         address supervisor_,
-        uint48 escalation_,
+        uint48 timelock_,
         uint48 grantManagerDelay_,
         uint128 thresholdPerSecond_,
         IShareClassManager shareClassManager_
     ) {
         supervisor = supervisor_;
-        escalation = escalation_;
+        timelock = timelock_;
         grantManagerDelay = grantManagerDelay_;
         thresholdPerSecond = thresholdPerSecond_;
         shareClassManager = shareClassManager_;
@@ -74,7 +74,7 @@ contract PriceManifest is IPriceManifest {
         return canManage ? grantManagerDelay : 0;
     }
 
-    /// @dev Returns escalation delay if the price change per second exceeds the threshold.
+    /// @dev Returns timelock delay if the price change per second exceeds the threshold.
     ///
     ///      Interleaving attack: An operator can submit N compliant intermediate price updates
     ///      (each just below the threshold) to achieve a cumulative move of up to N * threshold * elapsed.
@@ -100,7 +100,7 @@ contract PriceManifest is IPriceManifest {
         uint256 delta = newRaw > lastRaw ? newRaw - lastRaw : lastRaw - newRaw;
 
         if (delta / elapsed >= thresholdPerSecond) {
-            return escalation;
+            return timelock;
         }
         return 0;
     }
