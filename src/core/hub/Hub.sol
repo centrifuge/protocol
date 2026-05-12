@@ -36,8 +36,8 @@ import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
 /// @title  Hub
 /// @notice Central pool management contract, that brings together all functions in one place.
 ///         Pools can assign hub managers which have full rights over all actions.
-///         When a manifest is set for a pool and returns timelock > 0, the operation is
-///         auto-submitted as pending. Callers see a successful tx but the operation is deferred.
+///         Per-pool manifests enforce policy on all manager calls, optionally deferring
+///         operations via timelocks.
 contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCallback, ICreatePool {
     using MathLib for uint256;
     using RequestCallbackMessageLib for *;
@@ -49,9 +49,10 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     IHubMessageSender public sender;
     IMultiAdapter public multiAdapter;
     IShareClassManager public shareClassManager;
+
+    address private transient _submitter;
     mapping(PoolId => IManifest) public manifest;
     mapping(bytes32 => PendingOp) public pending;
-    address private transient _submitter;
 
     constructor(
         IGateway gateway_,
@@ -561,7 +562,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function executePending(bytes calldata data) external payable {
+    function execute(bytes calldata data) external payable {
         require(_submitter == address(0), PoolAlreadyUnlocked());
 
         bytes32 opId = keccak256(data);
@@ -590,8 +591,17 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         emit OperationCanceled(opId);
     }
 
-    /// @dev Runs manifest check and auto-submits if timelock > 0.
-    function _manifestCheck(IManifest m, PoolId poolId) private returns (bool) {
+    /// @dev Ensure the sender is a pool manager. When a manifest is set and returns a timelock > 0,
+    ///      the operation is automatically stored as pending and returns false (caller should return early).
+    function _guard(PoolId poolId) private returns (bool) {
+        require(hubRegistry.manager(poolId, msgSender()), NotManager());
+
+        // Skip manifest check during execute
+        if (_submitter != address(0)) return true;
+
+        IManifest m = manifest[poolId];
+        if (address(m) == address(0)) return true;
+
         uint48 timelock = m.check(poolId, msgSender(), msg.data);
         if (timelock == 0) return true;
 
@@ -603,6 +613,12 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         emit OperationSubmitted(opId, msg.sig, executeAfter, msg.data);
 
         return false;
+    }
+
+    /// @dev Returns the original sender during execute replay, otherwise delegates to parent.
+    function msgSender() internal view override returns (address) {
+        if (_submitter != address(0)) return _submitter;
+        return super.msgSender();
     }
 
     //----------------------------------------------------------------------------------------------
@@ -651,25 +667,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @dev Ensure the sender is authorized
     function _auth() internal auth {}
-
-    /// @dev Ensure the sender is a pool manager. When a manifest is set and returns a timelock > 0,
-    ///      the operation is automatically stored as pending and returns false (caller should return early).
-    function _guard(PoolId poolId) private returns (bool) {
-        require(hubRegistry.manager(poolId, msgSender()), NotManager());
-
-        if (_submitter != address(0)) return true;
-
-        IManifest m = manifest[poolId];
-        if (address(m) == address(0)) return true;
-
-        return _manifestCheck(m, poolId);
-    }
-
-    /// @dev Returns the original sender during executePending replay, otherwise delegates to parent.
-    function msgSender() internal view override returns (address) {
-        if (_submitter != address(0)) return _submitter;
-        return super.msgSender();
-    }
 
     function _requireSC(PoolId poolId, ShareClassId scId) private view {
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());

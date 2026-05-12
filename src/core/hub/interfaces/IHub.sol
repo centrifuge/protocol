@@ -505,7 +505,7 @@ interface IHub is IBatchedMulticall {
 
     /// @notice Execute a pending timelocked operation after its delay has passed.
     /// @param data The original calldata that was auto-submitted.
-    function executePending(bytes calldata data) external payable;
+    function execute(bytes calldata data) external payable;
 
     /// @notice Cancel a pending timelocked operation. Any Hub manager for the pool can cancel.
     /// @param opId The operation identifier to cancel.

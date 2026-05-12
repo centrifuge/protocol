@@ -87,7 +87,7 @@ contract Supervisor is ISupervisor, ITrustedContractUpdate, BatchedMulticall {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISupervisor
-    function execute(bytes calldata data) external payable onlyOperator {
+    function forward(bytes calldata data) external payable onlyOperator {
         (bytes4 selector,) = data.decodeCall();
         require(selector != IMulticall.multicall.selector, MulticallForbidden());
 
@@ -96,15 +96,15 @@ contract Supervisor is ISupervisor, ITrustedContractUpdate, BatchedMulticall {
     }
 
     /// @inheritdoc ISupervisor
-    function executePending(bytes calldata data) external payable onlyOperatorOrSentinel {
+    function execute(bytes calldata data) external payable onlyOperatorOrSentinel {
         (uint48 executeAfter,,) = hub.pending(keccak256(data));
         require(block.timestamp <= executeAfter + expiryWindow, TimelockExpired());
 
-        hub.executePending{value: msgValue()}(data);
+        hub.execute{value: msgValue()}(data);
     }
 
     /// @inheritdoc ISupervisor
-    function cancelPending(bytes calldata data) external onlyOperatorOrSentinel {
+    function cancel(bytes calldata data) external onlyOperatorOrSentinel {
         address sender = msgSender();
         if (sentinels[sender] && sentinelCount > 1) {
             _checkNotSelfRemoval(data, sender);

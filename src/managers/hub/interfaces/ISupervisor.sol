@@ -46,21 +46,21 @@ interface ISupervisor {
     // Execution
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Execute a Hub call. The Hub's manifest handles timelocking: if the manifest returns
-    ///         timelock > 0, the Hub auto-submits the operation as pending and the tx succeeds
-    ///         without executing the operation immediately.
+    /// @notice Forward a call to the Hub. Operator only. The Hub's manifest handles timelocking:
+    ///         if the manifest returns timelock > 0, the Hub auto-submits the operation as pending
+    ///         and the tx succeeds without executing the operation immediately.
     /// @param data The calldata to forward to the Hub.
-    function execute(bytes calldata data) external payable;
+    function forward(bytes calldata data) external payable;
 
     /// @notice Execute a pending Hub operation after its timelock has passed.
-    ///         Callable by operator or sentinels.
+    ///         Callable by operator or sentinels. Reverts if the expiry window has passed.
     /// @param data The original calldata that was auto-submitted by the Hub.
-    function executePending(bytes calldata data) external payable;
+    function execute(bytes calldata data) external payable;
 
     /// @notice Cancel a pending Hub operation. Callable by operator or sentinels.
     ///         A sentinel cannot cancel their own removal when multiple sentinels exist.
     /// @param data The original calldata that was auto-submitted by the Hub.
-    function cancelPending(bytes calldata data) external;
+    function cancel(bytes calldata data) external;
 
     //----------------------------------------------------------------------------------------------
     // View methods

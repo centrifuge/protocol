@@ -74,7 +74,7 @@ contract MockHub {
         pendingOps[opId] = PendingOp(executeAfter, submitter, poolId);
     }
 
-    function executePending(bytes calldata data) external payable {
+    function execute(bytes calldata data) external payable {
         bytes32 opId = keccak256(data);
         require(pendingOps[opId].executeAfter != 0, "not pending");
         delete pendingOps[opId];
@@ -178,7 +178,7 @@ contract SupervisorExecuteTest is SupervisorTestBase {
         bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
 
         vm.prank(operator);
-        supervisor.execute(data);
+        supervisor.forward(data);
 
         assertEq(hub.lastValue(), 42);
     }
@@ -188,7 +188,7 @@ contract SupervisorExecuteTest is SupervisorTestBase {
 
         vm.deal(operator, 1 ether);
         vm.prank(operator);
-        supervisor.execute{value: 0.5 ether}(data);
+        supervisor.forward{value: 0.5 ether}(data);
 
         assertEq(hub.lastValue(), 99);
         assertEq(address(hub).balance, 0.5 ether);
@@ -199,7 +199,7 @@ contract SupervisorExecuteTest is SupervisorTestBase {
 
         vm.expectRevert(ISupervisor.NotOperator.selector);
         vm.prank(unauthorized);
-        supervisor.execute(data);
+        supervisor.forward(data);
     }
 
     function testExecuteWrapsHubRevert() public {
@@ -207,7 +207,7 @@ contract SupervisorExecuteTest is SupervisorTestBase {
 
         vm.expectRevert();
         vm.prank(operator);
-        supervisor.execute(data);
+        supervisor.forward(data);
     }
 }
 
@@ -228,7 +228,7 @@ contract SupervisorMulticallForbiddenTest is SupervisorTestBase {
 
         vm.expectRevert(ISupervisor.MulticallForbidden.selector);
         vm.prank(operator);
-        supervisor.execute(multicallData);
+        supervisor.forward(multicallData);
     }
 }
 
@@ -250,7 +250,7 @@ contract SupervisorExecutePendingTest is SupervisorTestBase {
 
         vm.warp(executeAfter);
         vm.prank(operator);
-        supervisor.executePending(data);
+        supervisor.execute(data);
     }
 
     function testExecutePendingBySentinel() public {
@@ -260,7 +260,7 @@ contract SupervisorExecutePendingTest is SupervisorTestBase {
 
         vm.warp(executeAfter);
         vm.prank(sentinel);
-        supervisor.executePending(data);
+        supervisor.execute(data);
     }
 
     function testExecutePendingRevertsForUnauthorized() public {
@@ -271,7 +271,7 @@ contract SupervisorExecutePendingTest is SupervisorTestBase {
         vm.warp(executeAfter);
         vm.expectRevert(ISupervisor.NotOperatorOrSentinel.selector);
         vm.prank(unauthorized);
-        supervisor.executePending(data);
+        supervisor.execute(data);
     }
 
     function testExecutePendingRevertsWhenExpired() public {
@@ -282,7 +282,7 @@ contract SupervisorExecutePendingTest is SupervisorTestBase {
         vm.warp(executeAfter + EXPIRY + 1);
         vm.expectRevert(ISupervisor.TimelockExpired.selector);
         vm.prank(operator);
-        supervisor.executePending(data);
+        supervisor.execute(data);
     }
 
     function testExecutePendingWithinExpiryWindow() public {
@@ -292,7 +292,7 @@ contract SupervisorExecutePendingTest is SupervisorTestBase {
 
         vm.warp(executeAfter + EXPIRY);
         vm.prank(operator);
-        supervisor.executePending(data);
+        supervisor.execute(data);
     }
 }
 
@@ -312,7 +312,7 @@ contract SupervisorCancelPendingTest is SupervisorTestBase {
         bytes32 opId = _setPending(data, uint48(block.timestamp) + 1 days);
 
         vm.prank(operator);
-        supervisor.cancelPending(data);
+        supervisor.cancel(data);
 
         assertTrue(hub.cancelled(opId));
     }
@@ -322,7 +322,7 @@ contract SupervisorCancelPendingTest is SupervisorTestBase {
         bytes32 opId = _setPending(data, uint48(block.timestamp) + 1 days);
 
         vm.prank(sentinel);
-        supervisor.cancelPending(data);
+        supervisor.cancel(data);
 
         assertTrue(hub.cancelled(opId));
     }
@@ -333,7 +333,7 @@ contract SupervisorCancelPendingTest is SupervisorTestBase {
 
         vm.expectRevert(ISupervisor.NotOperatorOrSentinel.selector);
         vm.prank(unauthorized);
-        supervisor.cancelPending(data);
+        supervisor.cancel(data);
     }
 
     function testSentinelCannotCancelOwnRemovalWithMultipleSentinels() public {
@@ -345,7 +345,7 @@ contract SupervisorCancelPendingTest is SupervisorTestBase {
 
         vm.expectRevert(ISupervisor.CannotSelfCancel.selector);
         vm.prank(sentinel);
-        supervisor.cancelPending(data);
+        supervisor.cancel(data);
     }
 
     function testSoleSentinelCanCancelOwnRemoval() public {
@@ -354,7 +354,7 @@ contract SupervisorCancelPendingTest is SupervisorTestBase {
 
         // Sole sentinel — self-cancel is allowed
         vm.prank(sentinel);
-        supervisor.cancelPending(data);
+        supervisor.cancel(data);
 
         assertTrue(hub.cancelled(keccak256(data)));
     }
@@ -368,7 +368,7 @@ contract SupervisorCancelPendingTest is SupervisorTestBase {
 
         // sentinel cancels sentinel2's removal — allowed
         vm.prank(sentinel);
-        supervisor.cancelPending(data);
+        supervisor.cancel(data);
 
         assertTrue(hub.cancelled(keccak256(data)));
     }
@@ -379,7 +379,7 @@ contract SupervisorCancelPendingTest is SupervisorTestBase {
 
         // Operator is never restricted by self-cancel check
         vm.prank(operator);
-        supervisor.cancelPending(data);
+        supervisor.cancel(data);
 
         assertTrue(hub.cancelled(keccak256(data)));
     }
@@ -393,7 +393,7 @@ contract SupervisorCancelPendingTest is SupervisorTestBase {
         _setPending(data, uint48(block.timestamp) + 1 days);
 
         vm.prank(sentinel);
-        supervisor.cancelPending(data);
+        supervisor.cancel(data);
 
         assertTrue(hub.cancelled(keccak256(data)));
     }
@@ -519,8 +519,8 @@ contract SupervisorMulticallTest is SupervisorTestBase {
 
     function testMulticallBatchesExecuteCalls() public {
         bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeCall(Supervisor.execute, (abi.encodeCall(MockHub.doSomething, (1))));
-        calls[1] = abi.encodeCall(Supervisor.execute, (abi.encodeCall(MockHub.doSomething, (2))));
+        calls[0] = abi.encodeCall(Supervisor.forward, (abi.encodeCall(MockHub.doSomething, (1))));
+        calls[1] = abi.encodeCall(Supervisor.forward, (abi.encodeCall(MockHub.doSomething, (2))));
 
         vm.prank(operator);
         supervisor.multicall(calls);
@@ -530,7 +530,7 @@ contract SupervisorMulticallTest is SupervisorTestBase {
 
     function testMulticallRevertsForNonOperator() public {
         bytes[] memory calls = new bytes[](1);
-        calls[0] = abi.encodeCall(Supervisor.execute, (abi.encodeCall(MockHub.doSomething, (1))));
+        calls[0] = abi.encodeCall(Supervisor.forward, (abi.encodeCall(MockHub.doSomething, (1))));
 
         vm.expectRevert();
         vm.prank(unauthorized);
