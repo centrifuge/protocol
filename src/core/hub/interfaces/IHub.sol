@@ -22,6 +22,7 @@ import {AssetId} from "../../types/AssetId.sol";
 import {AccountId} from "../../types/AccountId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 import {IBatchedMulticall} from "../../utils/interfaces/IBatchedMulticall.sol";
+import {IManifest} from "../../../managers/hub/interfaces/ISupervisor.sol";
 
 /// @notice Account types used by Hub
 enum AccountType {
@@ -37,6 +38,12 @@ enum AccountType {
     Expense,
     /// @notice Account for tracking liabilities
     Liability
+}
+
+struct PendingOp {
+    uint48 executeAfter;
+    address submitter;
+    PoolId poolId;
 }
 
 /// @notice Interface with all methods available in the system used by actors
@@ -67,10 +74,6 @@ interface IHub is IBatchedMulticall {
     );
     event UpdateContract(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 target, bytes payload
-    );
-    event SetMaxAssetPriceAge(PoolId indexed poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge);
-    event SetMaxSharePriceAge(
-        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, uint64 maxPriceAge
     );
     event ForwardTransferShares(
         uint16 indexed fromCentrifugeId,
@@ -106,6 +109,22 @@ interface IHub is IBatchedMulticall {
     error InvalidRequestManager();
 
     error RequestManagerCallFailed();
+
+    error OperationAlreadyPending();
+
+    error OperationNotPending();
+
+    error TimelockNotReady(uint48 executeAfter);
+
+    error ExecutionFailed(bytes result);
+
+    //----------------------------------------------------------------------------------------------
+    // Manifest & timelock events
+    //----------------------------------------------------------------------------------------------
+
+    event OperationSubmitted(bytes32 indexed opId, bytes4 indexed selector, uint48 executeAfter, bytes data);
+    event OperationExecuted(bytes32 indexed opId);
+    event OperationCanceled(bytes32 indexed opId);
 
     //----------------------------------------------------------------------------------------------
     // System methods
@@ -192,30 +211,6 @@ interface IHub is IBatchedMulticall {
     /// @param assetId Identifier of the asset
     /// @param refund Address to receive excess gas refund
     function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, address refund) external payable;
-
-    /// @notice Set the max price age per asset of a share class
-    /// @param poolId The centrifuge pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id
-    /// @param maxPriceAge Timestamp until the price become invalid
-    /// @param refund Address to receive excess gas refund
-    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge, address refund)
-        external
-        payable;
-
-    /// @notice Set the max price age per share of a share class
-    /// @param poolId The centrifuge pool id
-    /// @param scId The share class id
-    /// @param centrifugeId Chain where CV instance lives
-    /// @param maxPriceAge Timestamp until the price become invalid
-    /// @param refund Address to receive excess gas refund
-    function setMaxSharePriceAge(
-        PoolId poolId,
-        ShareClassId scId,
-        uint16 centrifugeId,
-        uint64 maxPriceAge,
-        address refund
-    ) external payable;
 
     /// @notice Attach custom data to a pool
     /// @param poolId The pool identifier
@@ -491,6 +486,30 @@ interface IHub is IBatchedMulticall {
     function updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
         external
         payable;
+
+    //----------------------------------------------------------------------------------------------
+    // Manifest & timelock methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Returns the manifest for a pool
+    function manifest(PoolId poolId) external view returns (IManifest);
+
+    /// @notice Returns pending operation info
+    function pending(bytes32 opId)
+        external
+        view
+        returns (uint48 executeAfter, address submitter, PoolId poolId);
+
+    /// @notice Set the manifest for a pool. Auth-gated (governance only).
+    function setManifest(PoolId poolId, IManifest manifest_) external;
+
+    /// @notice Execute a pending timelocked operation after its delay has passed.
+    /// @param data The original calldata that was auto-submitted.
+    function executePending(bytes calldata data) external payable;
+
+    /// @notice Cancel a pending timelocked operation. Any Hub manager for the pool can cancel.
+    /// @param opId The operation identifier to cancel.
+    function cancel(bytes32 opId) external;
 
     //----------------------------------------------------------------------------------------------
     // View methods

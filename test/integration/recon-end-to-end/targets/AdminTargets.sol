@@ -509,23 +509,6 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         );
     }
 
-    function hub_setMaxAssetPriceAge(uint32 maxAge) public updateGhosts {
-        IBaseVault vault = _getVault();
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = _getAssetId();
-
-        hub.setMaxAssetPriceAge{value: MAX_MESSAGE_COST}(poolId, scId, assetId, uint64(maxAge), _getActor());
-    }
-
-    function hub_setMaxSharePriceAge(uint16 centrifugeId, uint32 maxAge) public updateGhosts {
-        IBaseVault vault = _getVault();
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-
-        hub.setMaxSharePriceAge{value: MAX_MESSAGE_COST}(poolId, scId, centrifugeId, uint64(maxAge), _getActor());
-    }
-
     function hub_updateHoldingValue() public updateGhosts {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
