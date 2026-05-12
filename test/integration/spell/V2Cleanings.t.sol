@@ -33,7 +33,12 @@ import {
     ESCROW_V2,
     USDC_ETHEREUM,
     USDC_BASE,
-    USDC_ARBITRUM
+    USDC_ARBITRUM,
+    ETH_V2_JTRSY_VAULT,
+    ETH_V2_JAAA_VAULT,
+    BASE_V2_JTRSY_VAULT,
+    BASE_V2_JAAA_VAULT,
+    ARB_V2_JTRSY_VAULT
 } from "../../../src/spell/V2CleaningsSpell.sol";
 
 contract V2CleaningsSpellTest is Test {
@@ -108,10 +113,24 @@ contract V2CleaningsSpellTest is Test {
             assertEq(IAuth(TRANCHE_JTRSY).wards(address(spell)), 0);
         }
 
+        if (block.chainid == ETHEREUM_CHAIN_ID) {
+            assertEq(IAuth(TRANCHE_JTRSY).wards(ETH_V2_JTRSY_VAULT), 0);
+        } else if (block.chainid == BASE_CHAIN_ID) {
+            assertEq(IAuth(TRANCHE_JTRSY).wards(BASE_V2_JTRSY_VAULT), 0);
+        } else if (block.chainid == ARBITRUM_CHAIN_ID) {
+            assertEq(IAuth(TRANCHE_JTRSY).wards(ARB_V2_JTRSY_VAULT), 0);
+        }
+
         if (block.chainid == ETHEREUM_CHAIN_ID || block.chainid == BASE_CHAIN_ID) {
             assertEq(IAuth(TRANCHE_JAAA).wards(address(rootV3)), 1);
             assertEq(IAuth(TRANCHE_JAAA).wards(address(ROOT_V2)), 0);
             assertEq(IAuth(TRANCHE_JAAA).wards(address(spell)), 0);
+        }
+
+        if (block.chainid == ETHEREUM_CHAIN_ID) {
+            assertEq(IAuth(TRANCHE_JAAA).wards(ETH_V2_JAAA_VAULT), 0);
+        } else if (block.chainid == BASE_CHAIN_ID) {
+            assertEq(IAuth(TRANCHE_JAAA).wards(BASE_V2_JAAA_VAULT), 0);
         }
 
         if (address(usdc) != address(0)) {
