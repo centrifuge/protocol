@@ -39,6 +39,8 @@ interface ISupervisor {
     error MulticallForbidden();
     error NotContractUpdater();
     error TimelockExpired();
+    error LastSentinel();
+    error CannotSelfCancel();
 
     //----------------------------------------------------------------------------------------------
     // Execution
@@ -56,8 +58,9 @@ interface ISupervisor {
     function executePending(bytes calldata data) external payable;
 
     /// @notice Cancel a pending Hub operation. Callable by operator or sentinels.
-    /// @param opId The operation identifier to cancel.
-    function cancelPending(bytes32 opId) external;
+    ///         A sentinel cannot cancel their own removal when multiple sentinels exist.
+    /// @param data The original calldata that was auto-submitted by the Hub.
+    function cancelPending(bytes calldata data) external;
 
     //----------------------------------------------------------------------------------------------
     // View methods

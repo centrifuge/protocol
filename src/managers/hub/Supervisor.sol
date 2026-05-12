@@ -15,22 +15,13 @@ import {BatchedMulticall} from "../../core/utils/BatchedMulticall.sol";
 import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  Supervisor
-/// @notice Sits between the pool operator and the Hub, providing operator access control and
-///         sentinel-based veto capability for timelocked operations. The Hub's manifest handles
-///         policy enforcement and timelock determination.
+/// @notice Pool-scoped proxy between the operator and the Hub. Restricts who can call the Hub
+///         (operator only), who can execute or cancel timelocked operations (operator + sentinels),
+///         and enforces an expiry window on pending operations. All configuration is immutable.
+///         To change operator or expiryWindow, deploy a new Supervisor.
 ///
-///         The Supervisor is pool-scoped and immutable. Hub, poolId, and operator are all set at
-///         construction. To change any of these, deploy a new Supervisor.
-///
-///         Sentinel management (add/remove) is done via Hub's updateContract trusted call,
-///         so the Hub's manifest/timelock governs the delay for sentinel changes.
-///
-///         SECURITY: The Supervisor must be the ONLY address registered as a Hub manager for the
-///         pool. Otherwise, the operator (or any other Hub manager) can bypass the Supervisor by
-///         calling the Hub directly.
-///
-///         Inherits BatchedMulticall so the operator can batch multiple execute calls atomically,
-///         with cross-chain messages from all inner calls aggregated into a single gateway batch.
+///         SECURITY: The Supervisor must be the ONLY Hub manager for the pool. Otherwise the
+///         operator can bypass it by calling the Hub directly.
 contract Supervisor is ISupervisor, ITrustedContractUpdate, BatchedMulticall {
     using BytesLib for bytes;
 
@@ -43,6 +34,16 @@ contract Supervisor is ISupervisor, ITrustedContractUpdate, BatchedMulticall {
     uint256 public sentinelCount;
     mapping(address => bool) public sentinels;
 
+    constructor(IHub hub_, PoolId poolId_, address operator_, address contractUpdater_, uint48 expiryWindow_)
+        BatchedMulticall(hub_.gateway())
+    {
+        hub = hub_;
+        poolId = poolId_;
+        operator = operator_;
+        contractUpdater = contractUpdater_;
+        expiryWindow = expiryWindow_;
+    }
+
     modifier onlyOperator() {
         require(msgSender() == operator, NotOperator());
         _;
@@ -52,16 +53,6 @@ contract Supervisor is ISupervisor, ITrustedContractUpdate, BatchedMulticall {
         address sender = msgSender();
         require(sender == operator || sentinels[sender], NotOperatorOrSentinel());
         _;
-    }
-
-    constructor(IHub hub_, PoolId poolId_, address operator_, address contractUpdater_, uint48 expiryWindow_)
-        BatchedMulticall(hub_.gateway())
-    {
-        hub = hub_;
-        poolId = poolId_;
-        operator = operator_;
-        contractUpdater = contractUpdater_;
-        expiryWindow = expiryWindow_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -75,9 +66,19 @@ contract Supervisor is ISupervisor, ITrustedContractUpdate, BatchedMulticall {
         (TrustedCall kind, address sentinel) = abi.decode(payload, (TrustedCall, address));
 
         if (kind == TrustedCall.AddSentinel) {
-            _addSentinel(sentinel);
-        } else if (kind == TrustedCall.RemoveSentinel) {
-            _removeSentinel(sentinel);
+            require(sentinel != address(0), ZeroAddress());
+            require(!sentinels[sentinel], AlreadySentinel());
+
+            sentinelCount++;
+            sentinels[sentinel] = true;
+            emit AddSentinel(sentinel);
+        } else {
+            require(sentinels[sentinel], NotSentinel());
+            require(sentinelCount > 1, LastSentinel());
+
+            sentinelCount--;
+            sentinels[sentinel] = false;
+            emit RemoveSentinel(sentinel);
         }
     }
 
@@ -103,29 +104,21 @@ contract Supervisor is ISupervisor, ITrustedContractUpdate, BatchedMulticall {
     }
 
     /// @inheritdoc ISupervisor
-    function cancelPending(bytes32 opId) external onlyOperatorOrSentinel {
-        hub.cancel(opId);
+    function cancelPending(bytes calldata data) external onlyOperatorOrSentinel {
+        address sender = msgSender();
+        if (sentinels[sender] && sentinelCount > 1) {
+            _checkNotSelfRemoval(data, sender);
+        }
+        hub.cancel(keccak256(data));
     }
 
-    //----------------------------------------------------------------------------------------------
-    // Internal
-    //----------------------------------------------------------------------------------------------
-
-    function _addSentinel(address sentinel) private {
-        require(sentinel != address(0), ZeroAddress());
-        require(!sentinels[sentinel], AlreadySentinel());
-
-        sentinelCount++;
-        sentinels[sentinel] = true;
-        emit AddSentinel(sentinel);
-    }
-
-    function _removeSentinel(address sentinel) private {
-        require(sentinels[sentinel], NotSentinel());
-
-        sentinelCount--;
-        sentinels[sentinel] = false;
-        emit RemoveSentinel(sentinel);
+    /// @dev Reverts if `data` is a Hub updateContract call whose payload removes `sender` as sentinel.
+    function _checkNotSelfRemoval(bytes calldata data, address sender) private pure {
+        (bytes4 selector, bytes calldata args) = data.decodeCall();
+        if (selector != IHub.updateContract.selector) return;
+        (,,,, bytes memory payload,,) = abi.decode(args, (PoolId, ShareClassId, uint16, bytes32, bytes, uint128, address));
+        (TrustedCall kind, address sentinel) = abi.decode(payload, (TrustedCall, address));
+        require(!(kind == TrustedCall.RemoveSentinel && sentinel == sender), CannotSelfCancel());
     }
 }
 
