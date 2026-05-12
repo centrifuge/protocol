@@ -564,58 +564,52 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     /// @inheritdoc IHub
     function execute(bytes calldata data) external payable {
         require(_submitter == address(0), PoolAlreadyUnlocked());
+        _checkManager(data);
 
         bytes32 opId = keccak256(data);
         PendingOp memory op = pending[opId];
         require(op.executeAfter != 0, OperationNotPending());
         require(block.timestamp >= op.executeAfter, TimelockNotReady(op.executeAfter));
-
-        PoolId poolId = abi.decode(data[4:36], (PoolId));
-        require(hubRegistry.manager(poolId, msgSender()), NotManager());
-
         delete pending[opId];
 
+        // Replay original call with original sender context
         _submitter = op.submitter;
         (bool success, bytes memory result) = address(this).call(data);
         _submitter = address(0);
-
         if (!success) revert ExecutionFailed(result);
+
         emit OperationExecuted(opId);
     }
 
     /// @inheritdoc IHub
     function cancel(bytes calldata data) external {
+        _checkManager(data);
+
         bytes32 opId = keccak256(data);
         require(pending[opId].executeAfter != 0, OperationNotPending());
-
-        PoolId poolId = abi.decode(data[4:36], (PoolId));
-        require(hubRegistry.manager(poolId, msgSender()), NotManager());
-
         delete pending[opId];
+
         emit OperationCanceled(opId);
     }
 
     /// @dev Ensure the sender is a pool manager. When a manifest is set and returns a timelock > 0,
-    ///      the operation is automatically stored as pending and returns false (caller should return early).
+    ///      the operation is stored as pending and the caller should return early.
     function _guard(PoolId poolId) private returns (bool) {
         require(hubRegistry.manager(poolId, msgSender()), NotManager());
-
-        // Skip manifest check during execute
-        if (_submitter != address(0)) return true;
+        if (_submitter != address(0)) return true; // Replaying via execute — skip manifest
 
         IManifest m = manifest[poolId];
-        if (address(m) == address(0)) return true;
+        if (address(m) == address(0)) return true; // No manifest — immediate execution
 
         uint48 timelock = m.check(poolId, msgSender(), msg.data);
-        if (timelock == 0) return true;
+        if (timelock == 0) return true; // Manifest approved — immediate execution
 
+        // Auto-submit as pending
         bytes32 opId = keccak256(msg.data);
         require(pending[opId].executeAfter == 0, OperationAlreadyPending());
-
         uint48 executeAfter = uint48(block.timestamp) + timelock;
         pending[opId] = PendingOp(executeAfter, msgSender());
         emit OperationSubmitted(opId, msg.sig, executeAfter, msg.data);
-
         return false;
     }
 
@@ -671,6 +665,12 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @dev Ensure the sender is authorized
     function _auth() internal auth {}
+
+    /// @dev Extract poolId from calldata and verify sender is a manager.
+    function _checkManager(bytes calldata data) private view {
+        PoolId poolId = abi.decode(data[4:36], (PoolId));
+        require(hubRegistry.manager(poolId, msgSender()), NotManager());
+    }
 
     function _requireSC(PoolId poolId, ShareClassId scId) private view {
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
