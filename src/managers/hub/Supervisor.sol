@@ -97,7 +97,7 @@ contract Supervisor is ISupervisor, ITrustedContractUpdate, BatchedMulticall {
 
     /// @inheritdoc ISupervisor
     function execute(bytes calldata data) external payable onlyOperatorOrSentinel {
-        (uint48 executeAfter,,) = hub.pending(keccak256(data));
+        (uint48 executeAfter,) = hub.pending(keccak256(data));
         require(block.timestamp <= executeAfter + expiryWindow, TimelockExpired());
 
         hub.execute{value: msgValue()}(data);
@@ -109,7 +109,7 @@ contract Supervisor is ISupervisor, ITrustedContractUpdate, BatchedMulticall {
         if (sentinels[sender] && sentinelCount > 1) {
             _checkNotSelfRemoval(data, sender);
         }
-        hub.cancel(keccak256(data));
+        hub.cancel(data);
     }
 
     /// @dev Reverts if `data` is a Hub updateContract call whose payload removes `sender` as sentinel.

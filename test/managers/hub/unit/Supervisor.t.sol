@@ -65,13 +65,13 @@ contract MockHub {
         revert("hub reverted");
     }
 
-    function pending(bytes32 opId) external view returns (uint48, address, PoolId) {
+    function pending(bytes32 opId) external view returns (uint48, address) {
         PendingOp memory op = pendingOps[opId];
-        return (op.executeAfter, op.submitter, op.poolId);
+        return (op.executeAfter, op.submitter);
     }
 
-    function setPending(bytes32 opId, uint48 executeAfter, address submitter, PoolId poolId) external {
-        pendingOps[opId] = PendingOp(executeAfter, submitter, poolId);
+    function setPending(bytes32 opId, uint48 executeAfter, address submitter) external {
+        pendingOps[opId] = PendingOp(executeAfter, submitter);
     }
 
     function execute(bytes calldata data) external payable {
@@ -80,7 +80,8 @@ contract MockHub {
         delete pendingOps[opId];
     }
 
-    function cancel(bytes32 opId) external {
+    function cancel(bytes calldata data) external {
+        bytes32 opId = keccak256(data);
         require(pendingOps[opId].executeAfter != 0, "not pending");
         delete pendingOps[opId];
         cancelled[opId] = true;
@@ -160,7 +161,7 @@ abstract contract SupervisorTestBase is Test {
     /// @dev Helper to set a pending op on the mock hub and return the opId
     function _setPending(bytes memory data, uint48 executeAfter) internal returns (bytes32 opId) {
         opId = keccak256(data);
-        hub.setPending(opId, executeAfter, operator, POOL);
+        hub.setPending(opId, executeAfter, operator);
     }
 }
 

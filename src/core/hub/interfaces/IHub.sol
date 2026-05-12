@@ -43,7 +43,6 @@ enum AccountType {
 struct PendingOp {
     uint48 executeAfter;
     address submitter;
-    PoolId poolId;
 }
 
 /// @notice Interface with all methods available in the system used by actors
@@ -495,10 +494,7 @@ interface IHub is IBatchedMulticall {
     function manifest(PoolId poolId) external view returns (IManifest);
 
     /// @notice Returns pending operation info
-    function pending(bytes32 opId)
-        external
-        view
-        returns (uint48 executeAfter, address submitter, PoolId poolId);
+    function pending(bytes32 opId) external view returns (uint48 executeAfter, address submitter);
 
     /// @notice Set the manifest for a pool. Auth-gated (governance only).
     function setManifest(PoolId poolId, IManifest manifest_) external;
@@ -508,8 +504,8 @@ interface IHub is IBatchedMulticall {
     function execute(bytes calldata data) external payable;
 
     /// @notice Cancel a pending timelocked operation. Any Hub manager for the pool can cancel.
-    /// @param opId The operation identifier to cancel.
-    function cancel(bytes32 opId) external;
+    /// @param data The original calldata that was auto-submitted.
+    function cancel(bytes calldata data) external;
 
     //----------------------------------------------------------------------------------------------
     // View methods

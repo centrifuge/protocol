@@ -569,7 +569,9 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         PendingOp memory op = pending[opId];
         require(op.executeAfter != 0, OperationNotPending());
         require(block.timestamp >= op.executeAfter, TimelockNotReady(op.executeAfter));
-        require(hubRegistry.manager(op.poolId, msgSender()), NotManager());
+
+        PoolId poolId = abi.decode(data[4:36], (PoolId));
+        require(hubRegistry.manager(poolId, msgSender()), NotManager());
 
         delete pending[opId];
 
@@ -582,10 +584,12 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function cancel(bytes32 opId) external {
-        PendingOp memory op = pending[opId];
-        require(op.executeAfter != 0, OperationNotPending());
-        require(hubRegistry.manager(op.poolId, msgSender()), NotManager());
+    function cancel(bytes calldata data) external {
+        bytes32 opId = keccak256(data);
+        require(pending[opId].executeAfter != 0, OperationNotPending());
+
+        PoolId poolId = abi.decode(data[4:36], (PoolId));
+        require(hubRegistry.manager(poolId, msgSender()), NotManager());
 
         delete pending[opId];
         emit OperationCanceled(opId);
@@ -609,7 +613,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         require(pending[opId].executeAfter == 0, OperationAlreadyPending());
 
         uint48 executeAfter = uint48(block.timestamp) + timelock;
-        pending[opId] = PendingOp(executeAfter, msgSender(), poolId);
+        pending[opId] = PendingOp(executeAfter, msgSender());
         emit OperationSubmitted(opId, msg.sig, executeAfter, msg.data);
 
         return false;
