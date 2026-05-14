@@ -1,0 +1,25 @@
+# rsync filter rules for the public mirror (centrifuge/protocol).
+# '-' excludes, '+' includes. First match wins, so '+' rules must come before their parent '-' rule.
+# Paths prefixed with '/' are anchored to the repo root.
+
+# Tests: exclude private subdirectories
+- /test/integration/fork/
+- /test/integration/spell/
+- /test/integration/env/
+
+# Source: exclude private spell contracts
+- /src/spell
+
+# Scripts: keep only FullDeployer, BaseDeployer and their script/ dependencies
++ /script/
++ /script/FullDeployer.s.sol
++ /script/BaseDeployer.s.sol
++ /script/utils/
++ /script/utils/ICreateX.sol
++ /script/utils/CreateX.d.sol
++ /script/utils/CreateXScript.sol
++ /script/utils/JsonRegistry.s.sol
+- /script/**
+
+# GitHub Actions: exclude all (contains internal CI)
+- /.github/
