@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import "forge-std/Script.sol";
+
 import {ICreateX} from "../../utils/public/ICreateX.sol";
 import {CREATEX_ADDRESS} from "../../utils/public/CreateX.d.sol";
 import {CreateXScript} from "../../utils/public/CreateXScript.sol";
 import {JsonRegistry} from "../../utils/public/JsonRegistry.s.sol";
-
-import "forge-std/Script.sol";
 
 contract BaseDeployer is Script, JsonRegistry, CreateXScript {
     string internal suffix;
