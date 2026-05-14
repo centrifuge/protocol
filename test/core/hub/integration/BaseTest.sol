@@ -14,7 +14,7 @@ import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubReques
 
 import {ISafe} from "../../../../src/admin/interfaces/ISafe.sol";
 
-import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../../../script/FullDeployer.s.sol";
+import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../../../script/deploy/public/FullDeployer.s.sol";
 
 import {MockVaults} from "../mocks/MockVaults.sol";
 import {MockValuation} from "../../mocks/MockValuation.sol";

@@ -24,7 +24,7 @@ import {ISyncManager} from "../../../../../src/vaults/interfaces/IVaultManagers.
 import {IAsyncVault, IAsyncRedeemVault} from "../../../../../src/vaults/interfaces/IAsyncVault.sol";
 import {RequestCallbackMessageLib} from "../../../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
-import {NonCoreReport} from "../../../../../script/FullDeployer.s.sol";
+import {NonCoreReport} from "../../../../../script/deploy/public/FullDeployer.s.sol";
 
 import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";

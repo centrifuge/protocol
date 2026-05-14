@@ -44,7 +44,7 @@ import {BatchRequestManager} from "../../../../../src/vaults/BatchRequestManager
 import {AsyncVaultFactory} from "../../../../../src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../../../../../src/vaults/factories/SyncDepositVaultFactory.sol";
 
-import {FullDeployer} from "../../../../../script/FullDeployer.s.sol";
+import {FullDeployer} from "../../../../../script/deploy/public/FullDeployer.s.sol";
 import {ContractsConfig as LiveContracts, EnvConfig} from "../../../../../script/utils/EnvConfig.s.sol";
 
 import {SubsidyManager} from "../../../../../src/utils/SubsidyManager.sol";

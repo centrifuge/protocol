@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseDeployer} from "./BaseDeployer.s.sol";
+import {BaseDeployer} from "./deploy/public/BaseDeployer.s.sol";
 import {EnvConfig, Env, prettyEnvString} from "./utils/EnvConfig.s.sol";
 
 import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";

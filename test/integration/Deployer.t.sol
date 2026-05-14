@@ -13,7 +13,7 @@ import {
     ChainlinkInput,
     defaultTxLimits,
     AdapterConnections
-} from "../../script/FullDeployer.s.sol";
+} from "../../script/deploy/public/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseDeployer} from "./BaseDeployer.s.sol";
+import {BaseDeployer} from "./deploy/public/BaseDeployer.s.sol";
 import {Env, EnvConfig} from "./utils/EnvConfig.s.sol";
 
 import {CastLib} from "../src/misc/libraries/CastLib.sol";

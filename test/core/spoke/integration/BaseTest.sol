@@ -22,7 +22,7 @@ import {ISafe} from "../../../../src/admin/interfaces/ISafe.sol";
 import {AsyncVault} from "../../../../src/vaults/AsyncVault.sol";
 import {SyncDepositVault} from "../../../../src/vaults/SyncDepositVault.sol";
 
-import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../../../script/FullDeployer.s.sol";
+import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../../../script/deploy/public/FullDeployer.s.sol";
 
 import {MockAdapter} from "../../mocks/MockAdapter.sol";
 import {MockCentrifugeChain} from "../mocks/MockCentrifugeChain.sol";

@@ -10,7 +10,7 @@ import {
     AxelarInput,
     LayerZeroInput,
     ChainlinkInput
-} from "./FullDeployer.s.sol";
+} from "./deploy/public/FullDeployer.s.sol";
 
 import {ISafe} from "../src/admin/interfaces/ISafe.sol";
 

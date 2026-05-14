@@ -3,62 +3,62 @@ pragma solidity 0.8.28;
 
 import {BaseDeployer} from "./BaseDeployer.s.sol";
 
-import {Hub} from "../src/core/hub/Hub.sol";
-import {Spoke} from "../src/core/spoke/Spoke.sol";
-import {Holdings} from "../src/core/hub/Holdings.sol";
-import {Accounting} from "../src/core/hub/Accounting.sol";
-import {Gateway} from "../src/core/messaging/Gateway.sol";
-import {HubHandler} from "../src/core/hub/HubHandler.sol";
-import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
-import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
-import {GasService} from "../src/core/messaging/GasService.sol";
-import {VaultRegistry} from "../src/core/spoke/VaultRegistry.sol";
-import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
-import {ContractUpdater} from "../src/core/utils/ContractUpdater.sol";
-import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
-import {TokenFactory} from "../src/core/spoke/factories/TokenFactory.sol";
-import {MessageProcessor} from "../src/core/messaging/MessageProcessor.sol";
-import {MessageDispatcher} from "../src/core/messaging/MessageDispatcher.sol";
-import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
+import {Hub} from "../../../src/core/hub/Hub.sol";
+import {Spoke} from "../../../src/core/spoke/Spoke.sol";
+import {Holdings} from "../../../src/core/hub/Holdings.sol";
+import {Accounting} from "../../../src/core/hub/Accounting.sol";
+import {Gateway} from "../../../src/core/messaging/Gateway.sol";
+import {HubHandler} from "../../../src/core/hub/HubHandler.sol";
+import {HubRegistry} from "../../../src/core/hub/HubRegistry.sol";
+import {BalanceSheet} from "../../../src/core/spoke/BalanceSheet.sol";
+import {GasService} from "../../../src/core/messaging/GasService.sol";
+import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
+import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
+import {ContractUpdater} from "../../../src/core/utils/ContractUpdater.sol";
+import {ShareClassManager} from "../../../src/core/hub/ShareClassManager.sol";
+import {TokenFactory} from "../../../src/core/spoke/factories/TokenFactory.sol";
+import {MessageProcessor} from "../../../src/core/messaging/MessageProcessor.sol";
+import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.sol";
+import {PoolEscrowFactory} from "../../../src/core/spoke/factories/PoolEscrowFactory.sol";
 
-import {Root} from "../src/admin/Root.sol";
-import {ISafe} from "../src/admin/interfaces/ISafe.sol";
-import {OpsGuardian} from "../src/admin/OpsGuardian.sol";
-import {TokenRecoverer} from "../src/admin/TokenRecoverer.sol";
-import {ProtocolGuardian} from "../src/admin/ProtocolGuardian.sol";
+import {Root} from "../../../src/admin/Root.sol";
+import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
+import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
+import {TokenRecoverer} from "../../../src/admin/TokenRecoverer.sol";
+import {ProtocolGuardian} from "../../../src/admin/ProtocolGuardian.sol";
 
-import {FreezeOnly} from "../src/hooks/FreezeOnly.sol";
-import {FullRestrictions} from "../src/hooks/FullRestrictions.sol";
-import {FreelyTransferable} from "../src/hooks/FreelyTransferable.sol";
-import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
+import {FreezeOnly} from "../../../src/hooks/FreezeOnly.sol";
+import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
+import {FreelyTransferable} from "../../../src/hooks/FreelyTransferable.sol";
+import {RedemptionRestrictions} from "../../../src/hooks/RedemptionRestrictions.sol";
 
-import {NAVManager} from "../src/managers/hub/NAVManager.sol";
-import {QueueManager} from "../src/managers/spoke/QueueManager.sol";
-import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";
-import {ScriptHelpers} from "../src/managers/spoke/ScriptHelpers.sol";
-import {AccountingToken} from "../src/managers/spoke/AccountingToken.sol";
-import {FlashLoanHelper} from "../src/managers/spoke/FlashLoanHelper.sol";
-import {SimplePriceManager} from "../src/managers/hub/SimplePriceManager.sol";
-import {IOnchainPMFactory} from "../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
+import {NAVManager} from "../../../src/managers/hub/NAVManager.sol";
+import {QueueManager} from "../../../src/managers/spoke/QueueManager.sol";
+import {OnOffRampFactory} from "../../../src/managers/spoke/OnOffRamp.sol";
+import {ScriptHelpers} from "../../../src/managers/spoke/ScriptHelpers.sol";
+import {AccountingToken} from "../../../src/managers/spoke/AccountingToken.sol";
+import {FlashLoanHelper} from "../../../src/managers/spoke/FlashLoanHelper.sol";
+import {SimplePriceManager} from "../../../src/managers/hub/SimplePriceManager.sol";
+import {IOnchainPMFactory} from "../../../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
 
-import {OracleValuation} from "../src/valuations/OracleValuation.sol";
-import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
+import {OracleValuation} from "../../../src/valuations/OracleValuation.sol";
+import {IdentityValuation} from "../../../src/valuations/IdentityValuation.sol";
 
-import {SyncManager} from "../src/vaults/SyncManager.sol";
-import {VaultRouter} from "../src/vaults/VaultRouter.sol";
-import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
-import {BatchRequestManager} from "../src/vaults/BatchRequestManager.sol";
-import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
+import {SyncManager} from "../../../src/vaults/SyncManager.sol";
+import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
+import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
+import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
+import {AsyncVaultFactory} from "../../../src/vaults/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "../../../src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import {VmSafe} from "forge-std/Vm.sol";
 
-import {SubsidyManager} from "../src/utils/SubsidyManager.sol";
-import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
-import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
-import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
-import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
-import {RefundEscrowFactory} from "../src/utils/RefundEscrowFactory.sol";
+import {SubsidyManager} from "../../../src/utils/SubsidyManager.sol";
+import {AxelarAdapter} from "../../../src/adapters/AxelarAdapter.sol";
+import {WormholeAdapter} from "../../../src/adapters/WormholeAdapter.sol";
+import {ChainlinkAdapter} from "../../../src/adapters/ChainlinkAdapter.sol";
+import {LayerZeroAdapter} from "../../../src/adapters/LayerZeroAdapter.sol";
+import {RefundEscrowFactory} from "../../../src/utils/RefundEscrowFactory.sol";
 import {
     Constants,
     CoreReport,
@@ -69,7 +69,7 @@ import {
     AdaptersReport,
     AdapterConnections,
     SetConfigParam
-} from "../src/deployment/ActionBatchers.sol";
+} from "../../../src/deployment/ActionBatchers.sol";
 
 string constant V3_1 = "v3.1";
 string constant V3_2 = "v3.2";

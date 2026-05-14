@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseDeployer} from "../../script/BaseDeployer.s.sol";
+import {BaseDeployer} from "../../script/deploy/public/BaseDeployer.s.sol";
 
 import "forge-std/Test.sol";
 

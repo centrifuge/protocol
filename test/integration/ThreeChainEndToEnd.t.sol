@@ -16,7 +16,7 @@ import {MessageLib} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
-import {FullDeployer} from "../../script/FullDeployer.s.sol";
+import {FullDeployer} from "../../script/deploy/public/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
