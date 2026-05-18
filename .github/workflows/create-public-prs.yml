@@ -34,18 +34,33 @@ jobs:
           PRIVATE_DIR="$(pwd)/private"
           PUBLIC_DIR="$(pwd)/public"
 
-          # Fetch all merged PRs from private, oldest first
+          # Resolve the public-sync-head tag — this marks where the last sync ended.
+          # Set it manually before the first run: git tag public-sync-head <SHA> && git push origin public-sync-head
+          SYNC_HEAD=$(git -C "$PRIVATE_DIR" rev-parse public-sync-head 2>/dev/null || true)
+          if [ -z "$SYNC_HEAD" ]; then
+            echo "Error: public-sync-head tag not found in private repo."
+            echo "Create it first: git tag public-sync-head <SHA> && git push origin public-sync-head"
+            exit 1
+          fi
+          SYNC_DATE=$(git -C "$PRIVATE_DIR" log -1 --format="%aI" "$SYNC_HEAD")
+          echo "Syncing PRs merged after: $SYNC_DATE (${SYNC_HEAD})"
+
+          # Fetch merged PRs from private, filter to those after the sync head, oldest first
           gh pr list \
             --repo centrifuge/protocol-internal \
             --state merged --base main --limit 100 \
             --json number,title,body,mergedAt,mergeCommit \
-            --jq 'sort_by(.mergedAt)' > /tmp/merged-prs.json
+            --jq --arg since "$SYNC_DATE" \
+              '[ .[] | select(.mergedAt > $since) ] | sort_by(.mergedAt)' \
+            > /tmp/merged-prs.json
 
           COUNT=$(jq length /tmp/merged-prs.json)
-          echo "Found $COUNT merged PRs in private"
+          echo "Found $COUNT new merged PRs since last sync"
+          [ "$COUNT" -eq 0 ] && echo "Nothing to do" && exit 0
 
           git -C "$PUBLIC_DIR" fetch origin --quiet
           BASE_BRANCH="main"
+          LAST_SHA=""
 
           for i in $(seq 0 $((COUNT - 1))); do
             NUMBER=$(jq -r ".[$i].number"          /tmp/merged-prs.json)
@@ -60,21 +75,17 @@ jobs:
               --head "$BRANCH" --json number --jq 'length')
             if [ "$EXISTING" -gt 0 ]; then
               echo "PR #${NUMBER}: already synced, skipping"
-              # If the branch is still open (not yet merged), chain from it
               BRANCH_EXISTS=$(git -C "$PUBLIC_DIR" ls-remote --heads origin "$BRANCH" | wc -l | tr -d ' ')
               [ "$BRANCH_EXISTS" -gt 0 ] && BASE_BRANCH="$BRANCH"
+              LAST_SHA="$SHA"
               continue
             fi
 
             echo "Syncing PR #${NUMBER}: ${TITLE}"
 
-            # Checkout private at this PR's merge commit
             git -C "$PRIVATE_DIR" checkout "$SHA" --quiet
-
-            # Create public branch on top of previous sync point
             git -C "$PUBLIC_DIR" checkout -b "$BRANCH" "origin/${BASE_BRANCH}"
 
-            # Sync public-facing content (full snapshot at this commit)
             rsync -a --delete \
               --exclude='.git' \
               --exclude='.publicignore' \
@@ -86,13 +97,13 @@ jobs:
               echo "PR #${NUMBER}: no public-facing changes, skipping"
               git -C "$PUBLIC_DIR" checkout "$BASE_BRANCH" --quiet
               git -C "$PUBLIC_DIR" branch -d "$BRANCH"
+              LAST_SHA="$SHA"
               continue
             fi
 
             git -C "$PUBLIC_DIR" commit -m "sync: ${TITLE} (${SHA})"
             git -C "$PUBLIC_DIR" push origin "$BRANCH"
 
-            # Build PR body: original description + link to private PR
             printf '%s\n\n---\n_Synced from [protocol-internal#%s](https://github.com/centrifuge/protocol-internal/pull/%s)_\n' \
               "$BODY" "$NUMBER" "$NUMBER" > /tmp/pr-body.md
 
@@ -104,7 +115,11 @@ jobs:
               --head "$BRANCH"
 
             BASE_BRANCH="$BRANCH"
+            LAST_SHA="$SHA"
             echo "Created public PR for #${NUMBER}"
           done
 
-          echo "Done"
+          # Advance the sync head tag to the last processed PR
+          git -C "$PRIVATE_DIR" tag -f public-sync-head "$LAST_SHA"
+          git -C "$PRIVATE_DIR" push origin public-sync-head --force
+          echo "Advanced public-sync-head to ${LAST_SHA}"
