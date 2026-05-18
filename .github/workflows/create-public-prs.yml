@@ -1,0 +1,110 @@
+name: Create public sync PRs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout private repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need full history to checkout arbitrary merge commits
+          path: private
+
+      - name: Checkout public repo
+        uses: actions/checkout@v4
+        with:
+          repository: centrifuge/protocol
+          token: ${{ secrets.PUBLIC_REPO_TOKEN }}
+          path: public
+          fetch-depth: 1
+
+      - name: Configure git
+        run: |
+          git -C public config user.email "github-actions[bot]@users.noreply.github.com"
+          git -C public config user.name "github-actions[bot]"
+
+      - name: Create sync PRs
+        env:
+          PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          set -e
+          PRIVATE_DIR="$(pwd)/private"
+          PUBLIC_DIR="$(pwd)/public"
+
+          # Fetch all merged PRs from private, oldest first
+          gh pr list \
+            --repo centrifuge/protocol-internal \
+            --state merged --base main --limit 100 \
+            --json number,title,body,mergedAt,mergeCommit \
+            --jq 'sort_by(.mergedAt)' > /tmp/merged-prs.json
+
+          COUNT=$(jq length /tmp/merged-prs.json)
+          echo "Found $COUNT merged PRs in private"
+
+          git -C "$PUBLIC_DIR" fetch origin --quiet
+          BASE_BRANCH="main"
+
+          for i in $(seq 0 $((COUNT - 1))); do
+            NUMBER=$(jq -r ".[$i].number"          /tmp/merged-prs.json)
+            SHA=$(jq    -r ".[$i].mergeCommit.oid" /tmp/merged-prs.json)
+            TITLE=$(jq  -r ".[$i].title"           /tmp/merged-prs.json)
+            BODY=$(jq   -r ".[$i].body // \"\""    /tmp/merged-prs.json)
+            BRANCH="sync/pr-${NUMBER}"
+
+            # Skip if a public PR already exists for this branch (open or merged)
+            EXISTING=$(GH_TOKEN="$PUBLIC_REPO_TOKEN" gh pr list \
+              --repo centrifuge/protocol --state all \
+              --head "$BRANCH" --json number --jq 'length')
+            if [ "$EXISTING" -gt 0 ]; then
+              echo "PR #${NUMBER}: already synced, skipping"
+              # If the branch is still open (not yet merged), chain from it
+              BRANCH_EXISTS=$(git -C "$PUBLIC_DIR" ls-remote --heads origin "$BRANCH" | wc -l | tr -d ' ')
+              [ "$BRANCH_EXISTS" -gt 0 ] && BASE_BRANCH="$BRANCH"
+              continue
+            fi
+
+            echo "Syncing PR #${NUMBER}: ${TITLE}"
+
+            # Checkout private at this PR's merge commit
+            git -C "$PRIVATE_DIR" checkout "$SHA" --quiet
+
+            # Create public branch on top of previous sync point
+            git -C "$PUBLIC_DIR" checkout -b "$BRANCH" "origin/${BASE_BRANCH}"
+
+            # Sync public-facing content (full snapshot at this commit)
+            rsync -a --delete \
+              --exclude='.git' \
+              --exclude='.publicignore' \
+              --filter=". ${PRIVATE_DIR}/.publicignore" \
+              "${PRIVATE_DIR}/" "${PUBLIC_DIR}/"
+
+            git -C "$PUBLIC_DIR" add -A
+            if git -C "$PUBLIC_DIR" diff --staged --quiet; then
+              echo "PR #${NUMBER}: no public-facing changes, skipping"
+              git -C "$PUBLIC_DIR" checkout "$BASE_BRANCH" --quiet
+              git -C "$PUBLIC_DIR" branch -d "$BRANCH"
+              continue
+            fi
+
+            git -C "$PUBLIC_DIR" commit -m "sync: ${TITLE} (${SHA})"
+            git -C "$PUBLIC_DIR" push origin "$BRANCH"
+
+            # Build PR body: original description + link to private PR
+            printf '%s\n\n---\n_Synced from [protocol-internal#%s](https://github.com/centrifuge/protocol-internal/pull/%s)_\n' \
+              "$BODY" "$NUMBER" "$NUMBER" > /tmp/pr-body.md
+
+            GH_TOKEN="$PUBLIC_REPO_TOKEN" gh pr create \
+              --repo centrifuge/protocol \
+              --title "$TITLE" \
+              --body-file /tmp/pr-body.md \
+              --base "$BASE_BRANCH" \
+              --head "$BRANCH"
+
+            BASE_BRANCH="$BRANCH"
+            echo "Created public PR for #${NUMBER}"
+          done
+
+          echo "Done"
