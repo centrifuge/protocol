@@ -678,6 +678,24 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // contract deployed
         assertTrue(address(flashLoanHelper).code.length > 0);
     }
+
+    function testApprovalGuard() public view {
+        // contract deployed
+        assertTrue(address(approvalGuard).code.length > 0);
+    }
+
+    function testCircuitBreakerGuard() public view {
+        // contract deployed
+        assertTrue(address(circuitBreakerGuard).code.length > 0);
+    }
+
+    function testSlippageGuard() public view {
+        // dependencies set correctly
+        assertEq(address(slippageGuard.spoke()), address(spoke));
+        assertEq(address(slippageGuard.balanceSheet()), address(balanceSheet));
+        assertEq(slippageGuard.contractUpdater(), address(contractUpdater));
+        assertEq(address(slippageGuard.onchainPMFactory()), address(onchainPMFactory));
+    }
 }
 
 contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
