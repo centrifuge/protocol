@@ -9,8 +9,8 @@ import {ScriptHelpers} from "../src/managers/spoke/ScriptHelpers.sol";
 import {AccountingToken} from "../src/managers/spoke/AccountingToken.sol";
 import {FlashLoanHelper} from "../src/managers/spoke/FlashLoanHelper.sol";
 import {ApprovalGuard} from "../src/managers/spoke/guards/ApprovalGuard.sol";
-import {CircuitBreakerGuard} from "../src/managers/spoke/guards/CircuitBreakerGuard.sol";
 import {SlippageGuard} from "../src/managers/spoke/guards/SlippageGuard.sol";
+import {CircuitBreakerGuard} from "../src/managers/spoke/guards/CircuitBreakerGuard.sol";
 
 import "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
@@ -37,7 +37,12 @@ contract DeployOnchainPMV2 is BaseDeployer {
 
         _init(suffix, msg.sender);
 
-        _deploy(config.contracts.contractUpdater, config.contracts.balanceSheet, config.contracts.gateway, config.contracts.spoke);
+        _deploy(
+            config.contracts.contractUpdater,
+            config.contracts.balanceSheet,
+            config.contracts.gateway,
+            config.contracts.spoke
+        );
 
         saveDeploymentOutput();
 
@@ -89,8 +94,7 @@ contract DeployOnchainPMV2 is BaseDeployer {
 
         approvalGuard = ApprovalGuard(
             create3(
-                createSalt("approvalGuard", ONCHAIN_PM_V2_VERSION),
-                abi.encodePacked(type(ApprovalGuard).creationCode)
+                createSalt("approvalGuard", ONCHAIN_PM_V2_VERSION), abi.encodePacked(type(ApprovalGuard).creationCode)
             )
         );
 
