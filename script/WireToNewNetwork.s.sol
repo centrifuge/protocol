@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Env, EnvConfig, Connection} from "./utils/EnvConfig.s.sol";
+import {Env, EnvConfig, EnvConfigLib, Connection} from "./utils/EnvConfig.s.sol";
 
 import {PoolId} from "../src/core/types/PoolId.sol";
 import {IAdapter} from "../src/core/messaging/interfaces/IAdapter.sol";
@@ -13,11 +13,7 @@ import "forge-std/Script.sol";
 
 import {Safe, Enum} from "safe-utils/Safe.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
-import {
-    SetConfigParam,
-    UlnConfig,
-    ILayerZeroEndpointV2Like
-} from "../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
+import {SetConfigParam, ILayerZeroEndpointV2Like} from "../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
 /// @title WireToNewNetwork
 /// @notice Proposes batched OpsGuardian.wire/initAdapters and LZ DVN config transactions via Safe
@@ -37,7 +33,6 @@ contract WireToNewNetwork is Script {
     using Safe for *;
 
     string constant LEDGER_DERIVATION_PATH = "m/44'/60'/0'/0/0";
-    uint32 constant ULN_CONFIG_TYPE = 2;
     PoolId constant GLOBAL_POOL = PoolId.wrap(0);
 
     Safe.Client safe;
@@ -300,17 +295,9 @@ contract WireToNewNetwork is Script {
         pure
         returns (SetConfigParam memory)
     {
-        bytes memory encodedUln = abi.encode(
-            UlnConfig({
-                confirmations: source.adapters.layerZero.blockConfirmations,
-                requiredDVNCount: uint8(source.adapters.layerZero.dvns.length),
-                optionalDVNCount: type(uint8).max, // NIL_DVN_COUNT: explicitly no optional DVNs
-                optionalDVNThreshold: 0,
-                requiredDVNs: source.adapters.layerZero.dvns,
-                optionalDVNs: new address[](0)
-            })
+        return SetConfigParam(
+            destEid, EnvConfigLib.ULN_CONFIG_TYPE, EnvConfigLib.encodeUlnConfig(source.adapters.layerZero)
         );
-        return SetConfigParam(destEid, ULN_CONFIG_TYPE, encodedUln);
     }
 
     function _findTargetConnection(EnvConfig memory source, string memory targetName)

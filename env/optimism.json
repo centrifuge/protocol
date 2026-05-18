@@ -14,10 +14,16 @@
       "layerZeroEid": 30111,
       "deploy": true,
       "blockConfirmations": 15,
-      "DVNs": [
-        "0x5b6735c66d97479cCD18294fc96B3084EcB2fa3f",
-        "0x6A02D83e8d433304bba74EF1c427913958187142"
-      ]
+      "requiredDVNs": [
+        "0x427bd19a0463fc4eDc2e247d35eB61323d7E5541",
+        "0x5b6735c66d97479cCD18294fc96B3084EcB2fa3f"
+      ],
+      "optionalDVNs": [
+        "0x3b0531eB02Ab4aD72e7a531180beeF9493a00dD2",
+        "0x539008c98B17803A273eDf98aBA2d4414Ee3f4D7",
+        "0xa7b5189bcA84Cd304D8553977c7C614329750d99"
+      ],
+      "optionalDVNThreshold": 2
     },
     "axelar": {
       "axelarId": "optimism",

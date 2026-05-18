@@ -13,9 +13,11 @@
       "layerZeroEid": 40362,
       "deploy": true,
       "blockConfirmations": 5,
-      "DVNs": [
-        "0x91e698871030d0e1b6c9268c20bb57e2720618dd"
-      ]
+      "requiredDVNs": [
+        "0x91E698871030D0e1b6c9268C20bB57E2720618Dd"
+      ],
+      "optionalDVNs": [],
+      "optionalDVNThreshold": 0
     }
   },
   "contracts": {
