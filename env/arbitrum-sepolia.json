@@ -26,9 +26,11 @@
       "layerZeroEid": 40231,
       "deploy": true,
       "blockConfirmations": 5,
-      "DVNs": [
-        "0x53f488e93b4f1b60e8e83aa374dbe1780a1ee8a8"
-      ]
+      "requiredDVNs": [
+        "0x53f488E93b4f1b60E8E83aa374dBe1780A1EE8a8"
+      ],
+      "optionalDVNs": [],
+      "optionalDVNThreshold": 0
     },
     "chainlink": {
       "chainSelector": 3478487238524512106,
