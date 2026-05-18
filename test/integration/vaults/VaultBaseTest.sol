@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-// Re-exported for test files importing from VaultBaseTest
-
 import {MockERC6909} from "../../misc/mocks/MockERC6909.sol";
 
 import {ERC20} from "../../../src/misc/ERC20.sol";
@@ -126,7 +124,6 @@ contract MockCentrifugeChainDirect is Test {
         uint128 fulfilledShareAmount,
         uint128 cancelledAssetAmount
     ) public {
-        // NOTE: hardcoding pricePoolPerAsset to 1 (matching MockCentrifugeChain behaviour)
         isApprovedDeposits(poolId, scId, assetId, fulfilledAssetAmount, d18(1, 1));
         isIssuedShares(poolId, scId, assetId, fulfilledShareAmount, d18(1, 1));
         spoke.requestCallback(
@@ -176,7 +173,6 @@ contract MockCentrifugeChainDirect is Test {
         uint128 fulfilledShareAmount,
         uint128 cancelledShareAmount
     ) public {
-        // NOTE: hardcoding pricePoolPerShare to 1 (matching MockCentrifugeChain behaviour)
         isRevokedShares(poolId, scId, assetId, fulfilledAssetAmount, fulfilledShareAmount, d18(1, 1));
         spoke.requestCallback(
             PoolId.wrap(poolId),
@@ -346,8 +342,7 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         address hook,
         bytes16 scId,
         address asset,
-        uint256 assetTokenId,
-        uint16 /* TODO: destinationChain */
+        uint256 assetTokenId
     ) public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
         try spoke.shareToken(POOL_A, ShareClassId.wrap(scId)) {}
         catch {
@@ -388,24 +383,14 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         public
         returns (uint64 poolId, address vaultAddress, uint128 assetId)
     {
-        return deployVault(
-            vaultKind, decimals, address(fullRestrictionsHook), scId, address(erc20), erc20TokenId, OTHER_CHAIN_ID
-        );
+        return deployVault(vaultKind, decimals, address(fullRestrictionsHook), scId, address(erc20), erc20TokenId);
     }
 
     function deploySimpleVault(VaultKind vaultKind)
         public
         returns (uint64 poolId, address vaultAddress, uint128 assetId)
     {
-        return deployVault(
-            vaultKind,
-            6,
-            address(fullRestrictionsHook),
-            bytes16(bytes("1")),
-            address(erc20),
-            erc20TokenId,
-            OTHER_CHAIN_ID
-        );
+        return deployVault(vaultKind, 6, address(fullRestrictionsHook), bytes16(bytes("1")), address(erc20), erc20TokenId);
     }
 
     function deposit(address _vault, address _investor, uint256 amount) public {

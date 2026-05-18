@@ -31,15 +31,8 @@ abstract contract QueueManagerBaseTest is BaseTest {
         assetId1 = AssetId.wrap(createdAssetId1);
         vault1 = vaultAddress1;
 
-        (, address vaultAddress2, uint128 createdAssetId2) = deployVault(
-            VaultKind.SyncDepositAsyncRedeem,
-            18,
-            address(fullRestrictionsHook),
-            defaultShareClassId,
-            asset2,
-            0,
-            THIS_CHAIN_ID
-        );
+        (, address vaultAddress2, uint128 createdAssetId2) =
+            deployVault(VaultKind.SyncDepositAsyncRedeem, 18, address(fullRestrictionsHook), defaultShareClassId, asset2, 0);
         assetId2 = AssetId.wrap(createdAssetId2);
         vault2 = vaultAddress2;
     }

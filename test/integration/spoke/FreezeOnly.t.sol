@@ -14,7 +14,7 @@ contract FreezeOnlyTest is BaseTest {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
         (, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, 6, address(freezeOnlyHook), bytes16(bytes("1")), address(erc20), 0, 0);
+            deployVault(VaultKind.Async, 6, address(freezeOnlyHook), bytes16(bytes("1")), address(erc20), 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
 

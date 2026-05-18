@@ -68,7 +68,7 @@ contract AsyncVaultTest is BaseTest {
         bytes16 scId = bytes16(bytes("6dec"));
 
         (uint64 poolId, address vaultAddr, uint128 assetId) =
-            deployVault(VaultKind.Async, 6, address(fullRestrictionsHook), scId, address(asset18), 0, OTHER_CHAIN_ID);
+            deployVault(VaultKind.Async, 6, address(fullRestrictionsHook), scId, address(asset18), 0);
         AsyncVault vault = AsyncVault(vaultAddr);
 
         // At 1:1 price: 1 full share (1e6 units) costs 1 full 18-dec asset (1e18 units)
