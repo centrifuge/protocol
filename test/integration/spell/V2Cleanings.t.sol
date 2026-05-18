@@ -33,7 +33,9 @@ import {
     ESCROW_V2,
     USDC_ETHEREUM,
     USDC_BASE,
-    USDC_ARBITRUM
+    USDC_ARBITRUM,
+    CNF_TREASURY_WALLET,
+    CENTRIFUGE_CHAIN_CFG_AMOUNT
 } from "../../../src/spell/V2CleaningsSpell.sol";
 
 contract V2CleaningsSpellTest is Test {
@@ -41,6 +43,8 @@ contract V2CleaningsSpellTest is Test {
     address constant GUARDIAN_V2_ETHEREUM_OR_ARBITRUM = 0x09ab10a9c3E6Eac1d18270a2322B6113F4C7f5E8;
     address constant GUARDIAN_V2_BASE = 0x427A1ce127b1775e4Cbd4F58ad468B9F832eA7e9;
     address constant ROOT_V3_ETH = 0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f;
+
+    uint256 constant MAX_POST_MINT_CFG_SUPPLY = 692_049_712_426_095_885_688_933_007;
 
     function _testCase(string memory network, string memory rpcUrl) public {
         vm.createSelectFork(rpcUrl);
@@ -57,6 +61,15 @@ contract V2CleaningsSpellTest is Test {
         V2CleaningsSpell spell = new V2CleaningsSpell();
 
         // ----- PRE SPELL -----
+
+        uint256 preCfgTotalSupply;
+        uint256 preCfgMintTreasuryBalance;
+        if (CFG.code.length > 0) {
+            preCfgTotalSupply = IERC20(CFG).totalSupply();
+            preCfgMintTreasuryBalance = IERC20(CFG).balanceOf(CNF_TREASURY_WALLET);
+        }
+        uint256 preWcfgTotalSupply = block.chainid == ETHEREUM_CHAIN_ID ? IERC20(WCFG).totalSupply() : 0;
+        uint256 preWcfgBalanceOfIouCfg = block.chainid == ETHEREUM_CHAIN_ID ? IERC20(WCFG).balanceOf(IOU_CFG) : 0;
 
         IERC20 usdc = _usdc();
         uint256 preTreasuryValue;
@@ -100,6 +113,13 @@ contract V2CleaningsSpellTest is Test {
 
             assertEq(IAuth(CFG).wards(address(ROOT_V2)), 0);
             assertEq(IAuth(CFG).wards(IOU_CFG), 0);
+
+            // CFG minting assertions
+            uint256 expectedMintAmount = preWcfgTotalSupply - preWcfgBalanceOfIouCfg + CENTRIFUGE_CHAIN_CFG_AMOUNT;
+            assertEq(IERC20(CFG).totalSupply(), preCfgTotalSupply + expectedMintAmount);
+            assertEq(IERC20(CFG).totalSupply(), MAX_POST_MINT_CFG_SUPPLY, "Total CFG supply exceeds max post-mint cap");
+            assertEq(IERC20(CFG).balanceOf(CNF_TREASURY_WALLET), preCfgMintTreasuryBalance + expectedMintAmount);
+            assertEq(IAuth(CFG).wards(address(spell)), 0);
         }
 
         if (TRANCHE_JTRSY.code.length > 0) {
