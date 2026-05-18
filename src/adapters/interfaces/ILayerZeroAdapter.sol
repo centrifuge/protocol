@@ -2,6 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../../core/messaging/interfaces/IMessageHandler.sol";
 
 import {IAdapterWiring} from "../../admin/interfaces/IAdapterWiring.sol";
 
@@ -108,6 +109,12 @@ interface ILayerZeroAdapter is IAdapter, IAdapterWiring, ILayerZeroReceiver {
     //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
+
+    /// @notice The MultiAdapter that receives decoded inbound messages from this adapter
+    function entrypoint() external view returns (IMessageHandler);
+
+    /// @notice LayerZero V2 endpoint used for cross-chain message dispatch and fee quoting
+    function endpoint() external view returns (ILayerZeroEndpointV2);
 
     /// @notice Returns the source configuration for a given layerzero endpoint id
     /// @param layerZeroEid The remote LayerZero Endpoint ID

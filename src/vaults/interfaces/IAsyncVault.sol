@@ -2,7 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {IBaseVault} from "./IBaseVault.sol";
-import {IAsyncRedeemManager} from "./IVaultManagers.sol";
+import {IAsyncRedeemManager, IAsyncRequestManager} from "./IVaultManagers.sol";
 
 import {IERC7540Redeem, IERC7887Redeem, IERC7887Deposit, IERC7540Deposit} from "../../misc/interfaces/IERC7540.sol";
 
@@ -54,4 +54,7 @@ interface IAsyncVault is IERC7540Deposit, IERC7887Deposit, IAsyncRedeemVault {
     /// @param owner The address that can claim the returned assets
     /// @param assets The amount of assets being returned
     function onCancelDepositClaimable(address owner, uint256 assets) external;
+
+    /// @notice Strongly-typed accessor to the generic async redeem manager as IAsyncRequestManager
+    function asyncManager() external view returns (IAsyncRequestManager);
 }

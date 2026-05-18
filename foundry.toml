@@ -16,6 +16,7 @@ fs_permissions = [
   { access = "read", path = "env" },
   { access = "read-write", path = "snapshots" },
   { access = "read-write", path = "spell-cache" },
+  { access = "read", path = "out-ir" },
 ]
 
 # {@see {@link https://github.com/foundry-rs/foundry/issues/4060} }
@@ -39,7 +40,7 @@ ignored_warnings_from = [
   "src/misc/ReentrancyProtection.sol", # Issue: https://github.com/ethereum/solidity/issues/14359
 ]
 
-dynamic_test_linking = true
+dynamic_test_linking = false # crytic-compile can't resolve foundry-pp/DeployHelper*.sol virtual stubs
 
 [profile.default.lint]
 severity = ["high"]
@@ -54,6 +55,35 @@ runs = 10
 depth = 100
 call_override = false
 fail_on_revert = false
+
+[profile.echidna]
+dynamic_test_linking = false # Enabling this would lead to foundry-pp/DeployHelper*.sol files that crytic-compile can't resolve
+# Override bytecode_hash for fuzzer coverage: "none" causes crytic-compile to treat every
+# sequence as new coverage (metadata hash instability), leading to unbounded corpus growth and OOM.
+# Production builds (default profile) keep "none" for deterministic bytecode.
+bytecode_hash = "ipfs"
+cbor_metadata = true
+
+[profile.medusa]
+dynamic_test_linking = false
+bytecode_hash = "ipfs"
+cbor_metadata = true
+
+# Compile weiroll VM with via_ir (stack-depth workaround)
+[profile.ir]
+src = "src-ir"
+test = "test-ir"
+script = "script-ir"
+libs = ["lib"]
+out = "out-ir"
+via_ir = true
+solc_version = "0.8.28"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 1
+bytecode_hash = "none"
+cbor_metadata = false
+auto_detect_remappings = false
 
 [profile.ci.fuzz]
 runs = 1000

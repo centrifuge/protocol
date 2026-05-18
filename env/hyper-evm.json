@@ -14,10 +14,16 @@
       "layerZeroEid": 30367,
       "deploy": true,
       "blockConfirmations": 15,
-      "DVNs": [
-        "0x83342EC538dF0460e730a8F543Fe63063e2D44C4",
-        "0xc097ab8CD7b053326DFe9fB3E3a31a0CCe3B526f"
-      ]
+      "requiredDVNs": [
+        "0x32fFd21260172518A8844feC76A88C8F239C384b",
+        "0x83342EC538dF0460e730a8F543Fe63063e2D44C4"
+      ],
+      "optionalDVNs": [
+        "0x8E49eF1DfAe17e547CA0E7526FfDA81FbaCA810A",
+        "0xC7423626016bc40375458bc0277F28681EC91C8e",
+        "0xcFe987eBFf7612B53D145DD70EE24D00E12d6A1F"
+      ],
+      "optionalDVNThreshold": 2
     },
     "axelar": {
       "axelarId": "hyperliquid",
@@ -305,7 +311,7 @@
   },
   "deploymentInfo": {
     "deploy:protocol": {
-      "gitCommit": "d9db839cc",
+      "gitCommit": "c4dcd1ae",
       "timestamp": "2026-01-28T15:19:10Z",
       "suffix": "",
       "startBlock": 25782262

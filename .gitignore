@@ -1,5 +1,6 @@
 cache/
 out/
+out-ir/
 broadcast/
 .env*
 .idea/
@@ -12,6 +13,7 @@ lcov.info
 /medusa
 /crytic-export
 /echidna
+recon.json
 **/*.log
 **/anvil/*.json
 **/env/anvil.json

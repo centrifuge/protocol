@@ -14,6 +14,12 @@ interface IRefundEscrowFactory {
 
     error FileUnrecognizedParam();
 
+    /// @notice SubsidyManager authorized to deploy escrows and withdraw subsidy funds
+    function controller() external view returns (address);
+
+    /// @notice Root authority that manages ward permissions and timelocked upgrades
+    function root() external view returns (address);
+
     /// @notice Updates contract parameters of type address.
     /// @param what The parameter name to update
     /// @param data The new address value

@@ -24,9 +24,11 @@
       "layerZeroEid": 40161,
       "deploy": true,
       "blockConfirmations": 5,
-      "DVNs": [
-        "0x8eebf8b423b73bfca51a1db4b7354aa0bfca9193"
-      ]
+      "requiredDVNs": [
+        "0x8eebf8b423B73bFCa51a1Db4B7354AA0bFCA9193"
+      ],
+      "optionalDVNs": [],
+      "optionalDVNThreshold": 0
     },
     "chainlink": {
       "chainSelector": 16015286601757825753,
@@ -299,12 +301,6 @@
       "txHash": "0x414efa3c46ff68ab5d580a636f02f5e07a3810e9db5a5c98e323f9e6391e679e",
       "version": "v3.1"
     },
-    "tokenBridge": {
-      "address": "0xc59317b5F543ac93ACD31900b45a62a6E5B30038",
-      "blockNumber": 9851723,
-      "txHash": "0x95f3a25f0143cbae6938bd437c3ae3715a5cf6a00bbd5e0c01cbb0171252dc6e",
-      "version": "v3.1"
-    },
     "subsidyManager": {
       "address": "0xE5419F74f8875C401C3a2f4C68846d9d410e1677",
       "blockNumber": 10142075,
@@ -316,6 +312,36 @@
       "blockNumber": 10142076,
       "txHash": "0x75e63ed0a0504573c58677e9bc79d8df0adc39edd92001233eea1c18dd8f6d5a",
       "version": "v3.1"
+    },
+    "accountingToken": {
+      "address": "0x5ba3F068ceFa1e84aDAFcB7191bf4C02C3b724f8",
+      "blockNumber": 10742867,
+      "txHash": "0x5204ebcb9828a5dea91162b48b9035488c9f69e9a46e0e3b836bc20a9622ce6e",
+      "version": "v3.2"
+    },
+    "scriptHelpers": {
+      "address": "0xba5f99EbFAde72174b41137EEe0714F7099fa806",
+      "blockNumber": 10742867,
+      "txHash": "0xe4a1fe8f90e3b5d43887e72268c4e737e9c2843fcf41c4c18d703b49c4e217e2",
+      "version": "v3.2"
+    },
+    "flashLoanHelper": {
+      "address": "0xB106e8Ad482df0088E28E7bD268AC1ea9609716c",
+      "blockNumber": 10742867,
+      "txHash": "0x65b539ff63ccc075cd64c1f85e16607c14d7be91d542259c01737a07fbaacaec",
+      "version": "v3.2"
+    },
+    "onchainPMFactory": {
+      "address": "0xF3c808e6D7C25B19c97a9597CaAcFB8Ba780a580",
+      "blockNumber": 10742867,
+      "txHash": "0x7f52e8161460427ed2d80a8cb7d78d0c68db35fa2a56124b3731776cfd9c8c8b",
+      "version": "v3.2"
+    },
+    "onOffRampFactory": {
+      "address": "0x6Af53A7f79c32c09C73b745c591058Cdd97457DB",
+      "blockNumber": 10748684,
+      "txHash": "0xb4959012a835e032eac2605ce176bfd00eae5db1e92ac0a001daad89d5e15f50",
+      "version": "v3.2"
     }
   },
   "deploymentInfo": {

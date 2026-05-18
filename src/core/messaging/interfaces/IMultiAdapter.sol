@@ -3,6 +3,7 @@ pragma solidity >=0.5.0;
 
 import {IAdapter} from "./IAdapter.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
+import {IMessageProperties} from "./IMessageProperties.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 
@@ -120,6 +121,21 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
+
+    /// @notice Protocol's internal chain identifier for this network, distinct from the EVM chain ID
+    function localCentrifugeId() external view returns (uint16);
+
+    /// @notice Gateway that receives confirmed messages once adapter quorum is reached
+    function gateway() external view returns (IMessageHandler);
+
+    /// @notice Provides gas cost estimates and message type metadata for cross-chain messages
+    function messageProperties() external view returns (IMessageProperties);
+
+    /// @notice Returns the inbound message session id for a given chain and payload hash
+    /// @param centrifugeId The source chain identifier
+    /// @param payloadHash The hash of the inbound payload
+    /// @return sessionId The session id when the votes were cast
+    function inbound(uint16 centrifugeId, bytes32 payloadHash) external view returns (uint128 sessionId);
 
     /// @notice Number of total configured adapters for a pool
     /// @param centrifugeId Chain where the adapter is configured for

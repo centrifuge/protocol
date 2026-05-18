@@ -6,6 +6,8 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
+import {IHubRequestManagerCallback} from "../../core/hub/interfaces/IHubRequestManagerCallback.sol";
 import {IHubRequestManager, IHubRequestManagerNotifications} from "../../core/hub/interfaces/IHubRequestManager.sol";
 
 /// @notice Struct containing the epoch data for issuing share class tokens
@@ -349,6 +351,64 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
         AssetId payoutAssetId,
         address refund
     ) external payable;
+
+    //----------------------------------------------------------------------------------------------
+    // Storage getters
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Hub contract called for deposit approvals, share issuance, and redeem processing
+    function hub() external view returns (IHubRequestManagerCallback);
+
+    /// @notice Registry of pools, assets, and manager permissions on the hub chain
+    function hubRegistry() external view returns (IHubRegistry);
+
+    /// @notice Returns the epoch ID data for a given pool, share class and asset
+    function epochId(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        view
+        returns (uint32 deposit, uint32 issue, uint32 redeem, uint32 revoke);
+
+    /// @notice Returns the total pending redeem amount for a given pool, share class and asset
+    function pendingRedeem(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128);
+
+    /// @notice Returns the total pending deposit amount for a given pool, share class and asset
+    function pendingDeposit(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128);
+
+    /// @notice Returns the user's redeem request order for a given pool, share class, asset and investor
+    function redeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        view
+        returns (uint128 pending, uint32 lastUpdate);
+
+    /// @notice Returns the user's deposit request order for a given pool, share class, asset and investor
+    function depositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        view
+        returns (uint128 pending, uint32 lastUpdate);
+
+    /// @notice Returns the user's queued redeem request for a given pool, share class, asset and investor
+    function queuedRedeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        view
+        returns (bool isCancelling, uint128 amount);
+
+    /// @notice Returns the user's queued deposit request for a given pool, share class, asset and investor
+    function queuedDepositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        view
+        returns (bool isCancelling, uint128 amount);
+
+    /// @notice Returns whether force cancel is allowed for a deposit request
+    function allowForceDepositCancel(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        view
+        returns (bool);
+
+    /// @notice Returns whether force cancel is allowed for a redeem request
+    function allowForceRedeemCancel(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        view
+        returns (bool);
 
     //----------------------------------------------------------------------------------------------
     // View methods

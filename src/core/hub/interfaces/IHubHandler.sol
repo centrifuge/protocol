@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IHub} from "./IHub.sol";
+import {IHoldings} from "./IHoldings.sol";
+import {IHubRegistry} from "./IHubRegistry.sol";
+import {IShareClassManager} from "./IShareClassManager.sol";
+
+import {IHubMessageSender} from "../../messaging/interfaces/IGatewaySenders.sol";
+
 import {PoolId} from "../../types/PoolId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 
@@ -37,4 +44,23 @@ interface IHubHandler {
     /// @param what Name of the parameter to update (accepts 'hubRegistry', 'holdings', 'sender')
     /// @param data Address of the new contract
     function file(bytes32 what, address data) external;
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Central coordination contract for pool management and cross-chain operations
+    function hub() external view returns (IHub);
+
+    /// @notice Tracks asset positions and valuations across all pools and share classes
+    function holdings() external view returns (IHoldings);
+
+    /// @notice Registry of pools, assets, and manager permissions on the hub chain
+    function hubRegistry() external view returns (IHubRegistry);
+
+    /// @notice Dispatches cross-chain messages from the hub to spoke chains
+    function sender() external view returns (IHubMessageSender);
+
+    /// @notice Manages share class creation, pricing, and issuance/revocation tracking
+    function shareClassManager() external view returns (IShareClassManager);
 }

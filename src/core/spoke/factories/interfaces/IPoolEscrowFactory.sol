@@ -24,6 +24,12 @@ interface IPoolEscrowFactory is IPoolEscrowProvider {
     error FileUnrecognizedParam();
     error EscrowAlreadyDeployed();
 
+    /// @notice Root authority that manages ward permissions and timelocked upgrades
+    function root() external view returns (address);
+
+    /// @notice BalanceSheet which manages the escrow of each pool
+    function balanceSheet() external view returns (address);
+
     /// @notice Deploys new escrow and returns it.
     /// @dev All share classes of a pool are represented by the same escrow contract.
     ///

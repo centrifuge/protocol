@@ -5,7 +5,9 @@ import {IBaseVault} from "./IBaseVault.sol";
 import {IAsyncVault} from "./IAsyncVault.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
+import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IVaultRegistry} from "../../core/spoke/interfaces/IVaultRegistry.sol";
 import {IBatchedMulticall} from "../../core/utils/interfaces/IBatchedMulticall.sol";
 
 import {BaseSyncDepositVault} from "../BaseVaults.sol";
@@ -165,4 +167,10 @@ interface IVaultRouter is IBatchedMulticall {
 
     /// @notice Returns whether the controller has called `enable()` for the given `vault`
     function isEnabled(IBaseVault vault, address controller) external view returns (bool);
+
+    /// @notice Spoke-side entry point for this chain's pool and share class operations
+    function spoke() external view returns (ISpoke);
+
+    /// @notice Maps (poolId, scId, asset) tuples to deployed vault addresses
+    function vaultRegistry() external view returns (IVaultRegistry);
 }

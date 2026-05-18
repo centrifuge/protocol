@@ -150,4 +150,31 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @return The available balance
     function availableBalanceOf(ShareClassId scId, address asset, uint256 tokenId) external view returns (uint128);
+
+    /// @notice Returns the pool id of this escrow
+    /// @return The pool id
+    function poolId() external view returns (PoolId);
+
+    /// @notice Returns the holding details for a given share class, asset and token id
+    /// @param scId The id of the share class
+    /// @param asset The address of the asset
+    /// @param tokenId The id of the asset - 0 for ERC20
+    /// @return total The total amount held
+    /// @return reserved The reserved amount
+    function holding(ShareClassId scId, address asset, uint256 tokenId)
+        external
+        view
+        returns (uint128 total, uint128 reserved);
+
+    /// @notice Returns the reserved amount for a specific reserver, reason, asset and token id
+    /// @param scId The id of the share class
+    /// @param reserver The address of the reserver
+    /// @param reason The reason code for the reservation
+    /// @param asset The address of the asset
+    /// @param tokenId The id of the asset - 0 for ERC20
+    /// @return The reserved amount
+    function reservedBy(ShareClassId scId, address reserver, uint32 reason, address asset, uint256 tokenId)
+        external
+        view
+        returns (uint128);
 }

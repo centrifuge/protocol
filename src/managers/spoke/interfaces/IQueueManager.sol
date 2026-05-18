@@ -4,6 +4,8 @@ pragma solidity >=0.5.0;
 import {PoolId} from "../../../core/types/PoolId.sol";
 import {AssetId} from "../../../core/types/AssetId.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
+import {IGateway} from "../../../core/messaging/interfaces/IGateway.sol";
+import {IBalanceSheet} from "../../../core/spoke/interfaces/IBalanceSheet.sol";
 
 /// @title  IQueueManager
 /// @notice Interface for managing queued asset and share synchronization across chains
@@ -23,6 +25,23 @@ interface IQueueManager {
         uint64 lastSync;
         uint128 extraGasLimit;
     }
+
+    /// @notice Routes and batches cross-chain messages between hub and spoke
+    function gateway() external view returns (IGateway);
+
+    /// @notice Address authorized to update queue configuration via trusted cross-chain calls
+    function contractUpdater() external view returns (address);
+
+    /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
+    function balanceSheet() external view returns (IBalanceSheet);
+
+    /// @notice Queue configuration and timing state for a specific pool and share class
+    /// @param poolId The pool ID
+    /// @param scId The share class ID
+    function scQueueState(PoolId poolId, ShareClassId scId)
+        external
+        view
+        returns (uint64 minDelay, uint64 lastSync, uint128 extraGasLimit);
 
     /// @notice Sync queued assets and shares for a given pool and share class
     /// @param poolId the pool ID

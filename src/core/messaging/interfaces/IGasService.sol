@@ -12,6 +12,9 @@ uint128 constant MAX_MESSAGE_COST = 3_200_000;
 interface IGasService is IMessageProperties {
     error InvalidMessageType();
 
+    /// @notice Packed uint8 array of per-chain block gas limits (in millions), indexed by centrifugeId (first 32 chains)
+    function txLimitsPerCentrifugeId() external view returns (uint256);
+
     function scheduleUpgrade() external view returns (uint128);
     function cancelUpgrade() external view returns (uint128);
     function recoverTokens() external view returns (uint128);

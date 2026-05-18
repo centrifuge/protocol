@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IRoot} from "./IRoot.sol";
+import {ISafe} from "./ISafe.sol";
+
+import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
+import {IScheduleAuthMessageSender} from "../../core/messaging/interfaces/IGatewaySenders.sol";
+
 interface IProtocolGuardian {
     error NotTheAuthorizedSafe();
     error FileUnrecognizedParam();
@@ -61,4 +67,20 @@ interface IProtocolGuardian {
     /// @param what Accepts a bytes32 representation of 'safe', 'gateway', or 'sender'
     /// @param data New value for the parameter
     function file(bytes32 what, address data) external;
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Root authority that manages ward permissions and timelocked upgrades
+    function root() external view returns (IRoot);
+
+    /// @notice Multisig that authorizes protocol-level guardian operations
+    function safe() external view returns (ISafe);
+
+    /// @notice Gateway used for cross-chain upgrade scheduling and outgoing message blocking
+    function gateway() external view returns (IGateway);
+
+    /// @notice Dispatches cross-chain messages for remote upgrade scheduling and cancellation
+    function sender() external view returns (IScheduleAuthMessageSender);
 }

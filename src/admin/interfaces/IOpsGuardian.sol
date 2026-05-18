@@ -2,10 +2,12 @@
 pragma solidity >=0.5.0;
 
 import {ISafe} from "./ISafe.sol";
+import {ICreatePool} from "./ICreatePool.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
+import {IMultiAdapter} from "../../core/messaging/interfaces/IMultiAdapter.sol";
 
 interface IOpsGuardian {
     error NotTheAuthorizedSafe();
@@ -46,4 +48,10 @@ interface IOpsGuardian {
     /// @notice Return the linked operational safe
     /// @return The operational safe contract
     function opsSafe() external view returns (ISafe);
+
+    /// @notice Hub contract called to register new pools
+    function hub() external view returns (ICreatePool);
+
+    /// @notice MultiAdapter used for first-time adapter initialization and wiring on new networks
+    function multiAdapter() external view returns (IMultiAdapter);
 }

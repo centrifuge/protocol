@@ -2,6 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../../core/messaging/interfaces/IMessageHandler.sol";
 
 import {IAdapterWiring} from "../../admin/interfaces/IAdapterWiring.sol";
 
@@ -155,6 +156,15 @@ interface IWormholeAdapter is IAdapter, IAdapterWiring, IWormholeReceiver {
     //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
+
+    /// @notice Wormhole-specific chain identifier for this network, distinct from the EVM chain ID
+    function localWormholeId() external view returns (uint16);
+
+    /// @notice The MultiAdapter that receives decoded inbound messages from this adapter
+    function entrypoint() external view returns (IMessageHandler);
+
+    /// @notice Wormhole's automatic relayer used for cross-chain message dispatch and fee quoting
+    function relayer() external view returns (IWormholeRelayer);
 
     /// @notice Returns the source configuration for a given wormhole chain id
     /// @param wormholeId The remote wormhole id

@@ -7,7 +7,7 @@
  * - startBlock is higher than the previous registry's startBlock (if previous exists)
  * - Chain network and adapters match environment files exactly (including type checking)
  * - Git commit exists in git history
- * - Version is a valid semantic version
+ * - Top-level version, if present, is a valid semantic version (field is optional)
  * - Previous version (if any) is semantically lower
  * - Contract addresses are valid Ethereum addresses
  * - All referenced contracts have corresponding ABI entries
@@ -465,13 +465,13 @@ function validateGitCommit(registry) {
 }
 
 /**
- * Validates the version is a valid semantic version.
+ * Validates top-level registry.version when present (optional field; provenance uses deploymentInfo.gitCommit).
  */
 function validateVersion(registry) {
     const version = registry.version;
 
     if (!version) {
-        fail("Missing version field");
+        pass("Top-level version omitted (optional)");
         return;
     }
 

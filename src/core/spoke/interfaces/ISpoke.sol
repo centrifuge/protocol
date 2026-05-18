@@ -6,12 +6,17 @@ import {IVault, VaultKind} from "./IVault.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
 
+import {IGateway} from "../../messaging/interfaces/IGateway.sol";
+import {ISpokeMessageSender} from "../../messaging/interfaces/IGatewaySenders.sol";
+
 import {Price} from "../types/Price.sol";
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 import {IRequestManager} from "../../interfaces/IRequestManager.sol";
+import {ITokenFactory} from "../factories/interfaces/ITokenFactory.sol";
 import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
+import {IPoolEscrowFactory} from "../factories/interfaces/IPoolEscrowFactory.sol";
 
 /// @dev Centrifuge pools
 struct Pool {
@@ -354,4 +359,31 @@ interface ISpoke {
     /// @param poolId The pool id
     /// @return manager The request manager for the pool
     function requestManager(PoolId poolId) external view returns (IRequestManager manager);
+
+    /// @notice Routes and batches cross-chain messages between hub and spoke
+    function gateway() external view returns (IGateway);
+
+    /// @notice Deploys share tokens for new share classes on this spoke chain
+    function tokenFactory() external view returns (ITokenFactory);
+
+    /// @notice Dispatches cross-chain messages from this spoke to the hub chain
+    function sender() external view returns (ISpokeMessageSender);
+
+    /// @notice Deploys pool-specific escrow contracts that custody assets and shares
+    function poolEscrowFactory() external view returns (IPoolEscrowFactory);
+
+    /// @notice Pool registration details, returns 0 if the pool has not been created on this spoke
+    /// @param poolId The pool id
+    /// @return createdAt The timestamp of pool creation
+    function pool(PoolId poolId) external view returns (uint64 createdAt);
+
+    /// @notice Returns the share class details for a given pool and share class id
+    /// @param poolId The pool id
+    /// @param scId The share class id
+    /// @return shareToken The share token contract
+    /// @return pricePoolPerShare The price of the share class in pool denomination
+    function shareClass(PoolId poolId, ShareClassId scId)
+        external
+        view
+        returns (IShareToken shareToken, Price memory pricePoolPerShare);
 }

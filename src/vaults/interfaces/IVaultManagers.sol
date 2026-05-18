@@ -7,8 +7,13 @@ import {IBaseRequestManager} from "./IBaseRequestManager.sol";
 import {D18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
+import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
+import {IVaultRegistry} from "../../core/spoke/interfaces/IVaultRegistry.sol";
 import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
+
+import {ISubsidyManager} from "../../utils/interfaces/ISubsidyManager.sol";
 
 //----------------------------------------------------------------------------------------------
 // Deposit Manager Interfaces
@@ -269,6 +274,24 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
     /// @param maxReserve The amount of maximum reserve
     function setMaxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 maxReserve)
         external;
+
+    /// @notice Spoke-side entry point for this chain's pool and share class operations
+    function spoke() external view returns (ISpoke);
+
+    /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
+    function balanceSheet() external view returns (IBalanceSheet);
+
+    /// @notice Maps (poolId, scId, asset) tuples to deployed vault addresses
+    function vaultRegistry() external view returns (IVaultRegistry);
+
+    /// @notice Price source contract used for sync deposit pricing on a given pool and share class
+    function valuation(PoolId poolId, ShareClassId scId) external view returns (ISyncDepositValuation);
+
+    /// @notice Maximum asset amount the escrow will accept for a given pool, share class, and asset
+    function maxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId)
+        external
+        view
+        returns (uint128);
 }
 
 //----------------------------------------------------------------------------------------------
@@ -342,4 +365,13 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
             bool pendingCancelDepositRequest,
             bool pendingCancelRedeemRequest
         );
+
+    /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
+    function balanceSheet() external view returns (IBalanceSheet);
+
+    /// @notice Maps (poolId, scId, asset) tuples to deployed vault addresses
+    function vaultRegistry() external view returns (IVaultRegistry);
+
+    /// @notice Manages gas subsidies for cross-chain message costs, funded per-pool
+    function subsidyManager() external view returns (ISubsidyManager);
 }
