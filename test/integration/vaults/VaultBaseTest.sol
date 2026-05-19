@@ -390,7 +390,9 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         public
         returns (uint64 poolId, address vaultAddress, uint128 assetId)
     {
-        return deployVault(vaultKind, 6, address(fullRestrictionsHook), bytes16(bytes("1")), address(erc20), erc20TokenId);
+        return deployVault(
+            vaultKind, 6, address(fullRestrictionsHook), bytes16(bytes("1")), address(erc20), erc20TokenId
+        );
     }
 
     function deposit(address _vault, address _investor, uint256 amount) public {

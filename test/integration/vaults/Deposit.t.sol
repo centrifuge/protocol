@@ -180,8 +180,9 @@ contract DepositTest is BaseTest {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), bytes16(bytes("1")), address(asset), 0);
+        (uint64 poolId, address vault_, uint128 assetId) = deployVault(
+            VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), bytes16(bytes("1")), address(asset), 0
+        );
         AsyncVault vault = AsyncVault(vault_);
         centrifugeChain.updatePricePoolPerShare(
             poolId, vault.scId().raw(), 1000000000000000000, uint64(block.timestamp)
@@ -450,8 +451,9 @@ contract DepositTest is BaseTest {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), bytes16(bytes("1")), address(asset), 0);
+        (uint64 poolId, address vault_, uint128 assetId) = deployVault(
+            VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), bytes16(bytes("1")), address(asset), 0
+        );
         AsyncVault vault = AsyncVault(vault_);
         centrifugeChain.updatePricePoolPerShare(
             poolId, vault.scId().raw(), 1000000000000000000, uint64(block.timestamp)
