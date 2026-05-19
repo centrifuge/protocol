@@ -21,5 +21,9 @@
 + /script/utils/JsonRegistry.s.sol
 - /script/**
 
-# GitHub Actions: exclude all (contains internal CI)
-- /.github/
+# GitHub Actions: keep only public workflows, exclude everything else
++ /.github/
++ /.github/workflows/
++ /.github/workflows/tests.yml
++ /.github/workflows/fork-tests.yml
+- /.github/**
