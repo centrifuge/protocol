@@ -25,6 +25,13 @@ address constant CFG_MINTER = 0x50a168Cd6957e07B6dE6C1A99B2f940475f70dEf;
 address constant TRANCHE_JTRSY = 0x8c213ee79581Ff4984583C6a801e5263418C4b86; // ETH_JTRSY, BASE_JTRSY, ARBITRUM_JTRSY
 address constant TRANCHE_JAAA = 0x5a0F93D040De44e78F251b03c43be9CF317Dcf64; // ETH_JAAA, BASE_JAAA
 address constant ESCROW_V2 = 0x0000000005F458Fd6ba9EEb5f365D83b7dA913dD;
+
+// V2 vault addresses per chain — these remain as wards on share tokens and must be explicitly removed
+address constant ETH_V2_JTRSY_VAULT = 0x36036fFd9B1C6966ab23209E073c68Eb9A992f50;
+address constant ETH_V2_JAAA_VAULT = 0xE9d1f733F406D4bbbDFac6D4CfCD2e13A6ee1d01;
+address constant BASE_V2_JTRSY_VAULT = 0xF9a6768034280745d7F303D3d8B7f2bF3Cc079eF;
+address constant BASE_V2_JAAA_VAULT = 0xB4C8540657d67D4846cAe68EcfE2C706c80DC3c9;
+address constant ARB_V2_JTRSY_VAULT = 0x16C796208c6E2d397Ec49D69D207a9cB7d072f04;
 address constant TREASURY = 0xb3DacC732509Ba6B7F25Ad149e56cA44fE901AB9;
 
 IERC20 constant USDC_ETHEREUM = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
@@ -103,22 +110,31 @@ contract V2CleaningsSpell {
     }
 
     function _disableRootV2FromShareTokensV2(Root rootV3) internal {
-        address[] memory shareTokens = new address[](2);
-        shareTokens[0] = TRANCHE_JTRSY;
-        shareTokens[1] = TRANCHE_JAAA;
+        if (block.chainid == ETHEREUM_CHAIN_ID) {
+            _denyV2FromShareToken(rootV3, TRANCHE_JTRSY, ETH_V2_JTRSY_VAULT);
+            _denyV2FromShareToken(rootV3, TRANCHE_JAAA, ETH_V2_JAAA_VAULT);
+        } else if (block.chainid == BASE_CHAIN_ID) {
+            _denyV2FromShareToken(rootV3, TRANCHE_JTRSY, BASE_V2_JTRSY_VAULT);
+            _denyV2FromShareToken(rootV3, TRANCHE_JAAA, BASE_V2_JAAA_VAULT);
+        } else if (block.chainid == ARBITRUM_CHAIN_ID) {
+            _denyV2FromShareToken(rootV3, TRANCHE_JTRSY, ARB_V2_JTRSY_VAULT);
+        }
+    }
 
-        for (uint256 i; i < shareTokens.length; i++) {
-            IAuth shareTokenV2 = IAuth(shareTokens[i]);
+    // V2_ROOT is ward of these V2 vaults, so a V2_ROOT compromise could exploit the
+    // vault's remaining ward access on the share token via authTransferFrom.
+    function _denyV2FromShareToken(Root rootV3, address shareToken, address v2Vault) internal {
+        IAuth shareToken_ = IAuth(shareToken);
 
-            // forgefmt: disable-next-item
-            if (address(shareTokenV2).code.length > 0 &&
-                shareTokenV2.wards(address(ROOT_V2)) == 1 &&
-                shareTokenV2.wards(address(rootV3)) == 1
-            ) {
-                rootV3.relyContract(address(shareTokenV2), address(this));
-                shareTokenV2.deny(address(ROOT_V2));
-                rootV3.denyContract(address(shareTokenV2), address(this));
-            }
+        // forgefmt: disable-next-item
+        if (address(shareToken_).code.length > 0 &&
+            shareToken_.wards(address(ROOT_V2)) == 1 &&
+            shareToken_.wards(address(rootV3)) == 1
+        ) {
+            rootV3.relyContract(shareToken, address(this));
+            shareToken_.deny(address(ROOT_V2));
+            shareToken_.deny(v2Vault);
+            rootV3.denyContract(shareToken, address(this));
         }
     }
 

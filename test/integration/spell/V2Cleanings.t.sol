@@ -35,7 +35,12 @@ import {
     USDC_BASE,
     USDC_ARBITRUM,
     CNF_TREASURY_WALLET,
-    CENTRIFUGE_CHAIN_CFG_AMOUNT
+    CENTRIFUGE_CHAIN_CFG_AMOUNT,
+    ETH_V2_JTRSY_VAULT,
+    ETH_V2_JAAA_VAULT,
+    BASE_V2_JTRSY_VAULT,
+    BASE_V2_JAAA_VAULT,
+    ARB_V2_JTRSY_VAULT
 } from "../../../src/spell/V2CleaningsSpell.sol";
 
 contract V2CleaningsSpellTest is Test {
@@ -77,6 +82,25 @@ contract V2CleaningsSpellTest is Test {
         if (address(usdc) != address(0)) {
             preTreasuryValue = usdc.balanceOf(TREASURY);
             preEscrowValue = usdc.balanceOf(ESCROW_V2);
+        }
+
+        // Verify vault ward pre-conditions so wrong constants don't silently pass post-assertions
+        if (block.chainid == ETHEREUM_CHAIN_ID) {
+            assertEq(IAuth(TRANCHE_JTRSY).wards(ETH_V2_JTRSY_VAULT), 1, "JTRSY vault not pre-relied");
+            assertEq(IAuth(TRANCHE_JAAA).wards(ETH_V2_JAAA_VAULT), 1, "JAAA vault not pre-relied");
+        } else if (block.chainid == BASE_CHAIN_ID) {
+            assertEq(IAuth(TRANCHE_JTRSY).wards(BASE_V2_JTRSY_VAULT), 1, "JTRSY vault not pre-relied");
+            assertEq(IAuth(TRANCHE_JAAA).wards(BASE_V2_JAAA_VAULT), 1, "JAAA vault not pre-relied");
+        } else if (block.chainid == ARBITRUM_CHAIN_ID) {
+            assertEq(IAuth(TRANCHE_JTRSY).wards(ARB_V2_JTRSY_VAULT), 1, "JTRSY vault not pre-relied");
+        }
+
+        // Verify ROOT_V2 ward pre-conditions so the _denyV2FromShareToken guard can't silently short-circuit
+        if (TRANCHE_JTRSY.code.length > 0) {
+            assertEq(IAuth(TRANCHE_JTRSY).wards(address(ROOT_V2)), 1, "ROOT_V2 not pre-relied on JTRSY");
+        }
+        if (block.chainid == ETHEREUM_CHAIN_ID || block.chainid == BASE_CHAIN_ID) {
+            assertEq(IAuth(TRANCHE_JAAA).wards(address(ROOT_V2)), 1, "ROOT_V2 not pre-relied on JAAA");
         }
 
         // ----- REQUIRED RELIES -----
@@ -128,10 +152,24 @@ contract V2CleaningsSpellTest is Test {
             assertEq(IAuth(TRANCHE_JTRSY).wards(address(spell)), 0);
         }
 
+        if (block.chainid == ETHEREUM_CHAIN_ID) {
+            assertEq(IAuth(TRANCHE_JTRSY).wards(ETH_V2_JTRSY_VAULT), 0);
+        } else if (block.chainid == BASE_CHAIN_ID) {
+            assertEq(IAuth(TRANCHE_JTRSY).wards(BASE_V2_JTRSY_VAULT), 0);
+        } else if (block.chainid == ARBITRUM_CHAIN_ID) {
+            assertEq(IAuth(TRANCHE_JTRSY).wards(ARB_V2_JTRSY_VAULT), 0);
+        }
+
         if (block.chainid == ETHEREUM_CHAIN_ID || block.chainid == BASE_CHAIN_ID) {
             assertEq(IAuth(TRANCHE_JAAA).wards(address(rootV3)), 1);
             assertEq(IAuth(TRANCHE_JAAA).wards(address(ROOT_V2)), 0);
             assertEq(IAuth(TRANCHE_JAAA).wards(address(spell)), 0);
+        }
+
+        if (block.chainid == ETHEREUM_CHAIN_ID) {
+            assertEq(IAuth(TRANCHE_JAAA).wards(ETH_V2_JAAA_VAULT), 0);
+        } else if (block.chainid == BASE_CHAIN_ID) {
+            assertEq(IAuth(TRANCHE_JAAA).wards(BASE_V2_JAAA_VAULT), 0);
         }
 
         if (address(usdc) != address(0)) {
