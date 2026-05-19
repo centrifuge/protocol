@@ -36,7 +36,7 @@ import "forge-std/Test.sol";
 import {CentrifugeIntegrationTest} from "../Integration.t.sol";
 
 /// @dev Direct centrifuge chain simulator — calls spoke/vaultRegistry/syncManager directly as a ward
-///      instead of routing through adapters. Replaces MockCentrifugeChain in VaultBaseTest.
+///      instead of routing through adapters.
 contract MockCentrifugeChainDirect is Test {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
