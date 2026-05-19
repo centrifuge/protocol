@@ -15,6 +15,7 @@ import {VaultDetails, IVaultRegistry} from "../../../src/core/spoke/interfaces/I
 
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
+import {IBaseRequestManager} from "../../../src/vaults/interfaces/IBaseRequestManager.sol";
 
 import "forge-std/Test.sol";
 
@@ -115,6 +116,29 @@ abstract contract SyncManagerBaseTest is Test {
             abi.encodeWithSelector(IShareToken.checkTransferRestriction.selector),
             abi.encode(canTransfer)
         );
+    }
+}
+
+/// @title SyncManagerAdminTest
+/// @notice Tests administration: file() parameter routing and access control
+contract SyncManagerAdminTest is SyncManagerBaseTest {
+    function testFile() public {
+        vm.expectRevert(IBaseRequestManager.FileUnrecognizedParam.selector);
+        vm.prank(AUTH);
+        syncManager.file("random", address(0));
+
+        address newSpoke = makeAddr("newSpoke");
+        address newBalanceSheet = makeAddr("newBalanceSheet");
+        address newVaultRegistry = makeAddr("newVaultRegistry");
+
+        vm.startPrank(AUTH);
+        syncManager.file("spoke", newSpoke);
+        assertEq(address(syncManager.spoke()), newSpoke);
+        syncManager.file("balanceSheet", newBalanceSheet);
+        assertEq(address(syncManager.balanceSheet()), newBalanceSheet);
+        syncManager.file("vaultRegistry", newVaultRegistry);
+        assertEq(address(syncManager.vaultRegistry()), newVaultRegistry);
+        vm.stopPrank();
     }
 }
 
