@@ -110,16 +110,16 @@ contract V2CleaningsSpell {
     // V2_ROOT is ward of these V2 vaults, so a V2_ROOT compromise could exploit the
     // vault's remaining ward access on the share token via authTransferFrom.
     function _denyV2FromShareToken(Root rootV3, address shareToken, address v2Vault) internal {
-        IAuth shareTokenV2 = IAuth(shareToken);
+        IAuth shareToken_ = IAuth(shareToken);
 
         // forgefmt: disable-next-item
-        if (address(shareTokenV2).code.length > 0 &&
-            shareTokenV2.wards(address(ROOT_V2)) == 1 &&
-            shareTokenV2.wards(address(rootV3)) == 1
+        if (address(shareToken_).code.length > 0 &&
+            shareToken_.wards(address(ROOT_V2)) == 1 &&
+            shareToken_.wards(address(rootV3)) == 1
         ) {
             rootV3.relyContract(shareToken, address(this));
-            shareTokenV2.deny(address(ROOT_V2));
-            shareTokenV2.deny(v2Vault);
+            shareToken_.deny(address(ROOT_V2));
+            shareToken_.deny(v2Vault);
             rootV3.denyContract(shareToken, address(this));
         }
     }
