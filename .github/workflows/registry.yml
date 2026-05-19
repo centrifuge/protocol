@@ -149,14 +149,32 @@ jobs:
             fi
             has_content=true
 
-            # Extract summary from registry
-            version=$(jq -r '.version // "unknown"' "$registry_file")
+            # Extract summary from registry + validation sidecar
+            version=$(jq -r '.version // "null (patch layer)"' "$registry_file")
             chain_count=$(jq '.chains | length' "$registry_file")
             contract_count=$(jq '[.chains[].contracts | length] | add // 0' "$registry_file")
             abi_count=$(jq '.abis | length' "$registry_file")
+            mode="unknown"
+            previous_version="$(jq -r '.previousRegistry.version // "none"' "$registry_file")"
+            if [ -f "$validation_file" ]; then
+              mode=$(jq -r '.summary.mode // "unknown"' "$validation_file")
+            fi
+            mode_label="$mode"
+            case "$mode" in
+              patch)
+                mode_label="patch (replaces last \`${previous_version}\` registry on indexer merge)"
+                ;;
+              delta)
+                mode_label="delta (append onto \`${previous_version}\`)"
+                ;;
+              full)
+                mode_label="full snapshot"
+                ;;
+            esac
 
             body="${body}### ${env_name}\n\n"
             body="${body}| Metric | Value |\n|--------|-------|\n"
+            body="${body}| Mode | ${mode_label} |\n"
             body="${body}| Version | \`${version}\` |\n"
             body="${body}| Chains with changes | ${chain_count} |\n"
             body="${body}| Contracts in delta | ${contract_count} |\n"

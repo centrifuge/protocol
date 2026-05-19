@@ -72,7 +72,7 @@ import {
 } from "../src/deployment/ActionBatchers.sol";
 
 string constant V3_1 = "v3.1";
-string constant V3_1_1 = "v3.1.1";
+string constant V3_2 = "v3.2";
 
 struct WormholeInput {
     bool shouldDeploy;
@@ -535,18 +535,18 @@ contract FullDeployer is BaseDeployer, Constants {
 
         accountingToken = AccountingToken(
             create3(
-                createSalt("accountingToken", V3_1_1),
+                createSalt("accountingToken", V3_2),
                 abi.encodePacked(type(AccountingToken).creationCode, abi.encode(contractUpdater))
             )
         );
 
         scriptHelpers = ScriptHelpers(
-            create3(createSalt("scriptHelpers", V3_1_1), abi.encodePacked(type(ScriptHelpers).creationCode))
+            create3(createSalt("scriptHelpers", V3_2), abi.encodePacked(type(ScriptHelpers).creationCode))
         );
 
         onchainPMFactory = IOnchainPMFactory(
             create3(
-                createSalt("onchainPMFactory", V3_1_1),
+                createSalt("onchainPMFactory", V3_2),
                 abi.encodePacked(
                     vm.getCode("out-ir/OnchainPM.sol/OnchainPMFactory.json"),
                     abi.encode(contractUpdater, balanceSheet, gateway)
@@ -556,14 +556,14 @@ contract FullDeployer is BaseDeployer, Constants {
 
         flashLoanHelper = FlashLoanHelper(
             create3(
-                createSalt("flashLoanHelper", V3_1_1),
+                createSalt("flashLoanHelper", V3_2),
                 abi.encodePacked(type(FlashLoanHelper).creationCode, abi.encode(onchainPMFactory))
             )
         );
 
         onOffRampFactory = OnOffRampFactory(
             create3(
-                createSalt("onOffRampFactory", V3_1_1),
+                createSalt("onOffRampFactory", V3_2),
                 abi.encodePacked(
                     type(OnOffRampFactory).creationCode, abi.encode(contractUpdater, balanceSheet, accountingToken)
                 )

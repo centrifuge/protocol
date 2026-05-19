@@ -7,12 +7,17 @@
  * (errors + warnings + summary) written to a sidecar file for the PR comment step.
  *
  * Hard requirements (errors — break the indexer):
- *   - version: must be a non-empty string
+ *   - version: must be a non-empty string **OR** null when this is a patch layer (i.e.
+ *     `previousRegistry.ipfsHash` is set). Null patches are merged into their predecessor by
+ *     `api-v3/scripts/fetch-registry.mjs::mergeNullVersionPatchesIntoPredecessors`, so the
+ *     oldest registry in the chain (no `previousRegistry`) must still have a string version.
  *   - previousRegistry.ipfsHash: must be non-null when a live registry exists for that network
  *   - chains.<chainId>.deployment.startBlock: must be a number (large gap vs env contract
  *     `blockNumber` is rejected by validate-env-schema.js before abi-registry runs)
  *   - chains.<chainId>.contracts.<name>.address: non-empty string for **active** contracts
- *   - chains.<chainId>.contracts.<name>.blockNumber: must be a number for active contracts
+ *   - chains.<chainId>.contracts.<name>.blockNumber: must be a number for active contracts,
+ *     unless `chains.<chainId>.deployment.startBlock` is set (api-v3 falls back for version
+ *     boundaries); then a **warning** only — prefer filling blockNumber when explorers allow it
  *   - abis: every **active** contract must have matching ABI entries (artifact basenames via
  *     {@link artifactNamesForContractKey} in `utils/abi-cache.js` — same rules as `packAbis`)
  *
@@ -87,11 +92,38 @@ async function validate(registryPath) {
         return { errors, warnings, summary: {} };
     }
 
+    // --- mode classification --- (for the sidecar / PR comment; also informs the version rule)
+    const hasPreviousRegistryHash =
+        registry.previousRegistry &&
+        typeof registry.previousRegistry === "object" &&
+        typeof registry.previousRegistry.ipfsHash === "string" &&
+        registry.previousRegistry.ipfsHash.length > 0;
+    const versionIsString =
+        typeof registry.version === "string" && registry.version.length > 0;
+    let mode;
+    if (registry.previousRegistry == null) {
+        mode = "full";
+    } else if (registry.version === null && hasPreviousRegistryHash) {
+        mode = "patch";
+    } else {
+        mode = "delta";
+    }
+
     // --- version ---
-    if (!registry.version || typeof registry.version !== "string") {
+    if (mode === "patch") {
+        if (registry.version !== null) {
+            errors.push({
+                path: "version",
+                message: `Patch registries must have version: null, got ${JSON.stringify(registry.version)}`,
+            });
+        }
+    } else if (!versionIsString) {
         errors.push({
             path: "version",
-            message: `Must be a non-empty string, got ${JSON.stringify(registry.version)}`,
+            message:
+                mode === "full"
+                    ? `Full snapshot must have a non-empty string version, got ${JSON.stringify(registry.version)}`
+                    : `Delta registries must have a non-empty string version, got ${JSON.stringify(registry.version)} (use a null version only when this is a patch layer with previousRegistry.ipfsHash set)`,
         });
     }
 
@@ -147,11 +179,30 @@ async function validate(registryPath) {
                 errors.push({ path: `chains.${chainId}.contracts.${name}.address`, message: `Must be a non-empty string, got ${JSON.stringify(contract.address)}` });
             }
 
-            // blockNumber
+            // blockNumber — api-v3 uses contract.blockNumber ?? chain.deployment.startBlock for
+            // end-block logic; Ponder start blocks use deployment.startBlock. Allow null when the
+            // chain has a numeric deployment start (e.g. CREATE3 / src-ir where creation APIs fail).
+            const deploymentStart = chain.deployment?.startBlock;
+            const hasDeploymentStartBlock =
+                typeof deploymentStart === "number" && Number.isFinite(deploymentStart);
             if (contract.blockNumber == null) {
-                errors.push({ path: `chains.${chainId}.contracts.${name}.blockNumber`, message: "Required by indexer, got null/undefined" });
+                if (hasDeploymentStartBlock) {
+                    warnings.push({
+                        path: `chains.${chainId}.contracts.${name}.blockNumber`,
+                        message:
+                            "Null blockNumber — allowed because chain.deployment.startBlock is set (indexer fallback); add blockNumber when creation data is available",
+                    });
+                } else {
+                    errors.push({
+                        path: `chains.${chainId}.contracts.${name}.blockNumber`,
+                        message: "Required by indexer, got null/undefined (no chain.deployment.startBlock fallback)",
+                    });
+                }
             } else if (typeof contract.blockNumber !== "number") {
-                errors.push({ path: `chains.${chainId}.contracts.${name}.blockNumber`, message: `Must be a number, got ${typeof contract.blockNumber}: ${JSON.stringify(contract.blockNumber)}` });
+                errors.push({
+                    path: `chains.${chainId}.contracts.${name}.blockNumber`,
+                    message: `Must be a number, got ${typeof contract.blockNumber}: ${JSON.stringify(contract.blockNumber)}`,
+                });
             }
         }
     }
@@ -167,6 +218,7 @@ async function validate(registryPath) {
     }
 
     const summary = {
+        mode, // "full" | "delta" | "patch"
         chains: chainIds.length,
         contracts: totalContracts,
         abis: abiNames.size,
@@ -198,6 +250,9 @@ async function main() {
 
     // Print summary
     console.log(`\n=== Validation Summary ===`);
+    if (report.summary.mode) {
+        console.log(`  Mode: ${report.summary.mode}`);
+    }
     console.log(`  Chains: ${report.summary.chains}`);
     console.log(`  Contracts: ${report.summary.contracts}`);
     console.log(`  ABIs: ${report.summary.abis}`);

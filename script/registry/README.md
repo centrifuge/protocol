@@ -6,6 +6,24 @@ This folder contains everything for Centrifuge's contract registry: scripts that
 
 Registries use a **delta format**: each version only contains contracts that changed since the previous version. Each delta has a `previousRegistry` field with an IPFS hash to the prior version, forming a linked chain. This enables selective loading, version-aware indexing (each delta has a `startBlock`), and full reconstruction by walking the IPFS chain.
 
+### Output modes
+
+`abi-registry.js` can emit a registry in three shapes; the indexer (`api-v3/scripts/fetch-registry.mjs`) reconciles them when it walks the chain.
+
+| Mode | `version` | `previousRegistry` | When |
+|------|-----------|--------------------|------|
+| `delta` | new resolved version (e.g. `v3.2.0`) | live tip | Default when local-resolved version is strictly newer than the live tip. |
+| `patch` | **`null`** | live tip | When the local-resolved version equals the live tip's version. The indexer's `mergeNullVersionPatchesIntoPredecessors` folds the patch into its predecessor — effectively "replacing the last registry" without orphaning anything on IPFS. Use cases: multi-PR contributions to the same protocol version, post-deploy fixup of a missed contract. |
+| `full` | new resolved version | `null` | Base / bootstrap snapshot. Same as `--full`. |
+
+Selection:
+- **Auto (default)**: `patch` when local version equals live; `delta` otherwise.
+- **`REGISTRY_MODE=delta`**: force a normal append even when versions match (escape hatch).
+- **`REGISTRY_MODE=patch`**: force a null-version patch (errors out if there is no live to patch onto).
+- **`REGISTRY_MODE=full`** or **`--full`**: force a full snapshot.
+
+The chosen mode is logged by `abi-registry.js`, recorded in `<registry>.validation.json` (`summary.mode`), and surfaced in the **Registry Preview** PR comment.
+
 ## Endpoints and outputs
 
 - **Published:** `registry.centrifuge.io` (mainnet), `registry.testnet.centrifuge.io` (testnet). Each serves a JSON file with the schema below.
@@ -19,7 +37,7 @@ Registries use a **delta format**: each version only contains contracts that cha
 
 | Script | Purpose |
 |--------|---------|
-| `abi-registry.js` | Builds `registry-*.json` from env files, explorer APIs, and per-tag Forge ABI caches. Supports delta (default) or full snapshot. |
+| `abi-registry.js` | Builds `registry-*.json` from env files, explorer APIs, and per-tag Forge ABI caches. Output mode is one of `delta` (append), `patch` (null-version layer that "replaces the last registry" via the indexer's merge logic), or `full` (base snapshot). See [Output modes](#output-modes). |
 | `utils/abi-cache.js` | Per-tag Forge ABI cache (worktrees + `forge build`); env key → artifact names (`ABI_NAME_ALIASES` / `resolveArtifactName` / `artifactNamesForContractKey`). See [ABI cache layout](#abi-cache-layout-repo-root). |
 | `build-abi-cache.js` | CLI to warm the cache: `node script/registry/build-abi-cache.js <git-tag> [...]` (from repo root). |
 | `utils/tag-resolution.js` | Shared helpers: map env contract `version` → git tag (used by `abi-registry.js` and CI). |
@@ -129,6 +147,25 @@ node script/registry/abi-registry.js testnet
 ```bash
 ETHERSCAN_API_KEY=<key> \
 node script/registry/abi-registry.js mainnet --full
+```
+
+**Patch (replace last registry)** – when local-resolved version equals the live tip, auto-mode picks
+this automatically. To force it (e.g. you know you're patching but want to be explicit):
+
+```bash
+REGISTRY_MODE=patch \
+ETHERSCAN_API_KEY=<key> \
+node script/registry/abi-registry.js testnet
+```
+
+The published JSON has `version: null` and points at the live as `previousRegistry`; `api-v3` merges it into the live on read so the indexer sees a single collapsed version. Useful for: multi-PR additions to the same protocol version, hotfix of a missed contract, recovering from a misconfigured publish without breaking the linked list.
+
+**Force delta even when versions match** – escape hatch if you intentionally want a same-version chain entry instead of a patch:
+
+```bash
+REGISTRY_MODE=delta \
+ETHERSCAN_API_KEY=<key> \
+node script/registry/abi-registry.js testnet
 ```
 
 **Delta with custom previous registry** – fix a broken delta or test against a specific version:
@@ -292,11 +329,14 @@ Below is a **trimmed** illustration of what a delta looks like when some v3.0 co
 ```typescript
 interface Registry {
   network: "mainnet" | "testnet";
-  version?: string;             // e.g. "v3.1.0"; omitted if unknown
+  // String for `delta` and `full` modes (e.g. "v3.1.0").
+  // null in `patch` mode — api-v3 merges null-version layers into their predecessor.
+  // Omitted only when generation could not resolve any version (treated as an error by validate-registry).
+  version: string | null;
   deploymentInfo: {
     gitCommit: string;          // Git commit hash used to build the ABIs
   };
-  previousRegistry: {           // null for first/base registry
+  previousRegistry: {           // null for `full` (base) registries
     version: string;            // Version of the previous registry
     ipfsHash: string;           // IPFS CID to fetch the previous registry
   } | null;
@@ -350,7 +390,7 @@ These rules apply to **active** contracts (`address` is a non-null string). **De
 
 | Field | Rule |
 |-------|------|
-| `version` | Non-empty string. Identifies the registry in the ordered version chain. |
+| `version` | Non-empty string for `delta` and `full` registries. **Must be `null`** for `patch` registries (and only when `previousRegistry.ipfsHash` is set, since the indexer merges the patch into its predecessor). |
 | `previousRegistry.ipfsHash` | Non-null when a live registry exists for that network (linked list); omit only for the first/base registry. |
 | `chains.<chainId>.deployment.startBlock` | Must be a number. Source: `env/*.json` → `deploymentInfo.*.startBlock`. **Gap rule** vs contract `blockNumber` values: enforced in **`validate-env-schema.js`** before generation (chain-level listeners / snapshots). |
 | `chains.<chainId>.contracts.<name>.address` | Non-empty string for **active** contracts; `null` only for deprecations. |
