@@ -129,14 +129,10 @@ contract V2CleaningsSpell {
     function _denyV2FromShareToken(address shareToken, address v2Vault) internal {
         IAuth shareToken_ = IAuth(shareToken);
 
-        // forgefmt: disable-next-item
-        if (address(shareToken_).code.length > 0 &&
-            shareToken_.wards(address(ROOT_V2)) == 1 &&
-            shareToken_.wards(address(ROOT_V3)) == 1
-        ) {
+        if (address(shareToken_).code.length > 0 && shareToken_.wards(address(ROOT_V3)) == 1) {
             ROOT_V3.relyContract(shareToken, address(this));
-            shareToken_.deny(address(ROOT_V2));
-            shareToken_.deny(v2Vault);
+            if (shareToken_.wards(address(ROOT_V2)) == 1) shareToken_.deny(address(ROOT_V2));
+            if (shareToken_.wards(v2Vault) == 1) shareToken_.deny(v2Vault);
             ROOT_V3.denyContract(shareToken, address(this));
         }
     }
