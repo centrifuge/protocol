@@ -1,0 +1,95 @@
+name: "Lint"
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.4
+
+      - name: Build contracts
+        run: |
+          forge --version
+          forge build --deny warnings
+      - name: Check contract sizes
+        run: |
+          # Check contract sizes, excluding test/script contracts which are not deployed
+          sizes_output=$(forge build --sizes 2>&1 || true)
+          echo "$sizes_output"
+          oversized=$(echo "$sizes_output" | grep -E "\|\s+-[0-9]" | grep -v "test/" | grep -v "script/" | grep -v "Harness" | grep -v "Mock" | grep -v "Crytic" || true)
+          if [ -n "$oversized" ]; then
+            echo ""
+            echo "Error: deployed contracts exceed the EIP-170 size limit:"
+            echo "$oversized"
+            exit 1
+          fi
+
+      - name: Check formatting
+        run: forge fmt --check
+        env:
+          FOUNDRY_PROFILE: ci
+
+  import-order:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Check import order
+        run: python3 script/utils/fix_imports.py --check-order
+
+  relative-imports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Check import order
+        run: python3 script/utils/fix_imports.py --check-relative
+
+  roundtrip-relative-absolute-imports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Check import order
+        run: python3 script/utils/fix_imports.py --test-roundtrip
+
+  unused-imports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Check unused imports
+        run: python3 script/utils/fix_imports.py --check-unused
