@@ -19,13 +19,12 @@
 + /script/utils/CreateX.d.sol
 + /script/utils/CreateXScript.sol
 + /script/utils/JsonRegistry.s.sol
-+ /script/utils/fix_imports.py
+
 - /script/**
 
 # GitHub Actions: keep only public workflows, exclude everything else
 + /.github/
 + /.github/workflows/
 + /.github/workflows/tests.yml
-+ /.github/workflows/fork-tests.yml
-+ /.github/workflows/lint.yml
+
 - /.github/**

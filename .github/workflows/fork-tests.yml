@@ -11,7 +11,6 @@ env:
 
 jobs:
   fork-tests:
-    if: github.repository == 'centrifuge/protocol'
     runs-on: ubuntu-latest
     permissions:
       contents: "read"

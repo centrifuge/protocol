@@ -86,27 +86,11 @@ jobs:
             git -C "$PRIVATE_DIR" checkout "$SHA" --quiet
             git -C "$PUBLIC_DIR" checkout -b "$BRANCH" "origin/${BASE_BRANCH}"
 
-            # Step 1: build filtered private snapshot in isolation
-            rm -rf /tmp/ideal-public && mkdir /tmp/ideal-public
             rsync -a --delete \
               --exclude='.git' \
               --exclude='.publicignore' \
               --filter=". ${PRIVATE_DIR}/.publicignore" \
-              "${PRIVATE_DIR}/" /tmp/ideal-public/
-
-            # Step 2: find files that exist in public but not in private snapshot
-            # (committed directly to public — preserve these)
-            find "${PUBLIC_DIR}" -not -path "${PUBLIC_DIR}/.git*" -type f \
-              | sed "s|^${PUBLIC_DIR}/||" | sort > /tmp/in-public.txt
-            find /tmp/ideal-public -type f \
-              | sed 's|^/tmp/ideal-public/||' | sort > /tmp/in-private.txt
-            comm -23 /tmp/in-public.txt /tmp/in-private.txt > /tmp/public-only.txt
-
-            # Step 3: sync snapshot to public, skipping public-only files
-            awk '{print "- " $0}' /tmp/public-only.txt > /tmp/public-only-filter.txt
-            rsync -a --delete \
-              --filter=". /tmp/public-only-filter.txt" \
-              /tmp/ideal-public/ "${PUBLIC_DIR}/"
+              "${PRIVATE_DIR}/" "${PUBLIC_DIR}/"
 
             git -C "$PUBLIC_DIR" add -A
             if git -C "$PUBLIC_DIR" diff --staged --quiet; then
