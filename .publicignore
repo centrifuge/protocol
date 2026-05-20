@@ -1,6 +1,13 @@
 # rsync filter rules for the public mirror (centrifuge/protocol).
 # '-' excludes, '+' includes. First match wins, so '+' rules must come before their parent '-' rule.
 # Paths prefixed with '/' are anchored to the repo root.
+#
+# '-' rules have two uses:
+#   1. Exclude private content from being synced to public.
+#   2. Preserve public-only files that don't exist in private — excluded paths
+#      are never deleted from the destination by rsync, so files committed
+#      directly to the public repo (e.g. SECURITY.md, CONTRIBUTING.md) can be
+#      protected by adding a '-' rule for them here.
 
 # Tests: exclude private subdirectories
 - /test/integration/fork/
