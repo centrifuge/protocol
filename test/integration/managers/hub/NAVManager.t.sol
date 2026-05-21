@@ -1,0 +1,377 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
+
+import {d18} from "../../../../src/misc/types/D18.sol";
+
+import {PoolId} from "../../../../src/core/types/PoolId.sol";
+import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
+import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
+import {ISnapshotHook} from "../../../../src/core/hub/interfaces/ISnapshotHook.sol";
+import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
+
+import {INAVHook} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
+
+import {CentrifugeIntegrationTest} from "../../Integration.t.sol";
+
+contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
+    // Logical network IDs for NAV segregation — not actual deployed chains
+    uint16 constant CHAIN_CP = 5;
+    uint16 constant CHAIN_CV = 6;
+
+    PoolId POOL_A;
+    ShareClassId scId;
+
+    address manager = makeAddr("manager");
+    address FM = makeAddr("FM");
+
+    AssetId asset1 = newAssetId(CHAIN_CV, 1);
+    AssetId asset2 = newAssetId(CHAIN_CV, 2);
+    AssetId asset3 = newAssetId(CHAIN_CP, 1);
+    AssetId liabilityAsset = newAssetId(CHAIN_CP, 2);
+    // differing decimals to test conversion
+    uint8 asset1Decimals = 6;
+    uint8 asset2Decimals = 12;
+    uint8 asset3Decimals = 14;
+
+    function setUp() public override {
+        super.setUp();
+
+        POOL_A = hubRegistry.poolId(LOCAL_CENTRIFUGE_ID, 1);
+
+        vm.startPrank(address(root));
+        hubRegistry.registerAsset(asset1, asset1Decimals);
+        hubRegistry.registerAsset(asset2, asset2Decimals);
+        hubRegistry.registerAsset(asset3, asset3Decimals);
+        hubRegistry.registerAsset(liabilityAsset, 18);
+        vm.stopPrank();
+
+        _setupMocks();
+        _setupPool();
+
+        vm.deal(address(root), 1 ether);
+    }
+
+    function _setupMocks() internal {
+        vm.mockCall(address(hub), abi.encodeWithSelector(hub.notifySharePrice.selector), abi.encode(uint256(0)));
+        vm.mockCall(
+            address(messageDispatcher),
+            abi.encodeWithSignature(
+                "sendExecuteTransferShares(uint16,uint16,uint64,bytes16,bytes32,uint128,uint128,address)"
+            ),
+            abi.encode(uint256(0))
+        );
+    }
+
+    function _setupPool() internal {
+        vm.prank(address(opsGuardian.opsSafe()));
+        opsGuardian.createPool(POOL_A, FM, USD_ID);
+
+        vm.startPrank(FM);
+        scId = hub.addShareClass(POOL_A, "Test Share Class", "TSC", bytes32(bytes8(POOL_A.raw())));
+        hub.setSnapshotHook(POOL_A, ISnapshotHook(address(navManager)));
+        hub.updateHubManager(POOL_A, address(navManager), true);
+        hub.updateHubManager(POOL_A, address(simplePriceManager), true);
+        navManager.updateManager(POOL_A, manager, true);
+        navManager.setNAVHook(POOL_A, INAVHook(address(simplePriceManager)));
+        vm.stopPrank();
+
+        valuation.setPrice(POOL_A, scId, asset1, d18(1, 1));
+        valuation.setPrice(POOL_A, scId, asset2, d18(1, 1));
+        valuation.setPrice(POOL_A, scId, asset3, d18(1, 1));
+        valuation.setPrice(POOL_A, scId, liabilityAsset, d18(1, 1));
+    }
+
+    function _testInitializeAndUpdate() internal {
+        vm.startPrank(manager);
+        navManager.initializeNetwork(POOL_A, CHAIN_CP);
+        navManager.initializeNetwork(POOL_A, CHAIN_CV);
+
+        navManager.initializeHolding(POOL_A, scId, asset1, IValuation(address(valuation)));
+        navManager.initializeHolding(POOL_A, scId, asset2, IValuation(address(valuation)));
+        navManager.initializeHolding(POOL_A, scId, asset3, IValuation(address(valuation)));
+        navManager.initializeLiability(POOL_A, scId, liabilityAsset, IValuation(address(valuation)));
+        vm.stopPrank();
+
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(
+            CHAIN_CV, POOL_A, scId, asset1, uint128(1000 * 10 ** asset1Decimals), d18(1, 1), true, false, 0
+        );
+
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(
+            CHAIN_CV, POOL_A, scId, asset2, uint128(2300 * 10 ** asset2Decimals), d18(1, 1), true, false, 1
+        );
+
+        vm.expectCall(address(hub), abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(1, 1)));
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateShares(CHAIN_CV, POOL_A, scId, 3300e18, true, true, 2);
+
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(
+            CHAIN_CP, POOL_A, scId, asset3, uint128(500 * 10 ** asset3Decimals), d18(1, 1), true, false, 0
+        );
+
+        vm.expectCall(address(hub), abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(1, 1)));
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateShares(CHAIN_CP, POOL_A, scId, 500e18, true, true, 1);
+
+        uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
+        uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
+        (uint128 navHub2, uint128 issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+        (uint128 navSpoke2, uint128 issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
+
+        assertEq(navHub, 500e18);
+        assertEq(navSpoke, 3300e18);
+        assertEq(navHub2, navHub);
+        assertEq(navSpoke2, navSpoke);
+        assertEq(issuanceHub, 500e18);
+        assertEq(issuanceSpoke, 3300e18);
+        assertEq(globalNAV, 3800e18);
+        assertEq(globalIssuance, 3800e18);
+    }
+
+    /// forge-config: default.isolate = true
+    function testPriceUpdate() public {
+        _testInitializeAndUpdate();
+
+        valuation.setPrice(POOL_A, scId, asset1, d18(11, 10)); // 10% increase in value
+        valuation.setPrice(POOL_A, scId, asset3, d18(1, 2)); // 50% decrease in value
+
+        vm.prank(manager);
+        navManager.updateHoldingValue(POOL_A, scId, asset1);
+
+        vm.expectCall(
+            address(hub),
+            abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(3650e18) / d18(3800e18))
+        );
+        vm.prank(manager);
+        navManager.updateHoldingValue(POOL_A, scId, asset3);
+
+        uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
+        uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
+        (uint128 navHub2, uint128 issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+        (uint128 navSpoke2, uint128 issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
+        (bool spokeGainIsPositive, uint128 spokeGain) =
+            accounting.accountValue(POOL_A, navManager.gainAccount(CHAIN_CV));
+        (bool hubLossIsPositive, uint128 hubLoss) = accounting.accountValue(POOL_A, navManager.lossAccount(CHAIN_CP));
+
+        assertEq(spokeGain, 100e18);
+        assertTrue(spokeGainIsPositive);
+        assertEq(hubLoss, 250e18);
+        assertTrue(hubLossIsPositive);
+        assertEq(navHub, 250e18);
+
+        assertEq(navSpoke, 3400e18);
+        assertEq(navHub2, navHub);
+        assertEq(navSpoke2, navSpoke);
+        assertEq(issuanceHub, 500e18);
+        assertEq(issuanceSpoke, 3300e18);
+        assertEq(globalNAV, 3650e18); // (3300 * 1.1) + (500 * 0.5) = 3650
+        assertEq(globalIssuance, 3800e18);
+    }
+
+    /// forge-config: default.isolate = true
+    function testTransferShares() public {
+        _testInitializeAndUpdate();
+
+        uint128 sharesTransferred = 130e18;
+
+        vm.prank(address(root));
+        hubHandler.initiateTransferShares{value: 0.1 ether}(
+            CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32("receiver"), sharesTransferred, 0, manager
+        );
+
+        (uint128 navHub2, uint128 issuanceHub, uint128 transferredInHub, uint128 transferredOutHub,,) =
+            simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+        (uint128 navSpoke2, uint128 issuanceSpoke, uint128 transferredInSpoke, uint128 transferredOutSpoke,,) =
+            simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
+
+        // NAV and issuance should remain unchanged until next onUpdate
+        // Transfers are tracked separately and applied during onUpdate
+        assertEq(navHub2, 500e18);
+        assertEq(navSpoke2, 3300e18);
+        assertEq(issuanceHub, 500e18);
+        assertEq(issuanceSpoke, 3300e18);
+        assertEq(transferredOutHub, sharesTransferred);
+        assertEq(transferredInSpoke, sharesTransferred);
+        assertEq(globalNAV, 3800e18);
+        assertEq(globalIssuance, 3800e18);
+
+        vm.prank(address(navManager));
+        simplePriceManager.onUpdate(POOL_A, scId, CHAIN_CP, 500e18);
+
+        vm.prank(address(navManager));
+        simplePriceManager.onUpdate(POOL_A, scId, CHAIN_CV, 3300e18);
+
+        (navHub2, issuanceHub, transferredInHub, transferredOutHub,,) =
+            simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+        (navSpoke2, issuanceSpoke, transferredInSpoke, transferredOutSpoke,,) =
+            simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (globalNAV, globalIssuance) = simplePriceManager.metrics(POOL_A);
+
+        assertEq(issuanceHub, 370e18); // 500 - 130
+        assertEq(issuanceSpoke, 3430e18); // 3300 + 130
+        assertEq(transferredOutHub, 0);
+        assertEq(transferredInHub, 0);
+        assertEq(transferredInSpoke, 0);
+        assertEq(transferredOutSpoke, 0);
+        // Global NAV and issuance should be unchanged
+        assertEq(globalNAV, 3800e18);
+        assertEq(globalIssuance, 3800e18);
+    }
+
+    /// forge-config: default.isolate = true
+    function testLiability() public {
+        _testInitializeAndUpdate();
+
+        // Increase liability, e.g. fee payable
+        vm.expectCall(
+            address(hub),
+            abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(3750e18) / d18(3800e18))
+        );
+
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(CHAIN_CP, POOL_A, scId, liabilityAsset, 50e18, d18(1, 1), true, true, 2);
+
+        uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
+        uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
+        (uint128 navHub2, uint128 issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+        (uint128 navSpoke2, uint128 issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
+
+        // Liability reduces the NAV
+        assertEq(navHub, 450e18);
+        assertEq(navSpoke, 3300e18);
+        assertEq(navHub2, navHub);
+        assertEq(navSpoke2, navSpoke);
+        assertEq(issuanceHub, 500e18);
+        assertEq(issuanceSpoke, 3300e18);
+        assertEq(globalNAV, 3750e18);
+        assertEq(globalIssuance, 3800e18);
+
+        // Decrease liability by paying with a cash asset
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(CHAIN_CP, POOL_A, scId, liabilityAsset, 50e18, d18(1, 1), false, false, 3);
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(
+            CHAIN_CP, POOL_A, scId, asset3, uint128(100 * 10 ** asset3Decimals), d18(1, 2), false, true, 4
+        );
+
+        navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
+        navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
+        (navHub2, issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+        (navSpoke2, issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (globalNAV, globalIssuance) = simplePriceManager.metrics(POOL_A);
+
+        // NAV should remain unchanged
+        assertEq(navHub, 450e18);
+        assertEq(navSpoke, 3300e18);
+        assertEq(navHub2, navHub);
+        assertEq(navSpoke2, navSpoke);
+        assertEq(issuanceHub, 500e18);
+        assertEq(issuanceSpoke, 3300e18);
+        assertEq(globalNAV, 3750e18);
+        assertEq(globalIssuance, 3800e18);
+    }
+
+    /// forge-config: default.isolate = true
+    function testCloseGainLoss() public {
+        _testInitializeAndUpdate();
+
+        valuation.setPrice(POOL_A, scId, asset1, d18(11, 10)); // 10% increase in value -> 100e18 gain
+        valuation.setPrice(POOL_A, scId, asset3, d18(1, 2)); // 50% decrease in value -> 250e18 loss
+
+        vm.prank(manager);
+        navManager.updateHoldingValue(POOL_A, scId, asset1);
+
+        vm.prank(manager);
+        navManager.updateHoldingValue(POOL_A, scId, asset3);
+
+        (bool spokeGainIsPositive, uint128 spokeGain) =
+            accounting.accountValue(POOL_A, navManager.gainAccount(CHAIN_CV));
+        (bool hubLossIsPositive, uint128 hubLoss) = accounting.accountValue(POOL_A, navManager.lossAccount(CHAIN_CP));
+        (bool spokeEquityIsPositive, uint128 spokeEquityBefore) =
+            accounting.accountValue(POOL_A, navManager.equityAccount(CHAIN_CV));
+        (bool hubEquityIsPositive, uint128 hubEquityBefore) =
+            accounting.accountValue(POOL_A, navManager.equityAccount(CHAIN_CP));
+
+        assertEq(spokeGain, 100e18);
+        assertTrue(spokeGainIsPositive);
+        assertEq(hubLoss, 250e18);
+        assertTrue(hubLossIsPositive);
+        assertEq(spokeEquityBefore, 3300e18);
+        assertTrue(spokeEquityIsPositive);
+        assertEq(hubEquityBefore, 500e18);
+        assertTrue(hubEquityIsPositive);
+
+        vm.prank(manager);
+        navManager.closeGainLoss(POOL_A, CHAIN_CV);
+
+        (bool spokeGainIsPositiveAfter, uint128 spokeGainAfter) =
+            accounting.accountValue(POOL_A, navManager.gainAccount(CHAIN_CV));
+        (bool spokeEquityIsPositiveAfter, uint128 spokeEquityAfter) =
+            accounting.accountValue(POOL_A, navManager.equityAccount(CHAIN_CV));
+
+        assertEq(spokeGainAfter, 0);
+        assertTrue(spokeGainIsPositiveAfter);
+        assertEq(spokeEquityAfter, spokeEquityBefore + spokeGain);
+        assertTrue(spokeEquityIsPositiveAfter);
+
+        vm.prank(manager);
+        navManager.closeGainLoss(POOL_A, CHAIN_CP);
+
+        (bool hubLossIsPositiveAfter, uint128 hubLossAfter) =
+            accounting.accountValue(POOL_A, navManager.lossAccount(CHAIN_CP));
+        (bool hubEquityIsPositiveAfter, uint128 hubEquityAfter) =
+            accounting.accountValue(POOL_A, navManager.equityAccount(CHAIN_CP));
+
+        assertEq(hubLossAfter, 0);
+        assertTrue(hubLossIsPositiveAfter);
+        assertEq(hubEquityAfter, hubEquityBefore - hubLoss);
+        assertTrue(hubEquityIsPositiveAfter);
+
+        uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
+        uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
+
+        assertEq(navHub, 250e18);
+        assertEq(navSpoke, 3400e18);
+    }
+
+    /// forge-config: default.isolate = true
+    function testEdgeCaseTransferWithZeroIssuanceCausesRevert() public {
+        // When ShareClassManager.issuance is 0 on the source network and a transfer happens,
+        // calling SimplePriceManager.onUpdate causes ShareClassManager.issuance() to revert with NegativeIssuance.
+        // This blocks NAV updates for the pool until submitQueuedShares with snapshot = true is called from the Spoke on the source network.
+
+        vm.startPrank(manager);
+        navManager.initializeNetwork(POOL_A, CHAIN_CP);
+        navManager.initializeNetwork(POOL_A, CHAIN_CV);
+        navManager.initializeHolding(POOL_A, scId, asset3, IValuation(address(valuation)));
+        vm.stopPrank();
+
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(
+            CHAIN_CP, POOL_A, scId, asset3, uint128(500 * 10 ** asset3Decimals), d18(1, 1), true, false, 0
+        );
+
+        // Issue shares only to destination network to have some global issuance
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateShares(CHAIN_CV, POOL_A, scId, 200e18, true, true, 0);
+
+        vm.prank(address(root));
+        hubHandler.initiateTransferShares{value: 0.1 ether}(
+            CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32("receiver"), 100e18, 0, manager
+        );
+
+        // issuance is -100 on source network after transfer
+        // calling ShareClassManager.issuance in onUpdate will revert
+
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.NegativeIssuance.selector));
+        vm.prank(address(navManager));
+        simplePriceManager.onUpdate(POOL_A, scId, CHAIN_CP, 500e18);
+    }
+}

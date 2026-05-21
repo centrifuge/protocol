@@ -33,7 +33,9 @@ struct LayerZeroConfig {
     uint32 layerZeroEid;
     bool deploy;
     uint8 blockConfirmations;
-    address[] dvns;
+    address[] requiredDVNs;
+    address[] optionalDVNs;
+    uint8 optionalDVNThreshold;
 }
 
 struct WormholeConfig {
@@ -186,13 +188,59 @@ library Env {
             config.layerZero.layerZeroEid = uint32(vm.parseJsonUint(json, ".adapters.layerZero.layerZeroEid"));
             config.layerZero.blockConfirmations =
                 uint8(vm.parseJsonUint(json, ".adapters.layerZero.blockConfirmations"));
-            config.layerZero.dvns = vm.parseJsonAddressArray(json, ".adapters.layerZero.DVNs");
+            config.layerZero.requiredDVNs = vm.parseJsonAddressArray(json, ".adapters.layerZero.requiredDVNs");
+            config.layerZero.optionalDVNs = vm.parseJsonAddressArray(json, ".adapters.layerZero.optionalDVNs");
+            config.layerZero.optionalDVNThreshold =
+                uint8(vm.parseJsonUint(json, ".adapters.layerZero.optionalDVNThreshold"));
 
-            for (uint256 i = 1; i < config.layerZero.dvns.length; i++) {
+            // Bound list lengths to the uint8 cap LayerZero stores them in. Without this, a 256+
+            // entry list would silently truncate via `uint8(...length)` in `encodeUlnConfig`,
+            // collapsing optional DVNs to NIL or undercounting required DVNs
+            require(config.layerZero.requiredDVNs.length <= 255, "too many requiredDVNs (uint8 cap)");
+            require(config.layerZero.optionalDVNs.length <= 255, "too many optionalDVNs (uint8 cap)");
+
+            // Enforce the ascending-sort invariant LayerZero UlnBase expects, for each list independently.
+            for (uint256 i = 1; i < config.layerZero.requiredDVNs.length; i++) {
                 require(
-                    config.layerZero.dvns[i - 1] < config.layerZero.dvns[i], "DVNs must be sorted in ascending order"
+                    config.layerZero.requiredDVNs[i - 1] < config.layerZero.requiredDVNs[i],
+                    "requiredDVNs must be sorted in ascending order"
                 );
             }
+            for (uint256 i = 1; i < config.layerZero.optionalDVNs.length; i++) {
+                require(
+                    config.layerZero.optionalDVNs[i - 1] < config.layerZero.optionalDVNs[i],
+                    "optionalDVNs must be sorted in ascending order"
+                );
+            }
+            // Disjoint check: LayerZero's UlnBase allows overlap between required and optional lists,
+            // but a DVN appearing in both collapses our "distinct operators to forge" guarantee — it
+            // would be counted as both a required attestation and a slot of the optional threshold
+            for (uint256 i; i < config.layerZero.requiredDVNs.length; i++) {
+                for (uint256 j; j < config.layerZero.optionalDVNs.length; j++) {
+                    require(
+                        config.layerZero.requiredDVNs[i] != config.layerZero.optionalDVNs[j],
+                        "DVN appears in both required and optional lists"
+                    );
+                }
+            }
+            // Mirror UlnBase.LZ_ULN_InvalidOptionalDVNThreshold: 0 < threshold <= optionalDVNs.length
+            // (when optionalDVNs is empty, threshold must be 0).
+            if (config.layerZero.optionalDVNs.length == 0) {
+                require(
+                    config.layerZero.optionalDVNThreshold == 0, "optionalDVNThreshold must be 0 when no optional DVNs"
+                );
+            } else {
+                require(
+                    config.layerZero.optionalDVNThreshold > 0
+                        && config.layerZero.optionalDVNThreshold <= config.layerZero.optionalDVNs.length,
+                    "optionalDVNThreshold must be in (0, optionalDVNs.length]"
+                );
+            }
+            // Mirror UlnBase.LZ_ULN_AtLeastOneDVN: at least one required DVN or a non-zero optional threshold.
+            require(
+                config.layerZero.requiredDVNs.length > 0 || config.layerZero.optionalDVNThreshold > 0,
+                "Must have at least one required DVN or a non-zero optional threshold"
+            );
         }
 
         if (config.wormhole.deploy) {
@@ -297,8 +345,32 @@ library Env {
 }
 
 library EnvConfigLib {
+    /// @dev LayerZero `UlnBase.NIL_DVN_COUNT` sentinel: explicitly opts out of optional DVNs
+    ///      (vs `0` which means "inherit the endpoint default optional DVN set")
+    uint8 internal constant NIL_DVN_COUNT = type(uint8).max;
+
+    /// @dev LayerZero `MessageLib` config type for `UlnConfig`.
+    uint32 internal constant ULN_CONFIG_TYPE = 2;
+
     function etherscanApiKey(EnvConfig memory) internal view returns (string memory) {
         return prettyEnvString("ETHERSCAN_API_KEY");
+    }
+
+    /// @dev Encode the `UlnConfig` for a given LayerZero adapter config. Encodes `optionalDVNCount`
+    ///      as `NIL_DVN_COUNT` when the optional set is empty so the OApp explicitly opts out of
+    ///      inheriting endpoint-level default optional DVNs.
+    function encodeUlnConfig(LayerZeroConfig memory lz) internal pure returns (bytes memory) {
+        uint8 optionalCount = uint8(lz.optionalDVNs.length);
+        return abi.encode(
+            UlnConfig({
+                confirmations: lz.blockConfirmations,
+                requiredDVNCount: uint8(lz.requiredDVNs.length),
+                optionalDVNCount: optionalCount == 0 ? NIL_DVN_COUNT : optionalCount,
+                optionalDVNThreshold: lz.optionalDVNThreshold,
+                requiredDVNs: lz.requiredDVNs,
+                optionalDVNs: lz.optionalDVNs
+            })
+        );
     }
 
     function buildLayerZeroConfigParams(EnvConfig memory config)
@@ -318,18 +390,8 @@ library EnvConfigLib {
 
         params = new SetConfigParam[](count);
 
-        // UlnConfig is the same for all connections - only eid differs
-        uint32 ULN_CONFIG_TYPE = 2;
-        bytes memory encodedUln = abi.encode(
-            UlnConfig({
-                confirmations: config.adapters.layerZero.blockConfirmations,
-                requiredDVNCount: uint8(config.adapters.layerZero.dvns.length),
-                optionalDVNCount: type(uint8).max,
-                optionalDVNThreshold: 0,
-                requiredDVNs: config.adapters.layerZero.dvns,
-                optionalDVNs: new address[](0)
-            })
-        );
+        // UlnConfig is the same for all connections - only eid differs.
+        bytes memory encodedUln = encodeUlnConfig(config.adapters.layerZero);
 
         uint256 idx;
         for (uint256 i; i < connections.length; i++) {
@@ -338,12 +400,20 @@ library EnvConfigLib {
             EnvConfig memory remoteConfig = Env.load(connections[i].network);
 
             require(
-                config.adapters.layerZero.dvns.length == remoteConfig.adapters.layerZero.dvns.length,
-                "DVNs count mismatch between local and remote config"
-            );
-            require(
                 config.adapters.layerZero.blockConfirmations == remoteConfig.adapters.layerZero.blockConfirmations,
                 "blockConfirmations mismatch between local and remote config"
+            );
+            // Enforce uniform DVN security shape across the bidirectional connection. DVN addresses
+            // legitimately differ per chain.
+            // NOTE: The shape (required count, optional count, threshold) must match such that each side
+            // counts the same number of attestations.
+            require(
+                config.adapters.layerZero.requiredDVNs.length == remoteConfig.adapters.layerZero.requiredDVNs.length
+                    && config.adapters.layerZero.optionalDVNs.length
+                        == remoteConfig.adapters.layerZero.optionalDVNs.length
+                    && config.adapters.layerZero.optionalDVNThreshold
+                        == remoteConfig.adapters.layerZero.optionalDVNThreshold,
+                "DVN config shape mismatch between local and remote"
             );
 
             params[idx++] = SetConfigParam(remoteConfig.adapters.layerZero.layerZeroEid, ULN_CONFIG_TYPE, encodedUln);

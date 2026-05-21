@@ -242,6 +242,34 @@ contract ShareTokenTest is Test {
         token.mint(targetUser, amount);
     }
 
+    function testMintNotAuthorized(uint256 amount) public {
+        amount = bound(amount, 1, type(uint128).max);
+        token.deny(self);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        token.mint(targetUser, amount);
+    }
+
+    function testBurn(uint256 amount) public {
+        amount = bound(amount, 2, type(uint128).max);
+        fullRestrictionsHook.updateMember(address(token), targetUser, uint64(validUntil));
+        token.mint(targetUser, amount);
+
+        // allowance fail (while still authorized)
+        vm.expectRevert(IERC20.InsufficientAllowance.selector);
+        token.burn(targetUser, amount);
+
+        // success
+        vm.prank(targetUser);
+        token.approve(self, amount);
+        token.burn(targetUser, amount);
+        assertEq(token.balanceOf(targetUser), 0);
+
+        // auth fail (deny after burn since rely-after-deny is also unauthorized)
+        token.deny(self);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        token.burn(targetUser, 0);
+    }
+
     function afterTransferAssumptions(address from, address to, uint256 value) internal view {
         assertEq(fullRestrictionsHook.values_address("onERC20Transfer_from"), from);
         assertEq(fullRestrictionsHook.values_address("onERC20Transfer_to"), to);

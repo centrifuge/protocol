@@ -14,10 +14,16 @@
       "layerZeroEid": 30102,
       "deploy": true,
       "blockConfirmations": 15,
-      "DVNs": [
-        "0xfA9bA83C102283958B997Adc8B44ED3A3CdB5dDa",
-        "0xfD6865c841c2d64565562fCc7e05e619A30615f0"
-      ]
+      "requiredDVNs": [
+        "0xf0a5C5306adbFd4e3dfD5d4B148B451c411d3878",
+        "0xfA9bA83C102283958B997Adc8B44ED3A3CdB5dDa"
+      ],
+      "optionalDVNs": [
+        "0x31F748a368a893Bdb5aBB67ec95F232507601A73",
+        "0x439264FB87581a70Bb6D7bEFd16b636521B0Ad2D",
+        "0x534C6b3e6805E9287ff1D49C349d5f7a01B9b7F5"
+      ],
+      "optionalDVNThreshold": 2
     },
     "wormhole": {
       "wormholeId": 4,

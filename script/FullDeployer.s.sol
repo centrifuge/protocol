@@ -38,7 +38,10 @@ import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";
 import {ScriptHelpers} from "../src/managers/spoke/ScriptHelpers.sol";
 import {AccountingToken} from "../src/managers/spoke/AccountingToken.sol";
 import {FlashLoanHelper} from "../src/managers/spoke/FlashLoanHelper.sol";
+import {ApprovalGuard} from "../src/managers/spoke/guards/ApprovalGuard.sol";
+import {SlippageGuard} from "../src/managers/spoke/guards/SlippageGuard.sol";
 import {SimplePriceManager} from "../src/managers/hub/SimplePriceManager.sol";
+import {CircuitBreakerGuard} from "../src/managers/spoke/guards/CircuitBreakerGuard.sol";
 import {IOnchainPMFactory} from "../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
 
 import {OracleValuation} from "../src/valuations/OracleValuation.sol";
@@ -165,6 +168,9 @@ contract FullDeployer is BaseDeployer, Constants {
     FlashLoanHelper public flashLoanHelper;
     IOnchainPMFactory public onchainPMFactory;
     OnOffRampFactory public onOffRampFactory;
+    ApprovalGuard public approvalGuard;
+    CircuitBreakerGuard public circuitBreakerGuard;
+    SlippageGuard public slippageGuard;
     BatchRequestManager public batchRequestManager;
 
     IdentityValuation public identityValuation;
@@ -566,6 +572,23 @@ contract FullDeployer is BaseDeployer, Constants {
                 createSalt("onOffRampFactory", V3_2),
                 abi.encodePacked(
                     type(OnOffRampFactory).creationCode, abi.encode(contractUpdater, balanceSheet, accountingToken)
+                )
+            )
+        );
+
+        approvalGuard = ApprovalGuard(
+            create3(createSalt("approvalGuard", V3_2), abi.encodePacked(type(ApprovalGuard).creationCode))
+        );
+
+        circuitBreakerGuard = CircuitBreakerGuard(
+            create3(createSalt("circuitBreakerGuard", V3_2), abi.encodePacked(type(CircuitBreakerGuard).creationCode))
+        );
+
+        slippageGuard = SlippageGuard(
+            create3(
+                createSalt("slippageGuard", V3_2),
+                abi.encodePacked(
+                    type(SlippageGuard).creationCode, abi.encode(spoke, balanceSheet, contractUpdater, onchainPMFactory)
                 )
             )
         );
