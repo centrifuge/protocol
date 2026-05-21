@@ -342,6 +342,24 @@
       "blockNumber": 40802741,
       "txHash": "0xe6a7fdc5567f6bfd7d5f44a30c80bf02debd559acf5c0b2da12d09be7ed51f76",
       "version": "v3.2"
+    },
+    "approvalGuard": {
+      "address": "0x6defAA1a96cc1e23F55Bac13E88C122ccE7F871f",
+      "blockNumber": 41669314,
+      "txHash": "0x655e66c69ac36ec797131a5623b5b50756386969f31809cacd6f53afc9387459",
+      "version": "v3.2"
+    },
+    "circuitBreakerGuard": {
+      "address": "0xdCAE75D1fb9c43eCc96fC0Cb194Ee8E808EB3437",
+      "blockNumber": 41669315,
+      "txHash": "0x6bcaadcc14df8c89f1e67aa5e015870007e8f4c9626e453e74b284abd2e69e78",
+      "version": "v3.2"
+    },
+    "slippageGuard": {
+      "address": "0x9D39c45595eC7cE584269B63a39e60684E5D6771",
+      "blockNumber": 41790976,
+      "txHash": "0x688e029d3ec2e8c84c4ddfdbf0b51a8673cd6621c9bf715876260e8fcff3a523",
+      "version": "v3.2.1"
     }
   },
   "deploymentInfo": {
