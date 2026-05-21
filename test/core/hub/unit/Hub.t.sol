@@ -262,9 +262,7 @@ contract TestUpdateSharePrice is TestCommon {
 }
 
 contract TestNotifyAssetPrice is TestCommon {
-    function testNotifyAssetPriceAccruesFees() public {
-        address REFUND = makeAddr("Refund");
-
+    function testNotifyAssetPriceSendsIdentityPriceWhenNoHolding() public {
         vm.mockCall(
             address(holdings),
             abi.encodeWithSelector(IHoldings.isInitialized.selector, POOL_A, SC_A, ASSET_A),
@@ -286,10 +284,43 @@ contract TestNotifyAssetPrice is TestCommon {
 
         assertEq(feeHook.calls(POOL_A, SC_A), 1);
     }
+
+    function testNotifyAssetPriceSendsValuationPriceWhenHoldingInitialized() public {
+        D18 valuationPrice = d18(4, 1);
+        IValuation mockValuation = IValuation(makeAddr("mockValuation"));
+
+        vm.mockCall(
+            address(holdings),
+            abi.encodeWithSelector(IHoldings.isInitialized.selector, POOL_A, SC_A, ASSET_A),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            address(holdings),
+            abi.encodeWithSelector(IHoldings.valuation.selector, POOL_A, SC_A, ASSET_A),
+            abi.encode(mockValuation)
+        );
+        vm.mockCall(
+            address(mockValuation),
+            abi.encodeWithSelector(IValuation.getPrice.selector, POOL_A, SC_A, ASSET_A),
+            abi.encode(valuationPrice)
+        );
+        vm.mockCall(
+            address(sender),
+            abi.encodeWithSelector(
+                IHubMessageSender.sendNotifyPricePoolPerAsset.selector, POOL_A, SC_A, ASSET_A, valuationPrice, REFUND
+            ),
+            abi.encode()
+        );
+
+        vm.prank(ADMIN);
+        hub.notifyAssetPrice(POOL_A, SC_A, ASSET_A, REFUND);
+
+        assertEq(feeHook.calls(POOL_A, SC_A), 1);
+    }
 }
 
 contract TestPricePoolPerAsset is TestCommon {
-    function testPriceWithoutHoldins() public {
+    function testPriceWithoutHoldings() public {
         vm.mockCall(
             address(holdings),
             abi.encodeWithSelector(IHoldings.isInitialized.selector, POOL_A, SC_A, ASSET_A),
@@ -297,6 +328,29 @@ contract TestPricePoolPerAsset is TestCommon {
         );
 
         assertEq(hub.pricePoolPerAsset(POOL_A, SC_A, ASSET_A).raw(), d18(1, 1).raw());
+    }
+
+    function testPriceWithHoldings() public {
+        D18 valuationPrice = d18(4, 1);
+        IValuation mockValuation = IValuation(makeAddr("mockValuation"));
+
+        vm.mockCall(
+            address(holdings),
+            abi.encodeWithSelector(IHoldings.isInitialized.selector, POOL_A, SC_A, ASSET_A),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            address(holdings),
+            abi.encodeWithSelector(IHoldings.valuation.selector, POOL_A, SC_A, ASSET_A),
+            abi.encode(mockValuation)
+        );
+        vm.mockCall(
+            address(mockValuation),
+            abi.encodeWithSelector(IValuation.getPrice.selector, POOL_A, SC_A, ASSET_A),
+            abi.encode(valuationPrice)
+        );
+
+        assertEq(hub.pricePoolPerAsset(POOL_A, SC_A, ASSET_A).raw(), valuationPrice.raw());
     }
 }
 
