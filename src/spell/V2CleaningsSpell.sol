@@ -8,6 +8,9 @@ import {Root} from "../admin/Root.sol";
 
 Root constant ROOT_V2 = Root(0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC);
 
+// V3 root on the three V2 networks ETH, BASE, ARB on which the spell is cast
+Root constant ROOT_V3 = Root(0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f);
+
 address constant CONTRACT_UPDATER = 0x3B150B19245D2C366bc8f18c775b725DFB298F71;
 address constant FREEZE_ONLY_HOOK = 0xd5B243F05b2906F1f6C80c6096945faADa0731C1;
 address constant FULL_RESTRICTIONS_HOOK = 0x8E680873b4C77e6088b4Ba0aBD59d100c3D224a4;
@@ -38,9 +41,22 @@ IERC20 constant USDC_ETHEREUM = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB4
 IERC20 constant USDC_BASE = IERC20(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913);
 IERC20 constant USDC_ARBITRUM = IERC20(0xaf88d065e77c8cC2239327C5EDb3A432268e5831);
 
+address constant CNF_TREASURY_WALLET = 0xD052A46b8e0C89fAcB393805E1917AfD20f293Cb;
+
+// Centrifuge Chain CFG amount derivation:
+//   Total issuance on Centrifuge Chain:             578_423_119_298_517_443_782_165_480
+//   Minus migrated CFG (4dpEcgqFp38bzzT5VruKgbfVs6zcDMFRKUetx3fz2ndLRHMu):  -350_860_057_533_953_490_820_324_585
+//   Minus chainbridge  (4dpEcgqFp8UL6eA3b7hhtdj7qftHRZE7g1uadHyuw1WSNSgH):  -192_726_451_002_520_311_526_501_638
+//   = Remaining CFG on Centrifuge Chain:              34_836_610_762_043_641_435_339_257
+uint256 constant CENTRIFUGE_CHAIN_CFG_AMOUNT = 34_836_610_762_043_641_435_339_257;
+
 uint256 constant ETHEREUM_CHAIN_ID = 1;
 uint256 constant BASE_CHAIN_ID = 8453;
 uint256 constant ARBITRUM_CHAIN_ID = 42161;
+
+interface CFGTokenLike {
+    function mint(address to, uint256 value) external;
+}
 
 interface EscrowV2Like is IAuth {
     function approveMax(address token, address spender) external;
@@ -50,77 +66,74 @@ contract V2CleaningsSpell {
     bool public done;
     string public constant description = "Pending cleanings from V2";
 
-    function cast(Root rootV3) external {
+    function cast() external {
         require(!done, "Spell already executed");
         done = true;
 
-        _updateCFGWards(rootV3);
-        _disableRootV2FromShareTokensV2(rootV3);
+        _updateCFGWards();
+        _disableRootV2FromShareTokensV2();
         _moveFundsFromEscrowToTreasury();
-        _relyContractUpdaterOnHooks(rootV3);
+        _relyContractUpdaterOnHooks();
+        _mintCFGToTreasury();
 
         if (address(ROOT_V2).code.length > 0) {
             ROOT_V2.deny(address(this));
         }
-        rootV3.deny(address(this));
+        ROOT_V3.deny(address(this));
     }
 
-    function _updateCFGWards(Root rootV3) internal {
+    function _updateCFGWards() internal {
         // Check if CFG exists
         if (CFG.code.length > 0) {
             // Mainnet CFG only has the v2 root relied, need to replace with v3 root
             if (block.chainid == ETHEREUM_CHAIN_ID) {
                 if (address(ROOT_V2).code.length > 0) {
-                    ROOT_V2.relyContract(CFG, address(rootV3));
+                    ROOT_V2.relyContract(CFG, address(ROOT_V3));
                     ROOT_V2.relyContract(CFG, CFG_MINTER);
-                    rootV3.denyContract(CFG, address(ROOT_V2));
+                    ROOT_V3.denyContract(CFG, address(ROOT_V2));
                 }
-                rootV3.denyContract(CFG, IOU_CFG);
+                ROOT_V3.denyContract(CFG, IOU_CFG);
             }
 
             // Deny CREATE3 proxy on new chains
             if (block.chainid != ETHEREUM_CHAIN_ID) {
-                rootV3.denyContract(CFG, CREATE3_PROXY);
+                ROOT_V3.denyContract(CFG, CREATE3_PROXY);
             }
         }
 
         // Check if WCFG exists (only in Ethereum)
         if (WCFG.code.length > 0) {
             if (address(ROOT_V2).code.length > 0) {
-                Root(ROOT_V2).relyContract(WCFG, address(rootV3));
-                rootV3.denyContract(WCFG, address(ROOT_V2));
+                ROOT_V2.relyContract(WCFG, address(ROOT_V3));
+                ROOT_V3.denyContract(WCFG, address(ROOT_V2));
             }
-            rootV3.denyContract(WCFG, WCFG_MULTISIG);
-            rootV3.denyContract(WCFG, CHAINBRIDGE_ERC20_HANDLER);
+            ROOT_V3.denyContract(WCFG, WCFG_MULTISIG);
+            ROOT_V3.denyContract(WCFG, CHAINBRIDGE_ERC20_HANDLER);
         }
     }
 
-    function _disableRootV2FromShareTokensV2(Root rootV3) internal {
+    function _disableRootV2FromShareTokensV2() internal {
         if (block.chainid == ETHEREUM_CHAIN_ID) {
-            _denyV2FromShareToken(rootV3, TRANCHE_JTRSY, ETH_V2_JTRSY_VAULT);
-            _denyV2FromShareToken(rootV3, TRANCHE_JAAA, ETH_V2_JAAA_VAULT);
+            _denyV2FromShareToken(TRANCHE_JTRSY, ETH_V2_JTRSY_VAULT);
+            _denyV2FromShareToken(TRANCHE_JAAA, ETH_V2_JAAA_VAULT);
         } else if (block.chainid == BASE_CHAIN_ID) {
-            _denyV2FromShareToken(rootV3, TRANCHE_JTRSY, BASE_V2_JTRSY_VAULT);
-            _denyV2FromShareToken(rootV3, TRANCHE_JAAA, BASE_V2_JAAA_VAULT);
+            _denyV2FromShareToken(TRANCHE_JTRSY, BASE_V2_JTRSY_VAULT);
+            _denyV2FromShareToken(TRANCHE_JAAA, BASE_V2_JAAA_VAULT);
         } else if (block.chainid == ARBITRUM_CHAIN_ID) {
-            _denyV2FromShareToken(rootV3, TRANCHE_JTRSY, ARB_V2_JTRSY_VAULT);
+            _denyV2FromShareToken(TRANCHE_JTRSY, ARB_V2_JTRSY_VAULT);
         }
     }
 
     // V2_ROOT is ward of these V2 vaults, so a V2_ROOT compromise could exploit the
     // vault's remaining ward access on the share token via authTransferFrom.
-    function _denyV2FromShareToken(Root rootV3, address shareToken, address v2Vault) internal {
+    function _denyV2FromShareToken(address shareToken, address v2Vault) internal {
         IAuth shareToken_ = IAuth(shareToken);
 
-        // forgefmt: disable-next-item
-        if (address(shareToken_).code.length > 0 &&
-            shareToken_.wards(address(ROOT_V2)) == 1 &&
-            shareToken_.wards(address(rootV3)) == 1
-        ) {
-            rootV3.relyContract(shareToken, address(this));
-            shareToken_.deny(address(ROOT_V2));
-            shareToken_.deny(v2Vault);
-            rootV3.denyContract(shareToken, address(this));
+        if (address(shareToken_).code.length > 0 && shareToken_.wards(address(ROOT_V3)) == 1) {
+            ROOT_V3.relyContract(shareToken, address(this));
+            if (shareToken_.wards(address(ROOT_V2)) == 1) shareToken_.deny(address(ROOT_V2));
+            if (shareToken_.wards(v2Vault) == 1) shareToken_.deny(v2Vault);
+            ROOT_V3.denyContract(shareToken, address(this));
         }
     }
 
@@ -146,10 +159,21 @@ contract V2CleaningsSpell {
         }
     }
 
-    function _relyContractUpdaterOnHooks(Root rootV3) internal {
-        rootV3.relyContract(FREEZE_ONLY_HOOK, CONTRACT_UPDATER);
-        rootV3.relyContract(FULL_RESTRICTIONS_HOOK, CONTRACT_UPDATER);
-        rootV3.relyContract(FREELY_TRANSFERABLE_HOOK, CONTRACT_UPDATER);
-        rootV3.relyContract(REDEMPTION_RESTRICTIONS_HOOK, CONTRACT_UPDATER);
+    function _relyContractUpdaterOnHooks() internal {
+        ROOT_V3.relyContract(FREEZE_ONLY_HOOK, CONTRACT_UPDATER);
+        ROOT_V3.relyContract(FULL_RESTRICTIONS_HOOK, CONTRACT_UPDATER);
+        ROOT_V3.relyContract(FREELY_TRANSFERABLE_HOOK, CONTRACT_UPDATER);
+        ROOT_V3.relyContract(REDEMPTION_RESTRICTIONS_HOOK, CONTRACT_UPDATER);
+    }
+
+    function _mintCFGToTreasury() internal {
+        if (block.chainid == ETHEREUM_CHAIN_ID) {
+            // Subtract wCFG balance held by the IOU_CFG contract, since those were already
+            // redeemed 1:1 for CFG and the wCFG total supply was not reduced upon redemption.
+            uint256 amount = IERC20(WCFG).totalSupply() - IERC20(WCFG).balanceOf(IOU_CFG) + CENTRIFUGE_CHAIN_CFG_AMOUNT;
+            ROOT_V3.relyContract(CFG, address(this));
+            CFGTokenLike(CFG).mint(CNF_TREASURY_WALLET, amount);
+            ROOT_V3.denyContract(CFG, address(this));
+        }
     }
 }
