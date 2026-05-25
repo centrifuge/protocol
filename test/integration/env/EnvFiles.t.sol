@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {EnvConfig, Env, Connection} from "../../script/utils/EnvConfig.s.sol";
-import {EnvConnections, EnvConnectionsConfig} from "../../script/utils/EnvConnectionsConfig.s.sol";
+import {EnvConfig, Env, Connection} from "../../../script/utils/EnvConfig.s.sol";
+import {EnvConnections, EnvConnectionsConfig} from "../../../script/utils/EnvConnectionsConfig.s.sol";
 
 import "forge-std/Test.sol";
 
