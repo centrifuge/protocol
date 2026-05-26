@@ -53,6 +53,37 @@ contract ValidationExecutor is Script {
         _execute(validators, "POST", true);
     }
 
+    /// @notice Run validators against live state and return the total error
+    ///         count without reverting. Used by `SpellForkTest` to compute a
+    ///         pre/post regression count for the structural validators —
+    ///         tolerating pre-existing live-state errors that the spell did
+    ///         not introduce.
+    /// @dev    Per-error log lines are still emitted via the standard report.
+    function runValidationCountErrors(BaseValidator[] memory validators, string memory phaseName)
+        external
+        returns (uint256 totalErrors)
+    {
+        ctx.contracts.latest = empty;
+        ValidationResult[] memory results = new ValidationResult[](validators.length);
+
+        for (uint256 i = 0; i < validators.length; i++) {
+            require(
+                !executed[validators[i]], string.concat("The validator ", validators[i].name(), " was already executed")
+            );
+            executed[validators[i]] = true;
+
+            validators[i].validate(ctx);
+
+            results[i].name = validators[i].name();
+            results[i].errors = validators[i].errors();
+            totalErrors += results[i].errors.length;
+        }
+
+        if (bytes(phaseName).length != 0) {
+            _displayReport(results, totalErrors, phaseName, false);
+        }
+    }
+
     function _execute(BaseValidator[] memory validators, string memory phaseName, bool shouldRevert)
         internal
         returns (bool)
