@@ -64,8 +64,9 @@ jobs:
           for f in env/*.json; do
             [ -f "$f" ] || continue
             chain=$(basename "$f" .json)
+            chainId=$(jq -r '.network.chainId // "?"' "$f")
             echo "" >> out/env-addresses.md
-            echo "## $chain" >> out/env-addresses.md
+            echo "## $chain (chainId: $chainId)" >> out/env-addresses.md
             jq -r '.contracts // {} | to_entries[] | "- \(.key): \(.value.address // .value)"' "$f" >> out/env-addresses.md 2>/dev/null || true
           done
           SIZE=$(wc -c < out/env-addresses.md)

@@ -11,7 +11,7 @@ explain with a concrete diff line.
 <task>
 1. Read the PR diff, the full content of each changed spell, and the
    per-chain deployed-address summary.
-2. For each of 11 checks (S1–S11), evaluate the diff against the check's
+2. For each of 12 checks (S1–S12), evaluate the diff against the check's
    `Applies when:` precondition and produce a verdict.
 3. Write the final review as a single document to `out/security-review.md`,
    with `<!-- protocol-security-review -->` as line 1.
@@ -36,7 +36,7 @@ The following files have been pre-staged for this run:
   <file path="out/pr-diff.patch">Unified diff vs the base branch.</file>
   <file path="out/changed-spell-content/*.sol">Full content of each changed spell, for context around diff hunks.</file>
   <file path="out/reference-spell.sol">A small correct exemplar (env/spell/005_ethereum_*.sol). Use as comparison baseline for S2/S3/S10.</file>
-  <file path="out/env-addresses.md">Per-chain deployed contract addresses (~40KB). Read ONLY when S5 applies.</file>
+  <file path="out/env-addresses.md">Per-chain deployed contract addresses + chainIds (~40KB). Read for S5 (when triggered) and S12 (always — chainId is in each `## chain (chainId: N)` heading).</file>
 </context_files>
 
 <read_order>
@@ -44,7 +44,8 @@ The following files have been pre-staged for this run:
 2. `out/pr-diff.patch` — what actually changed. This is the source of truth.
 3. `out/changed-spell-content/*.sol` — full content for context around diff hunks ONLY. Findings must trigger on a diff line.
 4. `out/reference-spell.sol` — read once, refer back when evaluating S2, S3, or S10.
-5. `out/env-addresses.md` — read ONLY if the diff contains `block.chainid` or hardcoded chain-specific `address constant` declarations (S5 trigger). Otherwise skip — it's 40KB.
+5. `out/env-addresses.md` — read in full. Needed by S5 (when triggered) AND by S12 (always; chainIds appear in each `## chain (chainId: N)` heading).
+6. `env/spell/**/*.sol` — Grep on demand when S12 is enumerating constants. A literal value reused from an already-cast spell is strong corroboration.
 </read_order>
 
 <diff_vs_full_file>
@@ -67,7 +68,7 @@ These run separately in CI; do not waste tokens reverifying them:
 </not_in_scope>
 
 <workflow>
-For each check S1–S11:
+For each check S1–S12:
   1. Read its `<applies_when>` precondition.
   2. Search `out/pr-diff.patch` (NOT the full file) for the trigger pattern.
   3. If the precondition is NOT satisfied, verdict = `N/A`. Skip the rule check.
@@ -225,6 +226,52 @@ permissionless caller substitute a privileged callee belongs in the same class.
     <rule>Flag if no corresponding fork test under `test/integration/fork/spell/**` appears in the same PR. Do not evaluate test quality — only existence.</rule>
   </check>
 
+  <check id="S12" title="Constants provenance inventory">
+    <applies_when>Always — every spell declares at least one constant.</applies_when>
+    <rule>
+      Enumerate every `constant` and `immutable` declaration in each changed
+      spell file (addresses, uintN, bytes, bool, string). For each, attempt to
+      verify the literal value against the pre-staged sources:
+
+        - `out/env-addresses.md` — addresses under each chain's `contracts.*`
+          block, AND chainIds in each `## chain (chainId: N)` heading.
+        - `env/spell/**/*.sol` — past spells. A literal value reused from a
+          previously-deployed spell is strong corroboration; Grep `env/spell/`
+          for the value before declaring it unverified.
+        - The spell's own in-file derivation comment (numeric amounts may
+          carry a documented derivation per S6 — note as "derivation in spell"
+          rather than "unverified" when present).
+
+      Classify each constant:
+        - VERIFIED — exact literal found in `env/*.json`, `env/spell/**`, or
+          (for numeric amounts) supported by an adjacent derivation comment.
+        - UNVERIFIED — no env / past-spell / derivation match. Author must
+          confirm manually via Slack, Notion, or off-chain sources Sonnet
+          does NOT have access to.
+
+      S12 verdict:
+        - PASS — at least one constant verified; unverified constants are
+          listed in the inventory and called out as "author must confirm".
+        - CONCERN (low) — every constant is unverified (suggests the spell
+          may not be targeting any currently-deployed infrastructure, or
+          the diff has staging issues).
+
+      UNVERIFIED at the per-constant level is **informational** and does NOT
+      escalate the doc-level verdict.
+
+      Output: render the per-constant classification as a `## Constants
+      inventory` section appended after the main table (format below). Do
+      NOT skip constants — every `constant` / `immutable` declaration in the
+      changed spell must appear in the table.
+
+      Overlap with S5: S5 evaluates whether chain-branched address constants
+      match env on the branch's chain. S12 is the wider inventory that also
+      covers non-branched constants (e.g., share tokens) and non-address
+      constants (chainIds, amounts). Do not duplicate S5 findings in S12 —
+      just list the constant as VERIFIED in the inventory.
+    </rule>
+  </check>
+
 </checklist>
 
 <reference_spell_usage>
@@ -323,6 +370,27 @@ Body structure:
 | S9  | Idempotency / recoverability   | Yes      | PASS             | -           | ...       |
 | S10 | Accidental privilege retention | Yes      | PASS             | -           | ...       |
 | S11 | Tests exist                    | Yes      | PASS             | -           | ...       |
+| S12 | Constants provenance inventory | Yes      | PASS             | -           | See inventory below. X of Y constants auto-verified. |
+
+---
+
+## Constants inventory
+
+X of Y constants verified against `env/*.json` or `env/spell/**`. Unverified
+entries require manual cross-check by the author (typically via Slack, Notion,
+or off-chain sources).
+
+| Name | Type | Value | Source / verified against | Status |
+| ---- | ---- | ----- | ------------------------- | ------ |
+| `ROOT_V3` | `Root` | `0x7Ed4...368f` | env/{ethereum,base,arbitrum}.json contracts.root | ✅ verified |
+| `ETHEREUM_CHAIN_ID` | `uint256` | `1` | env/ethereum.json chainId heading | ✅ verified |
+| `TRANCHE_JTRSY` | `address` | `0x8c21...4b86` | env/spell/00X_*.sol (past spell) | ✅ verified |
+| `TREASURY` | `address` | `0xb3Da...01AB9` | no env / past-spell match | ❓ author confirm |
+| `CENTRIFUGE_CHAIN_CFG_AMOUNT` | `uint256` | `34_836_...339_257` | derivation comment in spell | ❓ author confirm derivation |
+
+(Render one row per constant declared in the changed spell. Use `✅ verified`
+or `❓ author confirm`. Truncate long literals as `0xPrefix...Suffix` for
+readability.)
 
 ---
 
@@ -332,7 +400,8 @@ Body structure:
 ```
 
 Output discipline:
-  - Always list all 11 rows — N/A rows make it clear what was considered.
+  - Always list all 12 rows in the main table — N/A rows make it clear what was considered.
+  - The `## Constants inventory` section is mandatory; include it even when every constant is verified.
   - Each rationale is one short sentence.
   - File:line refs must point to lines that appear in `out/pr-diff.patch`.
   - Target total output: under 2000 tokens. The table is the bulk.
