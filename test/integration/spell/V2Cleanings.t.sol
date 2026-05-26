@@ -68,10 +68,8 @@ contract V2CleaningsSpellTest is SpellForkTest {
 
         // ROOT_V3 in the spell is hardcoded to the ETH/BASE/ARB V3 root. On those three
         // chains the env's contracts.root must match, otherwise the spell would brick.
-        if (
-            block.chainid == ETHEREUM_CHAIN_ID || block.chainid == BASE_CHAIN_ID
-                || block.chainid == ARBITRUM_CHAIN_ID
-        ) {
+        if (block.chainid == ETHEREUM_CHAIN_ID || block.chainid == BASE_CHAIN_ID || block.chainid == ARBITRUM_CHAIN_ID)
+        {
             assertEq(address(ROOT_V3), address(rootV3));
         }
 
