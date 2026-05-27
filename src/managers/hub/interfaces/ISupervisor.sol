@@ -3,18 +3,7 @@ pragma solidity >=0.5.0;
 
 import {PoolId} from "../../../core/types/PoolId.sol";
 import {IHub} from "../../../core/hub/interfaces/IHub.sol";
-
-interface IManifest {
-    /// @notice Validate whether a Hub call should proceed, and return the timelock duration.
-    ///         Revert to block the call. Return 0 for immediate execution.
-    /// @dev    Called by the Hub itself from inside {IHub.propose}, once per call in the proposed
-    ///         batch. Implementations should restrict `msg.sender` to the Hub address.
-    /// @param poolId The pool being operated on.
-    /// @param caller The address that initiated the propose call.
-    /// @param data The Hub calldata being proposed.
-    /// @return timelock Seconds the operation must wait before execution. 0 = immediate.
-    function check(PoolId poolId, address caller, bytes calldata data) external returns (uint48 timelock);
-}
+import {IManifest} from "../../../core/hub/interfaces/IManifest.sol";
 
 enum TrustedCall {
     AddSentinel,
@@ -50,16 +39,12 @@ interface ISupervisor {
     /// @notice Submit a batch of Hub manager calls. Operator only. Forwards to {IHub.await},
     ///         which always queues the batch. Use {execute} (or {awaitAndExecute}) to run it.
     /// @param calls    Array of Hub-targeted calldata. Each call's first argument must be `poolId`.
-    /// @param atomic   true: any per-call failure during execute reverts the whole batch.
-    ///                 false: per-call failures are tolerated; the rest of the batch still runs.
     /// @param callback Optional callback payload invoked on the submitter after execute runs.
-    function await(bytes[] calldata calls, bool atomic, bytes calldata callback)
-        external
-        returns (uint64 nonce, bytes32 opId);
+    function await(bytes[] calldata calls, bytes calldata callback) external returns (uint64 nonce, bytes32 opId);
 
     /// @notice {await} + {execute} in one transaction. Operator only. Reverts if the manifest
     ///         imposes any timelock.
-    function awaitAndExecute(bytes[] calldata calls, bool atomic, bytes calldata callback)
+    function awaitAndExecute(bytes[] calldata calls, bytes calldata callback)
         external
         payable
         returns (uint64 nonce, bytes32 opId);

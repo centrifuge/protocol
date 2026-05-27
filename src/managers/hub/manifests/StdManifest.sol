@@ -7,7 +7,7 @@ import {IShareClassManager} from "../../../core/hub/interfaces/IShareClassManage
 import {IMultiAdapter} from "../../../core/messaging/interfaces/IMultiAdapter.sol";
 import {IAdapter} from "../../../core/messaging/interfaces/IAdapter.sol";
 import {IHub} from "../../../core/hub/interfaces/IHub.sol";
-import {IManifest} from "../interfaces/ISupervisor.sol";
+import {IManifest} from "../../../core/hub/interfaces/IManifest.sol";
 import {IOnOfframpManager} from "../../spoke/interfaces/IOnOfframpManager.sol";
 
 import {D18} from "../../../misc/types/D18.sol";

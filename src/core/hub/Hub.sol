@@ -11,7 +11,7 @@ import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 import {IHub, VaultUpdateKind, AccountType, PendingOp} from "./interfaces/IHub.sol";
 import {IHubRequestManagerCallback} from "./interfaces/IHubRequestManagerCallback.sol";
-import {IManifest} from "../../managers/hub/interfaces/ISupervisor.sol";
+import {IManifest} from "./interfaces/IManifest.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {d18, D18} from "../../misc/types/D18.sol";
@@ -45,7 +45,8 @@ import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
 ///            stores a pending op. `await` never executes anything itself; it is always async.
 ///         2. After the timelock, any manager calls {execute} (passing the same batch). The Hub
 ///            replays the calls under the original submitter's identity via {executeBatch},
-///            then optionally invokes a post-batch callback on the submitter.
+///            then optionally invokes a post-batch callback on the submitter. Batches are
+///            all-or-nothing — any revert reverts the whole tx and the pending op stays put.
 ///         3. {awaitAndExecute} folds both into one tx for the timelock==0 case so integrators
 ///            don't need a generic multicall to handle the common path.
 ///
@@ -110,30 +111,31 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
-    function await(PoolId poolId, bytes[] calldata calls, bool atomic, bytes calldata callback)
+    function await(PoolId poolId, bytes[] calldata calls, bytes calldata callback)
         external
         returns (uint64 nonce, bytes32 opId)
     {
         require(_submitter == address(0), AlreadyInBatch());
-        return _await(msgSender(), poolId, calls, atomic, callback);
+        return _await(msgSender(), poolId, calls, callback);
     }
 
     /// @inheritdoc IHub
     function execute(PoolId poolId, uint64 nonce, bytes[] calldata calls, bytes calldata callback) external payable {
         require(_submitter == address(0), AlreadyInBatch());
         require(hubRegistry.manager(poolId, msgSender()), NotManager());
-        _execute(poolId, nonce, calls, callback);
+        _finalize(keccak256(abi.encode(poolId, nonce, calls, callback)), calls, callback);
     }
 
     /// @inheritdoc IHub
-    function awaitAndExecute(PoolId poolId, bytes[] calldata calls, bool atomic, bytes calldata callback)
+    function awaitAndExecute(PoolId poolId, bytes[] calldata calls, bytes calldata callback)
         external
         payable
         returns (uint64 nonce, bytes32 opId)
     {
         require(_submitter == address(0), AlreadyInBatch());
-        (nonce, opId) = _await(msgSender(), poolId, calls, atomic, callback);
-        _execute(poolId, nonce, calls, callback);
+        (nonce, opId) = _await(msgSender(), poolId, calls, callback);
+        // _await just wrote pending[opId]; finalize from the known opId without recomputing.
+        _finalize(opId, calls, callback);
     }
 
     /// @inheritdoc IHub
@@ -156,21 +158,17 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @inheritdoc IHub
     /// @dev Gateway-only callback invoked from {_runBatch}. Replays the batch under the submitter
-    ///      context. `atomic=true` reverts on any per-call failure; `atomic=false` emits
-    ///      {CallFailed} and continues so a single OOG can't strand the whole batch.
-    function executeBatch(bytes[] calldata calls, bool atomic) external payable {
+    ///      context. All-or-nothing: any revert bubbles up and rolls back the whole tx.
+    function executeBatch(bytes[] calldata calls) external payable {
         require(msg.sender == address(gateway), NotGateway());
         gateway.lockCallback();
         for (uint256 i; i < calls.length; i++) {
             (bool success, bytes memory returnData) = address(this).delegatecall(calls[i]);
             if (success) continue;
-            if (atomic) {
-                if (returnData.length == 0) revert ExecutionFailed("");
-                assembly ("memory-safe") {
-                    revert(add(returnData, 32), mload(returnData))
-                }
+            if (returnData.length == 0) revert ExecutionFailed("");
+            assembly ("memory-safe") {
+                revert(add(returnData, 32), mload(returnData))
             }
-            emit CallFailed(i, returnData);
         }
     }
 
@@ -207,7 +205,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) public payable {
+    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) external payable {
         _mustAwait();
 
         (string memory name, string memory symbol,) = shareClassManager.metadata(poolId, scId);
@@ -218,7 +216,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @inheritdoc IHub
     function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook, address refund)
-        public
+        external
         payable
     {
         _mustAwait();
@@ -228,7 +226,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) public payable {
+    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) external payable {
         _mustAwait();
 
         (D18 pricePoolPerShare, uint64 computedAt) = shareClassManager.pricePoolPerShare(poolId, scId);
@@ -240,7 +238,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, address refund) public payable {
+    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, address refund) external payable {
         _mustAwait();
 
         D18 pricePoolPerAsset_ = pricePoolPerAsset(poolId, scId, assetId);
@@ -367,7 +365,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @inheritdoc IHub
     function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare, uint64 computedAt)
-        public
+        external
         payable
     {
         _mustAwait();
@@ -437,7 +435,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) external payable {
         _mustAwait();
 
         (bool isPositive, uint128 diff) = holdings.update(poolId, scId, assetId);
@@ -477,7 +475,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) public payable {
+    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external payable {
         _mustAwait();
         accounting.createAccount(poolId, account, isDebitNormal);
     }
@@ -526,6 +524,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     {
         _mustAwait();
 
+        emit UpdateGatewayManager(centrifugeId, poolId, who, canManage);
         sender.sendUpdateGatewayManager{value: msgValue()}(centrifugeId, poolId, who, canManage, refund);
     }
 
@@ -622,13 +621,10 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @dev Manifest run + pending-op write. Factored out so {await} and {awaitAndExecute} share
     ///      this without blowing the stack-too-deep limit on the {OperationSubmitted} emit.
-    function _await(
-        address submitter,
-        PoolId poolId,
-        bytes[] calldata calls,
-        bool atomic,
-        bytes calldata callback
-    ) internal returns (uint64 nonce, bytes32 opId) {
+    function _await(address submitter, PoolId poolId, bytes[] calldata calls, bytes calldata callback)
+        internal
+        returns (uint64 nonce, bytes32 opId)
+    {
         require(hubRegistry.manager(poolId, submitter), NotManager());
         require(calls.length != 0, EmptyBatch());
 
@@ -641,23 +637,22 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         // the same payload don't collide in `pending` storage.
         nonce = ++awaitNonce[poolId];
         opId = keccak256(abi.encode(poolId, nonce, calls, callback));
-        pending[opId] = PendingOp(uint48(block.timestamp) + maxTimelock, submitter, atomic);
-        emit OperationSubmitted(
-            opId, poolId, submitter, nonce, atomic, pending[opId].executeAfter, calls, callback
-        );
+        uint48 executeAfter = uint48(block.timestamp) + maxTimelock;
+        pending[opId] = PendingOp(executeAfter, submitter);
+        emit OperationSubmitted(opId, poolId, submitter, nonce, executeAfter, calls, callback);
     }
 
-    /// @dev Pending-op lookup + replay. Factored out so {execute} and {awaitAndExecute} share it.
-    function _execute(PoolId poolId, uint64 nonce, bytes[] calldata calls, bytes calldata callback) internal {
-        bytes32 opId = keccak256(abi.encode(poolId, nonce, calls, callback));
+    /// @dev Lookup + replay by opId. Used by {execute} (after hashing) and {awaitAndExecute}
+    ///      (skips the hash since `_await` just wrote the slot).
+    function _finalize(bytes32 opId, bytes[] calldata calls, bytes calldata callback) internal {
         PendingOp memory op = pending[opId];
         require(op.executeAfter != 0, OperationNotPending());
         require(block.timestamp >= op.executeAfter, TimelockNotReady(op.executeAfter));
         // Delete BEFORE _runBatch: if _runBatch reverts the tx unwinds and the pending op stays
-        // put, so the batch can be retried (useful for atomic=true + OOG).
+        // put, so the batch can be retried (useful when execute OOGs).
         delete pending[opId];
 
-        _runBatch(op.submitter, calls, op.atomic, callback);
+        _runBatch(op.submitter, calls, callback);
         emit OperationExecuted(opId);
     }
 
@@ -680,10 +675,10 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     ///      (so cross-chain payments aggregate), then clear the context and invoke the post-batch
     ///      callback. The clear happens BEFORE the callback so the callback may recursively call
     ///      {await} — see the matching guard at the top of {await}.
-    function _runBatch(address submitter, bytes[] calldata calls, bool atomic, bytes calldata callback) private {
+    function _runBatch(address submitter, bytes[] calldata calls, bytes calldata callback) private {
         _submitter = submitter;
         gateway.withBatch{value: msg.value}(
-            abi.encodeWithSelector(IHub.executeBatch.selector, calls, atomic), submitter
+            abi.encodeWithSelector(IHub.executeBatch.selector, calls), submitter
         );
         _submitter = address(0);
 

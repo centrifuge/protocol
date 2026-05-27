@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IManifest} from "../../interfaces/ISupervisor.sol";
+import {IManifest} from "../../../../core/hub/interfaces/IManifest.sol";
 import {IHub} from "../../../../core/hub/interfaces/IHub.sol";
 import {IShareClassManager} from "../../../../core/hub/interfaces/IShareClassManager.sol";
 import {IMultiAdapter} from "../../../../core/messaging/interfaces/IMultiAdapter.sol";

@@ -40,7 +40,6 @@ contract MockHub {
     uint256 public lastValue;
     PoolId public lastProposedPoolId;
     bytes[] public lastProposedCalls;
-    bool public lastProposedAtomic;
     bytes public lastProposedCallback;
     uint64 public mockNonce = 1;
     bool public lastExecuted;
@@ -66,29 +65,28 @@ contract MockHub {
         lastValue = val;
     }
 
-    function pending(bytes32 opId) external view returns (uint48, address, bool) {
+    function pending(bytes32 opId) external view returns (uint48, address) {
         PendingOp memory op = pendingOps[opId];
-        return (op.executeAfter, op.submitter, op.atomic);
+        return (op.executeAfter, op.submitter);
     }
 
-    function setPending(bytes32 opId, uint48 executeAfter, address submitter, bool atomic) external {
-        pendingOps[opId] = PendingOp(executeAfter, submitter, atomic);
+    function setPending(bytes32 opId, uint48 executeAfter, address submitter) external {
+        pendingOps[opId] = PendingOp(executeAfter, submitter);
     }
 
-    function await(PoolId poolId, bytes[] calldata calls, bool atomic, bytes calldata callback)
+    function await(PoolId poolId, bytes[] calldata calls, bytes calldata callback)
         external
         returns (uint64 nonce, bytes32 opId)
     {
         lastProposedPoolId = poolId;
         delete lastProposedCalls;
         for (uint256 i; i < calls.length; i++) lastProposedCalls.push(calls[i]);
-        lastProposedAtomic = atomic;
         lastProposedCallback = callback;
         nonce = mockNonce++;
         opId = keccak256(abi.encode(poolId, nonce, calls, callback));
     }
 
-    function awaitAndExecute(PoolId poolId, bytes[] calldata calls, bool atomic, bytes calldata callback)
+    function awaitAndExecute(PoolId poolId, bytes[] calldata calls, bytes calldata callback)
         external
         payable
         returns (uint64 nonce, bytes32 opId)
@@ -96,7 +94,6 @@ contract MockHub {
         lastProposedPoolId = poolId;
         delete lastProposedCalls;
         for (uint256 i; i < calls.length; i++) lastProposedCalls.push(calls[i]);
-        lastProposedAtomic = atomic;
         lastProposedCallback = callback;
         nonce = mockNonce++;
         opId = keccak256(abi.encode(poolId, nonce, calls, callback));
@@ -195,7 +192,7 @@ abstract contract SupervisorTestBase is Test {
         returns (bytes32 opId)
     {
         opId = keccak256(abi.encode(POOL, NONCE, calls, callback));
-        hub.setPending(opId, executeAfter, operator, true);
+        hub.setPending(opId, executeAfter, operator);
     }
 }
 
@@ -213,22 +210,12 @@ contract SupervisorAwaitTest is SupervisorTestBase {
         bytes[] memory calls = _doSomethingBatch(42);
 
         vm.prank(operator);
-        (uint64 nonce, bytes32 opId) = supervisor.await(calls, true, "");
+        (uint64 nonce, bytes32 opId) = supervisor.await(calls, "");
 
         assertEq(nonce, 1);
         assertEq(PoolId.unwrap(hub.lastProposedPoolId()), PoolId.unwrap(POOL));
         assertEq(hub.lastProposedCalls(0), calls[0]);
-        assertTrue(hub.lastProposedAtomic());
         assertEq(opId, keccak256(abi.encode(POOL, uint64(1), calls, "")));
-    }
-
-    function testAwaitPassesAtomicFalse() public {
-        bytes[] memory calls = _doSomethingBatch(7);
-
-        vm.prank(operator);
-        supervisor.await(calls, false, "");
-
-        assertFalse(hub.lastProposedAtomic());
     }
 
     function testAwaitPassesCallback() public {
@@ -236,7 +223,7 @@ contract SupervisorAwaitTest is SupervisorTestBase {
         bytes memory cb = abi.encodeWithSignature("onExecuted()");
 
         vm.prank(operator);
-        supervisor.await(calls, true, cb);
+        supervisor.await(calls, cb);
 
         assertEq(hub.lastProposedCallback(), cb);
     }
@@ -246,7 +233,7 @@ contract SupervisorAwaitTest is SupervisorTestBase {
 
         vm.expectRevert(ISupervisor.NotOperator.selector);
         vm.prank(unauthorized);
-        supervisor.await(calls, true, "");
+        supervisor.await(calls, "");
     }
 
     function testAwaitAndExecuteForwardsValue() public {
@@ -254,7 +241,7 @@ contract SupervisorAwaitTest is SupervisorTestBase {
 
         vm.deal(operator, 1 ether);
         vm.prank(operator);
-        supervisor.awaitAndExecute{value: 0.5 ether}(calls, true, "");
+        supervisor.awaitAndExecute{value: 0.5 ether}(calls, "");
 
         assertEq(address(hub).balance, 0.5 ether);
         assertTrue(hub.lastExecuted());
@@ -265,7 +252,7 @@ contract SupervisorAwaitTest is SupervisorTestBase {
 
         vm.expectRevert(ISupervisor.NotOperator.selector);
         vm.prank(unauthorized);
-        supervisor.awaitAndExecute(calls, true, "");
+        supervisor.awaitAndExecute(calls, "");
     }
 }
 

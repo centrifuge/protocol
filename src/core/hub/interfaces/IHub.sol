@@ -22,7 +22,7 @@ import {AssetId} from "../../types/AssetId.sol";
 import {AccountId} from "../../types/AccountId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 import {IBatchedMulticall} from "../../utils/interfaces/IBatchedMulticall.sol";
-import {IManifest} from "../../../managers/hub/interfaces/ISupervisor.sol";
+import {IManifest} from "./IManifest.sol";
 
 /// @notice Account types used by Hub
 enum AccountType {
@@ -43,7 +43,6 @@ enum AccountType {
 struct PendingOp {
     uint48 executeAfter;
     address submitter;
-    bool atomic;
 }
 
 /// @notice Interface with all methods available in the system used by actors
@@ -67,6 +66,9 @@ interface IHub is IBatchedMulticall {
     event UpdateRestriction(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes payload);
     event SetSpokeRequestManager(uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 indexed manager);
     event UpdateBalanceSheetManager(
+        uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 indexed manager, bool canManage
+    );
+    event UpdateGatewayManager(
         uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 indexed manager, bool canManage
     );
     event UpdateVault(
@@ -144,15 +146,12 @@ interface IHub is IBatchedMulticall {
         PoolId indexed poolId,
         address indexed submitter,
         uint64 nonce,
-        bool atomic,
         uint48 executeAfter,
         bytes[] calls,
         bytes callback
     );
     event OperationExecuted(bytes32 indexed opId);
     event OperationCanceled(bytes32 indexed opId);
-    /// @notice Emitted for a per-call failure in non-atomic mode. Atomic mode reverts instead.
-    event CallFailed(uint256 indexed index, bytes returnData);
     event SetManifest(PoolId indexed poolId, IManifest manifest);
 
     //----------------------------------------------------------------------------------------------
@@ -524,7 +523,7 @@ interface IHub is IBatchedMulticall {
     function manifest(PoolId poolId) external view returns (IManifest);
 
     /// @notice Returns pending operation info
-    function pending(bytes32 opId) external view returns (uint48 executeAfter, address submitter, bool atomic);
+    function pending(bytes32 opId) external view returns (uint48 executeAfter, address submitter);
 
     /// @notice Returns the next nonce that {await} will assign for `poolId` (current + 1).
     function awaitNonce(PoolId poolId) external view returns (uint64);
@@ -544,17 +543,21 @@ interface IHub is IBatchedMulticall {
     ///         run right away.
     ///
     /// @param poolId   The pool every call in the batch must target as its first argument.
-    /// @param calls    Array of ABI-encoded Hub calldata. Must be non-empty.
-    /// @param atomic   true: one revert during {execute} reverts the entire batch (and the
-    ///                 callback). false: per-call failures emit {CallFailed} and the rest of the
-    ///                 batch still runs. Stored with the pending op so {execute} honors it.
+    /// @param calls    Array of ABI-encoded Hub calldata. Must be non-empty. All-or-nothing:
+    ///                 any per-call revert during {execute} reverts the whole batch (and the
+    ///                 callback). The caller MUST size the batch — every call plus the post-batch
+    ///                 callback — to fit within the block gas limit; the manifest runs at await
+    ///                 time, gas is not measured. If {execute} OOGs the pending op stays put and
+    ///                 can be retried with more gas; a batch that's structurally too large to
+    ///                 ever fit is permanently stuck and `cancel` is the only recourse. For
+    ///                 failure-tolerant flows, queue each call as a separate await.
     /// @param callback Optional payload to call back on the submitter AFTER the batch runs in
     ///                 {execute}. Empty bytes = no callback. The active submitter context is
     ///                 cleared before the callback fires so the callback may invoke `hub.await`
     ///                 to chain another batch.
     /// @return nonce   Per-pool nonce assigned to this pending op (also in {OperationSubmitted}).
     /// @return opId    keccak256(abi.encode(poolId, nonce, calls, callback)).
-    function await(PoolId poolId, bytes[] calldata calls, bool atomic, bytes calldata callback)
+    function await(PoolId poolId, bytes[] calldata calls, bytes calldata callback)
         external
         returns (uint64 nonce, bytes32 opId);
 
@@ -570,7 +573,7 @@ interface IHub is IBatchedMulticall {
     /// @notice Convenience: {await} then {execute} in one transaction. Reverts with
     ///         {TimelockNotReady} if the manifest assigns any delay. Provided so integrators
     ///         in the timelock==0 path don't need to wire up multicall.
-    function awaitAndExecute(PoolId poolId, bytes[] calldata calls, bool atomic, bytes calldata callback)
+    function awaitAndExecute(PoolId poolId, bytes[] calldata calls, bytes calldata callback)
         external
         payable
         returns (uint64 nonce, bytes32 opId);
@@ -585,7 +588,7 @@ interface IHub is IBatchedMulticall {
     /// @notice Called by the gateway during {execute} to replay a batch under the submitter's
     ///         identity. NOT to be called directly — protected by msg.sender + the gateway
     ///         callback lock.
-    function executeBatch(bytes[] calldata calls, bool atomic) external payable;
+    function executeBatch(bytes[] calldata calls) external payable;
 
     //----------------------------------------------------------------------------------------------
     // View methods

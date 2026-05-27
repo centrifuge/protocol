@@ -84,22 +84,22 @@ contract Supervisor is ISupervisor, ITrustedContractUpdate, BatchedMulticall {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISupervisor
-    function await(bytes[] calldata calls, bool atomic, bytes calldata callback)
+    function await(bytes[] calldata calls, bytes calldata callback)
         external
         onlyOperator
         returns (uint64 nonce, bytes32 opId)
     {
-        return hub.await(poolId, calls, atomic, callback);
+        return hub.await(poolId, calls, callback);
     }
 
     /// @inheritdoc ISupervisor
-    function awaitAndExecute(bytes[] calldata calls, bool atomic, bytes calldata callback)
+    function awaitAndExecute(bytes[] calldata calls, bytes calldata callback)
         external
         payable
         onlyOperator
         returns (uint64 nonce, bytes32 opId)
     {
-        return hub.awaitAndExecute{value: msgValue()}(poolId, calls, atomic, callback);
+        return hub.awaitAndExecute{value: msgValue()}(poolId, calls, callback);
     }
 
     /// @inheritdoc ISupervisor
@@ -109,7 +109,7 @@ contract Supervisor is ISupervisor, ITrustedContractUpdate, BatchedMulticall {
         onlyOperatorOrSentinel
     {
         bytes32 opId = keccak256(abi.encode(poolId, nonce, calls, callback));
-        (uint48 executeAfter,,) = hub.pending(opId);
+        (uint48 executeAfter,) = hub.pending(opId);
         require(block.timestamp <= executeAfter + expiryWindow, TimelockExpired());
 
         hub.execute{value: msgValue()}(poolId, nonce, calls, callback);
