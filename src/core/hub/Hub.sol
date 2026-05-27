@@ -151,18 +151,12 @@ contract Hub is Auth, Recoverable, IHub, IHubRequestManagerCallback, ICreatePool
 
     /// @inheritdoc IHub
     function setManifest(PoolId poolId, IManifest manifest_) external {
-        _mustAwait();
+        // Wards may bypass the manifest pipeline so governance can recover from a stuck or
+        // malicious manifest (one that reverts on its own replacement). Non-wards take the
+        // normal {await}-routed path.
+        if (wards[msg.sender] != 1) _mustAwait();
         manifest[poolId] = manifest_;
         emit SetManifest(poolId, manifest_);
-    }
-
-    /// @inheritdoc IHub
-    /// @dev Break-glass only. The normal path is {setManifest} via {await}; this exists so that
-    ///      governance can recover a pool whose manifest is buggy or malicious and would
-    ///      otherwise refuse to allow its own replacement.
-    function forceSetManifest(PoolId poolId, IManifest manifest_) external auth {
-        manifest[poolId] = manifest_;
-        emit ForceSetManifest(poolId, manifest_);
     }
 
     /// @inheritdoc IHub

@@ -153,9 +153,6 @@ interface IHub {
     event OperationExecuted(bytes32 indexed opId);
     event OperationCanceled(bytes32 indexed opId);
     event SetManifest(PoolId indexed poolId, IManifest manifest);
-    /// @notice Emitted when the manifest is force-replaced via the ward-only escape hatch
-    ///         {forceSetManifest}, bypassing the await pipeline.
-    event ForceSetManifest(PoolId indexed poolId, IManifest manifest);
 
     //----------------------------------------------------------------------------------------------
     // System methods
@@ -534,20 +531,18 @@ interface IHub {
     /// @notice Returns the next nonce that {await} will assign for `poolId` (current + 1).
     function awaitNonce(PoolId poolId) external view returns (uint64);
 
-    /// @notice Set the manifest for a pool. Routes through {await} like any other manager action.
+    /// @notice Set the manifest for a pool. Two access paths:
+    ///         - Pool managers (non-wards): routes through {await} like any other manager action.
+    ///         - Wards: callable directly, bypassing {await} and the current manifest's
+    ///           {IManifest.check}. Break-glass only — exists so governance can recover a pool
+    ///           whose manifest is buggy or malicious and would otherwise refuse to allow its
+    ///           own replacement.
     /// @dev    MANIFEST AUTHORS: when implementing {IManifest.check}, return a non-zero timelock
     ///         for the {setManifest} selector. Otherwise a compromised operator can swap the
     ///         policy in a single tx (via {awaitAndExecute}) and sidestep every other delay the
     ///         manifest imposes. Hub skips the manifest check when no manifest is set yet, so
     ///         first-time install is always instant.
     function setManifest(PoolId poolId, IManifest manifest_) external;
-
-    /// @notice Ward-only emergency override that replaces the manifest without going through
-    ///         {await}. Exists as a break-glass for the lockout scenario where a malicious or
-    ///         buggy manifest reverts on `setManifest` and would otherwise leave the pool
-    ///         permanently stuck. Should be wired through governance (Root) with a long delay
-    ///         in normal operation; never used as a regular admin path.
-    function forceSetManifest(PoolId poolId, IManifest manifest_) external;
 
     /// @notice Submit a batch of Hub manager calls for `poolId`. Always async: this function
     ///         queues the batch as a pending operation and returns. The batch only runs when
