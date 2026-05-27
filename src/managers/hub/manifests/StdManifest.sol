@@ -24,6 +24,8 @@ import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 ///            threshold, a fixed timelock delay is returned.
 ///         4. Timelocks updateContract calls with TrustedCall.Onramp.
 ///         5. Enforces setAdapters uses exactly the global adapters (poolId=0).
+///         6. Self-replacement is timelocked: any subsequent {setManifest} call waits
+///            `timelock` seconds, so a compromised operator can't hot-swap the policy.
 contract StdManifest is IStdManifest {
     using BytesLib for bytes;
 
@@ -69,6 +71,10 @@ contract StdManifest is IStdManifest {
         if (selector == IHub.updateBalanceSheetManager.selector) return _checkBalanceSheetManager(payload);
         if (selector == IHub.updateContract.selector) return _checkUpdateContract(payload);
         if (selector == IHub.setAdapters.selector) return _checkSetAdapters(payload);
+        // Manifest swap: enforce our timelock on our own replacement so a compromised operator
+        // can't hot-swap the whole policy in one tx. First-time install is unaffected because
+        // when no manifest is set Hub skips the check entirely.
+        if (selector == IHub.setManifest.selector) return timelock;
 
         return 0;
     }

@@ -532,6 +532,11 @@ interface IHub {
     function awaitNonce(PoolId poolId) external view returns (uint64);
 
     /// @notice Set the manifest for a pool. Routes through {await} like any other manager action.
+    /// @dev    MANIFEST AUTHORS: when implementing {IManifest.check}, return a non-zero timelock
+    ///         for the {setManifest} selector. Otherwise a compromised operator can swap the
+    ///         policy in a single tx (via {awaitAndExecute}) and sidestep every other delay the
+    ///         manifest imposes. Hub skips the manifest check when no manifest is set yet, so
+    ///         first-time install is always instant.
     function setManifest(PoolId poolId, IManifest manifest_) external;
 
     /// @notice Submit a batch of Hub manager calls for `poolId`. Always async: this function
