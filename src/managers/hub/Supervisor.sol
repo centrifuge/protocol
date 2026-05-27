@@ -3,25 +3,22 @@ pragma solidity 0.8.28;
 
 import {ISupervisor, ISupervisorFactory, IManifest, TrustedCall} from "./interfaces/ISupervisor.sol";
 
-import {IERC7751} from "../../misc/interfaces/IERC7751.sol";
-import {IMulticall} from "../../misc/interfaces/IMulticall.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IHub} from "../../core/hub/interfaces/IHub.sol";
-import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
 import {BatchedMulticall} from "../../core/utils/BatchedMulticall.sol";
 import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  Supervisor
-/// @notice Pool-scoped proxy between the operator and the Hub. Restricts who can call the Hub
-///         (operator only), who can execute or cancel timelocked operations (operator + sentinels),
+/// @notice Pool-scoped proxy between the operator and the Hub. Restricts who can propose Hub
+///         batches (operator only), who can execute or cancel pending batches (operator + sentinels),
 ///         and enforces an expiry window on pending operations. All configuration is immutable.
 ///         To change operator or expiryWindow, deploy a new Supervisor.
 ///
 ///         SECURITY: The Supervisor must be the ONLY Hub manager for the pool. Otherwise the
-///         operator can bypass it by calling the Hub directly.
+///         operator can bypass it by calling `hub.propose` directly.
 contract Supervisor is ISupervisor, ITrustedContractUpdate, BatchedMulticall {
     using BytesLib for bytes;
 
@@ -87,29 +84,28 @@ contract Supervisor is ISupervisor, ITrustedContractUpdate, BatchedMulticall {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISupervisor
-    function forward(bytes calldata data) external payable onlyOperator {
-        (bytes4 selector,) = data.decodeCall();
-        require(selector != IMulticall.multicall.selector, MulticallForbidden());
-
-        (bool success, bytes memory result) = address(hub).call{value: msgValue()}(data);
-        if (!success) revert IERC7751.WrappedError(address(hub), selector, result, "");
+    function propose(bytes[] calldata calls) external payable onlyOperator returns (bytes32 opId) {
+        return hub.propose{value: msgValue()}(poolId, calls);
     }
 
     /// @inheritdoc ISupervisor
-    function execute(bytes calldata data) external payable onlyOperatorOrSentinel {
-        (uint48 executeAfter,) = hub.pending(keccak256(data));
+    function execute(bytes[] calldata calls) external payable onlyOperatorOrSentinel {
+        bytes32 opId = keccak256(abi.encode(poolId, calls));
+        (uint48 executeAfter,) = hub.pending(opId);
         require(block.timestamp <= executeAfter + expiryWindow, TimelockExpired());
 
-        hub.execute{value: msgValue()}(data);
+        hub.execute{value: msgValue()}(poolId, calls);
     }
 
     /// @inheritdoc ISupervisor
-    function cancel(bytes calldata data) external onlyOperatorOrSentinel {
+    function cancel(bytes[] calldata calls) external onlyOperatorOrSentinel {
         address sender = msgSender();
         if (sentinels[sender] && sentinelCount > 1) {
-            _checkNotSelfRemoval(data, sender);
+            for (uint256 i; i < calls.length; i++) {
+                _checkNotSelfRemoval(calls[i], sender);
+            }
         }
-        hub.cancel(data);
+        hub.cancel(poolId, calls);
     }
 
     /// @dev Reverts if `data` is a Hub updateContract call whose payload removes `sender` as sentinel.

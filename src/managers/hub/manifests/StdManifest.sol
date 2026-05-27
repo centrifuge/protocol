@@ -16,7 +16,7 @@ import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 
 
 /// @title  Standard Manifest
-/// @notice Default manifest for Supervisors, combining:
+/// @notice Default manifest installed on the Hub via {IHub.setManifest}. Combines:
 ///         1. Asymmetric timelocks: granting manager access returns an additional delay,
 ///            revoking access passes through instantly.
 ///         2. Blocks removing the Supervisor itself as a Hub manager.
@@ -27,6 +27,7 @@ import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 contract StdManifest is IStdManifest {
     using BytesLib for bytes;
 
+    IHub public immutable hub;
     address public immutable supervisor;
     uint48 public immutable timelock;
     uint48 public immutable grantManagerDelay;
@@ -37,6 +38,7 @@ contract StdManifest is IStdManifest {
     mapping(PoolId => mapping(ShareClassId => uint48)) public lastPriceUpdate;
 
     constructor(
+        IHub hub_,
         address supervisor_,
         uint48 timelock_,
         uint48 grantManagerDelay_,
@@ -44,6 +46,7 @@ contract StdManifest is IStdManifest {
         IShareClassManager shareClassManager_,
         IMultiAdapter multiAdapter_
     ) {
+        hub = hub_;
         supervisor = supervisor_;
         timelock = timelock_;
         grantManagerDelay = grantManagerDelay_;
@@ -58,7 +61,7 @@ contract StdManifest is IStdManifest {
 
     /// @inheritdoc IManifest
     function check(PoolId poolId, address, bytes calldata data) external returns (uint48) {
-        require(msg.sender == supervisor, NotAuthorized());
+        require(msg.sender == address(hub), NotAuthorized());
 
         (bytes4 selector, bytes calldata payload) = data.decodeCall();
         if (selector == IHub.updateHubManager.selector) return _checkHubManager(payload);

@@ -6,7 +6,6 @@ import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IHub, PendingOp} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
-import {IMulticall} from "../../../../src/misc/interfaces/IMulticall.sol";
 
 import {Supervisor, SupervisorFactory} from "../../../../src/managers/hub/Supervisor.sol";
 import {ISupervisor, TrustedCall} from "../../../../src/managers/hub/interfaces/ISupervisor.sol";
@@ -39,14 +38,17 @@ contract MockHub {
     address public hubRegistry_;
     address public gateway_;
     uint256 public lastValue;
+    PoolId public lastProposedPoolId;
+    bytes[] public lastProposedCalls;
+    bool public lastExecuted;
+    bool public lastCancelled;
 
-    // Pending ops storage for testing
     mapping(bytes32 => PendingOp) public pendingOps;
     mapping(bytes32 => bool) public cancelled;
 
-    constructor(address hubRegistry, address gateway) {
-        hubRegistry_ = hubRegistry;
-        gateway_ = gateway;
+    constructor(address hubRegistry_input, address gateway_input) {
+        hubRegistry_ = hubRegistry_input;
+        gateway_ = gateway_input;
     }
 
     function hubRegistry() external view returns (IHubRegistry) {
@@ -61,10 +63,6 @@ contract MockHub {
         lastValue = val;
     }
 
-    function alwaysReverts() external pure {
-        revert("hub reverted");
-    }
-
     function pending(bytes32 opId) external view returns (uint48, address) {
         PendingOp memory op = pendingOps[opId];
         return (op.executeAfter, op.submitter);
@@ -74,28 +72,32 @@ contract MockHub {
         pendingOps[opId] = PendingOp(executeAfter, submitter);
     }
 
-    function execute(bytes calldata data) external payable {
-        bytes32 opId = keccak256(data);
-        require(pendingOps[opId].executeAfter != 0, "not pending");
-        delete pendingOps[opId];
+    function propose(PoolId poolId, bytes[] calldata calls) external payable returns (bytes32 opId) {
+        lastProposedPoolId = poolId;
+        delete lastProposedCalls;
+        for (uint256 i; i < calls.length; i++) lastProposedCalls.push(calls[i]);
+        return bytes32(uint256(0xfeed));
     }
 
-    function cancel(bytes calldata data) external {
-        bytes32 opId = keccak256(data);
+    function execute(PoolId poolId, bytes[] calldata calls) external payable {
+        bytes32 opId = keccak256(abi.encode(poolId, calls));
+        require(pendingOps[opId].executeAfter != 0, "not pending");
+        delete pendingOps[opId];
+        lastExecuted = true;
+    }
+
+    function cancel(PoolId poolId, bytes[] calldata calls) external {
+        bytes32 opId = keccak256(abi.encode(poolId, calls));
         require(pendingOps[opId].executeAfter != 0, "not pending");
         delete pendingOps[opId];
         cancelled[opId] = true;
+        lastCancelled = true;
     }
 
-    function updateContract(
-        PoolId,
-        ShareClassId,
-        uint16,
-        bytes32,
-        bytes calldata,
-        uint128,
-        address
-    ) external payable {
+    function updateContract(PoolId, ShareClassId, uint16, bytes32, bytes calldata, uint128, address)
+        external
+        payable
+    {
         // no-op for testing
     }
 }
@@ -149,19 +151,66 @@ abstract contract SupervisorTestBase is Test {
         supervisor.trustedCall(POOL, ShareClassId.wrap(0), payload);
     }
 
-    /// @dev Helper to create Hub updateContract calldata for sentinel removal
-    function _sentinelRemovalData(address s) internal pure returns (bytes memory) {
+    /// @dev Helper to create a single-call Hub updateContract batch removing `s` as sentinel.
+    function _sentinelRemovalBatch(address s) internal pure returns (bytes[] memory calls) {
         bytes memory payload = abi.encode(TrustedCall.RemoveSentinel, s);
-        return abi.encodeCall(
+        calls = new bytes[](1);
+        calls[0] = abi.encodeCall(
             IHub.updateContract,
             (POOL, ShareClassId.wrap(0), uint16(1), bytes32(0), payload, uint128(0), address(0))
         );
     }
 
-    /// @dev Helper to set a pending op on the mock hub and return the opId
-    function _setPending(bytes memory data, uint48 executeAfter) internal returns (bytes32 opId) {
-        opId = keccak256(data);
+    /// @dev Helper to create a single doSomething(val) batch.
+    function _doSomethingBatch(uint256 val) internal pure returns (bytes[] memory calls) {
+        calls = new bytes[](1);
+        calls[0] = abi.encodeCall(MockHub.doSomething, (val));
+    }
+
+    /// @dev Set a pending op on the mock hub keyed by (poolId, calls).
+    function _setPending(bytes[] memory calls, uint48 executeAfter) internal returns (bytes32 opId) {
+        opId = keccak256(abi.encode(POOL, calls));
         hub.setPending(opId, executeAfter, operator);
+    }
+}
+
+// ─── Propose ────────────────────────────────────────────────────────────────
+
+contract SupervisorProposeTest is SupervisorTestBase {
+    Supervisor supervisor;
+
+    function setUp() public override {
+        super.setUp();
+        supervisor = _deploySupervisor();
+    }
+
+    function testProposeForwardsToHub() public {
+        bytes[] memory calls = _doSomethingBatch(42);
+
+        vm.prank(operator);
+        bytes32 opId = supervisor.propose(calls);
+
+        assertEq(opId, bytes32(uint256(0xfeed)));
+        assertEq(PoolId.unwrap(hub.lastProposedPoolId()), PoolId.unwrap(POOL));
+        assertEq(hub.lastProposedCalls(0), calls[0]);
+    }
+
+    function testProposeForwardsValue() public {
+        bytes[] memory calls = _doSomethingBatch(99);
+
+        vm.deal(operator, 1 ether);
+        vm.prank(operator);
+        supervisor.propose{value: 0.5 ether}(calls);
+
+        assertEq(address(hub).balance, 0.5 ether);
+    }
+
+    function testProposeRevertsForNonOperator() public {
+        bytes[] memory calls = _doSomethingBatch(42);
+
+        vm.expectRevert(ISupervisor.NotOperator.selector);
+        vm.prank(unauthorized);
+        supervisor.propose(calls);
     }
 }
 
@@ -173,133 +222,69 @@ contract SupervisorExecuteTest is SupervisorTestBase {
     function setUp() public override {
         super.setUp();
         supervisor = _deploySupervisor();
-    }
-
-    function testExecuteForwardsToHub() public {
-        bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
-
-        vm.prank(operator);
-        supervisor.forward(data);
-
-        assertEq(hub.lastValue(), 42);
-    }
-
-    function testExecuteForwardsValue() public {
-        bytes memory data = abi.encodeCall(MockHub.doSomething, (99));
-
-        vm.deal(operator, 1 ether);
-        vm.prank(operator);
-        supervisor.forward{value: 0.5 ether}(data);
-
-        assertEq(hub.lastValue(), 99);
-        assertEq(address(hub).balance, 0.5 ether);
-    }
-
-    function testExecuteRevertsForNonOperator() public {
-        bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
-
-        vm.expectRevert(ISupervisor.NotOperator.selector);
-        vm.prank(unauthorized);
-        supervisor.forward(data);
-    }
-
-    function testExecuteWrapsHubRevert() public {
-        bytes memory data = abi.encodeCall(MockHub.alwaysReverts, ());
-
-        vm.expectRevert();
-        vm.prank(operator);
-        supervisor.forward(data);
-    }
-}
-
-// ─── Execute: multicall forbidden ───────────────────────────────────────────
-
-contract SupervisorMulticallForbiddenTest is SupervisorTestBase {
-    Supervisor supervisor;
-
-    function setUp() public override {
-        super.setUp();
-        supervisor = _deploySupervisor();
-    }
-
-    function testExecuteRevertsForMulticallSelector() public {
-        bytes[] memory inner = new bytes[](1);
-        inner[0] = abi.encodeCall(MockHub.doSomething, (42));
-        bytes memory multicallData = abi.encodeWithSignature("multicall(bytes[])", inner);
-
-        vm.expectRevert(ISupervisor.MulticallForbidden.selector);
-        vm.prank(operator);
-        supervisor.forward(multicallData);
-    }
-}
-
-// ─── ExecutePending ─────────────────────────────────────────────────────────
-
-contract SupervisorExecutePendingTest is SupervisorTestBase {
-    Supervisor supervisor;
-
-    function setUp() public override {
-        super.setUp();
-        supervisor = _deploySupervisor();
         _addSentinel(supervisor, sentinel);
     }
 
-    function testExecutePendingByOperator() public {
-        bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
+    function testExecuteByOperator() public {
+        bytes[] memory calls = _doSomethingBatch(42);
         uint48 executeAfter = uint48(block.timestamp) + 1 days;
-        _setPending(data, executeAfter);
+        _setPending(calls, executeAfter);
 
         vm.warp(executeAfter);
         vm.prank(operator);
-        supervisor.execute(data);
+        supervisor.execute(calls);
+
+        assertTrue(hub.lastExecuted());
     }
 
-    function testExecutePendingBySentinel() public {
-        bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
+    function testExecuteBySentinel() public {
+        bytes[] memory calls = _doSomethingBatch(42);
         uint48 executeAfter = uint48(block.timestamp) + 1 days;
-        _setPending(data, executeAfter);
+        _setPending(calls, executeAfter);
 
         vm.warp(executeAfter);
         vm.prank(sentinel);
-        supervisor.execute(data);
+        supervisor.execute(calls);
+
+        assertTrue(hub.lastExecuted());
     }
 
-    function testExecutePendingRevertsForUnauthorized() public {
-        bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
+    function testExecuteRevertsForUnauthorized() public {
+        bytes[] memory calls = _doSomethingBatch(42);
         uint48 executeAfter = uint48(block.timestamp) + 1 days;
-        _setPending(data, executeAfter);
+        _setPending(calls, executeAfter);
 
         vm.warp(executeAfter);
         vm.expectRevert(ISupervisor.NotOperatorOrSentinel.selector);
         vm.prank(unauthorized);
-        supervisor.execute(data);
+        supervisor.execute(calls);
     }
 
-    function testExecutePendingRevertsWhenExpired() public {
-        bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
+    function testExecuteRevertsWhenExpired() public {
+        bytes[] memory calls = _doSomethingBatch(42);
         uint48 executeAfter = uint48(block.timestamp) + 1 days;
-        _setPending(data, executeAfter);
+        _setPending(calls, executeAfter);
 
         vm.warp(executeAfter + EXPIRY + 1);
         vm.expectRevert(ISupervisor.TimelockExpired.selector);
         vm.prank(operator);
-        supervisor.execute(data);
+        supervisor.execute(calls);
     }
 
-    function testExecutePendingWithinExpiryWindow() public {
-        bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
+    function testExecuteWithinExpiryWindow() public {
+        bytes[] memory calls = _doSomethingBatch(42);
         uint48 executeAfter = uint48(block.timestamp) + 1 days;
-        _setPending(data, executeAfter);
+        _setPending(calls, executeAfter);
 
         vm.warp(executeAfter + EXPIRY);
         vm.prank(operator);
-        supervisor.execute(data);
+        supervisor.execute(calls);
     }
 }
 
-// ─── CancelPending ──────────────────────────────────────────────────────────
+// ─── Cancel ─────────────────────────────────────────────────────────────────
 
-contract SupervisorCancelPendingTest is SupervisorTestBase {
+contract SupervisorCancelTest is SupervisorTestBase {
     Supervisor supervisor;
 
     function setUp() public override {
@@ -309,94 +294,107 @@ contract SupervisorCancelPendingTest is SupervisorTestBase {
     }
 
     function testOperatorCanCancel() public {
-        bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
-        bytes32 opId = _setPending(data, uint48(block.timestamp) + 1 days);
+        bytes[] memory calls = _doSomethingBatch(42);
+        bytes32 opId = _setPending(calls, uint48(block.timestamp) + 1 days);
 
         vm.prank(operator);
-        supervisor.cancel(data);
+        supervisor.cancel(calls);
 
         assertTrue(hub.cancelled(opId));
     }
 
     function testSentinelCanCancel() public {
-        bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
-        bytes32 opId = _setPending(data, uint48(block.timestamp) + 1 days);
+        bytes[] memory calls = _doSomethingBatch(42);
+        bytes32 opId = _setPending(calls, uint48(block.timestamp) + 1 days);
 
         vm.prank(sentinel);
-        supervisor.cancel(data);
+        supervisor.cancel(calls);
 
         assertTrue(hub.cancelled(opId));
     }
 
     function testUnauthorizedCannotCancel() public {
-        bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
-        _setPending(data, uint48(block.timestamp) + 1 days);
+        bytes[] memory calls = _doSomethingBatch(42);
+        _setPending(calls, uint48(block.timestamp) + 1 days);
 
         vm.expectRevert(ISupervisor.NotOperatorOrSentinel.selector);
         vm.prank(unauthorized);
-        supervisor.cancel(data);
+        supervisor.cancel(calls);
     }
 
     function testSentinelCannotCancelOwnRemovalWithMultipleSentinels() public {
         address sentinel2 = makeAddr("sentinel2");
         _addSentinel(supervisor, sentinel2);
 
-        bytes memory data = _sentinelRemovalData(sentinel);
-        _setPending(data, uint48(block.timestamp) + 1 days);
+        bytes[] memory calls = _sentinelRemovalBatch(sentinel);
+        _setPending(calls, uint48(block.timestamp) + 1 days);
 
         vm.expectRevert(ISupervisor.CannotSelfCancel.selector);
         vm.prank(sentinel);
-        supervisor.cancel(data);
+        supervisor.cancel(calls);
+    }
+
+    function testSentinelCannotCancelBatchContainingOwnRemoval() public {
+        address sentinel2 = makeAddr("sentinel2");
+        _addSentinel(supervisor, sentinel2);
+
+        bytes[] memory removal = _sentinelRemovalBatch(sentinel);
+        bytes[] memory other = _doSomethingBatch(42);
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = other[0];
+        calls[1] = removal[0];
+        _setPending(calls, uint48(block.timestamp) + 1 days);
+
+        vm.expectRevert(ISupervisor.CannotSelfCancel.selector);
+        vm.prank(sentinel);
+        supervisor.cancel(calls);
     }
 
     function testSoleSentinelCanCancelOwnRemoval() public {
-        bytes memory data = _sentinelRemovalData(sentinel);
-        _setPending(data, uint48(block.timestamp) + 1 days);
+        bytes[] memory calls = _sentinelRemovalBatch(sentinel);
+        bytes32 opId = _setPending(calls, uint48(block.timestamp) + 1 days);
 
-        // Sole sentinel — self-cancel is allowed
         vm.prank(sentinel);
-        supervisor.cancel(data);
+        supervisor.cancel(calls);
 
-        assertTrue(hub.cancelled(keccak256(data)));
+        assertTrue(hub.cancelled(opId));
     }
 
     function testSentinelCanCancelOtherSentinelRemoval() public {
         address sentinel2 = makeAddr("sentinel2");
         _addSentinel(supervisor, sentinel2);
 
-        bytes memory data = _sentinelRemovalData(sentinel2);
-        _setPending(data, uint48(block.timestamp) + 1 days);
+        bytes[] memory calls = _sentinelRemovalBatch(sentinel2);
+        bytes32 opId = _setPending(calls, uint48(block.timestamp) + 1 days);
 
-        // sentinel cancels sentinel2's removal — allowed
         vm.prank(sentinel);
-        supervisor.cancel(data);
+        supervisor.cancel(calls);
 
-        assertTrue(hub.cancelled(keccak256(data)));
+        assertTrue(hub.cancelled(opId));
     }
 
     function testOperatorCanCancelSentinelRemoval() public {
-        bytes memory data = _sentinelRemovalData(sentinel);
-        _setPending(data, uint48(block.timestamp) + 1 days);
+        bytes[] memory calls = _sentinelRemovalBatch(sentinel);
+        bytes32 opId = _setPending(calls, uint48(block.timestamp) + 1 days);
 
-        // Operator is never restricted by self-cancel check
         vm.prank(operator);
-        supervisor.cancel(data);
+        supervisor.cancel(calls);
 
-        assertTrue(hub.cancelled(keccak256(data)));
+        assertTrue(hub.cancelled(opId));
     }
 
-    function testNonUpdateContractDataSkipsSelfRemovalCheck() public {
+    function testNonUpdateContractCallsSkipSelfRemovalCheck() public {
         address sentinel2 = makeAddr("sentinel2");
         _addSentinel(supervisor, sentinel2);
 
-        // Regular Hub call, not an updateContract — self-removal check doesn't apply
-        bytes memory data = abi.encodeCall(MockHub.doSomething, (42));
-        _setPending(data, uint48(block.timestamp) + 1 days);
+        // Plain doSomething batch — self-removal check is a no-op for non-updateContract selectors
+        bytes[] memory calls = _doSomethingBatch(42);
+        bytes32 opId = _setPending(calls, uint48(block.timestamp) + 1 days);
 
         vm.prank(sentinel);
-        supervisor.cancel(data);
+        supervisor.cancel(calls);
 
-        assertTrue(hub.cancelled(keccak256(data)));
+        assertTrue(hub.cancelled(opId));
     }
 }
 
@@ -505,37 +503,6 @@ contract SupervisorSentinelTest is SupervisorTestBase {
 
         vm.prank(contractUpdater);
         supervisor.trustedCall(POOL, ShareClassId.wrap(0), payload);
-    }
-}
-
-// ─── Multicall batching ─────────────────────────────────────────────────────
-
-contract SupervisorMulticallTest is SupervisorTestBase {
-    Supervisor supervisor;
-
-    function setUp() public override {
-        super.setUp();
-        supervisor = _deploySupervisor();
-    }
-
-    function testMulticallBatchesExecuteCalls() public {
-        bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeCall(Supervisor.forward, (abi.encodeCall(MockHub.doSomething, (1))));
-        calls[1] = abi.encodeCall(Supervisor.forward, (abi.encodeCall(MockHub.doSomething, (2))));
-
-        vm.prank(operator);
-        supervisor.multicall(calls);
-
-        assertEq(hub.lastValue(), 2);
-    }
-
-    function testMulticallRevertsForNonOperator() public {
-        bytes[] memory calls = new bytes[](1);
-        calls[0] = abi.encodeCall(Supervisor.forward, (abi.encodeCall(MockHub.doSomething, (1))));
-
-        vm.expectRevert();
-        vm.prank(unauthorized);
-        supervisor.multicall(calls);
     }
 }
 

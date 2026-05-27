@@ -117,13 +117,29 @@ interface IHub is IBatchedMulticall {
 
     error ExecutionFailed(bytes result);
 
+    /// @notice Dispatched when a manager function is called directly instead of via `propose`.
+    error MustUsePropose();
+
+    /// @notice Dispatched when a call inside a batch targets a different pool than the batch poolId.
+    error PoolIdMismatch();
+
+    /// @notice Dispatched when `propose` is called with an empty batch.
+    error EmptyBatch();
+
+    /// @notice Dispatched when a call inside a batch targets a selector that would allow nested
+    ///         batching and therefore bypass the manifest (multicall/propose/execute/cancel).
+    error ForbiddenSelector();
+
     //----------------------------------------------------------------------------------------------
     // Manifest & timelock events
     //----------------------------------------------------------------------------------------------
 
-    event OperationSubmitted(bytes32 indexed opId, bytes4 indexed selector, uint48 executeAfter, bytes data);
+    event OperationSubmitted(
+        bytes32 indexed opId, PoolId indexed poolId, address indexed submitter, uint48 executeAfter, bytes[] calls
+    );
     event OperationExecuted(bytes32 indexed opId);
     event OperationCanceled(bytes32 indexed opId);
+    event SetManifest(PoolId indexed poolId, IManifest manifest);
 
     //----------------------------------------------------------------------------------------------
     // System methods
@@ -496,16 +512,31 @@ interface IHub is IBatchedMulticall {
     /// @notice Returns pending operation info
     function pending(bytes32 opId) external view returns (uint48 executeAfter, address submitter);
 
-    /// @notice Set the manifest for a pool. Auth-gated (governance only).
+    /// @notice Set the manifest for a pool. Callable by any hub manager for the pool.
     function setManifest(PoolId poolId, IManifest manifest_) external;
 
-    /// @notice Execute a pending timelocked operation after its delay has passed.
-    /// @param data The original calldata that was auto-submitted.
-    function execute(bytes calldata data) external payable;
+    /// @notice Propose a batch of Hub manager calls for `poolId`.
+    ///         Each call's calldata is passed through the pool's manifest. The batch is timelocked
+    ///         by the longest individual delay. If the max delay is zero, the batch executes
+    ///         atomically right now; otherwise it is stored as pending and `execute` must be
+    ///         called once the timelock expires.
+    /// @param  poolId The pool every call in the batch must target as its first argument.
+    /// @param  calls  Array of ABI-encoded Hub calldata. Must be non-empty. The selectors must be
+    ///                manager-restricted Hub methods (anything that would otherwise revert with
+    ///                `MustUsePropose`).
+    /// @return opId   keccak256(abi.encode(poolId, calls)). Zero when executed immediately.
+    function propose(PoolId poolId, bytes[] calldata calls) external payable returns (bytes32 opId);
 
-    /// @notice Cancel a pending timelocked operation. Any Hub manager for the pool can cancel.
-    /// @param data The original calldata that was auto-submitted.
-    function cancel(bytes calldata data) external;
+    /// @notice Execute a pending batch once its timelock has passed. Any manager of `poolId`
+    ///         may call this; the original submitter's identity is restored for the replayed calls.
+    /// @param poolId The pool the batch was proposed against.
+    /// @param calls  The exact array passed to `propose` — opId is recomputed and matched.
+    function execute(PoolId poolId, bytes[] calldata calls) external payable;
+
+    /// @notice Cancel a pending batch. Any manager of `poolId` may call this.
+    /// @param poolId The pool the batch was proposed against.
+    /// @param calls  The exact array passed to `propose` — opId is recomputed and matched.
+    function cancel(PoolId poolId, bytes[] calldata calls) external;
 
     //----------------------------------------------------------------------------------------------
     // View methods
