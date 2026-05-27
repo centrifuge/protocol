@@ -157,8 +157,23 @@ contract Hub is Auth, Recoverable, IHub, IHubRequestManagerCallback, ICreatePool
     }
 
     /// @inheritdoc IHub
+    /// @dev Break-glass only. The normal path is {setManifest} via {await}; this exists so that
+    ///      governance can recover a pool whose manifest is buggy or malicious and would
+    ///      otherwise refuse to allow its own replacement.
+    function forceSetManifest(PoolId poolId, IManifest manifest_) external auth {
+        manifest[poolId] = manifest_;
+        emit ForceSetManifest(poolId, manifest_);
+    }
+
+    /// @inheritdoc IHub
     /// @dev Gateway-only callback invoked from {_runBatch}. Replays the batch under the submitter
     ///      context. All-or-nothing: any revert bubbles up and rolls back the whole tx.
+    ///
+    ///      `_submitter` is cleared HERE — before returning to {gateway.withBatch} — rather than
+    ///      after the outer {gateway.withBatch} call returns. The gateway's `_endBatching` runs
+    ///      adapter `send` calls AFTER this function returns but BEFORE `withBatch` does; clearing
+    ///      early closes the window in which a malicious adapter could re-enter Hub manager
+    ///      methods while `_submitter` was still set against an arbitrary pool.
     function executeBatch(bytes[] calldata calls) external payable {
         require(msg.sender == address(gateway), NotGateway());
         gateway.lockCallback();
@@ -170,6 +185,7 @@ contract Hub is Auth, Recoverable, IHub, IHubRequestManagerCallback, ICreatePool
                 revert(add(returnData, 32), mload(returnData))
             }
         }
+        _submitter = address(0);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -672,15 +688,16 @@ contract Hub is Auth, Recoverable, IHub, IHubRequestManagerCallback, ICreatePool
     }
 
     /// @dev Set the submitter context, drive the batch through {executeBatch} via the gateway
-    ///      (so cross-chain payments aggregate), then clear the context and invoke the post-batch
-    ///      callback. The clear happens BEFORE the callback so the callback may recursively call
-    ///      {await} — see the matching guard at the top of {await}.
+    ///      (so cross-chain payments aggregate), then invoke the post-batch callback. The
+    ///      submitter context is cleared inside {executeBatch} (before it returns) — see the
+    ///      comment there — so by the time the callback fires `_submitter == 0` and a callback
+    ///      that recursively calls {await} enters with a fresh frame.
     function _runBatch(address submitter, bytes[] calldata calls, bytes calldata callback) private {
         _submitter = submitter;
         gateway.withBatch{value: msg.value}(
             abi.encodeWithSelector(IHub.executeBatch.selector, calls), submitter
         );
-        _submitter = address(0);
+        // `_submitter` is already cleared by `executeBatch`; no need to clear again.
 
         if (callback.length == 0) return;
 

@@ -153,6 +153,9 @@ interface IHub {
     event OperationExecuted(bytes32 indexed opId);
     event OperationCanceled(bytes32 indexed opId);
     event SetManifest(PoolId indexed poolId, IManifest manifest);
+    /// @notice Emitted when the manifest is force-replaced via the ward-only escape hatch
+    ///         {forceSetManifest}, bypassing the await pipeline.
+    event ForceSetManifest(PoolId indexed poolId, IManifest manifest);
 
     //----------------------------------------------------------------------------------------------
     // System methods
@@ -538,6 +541,13 @@ interface IHub {
     ///         manifest imposes. Hub skips the manifest check when no manifest is set yet, so
     ///         first-time install is always instant.
     function setManifest(PoolId poolId, IManifest manifest_) external;
+
+    /// @notice Ward-only emergency override that replaces the manifest without going through
+    ///         {await}. Exists as a break-glass for the lockout scenario where a malicious or
+    ///         buggy manifest reverts on `setManifest` and would otherwise leave the pool
+    ///         permanently stuck. Should be wired through governance (Root) with a long delay
+    ///         in normal operation; never used as a regular admin path.
+    function forceSetManifest(PoolId poolId, IManifest manifest_) external;
 
     /// @notice Submit a batch of Hub manager calls for `poolId`. Always async: this function
     ///         queues the batch as a pending operation and returns. The batch only runs when

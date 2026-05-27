@@ -93,10 +93,15 @@ contract StdManifest is IStdManifest {
         return canManage ? grantManagerDelay : 0;
     }
 
-    /// @dev Adds timelock for updateContract calls with TrustedCall.Onramp.
+    /// @dev Adds timelock for two updateContract patterns: TrustedCall.Onramp on an OnOffRamp
+    ///      manager, and ANY payload whose `target` is the Supervisor itself. The latter is
+    ///      load-bearing — sentinel add/remove flows through `updateContract → ContractUpdater
+    ///      → Supervisor.trustedCall`, and without this filter a compromised operator could
+    ///      install attacker sentinels in one tx via `awaitAndExecute`.
     function _checkUpdateContract(bytes calldata payload) internal view returns (uint48) {
-        (,,,, bytes memory innerPayload,,) =
+        (,,, bytes32 target, bytes memory innerPayload,,) =
             abi.decode(payload, (PoolId, ShareClassId, uint16, bytes32, bytes, uint128, address));
+        if (target == bytes32(bytes20(supervisor))) return grantManagerDelay;
         uint8 kind = abi.decode(innerPayload, (uint8));
         return kind == uint8(IOnOfframpManager.TrustedCall.Onramp) ? grantManagerDelay : 0;
     }
