@@ -47,23 +47,31 @@ interface ISupervisor {
     // Execution
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Propose a batch of Hub manager calls. Operator only. Forwards to {IHub.propose},
-    ///         which runs the pool's manifest over each call and either executes the batch
-    ///         immediately (max timelock == 0) or stores it as pending.
-    /// @param calls Array of Hub-targeted calldata. Each call's first argument must be `poolId`.
-    /// @return opId The pending-operation id (zero when executed immediately).
-    function propose(bytes[] calldata calls) external payable returns (bytes32 opId);
+    /// @notice Submit a batch of Hub manager calls. Operator only. Forwards to {IHub.await},
+    ///         which always queues the batch. Use {execute} (or {awaitAndExecute}) to run it.
+    /// @param calls    Array of Hub-targeted calldata. Each call's first argument must be `poolId`.
+    /// @param atomic   true: any per-call failure during execute reverts the whole batch.
+    ///                 false: per-call failures are tolerated; the rest of the batch still runs.
+    /// @param callback Optional callback payload invoked on the submitter after execute runs.
+    function await(bytes[] calldata calls, bool atomic, bytes calldata callback)
+        external
+        returns (uint64 nonce, bytes32 opId);
+
+    /// @notice {await} + {execute} in one transaction. Operator only. Reverts if the manifest
+    ///         imposes any timelock.
+    function awaitAndExecute(bytes[] calldata calls, bool atomic, bytes calldata callback)
+        external
+        payable
+        returns (uint64 nonce, bytes32 opId);
 
     /// @notice Execute a pending Hub batch after its timelock has passed.
     ///         Callable by operator or sentinels. Reverts if the expiry window has passed.
-    /// @param calls The exact batch passed to {propose}.
-    function execute(bytes[] calldata calls) external payable;
+    function execute(uint64 nonce, bytes[] calldata calls, bytes calldata callback) external payable;
 
     /// @notice Cancel a pending Hub batch. Callable by operator or sentinels.
     ///         A sentinel cannot cancel their own removal when multiple sentinels exist —
     ///         if any call in the batch is a sentinel-self-removal it reverts.
-    /// @param calls The exact batch passed to {propose}.
-    function cancel(bytes[] calldata calls) external;
+    function cancel(uint64 nonce, bytes[] calldata calls, bytes calldata callback) external;
 
     //----------------------------------------------------------------------------------------------
     // View methods

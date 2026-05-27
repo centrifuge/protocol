@@ -43,6 +43,7 @@ enum AccountType {
 struct PendingOp {
     uint48 executeAfter;
     address submitter;
+    bool atomic;
 }
 
 /// @notice Interface with all methods available in the system used by actors
@@ -92,9 +93,9 @@ interface IHub is IBatchedMulticall {
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
 
-    /// @notice Dispatched when the pool is already unlocked.
-    ///         It means when calling to `execute()` inside `execute()`.
-    error PoolAlreadyUnlocked();
+    /// @notice Dispatched when a batch is already being processed and a nested entry into
+    ///         {await} or {execute} would clobber the active submitter context.
+    error AlreadyInBatch();
 
     /// @notice Dispatched when the pool can not be unlocked by the caller
     error NotManager();
@@ -109,36 +110,49 @@ interface IHub is IBatchedMulticall {
 
     error RequestManagerCallFailed();
 
-    error OperationAlreadyPending();
-
     error OperationNotPending();
 
     error TimelockNotReady(uint48 executeAfter);
 
     error ExecutionFailed(bytes result);
 
-    /// @notice Dispatched when a manager function is called directly instead of via `propose`.
-    error MustUsePropose();
+    /// @notice Dispatched when the post-batch callback reverts.
+    error CallbackFailed(bytes result);
+
+    /// @notice Dispatched when a manager function is called directly instead of via {await}.
+    error MustAwait();
 
     /// @notice Dispatched when a call inside a batch targets a different pool than the batch poolId.
     error PoolIdMismatch();
 
-    /// @notice Dispatched when `propose` is called with an empty batch.
+    /// @notice Dispatched when `await` is called with an empty batch.
     error EmptyBatch();
 
     /// @notice Dispatched when a call inside a batch targets a selector that would allow nested
-    ///         batching and therefore bypass the manifest (multicall/propose/execute/cancel).
+    ///         batching and therefore bypass the manifest (multicall/await/execute/cancel).
     error ForbiddenSelector();
+
+    /// @notice Dispatched when the gateway tries to invoke {executeBatch} from outside a withBatch.
+    error NotGateway();
 
     //----------------------------------------------------------------------------------------------
     // Manifest & timelock events
     //----------------------------------------------------------------------------------------------
 
     event OperationSubmitted(
-        bytes32 indexed opId, PoolId indexed poolId, address indexed submitter, uint48 executeAfter, bytes[] calls
+        bytes32 indexed opId,
+        PoolId indexed poolId,
+        address indexed submitter,
+        uint64 nonce,
+        bool atomic,
+        uint48 executeAfter,
+        bytes[] calls,
+        bytes callback
     );
     event OperationExecuted(bytes32 indexed opId);
     event OperationCanceled(bytes32 indexed opId);
+    /// @notice Emitted for a per-call failure in non-atomic mode. Atomic mode reverts instead.
+    event CallFailed(uint256 indexed index, bytes returnData);
     event SetManifest(PoolId indexed poolId, IManifest manifest);
 
     //----------------------------------------------------------------------------------------------
@@ -510,33 +524,68 @@ interface IHub is IBatchedMulticall {
     function manifest(PoolId poolId) external view returns (IManifest);
 
     /// @notice Returns pending operation info
-    function pending(bytes32 opId) external view returns (uint48 executeAfter, address submitter);
+    function pending(bytes32 opId) external view returns (uint48 executeAfter, address submitter, bool atomic);
 
-    /// @notice Set the manifest for a pool. Callable by any hub manager for the pool.
+    /// @notice Returns the next nonce that {await} will assign for `poolId` (current + 1).
+    function awaitNonce(PoolId poolId) external view returns (uint64);
+
+    /// @notice Set the manifest for a pool. Routes through {await} like any other manager action.
     function setManifest(PoolId poolId, IManifest manifest_) external;
 
-    /// @notice Propose a batch of Hub manager calls for `poolId`.
-    ///         Each call's calldata is passed through the pool's manifest. The batch is timelocked
-    ///         by the longest individual delay. If the max delay is zero, the batch executes
-    ///         atomically right now; otherwise it is stored as pending and `execute` must be
-    ///         called once the timelock expires.
-    /// @param  poolId The pool every call in the batch must target as its first argument.
-    /// @param  calls  Array of ABI-encoded Hub calldata. Must be non-empty. The selectors must be
-    ///                manager-restricted Hub methods (anything that would otherwise revert with
-    ///                `MustUsePropose`).
-    /// @return opId   keccak256(abi.encode(poolId, calls)). Zero when executed immediately.
-    function propose(PoolId poolId, bytes[] calldata calls) external payable returns (bytes32 opId);
+    /// @notice Submit a batch of Hub manager calls for `poolId`. Always async: this function
+    ///         queues the batch as a pending operation and returns. The batch only runs when
+    ///         {execute} is called, which must be a separate call (same transaction is fine —
+    ///         e.g. `hub.multicall([await(...), execute(...)])` — but never inline within
+    ///         {await} itself). This keeps the API predictable for integrators: {await} has no
+    ///         side effects on the batch, only on the pending-ops mapping.
+    ///
+    ///         Each call's calldata is passed through the pool's manifest; the batch is
+    ///         timelocked by the longest individual delay. A delay of zero means {execute} may
+    ///         run right away.
+    ///
+    /// @param poolId   The pool every call in the batch must target as its first argument.
+    /// @param calls    Array of ABI-encoded Hub calldata. Must be non-empty.
+    /// @param atomic   true: one revert during {execute} reverts the entire batch (and the
+    ///                 callback). false: per-call failures emit {CallFailed} and the rest of the
+    ///                 batch still runs. Stored with the pending op so {execute} honors it.
+    /// @param callback Optional payload to call back on the submitter AFTER the batch runs in
+    ///                 {execute}. Empty bytes = no callback. The active submitter context is
+    ///                 cleared before the callback fires so the callback may invoke `hub.await`
+    ///                 to chain another batch.
+    /// @return nonce   Per-pool nonce assigned to this pending op (also in {OperationSubmitted}).
+    /// @return opId    keccak256(abi.encode(poolId, nonce, calls, callback)).
+    function await(PoolId poolId, bytes[] calldata calls, bool atomic, bytes calldata callback)
+        external
+        returns (uint64 nonce, bytes32 opId);
 
     /// @notice Execute a pending batch once its timelock has passed. Any manager of `poolId`
-    ///         may call this; the original submitter's identity is restored for the replayed calls.
-    /// @param poolId The pool the batch was proposed against.
-    /// @param calls  The exact array passed to `propose` — opId is recomputed and matched.
-    function execute(PoolId poolId, bytes[] calldata calls) external payable;
+    ///         may call this; the original submitter's identity is restored for the replayed
+    ///         calls. msg.value funds cross-chain message payment via the gateway batch.
+    /// @param poolId   The pool the batch was awaited against.
+    /// @param nonce    The per-pool nonce assigned to the pending op.
+    /// @param calls    The exact array passed to {await}.
+    /// @param callback The exact callback passed to {await}.
+    function execute(PoolId poolId, uint64 nonce, bytes[] calldata calls, bytes calldata callback) external payable;
+
+    /// @notice Convenience: {await} then {execute} in one transaction. Reverts with
+    ///         {TimelockNotReady} if the manifest assigns any delay. Provided so integrators
+    ///         in the timelock==0 path don't need to wire up multicall.
+    function awaitAndExecute(PoolId poolId, bytes[] calldata calls, bool atomic, bytes calldata callback)
+        external
+        payable
+        returns (uint64 nonce, bytes32 opId);
 
     /// @notice Cancel a pending batch. Any manager of `poolId` may call this.
-    /// @param poolId The pool the batch was proposed against.
-    /// @param calls  The exact array passed to `propose` — opId is recomputed and matched.
-    function cancel(PoolId poolId, bytes[] calldata calls) external;
+    /// @param poolId   The pool the batch was awaited against.
+    /// @param nonce    The per-pool nonce assigned to the pending op.
+    /// @param calls    The exact array passed to {await}.
+    /// @param callback The exact callback passed to {await}.
+    function cancel(PoolId poolId, uint64 nonce, bytes[] calldata calls, bytes calldata callback) external;
+
+    /// @notice Called by the gateway during {execute} to replay a batch under the submitter's
+    ///         identity. NOT to be called directly — protected by msg.sender + the gateway
+    ///         callback lock.
+    function executeBatch(bytes[] calldata calls, bool atomic) external payable;
 
     //----------------------------------------------------------------------------------------------
     // View methods

@@ -84,28 +84,46 @@ contract Supervisor is ISupervisor, ITrustedContractUpdate, BatchedMulticall {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISupervisor
-    function propose(bytes[] calldata calls) external payable onlyOperator returns (bytes32 opId) {
-        return hub.propose{value: msgValue()}(poolId, calls);
+    function await(bytes[] calldata calls, bool atomic, bytes calldata callback)
+        external
+        onlyOperator
+        returns (uint64 nonce, bytes32 opId)
+    {
+        return hub.await(poolId, calls, atomic, callback);
     }
 
     /// @inheritdoc ISupervisor
-    function execute(bytes[] calldata calls) external payable onlyOperatorOrSentinel {
-        bytes32 opId = keccak256(abi.encode(poolId, calls));
-        (uint48 executeAfter,) = hub.pending(opId);
+    function awaitAndExecute(bytes[] calldata calls, bool atomic, bytes calldata callback)
+        external
+        payable
+        onlyOperator
+        returns (uint64 nonce, bytes32 opId)
+    {
+        return hub.awaitAndExecute{value: msgValue()}(poolId, calls, atomic, callback);
+    }
+
+    /// @inheritdoc ISupervisor
+    function execute(uint64 nonce, bytes[] calldata calls, bytes calldata callback)
+        external
+        payable
+        onlyOperatorOrSentinel
+    {
+        bytes32 opId = keccak256(abi.encode(poolId, nonce, calls, callback));
+        (uint48 executeAfter,,) = hub.pending(opId);
         require(block.timestamp <= executeAfter + expiryWindow, TimelockExpired());
 
-        hub.execute{value: msgValue()}(poolId, calls);
+        hub.execute{value: msgValue()}(poolId, nonce, calls, callback);
     }
 
     /// @inheritdoc ISupervisor
-    function cancel(bytes[] calldata calls) external onlyOperatorOrSentinel {
+    function cancel(uint64 nonce, bytes[] calldata calls, bytes calldata callback) external onlyOperatorOrSentinel {
         address sender = msgSender();
         if (sentinels[sender] && sentinelCount > 1) {
             for (uint256 i; i < calls.length; i++) {
                 _checkNotSelfRemoval(calls[i], sender);
             }
         }
-        hub.cancel(poolId, calls);
+        hub.cancel(poolId, nonce, calls, callback);
     }
 
     /// @dev Reverts if `data` is a Hub updateContract call whose payload removes `sender` as sentinel.

@@ -35,14 +35,22 @@ import {ShareClassId} from "../types/ShareClassId.sol";
 import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
 
 /// @title  Hub
-/// @notice Central pool management contract, that brings together all functions in one place.
-///         Pools can assign hub managers which have full rights over all actions.
+/// @notice Central pool management contract. Per-pool managers drive every state change through a
+///         single, manifest-mediated entry point — {await} — so the pool's manifest is the only
+///         policy boundary that matters.
 ///
-///         All manager-restricted methods MUST be invoked via {propose}. `propose` runs the
-///         pool's manifest over every call in the batch, computes the longest required timelock,
-///         and either executes the batch atomically (timelock == 0) or stores it as pending for
-///         later {execute}. Direct calls to manager methods revert with {MustUsePropose}, which
-///         guarantees the manifest cannot be bypassed.
+///         The flow:
+///         1. A manager calls {await} with a batch of Hub manager-method calldata. The Hub runs
+///            the pool's manifest over every call, takes the longest required timelock, and
+///            stores a pending op. `await` never executes anything itself; it is always async.
+///         2. After the timelock, any manager calls {execute} (passing the same batch). The Hub
+///            replays the calls under the original submitter's identity via {executeBatch},
+///            then optionally invokes a post-batch callback on the submitter.
+///         3. {awaitAndExecute} folds both into one tx for the timelock==0 case so integrators
+///            don't need a generic multicall to handle the common path.
+///
+///         All manager methods (`notifyPool`, `setRequestManager`, etc.) revert with {MustAwait}
+///         when called outside an active {executeBatch} replay — they have no public surface.
 contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCallback, ICreatePool {
     using MathLib for uint256;
     using RequestCallbackMessageLib for *;
@@ -57,6 +65,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     address private transient _submitter;
     mapping(PoolId => IManifest) public manifest;
+    mapping(PoolId => uint64) public awaitNonce;
     mapping(bytes32 => PendingOp) public pending;
 
     constructor(
@@ -80,9 +89,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
-    function file(bytes32 what, address data) external {
-        _auth();
-
+    function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGateway(data);
         else if (what == "feeHook") feeHook = IFeeHook(data);
         else if (what == "holdings") holdings = IHoldings(data);
@@ -93,23 +100,90 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc ICreatePool
-    function createPool(PoolId poolId, address admin, AssetId currency) external payable {
-        _auth();
-
+    function createPool(PoolId poolId, address admin, AssetId currency) external payable auth {
         require(poolId.centrifugeId() == sender.localCentrifugeId(), InvalidPoolId());
         hubRegistry.registerPool(poolId, admin, currency);
     }
 
     //----------------------------------------------------------------------------------------------
+    // Await flow — the only public surface for managers
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IHub
+    function await(PoolId poolId, bytes[] calldata calls, bool atomic, bytes calldata callback)
+        external
+        returns (uint64 nonce, bytes32 opId)
+    {
+        require(_submitter == address(0), AlreadyInBatch());
+        return _await(msgSender(), poolId, calls, atomic, callback);
+    }
+
+    /// @inheritdoc IHub
+    function execute(PoolId poolId, uint64 nonce, bytes[] calldata calls, bytes calldata callback) external payable {
+        require(_submitter == address(0), AlreadyInBatch());
+        require(hubRegistry.manager(poolId, msgSender()), NotManager());
+        _execute(poolId, nonce, calls, callback);
+    }
+
+    /// @inheritdoc IHub
+    function awaitAndExecute(PoolId poolId, bytes[] calldata calls, bool atomic, bytes calldata callback)
+        external
+        payable
+        returns (uint64 nonce, bytes32 opId)
+    {
+        require(_submitter == address(0), AlreadyInBatch());
+        (nonce, opId) = _await(msgSender(), poolId, calls, atomic, callback);
+        _execute(poolId, nonce, calls, callback);
+    }
+
+    /// @inheritdoc IHub
+    function cancel(PoolId poolId, uint64 nonce, bytes[] calldata calls, bytes calldata callback) external {
+        require(hubRegistry.manager(poolId, msgSender()), NotManager());
+
+        bytes32 opId = keccak256(abi.encode(poolId, nonce, calls, callback));
+        require(pending[opId].executeAfter != 0, OperationNotPending());
+        delete pending[opId];
+
+        emit OperationCanceled(opId);
+    }
+
+    /// @inheritdoc IHub
+    function setManifest(PoolId poolId, IManifest manifest_) external {
+        _mustAwait();
+        manifest[poolId] = manifest_;
+        emit SetManifest(poolId, manifest_);
+    }
+
+    /// @inheritdoc IHub
+    /// @dev Gateway-only callback invoked from {_runBatch}. Replays the batch under the submitter
+    ///      context. `atomic=true` reverts on any per-call failure; `atomic=false` emits
+    ///      {CallFailed} and continues so a single OOG can't strand the whole batch.
+    function executeBatch(bytes[] calldata calls, bool atomic) external payable {
+        require(msg.sender == address(gateway), NotGateway());
+        gateway.lockCallback();
+        for (uint256 i; i < calls.length; i++) {
+            (bool success, bytes memory returnData) = address(this).delegatecall(calls[i]);
+            if (success) continue;
+            if (atomic) {
+                if (returnData.length == 0) revert ExecutionFailed("");
+                assembly ("memory-safe") {
+                    revert(add(returnData, 32), mload(returnData))
+                }
+            }
+            emit CallFailed(i, returnData);
+        }
+    }
+
+    //----------------------------------------------------------------------------------------------
     // Pool admin methods
     //
-    // All functions in this section are manager-restricted and MUST be invoked via {propose}.
-    // They revert with {MustUsePropose} when called directly.
+    // Manager-restricted state mutations. All require {_mustAwait} — they are only reachable
+    // through {executeBatch} replaying a previously-awaited batch.
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
     function notifyPool(PoolId poolId, uint16 centrifugeId, address refund) external payable {
-        _onlyViaPropose();
+        _mustAwait();
 
         emit NotifyPool(centrifugeId, poolId);
         sender.sendNotifyPool{value: msgValue()}(centrifugeId, poolId, refund);
@@ -120,7 +194,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         external
         payable
     {
-        _onlyViaPropose();
+        _mustAwait();
         _requireSC(poolId, scId);
 
         (string memory name, string memory symbol, bytes32 salt) = shareClassManager.metadata(poolId, scId);
@@ -134,7 +208,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @inheritdoc IHub
     function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) public payable {
-        _onlyViaPropose();
+        _mustAwait();
 
         (string memory name, string memory symbol,) = shareClassManager.metadata(poolId, scId);
 
@@ -147,7 +221,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         public
         payable
     {
-        _onlyViaPropose();
+        _mustAwait();
 
         emit UpdateShareHook(centrifugeId, poolId, scId, hook);
         sender.sendUpdateShareHook{value: msgValue()}(centrifugeId, poolId, scId, hook, refund);
@@ -155,7 +229,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @inheritdoc IHub
     function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) public payable {
-        _onlyViaPropose();
+        _mustAwait();
 
         (D18 pricePoolPerShare, uint64 computedAt) = shareClassManager.pricePoolPerShare(poolId, scId);
 
@@ -167,7 +241,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @inheritdoc IHub
     function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, address refund) public payable {
-        _onlyViaPropose();
+        _mustAwait();
 
         D18 pricePoolPerAsset_ = pricePoolPerAsset(poolId, scId, assetId);
         emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset_);
@@ -178,13 +252,13 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @inheritdoc IHub
     function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable {
-        _onlyViaPropose();
+        _mustAwait();
         hubRegistry.setMetadata(poolId, metadata);
     }
 
     /// @inheritdoc IHub
     function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external payable {
-        _onlyViaPropose();
+        _mustAwait();
         holdings.setSnapshotHook(poolId, hook);
     }
 
@@ -193,13 +267,13 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         external
         payable
     {
-        _onlyViaPropose();
+        _mustAwait();
         shareClassManager.updateMetadata(poolId, scId, name, symbol);
     }
 
     /// @inheritdoc IHub
     function updateHubManager(PoolId poolId, address who, bool canManage) external payable {
-        _onlyViaPropose();
+        _mustAwait();
         hubRegistry.updateManager(poolId, who, canManage);
     }
 
@@ -211,7 +285,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         bytes32 spokeManager,
         address refund
     ) external payable {
-        _onlyViaPropose();
+        _mustAwait();
 
         hubRegistry.setHubRequestManager(poolId, centrifugeId, hubManager);
 
@@ -224,7 +298,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         external
         payable
     {
-        _onlyViaPropose();
+        _mustAwait();
 
         emit UpdateBalanceSheetManager(centrifugeId, poolId, who, canManage);
         sender.sendUpdateBalanceSheetManager{value: msgValue()}(centrifugeId, poolId, who, canManage, refund);
@@ -235,7 +309,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         external
         returns (ShareClassId scId)
     {
-        _onlyViaPropose();
+        _mustAwait();
         return shareClassManager.addShareClass(poolId, name, symbol, salt);
     }
 
@@ -248,7 +322,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         uint128 extraGasLimit,
         address refund
     ) external payable {
-        _onlyViaPropose();
+        _mustAwait();
         _requireSC(poolId, scId);
 
         emit UpdateRestriction(centrifugeId, poolId, scId, payload);
@@ -265,7 +339,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         uint128 extraGasLimit,
         address refund
     ) external payable {
-        _onlyViaPropose();
+        _mustAwait();
         _requireSC(poolId, scId);
 
         emit UpdateVault(poolId, scId, assetId, vaultOrFactory, kind);
@@ -282,7 +356,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         uint128 extraGasLimit,
         address refund
     ) external payable {
-        _onlyViaPropose();
+        _mustAwait();
         _requireSC(poolId, scId);
 
         emit UpdateContract(centrifugeId, poolId, scId, target, payload);
@@ -296,7 +370,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         public
         payable
     {
-        _onlyViaPropose();
+        _mustAwait();
         shareClassManager.updateSharePrice(poolId, scId, pricePoolPerShare, computedAt);
         _accrue(poolId, scId);
     }
@@ -312,7 +386,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         AccountId gainAccount,
         AccountId lossAccount
     ) external payable {
-        _onlyViaPropose();
+        _mustAwait();
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
         require(
@@ -347,7 +421,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         AccountId expenseAccount,
         AccountId liabilityAccount
     ) external payable {
-        _onlyViaPropose();
+        _mustAwait();
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
         require(expenseAccount != liabilityAccount, IHub.InvalidAccountCombination());
@@ -364,7 +438,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @inheritdoc IHub
     function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
-        _onlyViaPropose();
+        _mustAwait();
 
         (bool isPositive, uint128 diff) = holdings.update(poolId, scId, assetId);
         _updateAccountingValue(poolId, scId, assetId, isPositive, diff);
@@ -377,7 +451,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         external
         payable
     {
-        _onlyViaPropose();
+        _mustAwait();
         holdings.updateValuation(poolId, scId, assetId, valuation);
     }
 
@@ -386,7 +460,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         external
         payable
     {
-        _onlyViaPropose();
+        _mustAwait();
         holdings.updateIsLiability(poolId, scId, assetId, isLiability);
     }
 
@@ -395,7 +469,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         external
         payable
     {
-        _onlyViaPropose();
+        _mustAwait();
 
         require(accounting.exists(poolId, accountId), IAccounting.AccountDoesNotExist());
 
@@ -404,13 +478,13 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @inheritdoc IHub
     function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) public payable {
-        _onlyViaPropose();
+        _mustAwait();
         accounting.createAccount(poolId, account, isDebitNormal);
     }
 
     /// @inheritdoc IHub
     function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external payable {
-        _onlyViaPropose();
+        _mustAwait();
         accounting.setAccountMetadata(poolId, account, metadata);
     }
 
@@ -419,7 +493,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         external
         payable
     {
-        _onlyViaPropose();
+        _mustAwait();
 
         accounting.unlock(poolId);
         accounting.addJournal(debits, credits);
@@ -436,7 +510,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         uint8 recoveryIndex,
         address refund
     ) external payable {
-        _onlyViaPropose();
+        _mustAwait();
 
         multiAdapter.setAdapters(centrifugeId, poolId, localAdapters, threshold, recoveryIndex);
 
@@ -450,7 +524,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         external
         payable
     {
-        _onlyViaPropose();
+        _mustAwait();
 
         sender.sendUpdateGatewayManager{value: msgValue()}(centrifugeId, poolId, who, canManage, refund);
     }
@@ -477,7 +551,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     //----------------------------------------------------------------------------------------------
-    //  Accounting methods
+    // Accounting methods
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
@@ -491,16 +565,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _updateAccountingAmount(poolId, scId, assetId, isPositive, diff);
     }
 
-    function _updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
-        internal
-    {
-        if (diff == 0) return;
-        bool isLiability = holdings.isLiability(poolId, scId, assetId);
-        AccountType a = isLiability ? AccountType.Expense : AccountType.Asset;
-        AccountType b = isLiability ? AccountType.Liability : AccountType.Equity;
-        _journal(poolId, scId, assetId, isPositive, diff, a, b);
-    }
-
     /// @inheritdoc IHub
     /// @notice Create credit & debit entries for the increase or decrease in the value of a holding.
     ///         This updates the asset/expense as well as the gain/loss accounts.
@@ -512,147 +576,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _updateAccountingValue(poolId, scId, assetId, isPositive, diff);
     }
 
-    function _updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
-        internal
-    {
-        if (diff == 0) return;
-        bool isLiability = holdings.isLiability(poolId, scId, assetId);
-        AccountType a = isLiability ? AccountType.Expense : AccountType.Asset;
-        AccountType b = isLiability ? AccountType.Liability : (isPositive ? AccountType.Gain : AccountType.Loss);
-        _journal(poolId, scId, assetId, isPositive, diff, a, b);
-    }
-
-    function _journal(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bool isPositive,
-        uint128 diff,
-        AccountType debitType,
-        AccountType creditType
-    ) private {
-        accounting.unlock(poolId);
-        AccountId debitAcct = holdings.accountId(poolId, scId, assetId, uint8(debitType));
-        AccountId creditAcct = holdings.accountId(poolId, scId, assetId, uint8(creditType));
-        if (isPositive) {
-            accounting.addDebit(debitAcct, diff);
-            accounting.addCredit(creditAcct, diff);
-        } else {
-            accounting.addDebit(creditAcct, diff);
-            accounting.addCredit(debitAcct, diff);
-        }
-        accounting.lock();
-    }
-
     //----------------------------------------------------------------------------------------------
-    // Manifest & timelock methods
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IHub
-    function setManifest(PoolId poolId, IManifest manifest_) external {
-        _onlyViaPropose();
-        manifest[poolId] = manifest_;
-        emit SetManifest(poolId, manifest_);
-    }
-
-    /// @inheritdoc IHub
-    function propose(PoolId poolId, bytes[] calldata calls) external payable returns (bytes32 opId) {
-        address submitter = msgSender();
-        require(hubRegistry.manager(poolId, submitter), NotManager());
-        require(calls.length != 0, EmptyBatch());
-
-        // First pass: validate every call's selector + poolId, run the manifest on each, and take
-        // the max delay. Blocking the batching selectors here is what makes the manifest binding —
-        // otherwise an operator could wrap a manager call in `multicall` and skip the check.
-        IManifest m = manifest[poolId];
-        uint48 maxTimelock;
-        for (uint256 i; i < calls.length; i++) {
-            require(_callPoolId(calls[i]) == poolId, PoolIdMismatch());
-            _validateBatchSelector(calls[i]);
-            if (address(m) == address(0)) continue;
-            uint48 t = m.check(poolId, submitter, calls[i]);
-            if (t > maxTimelock) maxTimelock = t;
-        }
-
-        if (maxTimelock == 0) {
-            _runBatch(submitter, calls);
-            return bytes32(0);
-        }
-
-        opId = keccak256(abi.encode(poolId, calls));
-        require(pending[opId].executeAfter == 0, OperationAlreadyPending());
-        uint48 executeAfter = uint48(block.timestamp) + maxTimelock;
-        pending[opId] = PendingOp(executeAfter, submitter);
-        emit OperationSubmitted(opId, poolId, submitter, executeAfter, calls);
-    }
-
-    /// @inheritdoc IHub
-    function execute(PoolId poolId, bytes[] calldata calls) external payable {
-        require(hubRegistry.manager(poolId, msgSender()), NotManager());
-
-        bytes32 opId = keccak256(abi.encode(poolId, calls));
-        PendingOp memory op = pending[opId];
-        require(op.executeAfter != 0, OperationNotPending());
-        require(block.timestamp >= op.executeAfter, TimelockNotReady(op.executeAfter));
-        delete pending[opId];
-
-        _runBatch(op.submitter, calls);
-        emit OperationExecuted(opId);
-    }
-
-    /// @inheritdoc IHub
-    function cancel(PoolId poolId, bytes[] calldata calls) external {
-        require(hubRegistry.manager(poolId, msgSender()), NotManager());
-
-        bytes32 opId = keccak256(abi.encode(poolId, calls));
-        require(pending[opId].executeAfter != 0, OperationNotPending());
-        delete pending[opId];
-
-        emit OperationCanceled(opId);
-    }
-
-    /// @dev Replay a validated batch under the submitter's identity. Wraps in gateway.withBatch so
-    ///      cross-chain message payments aggregate across the calls.
-    function _runBatch(address submitter, bytes[] calldata calls) private {
-        require(_submitter == address(0), PoolAlreadyUnlocked());
-        _submitter = submitter;
-        gateway.withBatch{value: msg.value}(
-            abi.encodeWithSelector(BatchedMulticall.executeMulticall.selector, calls), submitter
-        );
-        _submitter = address(0);
-    }
-
-    /// @dev Manager methods reject direct calls — must arrive via {propose} or {execute}.
-    function _onlyViaPropose() private view {
-        require(_submitter != address(0), MustUsePropose());
-    }
-
-    /// @dev Decode a call's first argument as a PoolId.
-    function _callPoolId(bytes calldata data) private pure returns (PoolId) {
-        require(data.length >= 36, PoolIdMismatch()); // 4-byte selector + 32-byte first arg
-        return abi.decode(data[4:36], (PoolId));
-    }
-
-    /// @dev Reject selectors that would nest another batching frame inside a propose.
-    function _validateBatchSelector(bytes calldata data) private pure {
-        bytes4 sel = bytes4(data[:4]);
-        require(
-            sel != IMulticall.multicall.selector && sel != IHub.propose.selector
-                && sel != IHub.execute.selector && sel != IHub.cancel.selector,
-            ForbiddenSelector()
-        );
-    }
-
-    /// @dev Returns the original submitter during a propose/execute batch, otherwise the parent's
-    ///      msg.sender resolution. This keeps downstream `msgSender()` callers consistent regardless
-    ///      of how the batch landed in the inner call.
-    function msgSender() internal view override returns (address) {
-        if (_submitter != address(0)) return _submitter;
-        return super.msgSender();
-    }
-
-    //----------------------------------------------------------------------------------------------
-    //  View methods
+    // View methods
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
@@ -692,11 +617,165 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     //----------------------------------------------------------------------------------------------
-    //  Internal methods
+    // Internal: await pipeline
     //----------------------------------------------------------------------------------------------
 
-    /// @dev Ensure the sender is authorized
-    function _auth() internal auth {}
+    /// @dev Manifest run + pending-op write. Factored out so {await} and {awaitAndExecute} share
+    ///      this without blowing the stack-too-deep limit on the {OperationSubmitted} emit.
+    function _await(
+        address submitter,
+        PoolId poolId,
+        bytes[] calldata calls,
+        bool atomic,
+        bytes calldata callback
+    ) internal returns (uint64 nonce, bytes32 opId) {
+        require(hubRegistry.manager(poolId, submitter), NotManager());
+        require(calls.length != 0, EmptyBatch());
+
+        // Validate every call's selector + poolId, run the manifest on each, take the max delay.
+        // Blocking the batching selectors here is what makes the manifest binding — otherwise an
+        // operator could wrap a manager call in `multicall` and skip the check.
+        uint48 maxTimelock = _runManifest(poolId, submitter, calls);
+
+        // Per-pool nonce makes opId unique even for byte-identical batches, so two awaits with
+        // the same payload don't collide in `pending` storage.
+        nonce = ++awaitNonce[poolId];
+        opId = keccak256(abi.encode(poolId, nonce, calls, callback));
+        pending[opId] = PendingOp(uint48(block.timestamp) + maxTimelock, submitter, atomic);
+        emit OperationSubmitted(
+            opId, poolId, submitter, nonce, atomic, pending[opId].executeAfter, calls, callback
+        );
+    }
+
+    /// @dev Pending-op lookup + replay. Factored out so {execute} and {awaitAndExecute} share it.
+    function _execute(PoolId poolId, uint64 nonce, bytes[] calldata calls, bytes calldata callback) internal {
+        bytes32 opId = keccak256(abi.encode(poolId, nonce, calls, callback));
+        PendingOp memory op = pending[opId];
+        require(op.executeAfter != 0, OperationNotPending());
+        require(block.timestamp >= op.executeAfter, TimelockNotReady(op.executeAfter));
+        // Delete BEFORE _runBatch: if _runBatch reverts the tx unwinds and the pending op stays
+        // put, so the batch can be retried (useful for atomic=true + OOG).
+        delete pending[opId];
+
+        _runBatch(op.submitter, calls, op.atomic, callback);
+        emit OperationExecuted(opId);
+    }
+
+    /// @dev Walk the batch through the pool's manifest, returning the longest required delay.
+    function _runManifest(PoolId poolId, address submitter, bytes[] calldata calls)
+        internal
+        returns (uint48 maxTimelock)
+    {
+        IManifest m = manifest[poolId];
+        for (uint256 i; i < calls.length; i++) {
+            require(_callPoolId(calls[i]) == poolId, PoolIdMismatch());
+            _validateBatchSelector(calls[i]);
+            if (address(m) == address(0)) continue;
+            uint48 t = m.check(poolId, submitter, calls[i]);
+            if (t > maxTimelock) maxTimelock = t;
+        }
+    }
+
+    /// @dev Set the submitter context, drive the batch through {executeBatch} via the gateway
+    ///      (so cross-chain payments aggregate), then clear the context and invoke the post-batch
+    ///      callback. The clear happens BEFORE the callback so the callback may recursively call
+    ///      {await} — see the matching guard at the top of {await}.
+    function _runBatch(address submitter, bytes[] calldata calls, bool atomic, bytes calldata callback) private {
+        _submitter = submitter;
+        gateway.withBatch{value: msg.value}(
+            abi.encodeWithSelector(IHub.executeBatch.selector, calls, atomic), submitter
+        );
+        _submitter = address(0);
+
+        if (callback.length == 0) return;
+
+        (bool ok, bytes memory ret) = submitter.call(callback);
+        if (ok) return;
+        if (ret.length == 0) revert CallbackFailed("");
+        assembly ("memory-safe") {
+            revert(add(ret, 32), mload(ret))
+        }
+    }
+
+    /// @dev Manager methods reject direct calls — must arrive inside an {executeBatch} replay.
+    function _mustAwait() private view {
+        require(_submitter != address(0), MustAwait());
+    }
+
+    /// @dev Decode a call's first argument as a PoolId.
+    function _callPoolId(bytes calldata data) private pure returns (PoolId) {
+        require(data.length >= 36, PoolIdMismatch()); // 4-byte selector + 32-byte first arg
+        return abi.decode(data[4:36], (PoolId));
+    }
+
+    /// @dev Reject selectors that would nest another batching frame inside the replay.
+    function _validateBatchSelector(bytes calldata data) private pure {
+        bytes4 sel = bytes4(data[:4]);
+        require(
+            sel != IMulticall.multicall.selector && sel != IHub.await.selector
+                && sel != IHub.execute.selector && sel != IHub.cancel.selector,
+            ForbiddenSelector()
+        );
+    }
+
+    /// @dev Returns the active submitter while {executeBatch} is replaying, otherwise the parent
+    ///      resolution. The `_submitter != 0` window is tight: it's set in {_runBatch} and cleared
+    ///      before the post-batch callback fires, so neither the callback nor any nested
+    ///      `hub.await` it triggers can inherit the prior submitter.
+    function msgSender() internal view override returns (address) {
+        if (_submitter != address(0)) return _submitter;
+        return super.msgSender();
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Internal: accounting helpers
+    //----------------------------------------------------------------------------------------------
+
+    function _updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
+        internal
+    {
+        if (diff == 0) return;
+        bool isLiability = holdings.isLiability(poolId, scId, assetId);
+        AccountType a = isLiability ? AccountType.Expense : AccountType.Asset;
+        AccountType b = isLiability ? AccountType.Liability : AccountType.Equity;
+        _journal(poolId, scId, assetId, isPositive, diff, a, b);
+    }
+
+    function _updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
+        internal
+    {
+        if (diff == 0) return;
+        bool isLiability = holdings.isLiability(poolId, scId, assetId);
+        AccountType a = isLiability ? AccountType.Expense : AccountType.Asset;
+        AccountType b = isLiability ? AccountType.Liability : (isPositive ? AccountType.Gain : AccountType.Loss);
+        _journal(poolId, scId, assetId, isPositive, diff, a, b);
+    }
+
+    function _journal(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bool isPositive,
+        uint128 diff,
+        AccountType debitType,
+        AccountType creditType
+    ) private {
+        accounting.unlock(poolId);
+        AccountId debitAcct = holdings.accountId(poolId, scId, assetId, uint8(debitType));
+        AccountId creditAcct = holdings.accountId(poolId, scId, assetId, uint8(creditType));
+        if (isPositive) {
+            accounting.addDebit(debitAcct, diff);
+            accounting.addCredit(creditAcct, diff);
+        } else {
+            accounting.addDebit(creditAcct, diff);
+            accounting.addCredit(debitAcct, diff);
+        }
+        accounting.lock();
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Internal: small utilities
+    //----------------------------------------------------------------------------------------------
 
     function _requireSC(PoolId poolId, ShareClassId scId) private view {
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
