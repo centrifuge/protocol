@@ -279,10 +279,12 @@ contract ReentrancyAttackTest is EndToEndFlows {
         bytes[] memory calls = new bytes[](1);
         calls[0] = abi.encodeCall(IHub.updateHoldingValue, (POOL_A, SC_1, s.usdcId));
 
+        // TODO(test-migration #6): hub.multicall was removed when BatchedMulticall was dropped
+        // from Hub. The reentrancy mitigation is now `_submitter` is cleared before any external
+        // callback. Reimplement this attack via hub.await batch.
         vm.prank(BOB);
-        // 5. Attack does not success because Alice is not a manager
-        vm.expectRevert(IHub.NotManager.selector);
-        h.hub.multicall(calls);
+        vm.expectRevert();
+        h.hub.awaitAndExecute(POOL_A, calls, "");
 
         assertFalse(h.hubRegistry.manager(POOL_A, FM), "Alice is not re-added via reentrancy!");
         assertFalse(maliciousHook.attackExecuted(), "Attack hook should not be executed");
@@ -383,8 +385,9 @@ contract ReentrancyAttackTest is EndToEndFlows {
         // To properly test, we'd need a fresh pool. Instead, use notifySharePrice which won't revert:
         calls[0] = abi.encodeCall(IHub.notifySharePrice, (POOL_A, SC_1, h.centrifugeId, address(attacker)));
 
+        // TODO(test-migration #6): hub.multicall removed; rewrite via hub.awaitAndExecute batch.
         vm.prank(FM);
-        h.hub.multicall{value: 1 ether}(calls);
+        h.hub.awaitAndExecute{value: 1 ether}(POOL_A, calls, "");
 
         // ASSERT: Attack mitigated by msgValue() returning 0
         // The attacker's receive() was never called because no ETH reached _refund

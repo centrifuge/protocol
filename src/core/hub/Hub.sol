@@ -17,7 +17,6 @@ import {Auth} from "../../misc/Auth.sol";
 import {d18, D18} from "../../misc/types/D18.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
 import {MathLib} from "../../misc/libraries/MathLib.sol";
-import {IMulticall} from "../../misc/interfaces/IMulticall.sol";
 
 import {IAdapter} from "../messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../messaging/interfaces/IGateway.sol";
@@ -32,7 +31,6 @@ import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {AccountId} from "../types/AccountId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
 
 /// @title  Hub
 /// @notice Central pool management contract. Per-pool managers drive every state change through a
@@ -48,14 +46,15 @@ import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
 ///            then optionally invokes a post-batch callback on the submitter. Batches are
 ///            all-or-nothing — any revert reverts the whole tx and the pending op stays put.
 ///         3. {awaitAndExecute} folds both into one tx for the timelock==0 case so integrators
-///            don't need a generic multicall to handle the common path.
+///            don't need two separate calls for the common path.
 ///
 ///         All manager methods (`notifyPool`, `setRequestManager`, etc.) revert with {MustAwait}
 ///         when called outside an active {executeBatch} replay — they have no public surface.
-contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCallback, ICreatePool {
+contract Hub is Auth, Recoverable, IHub, IHubRequestManagerCallback, ICreatePool {
     using MathLib for uint256;
     using RequestCallbackMessageLib for *;
 
+    IGateway public gateway;
     IFeeHook public feeHook;
     IHoldings public holdings;
     IAccounting public accounting;
@@ -77,7 +76,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         IMultiAdapter multiAdapter_,
         IShareClassManager shareClassManager_,
         address deployer
-    ) Auth(deployer) BatchedMulticall(gateway_) {
+    ) Auth(deployer) {
+        gateway = gateway_;
         holdings = holdings_;
         accounting = accounting_;
         hubRegistry = hubRegistry_;
@@ -184,7 +184,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _mustAwait();
 
         emit NotifyPool(centrifugeId, poolId);
-        sender.sendNotifyPool{value: msgValue()}(centrifugeId, poolId, refund);
+        sender.sendNotifyPool(centrifugeId, poolId, refund);
     }
 
     /// @inheritdoc IHub
@@ -199,7 +199,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         uint8 decimals = hubRegistry.decimals(poolId);
 
         emit NotifyShareClass(centrifugeId, poolId, scId);
-        sender.sendNotifyShareClass{value: msgValue()}(
+        sender.sendNotifyShareClass(
             centrifugeId, poolId, scId, name, symbol, decimals, salt, hook, refund
         );
     }
@@ -211,7 +211,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         (string memory name, string memory symbol,) = shareClassManager.metadata(poolId, scId);
 
         emit NotifyShareMetadata(centrifugeId, poolId, scId, name, symbol);
-        sender.sendNotifyShareMetadata{value: msgValue()}(centrifugeId, poolId, scId, name, symbol, refund);
+        sender.sendNotifyShareMetadata(centrifugeId, poolId, scId, name, symbol, refund);
     }
 
     /// @inheritdoc IHub
@@ -222,7 +222,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _mustAwait();
 
         emit UpdateShareHook(centrifugeId, poolId, scId, hook);
-        sender.sendUpdateShareHook{value: msgValue()}(centrifugeId, poolId, scId, hook, refund);
+        sender.sendUpdateShareHook(centrifugeId, poolId, scId, hook, refund);
     }
 
     /// @inheritdoc IHub
@@ -232,7 +232,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         (D18 pricePoolPerShare, uint64 computedAt) = shareClassManager.pricePoolPerShare(poolId, scId);
 
         emit NotifySharePrice(centrifugeId, poolId, scId, pricePoolPerShare, computedAt);
-        sender.sendNotifyPricePoolPerShare{value: msgValue()}(
+        sender.sendNotifyPricePoolPerShare(
             centrifugeId, poolId, scId, pricePoolPerShare, computedAt, refund
         );
     }
@@ -243,7 +243,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         D18 pricePoolPerAsset_ = pricePoolPerAsset(poolId, scId, assetId);
         emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset_);
-        sender.sendNotifyPricePoolPerAsset{value: msgValue()}(poolId, scId, assetId, pricePoolPerAsset_, refund);
+        sender.sendNotifyPricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset_, refund);
 
         _accrue(poolId, scId);
     }
@@ -288,7 +288,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         hubRegistry.setHubRequestManager(poolId, centrifugeId, hubManager);
 
         emit SetSpokeRequestManager(centrifugeId, poolId, spokeManager);
-        sender.sendSetRequestManager{value: msgValue()}(centrifugeId, poolId, spokeManager, refund);
+        sender.sendSetRequestManager(centrifugeId, poolId, spokeManager, refund);
     }
 
     /// @inheritdoc IHub
@@ -299,7 +299,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _mustAwait();
 
         emit UpdateBalanceSheetManager(centrifugeId, poolId, who, canManage);
-        sender.sendUpdateBalanceSheetManager{value: msgValue()}(centrifugeId, poolId, who, canManage, refund);
+        sender.sendUpdateBalanceSheetManager(centrifugeId, poolId, who, canManage, refund);
     }
 
     /// @inheritdoc IHub
@@ -324,7 +324,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _requireSC(poolId, scId);
 
         emit UpdateRestriction(centrifugeId, poolId, scId, payload);
-        sender.sendUpdateRestriction{value: msgValue()}(centrifugeId, poolId, scId, payload, extraGasLimit, refund);
+        sender.sendUpdateRestriction(centrifugeId, poolId, scId, payload, extraGasLimit, refund);
     }
 
     /// @inheritdoc IHub
@@ -341,7 +341,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _requireSC(poolId, scId);
 
         emit UpdateVault(poolId, scId, assetId, vaultOrFactory, kind);
-        sender.sendUpdateVault{value: msgValue()}(poolId, scId, assetId, vaultOrFactory, kind, extraGasLimit, refund);
+        sender.sendUpdateVault(poolId, scId, assetId, vaultOrFactory, kind, extraGasLimit, refund);
     }
 
     /// @inheritdoc IHub
@@ -358,7 +358,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _requireSC(poolId, scId);
 
         emit UpdateContract(centrifugeId, poolId, scId, target, payload);
-        sender.sendTrustedContractUpdate{value: msgValue()}(
+        sender.sendTrustedContractUpdate(
             centrifugeId, poolId, scId, target, payload, extraGasLimit, refund
         );
     }
@@ -512,7 +512,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         multiAdapter.setAdapters(centrifugeId, poolId, localAdapters, threshold, recoveryIndex);
 
-        sender.sendSetPoolAdapters{value: msgValue()}(
+        sender.sendSetPoolAdapters(
             centrifugeId, poolId, remoteAdapters, threshold, recoveryIndex, refund
         );
     }
@@ -525,7 +525,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _mustAwait();
 
         emit UpdateGatewayManager(centrifugeId, poolId, who, canManage);
-        sender.sendUpdateGatewayManager{value: msgValue()}(centrifugeId, poolId, who, canManage, refund);
+        sender.sendUpdateGatewayManager(centrifugeId, poolId, who, canManage, refund);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -546,7 +546,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         require(address(manager) != address(0), InvalidRequestManager());
         require(msg.sender == address(manager), NotAuthorized());
 
-        sender.sendRequestCallback{value: msgValue()}(poolId, scId, assetId, payload, extraGasLimit, unpaidMode, refund);
+        sender.sendRequestCallback(poolId, scId, assetId, payload, extraGasLimit, unpaidMode, refund);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -630,7 +630,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         // Validate every call's selector + poolId, run the manifest on each, take the max delay.
         // Blocking the batching selectors here is what makes the manifest binding — otherwise an
-        // operator could wrap a manager call in `multicall` and skip the check.
+        // operator could wrap a manager call in nested await/execute and skip the check.
         uint48 maxTimelock = _runManifest(poolId, submitter, calls);
 
         // Per-pool nonce makes opId unique even for byte-identical batches, so two awaits with
@@ -707,19 +707,17 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function _validateBatchSelector(bytes calldata data) private pure {
         bytes4 sel = bytes4(data[:4]);
         require(
-            sel != IMulticall.multicall.selector && sel != IHub.await.selector
-                && sel != IHub.execute.selector && sel != IHub.cancel.selector,
+            sel != IHub.await.selector && sel != IHub.execute.selector && sel != IHub.cancel.selector,
             ForbiddenSelector()
         );
     }
 
-    /// @dev Returns the active submitter while {executeBatch} is replaying, otherwise the parent
-    ///      resolution. The `_submitter != 0` window is tight: it's set in {_runBatch} and cleared
-    ///      before the post-batch callback fires, so neither the callback nor any nested
+    /// @dev Returns the active submitter while {executeBatch} is replaying, otherwise the direct
+    ///      `msg.sender`. The `_submitter != 0` window is tight: it's set in {_runBatch} and
+    ///      cleared before the post-batch callback fires, so neither the callback nor any nested
     ///      `hub.await` it triggers can inherit the prior submitter.
-    function msgSender() internal view override returns (address) {
-        if (_submitter != address(0)) return _submitter;
-        return super.msgSender();
+    function msgSender() internal view returns (address) {
+        return _submitter != address(0) ? _submitter : msg.sender;
     }
 
     //----------------------------------------------------------------------------------------------

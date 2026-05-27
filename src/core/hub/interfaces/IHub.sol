@@ -21,7 +21,7 @@ import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {AccountId} from "../../types/AccountId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IBatchedMulticall} from "../../utils/interfaces/IBatchedMulticall.sol";
+import {IGateway} from "../../messaging/interfaces/IGateway.sol";
 import {IManifest} from "./IManifest.sol";
 
 /// @notice Account types used by Hub
@@ -46,7 +46,7 @@ struct PendingOp {
 }
 
 /// @notice Interface with all methods available in the system used by actors
-interface IHub is IBatchedMulticall {
+interface IHub {
     //----------------------------------------------------------------------------------------------
     // Events
     //----------------------------------------------------------------------------------------------
@@ -131,7 +131,7 @@ interface IHub is IBatchedMulticall {
     error EmptyBatch();
 
     /// @notice Dispatched when a call inside a batch targets a selector that would allow nested
-    ///         batching and therefore bypass the manifest (multicall/await/execute/cancel).
+    ///         batching and therefore bypass the manifest (await/execute/cancel).
     error ForbiddenSelector();
 
     /// @notice Dispatched when the gateway tries to invoke {executeBatch} from outside a withBatch.
@@ -157,6 +157,9 @@ interface IHub is IBatchedMulticall {
     //----------------------------------------------------------------------------------------------
     // System methods
     //----------------------------------------------------------------------------------------------
+
+    /// @notice Returns the gateway contract used for cross-chain batching
+    function gateway() external view returns (IGateway);
 
     /// @notice Returns the holdings contract
     /// @return The holdings contract instance
@@ -533,10 +536,10 @@ interface IHub is IBatchedMulticall {
 
     /// @notice Submit a batch of Hub manager calls for `poolId`. Always async: this function
     ///         queues the batch as a pending operation and returns. The batch only runs when
-    ///         {execute} is called, which must be a separate call (same transaction is fine —
-    ///         e.g. `hub.multicall([await(...), execute(...)])` — but never inline within
-    ///         {await} itself). This keeps the API predictable for integrators: {await} has no
-    ///         side effects on the batch, only on the pending-ops mapping.
+    ///         {execute} is called, which must be a separate call (same transaction is fine via
+    ///         {awaitAndExecute}, but never inline within {await} itself). This keeps the API
+    ///         predictable: {await} has no side effects on the batch, only on the pending-ops
+    ///         mapping.
     ///
     ///         Each call's calldata is passed through the pool's manifest; the batch is
     ///         timelocked by the longest individual delay. A delay of zero means {execute} may
@@ -572,7 +575,7 @@ interface IHub is IBatchedMulticall {
 
     /// @notice Convenience: {await} then {execute} in one transaction. Reverts with
     ///         {TimelockNotReady} if the manifest assigns any delay. Provided so integrators
-    ///         in the timelock==0 path don't need to wire up multicall.
+    ///         in the timelock==0 path don't need two separate calls.
     function awaitAndExecute(PoolId poolId, bytes[] calldata calls, bytes calldata callback)
         external
         payable

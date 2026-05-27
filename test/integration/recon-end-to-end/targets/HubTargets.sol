@@ -246,18 +246,8 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     // EXECUTION FUNCTIONS
     // ═══════════════════════════════════════════════════════════════
 
-    /// @dev Multicall is publicly exposed without access protections so can be called by anyone
-    function hub_multicall(bytes[] memory data) public payable updateGhostsWithType(OpType.BATCH) asActor {
-        hub.multicall{value: msg.value}(data);
-    }
-
-    /// @dev Makes a call directly to the unclamped handler so doesn't include asActor modifier or else would cause
-    /// errors with foundry testing
-    function hub_multicall_clamped() public payable {
-        this.hub_multicall{value: msg.value}(queuedCalls);
-
-        queuedCalls = new bytes[](0);
-    }
+    // TODO(test-migration #6): hub.multicall was removed when BatchedMulticall was dropped from
+    // Hub. Replace with hub.await targets calling per-pool with a callback wrapper.
 
     // ═══════════════════════════════════════════════════════════════
     // ADMIN FUNCTIONS
