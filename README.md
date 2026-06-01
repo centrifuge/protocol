@@ -9,6 +9,8 @@
 
 # Centrifuge Protocol
 
+> **Note:** Active development happens in the private [centrifuge/protocol-internal](https://github.com/centrifuge/protocol-internal) repository, which also contains additional scripts and tooling for internal repo management not part of the public protocol. Changes are selectively synced to the public [centrifuge/protocol](https://github.com/centrifuge/protocol) repository once they are ready. The public repository is the canonical dependency for external integrations and integration tests.
+
 The Centrifuge Protocol is an open-source, decentralized protocol for tokenizing and distributing financial products across multiple blockchain networks. Built on immutable smart contracts, it provides the infrastructure for creating customizable asset management products with seamless multi-chain deployment.
 
 The protocol is designed to be non-opinionated and extensible, empowering builders to create diverse financial products, from permissioned investment funds to freely tradable tokenized assets, onchain loans, and custom financial structures.
