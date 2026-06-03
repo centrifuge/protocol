@@ -358,10 +358,10 @@
       "version": "v3.2"
     },
     "slippageGuard": {
-      "address": "0xEcA22067812d4DBEc090D704215E54E3e891dDC9",
-      "blockNumber": 41669316,
-      "txHash": "0x9cb9f244fd83cebc4a6f1b2a07f5dfe925d907c1107c266a89b94f349c3eda5e",
-      "version": "v3.2"
+      "address": "0x9D39c45595eC7cE584269B63a39e60684E5D6771",
+      "blockNumber": 41790976,
+      "txHash": "0x688e029d3ec2e8c84c4ddfdbf0b51a8673cd6621c9bf715876260e8fcff3a523",
+      "version": "v3.2.1"
     }
   },
   "deploymentInfo": {
