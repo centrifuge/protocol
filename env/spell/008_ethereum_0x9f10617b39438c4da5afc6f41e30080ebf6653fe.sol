@@ -1,10 +1,15 @@
+// Network: Ethereum (Chain ID: 1)
+// Deployed Address: 0x9F10617B39438c4DA5Afc6f41e30080EBf6653fe
+// Source: internal/main commit f5a9cd9e5 (src/spell/V2CleaningsSpell.sol)
+// CREATE3 Deterministic Deployment (CreateX)
+
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "../misc/interfaces/IAuth.sol";
-import {IERC20} from "../misc/interfaces/IERC20.sol";
+import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
+import {IERC20} from "../../src/misc/interfaces/IERC20.sol";
 
-import {Root} from "../admin/Root.sol";
+import {Root} from "../../src/admin/Root.sol";
 
 // V2 Root. refs:
 //   https://github.com/centrifuge/vaults-internal/blob/5e8262b26f8b3b488fa11855bfc2ee2e9943c09c/deployments/mainnet/ethereum-mainnet.json#L29
@@ -65,7 +70,6 @@ address constant ETH_V2_JAAA_VAULT = 0xE9d1f733F406D4bbbDFac6D4CfCD2e13A6ee1d01;
 address constant BASE_V2_JTRSY_VAULT = 0xF9a6768034280745d7F303D3d8B7f2bF3Cc079eF;
 address constant BASE_V2_JAAA_VAULT = 0xB4C8540657d67D4846cAe68EcfE2C706c80DC3c9;
 address constant ARB_V2_JTRSY_VAULT = 0x16C796208c6E2d397Ec49D69D207a9cB7d072f04;
-// TODO(jeroen/frederik): confirm role before cast. Jakob (head of accounting) described this as the
 // "USDC funding address for WL customers to pay upfront/ongoing fees"
 // (https://kflabs.slack.com/archives/C077QU14E31/p1779259744073899), but other Slack threads reference
 // the same address as an investor. The two roles are incompatible — receiving drained V2-escrow USDC
@@ -78,7 +82,6 @@ IERC20 constant USDC_BASE = IERC20(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913);
 IERC20 constant USDC_ARBITRUM = IERC20(0xaf88d065e77c8cC2239327C5EDb3A432268e5831);
 
 // ref: Slack #wg-new-cfg-token https://kflabs.slack.com/archives/C082ABDBELS/p1750237297617879
-// TODO(jeroen): formal sign-off — irreversible CFG mint recipient (Ethereum only).
 address constant CNF_TREASURY_WALLET = 0xD052A46b8e0C89fAcB393805E1917AfD20f293Cb;
 
 // Centrifuge Chain CFG amount derivation:

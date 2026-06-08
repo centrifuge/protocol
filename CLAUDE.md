@@ -104,8 +104,7 @@ src/
 │   ├── RefundEscrow.sol   # Refund handling
 │   ├── RefundEscrowFactory.sol
 │   └── SubsidyManager.sol
-├── spell/                  # Governance spells
-│   └── V2CleaningsSpell.sol
+├── spell/                  # Governance spells (archived under env/spell/ after execution)
 └── misc/                  # Utilities & types
     ├── Auth.sol          # Auth mixin
     ├── ERC20.sol         # Token standard

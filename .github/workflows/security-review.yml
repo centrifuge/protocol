@@ -33,7 +33,9 @@ jobs:
         run: |
           mkdir -p out out/changed-spell-content
           git diff origin/${{ github.base_ref }}...HEAD > out/pr-diff.patch
-          git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'src/spell/**' > out/changed-spells.txt
+          # Only .sol files are reviewable spells; ignore non-spell files like .gitkeep.
+          git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'src/spell/**' \
+            | grep -E '\.sol$' > out/changed-spells.txt || true
           if [ ! -s out/changed-spells.txt ]; then
             echo "No spell files changed — exiting early"
             echo "skip=true" >> $GITHUB_OUTPUT
@@ -47,8 +49,14 @@ jobs:
             exit 0
           fi
           while read f; do
-            [ -f "$f" ] && cp "$f" "out/changed-spell-content/$(basename "$f")"
+            if [ -f "$f" ]; then cp "$f" "out/changed-spell-content/$(basename "$f")"; fi
           done < out/changed-spells.txt
+          # If every changed spell was deleted (e.g. archival PR), there's no content to review.
+          if [ -z "$(ls -A out/changed-spell-content)" ]; then
+            echo "Only spell deletions — nothing to review"
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
       - name: Extract env address summary
         if: steps.gather.outputs.skip != 'true'
