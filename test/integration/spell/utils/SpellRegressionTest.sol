@@ -46,7 +46,7 @@ abstract contract SpellRegressionTest is FlowRegression {
     /// @notice Networks to run the regression against (e.g. ["ethereum", "base"]).
     function _networks() internal view virtual returns (string[] memory);
 
-    /// @notice Cache namespace, shared by the pre/post executors (e.g. "v2cleanings").
+    /// @notice Cache namespace, shared by the pre/post executors (e.g. "myspell").
     function _executorName() internal pure virtual returns (string memory);
 
     /// @notice Deploy the spell, schedule any required relies, and cast it.

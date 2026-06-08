@@ -14,17 +14,14 @@ test/integration/spell/
 │       ├── ValidationExecutor.sol       # Runs validators, reports, regression diff
 │       ├── TestContracts.sol            # TestContracts struct + factory functions
 │       └── InvestmentFlowExecutor.sol   # Investment flow execution for fork tests
-├── example-spell/                       # Example: PRE/cache/POST wiring
-│   ├── ExampleTest.t.sol
-│   └── validators/
-│       └── Validate_Example.sol
-├── V2Cleanings.t.sol                    # Focused spell test (absolute post-state proof)
-└── v2-cleanings/                        # Env regression for the same spell
-    ├── V2CleaningsCast.sol              # Shared deploy + rely + cast() preamble
-    ├── V2CleaningsValidatorTest.t.sol   # extends SpellRegressionTest
+└── example-spell/                       # Reference template for a new spell
+    ├── ExampleTest.t.sol                # Standalone PRE/cache/POST validator wiring
+    ├── ExampleSpellValidatorTest.t.sol # extends SpellRegressionTest (env-regression template)
     └── validators/
-        └── Validate_V2Cleanings.sol     # Pre (soft) / Cache / Post (hard) validators
+        └── Validate_Example.sol        # Pre / Cache / Post validators
 ```
+
+A real spell adds, alongside `example-spell/`, its own focused `Test`-derived spell test plus a `<spell>/` directory with a `<Spell>Cast` cast helper, a `<Spell>ValidatorTest`, and spell-specific validators. See the author guide below.
 
 ## Validation Flow
 
@@ -86,7 +83,7 @@ A spell ships with **two tests**:
 | `<Spell>.t.sol` (focused) | `Test` | Exhaustive forked correctness proof: cast + absolute post-state assertions (ward flips, `done()`, …) |
 | `<spell>/<Spell>ValidatorTest.t.sol` | `SpellRegressionTest` | Environment regression: did the spell break anything *else* on the live network? |
 
-Both call the same shared `<Spell>Cast` preamble (deploy + guardian relies + `cast()`) so they can never drift.
+Both call the same shared `<Spell>Cast` preamble (deploy + guardian relies + `cast()`) so they can never drift. `example-spell/ExampleSpellValidatorTest.t.sol` is the copy-paste template for the second test (with a no-op `_castSpell`); a real spell fills in the cast and the spell-specific validators.
 
 Per network, `SpellRegressionTest` runs three post-cast verification layers. All of them tolerate **pre-existing** live errors (live mainnet has known ones) and fail only on **regressions** the spell introduced:
 
@@ -100,7 +97,7 @@ Networks run isolated from each other: a failure on one network is recorded, the
 
 1. **Focused spell test** at `test/integration/spell/<Spell>.t.sol` extending `Test`: fork, call the shared cast helper, assert the exact absolute post-state the spell guarantees.
 2. **Shared cast preamble** at `test/integration/spell/<spell>/<Spell>Cast.sol` (library): deploy the spell, prank the guardian relies, `cast()`.
-3. **Validators** at `test/integration/spell/<spell>/validators/Validate_<Spell>.sol`, mirroring `Validate_Example.sol` / `Validate_V2Cleanings.sol`:
+3. **Validators** at `test/integration/spell/<spell>/validators/Validate_<Spell>.sol`, mirroring `Validate_Example.sol`:
    - `Validate_Pre<Spell>` (soft): assert there IS work to do.
    - `Validate_Cache<Spell>`: `ctx.cache.set(...)` the pre-cast values needed for delta checks.
    - `Validate_Post<Spell>` (hard): read the cache, assert the deltas + absolute invariants (`_checkWard` / `_checkNoWard`).
@@ -220,7 +217,7 @@ function validate(ValidationContext memory ctx) public override {
 }
 ```
 
-Cache files are stored under `spell-cache/validation/<executorName>/<network>/` with filenames derived from the key. The cache is file-backed, so values written pre-cast survive the spell cast within a test run. Plain (non-JSON) values work too: store with `vm.toString(value)` and read back with `vm.parseUint(...)` (see `Validate_CacheV2Cleanings`).
+Cache files are stored under `spell-cache/validation/<executorName>/<network>/` with filenames derived from the key. The cache is file-backed, so values written pre-cast survive the spell cast within a test run. Plain (non-JSON) values work too: store with `vm.toString(value)` and read back with `vm.parseUint(...)`.
 
 ## JSON Parsing
 

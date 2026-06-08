@@ -59,7 +59,7 @@ contract ValidationExecutor is Script {
     }
 
     /// @notice Migration-aware POST: no `latest`. Use for spells that deploy no
-    ///         new core contracts (e.g. `V2CleaningsSpell`). `ctx.contracts.latest`
+    ///         new core contracts (e.g. an ops/migration spell). `ctx.contracts.latest`
     ///         is left empty so a validator that erroneously reads it gets the
     ///         zero struct and fails loudly, rather than silently aliasing `live`.
     function runPostValidation(BaseValidator[] memory validators) external {
