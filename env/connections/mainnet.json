@@ -27,6 +27,11 @@
             "chains": [["pharos"], ["ethereum"]],
             "adapters": ["layerZero", "chainlink"],
             "threshold": 2
+        },
+        {
+            "chains": [["plume"], ["ethereum"]],
+            "adapters": ["layerZero", "chainlink"],
+            "threshold": 2
         }
     ]
 }
