@@ -2,10 +2,10 @@
 pragma solidity 0.8.28;
 
 import {IGasService} from "./interfaces/IGasService.sol";
-import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
-import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
-import {PoolId} from "../types/PoolId.sol";
+import {PoolId} from "../core/types/PoolId.sol";
+import {IMessageProperties} from "../core/messaging/interfaces/IMessageProperties.sol";
+import {MessageLib, MessageType, VaultUpdateKind} from "../core/messaging/libraries/MessageLib.sol";
 
 /// @title  GasService
 /// @notice Stores per-message-type gas costs (in gas units) for cross-chain execution.

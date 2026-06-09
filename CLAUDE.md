@@ -56,7 +56,6 @@ src/
 │   │   ├── MultiAdapter.sol # Multi-protocol messaging
 │   │   ├── MessageProcessor.sol # Process messages
 │   │   ├── MessageDispatcher.sol # Dispatch messages
-│   │   ├── GasService.sol  # Gas management
 │   │   └── libraries/
 │   │       └── MessageLib.sol
 │   ├── libraries/
@@ -69,6 +68,7 @@ src/
 │   ├── OpsGuardian.sol    # Operational guardian
 │   ├── ProtocolGuardian.sol # Protocol guardian
 │   ├── TokenRecoverer.sol # Token recovery
+│   ├── GasService.sol     # Gas management
 │   └── interfaces/
 ├── managers/              # Automation managers
 │   ├── hub/

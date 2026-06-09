@@ -102,6 +102,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(protocolGuardian));
+        vm.assume(nonWard != address(opsGuardian));
         vm.assume(nonWard != address(multiAdapter));
         vm.assume(nonWard != address(messageDispatcher));
         vm.assume(nonWard != address(messageProcessor));
@@ -109,6 +110,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
 
         assertEq(gateway.wards(address(root)), 1);
         assertEq(gateway.wards(address(protocolGuardian)), 1);
+        assertEq(gateway.wards(address(opsGuardian)), 1);
         assertEq(gateway.wards(address(multiAdapter)), 1);
         assertEq(gateway.wards(address(messageDispatcher)), 1);
         assertEq(gateway.wards(address(messageProcessor)), 1);

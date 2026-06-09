@@ -4,11 +4,14 @@ pragma solidity 0.8.28;
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
+import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
 
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
 import {ICreatePool} from "../../../src/admin/interfaces/ICreatePool.sol";
+import {IGasService} from "../../../src/admin/interfaces/IGasService.sol";
 import {IOpsGuardian} from "../../../src/admin/interfaces/IOpsGuardian.sol";
 import {IAdapterWiring} from "../../../src/admin/interfaces/IAdapterWiring.sol";
 
@@ -161,12 +164,6 @@ contract OpsGuardianTestFile is OpsGuardianTest {
         opsGuardian.file("invalid", makeAddr("address"));
     }
 
-    function testFileRevertWhenProtocolSpecificParam() public {
-        vm.prank(address(SAFE));
-        vm.expectRevert(IOpsGuardian.FileUnrecognizedParam.selector);
-        opsGuardian.file("gateway", makeAddr("address"));
-    }
-
     function testFileRevertWhenSafeParam() public {
         vm.prank(address(SAFE));
         vm.expectRevert(IOpsGuardian.FileUnrecognizedParam.selector);
@@ -177,6 +174,64 @@ contract OpsGuardianTestFile is OpsGuardianTest {
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
         opsGuardian.file("opsSafe", makeAddr("address"));
+    }
+}
+
+contract OpsGuardianTestSetGasService is OpsGuardianTest {
+    IGasService immutable gasService = IGasService(makeAddr("gasService"));
+    IGateway immutable gateway = IGateway(address(new IsContract()));
+
+    function _mockSetGasService(address gatewayAddr) internal {
+        vm.mockCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.gateway.selector),
+            abi.encode(IMessageHandler(gatewayAddr))
+        );
+        vm.mockCall(
+            gatewayAddr,
+            abi.encodeWithSelector(IGateway.file.selector, bytes32("messageProperties"), address(gasService)),
+            abi.encode()
+        );
+        vm.mockCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.file.selector, bytes32("messageProperties"), address(gasService)),
+            abi.encode()
+        );
+    }
+
+    function testSetGasServiceSuccess() public {
+        _mockSetGasService(address(gateway));
+
+        vm.expectCall(
+            address(gateway),
+            abi.encodeWithSelector(IGateway.file.selector, bytes32("messageProperties"), address(gasService))
+        );
+        vm.expectCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.file.selector, bytes32("messageProperties"), address(gasService))
+        );
+
+        vm.prank(address(SAFE));
+        opsGuardian.setGasService(gasService);
+    }
+
+    function testSetGasServiceUsesCurrentGatewayFromMultiAdapter() public {
+        IGateway newGateway = IGateway(address(new IsContract()));
+        _mockSetGasService(address(newGateway));
+
+        vm.expectCall(
+            address(newGateway),
+            abi.encodeWithSelector(IGateway.file.selector, bytes32("messageProperties"), address(gasService))
+        );
+
+        vm.prank(address(SAFE));
+        opsGuardian.setGasService(gasService);
+    }
+
+    function testSetGasServiceRevertWhenNotSafe() public {
+        vm.prank(UNAUTHORIZED);
+        vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
+        opsGuardian.setGasService(gasService);
     }
 }
 

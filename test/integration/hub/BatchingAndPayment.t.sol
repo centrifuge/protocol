@@ -3,7 +3,8 @@ pragma solidity ^0.8.28;
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
-import {MAX_MESSAGE_COST} from "../../../src/core/messaging/interfaces/IGasService.sol";
+
+import {MAX_MESSAGE_COST} from "../../../src/admin/interfaces/IGasService.sol";
 
 import {CentrifugeIntegrationTest} from "../Integration.t.sol";
 

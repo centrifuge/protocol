@@ -20,8 +20,9 @@ import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {VaultDetails} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
 import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
-import {MAX_MESSAGE_COST} from "../../../src/core/messaging/interfaces/IGasService.sol";
 import {IVaultFactory} from "../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
+
+import {MAX_MESSAGE_COST} from "../../../src/admin/interfaces/IGasService.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 

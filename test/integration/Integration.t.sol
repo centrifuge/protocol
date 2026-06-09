@@ -10,9 +10,9 @@ import {MockValuation} from "../core/mocks/MockValuation.sol";
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
-import {MAX_MESSAGE_COST as GAS} from "../../src/core/messaging/interfaces/IGasService.sol";
 
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
+import {MAX_MESSAGE_COST as GAS} from "../../src/admin/interfaces/IGasService.sol";
 
 import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 

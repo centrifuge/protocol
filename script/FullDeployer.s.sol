@@ -11,7 +11,6 @@ import {Gateway} from "../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
-import {GasService} from "../src/core/messaging/GasService.sol";
 import {VaultRegistry} from "../src/core/spoke/VaultRegistry.sol";
 import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
 import {ContractUpdater} from "../src/core/utils/ContractUpdater.sol";
@@ -22,6 +21,7 @@ import {MessageDispatcher} from "../src/core/messaging/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
 
 import {Root} from "../src/admin/Root.sol";
+import {GasService} from "../src/admin/GasService.sol";
 import {ISafe} from "../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../src/admin/OpsGuardian.sol";
 import {TokenRecoverer} from "../src/admin/TokenRecoverer.sol";
@@ -127,11 +127,11 @@ contract FullDeployer is BaseDeployer, Constants {
     TokenRecoverer public tokenRecoverer;
     ProtocolGuardian public protocolGuardian;
     OpsGuardian public opsGuardian;
+    GasService public gasService;
 
     Gateway public gateway;
     MultiAdapter public multiAdapter;
 
-    GasService public gasService;
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
 
@@ -251,7 +251,22 @@ contract FullDeployer is BaseDeployer, Constants {
             create3(createSalt("root", V3_1), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher)))
         );
 
-        // Core
+        gasService = GasService(
+            create3(
+                createSalt("gasService", V3_1),
+                abi.encodePacked(type(GasService).creationCode, abi.encode(input.txLimits, input.centrifugeId))
+            )
+        );
+
+        // Utils
+        contractUpdater = ContractUpdater(
+            create3(
+                createSalt("contractUpdater", V3_1),
+                abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(batcher))
+            )
+        );
+
+        // Messaging
         gateway = Gateway(
             create3(
                 createSalt("gateway", V3_1),
@@ -263,21 +278,6 @@ contract FullDeployer is BaseDeployer, Constants {
             create3(
                 createSalt("multiAdapter", V3_1),
                 abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, batcher))
-            )
-        );
-
-        contractUpdater = ContractUpdater(
-            create3(
-                createSalt("contractUpdater", V3_1),
-                abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(batcher))
-            )
-        );
-
-        // Messaging
-        gasService = GasService(
-            create3(
-                createSalt("gasService", V3_1),
-                abi.encodePacked(type(GasService).creationCode, abi.encode(input.txLimits, input.centrifugeId))
             )
         );
 
@@ -700,7 +700,6 @@ contract FullDeployer is BaseDeployer, Constants {
         return CoreReport(
             gateway,
             multiAdapter,
-            gasService,
             messageProcessor,
             messageDispatcher,
             poolEscrowFactory,
@@ -718,7 +717,8 @@ contract FullDeployer is BaseDeployer, Constants {
             root,
             tokenRecoverer,
             protocolGuardian,
-            opsGuardian
+            opsGuardian,
+            gasService
         );
     }
 
