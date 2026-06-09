@@ -12,17 +12,11 @@ import {Gateway} from "../../../src/core/messaging/Gateway.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IProtocolPauser} from "../../../src/core/messaging/interfaces/IProtocolPauser.sol";
 import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
-import {
-    IGateway,
-    PROCESS_FAIL_MESSAGE_GAS,
-    MESSAGE_MAX_LENGTH,
-    ERR_MAX_LENGTH
-} from "../../../src/core/messaging/interfaces/IGateway.sol";
+import {IGateway, MESSAGE_MAX_LENGTH, ERR_MAX_LENGTH} from "../../../src/core/messaging/interfaces/IGateway.sol";
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 
 import "forge-std/Test.sol";
-import {VmSafe} from "forge-std/Vm.sol";
 
 // -----------------------------------------
 //     MESSAGE MOCKING
@@ -35,7 +29,8 @@ uint16 constant LOCAL_CENT_ID = 23;
 
 uint128 constant MAX_BATCH_GAS_LIMIT = 1_000_000;
 uint128 constant BASE_COST = 50_000;
-uint128 constant MESSAGE_PROCESSING_GAS_LIMIT = 100_000 + uint128(PROCESS_FAIL_MESSAGE_GAS);
+uint128 constant MOCK_PROCESS_FAIL_GAS = 35_000;
+uint128 constant MESSAGE_PROCESSING_GAS_LIMIT = 100_000 + MOCK_PROCESS_FAIL_GAS;
 uint128 constant MESSAGE_OVERALL_GAS_LIMIT = BASE_COST + MESSAGE_PROCESSING_GAS_LIMIT;
 uint128 constant EXTRA_GAS_LIMIT = 200_000;
 
@@ -103,8 +98,8 @@ contract MockProcessor {
             // bypass this check for the retry case where all available gas is passed
             require(
                 gasleft()
-                    <= (properties.messageProcessingGasLimit(centrifugeId, payload) - PROCESS_FAIL_MESSAGE_GAS) * 63
-                        / 64,
+                    <= (properties.messageProcessingGasLimit(centrifugeId, payload)
+                            - properties.messageFailureGasReserve()) * 63 / 64,
                 "Too much gas passed to handle"
             );
         }
@@ -149,6 +144,10 @@ contract MockMessageProperties is IMessageProperties {
     function maxBatchGasLimit(uint16) external pure returns (uint128) {
         return MAX_BATCH_GAS_LIMIT;
     }
+
+    function messageFailureGasReserve() external pure returns (uint128) {
+        return MOCK_PROCESS_FAIL_GAS;
+    }
 }
 
 contract NoPayableDestination {}
@@ -176,25 +175,6 @@ contract GatewayExt is Gateway, Test {
 
     function outboundBatch(uint16 centrifugeId, PoolId poolId) public view returns (bytes memory) {
         return TransientBytesLib.get(_outboundBatchSlot(centrifugeId, poolId));
-    }
-
-    function safeProcess(uint16 centrifugeId, bytes memory message, bytes32 messageHash, uint128 gasLimit) public {
-        uint256 prevGas = gasleft();
-        // NOTE: we're measuring the whole safeProcess despite only the failed branch should be cover
-        // by PROCESS_FAIL_MESSAGE_GAS. We don't have a way to just measure the failed part because
-        // reverting and copying values to the callee needs to be consumed by the reserved PROCESS_FAIL_MESSAGE_GAS gas.
-        _safeProcess(centrifugeId, message, messageHash, gasLimit);
-        uint256 consumedGas = prevGas - gasleft();
-
-        if (
-            message.toUint8(0) == uint8(MessageKind.WithPoolAFail)
-                || message.toUint8(0) == uint8(MessageKind.WithPoolALongFail)
-        ) {
-            console.log("stricted consumed gas in the failure:", consumedGas);
-            // Coverage disables the optimizer, increasing gas costs
-            uint256 tolerance = vm.isContext(VmSafe.ForgeContext.Coverage) ? 5_000 : 0;
-            assertLt(consumedGas, PROCESS_FAIL_MESSAGE_GAS + tolerance, "PROCESS_FAIL_MESSAGE_GAS is not high enough");
-        }
     }
 
     function startBatching() public {
@@ -399,13 +379,6 @@ contract GatewayTestHandle is GatewayTest {
         gateway.handle(REMOTE_CENT_ID, batch);
 
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(message)), 2);
-    }
-
-    function testMessageFailBenchmark() public {
-        bytes memory message = MessageKind.WithPoolALongFail.asBytes();
-        bytes32 messageHash = keccak256(message);
-
-        gateway.safeProcess(REMOTE_CENT_ID, message, messageHash, MESSAGE_OVERALL_GAS_LIMIT);
     }
 }
 

@@ -28,4 +28,7 @@ interface IMessageProperties {
 
     /// @notice Inspect the message to return the associated PoolId if any
     function messagePoolId(bytes calldata message) external pure returns (PoolId);
+
+    /// @notice Gas reserved in every message budget to handle a worst-case processor revert.
+    function messageFailureGasReserve() external view returns (uint128);
 }

@@ -51,6 +51,8 @@ contract MockMessageProperties is IMessageProperties {
     function messageOverallGasLimit(uint16, bytes calldata message) external pure returns (uint128) {}
 
     function maxBatchGasLimit(uint16 centrifugeId) external view returns (uint128) {}
+
+    function messageFailureGasReserve() external pure returns (uint128) {}
 }
 
 // -----------------------------------------

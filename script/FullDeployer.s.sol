@@ -277,7 +277,7 @@ contract FullDeployer is BaseDeployer, Constants {
         gasService = GasService(
             create3(
                 createSalt("gasService", V3_1),
-                abi.encodePacked(type(GasService).creationCode, abi.encode(input.txLimits))
+                abi.encodePacked(type(GasService).creationCode, abi.encode(input.txLimits, input.centrifugeId))
             )
         );
 

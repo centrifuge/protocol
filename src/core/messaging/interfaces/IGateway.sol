@@ -10,9 +10,6 @@ import {IRecoverable} from "../../../misc/interfaces/IRecoverable.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 
-// Reserved gas amount for processing a message failure (assuming the worst case)
-uint256 constant PROCESS_FAIL_MESSAGE_GAS = 35_000;
-
 // Max length for a supported message. Note that a batch can use several messages with this length.
 uint256 constant MESSAGE_MAX_LENGTH = 1_000;
 

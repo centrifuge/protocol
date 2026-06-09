@@ -22,7 +22,7 @@ contract GasServiceTest is Test {
         txLimits[1] = 150; // Millions
         txLimits[10] = 64; // Millions
 
-        service = new GasService(txLimits);
+        service = new GasService(txLimits, CENTRIFUGE_ID);
     }
 
     function testGasLimit(uint256 len, bytes calldata seed) public view {
@@ -51,6 +51,43 @@ contract GasServiceTest is Test {
         uint256 messageGasLimit = service.messageOverallGasLimit(CENTRIFUGE_ID, message);
         assert(messageGasLimit > service.BASE_COST());
         assertLt(messageGasLimit, MAX_MESSAGE_COST, "Higher than MAX_MESSAGE_COST");
+    }
+
+    function testAllMessageTypesHaveSufficientGasReserve() public view {
+        // 200 bytes covers the deepest offset read by messageExtraGasLimit across all types (offset 91 + 16 bytes).
+        // Extra-gas fields are zero-filled, giving the floor for messageProcessingGasLimit — if the floor
+        // satisfies the invariant, any message with non-zero extra gas also satisfies it.
+        bytes memory message = new bytes(200);
+        uint8 maxType = uint8(type(MessageType).max);
+
+        for (uint8 i = 1; i <= maxType; i++) {
+            message[0] = bytes1(i);
+
+            if (MessageType(i) == MessageType.UpdateVault) {
+                // UpdateVault dispatches on VaultUpdateKind, producing different base gas values per sub-kind
+                for (uint8 k = 0; k <= uint8(type(VaultUpdateKind).max); k++) {
+                    message[73] = bytes1(k); // VaultUpdateKind is encoded at offset 73
+                    assertGe(
+                        service.messageProcessingGasLimit(CENTRIFUGE_ID, message),
+                        service.messageFailureGasReserve(),
+                        string.concat(
+                            "UpdateVault kind ",
+                            vm.toString(k),
+                            ": messageProcessingGasLimit does not cover messageFailureGasReserve"
+                        )
+                    );
+                }
+                message[73] = 0;
+            } else {
+                assertGe(
+                    service.messageProcessingGasLimit(CENTRIFUGE_ID, message),
+                    service.messageFailureGasReserve(),
+                    string.concat(
+                        "type ", vm.toString(i), ": messageProcessingGasLimit does not cover messageFailureGasReserve"
+                    )
+                );
+            }
+        }
     }
 
     function testMaxBatchGasLimit(uint16 centrifugeId) public view {

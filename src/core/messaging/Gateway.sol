@@ -5,7 +5,7 @@ import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IProtocolPauser} from "./interfaces/IProtocolPauser.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
-import {IGateway, PROCESS_FAIL_MESSAGE_GAS, MESSAGE_MAX_LENGTH, ERR_MAX_LENGTH} from "./interfaces/IGateway.sol";
+import {IGateway, MESSAGE_MAX_LENGTH, ERR_MAX_LENGTH} from "./interfaces/IGateway.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
@@ -97,6 +97,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     function handle(uint16 centrifugeId, bytes memory batch) public pauseable auth {
         PoolId batchPoolId = messageProperties.messagePoolId(batch);
 
+        uint128 failureGasReserve = messageProperties.messageFailureGasReserve();
         bytes memory remaining = batch;
         while (remaining.length > 0) {
             uint256 length = messageProperties.messageLength(remaining);
@@ -112,18 +113,26 @@ contract Gateway is Auth, Recoverable, IGateway {
             uint128 gasLimit = messageProperties.messageProcessingGasLimit(localCentrifugeId, message);
             require(gasleft() >= gasLimit, NotEnoughGas());
 
-            _safeProcess(centrifugeId, message, messageHash, gasLimit);
+            _safeProcess(centrifugeId, message, messageHash, gasLimit, failureGasReserve);
         }
     }
 
-    function _safeProcess(uint16 centrifugeId, bytes memory message, bytes32 messageHash, uint128 gasLimit) internal {
+    function _safeProcess(
+        uint16 centrifugeId,
+        bytes memory message,
+        bytes32 messageHash,
+        uint128 gasLimit,
+        uint128 failureGasReserve_
+    ) internal {
         (bool success, bytes memory err) = address(processor)
             .excessivelySafeCall(
-                gasLimit - PROCESS_FAIL_MESSAGE_GAS,
+                gasLimit - failureGasReserve_,
                 0,
                 ERR_MAX_LENGTH,
                 abi.encodeWithSelector(IMessageHandler.handle.selector, centrifugeId, message)
             );
+
+        _afterProcessorCall();
 
         if (success) {
             emit ExecuteMessage(centrifugeId, messageHash);
@@ -132,6 +141,10 @@ contract Gateway is Auth, Recoverable, IGateway {
             emit FailMessage(centrifugeId, messageHash, err);
         }
     }
+
+    // Called immediately after excessivelySafeCall returns, before the success/failure branch.
+    // No-op in production; overridden in test harnesses to insert gas checkpoints.
+    function _afterProcessorCall() internal virtual {}
 
     /// @inheritdoc IGateway
     function retry(uint16 centrifugeId, bytes memory message) external pauseable {
