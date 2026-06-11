@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {IAdapter} from "./interfaces/IAdapter.sol";
-import {IGateway} from "./interfaces/IGateway.sol";
 import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
@@ -39,7 +38,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     uint16 public constant MAINNET_CENTRIFUGE_ID = 1;
 
-    IGateway public gateway;
     IMultiAdapter public multiAdapter;
     ISpokeGatewayHandler public spoke;
     IHubGatewayHandler public hubHandler;
@@ -61,7 +59,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function file(bytes32 what, address data) external auth {
         if (what == "hubHandler") hubHandler = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
-        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
@@ -225,9 +222,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.SetMaxSharePriceAge) {
             MessageLib.SetMaxSharePriceAge memory m = message.deserializeSetMaxSharePriceAge();
             spoke.setMaxSharePriceAge(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.maxPriceAge);
-        } else if (kind == MessageType.UpdateGatewayManager) {
-            MessageLib.UpdateGatewayManager memory m = message.deserializeUpdateGatewayManager();
-            gateway.updateManager(PoolId.wrap(m.poolId), m.who.toAddress(), m.canManage);
+        } else if (kind == MessageType.UpdateAdaptersManager) {
+            MessageLib.UpdateAdaptersManager memory m = message.deserializeUpdateAdaptersManager();
+            multiAdapter.updateManager(PoolId.wrap(m.poolId), m.who.toAddress(), m.canManage);
         } else {
             revert InvalidMessage(uint8(kind));
         }

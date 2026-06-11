@@ -64,12 +64,20 @@ contract MultiAdapterExt is MultiAdapter {
         MultiAdapter(localCentrifugeId_, gateway_, deployer)
     {}
 
-    function adapterDetails(uint16 centrifugeId, PoolId poolId, IAdapter adapter)
+    function adapterDetails(uint16 centrifugeId, PoolId poolId, uint16 sessionId, IAdapter adapter)
         public
         view
         returns (IMultiAdapter.Adapter memory)
     {
-        return _adapterDetails[centrifugeId][poolId][adapter];
+        return _adapterDetails[centrifugeId][poolId][sessionId][adapter];
+    }
+
+    function setActiveSessionId(uint16 centrifugeId, PoolId poolId, uint16 sessionId) public {
+        activeSessionId[centrifugeId][poolId] = sessionId;
+    }
+
+    function adaptersLength(uint16 centrifugeId, PoolId poolId, uint16 sessionId) public view returns (uint256) {
+        return adapters[centrifugeId][poolId][sessionId].length;
     }
 }
 
@@ -95,6 +103,8 @@ contract MultiAdapterTest is Test {
     bytes constant MESSAGE_2 = "POOL_A: Message 2";
     bytes constant MESSAGE_POOL_0 = "Message";
 
+    address immutable MANAGER = makeAddr("Manager");
+
     IAdapter adapter1 = IAdapter(makeAddr("Adapter1"));
     IAdapter adapter2 = IAdapter(makeAddr("Adapter2"));
     IAdapter adapter3 = IAdapter(makeAddr("Adapter3"));
@@ -108,6 +118,10 @@ contract MultiAdapterTest is Test {
 
     address immutable ANY = makeAddr("ANY");
     address immutable REFUND = makeAddr("REFUND");
+
+    function _wrap(uint16 sessionId, bytes memory message) internal pure returns (bytes memory) {
+        return abi.encodePacked(sessionId, message);
+    }
 
     function _mockAdapter(IAdapter adapter, bytes memory message, uint256 estimate, bytes32 adapterData) internal {
         vm.mockCall(
@@ -124,8 +138,8 @@ contract MultiAdapterTest is Test {
         );
     }
 
-    function assertVotes(bytes memory message, int16 r1, int16 r2, int16 r3) internal view {
-        int16[8] memory votes = multiAdapter.votes(REMOTE_CENT_ID, keccak256(message));
+    function assertVotes(uint16 sessionId, bytes memory message, int16 r1, int16 r2, int16 r3) internal view {
+        int16[8] memory votes = multiAdapter.votes(REMOTE_CENT_ID, keccak256(_wrap(sessionId, message)));
         assertEq(votes[0], r1);
         assertEq(votes[1], r2);
         assertEq(votes[2], r3);
@@ -219,12 +233,12 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
         assertEq(multiAdapter.recoveryIndex(REMOTE_CENT_ID, POOL_A), 2);
 
         for (uint256 i; i < threeAdapters.length; i++) {
-            IMultiAdapter.Adapter memory adapter = multiAdapter.adapterDetails(REMOTE_CENT_ID, POOL_A, threeAdapters[i]);
+            IMultiAdapter.Adapter memory adapter =
+                multiAdapter.adapterDetails(REMOTE_CENT_ID, POOL_A, 1, threeAdapters[i]);
 
             assertEq(adapter.id, i + 1);
             assertEq(adapter.quorum, threeAdapters.length);
-            assertEq(adapter.activeSessionId, 1);
-            assertEq(address(multiAdapter.adapters(REMOTE_CENT_ID, POOL_A, i)), address(threeAdapters[i]));
+            assertEq(address(multiAdapter.adapters(REMOTE_CENT_ID, POOL_A, 1, i)), address(threeAdapters[i]));
         }
     }
 
@@ -232,254 +246,458 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 1);
 
+        // not increment: different chain
         multiAdapter.setAdapters(LOCAL_CENT_ID, POOL_A, threeAdapters, 3, 3);
-        assertEq(multiAdapter.activeSessionId(LOCAL_CENT_ID, POOL_A), 2);
+        assertEq(multiAdapter.activeSessionId(LOCAL_CENT_ID, POOL_A), 1);
+
+        // not increment: different pool
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 3, 3);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_0), 1);
+
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, zeroAdapters, 0, 0);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_0), 2);
 
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 3, 3);
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_0), 3);
+    }
 
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, zeroAdapters, 0, 0);
-        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_0), 0);
+    function testSessionIdOverflowWrapsToOne() public {
+        multiAdapter.setActiveSessionId(REMOTE_CENT_ID, POOL_A, type(uint16).max);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), type(uint16).max);
 
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 3, 3);
-        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_0), 5);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 1);
+    }
+}
+
+contract MultiAdapterTestDenySession is MultiAdapterTest {
+    function testErrDenySessionNotAuthorized() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
+
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        multiAdapter.denySession(REMOTE_CENT_ID, POOL_A, 1);
+    }
+
+    function testDenySession() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3); // session 1
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3); // session 2
+
+        multiAdapter.updateManager(POOL_A, MANAGER, true);
+
+        vm.prank(MANAGER);
+        vm.expectEmit();
+        emit IMultiAdapter.DenySession(REMOTE_CENT_ID, POOL_A, 1);
+        multiAdapter.denySession(REMOTE_CENT_ID, POOL_A, 1);
+
+        // Confirm session 1 messages now fail
+        vm.prank(address(adapter1));
+        vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
+        multiAdapter.handle(REMOTE_CENT_ID, _wrap(1, MESSAGE_1));
+
+        // Adapters array for session 1 is cleared
+        assertEq(multiAdapter.adaptersLength(REMOTE_CENT_ID, POOL_A, 1), 0);
+    }
+
+    function testDenyOldSessionPreservesActiveAdapters() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3); // session 1
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3); // session 2 (active)
+
+        multiAdapter.denySession(REMOTE_CENT_ID, POOL_A, 1);
+
+        // Active session is still 2
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 2);
+
+        // Getters still reflect session 2's adapter configuration
+        assertEq(multiAdapter.quorum(REMOTE_CENT_ID, POOL_A), 3);
+        assertEq(multiAdapter.threshold(REMOTE_CENT_ID, POOL_A), 3);
+
+        // Active adapters struct still points to session 2
+        IMultiAdapter.Adapters memory active = multiAdapter.activeAdapters(REMOTE_CENT_ID, POOL_A);
+        assertEq(active.sessionId, 2);
+        assertEq(active.list.length, 3);
+
+        // Adapters array for denied session 1 is cleared, session 2 is untouched
+        assertEq(multiAdapter.adaptersLength(REMOTE_CENT_ID, POOL_A, 1), 0);
+        assertEq(multiAdapter.adaptersLength(REMOTE_CENT_ID, POOL_A, 2), 3);
+    }
+
+    function testDenyActiveSessionClearsActiveAdapters() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3); // session 1 (active)
+
+        multiAdapter.denySession(REMOTE_CENT_ID, POOL_A, 1);
+
+        // Active adapters are cleared
+        IMultiAdapter.Adapters memory active = multiAdapter.activeAdapters(REMOTE_CENT_ID, POOL_A);
+        assertEq(active.list.length, 0);
+
+        // Getters return 0 because there are no active adapters
+        assertEq(multiAdapter.quorum(REMOTE_CENT_ID, POOL_A), 0);
+        assertEq(multiAdapter.threshold(REMOTE_CENT_ID, POOL_A), 0);
+
+        // Adapters array for the denied session is cleared
+        assertEq(multiAdapter.adaptersLength(REMOTE_CENT_ID, POOL_A, 1), 0);
+
+        // Outbound send reverts
+        vm.expectRevert(IMultiAdapter.EmptyAdapterSet.selector);
+        multiAdapter.send(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
+    }
+}
+
+// -----------------------------------------
+//     MANAGER ROLE
+// -----------------------------------------
+
+contract MultiAdapterTestUpdateManager is MultiAdapterTest {
+    function testErrUpdateManagerNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        multiAdapter.updateManager(POOL_A, MANAGER, true);
+    }
+
+    function testUpdateManager() public {
+        assertEq(multiAdapter.manager(POOL_A, MANAGER), false);
+
+        vm.expectEmit();
+        emit IMultiAdapter.UpdateManager(POOL_A, MANAGER, true);
+        multiAdapter.updateManager(POOL_A, MANAGER, true);
+        assertEq(multiAdapter.manager(POOL_A, MANAGER), true);
+
+        vm.expectEmit();
+        emit IMultiAdapter.UpdateManager(POOL_A, MANAGER, false);
+        multiAdapter.updateManager(POOL_A, MANAGER, false);
+        assertEq(multiAdapter.manager(POOL_A, MANAGER), false);
     }
 }
 
 contract MultiAdapterTestHandle is MultiAdapterTest {
     function testErrInvalidAdapter() public {
         vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, _wrap(0, "hi"));
     }
 
     function testMessageWithSeveralAdapters() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
 
-        bytes32 payloadId = keccak256(abi.encodePacked(REMOTE_CENT_ID, LOCAL_CENT_ID, keccak256(MESSAGE_1)));
+        bytes memory message = _wrap(1, MESSAGE_1);
+        bytes32 payloadId = keccak256(abi.encodePacked(REMOTE_CENT_ID, LOCAL_CENT_ID, keccak256(message)));
 
         vm.prank(address(adapter1));
         vm.expectEmit();
-        emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter1);
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, message, adapter1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
-        assertVotes(MESSAGE_1, 1, 0, 0);
+        assertVotes(1, MESSAGE_1, 1, 0, 0);
 
         vm.prank(address(adapter2));
         vm.expectEmit();
-        emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter2);
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, message, adapter2);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
-        assertVotes(MESSAGE_1, 1, 1, 0);
+        assertVotes(1, MESSAGE_1, 1, 1, 0);
 
         vm.prank(address(adapter3));
         vm.expectEmit();
-        emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter3);
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, message, adapter3);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
         assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
-        assertVotes(MESSAGE_1, 0, 0, 0);
+        assertVotes(1, MESSAGE_1, 0, 0, 0);
     }
 
     function testSameMessageAgainWithSeveralAdapters() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
 
-        vm.prank(address(adapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        vm.prank(address(adapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        vm.prank(address(adapter3));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        bytes memory message = _wrap(1, MESSAGE_1);
 
         vm.prank(address(adapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, message);
+        vm.prank(address(adapter3));
+        multiAdapter.handle(REMOTE_CENT_ID, message);
+
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(MESSAGE_1, 1, 0, 0);
+        assertVotes(1, MESSAGE_1, 1, 0, 0);
 
         vm.prank(address(adapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(MESSAGE_1, 1, 1, 0);
+        assertVotes(1, MESSAGE_1, 1, 1, 0);
 
         vm.prank(address(adapter3));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 2);
         assertEq(gateway.handled(REMOTE_CENT_ID, 1), MESSAGE_1);
-        assertVotes(MESSAGE_1, 0, 0, 0);
+        assertVotes(1, MESSAGE_1, 0, 0, 0);
     }
 
     function testOtherMessageWithSeveralAdapters() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
 
-        vm.prank(address(adapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        vm.prank(address(adapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-        vm.prank(address(adapter3));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        bytes memory message1 = _wrap(1, MESSAGE_1);
+        bytes memory message2 = _wrap(1, MESSAGE_2);
 
         vm.prank(address(adapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_2);
+        multiAdapter.handle(REMOTE_CENT_ID, message1);
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, message1);
+        vm.prank(address(adapter3));
+        multiAdapter.handle(REMOTE_CENT_ID, message1);
+
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, message2);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(MESSAGE_2, 1, 0, 0);
+        assertVotes(1, MESSAGE_2, 1, 0, 0);
 
         vm.prank(address(adapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_2);
+        multiAdapter.handle(REMOTE_CENT_ID, message2);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(MESSAGE_2, 1, 1, 0);
+        assertVotes(1, MESSAGE_2, 1, 1, 0);
 
         vm.prank(address(adapter3));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_2);
+        multiAdapter.handle(REMOTE_CENT_ID, message2);
         assertEq(gateway.count(REMOTE_CENT_ID), 2);
         assertEq(gateway.handled(REMOTE_CENT_ID, 1), MESSAGE_2);
-        assertVotes(MESSAGE_2, 0, 0, 0);
+        assertVotes(1, MESSAGE_2, 0, 0, 0);
     }
 
     function testOneFasterAdapter() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
 
+        bytes memory message = _wrap(1, MESSAGE_1);
+
         vm.prank(address(adapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         vm.prank(address(adapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
-        assertVotes(MESSAGE_1, 2, 0, 0);
+        assertVotes(1, MESSAGE_1, 2, 0, 0);
 
         vm.prank(address(adapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
-        assertVotes(MESSAGE_1, 2, 1, 0);
+        assertVotes(1, MESSAGE_1, 2, 1, 0);
 
         vm.prank(address(adapter3));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(MESSAGE_1, 1, 0, 0);
+        assertVotes(1, MESSAGE_1, 1, 0, 0);
 
         vm.prank(address(adapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(MESSAGE_1, 1, 1, 0);
+        assertVotes(1, MESSAGE_1, 1, 1, 0);
 
         vm.prank(address(adapter3));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 2);
-        assertVotes(MESSAGE_1, 0, 0, 0);
+        assertVotes(1, MESSAGE_1, 0, 0, 0);
     }
 
     function testVotesAfterNewSession() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3); // session 1
+
+        bytes memory message1 = _wrap(1, MESSAGE_1);
 
         vm.prank(address(adapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message1);
         vm.prank(address(adapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message1);
 
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3); // session 2
+
+        bytes memory message2 = _wrap(2, MESSAGE_1);
 
         vm.prank(address(adapter3));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message2);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
-        assertVotes(MESSAGE_1, 0, 0, 1);
+
+        // Session 1 votes are unaffected
+        assertVotes(1, MESSAGE_1, 1, 1, 0);
+        // Session 2 only has adapter3's vote
+        assertVotes(2, MESSAGE_1, 0, 0, 1);
     }
 
     function testMessageWithThreshold2() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2, 3);
 
+        bytes memory message = _wrap(1, MESSAGE_1);
+
         vm.prank(address(adapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
-        assertVotes(MESSAGE_1, 1, 0, 0);
+        assertVotes(1, MESSAGE_1, 1, 0, 0);
 
         vm.prank(address(adapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(MESSAGE_1, 0, 0, -1);
+        assertVotes(1, MESSAGE_1, 0, 0, -1);
 
         vm.prank(address(adapter3));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(MESSAGE_1, 0, 0, 0);
+        assertVotes(1, MESSAGE_1, 0, 0, 0);
     }
 
     function testSameMessageWithThreshold2() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2, 3);
 
+        bytes memory message = _wrap(1, MESSAGE_1);
+
         vm.prank(address(adapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
-        assertVotes(MESSAGE_1, 1, 0, 0);
+        assertVotes(1, MESSAGE_1, 1, 0, 0);
 
         vm.prank(address(adapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(MESSAGE_1, 0, 0, -1);
+        assertVotes(1, MESSAGE_1, 0, 0, -1);
 
         vm.prank(address(adapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(MESSAGE_1, 0, 1, -1);
+        assertVotes(1, MESSAGE_1, 0, 1, -1);
 
         vm.prank(address(adapter3));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(MESSAGE_1, 0, 1, 0);
+        assertVotes(1, MESSAGE_1, 0, 1, 0);
 
         vm.prank(address(adapter3));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 2);
-        assertVotes(MESSAGE_1, -1, 0, 0);
+        assertVotes(1, MESSAGE_1, -1, 0, 0);
     }
 
     function testSameMessageWithThreshold1() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 3);
 
+        bytes memory message = _wrap(1, MESSAGE_1);
+
         vm.prank(address(adapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(MESSAGE_1, 0, -1, -1);
+        assertVotes(1, MESSAGE_1, 0, -1, -1);
 
         vm.prank(address(adapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 2);
-        assertVotes(MESSAGE_1, 0, -2, -2);
+        assertVotes(1, MESSAGE_1, 0, -2, -2);
 
         vm.prank(address(adapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 2);
-        assertVotes(MESSAGE_1, 0, -1, -2);
+        assertVotes(1, MESSAGE_1, 0, -1, -2);
 
         vm.prank(address(adapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 2);
-        assertVotes(MESSAGE_1, 0, 0, -2);
+        assertVotes(1, MESSAGE_1, 0, 0, -2);
 
         vm.prank(address(adapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 3);
-        assertVotes(MESSAGE_1, -1, 0, -3);
+        assertVotes(1, MESSAGE_1, -1, 0, -3);
     }
 
     function testMessageWithThreshold2AndRecovery2() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2, 2);
 
+        bytes memory message = _wrap(1, MESSAGE_1);
+
         vm.prank(address(adapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
-        assertVotes(MESSAGE_1, 1, 0, 0);
+        assertVotes(1, MESSAGE_1, 1, 0, 0);
 
         vm.prank(address(adapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(MESSAGE_1, 0, 0, 0); // <- vote from third adapter does not decrease below 0
+        assertVotes(1, MESSAGE_1, 0, 0, 0); // <- vote from third adapter does not decrease below 0
 
         vm.prank(address(adapter3));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(MESSAGE_1, 0, 0, 1);
+        assertVotes(1, MESSAGE_1, 0, 0, 1);
 
         vm.prank(address(adapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 2);
-        assertVotes(MESSAGE_1, 0, -1, 0);
+        assertVotes(1, MESSAGE_1, 0, -1, 0);
+    }
+
+    function testOldSessionMessagesStillProcessable() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3); // session 1
+
+        bytes memory oldMsg = _wrap(1, MESSAGE_1);
+
+        // Two votes arrive under session 1
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, oldMsg);
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, oldMsg);
+        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertVotes(1, MESSAGE_1, 1, 1, 0);
+
+        // Session advances (adapters rotated)
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3); // session 2
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 2);
+
+        // Third vote still arrives under session 1 (in-flight) — should complete
+        vm.prank(address(adapter3));
+        multiAdapter.handle(REMOTE_CENT_ID, oldMsg);
+
+        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
+    }
+
+    function testNewSessionVotesAreIndependent() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3); // session 1
+
+        // Two votes arrive under session 1
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, _wrap(1, MESSAGE_1));
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, _wrap(1, MESSAGE_1));
+        assertVotes(1, MESSAGE_1, 1, 1, 0);
+
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3); // session 2
+
+        // Session 2 starts fresh — adapter1 vote on session 2 doesn't carry over from session 1
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, _wrap(2, MESSAGE_1));
+        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertVotes(2, MESSAGE_1, 1, 0, 0);
+
+        // Session 1 votes are still intact
+        assertVotes(1, MESSAGE_1, 1, 1, 0);
+    }
+
+    function testDeniedSessionMessagesRevert() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3); // session 1
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3); // session 2
+
+        // One vote arrives under session 1 before deny
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, _wrap(1, MESSAGE_1));
+        assertVotes(1, MESSAGE_1, 1, 0, 0);
+
+        // Deny session 1
+        multiAdapter.denySession(REMOTE_CENT_ID, POOL_A, 1);
+
+        // Session 1 messages now rejected
+        vm.prank(address(adapter2));
+        vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
+        multiAdapter.handle(REMOTE_CENT_ID, _wrap(1, MESSAGE_1));
+
+        // Session 2 still works normally
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, _wrap(2, MESSAGE_1));
+        assertVotes(2, MESSAGE_1, 1, 0, 0);
     }
 }
 
@@ -498,19 +716,20 @@ contract MultiAdapterTestSend is MultiAdapterTest {
     function testSendMessage() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
 
-        bytes32 payloadId = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, keccak256(MESSAGE_1)));
+        bytes memory message = _wrap(1, MESSAGE_1);
+        bytes32 payloadId = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, keccak256(message)));
 
         uint256 cost = GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
 
-        _mockAdapter(adapter1, MESSAGE_1, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
-        _mockAdapter(adapter2, MESSAGE_1, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);
-        _mockAdapter(adapter3, MESSAGE_1, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
+        _mockAdapter(adapter1, message, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
+        _mockAdapter(adapter2, message, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);
+        _mockAdapter(adapter3, message, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
 
         vm.expectEmit();
         emit IMultiAdapter.SendPayload(
             REMOTE_CENT_ID,
             payloadId,
-            MESSAGE_1,
+            message,
             adapter1,
             ADAPTER_DATA_1,
             GAS_LIMIT,
@@ -521,7 +740,7 @@ contract MultiAdapterTestSend is MultiAdapterTest {
         emit IMultiAdapter.SendPayload(
             REMOTE_CENT_ID,
             payloadId,
-            MESSAGE_1,
+            message,
             adapter2,
             ADAPTER_DATA_2,
             GAS_LIMIT,
@@ -532,7 +751,7 @@ contract MultiAdapterTestSend is MultiAdapterTest {
         emit IMultiAdapter.SendPayload(
             REMOTE_CENT_ID,
             payloadId,
-            MESSAGE_1,
+            message,
             adapter3,
             ADAPTER_DATA_3,
             GAS_LIMIT,
@@ -544,16 +763,18 @@ contract MultiAdapterTestSend is MultiAdapterTest {
 }
 
 contract MultiAdapterTestEstimate is MultiAdapterTest {
-    function testEstimateNoAdapters() public view {
-        assertEq(multiAdapter.estimate(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT), 0);
+    function testEstimateNoAdapters() public {
+        vm.expectRevert(IMultiAdapter.EmptyAdapterSet.selector);
+        multiAdapter.estimate(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT);
     }
 
     function testEstimate() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
 
-        _mockAdapter(adapter1, MESSAGE_1, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
-        _mockAdapter(adapter2, MESSAGE_1, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);
-        _mockAdapter(adapter3, MESSAGE_1, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
+        bytes memory message = _wrap(uint16((1 << 8) + 1), MESSAGE_1);
+        _mockAdapter(adapter1, message, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
+        _mockAdapter(adapter2, message, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);
+        _mockAdapter(adapter3, message, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
 
         uint256 estimation = GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
 

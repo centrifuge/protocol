@@ -169,6 +169,7 @@ contract CoreActionBatcher is Constants {
 
         // Rely messageDispatcher
         report.gateway.rely(address(report.messageDispatcher));
+        report.multiAdapter.rely(address(report.messageDispatcher));
         report.spoke.rely(address(report.messageDispatcher));
         report.balanceSheet.rely(address(report.messageDispatcher));
         report.contractUpdater.rely(address(report.messageDispatcher));
@@ -238,6 +239,7 @@ contract CoreActionBatcher is Constants {
         report.multiAdapter.file("messageProperties", address(report.gasService));
 
         report.messageDispatcher.file("spoke", address(report.spoke));
+        report.messageDispatcher.file("multiAdapter", address(report.multiAdapter));
         report.messageDispatcher.file("balanceSheet", address(report.balanceSheet));
         report.messageDispatcher.file("contractUpdater", address(report.contractUpdater));
         report.messageDispatcher.file("vaultRegistry", address(report.vaultRegistry));
@@ -245,7 +247,6 @@ contract CoreActionBatcher is Constants {
         report.messageDispatcher.file("tokenRecoverer", address(report.tokenRecoverer));
 
         report.messageProcessor.file("multiAdapter", address(report.multiAdapter));
-        report.messageProcessor.file("gateway", address(report.gateway));
         report.messageProcessor.file("spoke", address(report.spoke));
         report.messageProcessor.file("balanceSheet", address(report.balanceSheet));
         report.messageProcessor.file("contractUpdater", address(report.contractUpdater));

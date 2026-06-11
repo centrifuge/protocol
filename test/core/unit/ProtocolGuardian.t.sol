@@ -5,7 +5,7 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
-import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
+import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {IScheduleAuthMessageSender} from "../../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
@@ -22,7 +22,7 @@ contract ProtocolGuardianTest is Test {
 
     IRoot immutable root = IRoot(address(new IsContract()));
     ISafe immutable SAFE = ISafe(address(new IsContract()));
-    IGateway immutable gateway = IGateway(address(new IsContract()));
+    IMultiAdapter immutable multiAdapter = IMultiAdapter(address(new IsContract()));
     IScheduleAuthMessageSender immutable sender = IScheduleAuthMessageSender(address(new IsContract()));
 
     address immutable OWNER = makeAddr("owner");
@@ -34,22 +34,22 @@ contract ProtocolGuardianTest is Test {
     IAdapter immutable ADAPTER = IAdapter(makeAddr("adapter"));
 
     uint16 constant CENTRIFUGE_ID = 1;
+    uint16 constant SESSION_ID = 1;
     uint256 constant TOKEN_ID = 1;
     uint256 constant AMOUNT = 100;
     uint256 constant COST = 123;
-    PoolId constant GLOBAL_POOL = PoolId.wrap(0);
-
+    PoolId constant POOL_ID = PoolId.wrap(1);
     ProtocolGuardian protocolGuardian;
 
     function setUp() public {
-        protocolGuardian = new ProtocolGuardian(SAFE, root, gateway, sender);
+        protocolGuardian = new ProtocolGuardian(SAFE, root, multiAdapter, sender);
         vm.deal(address(SAFE), 1 ether);
     }
 
     function testProtocolGuardian() public view {
         assertEq(address(protocolGuardian.safe()), address(SAFE));
         assertEq(address(protocolGuardian.root()), address(root));
-        assertEq(address(protocolGuardian.gateway()), address(gateway));
+        assertEq(address(protocolGuardian.multiAdapter()), address(multiAdapter));
         assertEq(address(protocolGuardian.sender()), address(sender));
     }
 }
@@ -225,39 +225,40 @@ contract ProtocolGuardianTestRecoverTokens is ProtocolGuardianTest {
     }
 }
 
-contract ProtocolGuardianTestBlockOutgoing is ProtocolGuardianTest {
-    function testBlockOutgoingBlockSuccess() public {
+contract ProtocolGuardianTestDenySession is ProtocolGuardianTest {
+    function testDenySessionSuccessWithSafe() public {
         vm.mockCall(
-            address(gateway),
-            abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, GLOBAL_POOL, true),
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.denySession.selector, CENTRIFUGE_ID, POOL_ID, SESSION_ID),
             abi.encode()
         );
         vm.expectCall(
-            address(gateway), abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, GLOBAL_POOL, true)
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.denySession.selector, CENTRIFUGE_ID, POOL_ID, SESSION_ID)
         );
 
         vm.prank(address(SAFE));
-        protocolGuardian.blockOutgoing(CENTRIFUGE_ID, true);
+        protocolGuardian.denySession(CENTRIFUGE_ID, POOL_ID, SESSION_ID);
     }
 
-    function testBlockOutgoingUnblockSuccess() public {
+    function testDenySessionSuccessWithOwner() public {
         vm.mockCall(
-            address(gateway),
-            abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, GLOBAL_POOL, false),
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.denySession.selector, CENTRIFUGE_ID, POOL_ID, SESSION_ID),
             abi.encode()
         );
-        vm.expectCall(
-            address(gateway), abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, GLOBAL_POOL, false)
-        );
+        vm.mockCall(address(SAFE), abi.encodeWithSelector(ISafe.isOwner.selector, OWNER), abi.encode(true));
 
-        vm.prank(address(SAFE));
-        protocolGuardian.blockOutgoing(CENTRIFUGE_ID, false);
+        vm.prank(OWNER);
+        protocolGuardian.denySession(CENTRIFUGE_ID, POOL_ID, SESSION_ID);
     }
 
-    function testBlockOutgoingRevertWhenNotSafe() public {
+    function testDenySessionRevertWhenUnauthorized() public {
+        vm.mockCall(address(SAFE), abi.encodeWithSelector(ISafe.isOwner.selector, UNAUTHORIZED), abi.encode(false));
+
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
-        protocolGuardian.blockOutgoing(CENTRIFUGE_ID, true);
+        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafeOrItsOwner.selector);
+        protocolGuardian.denySession(CENTRIFUGE_ID, POOL_ID, SESSION_ID);
     }
 }
 
@@ -272,6 +273,18 @@ contract ProtocolGuardianTestFile is ProtocolGuardianTest {
         protocolGuardian.file("safe", newSafe);
 
         assertEq(address(protocolGuardian.safe()), newSafe);
+    }
+
+    function testFileMultiAdapterSuccess() public {
+        address newMultiAdapter = makeAddr("newMultiAdapter");
+
+        vm.expectEmit();
+        emit IProtocolGuardian.File("multiAdapter", newMultiAdapter);
+
+        vm.prank(address(SAFE));
+        protocolGuardian.file("multiAdapter", newMultiAdapter);
+
+        assertEq(address(protocolGuardian.multiAdapter()), newMultiAdapter);
     }
 
     function testFileSenderSuccess() public {
@@ -290,18 +303,6 @@ contract ProtocolGuardianTestFile is ProtocolGuardianTest {
         vm.prank(address(SAFE));
         vm.expectRevert(IProtocolGuardian.FileUnrecognizedParam.selector);
         protocolGuardian.file("invalid", makeAddr("address"));
-    }
-
-    function testFileGatewaySuccess() public {
-        address newGateway = makeAddr("newGateway");
-
-        vm.expectEmit();
-        emit IProtocolGuardian.File("gateway", newGateway);
-
-        vm.prank(address(SAFE));
-        protocolGuardian.file("gateway", newGateway);
-
-        assertEq(address(protocolGuardian.gateway()), newGateway);
     }
 
     function testFileRevertWhenNotSafe() public {

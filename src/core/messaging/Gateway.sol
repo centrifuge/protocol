@@ -41,14 +41,10 @@ contract Gateway is Auth, Recoverable, IGateway {
     IMessageProperties public messageProperties;
     IProtocolPauser public immutable pauser;
 
-    // Management
-    mapping(PoolId => mapping(address => bool)) public manager;
-
     // Outbound & payments
     bool public transient isBatching;
     bool internal transient _isSendingBatch;
     address internal transient _batcher;
-    mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Underpaid)) public underpaid;
 
     // Inbound
@@ -64,11 +60,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         _;
     }
 
-    modifier onlyAuthOrManager(PoolId poolId) {
-        require(wards[msg.sender] == 1 || manager[poolId][msg.sender], NotAuthorized());
-        _;
-    }
-
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
@@ -81,12 +72,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         else revert FileUnrecognizedParam();
 
         emit File(what, instance);
-    }
-
-    /// @inheritdoc IGateway
-    function updateManager(PoolId poolId, address who, bool canManage) external auth {
-        manager[poolId][who] = canManage;
-        emit UpdateManager(poolId, who, canManage);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -208,9 +193,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         bool unpaidMode,
         uint256 fuel
     ) internal returns (uint256 cost) {
-        PoolId adapterPoolId = messageProperties.messagePoolId(batch);
-        require(!isOutgoingBlocked[centrifugeId][adapterPoolId], OutgoingBlocked());
-
         cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
         if (fuel >= cost) {
             adapter.send{value: cost}(centrifugeId, batch, batchGasLimit, refund);
@@ -320,12 +302,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(_batcher != address(0), CallbackIsLocked());
         require(msg.sender == _batcher, CallbackWasNotFromSender());
         _batcher = address(0);
-    }
-
-    /// @inheritdoc IGateway
-    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external onlyAuthOrManager(poolId) {
-        isOutgoingBlocked[centrifugeId][poolId] = isBlocked;
-        emit BlockOutgoing(centrifugeId, poolId, isBlocked);
     }
 
     //----------------------------------------------------------------------------------------------

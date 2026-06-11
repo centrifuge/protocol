@@ -121,7 +121,7 @@ contract TestAuthChecks is TestCommon {
         dispatcher.sendSetPoolAdapters(REMOTE_CHAIN, POOL_A, adapters, 0, 0, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendUpdateGatewayManager(REMOTE_CHAIN, POOL_A, bytes32(0), true, REFUND);
+        dispatcher.sendUpdateAdaptersManager(REMOTE_CHAIN, POOL_A, bytes32(0), true, REFUND);
 
         vm.stopPrank();
     }

@@ -16,10 +16,10 @@ import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 import {SetConfigParam, ILayerZeroEndpointV2Like} from "../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
 /// @title WireToNewNetwork
-/// @notice Proposes batched OpsGuardian.wire/initAdapters and LZ DVN config transactions via Safe
+/// @notice Proposes batched OpsGuardian.wire/setAdapters and LZ DVN config transactions via Safe
 ///         to wire a source chain to one or more target chains.
 /// @dev Run this script on each source chain that needs to be wired to target chain(s).
-///      All ops Safe calls (wire + initAdapters) are batched into a single proposal.
+///      All ops Safe calls (wire + setAdapters) are batched into a single proposal.
 ///      All protocol Safe calls (LZ DVN config) are batched into a single proposal.
 ///      This minimizes signing rounds to at most 2 per source chain.
 ///
@@ -91,8 +91,7 @@ contract WireToNewNetwork is Script {
     // Internal: collect calls
     //----------------------------------------------------------------------------------------------
 
-    /// @dev Collects all OpsGuardian.wire + initAdapters calls across all targets.
-    ///      Skips targets where quorum is already set (already wired).
+    /// @dev Collects all OpsGuardian.wire + setAdapters calls across all targets.
     function _collectWireCalls(EnvConfig memory source, string[] memory targetNames)
         internal
         view
@@ -100,7 +99,7 @@ contract WireToNewNetwork is Script {
     {
         address opsGuardian = source.contracts.opsGuardian;
 
-        // Over-allocate: max 5 calls per target (4 adapters + 1 initAdapters)
+        // Over-allocate: max 5 calls per target (4 adapters + 1 setAdapters)
         targets = new address[](targetNames.length * 5);
         data = new bytes[](targetNames.length * 5);
         uint256 idx;
@@ -191,7 +190,7 @@ contract WireToNewNetwork is Script {
 
             targets[idx] = opsGuardian;
             data[idx] = abi.encodeCall(
-                IOpsGuardian.initAdapters,
+                IOpsGuardian.setAdapters,
                 // recoveryIndex = adapterCount: no recovery adapter. Configured separately after initial wiring if needed.
                 (centrifugeId, trimmedAdapters, conn.threshold, uint8(adapterCount))
             );

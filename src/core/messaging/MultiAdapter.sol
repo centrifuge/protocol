@@ -10,7 +10,6 @@ import {Auth} from "../../misc/Auth.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {ArrayLib} from "../../misc/libraries/ArrayLib.sol";
-import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 
@@ -20,26 +19,34 @@ import {PoolId} from "../types/PoolId.sol";
 ///         forwarding messages to the gateway for execution.
 contract MultiAdapter is Auth, IMultiAdapter {
     using CastLib for *;
-    using BytesLib for bytes;
+
     using MathLib for uint256;
     using ArrayLib for int16[8];
-
-    PoolId public constant GLOBAL_POOL = PoolId.wrap(0);
 
     uint16 public immutable localCentrifugeId;
 
     IMessageHandler public gateway;
     IMessageProperties public messageProperties;
 
-    uint128 lastSessionId;
+    mapping(PoolId => mapping(address => bool)) public manager;
 
-    mapping(uint16 centrifugeId => mapping(PoolId => IAdapter[])) public adapters;
-    mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => Inbound)) public inbound;
-    mapping(uint16 centrifugeId => mapping(PoolId => mapping(IAdapter adapter => Adapter))) internal _adapterDetails;
+    mapping(uint16 centrifugeId => mapping(PoolId => uint16)) public activeSessionId;
+    mapping(uint16 centrifugeId => mapping(PoolId => Adapters)) internal _activeAdapters;
+    mapping(uint16 centrifugeId => mapping(PoolId => mapping(uint16 sessionId => IAdapter[]))) public adapters;
+    mapping(
+        uint16 centrifugeId => mapping(PoolId => mapping(uint16 sessionId => mapping(IAdapter adapter => Adapter)))
+    ) internal _adapterDetails;
+
+    mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => int16[MAX_ADAPTER_COUNT])) internal _votes;
 
     constructor(uint16 localCentrifugeId_, IMessageHandler gateway_, address deployer) Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
         gateway = gateway_;
+    }
+
+    modifier onlyAuthOrManager(PoolId poolId) {
+        require(wards[msg.sender] == 1 || manager[poolId][msg.sender], NotAuthorized());
+        _;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -68,28 +75,52 @@ contract MultiAdapter is Auth, IMultiAdapter {
         require(threshold_ <= quorum_, ThresholdHigherThanQuorum());
         require(recoveryIndex_ <= quorum_, RecoveryIndexHigherThanQuorum());
 
-        // Increment session id to reset pending votes
-        uint256 numAdapters = adapters[centrifugeId][poolId].length;
-        uint128 sessionId = lastSessionId + 1;
-
-        // Disable old adapters
-        for (uint8 i; i < numAdapters; i++) {
-            delete _adapterDetails[centrifugeId][poolId][adapters[centrifugeId][poolId][i]];
+        // Increment session id to reset pending votes, wrapping from max back to 1 (skipping 0)
+        uint16 sessionId;
+        unchecked {
+            sessionId = activeSessionId[centrifugeId][poolId] + 1;
         }
+        if (sessionId == 0) sessionId = 1;
+        activeSessionId[centrifugeId][poolId] = sessionId;
 
         // Enable new adapters, setting quorum to number of adapters
         for (uint8 j; j < quorum_; j++) {
-            require(_adapterDetails[centrifugeId][poolId][addresses[j]].id == 0, NoDuplicatesAllowed());
+            require(_adapterDetails[centrifugeId][poolId][sessionId][addresses[j]].id == 0, NoDuplicatesAllowed());
 
             // Ids are assigned sequentially starting at 1
-            _adapterDetails[centrifugeId][poolId][addresses[j]] =
-                Adapter(j + 1, quorum_, threshold_, recoveryIndex_, sessionId);
+            _adapterDetails[centrifugeId][poolId][sessionId][addresses[j]] =
+                Adapter(j + 1, quorum_, threshold_, recoveryIndex_);
         }
 
-        adapters[centrifugeId][poolId] = addresses;
-        lastSessionId = sessionId;
+        adapters[centrifugeId][poolId][sessionId] = addresses;
+        _activeAdapters[centrifugeId][poolId] = Adapters(sessionId, addresses);
 
         emit SetAdapters(centrifugeId, poolId, addresses, threshold_, recoveryIndex_);
+    }
+
+    /// @inheritdoc IMultiAdapter
+    function denySession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external onlyAuthOrManager(poolId) {
+        uint256 numAdapters = adapters[centrifugeId][poolId][sessionId].length;
+
+        for (uint8 i; i < numAdapters; i++) {
+            IAdapter adapter = adapters[centrifugeId][poolId][sessionId][i];
+            delete _adapterDetails[centrifugeId][poolId][sessionId][adapter];
+        }
+
+        delete adapters[centrifugeId][poolId][sessionId];
+
+        // If the session is the active one, we also remove the capability of sending messages through the adapters
+        if (sessionId == activeSessionId[centrifugeId][poolId]) {
+            delete _activeAdapters[centrifugeId][poolId];
+        }
+
+        emit DenySession(centrifugeId, poolId, sessionId);
+    }
+
+    /// @inheritdoc IMultiAdapter
+    function updateManager(PoolId poolId, address who, bool canManage) external auth {
+        manager[poolId][who] = canManage;
+        emit UpdateManager(poolId, who, canManage);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -98,10 +129,12 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes calldata payload) external {
-        PoolId poolId = messageProperties.messagePoolId(payload);
+        uint16 sessionId = uint16(bytes2(payload[0:2]));
+        bytes calldata unwrappedPayload = payload[2:];
+        PoolId poolId = messageProperties.messagePoolId(unwrappedPayload);
 
         IAdapter adapterAddr = IAdapter(msg.sender);
-        Adapter memory adapter = _adapterDetails[centrifugeId][poolId][adapterAddr];
+        Adapter memory adapter = _adapterDetails[centrifugeId][poolId][sessionId][adapterAddr];
         require(adapter.id != 0, InvalidAdapter());
 
         // Verify adapter and parse message hash
@@ -109,28 +142,14 @@ contract MultiAdapter is Auth, IMultiAdapter {
         bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payloadHash));
         emit HandlePayload(centrifugeId, payloadId, payload, adapterAddr);
 
-        // Special case for gas efficiency
-        if (adapter.quorum == 1) {
-            gateway.handle(centrifugeId, payload);
-            return;
-        }
+        int16[MAX_ADAPTER_COUNT] storage votes_ = _votes[centrifugeId][payloadHash];
+        votes_[adapter.id - 1]++;
 
-        Inbound storage state = inbound[centrifugeId][payloadHash];
-
-        if (adapter.activeSessionId != state.sessionId) {
-            // Clear votes from previous session
-            delete state.votes;
-            state.sessionId = adapter.activeSessionId;
-        }
-
-        // Increase vote
-        state.votes[adapter.id - 1]++;
-
-        if (state.votes.countPositiveValues(adapter.quorum) >= adapter.threshold) {
+        if (votes_.countPositiveValues(adapter.quorum) >= adapter.threshold) {
             // Reduce votes by quorum
-            state.votes.decreaseFirstNValues(adapter.quorum, adapter.recoveryIndex);
+            votes_.decreaseFirstNValues(adapter.quorum, adapter.recoveryIndex);
 
-            gateway.handle(centrifugeId, payload);
+            gateway.handle(centrifugeId, unwrappedPayload);
         }
     }
 
@@ -146,12 +165,14 @@ contract MultiAdapter is Auth, IMultiAdapter {
         returns (bytes32)
     {
         PoolId poolId = messageProperties.messagePoolId(payload);
-        IAdapter[] memory adapters_ = adapters[centrifugeId][poolId];
-        require(adapters_.length != 0, EmptyAdapterSet());
+        Adapters memory adapters_ = _activeAdapters[centrifugeId][poolId];
+        require(adapters_.list.length != 0, EmptyAdapterSet());
 
-        bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, keccak256(payload)));
-        for (uint256 i = 0; i < adapters_.length; i++) {
-            _sendToAdapter(centrifugeId, payloadId, payload, adapters_[i], gasLimit, refund);
+        bytes memory wrappedPayload = abi.encodePacked(adapters_.sessionId, payload);
+
+        bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, keccak256(wrappedPayload)));
+        for (uint256 i = 0; i < adapters_.list.length; i++) {
+            _sendToAdapter(centrifugeId, payloadId, wrappedPayload, adapters_.list[i], gasLimit, refund);
         }
 
         return bytes32(0);
@@ -160,7 +181,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     function _sendToAdapter(
         uint16 centrifugeId,
         bytes32 payloadId,
-        bytes calldata payload,
+        bytes memory payload,
         IAdapter adapter,
         uint256 gasLimit,
         address refund
@@ -177,10 +198,15 @@ contract MultiAdapter is Auth, IMultiAdapter {
         returns (uint256 total)
     {
         PoolId poolId = messageProperties.messagePoolId(payload);
-        IAdapter[] memory adapters_ = adapters[centrifugeId][poolId];
+        IAdapter[] memory adapters_ = _activeAdapters[centrifugeId][poolId].list;
+        require(adapters_.length != 0, EmptyAdapterSet());
+
+        // Account for the 2-byte session id prefix added in send().
+        // Using non zero bytes to assume max cost as calldata
+        bytes memory wrappedPayload = abi.encodePacked(uint16((1 << 8) + 1), payload);
 
         for (uint256 i; i < adapters_.length; i++) {
-            total += adapters_[i].estimate(centrifugeId, payload, gasLimit);
+            total += adapters_[i].estimate(centrifugeId, wrappedPayload, gasLimit);
         }
     }
 
@@ -204,19 +230,19 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @inheritdoc IMultiAdapter
-    function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint128) {
-        return _getFirstAdapterDetails(centrifugeId, poolId).activeSessionId;
+    function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (int16[MAX_ADAPTER_COUNT] memory) {
+        return _votes[centrifugeId][payloadHash];
     }
 
     /// @inheritdoc IMultiAdapter
-    function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (int16[MAX_ADAPTER_COUNT] memory) {
-        return inbound[centrifugeId][payloadHash].votes;
+    function activeAdapters(uint16 centrifugeId, PoolId poolId) external view returns (Adapters memory) {
+        return _activeAdapters[centrifugeId][poolId];
     }
 
     /// @dev Internal helper to get the first adapter's details for a pool, handling empty cases
     function _getFirstAdapterDetails(uint16 centrifugeId, PoolId poolId) internal view returns (Adapter memory) {
-        IAdapter[] memory adapters_ = adapters[centrifugeId][poolId];
-        if (adapters_.length == 0) return Adapter(0, 0, 0, 0, 0);
-        return _adapterDetails[centrifugeId][poolId][adapters_[0]];
+        Adapters memory adapters_ = _activeAdapters[centrifugeId][poolId];
+        if (adapters_.list.length == 0) return Adapter(0, 0, 0, 0);
+        return _adapterDetails[centrifugeId][poolId][adapters_.sessionId][adapters_.list[0]];
     }
 }

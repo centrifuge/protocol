@@ -208,7 +208,6 @@ contract GatewayTest is Test {
     GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), address(this));
 
     address immutable ANY = makeAddr("ANY");
-    address immutable MANAGER = makeAddr("MANAGER");
     address immutable REFUND = makeAddr("REFUND");
     address NO_PAYABLE_DESTINATION = address(new NoPayableDestination());
 
@@ -265,22 +264,6 @@ contract GatewayTestFile is GatewayTest {
 
         gateway.file("adapter", address(88));
         assertEq(address(gateway.adapter()), address(88));
-    }
-}
-
-contract GatewayTestUpdateManager is GatewayTest {
-    function testErrNotAuthorized() public {
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.updateManager(POOL_A, MANAGER, true);
-    }
-
-    function testUpdateManager() public {
-        vm.expectEmit();
-        emit IGateway.UpdateManager(POOL_A, MANAGER, true);
-        gateway.updateManager(POOL_A, MANAGER, true);
-
-        assertEq(gateway.manager(POOL_A, MANAGER), true);
     }
 }
 
@@ -458,19 +441,6 @@ contract GatewayTestSend is GatewayTest {
         gateway.startBatching();
         vm.expectRevert(IGateway.NotPayable.selector);
         gateway.send{value: 1}(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes(), false, REFUND);
-    }
-
-    function testErrOutgoingBlocked() public {
-        bytes memory message = MessageKind.WithPoolA1.asBytes();
-        gateway.updateManager(POOL_A, MANAGER, true);
-
-        vm.prank(MANAGER);
-        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
-
-        _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_OVERALL_GAS_LIMIT, REFUND);
-
-        vm.expectRevert(IGateway.OutgoingBlocked.selector);
-        gateway.send(REMOTE_CENT_ID, message, false, REFUND);
     }
 
     function testErrCannotRefund() public {
@@ -767,21 +737,6 @@ contract GatewayTestRepay is GatewayTest {
         gateway.repay(REMOTE_CENT_ID, batch, REFUND);
     }
 
-    function testErrOutgoingBlocked() public {
-        bytes memory batch = MessageKind.WithPoolA1.asBytes();
-        gateway.updateManager(POOL_A, MANAGER, true);
-
-        _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_OVERALL_GAS_LIMIT, address(this));
-        gateway.send(REMOTE_CENT_ID, batch, true, address(0));
-        uint256 payment = MESSAGE_OVERALL_GAS_LIMIT + ADAPTER_ESTIMATE;
-
-        vm.prank(MANAGER);
-        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
-
-        vm.expectRevert(IGateway.OutgoingBlocked.selector);
-        gateway.repay{value: payment}(REMOTE_CENT_ID, batch, REFUND);
-    }
-
     function testCorrectRepay() public {
         bytes memory batch = MessageKind.WithPoolA1.asBytes();
 
@@ -800,25 +755,6 @@ contract GatewayTestRepay is GatewayTest {
         assertEq(gasLimit, 0);
 
         assertEq(address(REFUND).balance, 1234); // Excees is refunded
-    }
-}
-
-contract GatewayTestBlockOutgoing is GatewayTest {
-    function testErrManagerNotAllowed() public {
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, false);
-    }
-
-    function testBlockOutgoing() public {
-        gateway.updateManager(POOL_A, MANAGER, true);
-
-        vm.prank(MANAGER);
-        vm.expectEmit();
-        emit IGateway.BlockOutgoing(REMOTE_CENT_ID, POOL_A, true);
-        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
-
-        assertEq(gateway.isOutgoingBlocked(REMOTE_CENT_ID, POOL_A), true);
     }
 }
 

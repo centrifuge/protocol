@@ -130,6 +130,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         vm.assume(nonWard != address(protocolGuardian));
         vm.assume(nonWard != address(opsGuardian));
         vm.assume(nonWard != address(gateway));
+        vm.assume(nonWard != address(messageDispatcher));
         vm.assume(nonWard != address(messageProcessor));
         vm.assume(nonWard != address(hub));
 
@@ -137,6 +138,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(multiAdapter.wards(address(protocolGuardian)), 1);
         assertEq(multiAdapter.wards(address(opsGuardian)), 1);
         assertEq(multiAdapter.wards(address(gateway)), 1);
+        assertEq(multiAdapter.wards(address(messageDispatcher)), 1);
         assertEq(multiAdapter.wards(address(messageProcessor)), 1);
         assertEq(multiAdapter.wards(address(hub)), 1);
         assertEq(multiAdapter.wards(nonWard), 0);
@@ -173,6 +175,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(address(messageDispatcher.scheduleAuth()), address(root));
         assertEq(address(messageDispatcher.tokenRecoverer()), address(tokenRecoverer));
         assertEq(address(messageDispatcher.gateway()), address(gateway));
+        assertEq(address(messageDispatcher.multiAdapter()), address(multiAdapter));
         assertEq(address(messageDispatcher.spoke()), address(spoke));
         assertEq(address(messageDispatcher.balanceSheet()), address(balanceSheet));
         assertEq(address(messageDispatcher.hubHandler()), address(hubHandler));
@@ -191,7 +194,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(address(messageProcessor.scheduleAuth()), address(root));
         assertEq(address(messageProcessor.tokenRecoverer()), address(tokenRecoverer));
         assertEq(address(messageProcessor.multiAdapter()), address(multiAdapter));
-        assertEq(address(messageProcessor.gateway()), address(gateway));
         assertEq(address(messageProcessor.spoke()), address(spoke));
         assertEq(address(messageProcessor.balanceSheet()), address(balanceSheet));
         assertEq(address(messageProcessor.contractUpdater()), address(contractUpdater));
@@ -431,7 +433,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(protocolGuardian.root()), address(root));
         assertEq(address(protocolGuardian.safe()), address(ADMIN_SAFE));
-        assertEq(address(protocolGuardian.gateway()), address(gateway));
+        assertEq(address(protocolGuardian.multiAdapter()), address(multiAdapter));
         assertEq(address(protocolGuardian.sender()), address(messageDispatcher));
     }
 

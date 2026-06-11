@@ -32,8 +32,6 @@ interface IGateway is IMessageHandler, IRecoverable {
     //----------------------------------------------------------------------------------------------
 
     event File(bytes32 indexed what, address addr);
-    event UpdateManager(PoolId poolId, address who, bool canManage);
-    event BlockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked);
     event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
     event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch, bytes32 batchHash);
     event RepayBatch(uint16 indexed centrifugeId, bytes batch);
@@ -70,9 +68,6 @@ interface IGateway is IMessageHandler, IRecoverable {
 
     /// @notice Dispatched when the content of a batch doesn't belong to the same pool
     error MalformedBatch();
-
-    /// @notice Dispatched when a message is sent but the gateway is blocked for sending messages
-    error OutgoingBlocked();
 
     /// @notice Dispatched when an account is not valid to withdraw subsidized pool funds
     error CannotRefund();
@@ -112,20 +107,6 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @param what The name of the variable to be updated
     /// @param data New address
     function file(bytes32 what, address data) external;
-
-    /// @notice Configures a manager address for a pool
-    /// @param poolId PoolId associated to the adapters
-    /// @param who Manager address
-    /// @param canManage If enabled as manager
-    function updateManager(PoolId poolId, address who, bool canManage) external;
-
-    /// @notice Block or unblock outgoing messages for a pool on a specific chain.
-    /// @dev    Used during adapter migrations to ensure no messages are in-flight while the adapter
-    ///         configuration is being updated. See `IHub.setAdapters` for the full procedure.
-    /// @param centrifugeId Centrifuge ID associated to this block
-    /// @param poolId PoolId associated to this block
-    /// @param canSend If can send messages or not
-    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool canSend) external;
 
     //----------------------------------------------------------------------------------------------
     // Message handling
@@ -207,18 +188,6 @@ interface IGateway is IMessageHandler, IRecoverable {
 
     /// @notice ProtocolGuardian that can pause/unpause all cross-chain messaging
     function pauser() external view returns (IProtocolPauser);
-
-    /// @notice Returns whether an address is a manager for a given pool
-    /// @param poolId The pool identifier
-    /// @param who The address to check
-    /// @return Whether the address is a manager
-    function manager(PoolId poolId, address who) external view returns (bool);
-
-    /// @notice Returns whether outgoing messages are blocked for a pool on a specific chain
-    /// @param centrifugeId The destination chain identifier
-    /// @param poolId The pool identifier
-    /// @return Whether outgoing is blocked
-    function isOutgoingBlocked(uint16 centrifugeId, PoolId poolId) external view returns (bool);
 
     /// @notice Returns the underpaid batch info for a given chain and batch hash
     /// @param centrifugeId The destination chain identifier

@@ -13,19 +13,20 @@ import {IMultiAdapter} from "../../core/messaging/interfaces/IMultiAdapter.sol";
 interface IOpsGuardian {
     error NotTheAuthorizedSafe();
     error FileUnrecognizedParam();
-    error AdaptersAlreadyInitialized();
+    error CannotSetAdaptersForLocalChain();
+    error CannotSetAdaptersForMainnet();
     error AdapterAlreadyWired();
 
     event File(bytes32 indexed what, address data);
 
-    /// @notice Initialize adapters for a new network (first-time setup only)
-    /// @dev Reverts if adapters are already configured for this centrifugeId
+    /// @notice Set adapters for a remote network (can be called multiple times to update)
+    /// @dev Reverts if centrifugeId matches the local chain or the hub chain
     /// @dev Does not trigger cross-chain message - local operation only
     /// @param centrifugeId Target chain ID to configure adapters on
     /// @param adapters Array of adapter contract addresses
     /// @param threshold Minimum number of adapters that must agree
     /// @param recoveryIndex Index of the recovery adapter in the array
-    function initAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
+    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
         external;
 
     /// @notice Wire an adapter to a remote chain (first-time setup only)
@@ -57,6 +58,6 @@ interface IOpsGuardian {
     /// @notice Hub contract called to register new pools
     function hub() external view returns (ICreatePool);
 
-    /// @notice MultiAdapter used for first-time adapter initialization and wiring on new networks
+    /// @notice MultiAdapter used for adapter configuration and wiring on remote networks
     function multiAdapter() external view returns (IMultiAdapter);
 }

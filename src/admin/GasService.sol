@@ -15,8 +15,10 @@ import {MessageLib, MessageType, VaultUpdateKind} from "../core/messaging/librar
 contract GasService is IGasService {
     using MessageLib for *;
 
-    /// @dev Takes into account Gateway + MultiAdapter computation
-    uint128 public constant BASE_COST = 75_000;
+    /// @dev Covers the real adapter overhead (Wormhole/Axelar/LZ signature verification and relay execution)
+    ///      that occurs before MultiAdapter.handle() is called on the destination chain.
+    ///      LocalAdapter used in tests is a trivial passthrough, so this cost is not captured by the benchmark.
+    uint128 public constant BASE_ADAPTER_COST = 75_000;
 
     /// @dev Adds an extra cost to recover token admin message to ensure different assets can transfer successfully
     uint128 public constant RECOVERY_TOKEN_EXTRA_COST = 100_000;
@@ -65,7 +67,7 @@ contract GasService is IGasService {
     uint128 public immutable updateShares;
     uint128 public immutable maxAssetPriceAge;
     uint128 public immutable maxSharePriceAge;
-    uint128 public immutable updateGatewayManager;
+    uint128 public immutable updateAdaptersManager;
     uint128 public immutable untrustedContractUpdate;
 
     constructor(uint8[32] memory txLimits, uint16 localCentrifugeId_) {
@@ -76,41 +78,40 @@ contract GasService is IGasService {
             txLimitsPerCentrifugeId += value << (31 - i) * 8;
         }
 
-        // NOTE: Raw benchmarked execution costs — no failure reserve included.
-        //       Update using script/utils/benchmark.sh. Reserve is added at query time by messageProcessingGasLimit.
-        scheduleUpgrade = _gasValue(120768);
-        cancelUpgrade = _gasValue(101224);
-        recoverTokens = RECOVERY_TOKEN_EXTRA_COST + _gasValue(176887);
-        registerAsset = _gasValue(130969);
-        setPoolAdapters = _gasValue(511779); // using MAX_ADAPTER_COUNT
-        request = _gasValue(246972);
-        notifyPool = _gasValue(1307547); // create escrow case
-        notifyShareClass = _gasValue(1885204);
-        notifyPricePoolPerShare = _gasValue(129048);
-        notifyPricePoolPerAsset = _gasValue(132862);
-        notifyShareMetadata = _gasValue(142611);
-        updateShareHook = _gasValue(118575);
-        initiateTransferShares = _gasValue(308874);
-        executeTransferShares = _gasValue(199685);
-        updateRestriction = _gasValue(139485);
-        trustedContractUpdate = _gasValue(170735);
-        requestCallback = _gasValue(357093); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2868067);
-        updateVaultLink = _gasValue(209710);
-        updateVaultUnlink = _gasValue(158477);
-        setRequestManager = _gasValue(127912);
-        updateBalanceSheetManager = _gasValue(126801);
-        updateHoldingAmount = _gasValue(327668);
-        updateShares = _gasValue(225086);
-        maxAssetPriceAge = _gasValue(132946);
-        maxSharePriceAge = _gasValue(129880);
-        updateGatewayManager = _gasValue(124459);
-        untrustedContractUpdate = _gasValue(111900);
+        // NOTE: Below values should be updated using script/utils/benchmark.sh
+        scheduleUpgrade = _gasValue(147239);
+        cancelUpgrade = _gasValue(127695);
+        recoverTokens = RECOVERY_TOKEN_EXTRA_COST + _gasValue(203160);
+        registerAsset = _gasValue(157428);
+        setPoolAdapters = _gasValue(778284); // using MAX_ADAPTER_COUNT
+        request = _gasValue(269271);
+        notifyPool = _gasValue(1334018); // create escrow case
+        notifyShareClass = _gasValue(1911675);
+        notifyPricePoolPerShare = _gasValue(155519);
+        notifyPricePoolPerAsset = _gasValue(159333);
+        notifyShareMetadata = _gasValue(169081);
+        updateShareHook = _gasValue(145046);
+        initiateTransferShares = _gasValue(335282);
+        executeTransferShares = _gasValue(226156);
+        updateRestriction = _gasValue(165956);
+        trustedContractUpdate = _gasValue(197206);
+        requestCallback = _gasValue(383564); // approve deposit case
+        updateVaultDeployAndLink = _gasValue(2894538);
+        updateVaultLink = _gasValue(236181);
+        updateVaultUnlink = _gasValue(184948);
+        setRequestManager = _gasValue(154383);
+        updateBalanceSheetManager = _gasValue(153272);
+        updateHoldingAmount = _gasValue(354161);
+        updateShares = _gasValue(251545);
+        maxAssetPriceAge = _gasValue(159417);
+        maxSharePriceAge = _gasValue(156351);
+        updateAdaptersManager = _gasValue(150785);
+        untrustedContractUpdate = _gasValue(138371);
     }
 
     /// @inheritdoc IMessageProperties
     function messageOverallGasLimit(uint16 centrifugeId, bytes calldata message) public view returns (uint128) {
-        uint128 value = messageProcessingGasLimit(centrifugeId, message) + BASE_COST;
+        uint128 value = messageProcessingGasLimit(centrifugeId, message) + BASE_ADAPTER_COST;
         // Multiply by 64/63 is because EIP-150 pass 63/64 gas to each method call
         // Calls from adapters requires adding more jumps (3): Executor -> Adapter -> MultiAdapter -> Gateway.
         return value * 262144 / 250047; // Equivalent to: value * 64 * 64 * 64 / (63 * 63 * 63)
@@ -165,7 +166,7 @@ contract GasService is IGasService {
         if (kind == MessageType.UpdateShares) return updateShares;
         if (kind == MessageType.SetMaxAssetPriceAge) return maxAssetPriceAge;
         if (kind == MessageType.SetMaxSharePriceAge) return maxSharePriceAge;
-        if (kind == MessageType.UpdateGatewayManager) return updateGatewayManager;
+        if (kind == MessageType.UpdateAdaptersManager) return updateAdaptersManager;
         if (kind == MessageType.UntrustedContractUpdate) return untrustedContractUpdate;
         revert InvalidMessageType(); // Unreachable
     }
@@ -187,11 +188,6 @@ contract GasService is IGasService {
         return message.messagePoolId();
     }
 
-    /// @dev Named wrapper for benchmarked raw execution costs stored in immutables.
-    ///      The value is measured from the call to MessageProcessor, so it already includes
-    ///      the Gateway -> MessageProcessor jump EIP-150 multiplier.
-    ///      BASE_COST and the EIP-150 multiplier for adapter hops are applied in messageOverallGasLimit.
-    ///      The failure gas reserve is NOT included here; it is added per destination chain in messageProcessingGasLimit.
     function _gasValue(uint128 value) internal pure returns (uint128) {
         return value;
     }

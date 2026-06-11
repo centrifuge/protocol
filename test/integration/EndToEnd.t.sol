@@ -257,8 +257,6 @@ contract EndToEndDeployment is Test {
         deploy.multiAdapter()
             .setAdapters(remoteCentrifugeId, GLOBAL_POOL, adapters, uint8(adapters.length), uint8(adapters.length));
 
-        vm.startPrank(address(deploy.protocolGuardian()));
-        deploy.gateway().updateManager(GLOBAL_POOL, GATEWAY_MANAGER, true);
         vm.stopPrank();
     }
 
@@ -457,7 +455,7 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
         h.oracleValuation.updateFeeder(POOL_A, 0, FEEDER.toBytes32(), true);
         h.hub.updateHubManager(POOL_A, address(h.oracleValuation), true);
-        h.hub.updateGatewayManager{value: GAS}(
+        h.hub.updateAdaptersManager{value: GAS}(
             POOL_A, h.centrifugeId, address(h.batchRequestManager).toBytes32(), true, REFUND
         );
         vm.stopPrank();
@@ -479,8 +477,8 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         h.hub.setAdapters{value: GAS}(POOL_A, s_.centrifugeId, localAdapters, remoteAdapters, 1, 1, REFUND);
-        h.hub.updateGatewayManager{value: GAS}(POOL_A, h.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
-        h.hub.updateGatewayManager{value: GAS}(POOL_A, s_.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
+        h.hub.updateAdaptersManager{value: GAS}(POOL_A, h.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
+        h.hub.updateAdaptersManager{value: GAS}(POOL_A, s_.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
     }
 
     function _configurePool(bool sameChain) internal {
@@ -1040,8 +1038,9 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         bytes memory message = MessageLib.NotifyPool({poolId: POOL_A.raw()}).serialize();
 
-        // In the remote recovery adapter, we recover the message
-        IMessageHandler(remoteAdapters[1].toAddress()).handle(h.centrifugeId, message);
+        // In the remote recovery adapter, we recover the message.
+        uint16 sessionId = s.multiAdapter.activeSessionId(h.centrifugeId, POOL_A);
+        IMessageHandler(remoteAdapters[1].toAddress()).handle(h.centrifugeId, abi.encodePacked(sessionId, message));
 
         assertEq(s.spoke.pool(POOL_A), block.timestamp); // 2 of 2 received and processed
     }

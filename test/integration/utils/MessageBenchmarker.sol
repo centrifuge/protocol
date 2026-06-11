@@ -22,7 +22,8 @@ contract MessageBenchmarker is IMessageHandler, Test {
         _cleanFirstFileInteraction();
 
         string memory json = vm.readFile(FILE_PATH);
-        string memory name = _getName(message);
+        // Strip the 2-byte session ID prefix that MultiAdapter prepends to outgoing messages
+        string memory name = _getName(message[2:]);
 
         uint256 prev = _getPreviousRegisteredValue(json, string.concat("$.", name));
         uint256 before = gasleft();
@@ -68,7 +69,7 @@ contract MessageBenchmarker is IMessageHandler, Test {
         if (kind == MessageType.UpdateShares) return "updateShares";
         if (kind == MessageType.SetMaxAssetPriceAge) return "maxAssetPriceAge";
         if (kind == MessageType.SetMaxSharePriceAge) return "maxSharePriceAge";
-        if (kind == MessageType.UpdateGatewayManager) return "updateGatewayManager";
+        if (kind == MessageType.UpdateAdaptersManager) return "updateAdaptersManager";
         if (kind == MessageType.UntrustedContractUpdate) return "untrustedContractUpdate";
         revert("Cannot benchmark message"); // Unreachable
     }

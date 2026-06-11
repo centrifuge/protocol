@@ -182,7 +182,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external payable;
 
     /// @notice Creates and send the message
-    function sendUpdateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage, address refund)
+    function sendUpdateAdaptersManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage, address refund)
         external
         payable;
 }

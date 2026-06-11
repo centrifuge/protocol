@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 import json, re, sys, pathlib
 
-# Takes into account diverge computation from the base benchmarked value.
-OFFSET = 25_000;
+# Safety margin added to each raw benchmarked value before writing to GasService.
+# The benchmark runs in a controlled test environment where storage slots accessed during
+# protocol setup are already warm. In production, the first execution of a message type
+# may encounter cold slots (2,100 gas each vs ~100 gas warm). This offset absorbs that
+# variance so the Gateway's `require(gasleft() >= gasLimit, NotEnoughGas())` check does
+# not spuriously fail and cause messages to be dropped.
+OFFSET = 25_000
 
 def main(json_path, sol_path):
     data = json.loads(pathlib.Path(json_path).read_text(encoding="utf-8"))

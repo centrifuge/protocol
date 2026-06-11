@@ -14,10 +14,11 @@ import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
 import {IMultiAdapter} from "../core/messaging/interfaces/IMultiAdapter.sol";
 
 /// @title  OpsGuardian
-/// @notice This contract manages operational aspects of the protocol including adapter initialization,
+/// @notice This contract manages operational aspects of the protocol including adapter configuration,
 ///         network wiring, and pool creation.
 contract OpsGuardian is IOpsGuardian {
     PoolId public constant GLOBAL_POOL = PoolId.wrap(0);
+    uint16 public constant MAINNET_CENTRIFUGE_ID = 1;
 
     ISafe public opsSafe;
     ICreatePool public hub;
@@ -58,11 +59,12 @@ contract OpsGuardian is IOpsGuardian {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IOpsGuardian
-    function initAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
+    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
         external
         onlySafe
     {
-        require(multiAdapter.quorum(centrifugeId, GLOBAL_POOL) == 0, AdaptersAlreadyInitialized());
+        require(centrifugeId != multiAdapter.localCentrifugeId(), CannotSetAdaptersForLocalChain());
+        require(centrifugeId != MAINNET_CENTRIFUGE_ID, CannotSetAdaptersForMainnet());
         multiAdapter.setAdapters(centrifugeId, GLOBAL_POOL, adapters, threshold, recoveryIndex);
     }
 

@@ -38,21 +38,13 @@ contract TestFile is TestCommon {
     function testErrNotAuthorized() public {
         vm.prank(address(ANY));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        processor.file("gateway", address(0));
+        processor.file("multiAdapter", address(0));
     }
 
     function testErrFileUnrecognizedParam() public {
         vm.prank(address(AUTH));
         vm.expectRevert(IMessageProcessor.FileUnrecognizedParam.selector);
         processor.file("unknown", address(0));
-    }
-
-    function testFileGateway() public {
-        vm.prank(address(AUTH));
-        vm.expectEmit();
-        emit IMessageProcessor.File("gateway", address(23));
-        processor.file("gateway", address(23));
-        assertEq(address(processor.gateway()), address(23));
     }
 
     function testFileMultiAdapter() public {

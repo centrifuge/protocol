@@ -471,13 +471,13 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function updateGatewayManager(PoolId poolId, uint16 centrifugeId, bytes32 who, bool canManage, address refund)
+    function updateAdaptersManager(PoolId poolId, uint16 centrifugeId, bytes32 who, bool canManage, address refund)
         external
         payable
     {
         _isManager(poolId);
 
-        sender.sendUpdateGatewayManager{value: msgValue()}(centrifugeId, poolId, who, canManage, refund);
+        sender.sendUpdateAdaptersManager{value: msgValue()}(centrifugeId, poolId, who, canManage, refund);
     }
 
     //----------------------------------------------------------------------------------------------

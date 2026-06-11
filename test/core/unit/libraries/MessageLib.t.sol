@@ -38,8 +38,8 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeUpdateGatewayManager() public {
-        MessageLib.deserializeUpdateGatewayManager(_prepareFor());
+    function testDeserializeUpdateAdaptersManager() public {
+        MessageLib.deserializeUpdateAdaptersManager(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -650,10 +650,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
-    function testUpdateGatewayManager(uint64 poolId, bytes32 who, bool canManage) public pure {
-        MessageLib.UpdateGatewayManager memory a =
-            MessageLib.UpdateGatewayManager({poolId: poolId, who: who, canManage: canManage});
-        MessageLib.UpdateGatewayManager memory b = MessageLib.deserializeUpdateGatewayManager(a.serialize());
+    function testUpdateAdaptersManager(uint64 poolId, bytes32 who, bool canManage) public pure {
+        MessageLib.UpdateAdaptersManager memory a =
+            MessageLib.UpdateAdaptersManager({poolId: poolId, who: who, canManage: canManage});
+        MessageLib.UpdateAdaptersManager memory b = MessageLib.deserializeUpdateAdaptersManager(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.who, b.who);

@@ -85,9 +85,7 @@ contract WireAdapters is Script {
                 continue;
             }
 
-            opsGuardian.initAdapters(
-                remote.network.centrifugeId, adapters, connection.threshold, uint8(adapters.length)
-            );
+            opsGuardian.setAdapters(remote.network.centrifugeId, adapters, connection.threshold, uint8(adapters.length));
             console.log("Registered", adapters.length, "source adapters for destination", connection.network);
         }
 

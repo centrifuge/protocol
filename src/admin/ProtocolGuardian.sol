@@ -8,7 +8,7 @@ import {IProtocolGuardian} from "./interfaces/IProtocolGuardian.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
-import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
+import {IMultiAdapter} from "../core/messaging/interfaces/IMultiAdapter.sol";
 import {IScheduleAuthMessageSender} from "../core/messaging/interfaces/IGatewaySenders.sol";
 
 /// @title  ProtocolGuardian
@@ -17,17 +17,15 @@ import {IScheduleAuthMessageSender} from "../core/messaging/interfaces/IGatewayS
 contract ProtocolGuardian is IProtocolGuardian {
     using CastLib for address;
 
-    PoolId public constant GLOBAL_POOL = PoolId.wrap(0);
-
     IRoot public immutable root;
     ISafe public safe;
-    IGateway public gateway;
+    IMultiAdapter public multiAdapter;
     IScheduleAuthMessageSender public sender;
 
-    constructor(ISafe safe_, IRoot root_, IGateway gateway_, IScheduleAuthMessageSender sender_) {
+    constructor(ISafe safe_, IRoot root_, IMultiAdapter multiAdapter_, IScheduleAuthMessageSender sender_) {
         safe = safe_;
         root = root_;
-        gateway = gateway_;
+        multiAdapter = multiAdapter_;
         sender = sender_;
     }
 
@@ -48,7 +46,7 @@ contract ProtocolGuardian is IProtocolGuardian {
     /// @inheritdoc IProtocolGuardian
     function file(bytes32 what, address data) external onlySafe {
         if (what == "safe") safe = ISafe(data);
-        else if (what == "gateway") gateway = IGateway(data);
+        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "sender") sender = IScheduleAuthMessageSender(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -83,6 +81,15 @@ contract ProtocolGuardian is IProtocolGuardian {
     }
 
     //----------------------------------------------------------------------------------------------
+    // Emergency Functions (Local)
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IProtocolGuardian
+    function denySession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external onlySafeOrOwner {
+        multiAdapter.denySession(centrifugeId, poolId, sessionId);
+    }
+
+    //----------------------------------------------------------------------------------------------
     // Cross-Chain Operations
     //----------------------------------------------------------------------------------------------
 
@@ -109,11 +116,6 @@ contract ProtocolGuardian is IProtocolGuardian {
         sender.sendRecoverTokens{value: msg.value}(
             centrifugeId, target.toBytes32(), token.toBytes32(), tokenId, to.toBytes32(), amount, refund
         );
-    }
-
-    /// @inheritdoc IProtocolGuardian
-    function blockOutgoing(uint16 centrifugeId, bool isBlocked) external onlySafe {
-        gateway.blockOutgoing(centrifugeId, GLOBAL_POOL, isBlocked);
     }
 
     //----------------------------------------------------------------------------------------------

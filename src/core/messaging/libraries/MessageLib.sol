@@ -28,7 +28,7 @@ enum MessageType {
     UpdateRestriction,
     UpdateVault,
     UpdateBalanceSheetManager,
-    UpdateGatewayManager,
+    UpdateAdaptersManager,
     UpdateHoldingAmount,
     UpdateShares,
     SetMaxAssetPriceAge,
@@ -76,7 +76,7 @@ library MessageLib {
         (41  << uint8(MessageType.UpdateRestriction) * 8) +
         (90  << uint8(MessageType.UpdateVault) * 8) +
         (42  << uint8(MessageType.UpdateBalanceSheetManager) * 8) +
-        (42  << uint8(MessageType.UpdateGatewayManager) * 8) +
+        (42  << uint8(MessageType.UpdateAdaptersManager) * 8) +
         (107  << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (75  << uint8(MessageType.UpdateShares) * 8) +
         (49  << uint8(MessageType.SetMaxAssetPriceAge) * 8) +
@@ -891,21 +891,21 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   UpdateGatewayManager
+    //   UpdateAdaptersManager
     //---------------------------------------
 
-    struct UpdateGatewayManager {
+    struct UpdateAdaptersManager {
         uint64 poolId;
         bytes32 who;
         bool canManage;
     }
 
-    function deserializeUpdateGatewayManager(bytes memory data) internal pure returns (UpdateGatewayManager memory) {
-        require(messageType(data) == MessageType.UpdateGatewayManager, UnknownMessageType());
-        return UpdateGatewayManager({poolId: data.toUint64(1), who: data.toBytes32(9), canManage: data.toBool(41)});
+    function deserializeUpdateAdaptersManager(bytes memory data) internal pure returns (UpdateAdaptersManager memory) {
+        require(messageType(data) == MessageType.UpdateAdaptersManager, UnknownMessageType());
+        return UpdateAdaptersManager({poolId: data.toUint64(1), who: data.toBytes32(9), canManage: data.toBool(41)});
     }
 
-    function serialize(UpdateGatewayManager memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateGatewayManager, t.poolId, t.who, t.canManage);
+    function serialize(UpdateAdaptersManager memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UpdateAdaptersManager, t.poolId, t.who, t.canManage);
     }
 }

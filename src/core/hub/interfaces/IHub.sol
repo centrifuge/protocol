@@ -434,17 +434,11 @@ interface IHub is IBatchedMulticall {
     function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external payable;
 
     /// @notice Set adapters for a pool in another chain.
-    /// @dev    Changing adapters increments the session ID, which invalidates any messages that were sent
-    ///         before the update but not yet delivered. To avoid failed deliveries, block outgoing messages on all
-    ///         affected chains before calling this function, and unblock after the new configuration has been delivered:
-    ///
-    ///         1. Grant gateway manager role on each affected chain via `updateGatewayManager`
-    ///         2. Call `gateway.blockOutgoing(canSend=false)` on each affected chain to pause outgoing messages
-    ///         3. Wait for all pending message deliveries to complete
-    ///         4. Call `setAdapters` with the new configuration
-    ///         5. Wait for the adapter update to be delivered
-    ///         6. Call `gateway.blockOutgoing(canSend=true)` on each affected chain to resume
-    ///
+    /// @dev    Changing adapters increments the session ID.
+    ///         All messages sent always use the latest session ID.
+    ///         The system can still receive message from old session IDs.
+    ///         If you want to block messages attached to some session ID from being processed,
+    ///         you need to call denySession() in the receiver side.
     /// @param poolId Pool associated to this configuration
     /// @param centrifugeId Chain where to perform the adapter configuration
     /// @param localAdapters Adapter addresses in this chain
@@ -462,13 +456,13 @@ interface IHub is IBatchedMulticall {
         address refund
     ) external payable;
 
-    /// @notice Update a gateway manager for a pool
+    /// @notice Update an adapters manager for a pool
     /// @param poolId Pool associated to this configuration
-    /// @param centrifugeId Chain where to perform the gateway configuration
+    /// @param centrifugeId Chain where to perform the adapter configuration
     /// @param who Address used as manager
     /// @param canManage If enabled as manager
     /// @param refund Address to receive excess gas refund
-    function updateGatewayManager(PoolId poolId, uint16 centrifugeId, bytes32 who, bool canManage, address refund)
+    function updateAdaptersManager(PoolId poolId, uint16 centrifugeId, bytes32 who, bool canManage, address refund)
         external
         payable;
 

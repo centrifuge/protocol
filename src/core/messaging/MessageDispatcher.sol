@@ -37,7 +37,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     using BytesLib for bytes;
     using MathLib for uint256;
 
-    PoolId internal constant GLOBAL_POOL = PoolId.wrap(0);
     uint16 public immutable localCentrifugeId;
 
     IGateway public gateway;
@@ -67,6 +66,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         if (what == "hubHandler") hubHandler = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
         else if (what == "gateway") gateway = IGateway(data);
+        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IContractUpdateGatewayHandler(data);
@@ -705,18 +705,18 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
-    function sendUpdateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage, address refund)
+    function sendUpdateAdaptersManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage, address refund)
         external
         payable
         auth
     {
         if (centrifugeId == localCentrifugeId) {
-            gateway.updateManager(poolId, who.toAddress(), canManage);
+            multiAdapter.updateManager(poolId, who.toAddress(), canManage);
             _refund(refund);
         } else {
             _send(
                 centrifugeId,
-                MessageLib.UpdateGatewayManager({poolId: poolId.raw(), who: who, canManage: canManage}).serialize(),
+                MessageLib.UpdateAdaptersManager({poolId: poolId.raw(), who: who, canManage: canManage}).serialize(),
                 false,
                 refund
             );

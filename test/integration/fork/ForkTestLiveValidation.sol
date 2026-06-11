@@ -19,13 +19,13 @@ import {BalanceSheet} from "../../../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
 import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
-import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IRequestManager} from "../../../src/core/interfaces/IRequestManager.sol";
 import {MessageProcessor} from "../../../src/core/messaging/MessageProcessor.sol";
 import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.sol";
 import {IVaultRegistry} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
+import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 
 import {Root} from "../../../src/admin/Root.sol";
 import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
@@ -760,11 +760,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             "MessageProcessor multiAdapter mismatch"
         );
         assertEq(
-            address(MessageProcessor(config.contracts.messageProcessor).gateway()),
-            config.contracts.gateway,
-            "MessageProcessor gateway mismatch"
-        );
-        assertEq(
             address(MessageProcessor(config.contracts.messageProcessor).spoke()),
             config.contracts.spoke,
             "MessageProcessor spoke mismatch"
@@ -1094,10 +1089,11 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         PoolId poolId,
         ChainConfigs.ChainConfig memory chainConfig
     ) internal view {
+        IMultiAdapter.Adapters memory activeAdapters_ = multiAdapterContract.activeAdapters(centrifugeId, poolId);
+
         // First adapter should always be Wormhole
-        IAdapter primaryAdapter = multiAdapterContract.adapters(centrifugeId, poolId, 0);
         assertEq(
-            address(primaryAdapter),
+            address(activeAdapters_.list[0]),
             config.contracts.wormholeAdapter,
             _formatAdapterError("MultiAdapter", "primary adapter", chainConfig.name)
         );
@@ -1107,18 +1103,16 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         bool sourceSupportsLayerZero = config.contracts.layerZeroAdapter != address(0);
 
         if (sourceSupportsAxelar && chainConfig.hasAxelar) {
-            IAdapter axelarAdapterInterface = multiAdapterContract.adapters(centrifugeId, poolId, adapterIndex);
             assertEq(
-                address(axelarAdapterInterface),
+                address(activeAdapters_.list[adapterIndex]),
                 config.contracts.axelarAdapter,
                 _formatAdapterError("MultiAdapter", "Axelar adapter", chainConfig.name)
             );
             adapterIndex++;
         }
         if (sourceSupportsLayerZero && chainConfig.hasLayerZero) {
-            IAdapter lzAdapterInterface = multiAdapterContract.adapters(centrifugeId, poolId, adapterIndex);
             assertEq(
-                address(lzAdapterInterface),
+                address(activeAdapters_.list[adapterIndex]),
                 config.contracts.layerZeroAdapter,
                 _formatAdapterError("MultiAdapter", "LayerZero adapter", chainConfig.name)
             );

@@ -686,11 +686,9 @@ contract InvestmentFlowExecutor is Test {
     function _configureHubAdaptersIfNeeded(InvestmentFlowContext memory ctx) internal {
         uint16 hubCentrifugeId = ctx.gql.hubCentrifugeId;
 
-        try ctx.report.core.multiAdapter.adapters(hubCentrifugeId, ctx.poolId, 0) returns (IAdapter existingAdapter) {
-            if (address(existingAdapter) != address(0)) {
-                return;
-            }
-        } catch {}
+        if (ctx.report.core.multiAdapter.activeAdapters(hubCentrifugeId, ctx.poolId).list.length > 0) {
+            return;
+        }
 
         // Use PassthroughAdapter for cross-chain fork tests
         // It accepts outgoing messages without trying to deliver them immediately
