@@ -93,6 +93,10 @@ function eq(D18 a, D18 b) pure returns (bool) {
     return D18.unwrap(a) == D18.unwrap(b);
 }
 
+function geq(D18 a, D18 b) pure returns (bool) {
+    return D18.unwrap(a) >= D18.unwrap(b);
+}
+
 function isZero(D18 a) pure returns (bool) {
     return D18.unwrap(a) == 0;
 }
@@ -110,6 +114,7 @@ using {
     sub as -,
     divD18 as /,
     eq,
+    geq as >=,
     mulD18 as *,
     mulUint128,
     mulUint256,
