@@ -100,8 +100,8 @@ contract WireToNewNetwork is Script {
         address opsGuardian = source.contracts.opsGuardian;
 
         // Over-allocate: max 5 calls per target (4 adapters + 1 setAdapters)
-        targets = new address[](targetNames.length * 5);
-        data = new bytes[](targetNames.length * 5);
+        targets = new address[](targetNames.length * 6);
+        data = new bytes[](targetNames.length * 6);
         uint256 idx;
 
         for (uint256 t; t < targetNames.length; t++) {
@@ -115,7 +115,7 @@ contract WireToNewNetwork is Script {
 
             Connection memory conn = _findTargetConnection(source, targetNames[t]);
 
-            IAdapter[] memory adapters = new IAdapter[](4);
+            IAdapter[] memory adapters = new IAdapter[](5);
             uint256 adapterCount;
 
             if (conn.layerZero) {
@@ -180,6 +180,22 @@ contract WireToNewNetwork is Script {
                 );
                 idx++;
                 adapters[adapterCount++] = IAdapter(chainlinkAdapter);
+            }
+
+            if (conn.hyperlane) {
+                address hyperlaneAdapter = source.contracts.hyperlaneAdapter;
+                require(hyperlaneAdapter != address(0), "Hyperlane adapter not configured for source network");
+                targets[idx] = opsGuardian;
+                data[idx] = abi.encodeCall(
+                    IOpsGuardian.wire,
+                    (
+                        hyperlaneAdapter,
+                        centrifugeId,
+                        abi.encode(target.adapters.hyperlane.hyperlaneId, target.contracts.hyperlaneAdapter)
+                    )
+                );
+                idx++;
+                adapters[adapterCount++] = IAdapter(hyperlaneAdapter);
             }
 
             // Trim adapters to actual count

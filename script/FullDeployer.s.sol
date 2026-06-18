@@ -61,6 +61,7 @@ import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
 import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
+import {HyperlaneAdapter} from "../src/adapters/HyperlaneAdapter.sol";
 import {RefundEscrowFactory} from "../src/utils/RefundEscrowFactory.sol";
 import {
     Constants,
@@ -103,11 +104,18 @@ struct ChainlinkInput {
     address ccipRouter;
 }
 
+struct HyperlaneInput {
+    bool shouldDeploy;
+    address mailbox;
+    address ism;
+}
+
 struct AdaptersInput {
     LayerZeroInput layerZero;
     WormholeInput wormhole;
     AxelarInput axelar;
     ChainlinkInput chainlink;
+    HyperlaneInput hyperlane;
     AdapterConnections[] connections;
 }
 
@@ -183,6 +191,7 @@ contract FullDeployer is BaseDeployer, Constants {
     AxelarAdapter axelarAdapter;
     WormholeAdapter wormholeAdapter;
     LayerZeroAdapter layerZeroAdapter;
+    HyperlaneAdapter hyperlaneAdapter;
 
     CoreActionBatcher public coreBatcher;
     NonCoreActionBatcher public nonCoreBatcher;
@@ -226,7 +235,8 @@ contract FullDeployer is BaseDeployer, Constants {
                         input.adapters.connections,
                         input.adapters.layerZero.configParams,
                         input.adapters.layerZero.delegate,
-                        vm.toString(address(axelarAdapter))
+                        vm.toString(address(axelarAdapter)),
+                        input.adapters.hyperlane.ism
                     )
                 )
             )
@@ -694,6 +704,20 @@ contract FullDeployer is BaseDeployer, Constants {
                 )
             );
         }
+
+        if (input.hyperlane.shouldDeploy) {
+            require(input.hyperlane.mailbox != address(0), "Hyperlane mailbox address cannot be zero");
+            require(input.hyperlane.mailbox.code.length > 0, "Hyperlane mailbox must be a deployed contract");
+
+            hyperlaneAdapter = HyperlaneAdapter(
+                create3(
+                    createSalt("hyperlaneAdapter", V3_1),
+                    abi.encodePacked(
+                        type(HyperlaneAdapter).creationCode, abi.encode(multiAdapter, input.hyperlane.mailbox, batcher)
+                    )
+                )
+            );
+        }
     }
 
     function coreReport() public view returns (CoreReport memory) {
@@ -747,7 +771,9 @@ contract FullDeployer is BaseDeployer, Constants {
     }
 
     function adaptersReport() public view returns (AdaptersReport memory) {
-        return AdaptersReport(coreReport(), layerZeroAdapter, wormholeAdapter, axelarAdapter, chainlinkAdapter);
+        return AdaptersReport(
+            coreReport(), layerZeroAdapter, wormholeAdapter, axelarAdapter, chainlinkAdapter, hyperlaneAdapter
+        );
     }
 }
 
@@ -759,6 +785,7 @@ function noAdaptersInput() pure returns (AdaptersInput memory) {
             shouldDeploy: false, endpoint: address(0), delegate: address(0), configParams: new SetConfigParam[](0)
         }),
         chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
+        hyperlane: HyperlaneInput({shouldDeploy: false, mailbox: address(0), ism: address(0)}),
         connections: new AdapterConnections[](0)
     });
 }

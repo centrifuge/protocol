@@ -57,11 +57,19 @@ struct ChainlinkConfig {
     bool deploy;
 }
 
+struct HyperlaneConfig {
+    uint32 hyperlaneId;
+    address mailbox;
+    address ism;
+    bool deploy;
+}
+
 struct AdaptersConfig {
     LayerZeroConfig layerZero;
     WormholeConfig wormhole;
     AxelarConfig axelar;
     ChainlinkConfig chainlink;
+    HyperlaneConfig hyperlane;
 }
 
 struct ContractsConfig {
@@ -121,6 +129,7 @@ struct ContractsConfig {
     address wormholeAdapter;
     address axelarAdapter;
     address chainlinkAdapter;
+    address hyperlaneAdapter;
 }
 
 struct EnvConfig {
@@ -181,6 +190,10 @@ library Env {
 
         try vm.parseJsonBool(json, ".adapters.chainlink.deploy") returns (bool val) {
             config.chainlink.deploy = val;
+        } catch {}
+
+        try vm.parseJsonBool(json, ".adapters.hyperlane.deploy") returns (bool val) {
+            config.hyperlane.deploy = val;
         } catch {}
 
         if (config.layerZero.deploy) {
@@ -258,6 +271,15 @@ library Env {
             config.chainlink.chainSelector = uint64(vm.parseJsonUint(json, ".adapters.chainlink.chainSelector"));
             config.chainlink.ccipRouter = vm.parseJsonAddress(json, ".adapters.chainlink.ccipRouter");
         }
+
+        if (config.hyperlane.deploy) {
+            config.hyperlane.hyperlaneId = uint32(vm.parseJsonUint(json, ".adapters.hyperlane.hyperlaneId"));
+            config.hyperlane.mailbox = vm.parseJsonAddress(json, ".adapters.hyperlane.mailbox");
+            // ISM is optional: a deployment may leave it unset (falls back to the Mailbox default ISM).
+            try vm.parseJsonAddress(json, ".adapters.hyperlane.ism") returns (address val) {
+                config.hyperlane.ism = val;
+            } catch {}
+        }
     }
 
     function _parseContractsConfig(string memory json) private view returns (ContractsConfig memory config) {
@@ -329,6 +351,7 @@ library Env {
         config.wormholeAdapter = _tryParseContractAddress(json, "wormholeAdapter");
         config.axelarAdapter = _tryParseContractAddress(json, "axelarAdapter");
         config.chainlinkAdapter = _tryParseContractAddress(json, "chainlinkAdapter");
+        config.hyperlaneAdapter = _tryParseContractAddress(json, "hyperlaneAdapter");
     }
 
     function _parseContractAddress(string memory json, string memory key) private pure returns (address) {
@@ -438,6 +461,7 @@ library EnvConfigLib {
                 wormholeId: connection.wormhole ? remoteConfig.adapters.wormhole.wormholeId : 0,
                 axelarId: connection.axelar ? remoteConfig.adapters.axelar.axelarId : "",
                 chainlinkId: connection.chainlink ? remoteConfig.adapters.chainlink.chainSelector : 0,
+                hyperlaneId: connection.hyperlane ? remoteConfig.adapters.hyperlane.hyperlaneId : 0,
                 threshold: connection.threshold
             });
         }

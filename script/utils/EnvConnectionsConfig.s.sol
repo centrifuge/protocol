@@ -13,6 +13,7 @@ struct Connection {
     bool wormhole;
     bool axelar;
     bool chainlink;
+    bool hyperlane;
     uint8 threshold;
 }
 
@@ -114,6 +115,7 @@ library EnvConnectionsConfigLib {
                     wormhole: _arrayContains(adapters, "wormhole"),
                     axelar: _arrayContains(adapters, "axelar"),
                     chainlink: _arrayContains(adapters, "chainlink"),
+                    hyperlane: _arrayContains(adapters, "hyperlane"),
                     threshold: uint8(threshold)
                 });
             }

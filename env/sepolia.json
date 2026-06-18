@@ -8,6 +8,12 @@
     "baseRpcUrl": "https://eth-sepolia.g.alchemy.com/v2/"
   },
   "adapters": {
+    "hyperlane": {
+      "hyperlaneId": 11155111,
+      "mailbox": "0xfFAEF09B3cd11D9b20d1a19bECca54EEC2884766",
+      "ism": "0x0000000000000000000000000000000000000000",
+      "deploy": false
+    },
     "wormhole": {
       "wormholeId": 10002,
       "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",

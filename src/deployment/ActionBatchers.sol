@@ -56,6 +56,8 @@ import {AxelarAdapter} from "../adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../adapters/WormholeAdapter.sol";
 import {ChainlinkAdapter} from "../adapters/ChainlinkAdapter.sol";
 import {LayerZeroAdapter} from "../adapters/LayerZeroAdapter.sol";
+import {HyperlaneAdapter} from "../adapters/HyperlaneAdapter.sol";
+import {IInterchainSecurityModule} from "../adapters/interfaces/IHyperlaneAdapter.sol";
 import {RefundEscrowFactory} from "../utils/RefundEscrowFactory.sol";
 
 struct CoreReport {
@@ -110,6 +112,7 @@ struct AdaptersReport {
     WormholeAdapter wormholeAdapter;
     AxelarAdapter axelarAdapter;
     ChainlinkAdapter chainlinkAdapter;
+    HyperlaneAdapter hyperlaneAdapter;
 }
 
 struct AdapterConnections {
@@ -118,6 +121,7 @@ struct AdapterConnections {
     uint16 wormholeId;
     string axelarId;
     uint64 chainlinkId;
+    uint32 hyperlaneId;
     uint8 threshold;
 }
 
@@ -418,7 +422,8 @@ contract AdapterActionBatcher {
         AdapterConnections[] memory connectionList,
         SetConfigParam[] memory layerZeroConfigParams,
         address layerZeroDelegate,
-        string memory remoteAxelarAdapter
+        string memory remoteAxelarAdapter,
+        address hyperlaneIsm
     ) {
         _relyAdapters(report, address(report.core.root));
         _relyAdapters(report, address(report.core.protocolGuardian));
@@ -427,6 +432,11 @@ contract AdapterActionBatcher {
         // Rely protocolSafe on LayerZero (needed for setDelegate calls)
         if (address(report.layerZeroAdapter) != address(0)) {
             report.layerZeroAdapter.rely(address(protocolSafe));
+        }
+
+        // Rely protocolSafe on Hyperlane (needed for post-deploy setIsm calls)
+        if (address(report.hyperlaneAdapter) != address(0)) {
+            report.hyperlaneAdapter.rely(address(protocolSafe));
         }
 
         // Connect adapters
@@ -465,6 +475,12 @@ contract AdapterActionBatcher {
                 adapters[n++] = report.chainlinkAdapter;
             }
 
+            if (address(report.hyperlaneAdapter) != address(0) && connections.hyperlaneId != 0) {
+                report.hyperlaneAdapter
+                    .wire(connections.centrifugeId, abi.encode(connections.hyperlaneId, report.hyperlaneAdapter));
+                adapters[n++] = report.hyperlaneAdapter;
+            }
+
             if (n > 0) {
                 assembly {
                     mstore(adapters, n)
@@ -485,11 +501,17 @@ contract AdapterActionBatcher {
             report.layerZeroAdapter.setDelegate(layerZeroDelegate);
         }
 
+        // Set the ISM so inbound verification does not fall back to the Mailbox default ISM
+        if (address(report.hyperlaneAdapter) != address(0) && hyperlaneIsm != address(0)) {
+            report.hyperlaneAdapter.setIsm(IInterchainSecurityModule(hyperlaneIsm));
+        }
+
         // Revoke batcher permissions
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.deny(address(this));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
+        if (address(report.hyperlaneAdapter) != address(0)) report.hyperlaneAdapter.deny(address(this));
 
         report.core.multiAdapter.deny(address(this));
     }
@@ -499,6 +521,7 @@ contract AdapterActionBatcher {
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(ward);
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(ward);
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(ward);
+        if (address(report.hyperlaneAdapter) != address(0)) report.hyperlaneAdapter.rely(ward);
     }
 
     function _setLayerZeroUlnConfig(LayerZeroAdapter adapter, uint32 eid, SetConfigParam memory param) internal {

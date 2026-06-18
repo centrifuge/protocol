@@ -9,6 +9,12 @@
     "baseRpcUrl": "https://avax-mainnet.g.alchemy.com/v2/"
   },
   "adapters": {
+    "hyperlane": {
+      "hyperlaneId": 43114,
+      "mailbox": "0xFf06aFcaABaDDd1fb08371f9ccA15D73D51FeBD6",
+      "ism": "0x0000000000000000000000000000000000000000",
+      "deploy": false
+    },
     "layerZero": {
       "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
       "layerZeroEid": 30106,

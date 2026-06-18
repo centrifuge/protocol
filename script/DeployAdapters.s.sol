@@ -10,6 +10,8 @@ import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
 import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
+import {HyperlaneAdapter} from "../src/adapters/HyperlaneAdapter.sol";
+import {IInterchainSecurityModule} from "../src/adapters/interfaces/IHyperlaneAdapter.sol";
 
 string constant V3_1 = "v3.1";
 
@@ -40,6 +42,25 @@ contract DeployAdapters is BaseDeployer {
             wormholeAdapter.rely(config.contracts.protocolGuardian);
             wormholeAdapter.rely(config.contracts.opsGuardian);
             wormholeAdapter.deny(msg.sender);
+        }
+
+        if (config.adapters.hyperlane.deploy) {
+            HyperlaneAdapter hyperlaneAdapter = HyperlaneAdapter(
+                create3(
+                    createSalt("hyperlaneAdapter", V3_1),
+                    abi.encodePacked(
+                        type(HyperlaneAdapter).creationCode,
+                        abi.encode(config.contracts.multiAdapter, config.adapters.hyperlane.mailbox, msg.sender)
+                    )
+                )
+            );
+            if (config.adapters.hyperlane.ism != address(0)) {
+                hyperlaneAdapter.setIsm(IInterchainSecurityModule(config.adapters.hyperlane.ism));
+            }
+            hyperlaneAdapter.rely(config.contracts.root);
+            hyperlaneAdapter.rely(config.contracts.protocolGuardian);
+            hyperlaneAdapter.rely(config.contracts.opsGuardian);
+            hyperlaneAdapter.deny(msg.sender);
         }
 
         if (config.adapters.axelar.deploy) {

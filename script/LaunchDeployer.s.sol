@@ -9,7 +9,8 @@ import {
     WormholeInput,
     AxelarInput,
     LayerZeroInput,
-    ChainlinkInput
+    ChainlinkInput,
+    HyperlaneInput
 } from "./FullDeployer.s.sol";
 
 import {ISafe} from "../src/admin/interfaces/ISafe.sol";
@@ -46,6 +47,11 @@ contract LaunchDeployer is FullDeployer {
                 }),
                 chainlink: ChainlinkInput({
                     shouldDeploy: config.adapters.chainlink.deploy, ccipRouter: config.adapters.chainlink.ccipRouter
+                }),
+                hyperlane: HyperlaneInput({
+                    shouldDeploy: config.adapters.hyperlane.deploy,
+                    mailbox: config.adapters.hyperlane.mailbox,
+                    ism: config.adapters.hyperlane.ism
                 }),
                 connections: config.adapterConnections()
             })

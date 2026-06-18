@@ -20,6 +20,8 @@ import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 
 /// @title  Wormhole Adapter
 /// @notice Routing contract that integrates with the Wormhole Relayer service
+/// @dev    Replay protection is enforced by the Wormhole Relayer contract,
+///         which maintains delivery state and reverts on duplicate deliveries.
 contract WormholeAdapter is Auth, IWormholeAdapter {
     using CastLib for bytes32;
 

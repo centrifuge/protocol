@@ -16,6 +16,14 @@ Adapters enable cross-chain messaging by integrating with various bridging proto
 
 `AxelarAdapter` integrates with Axelar Network for cross-chain messaging. The adapter uses Axelar's gas service to prepay for destination chain execution and validates incoming messages via the Axelar gateway's approval mechanism.
 
+### `ChainlinkAdapter`
+
+`ChainlinkAdapter` integrates with Chainlink CCIP for cross-chain messaging. The adapter uses the CCIP `Router` to dispatch messages with a per-destination gas limit (encoded in `GenericExtraArgsV2`) and validates incoming messages via the `ccipReceive` callback, accepting only the configured router as the caller. Replay protection is enforced by the CCIP stack, which tracks delivered message IDs.
+
+### `HyperlaneAdapter`
+
+`HyperlaneAdapter` integrates with the Hyperlane Mailbox for cross-chain messaging. Destination gas limits are encoded in `StandardHookMetadata` passed to the Mailbox's dispatch/quoteDispatch calls, and an admin-configurable Interchain Security Module (ISM) verifies inbound messages. Replay protection is enforced by the Hyperlane Mailbox.
+
 ### `RecoveryAdapter`
 
 `RecoveryAdapter` is a special-purpose adapter for message recovery that allows authenticated parties to inject messages directly into the protocol entrypoint, bypassing normal cross-chain messaging. It implements both `IAdapter` and `IMessageHandler`, providing a direct path to the entrypoint while skipping any outgoing message sending (returns empty adapter data and zero cost estimates).

@@ -52,6 +52,7 @@ import {AxelarAdapter} from "../../../../../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../../../../../src/adapters/WormholeAdapter.sol";
 import {ChainlinkAdapter} from "../../../../../src/adapters/ChainlinkAdapter.sol";
 import {LayerZeroAdapter} from "../../../../../src/adapters/LayerZeroAdapter.sol";
+import {HyperlaneAdapter} from "../../../../../src/adapters/HyperlaneAdapter.sol";
 import {RefundEscrowFactory} from "../../../../../src/utils/RefundEscrowFactory.sol";
 import {
     CoreReport,
@@ -123,7 +124,8 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         LayerZeroAdapter(c.layerZeroAdapter),
         WormholeAdapter(c.wormholeAdapter),
         AxelarAdapter(c.axelarAdapter),
-        ChainlinkAdapter(c.chainlinkAdapter)
+        ChainlinkAdapter(c.chainlinkAdapter),
+        HyperlaneAdapter(c.hyperlaneAdapter)
     );
 
     return TestContracts(main, adapters);

@@ -27,7 +27,9 @@ import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 /// @dev    A delegate is set on deployment, to configure the DVN and executor
 ///         settings as well as the send/receive libraries.
 ///
-///         Message ordering is not enforced.
+///         Replay protection is enforced by the LayerZero endpoint via message
+///         GUIDs. Since nextNonce() returns 0 (unordered mode), the endpoint
+///         tracks delivered message identifiers to prevent duplicate delivery.
 contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     using CastLib for *;
     using MathLib for *;

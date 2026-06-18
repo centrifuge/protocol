@@ -11,6 +11,7 @@ import {
     AxelarInput,
     LayerZeroInput,
     ChainlinkInput,
+    HyperlaneInput,
     defaultTxLimits,
     AdapterConnections
 } from "../../script/FullDeployer.s.sol";
@@ -89,6 +90,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
                         configParams: new SetConfigParam[](0)
                     }),
                     chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: CHAINLINK_CCIP_ROUTER}),
+                    hyperlane: HyperlaneInput({shouldDeploy: false, mailbox: address(0), ism: address(0)}),
                     connections: new AdapterConnections[](0) // TODO: test this
                 })
             }),
@@ -825,6 +827,7 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
                 shouldDeploy: false, endpoint: address(0), delegate: address(0), configParams: new SetConfigParam[](0)
             }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
+            hyperlane: HyperlaneInput({shouldDeploy: false, mailbox: address(0), ism: address(0)}),
             connections: new AdapterConnections[](0)
         });
 
@@ -841,6 +844,7 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
                 shouldDeploy: false, endpoint: address(0), delegate: address(0), configParams: new SetConfigParam[](0)
             }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
+            hyperlane: HyperlaneInput({shouldDeploy: false, mailbox: address(0), ism: address(0)}),
             connections: new AdapterConnections[](0)
         });
 
@@ -859,6 +863,7 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
                 shouldDeploy: false, endpoint: address(0), delegate: address(0), configParams: new SetConfigParam[](0)
             }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
+            hyperlane: HyperlaneInput({shouldDeploy: false, mailbox: address(0), ism: address(0)}),
             connections: new AdapterConnections[](0)
         });
 
@@ -877,6 +882,7 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
                 shouldDeploy: false, endpoint: address(0), delegate: address(0), configParams: new SetConfigParam[](0)
             }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
+            hyperlane: HyperlaneInput({shouldDeploy: false, mailbox: address(0), ism: address(0)}),
             connections: new AdapterConnections[](0)
         });
 
@@ -898,6 +904,7 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
                 shouldDeploy: false, endpoint: address(0), delegate: address(0), configParams: new SetConfigParam[](0)
             }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
+            hyperlane: HyperlaneInput({shouldDeploy: false, mailbox: address(0), ism: address(0)}),
             connections: new AdapterConnections[](0)
         });
 
@@ -919,6 +926,7 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
                 shouldDeploy: false, endpoint: address(0), delegate: address(0), configParams: new SetConfigParam[](0)
             }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
+            hyperlane: HyperlaneInput({shouldDeploy: false, mailbox: address(0), ism: address(0)}),
             connections: new AdapterConnections[](0)
         });
 
@@ -934,6 +942,7 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
                 shouldDeploy: true, endpoint: address(0), delegate: address(0), configParams: new SetConfigParam[](0)
             }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
+            hyperlane: HyperlaneInput({shouldDeploy: false, mailbox: address(0), ism: address(0)}),
             connections: new AdapterConnections[](0)
         });
 
@@ -950,6 +959,7 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
                 shouldDeploy: true, endpoint: mockEndpoint, delegate: address(0), configParams: new SetConfigParam[](0)
             }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
+            hyperlane: HyperlaneInput({shouldDeploy: false, mailbox: address(0), ism: address(0)}),
             connections: new AdapterConnections[](0)
         });
 
@@ -968,6 +978,7 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
                 configParams: new SetConfigParam[](0)
             }),
             chainlink: ChainlinkInput({shouldDeploy: false, ccipRouter: address(0)}),
+            hyperlane: HyperlaneInput({shouldDeploy: false, mailbox: address(0), ism: address(0)}),
             connections: new AdapterConnections[](0)
         });
 
@@ -983,6 +994,7 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
                 shouldDeploy: false, endpoint: address(0), delegate: address(0), configParams: new SetConfigParam[](0)
             }),
             chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: address(0)}),
+            hyperlane: HyperlaneInput({shouldDeploy: false, mailbox: address(0), ism: address(0)}),
             connections: new AdapterConnections[](0)
         });
 
@@ -999,6 +1011,7 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
                 shouldDeploy: false, endpoint: address(0), delegate: address(0), configParams: new SetConfigParam[](0)
             }),
             chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: mockCCIPRouter}),
+            hyperlane: HyperlaneInput({shouldDeploy: false, mailbox: address(0), ism: address(0)}),
             connections: new AdapterConnections[](0)
         });
 
