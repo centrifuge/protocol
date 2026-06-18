@@ -9,8 +9,8 @@ import {CastLib} from "../src/misc/libraries/CastLib.sol";
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
 import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
-import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 import {HyperlaneAdapter} from "../src/adapters/HyperlaneAdapter.sol";
+import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 import {IInterchainSecurityModule} from "../src/adapters/interfaces/IHyperlaneAdapter.sol";
 
 string constant V3_1 = "v3.1";

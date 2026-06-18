@@ -46,6 +46,8 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
 
     address immutable CHAINLINK_CCIP_ROUTER = makeAddr("ChainlinkCCIPRouter");
 
+    address immutable HYPERLANE_MAILBOX = makeAddr("HyperlaneMailbox");
+
     bytes constant SIMPLE_CONTRACT = hex"6001600160005260206000f3";
 
     function _mockRealWormholeContracts() private {
@@ -68,6 +70,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
         vm.etch(AXELAR_GATEWAY, SIMPLE_CONTRACT);
         vm.etch(AXELAR_GAS_SERVICE, SIMPLE_CONTRACT);
         vm.etch(CHAINLINK_CCIP_ROUTER, SIMPLE_CONTRACT);
+        vm.etch(HYPERLANE_MAILBOX, SIMPLE_CONTRACT);
     }
 
     function setUp() public virtual {
@@ -90,7 +93,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
                         configParams: new SetConfigParam[](0)
                     }),
                     chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: CHAINLINK_CCIP_ROUTER}),
-                    hyperlane: HyperlaneInput({shouldDeploy: false, mailbox: address(0), ism: address(0)}),
+                    hyperlane: HyperlaneInput({shouldDeploy: true, mailbox: HYPERLANE_MAILBOX, ism: address(0)}),
                     connections: new AdapterConnections[](0) // TODO: test this
                 })
             }),
@@ -778,6 +781,24 @@ contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(chainlinkAdapter.ccipRouter()), CHAINLINK_CCIP_ROUTER);
+    }
+
+    function testHyperlaneAdapter(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(opsGuardian));
+        vm.assume(nonWard != address(protocolGuardian));
+        vm.assume(nonWard != address(ADMIN_SAFE));
+
+        assertEq(hyperlaneAdapter.wards(address(root)), 1);
+        assertEq(hyperlaneAdapter.wards(address(opsGuardian)), 1);
+        assertEq(hyperlaneAdapter.wards(address(protocolGuardian)), 1);
+        assertEq(hyperlaneAdapter.wards(address(ADMIN_SAFE)), 1);
+        assertEq(hyperlaneAdapter.wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(address(hyperlaneAdapter.entrypoint()), address(multiAdapter));
+        assertEq(address(hyperlaneAdapter.mailbox()), HYPERLANE_MAILBOX);
     }
 }
 

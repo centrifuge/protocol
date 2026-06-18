@@ -60,8 +60,8 @@ import {SubsidyManager} from "../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
 import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
-import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 import {HyperlaneAdapter} from "../src/adapters/HyperlaneAdapter.sol";
+import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 import {RefundEscrowFactory} from "../src/utils/RefundEscrowFactory.sol";
 import {
     Constants,

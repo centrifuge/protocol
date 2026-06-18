@@ -60,6 +60,53 @@ contract MaliciousSnapshotHook is ISnapshotHook {
     function onTransfer(PoolId, ShareClassId, uint16, uint16, uint128) external {}
 }
 
+/// @notice Reproduces bug bounty issue #1: incorrect msgValue() handling during batching.
+/// @dev Models the "Manager B Safe" from the report. The hook is itself a pool manager (so the
+///      reentrant Hub call passes msgSender()'s manager check, since msg.sender is the hook, not
+///      the gateway). During an active Hub batch it makes a reentrant *payable* call into the Hub.
+///
+///      With the buggy msgValue() (`_sender != address(0) ? 0 : msg.value`), the value was zeroed
+///      simply because a batch was active, dropping the attached ETH and leaving it stuck in the
+///      Hub. After the fix (`_sender != 0 && msg.sender == gateway`), the value is preserved for
+///      this non-gateway caller and forwarded through the normal refund flow.
+contract ValueStuckHook is ISnapshotHook {
+    IHub public immutable hub;
+    PoolId public immutable targetPool;
+    ShareClassId public immutable scId;
+    uint16 public immutable centrifugeId;
+    address public immutable refund;
+    uint256 public immutable value;
+    bool public executed;
+
+    constructor(
+        IHub hub_,
+        PoolId targetPool_,
+        ShareClassId scId_,
+        uint16 centrifugeId_,
+        address refund_,
+        uint256 value_
+    ) {
+        hub = hub_;
+        targetPool = targetPool_;
+        scId = scId_;
+        centrifugeId = centrifugeId_;
+        refund = refund_;
+        value = value_;
+    }
+
+    function onSync(PoolId poolId, ShareClassId, uint16) external {
+        if (PoolId.unwrap(poolId) == PoolId.unwrap(targetPool) && !executed) {
+            executed = true;
+            // Reentrant payable call while the batch is still active.
+            hub.notifySharePrice{value: value}(targetPool, scId, centrifugeId, refund);
+        }
+    }
+
+    function onTransfer(PoolId, ShareClassId, uint16, uint16, uint128) external {}
+
+    receive() external payable {}
+}
+
 /// @notice Contract that tests the refund callback vulnerability in same-chain deployments
 /// @dev This contract was created to test if the `_sender` pattern could be exploited
 ///      via MessageDispatcher._refund() callback. Testing showed this attack does NOT work
@@ -326,6 +373,54 @@ contract ReentrancyAttackTest is EndToEndFlows {
         vm.prank(BOB);
         vm.expectRevert(IHub.NotManager.selector);
         h.hub.updateHoldingValue(POOL_A, SC_1, s.usdcId);
+    }
+
+    /// @notice Bug bounty issue #1: a reentrant payable call during a batch must not drop its ETH.
+    /// @dev A malicious manager sets a snapshot hook. The hook (modeling a separate manager Safe
+    ///      that pre-signed a payable Hub op) reenters Hub.notifySharePrice with real ETH while the
+    ///      batch is active. The reentrant ETH must follow the normal refund flow, not be stuck.
+    /// forge-config: default.isolate = true
+    function testSnapshotHookReentrancyDoesNotStuckValue() public {
+        // Same-chain so the local refund branch in MessageDispatcher is exercised.
+        _configurePool(true);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+
+        // Establish snapshot state so the hook fires during updateHoldingValue().
+        vm.startPrank(ERC20_DEPLOYER);
+        s.usdc.mint(BSM, USDC_AMOUNT_1);
+        vm.stopPrank();
+
+        vm.startPrank(BSM);
+        s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
+        s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
+        s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
+        vm.stopPrank();
+
+        address RECEIVER = makeAddr("RECEIVER");
+        uint256 stuckValue = 1 ether;
+
+        ValueStuckHook hook = new ValueStuckHook(h.hub, POOL_A, SC_1, h.centrifugeId, RECEIVER, stuckValue);
+        vm.deal(address(hook), stuckValue);
+
+        // The reentrant caller must itself be a manager (the pre-signed Safe), so msgSender()'s
+        // manager check passes when the hook reenters.
+        vm.startPrank(FM);
+        h.hub.updateHubManager(POOL_A, address(hook), true);
+        h.hub.setSnapshotHook(POOL_A, hook);
+        vm.stopPrank();
+
+        uint256 hubBalanceBefore = address(h.hub).balance;
+
+        bytes[] memory calls = new bytes[](1);
+        calls[0] = abi.encodeCall(IHub.updateHoldingValue, (POOL_A, SC_1, s.usdcId));
+
+        vm.prank(FM);
+        h.hub.multicall(calls);
+
+        // The reentrant payable call fired and its ETH was refunded, not stuck in the Hub.
+        assertTrue(hook.executed(), "hook should have reentered with value");
+        assertEq(RECEIVER.balance, stuckValue, "reentrant ETH should be refunded, not stuck");
+        assertEq(address(h.hub).balance, hubBalanceBefore, "no ETH should be stuck in the Hub");
     }
 
     // ========================================================================
