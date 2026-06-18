@@ -63,7 +63,7 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         emit Wire(centrifugeId, layerZeroEid, adapter);
     }
 
-    /// @inheritdoc IAdapterWiring
+    /// @notice Returns whether the adapter is wired to the given chain
     function isWired(uint16 centrifugeId) external view returns (bool) {
         return destinations[centrifugeId].layerZeroEid != 0;
     }

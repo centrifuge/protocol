@@ -12,9 +12,4 @@ interface IAdapterWiring {
     /// @param centrifugeId The chain ID to wire to
     /// @param data ABI-encoded adapter-specific configuration data
     function wire(uint16 centrifugeId, bytes memory data) external;
-
-    /// @notice Check if the adapter is wired to a specific chain
-    /// @param centrifugeId The chain ID to check
-    /// @return True if the adapter is already wired to this chain
-    function isWired(uint16 centrifugeId) external view returns (bool);
 }

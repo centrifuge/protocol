@@ -289,32 +289,49 @@ contract OpsGuardianTestSetGasService is OpsGuardianTest {
 }
 
 contract OpsGuardianTestWire is OpsGuardianTest {
+    // CENTRIFUGE_ID = 1 = MAINNET_CENTRIFUGE_ID (Ethereum); use a spoke chain for success cases
+    uint16 constant REMOTE_CENTRIFUGE_ID = 2;
+
     function testWireSuccess() public {
         bytes memory data = abi.encode("some", "data");
 
         vm.mockCall(
-            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.isWired.selector, CENTRIFUGE_ID), abi.encode(false)
-        );
-        vm.mockCall(
-            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data), abi.encode()
+            address(ADAPTER),
+            abi.encodeWithSelector(IAdapterWiring.wire.selector, REMOTE_CENTRIFUGE_ID, data),
+            abi.encode()
         );
 
-        vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.isWired.selector, CENTRIFUGE_ID));
-        vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data));
+        vm.expectCall(
+            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, REMOTE_CENTRIFUGE_ID, data)
+        );
 
         vm.prank(address(SAFE));
-        opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
+        opsGuardian.wire(address(ADAPTER), REMOTE_CENTRIFUGE_ID, data);
     }
 
-    function testWireRevertWhenAlreadyWired() public {
-        vm.mockCall(
-            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.isWired.selector, CENTRIFUGE_ID), abi.encode(true)
-        );
-
+    function testWireCanBeCalledMultipleTimes() public {
         bytes memory data = abi.encode("some", "data");
 
+        vm.mockCall(
+            address(ADAPTER),
+            abi.encodeWithSelector(IAdapterWiring.wire.selector, REMOTE_CENTRIFUGE_ID, data),
+            abi.encode()
+        );
+
+        vm.startPrank(address(SAFE));
+        opsGuardian.wire(address(ADAPTER), REMOTE_CENTRIFUGE_ID, data);
+        opsGuardian.wire(address(ADAPTER), REMOTE_CENTRIFUGE_ID, data);
+        vm.stopPrank();
+    }
+
+    function testWireRevertWhenMainnet() public {
+        bytes memory data = abi.encode("some", "data");
+
+        // CENTRIFUGE_ID == 1 == MAINNET_CENTRIFUGE_ID
+        assertEq(CENTRIFUGE_ID, opsGuardian.MAINNET_CENTRIFUGE_ID());
+
         vm.prank(address(SAFE));
-        vm.expectRevert(IOpsGuardian.AdapterAlreadyWired.selector);
+        vm.expectRevert(IOpsGuardian.CannotWireMainnet.selector);
         opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
     }
 
@@ -323,6 +340,6 @@ contract OpsGuardianTestWire is OpsGuardianTest {
 
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
-        opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
+        opsGuardian.wire(address(ADAPTER), REMOTE_CENTRIFUGE_ID, data);
     }
 }
