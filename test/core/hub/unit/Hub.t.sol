@@ -62,6 +62,10 @@ contract TestCommon is Test {
             address(hubRegistry), abi.encodeWithSelector(hubRegistry.manager.selector, POOL_A, ADMIN), abi.encode(true)
         );
 
+        vm.mockCall(
+            address(hubRegistry), abi.encodeWithSelector(hubRegistry.manifest.selector, POOL_A), abi.encode(address(0))
+        );
+
         vm.mockCall(address(accounting), abi.encodeWithSelector(accounting.unlock.selector, POOL_A), abi.encode(true));
 
         hub.file("feeHook", address(feeHook));

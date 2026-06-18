@@ -14,6 +14,7 @@ src/
 ├── managers/          Extension managers
 │   ├── hub/           Hub managers (NAV, pricing)
 │   └── spoke/         Spoke managers (on/off-ramp, merkle proof, queue)
+├── manifests/         Policy & timelock enforcement for hub managers
 ├── valuations/        Asset valuation implementations
 └── vaults/            ERC-4626/ERC-7540 vault implementations
 ```
@@ -28,5 +29,6 @@ src/
 - **[`hooks`](./hooks)** - Transfer hook implementations (FreezeOnly, RedemptionRestrictions, FullRestrictions, FreelyTransferable)
 - **[`managers/hub`](./managers/hub)** - NAVManager for net asset value tracking and SimplePriceManager for single-share-class pool pricing
 - **[`managers/spoke`](./managers/spoke)** - OnOfframpManager for asset custody, QueueManager for batched syncing
+- **[`manifests`](./manifests)** - Policy and timelock enforcement layer for hub managers, bounding what any manager call can do and delaying out-of-policy actions behind a sentinel veto window
 - **[`valuations`](./valuations)** - Asset valuation implementations (IdentityValuation for 1:1 pricing, OracleValuation for oracle-based pricing)
 - **[`vaults`](./vaults)** - ERC-4626/ERC-7540 vault implementations (AsyncVault, SyncDepositVault), request managers, and router

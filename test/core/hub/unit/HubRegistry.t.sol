@@ -8,6 +8,7 @@ import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {HubRegistry} from "../../../../src/core/hub/HubRegistry.sol";
 import {PoolId, newPoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {IManifest} from "../../../../src/core/hub/interfaces/IManifest.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
 
@@ -121,6 +122,28 @@ contract HubRegistryTest is Test {
         emit IHubRegistry.SetMetadata(poolId, metadata);
         registry.setMetadata(poolId, metadata);
         assertEq(registry.metadata(poolId), metadata);
+    }
+
+    function testSetManifest() public {
+        address fundAdmin = makeAddr("fundAdmin");
+
+        PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
+        registry.registerPool(poolId, fundAdmin, USD);
+
+        IManifest manifest = IManifest(makeAddr("manifest"));
+
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        registry.setManifest(poolId, manifest);
+
+        PoolId nonExistingPool = PoolId.wrap(0xDEAD);
+        vm.expectRevert(abi.encodeWithSelector(IHubRegistry.NonExistingPool.selector, nonExistingPool));
+        registry.setManifest(nonExistingPool, manifest);
+
+        vm.expectEmit();
+        emit IHubRegistry.SetManifest(poolId, manifest);
+        registry.setManifest(poolId, manifest);
+        assertEq(address(registry.manifest(poolId)), address(manifest));
     }
 
     function testUpdateDependency(bytes32 what, address dependency) public nonZero(dependency) {

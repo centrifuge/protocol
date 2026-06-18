@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IManifest} from "./interfaces/IManifest.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 
@@ -20,6 +21,7 @@ contract HubRegistry is Auth, IHubRegistry {
 
     mapping(PoolId => bytes) public metadata;
     mapping(PoolId => AssetId) public currency;
+    mapping(PoolId => IManifest) public manifest;
     mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId => mapping(bytes32 => address)) public dependency;
     mapping(PoolId => mapping(uint16 centrifugeId => IHubRequestManager)) public hubRequestManager;
@@ -92,6 +94,15 @@ contract HubRegistry is Auth, IHubRegistry {
         currency[poolId_] = currency_;
 
         emit UpdateCurrency(poolId_, currency_);
+    }
+
+    /// @inheritdoc IHubRegistry
+    function setManifest(PoolId poolId_, IManifest manifest_) external auth {
+        require(exists(poolId_), NonExistingPool(poolId_));
+
+        manifest[poolId_] = manifest_;
+
+        emit SetManifest(poolId_, manifest_);
     }
 
     /// @inheritdoc IHubRegistry

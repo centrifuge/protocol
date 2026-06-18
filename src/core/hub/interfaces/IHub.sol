@@ -2,6 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {IFeeHook} from "./IFeeHook.sol";
+import {IManifest} from "./IManifest.sol";
 import {IValuation} from "./IValuation.sol";
 import {IHubRegistry} from "./IHubRegistry.sol";
 import {ISnapshotHook} from "./ISnapshotHook.sol";
@@ -137,10 +138,19 @@ interface IHub is IBatchedMulticall {
     /// @notice Handles multi-protocol message verification and routing for cross-chain communication
     function multiAdapter() external view returns (IMultiAdapter);
 
+    /// @notice Returns the policy manifest installed for a pool (address(0) if none),
+    ///         consulted on every manager call. Storage lives in the {IHubRegistry}; this reads through.
+    function manifest(PoolId poolId) external view returns (IManifest);
+
     /// @notice Updates a contract parameter
     /// @param what Name of the parameter to update (accepts 'hubRegistry', 'accounting', 'holdings', 'gateway', 'sender')
     /// @param data Address of the new contract
     function file(bytes32 what, address data) external;
+
+    /// @notice Install or replace the policy manifest for a pool.
+    /// @dev    Wards may call directly (break-glass). For managers the current manifest is enforced,
+    ///         which typically requires an authorization for its own replacement.
+    function setManifest(PoolId poolId, IManifest manifest_) external;
 
     //----------------------------------------------------------------------------------------------
     // Pool admin methods

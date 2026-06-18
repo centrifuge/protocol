@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IManifest} from "./IManifest.sol";
 import {IHubRequestManager} from "./IHubRequestManager.sol";
 
 import {IERC6909Decimals} from "../../../misc/interfaces/IERC6909.sol";
@@ -20,6 +21,7 @@ interface IHubRegistry is IERC6909Decimals {
     event UpdateDependency(PoolId indexed poolId, bytes32 indexed what, address dependency);
     event UpdateCurrency(PoolId indexed poolId, AssetId currency);
     event SetHubRequestManager(PoolId indexed poolId, uint16 indexed centrifugeId, IHubRequestManager manager);
+    event SetManifest(PoolId indexed poolId, IManifest manifest);
 
     //----------------------------------------------------------------------------------------------
     // Errors
@@ -80,6 +82,12 @@ interface IHubRegistry is IERC6909Decimals {
     /// @param currency The new currency asset
     function updateCurrency(PoolId poolId, AssetId currency) external;
 
+    /// @notice Install or replace the policy manifest for a pool
+    /// @dev    Auth-gated: written through by the Hub, which enforces the policy on the change itself
+    /// @param poolId The pool identifier
+    /// @param manifest The manifest contract (address(0) to clear)
+    function setManifest(PoolId poolId, IManifest manifest) external;
+
     //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
@@ -111,6 +119,11 @@ interface IHubRegistry is IERC6909Decimals {
     /// @param centrifugeId The network identifier
     /// @return The hub request manager contract
     function hubRequestManager(PoolId poolId, uint16 centrifugeId) external view returns (IHubRequestManager);
+
+    /// @notice Returns the policy manifest installed for a pool (address(0) if none)
+    /// @param poolId The pool identifier
+    /// @return The manifest contract
+    function manifest(PoolId poolId) external view returns (IManifest);
 
     /// @notice Compute a pool ID given an ID postfix
     /// @param centrifugeId The network identifier
