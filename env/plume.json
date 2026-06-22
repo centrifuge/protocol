@@ -33,11 +33,6 @@
       ],
       "optionalDVNThreshold": 2
     },
-    "wormhole": {
-      "wormholeId": 55,
-      "relayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
-      "deploy": true
-    },
     "axelar": {
       "axelarId": "plume",
       "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
@@ -301,12 +296,6 @@
       "address": "0x280C94eB440A8a75c2F8f6cA8c6FaFf907000823",
       "blockNumber": 48514187,
       "txHash": "0x30f5b60180e68f37f10609a4a6dc2b5c899d638031facab43a931d5d3c04ffca",
-      "version": "v3.1"
-    },
-    "wormholeAdapter": {
-      "address": "0x4BE430401760075315E931dD34b892DFdfc706A7",
-      "blockNumber": 48514230,
-      "txHash": "0x47c0af4fece500340be85fb6aa182d938bbbfe4718ac1ce56051af6ba21aab89",
       "version": "v3.1"
     },
     "axelarAdapter": {

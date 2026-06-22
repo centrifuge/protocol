@@ -10,7 +10,6 @@ Vm constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 struct Connection {
     string network;
     bool layerZero;
-    bool wormhole;
     bool axelar;
     bool chainlink;
     bool hyperlane;
@@ -112,7 +111,6 @@ library EnvConnectionsConfigLib {
                 connections[idx++] = Connection({
                     network: config.networks[i],
                     layerZero: _arrayContains(adapters, "layerZero"),
-                    wormhole: _arrayContains(adapters, "wormhole"),
                     axelar: _arrayContains(adapters, "axelar"),
                     chainlink: _arrayContains(adapters, "chainlink"),
                     hyperlane: _arrayContains(adapters, "hyperlane"),

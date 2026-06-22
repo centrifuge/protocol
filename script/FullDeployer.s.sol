@@ -57,7 +57,6 @@ import {VmSafe} from "forge-std/Vm.sol";
 
 import {SubsidyManager} from "../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
-import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
 import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
 import {HyperlaneAdapter} from "../src/adapters/HyperlaneAdapter.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
@@ -76,11 +75,6 @@ import {
 
 string constant V3_1 = "v3.1";
 string constant V3_2 = "v3.2";
-
-struct WormholeInput {
-    bool shouldDeploy;
-    address relayer;
-}
 
 struct AxelarInput {
     bool shouldDeploy;
@@ -111,7 +105,6 @@ struct HyperlaneInput {
 
 struct AdaptersInput {
     LayerZeroInput layerZero;
-    WormholeInput wormhole;
     AxelarInput axelar;
     ChainlinkInput chainlink;
     HyperlaneInput hyperlane;
@@ -187,7 +180,6 @@ contract FullDeployer is BaseDeployer, Constants {
 
     ChainlinkAdapter chainlinkAdapter;
     AxelarAdapter axelarAdapter;
-    WormholeAdapter wormholeAdapter;
     LayerZeroAdapter layerZeroAdapter;
     HyperlaneAdapter hyperlaneAdapter;
 
@@ -650,20 +642,6 @@ contract FullDeployer is BaseDeployer, Constants {
             );
         }
 
-        if (input.wormhole.shouldDeploy) {
-            require(input.wormhole.relayer != address(0), "Wormhole relayer address cannot be zero");
-            require(input.wormhole.relayer.code.length > 0, "Wormhole relayer must be a deployed contract");
-
-            wormholeAdapter = WormholeAdapter(
-                create3(
-                    createSalt("wormholeAdapter", V3_1),
-                    abi.encodePacked(
-                        type(WormholeAdapter).creationCode, abi.encode(multiAdapter, input.wormhole.relayer, batcher)
-                    )
-                )
-            );
-        }
-
         if (input.axelar.shouldDeploy) {
             require(input.axelar.gateway != address(0), "Axelar gateway address cannot be zero");
             require(input.axelar.gasService != address(0), "Axelar gas service address cannot be zero");
@@ -761,15 +739,12 @@ contract FullDeployer is BaseDeployer, Constants {
     }
 
     function adaptersReport() public view returns (AdaptersReport memory) {
-        return AdaptersReport(
-            coreReport(), layerZeroAdapter, wormholeAdapter, axelarAdapter, chainlinkAdapter, hyperlaneAdapter
-        );
+        return AdaptersReport(coreReport(), layerZeroAdapter, axelarAdapter, chainlinkAdapter, hyperlaneAdapter);
     }
 }
 
 function noAdaptersInput() pure returns (AdaptersInput memory) {
     return AdaptersInput({
-        wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
         axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
         layerZero: LayerZeroInput({
             shouldDeploy: false, endpoint: address(0), delegate: address(0), configParams: new SetConfigParam[](0)

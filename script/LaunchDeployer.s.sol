@@ -6,7 +6,6 @@ import {
     DeployerInput,
     FullDeployer,
     AdaptersInput,
-    WormholeInput,
     AxelarInput,
     LayerZeroInput,
     ChainlinkInput,
@@ -36,9 +35,6 @@ contract LaunchDeployer is FullDeployer {
                     endpoint: config.adapters.layerZero.endpoint,
                     delegate: config.network.protocolAdmin,
                     configParams: config.buildLayerZeroConfigParams()
-                }),
-                wormhole: WormholeInput({
-                    shouldDeploy: config.adapters.wormhole.deploy, relayer: config.adapters.wormhole.relayer
                 }),
                 axelar: AxelarInput({
                     shouldDeploy: config.adapters.axelar.deploy,

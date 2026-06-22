@@ -97,8 +97,7 @@ src/
 │   ├── AxelarAdapter.sol
 │   ├── ChainlinkAdapter.sol
 │   ├── LayerZeroAdapter.sol
-│   ├── RecoveryAdapter.sol
-│   └── WormholeAdapter.sol
+│   └── RecoveryAdapter.sol
 ├── utils/                  # Utilities
 │   ├── RefundEscrow.sol   # Refund handling
 │   ├── RefundEscrowFactory.sol

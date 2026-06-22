@@ -52,7 +52,6 @@ import {SyncDepositVaultFactory} from "../vaults/factories/SyncDepositVaultFacto
 
 import {SubsidyManager} from "../utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../adapters/AxelarAdapter.sol";
-import {WormholeAdapter} from "../adapters/WormholeAdapter.sol";
 import {ChainlinkAdapter} from "../adapters/ChainlinkAdapter.sol";
 import {HyperlaneAdapter} from "../adapters/HyperlaneAdapter.sol";
 import {LayerZeroAdapter} from "../adapters/LayerZeroAdapter.sol";
@@ -107,7 +106,6 @@ struct NonCoreReport {
 struct AdaptersReport {
     CoreReport core;
     LayerZeroAdapter layerZeroAdapter;
-    WormholeAdapter wormholeAdapter;
     AxelarAdapter axelarAdapter;
     ChainlinkAdapter chainlinkAdapter;
     HyperlaneAdapter hyperlaneAdapter;
@@ -116,7 +114,6 @@ struct AdaptersReport {
 struct AdapterConnections {
     uint16 centrifugeId;
     uint32 layerZeroId;
-    uint16 wormholeId;
     string axelarId;
     uint64 chainlinkId;
     uint32 hyperlaneId;
@@ -443,12 +440,6 @@ contract AdapterActionBatcher {
                 }
             }
 
-            if (address(report.wormholeAdapter) != address(0) && connections.wormholeId != 0) {
-                report.wormholeAdapter
-                    .wire(connections.centrifugeId, abi.encode(connections.wormholeId, report.wormholeAdapter));
-                adapters[n++] = report.wormholeAdapter;
-            }
-
             if (address(report.axelarAdapter) != address(0) && bytes(connections.axelarId).length != 0) {
                 report.axelarAdapter
                     .wire(connections.centrifugeId, abi.encode(connections.axelarId, remoteAxelarAdapter));
@@ -494,7 +485,6 @@ contract AdapterActionBatcher {
         }
 
         // Revoke batcher permissions
-        if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.deny(address(this));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
@@ -505,7 +495,6 @@ contract AdapterActionBatcher {
 
     function _relyAdapters(AdaptersReport memory report, address ward) internal {
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.rely(ward);
-        if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(ward);
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(ward);
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(ward);
         if (address(report.hyperlaneAdapter) != address(0)) report.hyperlaneAdapter.rely(ward);

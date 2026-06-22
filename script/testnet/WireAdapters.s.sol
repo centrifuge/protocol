@@ -40,16 +40,6 @@ contract WireAdapters is Script {
             Connection memory connection = connections[i];
             EnvConfig memory remote = Env.load(connection.network);
 
-            if (connection.wormhole) {
-                adapters.push(IAdapter(source.contracts.wormholeAdapter));
-                opsGuardian.wire(
-                    source.contracts.wormholeAdapter,
-                    remote.network.centrifugeId,
-                    abi.encode(remote.adapters.wormhole.wormholeId, remote.contracts.wormholeAdapter)
-                );
-                console.log("Wired Wormhole from source", source.network.name, "to destination", connection.network);
-            }
-
             if (connection.layerZero) {
                 adapters.push(IAdapter(source.contracts.layerZeroAdapter));
                 opsGuardian.wire(

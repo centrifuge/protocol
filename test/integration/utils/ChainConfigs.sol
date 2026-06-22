@@ -12,7 +12,6 @@ library ChainConfigs {
         string name;
         string alchemyNetworkId; // Network ID for Alchemy (e.g., "eth", "base", "arb"). Empty for non-Alchemy chains (Plume).
         uint16 centrifugeId;
-        uint16 wormholeId;
         string axelarId; // Empty string if not supported
         uint32 layerZeroEid;
         address usdc;
@@ -29,7 +28,6 @@ library ChainConfigs {
                 name: "Ethereum",
                 alchemyNetworkId: "eth",
                 centrifugeId: IntegrationConstants.ETH_CENTRIFUGE_ID,
-                wormholeId: IntegrationConstants.ETH_WORMHOLE_ID,
                 axelarId: IntegrationConstants.ETH_AXELAR_ID,
                 layerZeroEid: IntegrationConstants.ETH_LAYERZERO_EID,
                 usdc: IntegrationConstants.ETH_USDC,
@@ -42,7 +40,6 @@ library ChainConfigs {
                 name: "Base",
                 alchemyNetworkId: "base",
                 centrifugeId: IntegrationConstants.BASE_CENTRIFUGE_ID,
-                wormholeId: IntegrationConstants.BASE_WORMHOLE_ID,
                 axelarId: IntegrationConstants.BASE_AXELAR_ID,
                 layerZeroEid: IntegrationConstants.BASE_LAYERZERO_EID,
                 usdc: IntegrationConstants.BASE_USDC,
@@ -55,7 +52,6 @@ library ChainConfigs {
                 name: "Arbitrum",
                 alchemyNetworkId: "arb",
                 centrifugeId: IntegrationConstants.ARBITRUM_CENTRIFUGE_ID,
-                wormholeId: IntegrationConstants.ARBITRUM_WORMHOLE_ID,
                 axelarId: IntegrationConstants.ARBITRUM_AXELAR_ID,
                 layerZeroEid: IntegrationConstants.ARBITRUM_LAYERZERO_EID,
                 usdc: IntegrationConstants.ARBITRUM_USDC,
@@ -68,7 +64,6 @@ library ChainConfigs {
                 name: "Avalanche",
                 alchemyNetworkId: "avax",
                 centrifugeId: IntegrationConstants.AVAX_CENTRIFUGE_ID,
-                wormholeId: IntegrationConstants.AVAX_WORMHOLE_ID,
                 axelarId: IntegrationConstants.AVAX_AXELAR_ID,
                 layerZeroEid: IntegrationConstants.AVAX_LAYERZERO_EID,
                 usdc: IntegrationConstants.AVAX_USDC,
@@ -81,7 +76,6 @@ library ChainConfigs {
                 name: "BNB",
                 alchemyNetworkId: "bnb",
                 centrifugeId: IntegrationConstants.BNB_CENTRIFUGE_ID,
-                wormholeId: IntegrationConstants.BNB_WORMHOLE_ID,
                 axelarId: IntegrationConstants.BNB_AXELAR_ID,
                 layerZeroEid: IntegrationConstants.BNB_LAYERZERO_EID,
                 usdc: IntegrationConstants.BNB_USDC,
@@ -94,7 +88,6 @@ library ChainConfigs {
                 name: "Plume",
                 alchemyNetworkId: "", // Plume doesn't use Alchemy
                 centrifugeId: IntegrationConstants.PLUME_CENTRIFUGE_ID,
-                wormholeId: IntegrationConstants.PLUME_WORMHOLE_ID,
                 axelarId: "", // Plume doesn't support Axelar
                 layerZeroEid: 0, // Plume doesn't support LayerZero
                 usdc: IntegrationConstants.PLUME_PUSD, // pUSD instead of USDC until USDC exists

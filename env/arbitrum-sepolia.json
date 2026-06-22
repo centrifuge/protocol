@@ -16,11 +16,6 @@
       "ism": "0x0000000000000000000000000000000000000000",
       "deploy": false
     },
-    "wormhole": {
-      "wormholeId": 10003,
-      "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",
-      "deploy": true
-    },
     "axelar": {
       "axelarId": "arbitrum-sepolia",
       "gateway": "0xe1cE95479C84e9809269227C7F8524aE051Ae77a",
@@ -307,12 +302,6 @@
       "address": "0xE5419F74f8875C401C3a2f4C68846d9d410e1677",
       "blockNumber": 237622413,
       "txHash": "0xe6bef4916f5087e4f1dd6d37f699d745f62e619b3d2b5f0d56bc278ef38135be",
-      "version": "v3.1"
-    },
-    "wormholeAdapter": {
-      "address": "0xfb5e002643da6743D211b1fd66Fe4f86FcC4E4bE",
-      "blockNumber": 237622476,
-      "txHash": "0x89ed083a4ee45031252237168718e40caba31b795595479cabfeb219e7c64659",
       "version": "v3.1"
     },
     "chainlinkAdapter": {

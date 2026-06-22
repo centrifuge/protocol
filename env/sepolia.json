@@ -14,11 +14,6 @@
       "ism": "0x0000000000000000000000000000000000000000",
       "deploy": false
     },
-    "wormhole": {
-      "wormholeId": 10002,
-      "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",
-      "deploy": true
-    },
     "axelar": {
       "axelarId": "ethereum-sepolia",
       "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
@@ -191,12 +186,6 @@
       "address": "0xa1c9396B3Cd392A49727b27139A65210dc9E6212",
       "blockNumber": 10142074,
       "txHash": "0xf966ed00b744c03a65ee2eb467090ae9db33a536904d0df712ca53b403dde4d4",
-      "version": "v3.1"
-    },
-    "wormholeAdapter": {
-      "address": "0xfb5e002643da6743D211b1fd66Fe4f86FcC4E4bE",
-      "blockNumber": 10142076,
-      "txHash": "0x272bdaf0b4e358e654c8bb05d5c32b8382e6a8617b11e018172c8675f6a83ba5",
       "version": "v3.1"
     },
     "axelarAdapter": {

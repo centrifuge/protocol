@@ -15,7 +15,7 @@ import {MessageLib, MessageType, VaultUpdateKind} from "../core/messaging/librar
 contract GasService is IGasService {
     using MessageLib for *;
 
-    /// @dev Covers the real adapter overhead (Wormhole/Axelar/LZ signature verification and relay execution)
+    /// @dev Covers the real adapter overhead (Axelar/LZ signature verification and relay execution)
     ///      that occurs before MultiAdapter.handle() is called on the destination chain.
     ///      LocalAdapter used in tests is a trivial passthrough, so this cost is not captured by the benchmark.
     uint128 public constant BASE_ADAPTER_COST = 75_000;

@@ -31,11 +31,6 @@
       ],
       "optionalDVNThreshold": 2
     },
-    "wormhole": {
-      "wormholeId": 6,
-      "relayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
-      "deploy": true
-    },
     "axelar": {
       "axelarId": "Avalanche",
       "gateway": "0x5029C0EFf6C34351a0CEc334542cDb22c7928f78",
@@ -233,12 +228,6 @@
       "address": "0xd40871a6336fD19A25a7bd96c0C0dd66Ed60931D",
       "blockNumber": 76720519,
       "txHash": "0x1490bd61a0f2bada3ec1a8fe144c0d047db2f52312154c98b7b5f587e745cbc3",
-      "version": "v3.1"
-    },
-    "wormholeAdapter": {
-      "address": "0x4BE430401760075315E931dD34b892DFdfc706A7",
-      "blockNumber": 76720630,
-      "txHash": "0xa59b0eff5ae677aed30dd201cb59e877f39a39cb8db80977e5673adc7c92332f",
       "version": "v3.1"
     },
     "axelarAdapter": {

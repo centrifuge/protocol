@@ -7,7 +7,6 @@ import {Env, EnvConfig} from "./utils/EnvConfig.s.sol";
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
-import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
 import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
 import {HyperlaneAdapter} from "../src/adapters/HyperlaneAdapter.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
@@ -27,22 +26,6 @@ contract DeployAdapters is BaseDeployer {
         startDeploymentOutput();
 
         _init(vm.envOr("SUFFIX", string("")), msg.sender);
-
-        if (config.adapters.wormhole.deploy) {
-            WormholeAdapter wormholeAdapter = WormholeAdapter(
-                create3(
-                    createSalt("wormholeAdapter", V3_1),
-                    abi.encodePacked(
-                        type(WormholeAdapter).creationCode,
-                        abi.encode(config.contracts.multiAdapter, config.adapters.wormhole.relayer, msg.sender)
-                    )
-                )
-            );
-            wormholeAdapter.rely(config.contracts.root);
-            wormholeAdapter.rely(config.contracts.protocolGuardian);
-            wormholeAdapter.rely(config.contracts.opsGuardian);
-            wormholeAdapter.deny(msg.sender);
-        }
 
         if (config.adapters.hyperlane.deploy) {
             HyperlaneAdapter hyperlaneAdapter = HyperlaneAdapter(

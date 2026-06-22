@@ -100,11 +100,6 @@ class AnvilManager:
                 "baseRpcUrl": "http://localhost:8545"
             },
             "adapters": {
-                "wormhole": {
-                "wormholeId": "10002",
-                "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",
-                "deploy": "true"
-                },
                 "axelar": {
                 "axelarId": "ethereum-sepolia",
                 "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",

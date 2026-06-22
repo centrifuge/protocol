@@ -31,11 +31,6 @@
       ],
       "optionalDVNThreshold": 2
     },
-    "wormhole": {
-      "wormholeId": 4,
-      "relayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
-      "deploy": true
-    },
     "axelar": {
       "axelarId": "binance",
       "gateway": "0x304acf330bbE08d1e512eefaa92F6a57871fD895",
@@ -233,12 +228,6 @@
       "address": "0xd40871a6336fD19A25a7bd96c0C0dd66Ed60931D",
       "blockNumber": 77735997,
       "txHash": "0x9e58514c45b2e017b3fe08bb82cfa7c41e64ecfc2f8c0cbb91f418776306f405",
-      "version": "v3.1"
-    },
-    "wormholeAdapter": {
-      "address": "0x4BE430401760075315E931dD34b892DFdfc706A7",
-      "blockNumber": 77736267,
-      "txHash": "0x89bf512b490268c239ff6635fdbf05140581df302c8b1a11cc9ee74b801e27f8",
       "version": "v3.1"
     },
     "axelarAdapter": {

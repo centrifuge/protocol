@@ -49,7 +49,7 @@ The two sides are permuted (cartesian product), creating a connection for every 
 
 A network never connects to itself. If the same network appears on both sides, the self-pair is skipped. For example, `[["A"], ["A", "B"]]` only produces (A,B).
 
-**`adapters`** lists which messaging adapters to use (e.g. `"axelar"`, `"layerZero"`, `"wormhole"`, `"chainlink"`). An empty array means no connection.
+**`adapters`** lists which messaging adapters to use (e.g. `"axelar"`, `"layerZero"`, `"chainlink"`). An empty array means no connection.
 
 **`threshold`** is the minimum number of adapters that must confirm a message.
 
@@ -100,7 +100,7 @@ To disable connections for a network, override with an empty adapters array:
 }
 ```
 
-**Testnet** - all networks connected via 4 adapters, hyper-evm-testnet disconnected:
+**Testnet** - all networks connected via 3 adapters, hyper-evm-testnet disconnected:
 
 ```json
 {
@@ -108,7 +108,7 @@ To disable connections for a network, override with an empty adapters array:
         "ALL": ["sepolia", "arbitrum-sepolia", "base-sepolia", "hyper-evm-testnet"]
     },
     "connections": [
-        { "chains": ["ALL", "ALL"], "adapters": ["axelar", "wormhole", "layerZero", "chainlink"], "threshold": 1 },
+        { "chains": ["ALL", "ALL"], "adapters": ["axelar", "layerZero", "chainlink"], "threshold": 1 },
         { "chains": [["hyper-evm-testnet"], "ALL"], "adapters": [], "threshold": 0 }
     ]
 }

@@ -42,7 +42,6 @@ import {VMLabeling} from "../utils/VMLabeling.sol";
 import {ChainConfigs} from "../utils/ChainConfigs.sol";
 import {AxelarAdapter} from "../../../src/adapters/AxelarAdapter.sol";
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
-import {WormholeAdapter} from "../../../src/adapters/WormholeAdapter.sol";
 import {LayerZeroAdapter} from "../../../src/adapters/LayerZeroAdapter.sol";
 import {RefundEscrowFactory} from "../../../src/utils/RefundEscrowFactory.sol";
 
@@ -288,7 +287,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         config.contracts.refundEscrowFactory = address(report.refundEscrowFactory);
         config.contracts.subsidyManager = address(report.subsidyManager);
 
-        // Skip wormholeAdapter, axelarAdapter, layerZeroAdapter due to not being public in FullDeployer
+        // Skip axelarAdapter, layerZeroAdapter due to not being public in FullDeployer
         // Can be queried via multiAdapter.adapters()
 
         // Factory contracts
@@ -333,7 +332,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         vm.label(config.contracts.vaultRouter, "VaultRouter");
         vm.label(config.contracts.asyncRequestManager, "AsyncRequestManager");
         vm.label(config.contracts.syncManager, "SyncManager");
-        vm.label(config.contracts.wormholeAdapter, "WormholeAdapter");
         vm.label(config.contracts.axelarAdapter, "AxelarAdapter");
         vm.label(config.contracts.asyncVaultFactory, "AsyncVaultFactory");
         vm.label(config.contracts.syncDepositVaultFactory, "SyncDepositVaultFactory");
@@ -437,7 +435,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         }
 
         // From FullDeployer - Adapters
-        if (config.contracts.wormholeAdapter != address(0)) _validateRootWard(config.contracts.wormholeAdapter);
         if (config.contracts.axelarAdapter != address(0)) _validateRootWard(config.contracts.axelarAdapter);
         if (config.contracts.layerZeroAdapter != address(0)) _validateRootWard(config.contracts.layerZeroAdapter);
 
@@ -635,9 +632,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             if (!skipNewRootChecks) {
                 _validateWard(config.contracts.root, config.contracts.protocolGuardian);
             }
-            if (config.contracts.wormholeAdapter != address(0)) {
-                _validateWard(config.contracts.wormholeAdapter, config.contracts.protocolGuardian);
-            }
             if (config.contracts.axelarAdapter != address(0)) {
                 _validateWard(config.contracts.axelarAdapter, config.contracts.protocolGuardian);
             }
@@ -651,9 +645,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             _validateWard(config.contracts.hub, config.contracts.opsGuardian);
 
             // Temporal wards for initial adapter wiring
-            if (config.contracts.wormholeAdapter != address(0)) {
-                _validateWard(config.contracts.wormholeAdapter, config.contracts.opsGuardian);
-            }
             if (config.contracts.axelarAdapter != address(0)) {
                 _validateWard(config.contracts.axelarAdapter, config.contracts.opsGuardian);
             }
@@ -942,16 +933,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         for (uint256 i = 0; i < chains.length; i++) {
             if (_shouldValidateChain(chains[i].centrifugeId)) {
-                // Always validate Wormhole mapping
-                if (config.contracts.wormholeAdapter != address(0)) {
-                    _validateWormholeMapping(
-                        WormholeAdapter(config.contracts.wormholeAdapter),
-                        chains[i].wormholeId,
-                        chains[i].centrifugeId,
-                        chains[i].name
-                    );
-                }
-
                 // Validate Axelar mapping if both current chain and target chain support it
                 if (
                     config.contracts.axelarAdapter != address(0)
@@ -992,8 +973,8 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     ///      Adapter wiring is handled separately from state migration in production
     /// @return true if adapters are deployed and wired, false otherwise
     function _shouldValidateAdapters() internal view returns (bool) {
-        // If wormholeAdapter is not set, assume adapters aren't deployed yet
-        if (config.contracts.wormholeAdapter == address(0)) return false;
+        // If axelarAdapter is not set, assume adapters aren't deployed yet
+        if (config.contracts.axelarAdapter == address(0)) return false;
 
         // Check if adapters are wired (quorum > 0 for any chain)
         MultiAdapter multiAdapterContract = MultiAdapter(config.contracts.multiAdapter);
@@ -1053,7 +1034,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         bool sourceSupportsAxelar = config.network.centrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID;
         bool sourceSupportsLayerZero = config.contracts.layerZeroAdapter != address(0);
 
-        uint8 expectedQuorum = 1; // Wormhole (always)
+        uint8 expectedQuorum = 0;
         if (sourceSupportsAxelar && chainConfig.hasAxelar) expectedQuorum++;
         if (sourceSupportsLayerZero && chainConfig.hasLayerZero) expectedQuorum++;
 
@@ -1069,14 +1050,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     ) internal view {
         IMultiAdapter.Adapters memory activeAdapters_ = multiAdapterContract.activeAdapters(centrifugeId, poolId);
 
-        // First adapter should always be Wormhole
-        assertEq(
-            address(activeAdapters_.list[0]),
-            config.contracts.wormholeAdapter,
-            _formatAdapterError("MultiAdapter", "primary adapter", chainConfig.name)
-        );
-
-        uint8 adapterIndex = 1;
+        uint8 adapterIndex = 0;
         bool sourceSupportsAxelar = config.network.centrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID;
         bool sourceSupportsLayerZero = config.contracts.layerZeroAdapter != address(0);
 
@@ -1095,36 +1069,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
                 _formatAdapterError("MultiAdapter", "LayerZero adapter", chainConfig.name)
             );
         }
-    }
-
-    /// @notice Helper function to validate Wormhole adapter source/destination mappings
-    function _validateWormholeMapping(
-        WormholeAdapter wormholeAdapterContract,
-        uint16 wormholeId,
-        uint16 centrifugeId,
-        string memory chainName
-    ) internal view {
-        // Validate source (inbound) mapping
-        (uint16 sourceCentrifugeId, address sourceAddr) = wormholeAdapterContract.sources(wormholeId);
-        assertEq(
-            sourceCentrifugeId, centrifugeId, _formatAdapterError("WormholeAdapter", "source centrifugeId", chainName)
-        );
-        assertEq(
-            sourceAddr,
-            config.contracts.wormholeAdapter,
-            _formatAdapterError("WormholeAdapter", "source address", chainName)
-        );
-
-        // Validate destination (outbound) mapping
-        (uint16 destWormholeId, address destAddr) = wormholeAdapterContract.destinations(centrifugeId);
-        assertEq(
-            destWormholeId, wormholeId, _formatAdapterError("WormholeAdapter", "destination wormholeId", chainName)
-        );
-        assertEq(
-            destAddr,
-            config.contracts.wormholeAdapter,
-            _formatAdapterError("WormholeAdapter", "destination address", chainName)
-        );
     }
 
     /// @notice Helper function to validate Axelar adapter source/destination mappings
@@ -1196,7 +1140,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     }
 
     /// @notice Formats standardized adapter error messages
-    /// @param adapterType The type of adapter (e.g., "WormholeAdapter", "AxelarAdapter", "LayerZeroAdapter")
+    /// @param adapterType The type of adapter (e.g., "AxelarAdapter", "LayerZeroAdapter")
     /// @param field The field that has a mismatch (e.g., "source centrifugeId", "destination address")
     function _formatAdapterError(string memory adapterType, string memory field, string memory chainName)
         private

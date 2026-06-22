@@ -4,12 +4,12 @@
 
 ## Overview
 
-Test each cross-chain adapter (Axelar, LayerZero, Wormhole, Chainlink) in isolation between Base Sepolia (Hub) and Arbitrum Sepolia (Spoke).
+Test each cross-chain adapter (Axelar, LayerZero, Chainlink) in isolation between Base Sepolia (Hub) and Arbitrum Sepolia (Spoke).
 
 **Test Configuration:**
 - Hub: Base Sepolia (centrifugeId: 2)
 - Spoke: Arbitrum Sepolia (centrifugeId: 3)
-- Adapters: Axelar, LayerZero, Wormhole, Chainlink
+- Adapters: Axelar, LayerZero, Chainlink, Hyperlane
 - Pool IDs: Configurable via `GAS_TEST_BASE` env var
 
 ---
@@ -75,7 +75,7 @@ Configures adapter communication between networks.
 
 **Purpose:**
 - Sets up one-directional communication (source -> destination)
-- Wires adapters (Wormhole, LayerZero, Axelar) between networks
+- Wires adapters (LayerZero, Axelar) between networks
 - Registers adapters that exist on BOTH source and destination networks
 
 **Usage:**
@@ -138,7 +138,7 @@ ADAPTER=layerzero forge script ... --sig "runPoolSetup()"
 | Variable          | Default          | Description                            |
 | ----------------- | ---------------- | -------------------------------------- |
 | `GAS_TEST_BASE`   | 91000            | Base pool index                        |
-| `ADAPTER`         | all              | Single adapter: axelar, layerzero, wormhole, chainlink |
+| `ADAPTER`         | all              | Single adapter: axelar, layerzero, chainlink, hyperlane |
 | `XC_GAS_PER_CALL` | 0.1 ether        | Gas for each cross-chain call          |
 | `SPOKE_NETWORK`   | arbitrum-sepolia | Target spoke network                   |
 
@@ -184,7 +184,7 @@ Contract addresses are deterministic across all chains (CREATE3). Look up the la
 - **Hub (Base Sepolia)**: `env/base-sepolia.json` → `contracts` section
 - **Spoke (Arbitrum Sepolia)**: `env/arbitrum-sepolia.json` → `contracts` section
 
-Key contracts: `root`, `hub`, `hubRegistry`, `spoke`, `multiAdapter`, `vaultRegistry`, `axelarAdapter`, `layerZeroAdapter`, `wormholeAdapter`, `chainlinkAdapter`, `subsidyManager`.
+Key contracts: `root`, `hub`, `hubRegistry`, `spoke`, `multiAdapter`, `vaultRegistry`, `axelarAdapter`, `layerZeroAdapter`, `chainlinkAdapter`, `hyperlaneAdapter`, `subsidyManager`.
 
 ---
 
@@ -232,7 +232,7 @@ forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
 ```
 
 **What happens:**
-1. Creates 4 pools (Axelar, LayerZero, Wormhole, Chainlink)
+1. Creates 4 pools (Axelar, LayerZero, Chainlink, Hyperlane)
 2. Adds share classes and initializes holdings
 3. No cross-chain messages — hub gas only
 
@@ -259,7 +259,7 @@ Monitor cross-chain message delivery:
 - **Axelar**: https://testnet.axelarscan.io/gmp/search?sourceChain=base-sepolia&destinationChain=arbitrum-sepolia&senderAddress=0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb
 - **LayerZero**: https://testnet.layerzeroscan.com/address/0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb
 - **Chainlink CCIP**: https://ccip.chain.link/address/0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb
-- **Wormhole** (deprecated): https://wormholescan.io/#/txs?address=0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb&network=Testnet
+- **Hyperlane**: https://explorer.hyperlane.xyz/?search=0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb
 
 Verify adapter config on spoke (Arbitrum Sepolia):
 ```bash
@@ -317,8 +317,8 @@ With `GAS_TEST_BASE=91000` (default):
 | --------- | ---------- | ----------------- | ------------------ |
 | Axelar    | 91000      | 562949953512312   | 0x0002000000016378 |
 | LayerZero | 91001      | 562949953512313   | 0x0002000000016379 |
-| Wormhole  | 91002      | 562949953512314   | 0x000200000001637a |
-| Chainlink | 91003      | 562949953512315   | 0x000200000001637b |
+| Chainlink | 91002      | 562949953512314   | 0x000200000001637a |
+| Hyperlane | 91003      | 562949953512315   | 0x000200000001637b |
 
 **Formula:** `PoolId = (centrifugeId << 48) | poolIndex`
 
@@ -353,11 +353,6 @@ forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
 forge script ... --sig "runLayerZero_PoolSetup()"
 forge script ... --sig "runLayerZero_AdapterSetup()"
 forge script ... --sig "runLayerZero_ShareClassTest()"
-
-# Wormhole only
-forge script ... --sig "runWormhole_PoolSetup()"
-forge script ... --sig "runWormhole_AdapterSetup()"
-forge script ... --sig "runWormhole_ShareClassTest()"
 ```
 
 ### Method 2: ADAPTER Environment Variable
@@ -373,8 +368,8 @@ ADAPTER=axelar NETWORK=base-sepolia forge script ... --sig "runAdapterSetup()"
 **Supported ADAPTER values:**
 - `axelar` or `0` - Axelar adapter only
 - `layerzero` or `1` - LayerZero adapter only
-- `wormhole` or `2` - Wormhole adapter only
-- `chainlink` or `3` - Chainlink adapter only
+- `chainlink` or `2` - Chainlink adapter only
+- `hyperlane` or `3` - Hyperlane adapter only
 - `all` (default) - All adapters
 
 ---
@@ -440,9 +435,6 @@ cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512312 0x0002000
 # LayerZero (91001)
 cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512313 0x00020000000163790000000000000001 --rpc-url $ARBITRUM_RPC
 
-# Wormhole (91002)
-cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512314 0x000200000001637a0000000000000001 --rpc-url $ARBITRUM_RPC
-
 # Chainlink (91003)
 cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512315 0x000200000001637b0000000000000001 --rpc-url $ARBITRUM_RPC
 ```
@@ -463,11 +455,6 @@ Edit the network config files (`env/<network>.json`) to control which adapters a
 ```json
 {
   "adapters": {
-    "wormhole": {
-      "deploy": true,
-      "wormholeId": "10002",
-      "relayer": "0x..."
-    },
     "layerZero": {
       "deploy": false,
       "endpoint": "0x...",
@@ -490,4 +477,3 @@ Edit the network config files (`env/<network>.json`) to control which adapters a
 - **Axelar**: https://testnet.axelarscan.io/gmp/search?sourceChain=base-sepolia&destinationChain=arbitrum-sepolia&senderAddress=0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb
 - **LayerZero**: https://testnet.layerzeroscan.com/address/0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb
 - **Chainlink CCIP**: https://ccip.chain.link/address/0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb
-- **Wormhole** (deprecated): https://wormholescan.io/#/txs?address=0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb&network=Testnet

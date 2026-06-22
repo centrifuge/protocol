@@ -36,7 +36,6 @@ abstract contract VMLabeling is Test {
         vm.label(IntegrationConstants.FULL_RESTRICTIONS_HOOK, "FullRestrictionsHook");
         vm.label(IntegrationConstants.FREELY_TRANSFERABLE_HOOK, "FreelyTransferableHook");
         vm.label(IntegrationConstants.REDEMPTION_RESTRICTIONS_HOOK, "RedemptionRestrictionsHook");
-        vm.label(IntegrationConstants.WORMHOLE_ADAPTER, "WormholeAdapter");
         vm.label(IntegrationConstants.AXELAR_ADAPTER, "AxelarAdapter");
         vm.label(IntegrationConstants.LAYER_ZERO_ADAPTER, "LayerZeroAdapter");
         vm.label(IntegrationConstants.MESSAGE_PROCESSOR, "MessageProcessor");

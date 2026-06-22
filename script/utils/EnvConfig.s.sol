@@ -38,12 +38,6 @@ struct LayerZeroConfig {
     uint8 optionalDVNThreshold;
 }
 
-struct WormholeConfig {
-    uint16 wormholeId;
-    address relayer;
-    bool deploy;
-}
-
 struct AxelarConfig {
     string axelarId;
     address gateway;
@@ -66,7 +60,6 @@ struct HyperlaneConfig {
 
 struct AdaptersConfig {
     LayerZeroConfig layerZero;
-    WormholeConfig wormhole;
     AxelarConfig axelar;
     ChainlinkConfig chainlink;
     HyperlaneConfig hyperlane;
@@ -125,7 +118,6 @@ struct ContractsConfig {
     address circleDecoder;
     // Adapters
     address layerZeroAdapter;
-    address wormholeAdapter;
     address axelarAdapter;
     address chainlinkAdapter;
     address hyperlaneAdapter;
@@ -177,10 +169,6 @@ library Env {
     function _parseAdaptersConfig(string memory json) private pure returns (AdaptersConfig memory config) {
         try vm.parseJsonBool(json, ".adapters.layerZero.deploy") returns (bool val) {
             config.layerZero.deploy = val;
-        } catch {}
-
-        try vm.parseJsonBool(json, ".adapters.wormhole.deploy") returns (bool val) {
-            config.wormhole.deploy = val;
         } catch {}
 
         try vm.parseJsonBool(json, ".adapters.axelar.deploy") returns (bool val) {
@@ -253,11 +241,6 @@ library Env {
                 config.layerZero.requiredDVNs.length > 0 || config.layerZero.optionalDVNThreshold > 0,
                 "Must have at least one required DVN or a non-zero optional threshold"
             );
-        }
-
-        if (config.wormhole.deploy) {
-            config.wormhole.wormholeId = uint16(vm.parseJsonUint(json, ".adapters.wormhole.wormholeId"));
-            config.wormhole.relayer = vm.parseJsonAddress(json, ".adapters.wormhole.relayer");
         }
 
         if (config.axelar.deploy) {
@@ -346,7 +329,6 @@ library Env {
 
         // Adapters
         config.layerZeroAdapter = _tryParseContractAddress(json, "layerZeroAdapter");
-        config.wormholeAdapter = _tryParseContractAddress(json, "wormholeAdapter");
         config.axelarAdapter = _tryParseContractAddress(json, "axelarAdapter");
         config.chainlinkAdapter = _tryParseContractAddress(json, "chainlinkAdapter");
         config.hyperlaneAdapter = _tryParseContractAddress(json, "hyperlaneAdapter");
@@ -456,7 +438,6 @@ library EnvConfigLib {
             adapterConnections_[i] = AdapterConnections({
                 centrifugeId: remoteConfig.network.centrifugeId,
                 layerZeroId: connection.layerZero ? remoteConfig.adapters.layerZero.layerZeroEid : 0,
-                wormholeId: connection.wormhole ? remoteConfig.adapters.wormhole.wormholeId : 0,
                 axelarId: connection.axelar ? remoteConfig.adapters.axelar.axelarId : "",
                 chainlinkId: connection.chainlink ? remoteConfig.adapters.chainlink.chainSelector : 0,
                 hyperlaneId: connection.hyperlane ? remoteConfig.adapters.hyperlane.hyperlaneId : 0,

@@ -234,4 +234,3 @@ class CrossChainTestManager:
 
         print_info(f"LayerZero: https://testnet.layerzeroscan.com/address/{sender}")
         print_info(f"Chainlink: https://ccip.chain.link/address/{sender}")
-        print_info(f"Wormhole (deprecated): https://wormholescan.io/#/txs?address={sender}&network=Testnet")

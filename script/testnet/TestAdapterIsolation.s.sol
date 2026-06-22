@@ -43,7 +43,7 @@ contract TestAdapterIsolation is Script, Constants {
     address constant ARBITRUM_SEPOLIA_USDC = 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d;
     address constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
 
-    uint8 constant ADAPTER_COUNT = 4; // 0=Axelar, 1=LayerZero, 2=Wormhole, 3=Chainlink
+    uint8 constant ADAPTER_COUNT = 4; // 0=Axelar, 1=LayerZero, 2=Chainlink, 3=Hyperlane
 
     //----------------------------------------------------------------------------------------------
     // TYPES
@@ -52,8 +52,8 @@ contract TestAdapterIsolation is Script, Constants {
     enum AdapterType {
         Axelar,
         LayerZero,
-        Wormhole,
-        Chainlink
+        Chainlink,
+        Hyperlane
     }
 
     //----------------------------------------------------------------------------------------------
@@ -158,21 +158,6 @@ contract TestAdapterIsolation is Script, Constants {
         runShareClassTest();
     }
 
-    function runWormhole_PoolSetup() public {
-        selectedAdapter = uint8(AdapterType.Wormhole);
-        runPoolSetup();
-    }
-
-    function runWormhole_AdapterSetup() public {
-        selectedAdapter = uint8(AdapterType.Wormhole);
-        runAdapterSetup();
-    }
-
-    function runWormhole_ShareClassTest() public {
-        selectedAdapter = uint8(AdapterType.Wormhole);
-        runShareClassTest();
-    }
-
     function runChainlink_PoolSetup() public {
         selectedAdapter = uint8(AdapterType.Chainlink);
         runPoolSetup();
@@ -185,6 +170,21 @@ contract TestAdapterIsolation is Script, Constants {
 
     function runChainlink_ShareClassTest() public {
         selectedAdapter = uint8(AdapterType.Chainlink);
+        runShareClassTest();
+    }
+
+    function runHyperlane_PoolSetup() public {
+        selectedAdapter = uint8(AdapterType.Hyperlane);
+        runPoolSetup();
+    }
+
+    function runHyperlane_AdapterSetup() public {
+        selectedAdapter = uint8(AdapterType.Hyperlane);
+        runAdapterSetup();
+    }
+
+    function runHyperlane_ShareClassTest() public {
+        selectedAdapter = uint8(AdapterType.Hyperlane);
         runShareClassTest();
     }
 
@@ -224,10 +224,10 @@ contract TestAdapterIsolation is Script, Constants {
             selectedAdapter = uint8(AdapterType.Axelar);
         } else if (adapterHash == keccak256("layerzero") || adapterHash == keccak256("1")) {
             selectedAdapter = uint8(AdapterType.LayerZero);
-        } else if (adapterHash == keccak256("wormhole") || adapterHash == keccak256("2")) {
-            selectedAdapter = uint8(AdapterType.Wormhole);
-        } else if (adapterHash == keccak256("chainlink") || adapterHash == keccak256("3")) {
+        } else if (adapterHash == keccak256("chainlink") || adapterHash == keccak256("2")) {
             selectedAdapter = uint8(AdapterType.Chainlink);
+        } else if (adapterHash == keccak256("hyperlane") || adapterHash == keccak256("3")) {
+            selectedAdapter = uint8(AdapterType.Hyperlane);
         } else {
             selectedAdapter = 255;
         }
@@ -451,8 +451,8 @@ contract TestAdapterIsolation is Script, Constants {
     function _getAdapter(AdapterType adapter) internal view returns (IAdapter) {
         if (adapter == AdapterType.Axelar) return IAdapter(h.contracts.axelarAdapter);
         if (adapter == AdapterType.LayerZero) return IAdapter(h.contracts.layerZeroAdapter);
-        if (adapter == AdapterType.Wormhole) return IAdapter(h.contracts.wormholeAdapter);
-        return IAdapter(h.contracts.chainlinkAdapter);
+        if (adapter == AdapterType.Chainlink) return IAdapter(h.contracts.chainlinkAdapter);
+        return IAdapter(h.contracts.hyperlaneAdapter);
     }
 
     function _poolIndex(uint8 adapterIdx) internal view returns (uint48) {
@@ -462,15 +462,15 @@ contract TestAdapterIsolation is Script, Constants {
     function _adapterName(AdapterType adapter) internal pure returns (string memory) {
         if (adapter == AdapterType.Axelar) return "Axelar";
         if (adapter == AdapterType.LayerZero) return "LayerZero";
-        if (adapter == AdapterType.Wormhole) return "Wormhole";
-        return "Chainlink";
+        if (adapter == AdapterType.Chainlink) return "Chainlink";
+        return "Hyperlane";
     }
 
     function _adapterSymbol(AdapterType adapter) internal pure returns (string memory) {
         if (adapter == AdapterType.Axelar) return "AX";
         if (adapter == AdapterType.LayerZero) return "LZ";
-        if (adapter == AdapterType.Wormhole) return "WH";
-        return "CL";
+        if (adapter == AdapterType.Chainlink) return "CL";
+        return "HL";
     }
 
     //----------------------------------------------------------------------------------------------
@@ -520,13 +520,11 @@ contract TestAdapterIsolation is Script, Constants {
             "  - LayerZero: https://testnet.layerzeroscan.com/address/0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb"
         );
         console.log("  - Chainlink: https://ccip.chain.link/address/0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb");
-        console.log(
-            "  - Wormhole (deprecated): https://wormholescan.io/#/txs?address=0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb&network=Testnet"
-        );
+        console.log("  - Hyperlane: https://explorer.hyperlane.xyz/?search=0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb");
     }
 
     function _logPoolIds() internal view {
-        string[4] memory adapterNames = ["Axelar", "LayerZero", "Wormhole", "Chainlink"];
+        string[4] memory adapterNames = ["Axelar", "LayerZero", "Chainlink", "Hyperlane"];
 
         for (uint8 i = 0; i < ADAPTER_COUNT; i++) {
             if (!_shouldTestAdapter(i)) continue;

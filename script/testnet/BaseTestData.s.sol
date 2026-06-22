@@ -43,7 +43,6 @@ import {EnvConfig} from "../utils/EnvConfig.s.sol";
 import {LaunchDeployer} from "../LaunchDeployer.s.sol";
 import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../../src/adapters/AxelarAdapter.sol";
-import {WormholeAdapter} from "../../src/adapters/WormholeAdapter.sol";
 import {ChainlinkAdapter} from "../../src/adapters/ChainlinkAdapter.sol";
 import {LayerZeroAdapter} from "../../src/adapters/LayerZeroAdapter.sol";
 
@@ -128,7 +127,6 @@ abstract contract BaseTestData is LaunchDeployer {
         // Load adapter addresses
         axelarAdapter = AxelarAdapter(config.contracts.axelarAdapter);
         layerZeroAdapter = LayerZeroAdapter(config.contracts.layerZeroAdapter);
-        wormholeAdapter = WormholeAdapter(config.contracts.wormholeAdapter);
         chainlinkAdapter = ChainlinkAdapter(config.contracts.chainlinkAdapter);
     }
 

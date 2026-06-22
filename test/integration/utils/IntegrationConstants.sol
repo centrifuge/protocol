@@ -64,7 +64,6 @@ library IntegrationConstants {
     address constant FULL_RESTRICTIONS_HOOK = 0xa2C98F0F76Da0C97039688CA6280d082942d0b48;
     address constant FREELY_TRANSFERABLE_HOOK = 0xbce8C1f411484C28a64f7A6e3fA63C56b6f3dDDE;
     address constant REDEMPTION_RESTRICTIONS_HOOK = 0xf0C36EFD5F6465D18B9679ee1407a3FC9A2955dD;
-    address constant WORMHOLE_ADAPTER = 0x6b98679eEC5b5DE3A803Dc801B2f12aDdDCD39Ec;
     address constant AXELAR_ADAPTER = 0x52271c9A29D0f97c350BBE32b3377CdD26026d0a;
     address constant MESSAGE_PROCESSOR = 0xE994149c6D00Fe8708f843dc73973D1E7205530d;
     address constant MESSAGE_DISPATCHER = 0x21AF0C29611CFAaFf9271C8a3F84F2bC31d59132;
@@ -242,14 +241,6 @@ library IntegrationConstants {
     uint16 constant PLUME_CENTRIFUGE_ID = 4;
     uint16 constant AVAX_CENTRIFUGE_ID = 5;
     uint16 constant BNB_CENTRIFUGE_ID = 6;
-
-    // Wormhole Chain IDs
-    uint16 constant ETH_WORMHOLE_ID = 2;
-    uint16 constant BASE_WORMHOLE_ID = 30;
-    uint16 constant ARBITRUM_WORMHOLE_ID = 23;
-    uint16 constant PLUME_WORMHOLE_ID = 55;
-    uint16 constant AVAX_WORMHOLE_ID = 6;
-    uint16 constant BNB_WORMHOLE_ID = 4;
 
     // Axelar Chain IDs (strings)
     string constant ETH_AXELAR_ID = "Ethereum";

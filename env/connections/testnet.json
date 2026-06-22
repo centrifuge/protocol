@@ -5,7 +5,7 @@
     "connections": [
         {
             "chains": ["ALL", "ALL"],
-            "adapters": ["axelar", "wormhole", "layerZero", "chainlink"],
+            "adapters": ["axelar", "layerZero", "chainlink"],
             "threshold": 1
         },
         {

@@ -48,7 +48,6 @@ import {ContractsConfig as LiveContracts, EnvConfig} from "../../../../../script
 
 import {SubsidyManager} from "../../../../../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../../../../../src/adapters/AxelarAdapter.sol";
-import {WormholeAdapter} from "../../../../../src/adapters/WormholeAdapter.sol";
 import {ChainlinkAdapter} from "../../../../../src/adapters/ChainlinkAdapter.sol";
 import {HyperlaneAdapter} from "../../../../../src/adapters/HyperlaneAdapter.sol";
 import {LayerZeroAdapter} from "../../../../../src/adapters/LayerZeroAdapter.sol";
@@ -120,7 +119,6 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
     AdaptersContract memory adapters = AdaptersContract(
         core,
         LayerZeroAdapter(c.layerZeroAdapter),
-        WormholeAdapter(c.wormholeAdapter),
         AxelarAdapter(c.axelarAdapter),
         ChainlinkAdapter(c.chainlinkAdapter),
         HyperlaneAdapter(c.hyperlaneAdapter)

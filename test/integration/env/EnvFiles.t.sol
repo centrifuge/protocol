@@ -120,10 +120,6 @@ contract EnvConnectionsTest is Test {
                     assertTrue(chain1.adapters.layerZero.deploy, _err(pair, "layerZero"));
                     assertTrue(chain2.adapters.layerZero.deploy, _err(pair, "layerZero"));
                 }
-                if (connections[j].wormhole) {
-                    assertTrue(chain1.adapters.wormhole.deploy, _err(pair, "wormhole"));
-                    assertTrue(chain2.adapters.wormhole.deploy, _err(pair, "wormhole"));
-                }
                 if (connections[j].axelar) {
                     assertTrue(chain1.adapters.axelar.deploy, _err(pair, "axelar"));
                     assertTrue(chain2.adapters.axelar.deploy, _err(pair, "axelar"));

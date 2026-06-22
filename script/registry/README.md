@@ -356,10 +356,6 @@ interface ChainConfig {
     opsAdmin?: string;          // multisig safe admin address
   };
   adapters: {
-    wormhole?: {
-      wormholeId: string;
-      relayer: string;
-    };
     axelar?: {
       axelarId: string;
       gateway: string | null;

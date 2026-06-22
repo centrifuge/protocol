@@ -100,8 +100,8 @@ contract WireToNewNetwork is Script {
         address opsGuardian = source.contracts.opsGuardian;
 
         // Over-allocate: max 5 calls per target (4 adapters + 1 setAdapters)
-        targets = new address[](targetNames.length * 6);
-        data = new bytes[](targetNames.length * 6);
+        targets = new address[](targetNames.length * 5);
+        data = new bytes[](targetNames.length * 5);
         uint256 idx;
 
         for (uint256 t; t < targetNames.length; t++) {
@@ -115,7 +115,7 @@ contract WireToNewNetwork is Script {
 
             Connection memory conn = _findTargetConnection(source, targetNames[t]);
 
-            IAdapter[] memory adapters = new IAdapter[](5);
+            IAdapter[] memory adapters = new IAdapter[](4);
             uint256 adapterCount;
 
             if (conn.layerZero) {
@@ -132,22 +132,6 @@ contract WireToNewNetwork is Script {
                 );
                 idx++;
                 adapters[adapterCount++] = IAdapter(lzAdapter);
-            }
-
-            if (conn.wormhole) {
-                address wormholeAdapter = source.contracts.wormholeAdapter;
-                require(wormholeAdapter != address(0), "Wormhole adapter not configured for source network");
-                targets[idx] = opsGuardian;
-                data[idx] = abi.encodeCall(
-                    IOpsGuardian.wire,
-                    (
-                        wormholeAdapter,
-                        centrifugeId,
-                        abi.encode(target.adapters.wormhole.wormholeId, target.contracts.wormholeAdapter)
-                    )
-                );
-                idx++;
-                adapters[adapterCount++] = IAdapter(wormholeAdapter);
             }
 
             if (conn.axelar) {

@@ -8,10 +8,6 @@ Adapters enable cross-chain messaging by integrating with various bridging proto
 
 `LayerZeroAdapter` integrates with LayerZero V2 for cross-chain messaging. The adapter uses LayerZero's endpoint V2 with configurable delegate for DVN (Decentralized Verifier Network) and executor settings, as well as send/receive library configuration. Message ordering is not enforced.
 
-### `WormholeAdapter`
-
-`WormholeAdapter` integrates with the Wormhole Relayer service for cross-chain messaging. The adapter identifies its local chain using the Wormhole delivery provider's chain ID and maintains source/destination mappings for routing.
-
 ### `AxelarAdapter`
 
 `AxelarAdapter` integrates with Axelar Network for cross-chain messaging. The adapter uses Axelar's gas service to prepay for destination chain execution and validates incoming messages via the Axelar gateway's approval mechanism.
