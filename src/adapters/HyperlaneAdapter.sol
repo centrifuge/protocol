@@ -61,11 +61,6 @@ contract HyperlaneAdapter is Auth, IHyperlaneAdapter {
         emit Wire(centrifugeId, hyperlaneDomain, adapter);
     }
 
-    /// @inheritdoc IAdapterWiring
-    function isWired(uint16 centrifugeId) external view returns (bool) {
-        return destinations[centrifugeId].hyperlaneDomain != 0;
-    }
-
     /// @inheritdoc IHyperlaneAdapter
     function setIsm(IInterchainSecurityModule ism) external auth {
         interchainSecurityModule = ism;

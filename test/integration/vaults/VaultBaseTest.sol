@@ -280,7 +280,6 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         balanceSheet.rely(address(this));
         contractUpdater.rely(address(this));
         vaultRegistry.rely(address(this));
-        tokenRecoverer.rely(address(this));
         refundEscrowFactory.rely(address(this));
         asyncVaultFactory.rely(address(this));
         asyncRequestManager.rely(address(this));

@@ -17,7 +17,6 @@ interface IGasService is IMessageProperties {
 
     function scheduleUpgrade() external view returns (uint128);
     function cancelUpgrade() external view returns (uint128);
-    function recoverTokens() external view returns (uint128);
     function registerAsset() external view returns (uint128);
     function setPoolAdapters() external view returns (uint128);
     function request() external view returns (uint128);

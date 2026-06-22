@@ -46,7 +46,6 @@ import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassMa
 
 import {Root} from "../../../src/admin/Root.sol";
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
-import {TokenRecoverer} from "../../../src/admin/TokenRecoverer.sol";
 
 import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
 
@@ -104,7 +103,6 @@ abstract contract Setup is
 
     // Mocks
     MessageDispatcher messageDispatcher;
-    TokenRecoverer tokenRecoverer;
     MockGateway gateway;
 
     // Clamping
@@ -214,11 +212,6 @@ abstract contract Setup is
             address(poolEscrowFactory),
             address(0) // poolEscrow_
         );
-
-        tokenRecoverer = new TokenRecoverer(IRoot(address(root)), address(this));
-        Root(address(root)).rely(address(tokenRecoverer));
-        tokenRecoverer.rely(address(root));
-        tokenRecoverer.rely(address(messageDispatcher));
 
         messageDispatcher = new MessageDispatcher(
             CENTRIFUGE_CHAIN_ID, // localCentrifugeId = 1 for same-chain testing

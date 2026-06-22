@@ -749,24 +749,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     }
 
     /// forge-config: default.isolate = true
-    function testTokenRecover(bool sameChain) public {
-        address RECEIVER = makeAddr("Receiver");
-        uint256 VALUE = 123;
-
-        _setSpoke(sameChain);
-
-        vm.startPrank(ERC20_DEPLOYER);
-        s.usdc.mint(address(s.gateway), VALUE);
-
-        vm.startPrank(address(SAFE_ADMIN_A));
-        h.protocolGuardian.recoverTokens{value: GAS}(
-            s.centrifugeId, address(s.gateway), address(s.usdc), 0, RECEIVER, VALUE, REFUND
-        );
-
-        assertEq(s.usdc.balanceOf(RECEIVER), VALUE);
-    }
-
-    /// forge-config: default.isolate = true
     function testConfigureAsset(bool sameChain) public {
         _setSpoke(sameChain);
         _configureAsset(s);

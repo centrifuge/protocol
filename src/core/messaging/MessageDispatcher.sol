@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {IGateway} from "./interfaces/IGateway.sol";
 import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
-import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 import {ISpokeMessageSender, IHubMessageSender, IScheduleAuthMessageSender} from "./interfaces/IGatewaySenders.sol";
@@ -21,7 +20,6 @@ import {D18} from "../../misc/types/D18.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
-import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
@@ -44,7 +42,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ISpokeGatewayHandler public spoke;
     IScheduleAuth public immutable scheduleAuth;
     IHubGatewayHandler public hubHandler;
-    ITokenRecoverer public tokenRecoverer;
     IBalanceSheetGatewayHandler public balanceSheet;
     IVaultRegistryGatewayHandler public vaultRegistry;
     IContractUpdateGatewayHandler public contractUpdater;
@@ -70,7 +67,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IContractUpdateGatewayHandler(data);
-        else if (what == "tokenRecoverer") tokenRecoverer = ITokenRecoverer(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -404,32 +400,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _refund(refund);
         } else {
             _send(centrifugeId, MessageLib.CancelUpgrade({target: target}).serialize(), false, refund);
-        }
-    }
-
-    /// @inheritdoc IScheduleAuthMessageSender
-    function sendRecoverTokens(
-        uint16 centrifugeId,
-        bytes32 target,
-        bytes32 token,
-        uint256 tokenId,
-        bytes32 to,
-        uint256 amount,
-        address refund
-    ) external payable auth {
-        if (centrifugeId == localCentrifugeId) {
-            tokenRecoverer.recoverTokens(
-                IRecoverable(target.toAddress()), token.toAddress(), tokenId, to.toAddress(), amount
-            );
-            _refund(refund);
-        } else {
-            _send(
-                centrifugeId,
-                MessageLib.RecoverTokens({target: target, token: token, tokenId: tokenId, to: to, amount: amount})
-                    .serialize(),
-                false,
-                refund
-            );
         }
     }
 

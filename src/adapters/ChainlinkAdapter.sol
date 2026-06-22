@@ -50,11 +50,6 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
         emit Wire(centrifugeId, chainSelector, adapter);
     }
 
-    /// @notice Returns whether the adapter is wired to the given chain
-    function isWired(uint16 centrifugeId) external view returns (bool) {
-        return destinations[centrifugeId].chainSelector != 0;
-    }
-
     //----------------------------------------------------------------------------------------------
     // Incoming
     //----------------------------------------------------------------------------------------------

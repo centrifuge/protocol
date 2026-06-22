@@ -1,6 +1,6 @@
 # Admin
 
-The admin module provides protocol governance and emergency controls, including timelocked permission management, pause functionality, cross-chain upgrade coordination, and token recovery. It separates operational duties (pool creation, adapter wiring) from protocol-level security controls (pausing, emergency recovery).
+The admin module provides protocol governance and emergency controls, including timelocked permission management, pause functionality, and cross-chain upgrade coordination. It separates operational duties (pool creation, adapter wiring) from protocol-level security controls (pausing, spell-based token recovery).
 
 ![Admin architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/admin.puml)
 
@@ -15,7 +15,3 @@ The admin module provides protocol governance and emergency controls, including 
 ### `OpsGuardian`
 
 `OpsGuardian` manages operational aspects of the protocol, specifically adapter initialization, network wiring, and pool creation. It's controlled by an operations-focused multisig safe separate from the protocol guardian's safe, enabling separation of routine operations from critical protocol security decisions.
-
-### `TokenRecoverer`
-
-`TokenRecoverer` enables authorized recovery of tokens from protocol contracts by temporarily granting itself ward permissions through `Root`, executing the recovery via the target contract's `recoverTokens` function, and immediately removing those permissions. This atomic permission grant-execute-revoke pattern ensures the recoverer doesn't retain elevated privileges after operations.

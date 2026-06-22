@@ -45,19 +45,6 @@ interface IProtocolGuardian {
     /// @param refund Address to receive unused gas refund
     function cancelUpgrade(uint16 centrifugeId, address target, address refund) external payable;
 
-    /// @notice Recover tokens on a specific chain
-    /// @dev    Only supports EVM targets today
-    /// @param refund Address to receive unused gas refund
-    function recoverTokens(
-        uint16 centrifugeId,
-        address target,
-        address token,
-        uint256 tokenId,
-        address to,
-        uint256 amount,
-        address refund
-    ) external payable;
-
     /// @notice Remove adapter configuration for a session, blocking those adapters from voting on messages
     /// @dev Local-only operation for fast emergency response
     /// @param centrifugeId Target chain ID

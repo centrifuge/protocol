@@ -94,12 +94,4 @@ contract TestFile is TestCommon {
         processor.file("contractUpdater", address(23));
         assertEq(address(processor.contractUpdater()), address(23));
     }
-
-    function testFileTokenRecoverer() public {
-        vm.prank(address(AUTH));
-        vm.expectEmit();
-        emit IMessageProcessor.File("tokenRecoverer", address(23));
-        processor.file("tokenRecoverer", address(23));
-        assertEq(address(processor.tokenRecoverer()), address(23));
-    }
 }

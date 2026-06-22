@@ -28,15 +28,11 @@ contract ProtocolGuardianTest is Test {
     address immutable OWNER = makeAddr("owner");
     address immutable UNAUTHORIZED = makeAddr("unauthorized");
     address immutable TARGET = makeAddr("target");
-    address immutable TOKEN = makeAddr("token");
-    address immutable TO = makeAddr("to");
     address immutable REFUND = makeAddr("refund");
     IAdapter immutable ADAPTER = IAdapter(makeAddr("adapter"));
 
     uint16 constant CENTRIFUGE_ID = 1;
     uint16 constant SESSION_ID = 1;
-    uint256 constant TOKEN_ID = 1;
-    uint256 constant AMOUNT = 100;
     uint256 constant COST = 123;
     PoolId constant POOL_ID = PoolId.wrap(1);
     ProtocolGuardian protocolGuardian;
@@ -191,37 +187,6 @@ contract ProtocolGuardianTestCancelUpgrade is ProtocolGuardianTest {
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
         protocolGuardian.cancelUpgrade(CENTRIFUGE_ID, TARGET, REFUND);
-    }
-}
-
-contract ProtocolGuardianTestRecoverTokens is ProtocolGuardianTest {
-    using CastLib for address;
-
-    function testRecoverTokensSuccess() public {
-        vm.mockCall(
-            address(sender),
-            COST,
-            abi.encodeWithSelector(
-                sender.sendRecoverTokens.selector,
-                CENTRIFUGE_ID,
-                TARGET.toBytes32(),
-                TOKEN.toBytes32(),
-                TOKEN_ID,
-                TO.toBytes32(),
-                AMOUNT,
-                REFUND
-            ),
-            abi.encode()
-        );
-
-        vm.prank(address(SAFE));
-        protocolGuardian.recoverTokens{value: COST}(CENTRIFUGE_ID, TARGET, TOKEN, TOKEN_ID, TO, AMOUNT, REFUND);
-    }
-
-    function testRecoverTokensRevertWhenNotSafe() public {
-        vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
-        protocolGuardian.recoverTokens(CENTRIFUGE_ID, TARGET, TOKEN, TOKEN_ID, TO, AMOUNT, REFUND);
     }
 }
 

@@ -24,7 +24,7 @@ OpsGuardian --> IHub : createPool
 ProtocolGuardian --> Root : relyContract
 ProtocolGuardian --> IGateway : blockOutgoing
 ProtocolGuardian --> IMultiAdapter : setAdapters/wire
-ProtocolGuardian -right-> IRootMessageSender : recoverTokens/scheduleUpgrade
+ProtocolGuardian -right-> IRootMessageSender : scheduleUpgrade
 
 Root .[dotted].> IAuth
 

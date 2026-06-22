@@ -4,7 +4,6 @@ pragma solidity >=0.5.0;
 import {IMultiAdapter} from "./IMultiAdapter.sol";
 import {IScheduleAuth} from "./IScheduleAuth.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
-import {ITokenRecoverer} from "./ITokenRecoverer.sol";
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
@@ -48,9 +47,6 @@ interface IMessageProcessor is IMessageHandler {
 
     /// @notice Hub-side handler for investment request processing and share issuance
     function hubHandler() external view returns (IHubGatewayHandler);
-
-    /// @notice Recovers tokens mistakenly sent to protocol contracts
-    function tokenRecoverer() external view returns (ITokenRecoverer);
 
     /// @notice Processes timelocked rely/deny operations received from remote chains
     function scheduleAuth() external view returns (IScheduleAuth);

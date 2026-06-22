@@ -43,8 +43,4 @@ contract MockAdapter is Mock, IAdapter {
     function wire(bytes memory) external pure {
         revert("MockAdapter: wire not supported");
     }
-
-    function isWired(uint16) external pure returns (bool) {
-        revert("MockAdapter: isWired not supported");
-    }
 }

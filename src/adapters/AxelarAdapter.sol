@@ -56,11 +56,6 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         emit Wire(centrifugeId, axelarId, adapter);
     }
 
-    /// @notice Returns whether the adapter is wired to the given chain
-    function isWired(uint16 centrifugeId) external view returns (bool) {
-        return bytes(destinations[centrifugeId].axelarId).length != 0;
-    }
-
     //----------------------------------------------------------------------------------------------
     // Incoming
     //----------------------------------------------------------------------------------------------

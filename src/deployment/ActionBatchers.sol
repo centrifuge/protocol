@@ -28,7 +28,6 @@ import {Root} from "../admin/Root.sol";
 import {GasService} from "../admin/GasService.sol";
 import {ISafe} from "../admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../admin/OpsGuardian.sol";
-import {TokenRecoverer} from "../admin/TokenRecoverer.sol";
 import {ProtocolGuardian} from "../admin/ProtocolGuardian.sol";
 
 import {FreezeOnly} from "../hooks/FreezeOnly.sol";
@@ -78,7 +77,6 @@ struct CoreReport {
     HubHandler hubHandler;
     Hub hub;
     Root root;
-    TokenRecoverer tokenRecoverer;
     ProtocolGuardian protocolGuardian;
     OpsGuardian opsGuardian;
     GasService gasService;
@@ -162,8 +160,6 @@ contract CoreActionBatcher is Constants {
         report.hub.rely(root);
         report.hubHandler.rely(root);
 
-        report.tokenRecoverer.rely(root);
-
         // Rely gateway
         report.multiAdapter.rely(address(report.gateway));
         report.messageProcessor.rely(address(report.gateway));
@@ -180,7 +176,6 @@ contract CoreActionBatcher is Constants {
         report.vaultRegistry.rely(address(report.messageDispatcher));
         report.hubHandler.rely(address(report.messageDispatcher));
         report.root.rely(address(report.messageDispatcher));
-        report.tokenRecoverer.rely(address(report.messageDispatcher));
 
         // Rely messageProcessor
         report.gateway.rely(address(report.messageProcessor));
@@ -191,7 +186,6 @@ contract CoreActionBatcher is Constants {
         report.vaultRegistry.rely(address(report.messageProcessor));
         report.hubHandler.rely(address(report.messageProcessor));
         report.root.rely(address(report.messageProcessor));
-        report.tokenRecoverer.rely(address(report.messageProcessor));
 
         // Rely spoke
         report.gateway.rely(address(report.spoke));
@@ -225,15 +219,11 @@ contract CoreActionBatcher is Constants {
         report.multiAdapter.rely(address(report.protocolGuardian));
         report.messageDispatcher.rely(address(report.protocolGuardian));
         report.root.rely(address(report.protocolGuardian));
-        report.tokenRecoverer.rely(address(report.protocolGuardian));
 
         // Rely opsGuardian
         report.multiAdapter.rely(address(report.opsGuardian));
         report.gateway.rely(address(report.opsGuardian));
         report.hub.rely(address(report.opsGuardian));
-
-        // Rely tokenRecoverer
-        report.root.rely(address(report.tokenRecoverer));
 
         // File methods
         report.gateway.file("adapter", address(report.multiAdapter));
@@ -248,7 +238,6 @@ contract CoreActionBatcher is Constants {
         report.messageDispatcher.file("contractUpdater", address(report.contractUpdater));
         report.messageDispatcher.file("vaultRegistry", address(report.vaultRegistry));
         report.messageDispatcher.file("hubHandler", address(report.hubHandler));
-        report.messageDispatcher.file("tokenRecoverer", address(report.tokenRecoverer));
 
         report.messageProcessor.file("multiAdapter", address(report.multiAdapter));
         report.messageProcessor.file("spoke", address(report.spoke));
@@ -256,7 +245,6 @@ contract CoreActionBatcher is Constants {
         report.messageProcessor.file("contractUpdater", address(report.contractUpdater));
         report.messageProcessor.file("vaultRegistry", address(report.vaultRegistry));
         report.messageProcessor.file("hubHandler", address(report.hubHandler));
-        report.messageProcessor.file("tokenRecoverer", address(report.tokenRecoverer));
 
         report.poolEscrowFactory.file("balanceSheet", address(report.balanceSheet));
 
@@ -316,7 +304,6 @@ contract CoreActionBatcher is Constants {
         report.hubHandler.deny(address(this));
 
         report.root.deny(address(this));
-        report.tokenRecoverer.deny(address(this));
     }
 }
 

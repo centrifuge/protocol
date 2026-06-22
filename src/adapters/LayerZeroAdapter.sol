@@ -63,11 +63,6 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         emit Wire(centrifugeId, layerZeroEid, adapter);
     }
 
-    /// @notice Returns whether the adapter is wired to the given chain
-    function isWired(uint16 centrifugeId) external view returns (bool) {
-        return destinations[centrifugeId].layerZeroEid != 0;
-    }
-
     /// @dev Update the LayerZero delegate.
     function setDelegate(address newDelegate) external auth {
         endpoint.setDelegate(newDelegate);

@@ -21,17 +21,6 @@ interface IScheduleAuthMessageSender {
 
     /// @notice Creates and send the message
     function sendCancelUpgrade(uint16 centrifugeId, bytes32 target, address refund) external payable;
-
-    /// @notice Creates and send the message
-    function sendRecoverTokens(
-        uint16 centrifugeId,
-        bytes32 target,
-        bytes32 token,
-        uint256 tokenId,
-        bytes32 to,
-        uint256 amount,
-        address refund
-    ) external payable;
 }
 
 /// @notice Interface for dispatch-only gateway

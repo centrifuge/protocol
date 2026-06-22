@@ -178,7 +178,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(messageDispatcher.localCentrifugeId(), CENTRIFUGE_ID);
         assertEq(address(messageDispatcher.scheduleAuth()), address(root));
-        assertEq(address(messageDispatcher.tokenRecoverer()), address(tokenRecoverer));
         assertEq(address(messageDispatcher.gateway()), address(gateway));
         assertEq(address(messageDispatcher.multiAdapter()), address(multiAdapter));
         assertEq(address(messageDispatcher.spoke()), address(spoke));
@@ -197,7 +196,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(messageProcessor.scheduleAuth()), address(root));
-        assertEq(address(messageProcessor.tokenRecoverer()), address(tokenRecoverer));
         assertEq(address(messageProcessor.multiAdapter()), address(multiAdapter));
         assertEq(address(messageProcessor.spoke()), address(spoke));
         assertEq(address(messageProcessor.balanceSheet()), address(balanceSheet));
@@ -406,32 +404,13 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
     function testRoot(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(protocolGuardian));
-        vm.assume(nonWard != address(tokenRecoverer));
         vm.assume(nonWard != address(messageProcessor));
         vm.assume(nonWard != address(messageDispatcher));
 
         assertEq(root.wards(address(protocolGuardian)), 1);
-        assertEq(root.wards(address(tokenRecoverer)), 1);
         assertEq(root.wards(address(messageProcessor)), 1);
         assertEq(root.wards(address(messageDispatcher)), 1);
         assertEq(root.wards(nonWard), 0);
-    }
-
-    function testTokenRecoverer(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(protocolGuardian));
-        vm.assume(nonWard != address(messageProcessor));
-        vm.assume(nonWard != address(messageDispatcher));
-
-        assertEq(tokenRecoverer.wards(address(root)), 1);
-        assertEq(tokenRecoverer.wards(address(protocolGuardian)), 1);
-        assertEq(tokenRecoverer.wards(address(messageProcessor)), 1);
-        assertEq(tokenRecoverer.wards(address(messageDispatcher)), 1);
-        assertEq(tokenRecoverer.wards(nonWard), 0);
-
-        // dependencies set correctly
-        assertEq(address(tokenRecoverer.root()), address(root));
     }
 
     function testProtocolGuardian() public view {

@@ -21,7 +21,6 @@ import {PoolEscrowFactory} from "../../../../../src/core/spoke/factories/PoolEsc
 import {Root} from "../../../../../src/admin/Root.sol";
 import {GasService} from "../../../../../src/admin/GasService.sol";
 import {OpsGuardian} from "../../../../../src/admin/OpsGuardian.sol";
-import {TokenRecoverer} from "../../../../../src/admin/TokenRecoverer.sol";
 import {ProtocolGuardian} from "../../../../../src/admin/ProtocolGuardian.sol";
 
 import {FreezeOnly} from "../../../../../src/hooks/FreezeOnly.sol";
@@ -91,7 +90,6 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         HubHandler(c.hubHandler),
         Hub(c.hub),
         Root(c.root),
-        TokenRecoverer(c.tokenRecoverer),
         ProtocolGuardian(c.protocolGuardian),
         OpsGuardian(c.opsGuardian),
         GasService(c.gasService)

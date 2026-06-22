@@ -2,13 +2,22 @@
 # '-' excludes, '+' includes. First match wins, so '+' rules must come before their parent '-' rule.
 # Paths prefixed with '/' are anchored to the repo root.
 
-# Tests: exclude private subdirectories
+# Tests: exclude private subdirectories, keep reusable spell utils tests
++ /test/spell/
++ /test/spell/utils/
++ /test/spell/utils/**
+
+- /test/spell/**
 - /test/integration/fork/
 - /test/integration/spell/
 - /test/integration/env/
 
-# Source: exclude private spell contracts
-- /src/spell
+# Source: exclude private spell contracts, keep reusable spell utils
++ /src/spell/
++ /src/spell/utils/
++ /src/spell/utils/**
+
+- /src/spell/**
 
 # Scripts: keep only FullDeployer, BaseDeployer and their script/ dependencies
 + /script/

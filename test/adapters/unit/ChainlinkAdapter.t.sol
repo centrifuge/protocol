@@ -84,12 +84,6 @@ contract ChainlinkAdapterTestWire is ChainlinkAdapterTestBase {
         assertEq(chainSelector, CHAINLINK_CHAIN_SELECTOR);
         assertEq(addr2, REMOTE_CHAINLINK_ADDR);
     }
-
-    function testIsWired() public {
-        assertFalse(adapter.isWired(CENTRIFUGE_ID));
-        adapter.wire(CENTRIFUGE_ID, abi.encode(CHAINLINK_CHAIN_SELECTOR, REMOTE_CHAINLINK_ADDR));
-        assertTrue(adapter.isWired(CENTRIFUGE_ID));
-    }
 }
 
 contract ChainlinkAdapterTest is ChainlinkAdapterTestBase {

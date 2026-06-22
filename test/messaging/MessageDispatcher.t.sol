@@ -90,9 +90,6 @@ contract TestAuthChecks is TestCommon {
         dispatcher.sendCancelUpgrade(REMOTE_CHAIN, bytes32(0), REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendRecoverTokens(REMOTE_CHAIN, bytes32(0), bytes32(0), 0, bytes32(0), 0, REFUND);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendInitiateTransferShares(REMOTE_CHAIN, POOL_A, SC_A, bytes32(0), 0, 0, 0, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -186,13 +183,5 @@ contract TestFile is TestCommon {
         emit IMessageDispatcher.File("contractUpdater", address(23));
         dispatcher.file("contractUpdater", address(23));
         assertEq(address(dispatcher.contractUpdater()), address(23));
-    }
-
-    function testFileTokenRecoverer() public {
-        vm.prank(address(AUTH));
-        vm.expectEmit();
-        emit IMessageDispatcher.File("tokenRecoverer", address(23));
-        dispatcher.file("tokenRecoverer", address(23));
-        assertEq(address(dispatcher.tokenRecoverer()), address(23));
     }
 }

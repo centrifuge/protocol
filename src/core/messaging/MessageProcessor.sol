@@ -5,7 +5,6 @@ import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
-import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 import {MessageType, MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 import {
@@ -20,7 +19,6 @@ import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
-import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
@@ -41,7 +39,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IMultiAdapter public multiAdapter;
     ISpokeGatewayHandler public spoke;
     IHubGatewayHandler public hubHandler;
-    ITokenRecoverer public tokenRecoverer;
     IScheduleAuth public immutable scheduleAuth;
     IBalanceSheetGatewayHandler public balanceSheet;
     IVaultRegistryGatewayHandler public vaultRegistry;
@@ -63,7 +60,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IContractUpdateGatewayHandler(data);
-        else if (what == "tokenRecoverer") tokenRecoverer = ITokenRecoverer(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -85,12 +81,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
             require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.CancelUpgrade memory m = message.deserializeCancelUpgrade();
             scheduleAuth.cancelRely(m.target.toAddress());
-        } else if (kind == MessageType.RecoverTokens) {
-            require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
-            MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();
-            tokenRecoverer.recoverTokens(
-                IRecoverable(m.target.toAddress()), m.token.toAddress(), m.tokenId, m.to.toAddress(), m.amount
-            );
         } else if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
             require(centrifugeId == AssetId.wrap(m.assetId).centrifugeId(), OnlyFromSource());

@@ -13,7 +13,8 @@ enum MessageType {
     // -- Pool independent messages
     ScheduleUpgrade,
     CancelUpgrade,
-    RecoverTokens,
+    /// @dev Reserved gap. Kept so that enum values of subsequent message types stay stable for in-flight messages.
+    _GAP,
     RegisterAsset,
     SetPoolAdapters,
     // -- Pool dependent messages
@@ -62,7 +63,7 @@ library MessageLib {
     uint256 constant MESSAGE_LENGTHS_1 =
         (33  << uint8(MessageType.ScheduleUpgrade) * 8) +
         (33  << uint8(MessageType.CancelUpgrade) * 8) +
-        (161 << uint8(MessageType.RecoverTokens) * 8) +
+        (161 << uint8(MessageType._GAP) * 8) +
         (18  << uint8(MessageType.RegisterAsset) * 8) +
         (13  << uint8(MessageType.SetPoolAdapters) * 8) +
         (9   << uint8(MessageType.NotifyPool) * 8) +
@@ -188,33 +189,6 @@ library MessageLib {
 
     function serialize(CancelUpgrade memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(MessageType.CancelUpgrade, t.target);
-    }
-
-    //---------------------------------------
-    //    RecoverTokens
-    //---------------------------------------
-
-    struct RecoverTokens {
-        bytes32 target;
-        bytes32 token;
-        uint256 tokenId;
-        bytes32 to;
-        uint256 amount;
-    }
-
-    function deserializeRecoverTokens(bytes memory data) internal pure returns (RecoverTokens memory) {
-        require(messageType(data) == MessageType.RecoverTokens, UnknownMessageType());
-        return RecoverTokens({
-            target: data.toBytes32(1),
-            token: data.toBytes32(33),
-            tokenId: data.toUint256(65),
-            to: data.toBytes32(97),
-            amount: data.toUint256(129)
-        });
-    }
-
-    function serialize(RecoverTokens memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.RecoverTokens, t.target, t.token, t.tokenId, t.to, t.amount);
     }
 
     //---------------------------------------

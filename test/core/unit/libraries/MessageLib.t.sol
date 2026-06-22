@@ -23,11 +23,6 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeRecoverTokens() public {
-        MessageLib.deserializeRecoverTokens(_prepareFor());
-    }
-
-    /// forge-config: default.allow_internal_expect_revert = true
     function testDeserializeRegisterAsset() public {
         MessageLib.deserializeRegisterAsset(_prepareFor());
     }
@@ -173,22 +168,6 @@ contract TestMessageLibIdentities is Test {
         MessageLib.CancelUpgrade memory b = MessageLib.deserializeCancelUpgrade(a.serialize());
 
         assertEq(a.target, b.target);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), 0);
-        assertEq(a.serialize().messageExtraGasLimit(), 0);
-    }
-
-    function testRecoverTokens(bytes32 target, bytes32 token, uint256 tokenId, bytes32 to, uint256 amount) public pure {
-        MessageLib.RecoverTokens memory a =
-            MessageLib.RecoverTokens({target: target, token: token, tokenId: tokenId, to: to, amount: amount});
-        MessageLib.RecoverTokens memory b = MessageLib.deserializeRecoverTokens(a.serialize());
-
-        assertEq(a.target, b.target);
-        assertEq(a.token, b.token);
-        assertEq(a.tokenId, b.tokenId);
-        assertEq(a.to, b.to);
-        assertEq(a.amount, b.amount);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), 0);

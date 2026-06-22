@@ -92,12 +92,6 @@ contract HyperlaneAdapterTestWire is HyperlaneAdapterTestBase {
         assertEq(centrifugeId, CENTRIFUGE_ID);
         assertEq(remoteSourceAddress, REMOTE_ADAPTER);
     }
-
-    function testIsWired() public {
-        assertFalse(adapter.isWired(CENTRIFUGE_ID));
-        adapter.wire(CENTRIFUGE_ID, abi.encode(HYPERLANE_DOMAIN, REMOTE_ADAPTER));
-        assertTrue(adapter.isWired(CENTRIFUGE_ID));
-    }
 }
 
 contract HyperlaneAdapterTestSetIsm is HyperlaneAdapterTestBase {

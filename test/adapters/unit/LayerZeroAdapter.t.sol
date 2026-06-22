@@ -98,12 +98,6 @@ contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
         assertEq(centrifugeId, CENTRIFUGE_ID);
         assertEq(remoteSourceAddress, REMOTE_LAYERZERO_ADDR);
     }
-
-    function testIsWired() public {
-        assertFalse(adapter.isWired(CENTRIFUGE_ID));
-        adapter.wire(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR));
-        assertTrue(adapter.isWired(CENTRIFUGE_ID));
-    }
 }
 
 contract LayerZeroAdapterTestSetDelegate is LayerZeroAdapterTestBase {

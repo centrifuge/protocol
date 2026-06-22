@@ -55,11 +55,6 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         emit Wire(centrifugeId, wormholeId, adapter);
     }
 
-    /// @notice Returns whether the adapter is wired to the given chain
-    function isWired(uint16 centrifugeId) external view returns (bool) {
-        return destinations[centrifugeId].wormholeId != 0;
-    }
-
     //----------------------------------------------------------------------------------------------
     // Incoming
     //----------------------------------------------------------------------------------------------

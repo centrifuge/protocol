@@ -86,12 +86,6 @@ contract WormholeAdapterTestWire is WormholeAdapterTestBase {
         assertEq(centrifugeId, CENTRIFUGE_CHAIN_ID);
         assertEq(remoteSourceAddress, REMOTE_WORMHOLE_ADDR);
     }
-
-    function testIsWired() public {
-        assertFalse(adapter.isWired(CENTRIFUGE_CHAIN_ID));
-        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR));
-        assertTrue(adapter.isWired(CENTRIFUGE_CHAIN_ID));
-    }
 }
 
 contract WormholeAdapterTest is WormholeAdapterTestBase {

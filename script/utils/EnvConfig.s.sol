@@ -75,7 +75,6 @@ struct AdaptersConfig {
 struct ContractsConfig {
     // Admin
     address root;
-    address tokenRecoverer;
     address protocolGuardian;
     address opsGuardian;
     address gasService;
@@ -289,7 +288,6 @@ library Env {
 
         // Admin
         config.root = _parseContractAddress(json, "root");
-        config.tokenRecoverer = _parseContractAddress(json, "tokenRecoverer");
         config.protocolGuardian = _parseContractAddress(json, "protocolGuardian");
         config.opsGuardian = _parseContractAddress(json, "opsGuardian");
         config.gasService = _parseContractAddress(json, "gasService");

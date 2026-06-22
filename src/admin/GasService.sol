@@ -20,9 +20,6 @@ contract GasService is IGasService {
     ///      LocalAdapter used in tests is a trivial passthrough, so this cost is not captured by the benchmark.
     uint128 public constant BASE_ADAPTER_COST = 75_000;
 
-    /// @dev Adds an extra cost to recover token admin message to ensure different assets can transfer successfully
-    uint128 public constant RECOVERY_TOKEN_EXTRA_COST = 100_000;
-
     uint128 public constant DEFAULT_SUPPORTED_TX_LIMIT = 10; // In millions of gas units
 
     // NOTE: This value should be benchmarked via test/integration/GatewayFailGas.t.sol
@@ -43,7 +40,6 @@ contract GasService is IGasService {
 
     uint128 public immutable scheduleUpgrade;
     uint128 public immutable cancelUpgrade;
-    uint128 public immutable recoverTokens;
     uint128 public immutable registerAsset;
     uint128 public immutable setPoolAdapters;
     uint128 public immutable request;
@@ -78,35 +74,33 @@ contract GasService is IGasService {
             txLimitsPerCentrifugeId += value << (31 - i) * 8;
         }
 
-        // NOTE: Below values should be updated using script/utils/benchmark.sh
-        scheduleUpgrade = _gasValue(147239);
-        cancelUpgrade = _gasValue(127695);
-        recoverTokens = RECOVERY_TOKEN_EXTRA_COST + _gasValue(203160);
-        registerAsset = _gasValue(157428);
-        setPoolAdapters = _gasValue(778284); // using MAX_ADAPTER_COUNT
-        request = _gasValue(269319);
-        notifyPool = _gasValue(1334018); // create escrow case
-        notifyShareClass = _gasValue(1911675);
-        notifyPricePoolPerShare = _gasValue(155519);
-        notifyPricePoolPerAsset = _gasValue(159333);
-        notifyShareMetadata = _gasValue(169081);
-        updateShareHook = _gasValue(145046);
-        initiateTransferShares = _gasValue(335282);
-        executeTransferShares = _gasValue(226156);
-        updateRestriction = _gasValue(165956);
-        trustedContractUpdate = _gasValue(197206);
-        requestCallback = _gasValue(383564); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2894538);
-        updateVaultLink = _gasValue(236181);
-        updateVaultUnlink = _gasValue(184948);
-        setRequestManager = _gasValue(154383);
-        updateBalanceSheetManager = _gasValue(153272);
-        updateHoldingAmount = _gasValue(354312);
-        updateShares = _gasValue(251545);
-        maxAssetPriceAge = _gasValue(159417);
-        maxSharePriceAge = _gasValue(156351);
-        updateAdaptersManager = _gasValue(150785);
-        untrustedContractUpdate = _gasValue(138371);
+        scheduleUpgrade = _gasValue(147195);
+        cancelUpgrade = _gasValue(127651);
+        registerAsset = _gasValue(157286);
+        setPoolAdapters = _gasValue(778142); // using MAX_ADAPTER_COUNT
+        request = _gasValue(269084);
+        notifyPool = _gasValue(1333876); // create escrow case
+        notifyShareClass = _gasValue(1911533);
+        notifyPricePoolPerShare = _gasValue(155377);
+        notifyPricePoolPerAsset = _gasValue(159191);
+        notifyShareMetadata = _gasValue(168939);
+        updateShareHook = _gasValue(144904);
+        initiateTransferShares = _gasValue(335096);
+        executeTransferShares = _gasValue(226014);
+        updateRestriction = _gasValue(165814);
+        trustedContractUpdate = _gasValue(197064);
+        requestCallback = _gasValue(383422); // approve deposit case
+        updateVaultDeployAndLink = _gasValue(2894396);
+        updateVaultLink = _gasValue(236039);
+        updateVaultUnlink = _gasValue(184806);
+        setRequestManager = _gasValue(154241);
+        updateBalanceSheetManager = _gasValue(153130);
+        updateHoldingAmount = _gasValue(354170);
+        updateShares = _gasValue(251403);
+        maxAssetPriceAge = _gasValue(159275);
+        maxSharePriceAge = _gasValue(156209);
+        updateAdaptersManager = _gasValue(150643);
+        untrustedContractUpdate = _gasValue(138229);
     }
 
     /// @inheritdoc IMessageProperties
@@ -138,7 +132,6 @@ contract GasService is IGasService {
 
         if (kind == MessageType.ScheduleUpgrade) return scheduleUpgrade;
         if (kind == MessageType.CancelUpgrade) return cancelUpgrade;
-        if (kind == MessageType.RecoverTokens) return recoverTokens;
         if (kind == MessageType.RegisterAsset) return registerAsset;
         if (kind == MessageType.SetPoolAdapters) return setPoolAdapters;
         if (kind == MessageType.Request) return request;

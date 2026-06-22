@@ -259,7 +259,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         config.contracts.opsGuardian = address(report.core.opsGuardian);
         config.contracts.gateway = address(report.core.gateway);
         config.contracts.gasService = address(report.core.gasService);
-        config.contracts.tokenRecoverer = address(report.core.tokenRecoverer);
         config.contracts.messageProcessor = address(report.core.messageProcessor);
         config.contracts.messageDispatcher = address(report.core.messageDispatcher);
         config.contracts.multiAdapter = address(report.core.multiAdapter);
@@ -317,7 +316,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         vm.label(config.contracts.protocolGuardian, "ProtocolGuardian");
         vm.label(config.contracts.gateway, "Gateway");
         vm.label(config.contracts.gasService, "GasService");
-        vm.label(config.contracts.tokenRecoverer, "TokenRecoverer");
         vm.label(config.contracts.messageProcessor, "MessageProcessor");
         vm.label(config.contracts.messageDispatcher, "MessageDispatcher");
         vm.label(config.contracts.multiAdapter, "MultiAdapter");
@@ -416,7 +414,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         if (config.contracts.hubHandler != address(0)) _validateRootWard(config.contracts.hubHandler);
 
         // From FullDeployer - Admin & escrows
-        _validateRootWard(config.contracts.tokenRecoverer);
         if (config.contracts.refundEscrowFactory != address(0)) {
             _validateRootWard(config.contracts.refundEscrowFactory);
         }
@@ -638,7 +635,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             if (!skipNewRootChecks) {
                 _validateWard(config.contracts.root, config.contracts.protocolGuardian);
             }
-            _validateWard(config.contracts.tokenRecoverer, config.contracts.protocolGuardian);
             if (config.contracts.wormholeAdapter != address(0)) {
                 _validateWard(config.contracts.wormholeAdapter, config.contracts.protocolGuardian);
             }
@@ -669,14 +665,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         if (config.contracts.layerZeroAdapter != address(0) && protocolSafe != address(0)) {
             _validateWard(config.contracts.layerZeroAdapter, protocolSafe);
         }
-
-        // ==================== TOKEN RECOVERER (FullDeployer) ====================
-
-        if (!skipNewRootChecks) {
-            _validateWard(config.contracts.root, config.contracts.tokenRecoverer);
-        }
-        _validateWard(config.contracts.tokenRecoverer, config.contracts.messageDispatcher);
-        _validateWard(config.contracts.tokenRecoverer, config.contracts.messageProcessor);
     }
 
     /// @notice Helper to validate a ward relationship
@@ -734,11 +722,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             config.contracts.contractUpdater,
             "MessageDispatcher contractUpdater mismatch"
         );
-        assertEq(
-            address(MessageDispatcher(config.contracts.messageDispatcher).tokenRecoverer()),
-            config.contracts.tokenRecoverer,
-            "MessageDispatcher tokenRecoverer mismatch"
-        );
         if (config.contracts.vaultRegistry != address(0)) {
             assertEq(
                 address(MessageDispatcher(config.contracts.messageDispatcher).vaultRegistry()),
@@ -773,11 +756,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             address(MessageProcessor(config.contracts.messageProcessor).contractUpdater()),
             config.contracts.contractUpdater,
             "MessageProcessor contractUpdater mismatch"
-        );
-        assertEq(
-            address(MessageProcessor(config.contracts.messageProcessor).tokenRecoverer()),
-            config.contracts.tokenRecoverer,
-            "MessageProcessor tokenRecoverer mismatch"
         );
         if (config.contracts.vaultRegistry != address(0)) {
             assertEq(

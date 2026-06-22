@@ -103,21 +103,6 @@ contract ProtocolGuardian is IProtocolGuardian {
         sender.sendCancelUpgrade{value: msg.value}(centrifugeId, target.toBytes32(), refund);
     }
 
-    /// @inheritdoc IProtocolGuardian
-    function recoverTokens(
-        uint16 centrifugeId,
-        address target,
-        address token,
-        uint256 tokenId,
-        address to,
-        uint256 amount,
-        address refund
-    ) external payable onlySafe {
-        sender.sendRecoverTokens{value: msg.value}(
-            centrifugeId, target.toBytes32(), token.toBytes32(), tokenId, to.toBytes32(), amount, refund
-        );
-    }
-
     //----------------------------------------------------------------------------------------------
     // Helpers
     //----------------------------------------------------------------------------------------------

@@ -67,7 +67,6 @@ src/
 │   ├── Root.sol           # Root authority
 │   ├── OpsGuardian.sol    # Operational guardian
 │   ├── ProtocolGuardian.sol # Protocol guardian
-│   ├── TokenRecoverer.sol # Token recovery
 │   ├── GasService.sol     # Gas management
 │   └── interfaces/
 ├── managers/              # Automation managers

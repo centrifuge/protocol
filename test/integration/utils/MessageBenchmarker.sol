@@ -41,7 +41,6 @@ contract MessageBenchmarker is IMessageHandler, Test {
         MessageType kind = message.messageType();
         if (kind == MessageType.ScheduleUpgrade) return "scheduleUpgrade";
         if (kind == MessageType.CancelUpgrade) return "cancelUpgrade";
-        if (kind == MessageType.RecoverTokens) return "recoverTokens";
         if (kind == MessageType.RegisterAsset) return "registerAsset";
         if (kind == MessageType.SetPoolAdapters) return "setPoolAdapters";
         if (kind == MessageType.Request) return "request";

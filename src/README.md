@@ -25,7 +25,7 @@ src/
 - **[`core/messaging`](./core/messaging)** - Message serialization, dispatching, processing, and gas service for cross-chain communication
 - **[`libraries`](./libraries)** - Shared utility libraries for message encoding, contract updates, and protocol operations
 - **[`adapters`](./adapters)** - Cross-chain messaging adapters integrating with Wormhole, LayerZero, Axelar, and Chainlink
-- **[`admin`](./admin)** - Protocol governance with Root, ProtocolGuardian, OpsGuardian, and TokenRecoverer for timelocked permissions and emergency controls
+- **[`admin`](./admin)** - Protocol governance with Root, ProtocolGuardian, and OpsGuardian for timelocked permissions and emergency controls
 - **[`hooks`](./hooks)** - Transfer hook implementations (FreezeOnly, RedemptionRestrictions, FullRestrictions, FreelyTransferable)
 - **[`managers/hub`](./managers/hub)** - NAVManager for net asset value tracking and SimplePriceManager for single-share-class pool pricing
 - **[`managers/spoke`](./managers/spoke)** - OnOfframpManager for asset custody, QueueManager for batched syncing

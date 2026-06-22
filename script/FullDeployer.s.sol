@@ -24,7 +24,6 @@ import {Root} from "../src/admin/Root.sol";
 import {GasService} from "../src/admin/GasService.sol";
 import {ISafe} from "../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../src/admin/OpsGuardian.sol";
-import {TokenRecoverer} from "../src/admin/TokenRecoverer.sol";
 import {ProtocolGuardian} from "../src/admin/ProtocolGuardian.sol";
 
 import {FreezeOnly} from "../src/hooks/FreezeOnly.sol";
@@ -132,7 +131,6 @@ contract FullDeployer is BaseDeployer, Constants {
     uint256 public constant DELAY = 48 hours;
 
     Root public root;
-    TokenRecoverer public tokenRecoverer;
     ProtocolGuardian public protocolGuardian;
     OpsGuardian public opsGuardian;
     GasService public gasService;
@@ -389,13 +387,6 @@ contract FullDeployer is BaseDeployer, Constants {
         );
 
         // Admin (depends on core contracts)
-        tokenRecoverer = TokenRecoverer(
-            create3(
-                createSalt("tokenRecoverer", V3_1),
-                abi.encodePacked(type(TokenRecoverer).creationCode, abi.encode(root, batcher))
-            )
-        );
-
         protocolGuardian = ProtocolGuardian(
             create3(
                 createSalt("protocolGuardian", V3_1),
@@ -739,7 +730,6 @@ contract FullDeployer is BaseDeployer, Constants {
             hubHandler,
             hub,
             root,
-            tokenRecoverer,
             protocolGuardian,
             opsGuardian,
             gasService

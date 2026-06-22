@@ -15,7 +15,6 @@ abstract contract VMLabeling is Test {
         vm.label(IntegrationConstants.GUARDIAN, "Guardian");
         vm.label(IntegrationConstants.GATEWAY, "Gateway");
         vm.label(IntegrationConstants.GAS_SERVICE, "GasService");
-        vm.label(IntegrationConstants.TOKEN_RECOVERER, "TokenRecoverer");
         vm.label(IntegrationConstants.HUB_REGISTRY, "HubRegistry");
         vm.label(IntegrationConstants.ACCOUNTING, "Accounting");
         vm.label(IntegrationConstants.HOLDINGS, "Holdings");
