@@ -48,6 +48,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                 onchainAccounting: false,
                 navManager: address(0),
                 simplePriceManager: address(0),
+                requestManager: address(batchRequestManager),
                 allowlist: new IStdManifest.Entry[](0)
             })
         );
@@ -74,6 +75,21 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         // setPoolMetadata is in policy: runs immediately, no authorization.
         vm.prank(FM);
         hub.setPoolMetadata(POOL_A, "metadata");
+    }
+
+    function testBrmUpdateContractIsInPolicy() public {
+        // updateContract targeting the configured request manager (BRM) is in policy: routine keeper ops
+        // (approve/issue/revoke/forceCancel) run synchronously, no authorization needed. Verified at the
+        // manifest seam: enforce of a BRM-targeted call neither reverts nor consumes an authorization.
+        bytes32 target = bytes32(bytes20(address(batchRequestManager)));
+        // Opaque payload: target is pinned, so its contents are not inspected by the classifier.
+        bytes memory payload = abi.encode(uint8(1), bytes16(0));
+        bytes memory call =
+            abi.encodeCall(IHub.updateContract, (POOL_A, SC_1, uint16(0), target, payload, 0, address(0)));
+
+        // In policy: enforce succeeds with no prior authorize() (deny-by-default would revert Unauthorized).
+        vm.prank(address(hub));
+        manifest.enforce(POOL_A, FM, call);
     }
 
     function testOutOfPolicyReverts() public {
@@ -133,6 +149,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                 onchainAccounting: false,
                 navManager: address(0),
                 simplePriceManager: address(0),
+                requestManager: address(batchRequestManager),
                 allowlist: new IStdManifest.Entry[](0)
             })
         );

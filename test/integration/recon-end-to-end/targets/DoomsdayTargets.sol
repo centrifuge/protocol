@@ -13,6 +13,8 @@ import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol
 
 import {MAX_MESSAGE_COST} from "../../../../src/admin/interfaces/IGasService.sol";
 
+import {BatchRequestManagerCallLib} from "../../../vaults/utils/BatchRequestManagerCallLib.sol";
+
 import {BaseVault} from "../../../../src/vaults/BaseVaults.sol";
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 
@@ -289,8 +291,10 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         // Read epoch amounts BEFORE zero-price issuance to compute delta
         // (epoch may already have non-zero approvals from prior non-zero-price operations)
         (uint128 approvedPoolBefore,,,,,) = batchRequestManager.epochInvestAmounts(poolId, scId, assetId, nowIssueEpoch);
-        try batchRequestManager.issueShares{value: 0.1 ether}(
-            poolId, scId, assetId, nowIssueEpoch, D18.wrap(0), SHARE_HOOK_GAS, address(this)
+        try batchRequestManager.trustedCall{value: 0.1 ether}(
+            poolId,
+            scId,
+            BatchRequestManagerCallLib.issueShares(assetId, nowIssueEpoch, D18.wrap(0), SHARE_HOOK_GAS, address(this))
         ) {
             (uint128 approvedPoolAfter,,,,,) =
                 batchRequestManager.epochInvestAmounts(poolId, scId, assetId, nowIssueEpoch);
@@ -302,8 +306,10 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         }
 
         uint32 nowRevokeEpoch = batchRequestManager.nowRevokeEpoch(poolId, scId, assetId);
-        try batchRequestManager.revokeShares(
-            poolId, scId, assetId, nowRevokeEpoch, D18.wrap(0), SHARE_HOOK_GAS, address(this)
+        try batchRequestManager.trustedCall(
+            poolId,
+            scId,
+            BatchRequestManagerCallLib.revokeShares(assetId, nowRevokeEpoch, D18.wrap(0), SHARE_HOOK_GAS, address(this))
         ) {
             (,,,, uint128 payoutAssetAmount,) =
                 batchRequestManager.epochRedeemAmounts(poolId, scId, assetId, nowRevokeEpoch);

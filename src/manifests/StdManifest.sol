@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {IStdManifest} from "./interfaces/IStdManifest.sol";
 
 import {D18} from "../misc/types/D18.sol";
+import {CastLib} from "../misc/libraries/CastLib.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
@@ -38,10 +39,12 @@ import {IOnOffRamp} from "../managers/spoke/interfaces/IOnOffRamp.sol";
 ///         far each permitted call may move things.
 contract StdManifest is IStdManifest {
     using BytesLib for bytes;
+    using CastLib for bytes32;
 
     // Dependencies
     IHub public immutable hub;
     address public immutable navManager;
+    address public immutable requestManager;
     IHubRegistry public immutable hubRegistry;
     IMultiAdapter public immutable multiAdapter;
     address public immutable simplePriceManager;
@@ -65,6 +68,7 @@ contract StdManifest is IStdManifest {
         // Dependencies
         hub = hub_;
         navManager = config.navManager;
+        requestManager = config.requestManager;
         hubRegistry = hub_.hubRegistry();
         multiAdapter = multiAdapter_;
         simplePriceManager = config.simplePriceManager;
@@ -257,10 +261,19 @@ contract StdManifest is IStdManifest {
     }
 
     /// @dev Contract updates are out of policy (config flows through here to trusted targets), except
-    ///      an OnOffRamp withdrawal: it targets an already-configured offramp, so it stays in policy.
+    ///      two in-policy targets: a BRM (request manager) management action, and an OnOffRamp withdrawal.
+    ///      BRM actions (approveDeposits/issueShares/revokeShares/forceCancel*) are routine keeper ops, so
+    ///      they run in policy, but only when the update targets the configured request manager. Pinning
+    ///      the target defeats the ABI collision where another target's payload shares a BRM action's
+    ///      leading kind byte. The binding can't be repointed instantly: `setRequestManager` is out of
+    ///      policy. Every other target (Supervisor, NAVManager, OracleValuation, unknown) falls to the
+    ///      deny-by-default `delay`, so it stays timelocked + vetoable.
     function _checkUpdateContract(bytes calldata payload) internal view returns (uint48) {
-        (,,,, bytes memory innerPayload,,) =
+        (,,, bytes32 target, bytes memory innerPayload,,) =
             abi.decode(payload, (PoolId, ShareClassId, uint16, bytes32, bytes, uint128, address));
+
+        if (target.toAddress() == requestManager) return 0;
+
         // Read the first word directly rather than `abi.decode(_, (uint8))`: enforce classifies every
         // updateContract, and decoding as uint8 reverts whenever the first inner word exceeds 255 (any
         // target whose payload starts with a uint256/address/bytes32), which would brick legitimate

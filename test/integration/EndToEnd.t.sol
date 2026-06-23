@@ -52,6 +52,8 @@ import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestr
 import {OracleValuation} from "../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
 
+import {BatchRequestManagerCallLib} from "../vaults/utils/BatchRequestManagerCallLib.sol";
+
 import {SyncManager} from "../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
@@ -387,6 +389,31 @@ contract EndToEndFlows is EndToEndUtils {
         return abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), s.usdcId.raw(), maxReserve);
     }
 
+    /// @dev TEMPORARY shim: invoke a BRM manager action by calling `trustedCall` directly as a BRM
+    ///      ward (the Hub), forwarding value so the cross-chain `requestCallback` can pay the gateway.
+    ///
+    ///      We cannot use the real chain here because it can't carry value cross-chain yet:
+    ///      `hub.updateContract` -> MessageDispatcher (local branch) -> `ContractUpdater.trustedCall`
+    ///      (non-payable, so `msg.value` is refunded, never reaching BRM) -> `BRM.trustedCall` ->
+    ///      `requestCallback` -> `gateway.send` reverts `NotEnoughGas()` (BRM hardcodes unpaidMode=false
+    ///      and the gateway has no subsidy fallback).
+    ///
+    ///      TODO(trustedCall-payments): once trustedCall supports payments (ContractUpdater.trustedCall
+    ///      made payable + MessageDispatcher forwarding `msg.value` on the local branch instead of
+    ///      refunding — landing on a separate branch), replace this shim with the real chain:
+    ///          vm.prank(FM);
+    ///          h.hub.updateContract{value: GAS}(
+    ///              POOL_A, SC_1, h.centrifugeId, address(h.batchRequestManager).toBytes32(),
+    ///              payload, EXTRA_GAS, REFUND
+    ///          );
+    ///      which also restores manifest/manager enforcement coverage for these calls in this test.
+    function _brmManagerCall(bytes memory payload) internal {
+        vm.stopPrank();
+        vm.deal(address(h.hub), GAS);
+        vm.prank(address(h.hub));
+        h.batchRequestManager.trustedCall{value: GAS}(POOL_A, SC_1, payload);
+    }
+
     //----------------------------------------------------------------------------------------------
     // Asset & Pool Configuration
     //----------------------------------------------------------------------------------------------
@@ -538,16 +565,16 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(FM);
         uint32 depositEpochId = h.batchRequestManager.nowDepositEpoch(POOL_A, SC_1, s.usdcId);
         D18 pricePoolPerAsset = h.hub.pricePoolPerAsset(POOL_A, SC_1, s.usdcId);
-        h.batchRequestManager.approveDeposits{value: GAS}(
-            POOL_A, SC_1, s.usdcId, depositEpochId, USDC_AMOUNT_1, pricePoolPerAsset, REFUND
+        _brmManagerCall(
+            BatchRequestManagerCallLib.approveDeposits(
+                s.usdcId, depositEpochId, USDC_AMOUNT_1, pricePoolPerAsset, REFUND
+            )
         );
 
         vm.startPrank(FM);
         uint32 issueEpochId = h.batchRequestManager.nowIssueEpoch(POOL_A, SC_1, s.usdcId);
         (D18 sharePrice,) = h.shareClassManager.pricePoolPerShare(POOL_A, SC_1);
-        h.batchRequestManager.issueShares{value: GAS}(
-            POOL_A, SC_1, s.usdcId, issueEpochId, sharePrice, HOOK_GAS, REFUND
-        );
+        _brmManagerCall(BatchRequestManagerCallLib.issueShares(s.usdcId, issueEpochId, sharePrice, HOOK_GAS, REFUND));
 
         vm.startPrank(ANY);
         h.batchRequestManager.notifyDeposit{value: GAS}(
@@ -621,14 +648,12 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(FM);
         uint32 redeemEpochId = h.batchRequestManager.nowRedeemEpoch(POOL_A, SC_1, s.usdcId);
         D18 pricePoolPerAsset = h.hub.pricePoolPerAsset(POOL_A, SC_1, s.usdcId);
-        h.batchRequestManager.approveRedeems(POOL_A, SC_1, s.usdcId, redeemEpochId, shares, pricePoolPerAsset);
+        _brmManagerCall(BatchRequestManagerCallLib.approveRedeems(s.usdcId, redeemEpochId, shares, pricePoolPerAsset));
 
         vm.startPrank(FM);
         uint32 revokeEpochId = h.batchRequestManager.nowRevokeEpoch(POOL_A, SC_1, s.usdcId);
         (D18 sharePrice,) = h.shareClassManager.pricePoolPerShare(POOL_A, SC_1);
-        h.batchRequestManager.revokeShares{value: GAS}(
-            POOL_A, SC_1, s.usdcId, revokeEpochId, sharePrice, HOOK_GAS, REFUND
-        );
+        _brmManagerCall(BatchRequestManagerCallLib.revokeShares(s.usdcId, revokeEpochId, sharePrice, HOOK_GAS, REFUND));
 
         vm.startPrank(ANY);
         h.batchRequestManager.notifyRedeem{value: GAS}(

@@ -34,6 +34,7 @@ interface IStdManifest is IManifest {
         bool onchainAccounting;
         uint128 thresholdPerSecond;
         address simplePriceManager;
+        address requestManager;
     }
 
     function hub() external view returns (IHub);
@@ -48,6 +49,7 @@ interface IStdManifest is IManifest {
     function onchainAccounting() external view returns (bool);
     function navManager() external view returns (address);
     function simplePriceManager() external view returns (address);
+    function requestManager() external view returns (address);
     function lastPriceUpdate(PoolId poolId, ShareClassId scId) external view returns (uint64);
     function restricted(PoolId poolId, address caller) external view returns (bool);
     function allowed(PoolId poolId, address caller, bytes4 selector) external view returns (bool);

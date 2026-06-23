@@ -621,10 +621,12 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(hub));
         vm.assume(nonWard != address(hubHandler));
+        vm.assume(nonWard != address(contractUpdater));
 
         assertEq(batchRequestManager.wards(address(root)), 1);
         assertEq(batchRequestManager.wards(address(hub)), 1);
         assertEq(batchRequestManager.wards(address(hubHandler)), 1);
+        assertEq(batchRequestManager.wards(address(contractUpdater)), 1);
         assertEq(batchRequestManager.wards(nonWard), 0);
     }
 

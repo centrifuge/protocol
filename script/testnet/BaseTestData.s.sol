@@ -37,6 +37,8 @@ import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../../src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../../src/vaults/factories/SyncDepositVaultFactory.sol";
 
+import {BatchRequestManagerCallLib} from "../../test/vaults/utils/BatchRequestManagerCallLib.sol";
+
 import "forge-std/Script.sol";
 
 import {EnvConfig} from "../utils/EnvConfig.s.sol";
@@ -357,6 +359,14 @@ abstract contract BaseTestData is LaunchDeployer {
     // TEST FLOWS
     //----------------------------------------------------------------------------------------------
 
+    /// @dev Route a BRM manager action through the hub-local contractUpdater (BRM is hub-side, so the
+    ///      pool's own centrifugeId keeps the call local). Extracted to keep callers off the stack.
+    function _brmManagerCall(PoolId poolId, ShareClassId scId, bytes memory payload) internal {
+        hub.updateContract(
+            poolId, scId, poolId.centrifugeId(), address(batchRequestManager).toBytes32(), payload, 0, msg.sender
+        );
+    }
+
     /**
      * @notice Perform full async vault test flow (deposit, withdraw, issue, redeem, etc.)
      * @dev This is the full test flow from TestData.s.sol, extracted for reuse
@@ -378,7 +388,11 @@ abstract contract BaseTestData is LaunchDeployer {
 
         // Fulfill deposit request
         uint32 nowDepositEpoch = batchRequestManager.nowDepositEpoch(poolId, scId, assetId);
-        batchRequestManager.approveDeposits(poolId, scId, assetId, nowDepositEpoch, 1_000_000e6, d18(1, 1), msg.sender);
+        _brmManagerCall(
+            poolId,
+            scId,
+            BatchRequestManagerCallLib.approveDeposits(assetId, nowDepositEpoch, 1_000_000e6, d18(1, 1), msg.sender)
+        );
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
 
         // Withdraw principal
@@ -387,7 +401,9 @@ abstract contract BaseTestData is LaunchDeployer {
 
         // Issue and claim
         uint32 nowIssueEpoch = batchRequestManager.nowIssueEpoch(poolId, scId, assetId);
-        batchRequestManager.issueShares(poolId, scId, assetId, nowIssueEpoch, d18(1, 1), 0, msg.sender);
+        _brmManagerCall(
+            poolId, scId, BatchRequestManagerCallLib.issueShares(assetId, nowIssueEpoch, d18(1, 1), 0, msg.sender)
+        );
         balanceSheet.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS, msg.sender);
         uint32 maxClaims = batchRequestManager.maxDepositClaims(poolId, scId, msg.sender.toBytes32(), assetId);
         batchRequestManager.notifyDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims, msg.sender);
@@ -417,8 +433,12 @@ abstract contract BaseTestData is LaunchDeployer {
         uint32 nowRedeemEpoch = batchRequestManager.nowRedeemEpoch(poolId, scId, assetId);
         uint32 nowRevokeEpoch = batchRequestManager.nowRevokeEpoch(poolId, scId, assetId);
 
-        batchRequestManager.approveRedeems(poolId, scId, assetId, nowRedeemEpoch, 1_000_000e18, d18(1, 1));
-        batchRequestManager.revokeShares(poolId, scId, assetId, nowRevokeEpoch, d18(11, 10), 0, msg.sender);
+        _brmManagerCall(
+            poolId, scId, BatchRequestManagerCallLib.approveRedeems(assetId, nowRedeemEpoch, 1_000_000e18, d18(1, 1))
+        );
+        _brmManagerCall(
+            poolId, scId, BatchRequestManagerCallLib.revokeShares(assetId, nowRevokeEpoch, d18(11, 10), 0, msg.sender)
+        );
         balanceSheet.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS, msg.sender);
         batchRequestManager.notifyRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1, msg.sender);
 
@@ -434,7 +454,11 @@ abstract contract BaseTestData is LaunchDeployer {
         token.approve(address(vault), 500_000e6);
         vault.requestDeposit(500_000e6, msg.sender, msg.sender);
         vault.cancelDepositRequest(0, msg.sender);
-        batchRequestManager.forceCancelDepositRequest(poolId, scId, msg.sender.toBytes32(), assetId, msg.sender);
+        _brmManagerCall(
+            poolId,
+            scId,
+            BatchRequestManagerCallLib.forceCancelDepositRequest(msg.sender.toBytes32(), assetId, msg.sender)
+        );
         vault.claimCancelDepositRequest(0, msg.sender, msg.sender);
     }
 

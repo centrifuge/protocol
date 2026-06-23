@@ -34,6 +34,7 @@ contract StdManifestTest is Test {
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IMultiAdapter immutable multiAdapter = IMultiAdapter(makeAddr("MultiAdapter"));
     address immutable supervisor = makeAddr("supervisor");
+    address immutable brm = makeAddr("BRM");
     address immutable manager = makeAddr("manager");
     address immutable outsider = makeAddr("outsider");
     address immutable who = makeAddr("who");
@@ -64,7 +65,7 @@ contract StdManifestTest is Test {
 
     function _config(uint128 cap, uint128 rate, bool onchain, address nav, address price)
         internal
-        pure
+        view
         returns (IStdManifest.Config memory)
     {
         return _config(cap, rate, onchain, nav, price, new IStdManifest.Entry[](0));
@@ -77,7 +78,7 @@ contract StdManifestTest is Test {
         address nav,
         address price,
         IStdManifest.Entry[] memory allowlist
-    ) internal pure returns (IStdManifest.Config memory) {
+    ) internal view returns (IStdManifest.Config memory) {
         return IStdManifest.Config({
             delay: DELAY,
             expiry: EXPIRY,
@@ -87,6 +88,7 @@ contract StdManifestTest is Test {
             onchainAccounting: onchain,
             navManager: nav,
             simplePriceManager: price,
+            requestManager: brm,
             allowlist: allowlist
         });
     }
@@ -385,6 +387,16 @@ contract StdManifestTest is Test {
         bytes memory inner = abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw));
         vm.prank(address(hub));
         manifest.enforce(POOL_A, manager, _updateContractCall(bytes32(bytes20(makeAddr("ramp"))), inner));
+    }
+
+    function testUpdateContractToRequestManagerInPolicy() public {
+        // updateContract targeting the configured request manager (BRM) is in policy: routine keeper ops
+        // (approve/issue/revoke/forceCancel) run synchronously, no authorization needed. The opaque payload
+        // is not inspected, since the target is pinned. Compare with testUpdateContractSentinelManagementDelayed,
+        // where the same leading kind byte targeting the Supervisor stays timelocked.
+        bytes memory inner = abi.encode(uint8(1), bytes16(0));
+        vm.prank(address(hub));
+        manifest.enforce(POOL_A, manager, _updateContractCall(bytes32(bytes20(brm)), inner));
     }
 
     function testUpdateContractLargeFirstWordIsDelayedNotReverting() public {

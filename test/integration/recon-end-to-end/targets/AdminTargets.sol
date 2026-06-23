@@ -18,6 +18,8 @@ import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol
 
 import {MAX_MESSAGE_COST} from "../../../../src/admin/interfaces/IGasService.sol";
 
+import {BatchRequestManagerCallLib} from "../../../vaults/utils/BatchRequestManagerCallLib.sol";
+
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 
 import {OpType} from "../BeforeAfter.sol";
@@ -112,14 +114,12 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         AssetId paymentAssetId = _getAssetId();
         uint128 pendingDepositBefore = batchRequestManager.pendingDeposit(poolId, scId, paymentAssetId);
 
-        batchRequestManager.approveDeposits{value: MAX_MESSAGE_COST}(
+        batchRequestManager.trustedCall{value: MAX_MESSAGE_COST}(
             poolId,
             scId,
-            paymentAssetId,
-            nowDepositEpochId,
-            maxApproval,
-            D18.wrap(1e18), // pricePoolPerAsset - 1:1 price
-            address(this) // refund
+            BatchRequestManagerCallLib.approveDeposits(
+                paymentAssetId, nowDepositEpochId, maxApproval, D18.wrap(1e18), address(this)
+            )
         );
 
         uint128 pendingDepositAfter = batchRequestManager.pendingDeposit(poolId, scId, paymentAssetId);
@@ -134,13 +134,10 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         AssetId payoutAssetId = _getAssetId();
         uint128 pendingRedeemBefore = batchRequestManager.pendingRedeem(poolId, scId, payoutAssetId);
 
-        batchRequestManager.approveRedeems{value: MAX_MESSAGE_COST}(
+        batchRequestManager.trustedCall{value: MAX_MESSAGE_COST}(
             poolId,
             scId,
-            payoutAssetId,
-            nowRedeemEpochId,
-            maxApproval,
-            D18.wrap(1e18) // pricePoolPerAsset - 1:1 price
+            BatchRequestManagerCallLib.approveRedeems(payoutAssetId, nowRedeemEpochId, maxApproval, D18.wrap(1e18))
         );
 
         uint128 pendingRedeemAfter = batchRequestManager.pendingRedeem(poolId, scId, payoutAssetId);
@@ -262,8 +259,12 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         address shareToken = address(spoke.shareToken(poolId, scId));
         uint256 escrowSharesBefore = IShareToken(shareToken).balanceOf(_getPoolEscrowAddress());
 
-        batchRequestManager.issueShares{value: MAX_MESSAGE_COST}(
-            poolId, scId, assetId, nowIssueEpochId, D18.wrap(navPerShare), SHARE_HOOK_GAS, _getActor()
+        batchRequestManager.trustedCall{value: MAX_MESSAGE_COST}(
+            poolId,
+            scId,
+            BatchRequestManagerCallLib.issueShares(
+                assetId, nowIssueEpochId, D18.wrap(navPerShare), SHARE_HOOK_GAS, _getActor()
+            )
         );
 
         // Calculate issued amount in separate function to avoid stack depth
@@ -359,8 +360,12 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         address shareToken = address(spoke.shareToken(poolId, scId));
         uint256 sharesBefore = IShareToken(shareToken).balanceOf(_getPoolEscrowAddress());
 
-        batchRequestManager.revokeShares{value: MAX_MESSAGE_COST}(
-            poolId, scId, payoutAssetId, nowRevokeEpochId, D18.wrap(navPerShare), SHARE_HOOK_GAS, _getActor()
+        batchRequestManager.trustedCall{value: MAX_MESSAGE_COST}(
+            poolId,
+            scId,
+            BatchRequestManagerCallLib.revokeShares(
+                payoutAssetId, nowRevokeEpochId, D18.wrap(navPerShare), SHARE_HOOK_GAS, _getActor()
+            )
         );
 
         // Get and process epoch data in separate function to avoid stack depth
@@ -515,8 +520,8 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         bytes32 investor = _getActor().toBytes32();
         AssetId depositAssetId = _getAssetId();
 
-        batchRequestManager.forceCancelDepositRequest{value: MAX_MESSAGE_COST}(
-            poolId, scId, investor, depositAssetId, _getActor()
+        batchRequestManager.trustedCall{value: MAX_MESSAGE_COST}(
+            poolId, scId, BatchRequestManagerCallLib.forceCancelDepositRequest(investor, depositAssetId, _getActor())
         );
     }
 
@@ -527,8 +532,8 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         bytes32 investor = _getActor().toBytes32();
         AssetId payoutAssetId = _getAssetId();
 
-        batchRequestManager.forceCancelRedeemRequest{value: MAX_MESSAGE_COST}(
-            poolId, scId, investor, payoutAssetId, _getActor()
+        batchRequestManager.trustedCall{value: MAX_MESSAGE_COST}(
+            poolId, scId, BatchRequestManagerCallLib.forceCancelRedeemRequest(investor, payoutAssetId, _getActor())
         );
     }
 

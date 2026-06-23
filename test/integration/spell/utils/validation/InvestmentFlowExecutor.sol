@@ -19,6 +19,8 @@ import {MessageLib} from "../../../../../src/core/messaging/libraries/MessageLib
 
 import {UpdateRestrictionMessageLib} from "../../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
+import {BatchRequestManagerCallLib} from "../../../../vaults/utils/BatchRequestManagerCallLib.sol";
+
 import {IBaseVault} from "../../../../../src/vaults/interfaces/IBaseVault.sol";
 import {ISyncManager} from "../../../../../src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "../../../../../src/vaults/interfaces/IAsyncVault.sol";
@@ -507,19 +509,37 @@ contract InvestmentFlowExecutor is Test {
         vm.stopPrank();
     }
 
+    /// @dev Route a BRM manager action through the real chain: hub.updateContract -> (local)
+    ///      contractUpdater -> batchRequestManager.trustedCall. Uses the local centrifugeId so the
+    ///      call stays on the hub side (BRM is hub-side). Called under the hubManager prank.
+    function _brmManagerCall(InvestmentFlowContext memory ctx, bytes memory payload) internal {
+        ctx.report.core.hub.updateContract{value: GAS}(
+            ctx.poolId,
+            ctx.scId,
+            ctx.localCentrifugeId,
+            address(ctx.report.batchRequestManager).toBytes32(),
+            payload,
+            HOOK_GAS,
+            address(this)
+        );
+    }
+
     function _approveAndIssueDeposit(InvestmentFlowContext memory ctx, uint128 amount) internal {
         vm.startPrank(ctx.gql.hubManager);
 
         uint32 depositEpochId = ctx.report.batchRequestManager.nowDepositEpoch(ctx.poolId, ctx.scId, ctx.assetId);
         D18 pricePoolPerAsset = ctx.report.core.hub.pricePoolPerAsset(ctx.poolId, ctx.scId, ctx.assetId);
-        ctx.report.batchRequestManager.approveDeposits{value: GAS}(
-            ctx.poolId, ctx.scId, ctx.assetId, depositEpochId, amount, pricePoolPerAsset, address(this)
+        _brmManagerCall(
+            ctx,
+            BatchRequestManagerCallLib.approveDeposits(
+                ctx.assetId, depositEpochId, amount, pricePoolPerAsset, address(this)
+            )
         );
 
         uint32 issueEpochId = ctx.report.batchRequestManager.nowIssueEpoch(ctx.poolId, ctx.scId, ctx.assetId);
         (D18 sharePrice,) = ctx.report.core.shareClassManager.pricePoolPerShare(ctx.poolId, ctx.scId);
-        ctx.report.batchRequestManager.issueShares{value: GAS}(
-            ctx.poolId, ctx.scId, ctx.assetId, issueEpochId, sharePrice, HOOK_GAS, address(this)
+        _brmManagerCall(
+            ctx, BatchRequestManagerCallLib.issueShares(ctx.assetId, issueEpochId, sharePrice, HOOK_GAS, address(this))
         );
 
         vm.stopPrank();
@@ -555,13 +575,15 @@ contract InvestmentFlowExecutor is Test {
 
         uint32 redeemEpochId = ctx.report.batchRequestManager.nowRedeemEpoch(ctx.poolId, ctx.scId, ctx.assetId);
         D18 pricePoolPerAsset = ctx.report.core.hub.pricePoolPerAsset(ctx.poolId, ctx.scId, ctx.assetId);
-        ctx.report.batchRequestManager
-            .approveRedeems(ctx.poolId, ctx.scId, ctx.assetId, redeemEpochId, shares, pricePoolPerAsset);
+        _brmManagerCall(
+            ctx, BatchRequestManagerCallLib.approveRedeems(ctx.assetId, redeemEpochId, shares, pricePoolPerAsset)
+        );
 
         uint32 revokeEpochId = ctx.report.batchRequestManager.nowRevokeEpoch(ctx.poolId, ctx.scId, ctx.assetId);
         (D18 sharePrice,) = ctx.report.core.shareClassManager.pricePoolPerShare(ctx.poolId, ctx.scId);
-        ctx.report.batchRequestManager.revokeShares{value: GAS}(
-            ctx.poolId, ctx.scId, ctx.assetId, revokeEpochId, sharePrice, HOOK_GAS, address(this)
+        _brmManagerCall(
+            ctx,
+            BatchRequestManagerCallLib.revokeShares(ctx.assetId, revokeEpochId, sharePrice, HOOK_GAS, address(this))
         );
 
         vm.stopPrank();
@@ -599,8 +621,11 @@ contract InvestmentFlowExecutor is Test {
             vm.startPrank(ctx.gql.hubManager);
             while (nowIssueEpoch < nowDepositEpoch) {
                 (D18 sharePrice,) = ctx.report.core.shareClassManager.pricePoolPerShare(ctx.poolId, ctx.scId);
-                ctx.report.batchRequestManager.issueShares{value: GAS}(
-                    ctx.poolId, ctx.scId, ctx.assetId, nowIssueEpoch, sharePrice, HOOK_GAS, address(this)
+                _brmManagerCall(
+                    ctx,
+                    BatchRequestManagerCallLib.issueShares(
+                        ctx.assetId, nowIssueEpoch, sharePrice, HOOK_GAS, address(this)
+                    )
                 );
                 nowIssueEpoch = ctx.report.batchRequestManager.nowIssueEpoch(ctx.poolId, ctx.scId, ctx.assetId);
             }
@@ -616,8 +641,11 @@ contract InvestmentFlowExecutor is Test {
             vm.startPrank(ctx.gql.hubManager);
             while (nowRevokeEpoch < nowRedeemEpoch) {
                 (D18 sharePrice,) = ctx.report.core.shareClassManager.pricePoolPerShare(ctx.poolId, ctx.scId);
-                ctx.report.batchRequestManager.revokeShares{value: GAS}(
-                    ctx.poolId, ctx.scId, ctx.assetId, nowRevokeEpoch, sharePrice, HOOK_GAS, address(this)
+                _brmManagerCall(
+                    ctx,
+                    BatchRequestManagerCallLib.revokeShares(
+                        ctx.assetId, nowRevokeEpoch, sharePrice, HOOK_GAS, address(this)
+                    )
                 );
                 nowRevokeEpoch = ctx.report.batchRequestManager.nowRevokeEpoch(ctx.poolId, ctx.scId, ctx.assetId);
             }
