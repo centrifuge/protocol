@@ -63,6 +63,14 @@ contract TestFile is TestCommon {
         assertEq(address(processor.hubHandler()), address(23));
     }
 
+    function testFileGateway() public {
+        vm.prank(address(AUTH));
+        vm.expectEmit();
+        emit IMessageProcessor.File("gateway", address(23));
+        processor.file("gateway", address(23));
+        assertEq(address(processor.gateway()), address(23));
+    }
+
     function testFileSpoke() public {
         vm.prank(address(AUTH));
         vm.expectEmit();

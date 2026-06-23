@@ -10,7 +10,7 @@ import {IHoldings, HoldingAccount} from "./interfaces/IHoldings.sol";
 import {IAccounting, JournalEntry} from "./interfaces/IAccounting.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
-import {IHub, VaultUpdateKind, AccountType} from "./interfaces/IHub.sol";
+import {IHub, VaultUpdateKind, ManagerKind, AccountType} from "./interfaces/IHub.sol";
 import {IHubRequestManagerCallback} from "./interfaces/IHubRequestManagerCallback.sol";
 
 import {Auth} from "../../misc/Auth.sol";
@@ -237,6 +237,21 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
+    function updateManager(
+        PoolId poolId,
+        uint16 centrifugeId,
+        ManagerKind kind,
+        bytes32 who,
+        bool canManage,
+        address refund
+    ) external payable {
+        _protected(poolId);
+
+        emit UpdateManager(centrifugeId, poolId, kind, who, canManage);
+        sender.sendUpdateManager{value: msgValue()}(centrifugeId, poolId, kind, who, canManage, refund);
+    }
+
+    /// @inheritdoc IHub
     function setRequestManager(
         PoolId poolId,
         uint16 centrifugeId,
@@ -250,17 +265,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         emit SetSpokeRequestManager(centrifugeId, poolId, spokeManager);
         sender.sendSetRequestManager{value: msgValue()}(centrifugeId, poolId, spokeManager, refund);
-    }
-
-    /// @inheritdoc IHub
-    function updateBalanceSheetManager(PoolId poolId, uint16 centrifugeId, bytes32 who, bool canManage, address refund)
-        external
-        payable
-    {
-        _protected(poolId);
-
-        emit UpdateBalanceSheetManager(centrifugeId, poolId, who, canManage);
-        sender.sendUpdateBalanceSheetManager{value: msgValue()}(centrifugeId, poolId, who, canManage, refund);
     }
 
     /// @inheritdoc IHub
@@ -486,16 +490,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         sender.sendSetPoolAdapters{value: msgValue()}(
             centrifugeId, poolId, remoteAdapters, threshold, recoveryIndex, refund
         );
-    }
-
-    /// @inheritdoc IHub
-    function updateAdaptersManager(PoolId poolId, uint16 centrifugeId, bytes32 who, bool canManage, address refund)
-        external
-        payable
-    {
-        _protected(poolId);
-
-        sender.sendUpdateAdaptersManager{value: msgValue()}(centrifugeId, poolId, who, canManage, refund);
     }
 
     //----------------------------------------------------------------------------------------------

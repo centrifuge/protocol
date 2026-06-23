@@ -10,6 +10,7 @@ import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {PoolEscrow} from "../../../../src/core/spoke/PoolEscrow.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
+import {ManagerKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
 import {MAX_MESSAGE_COST} from "../../../../src/admin/interfaces/IGasService.sol";
@@ -279,8 +280,8 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     }
 
     function hub_updateBalanceSheetManager(uint16 chainId, uint64 poolId, address manager, bool enable) public asAdmin {
-        hub.updateBalanceSheetManager{value: GAS}(
-            PoolId.wrap(poolId), chainId, CastLib.toBytes32(manager), enable, address(this)
+        hub.updateManager{value: GAS}(
+            PoolId.wrap(poolId), chainId, ManagerKind.BalanceSheet, CastLib.toBytes32(manager), enable, address(this)
         );
     }
 

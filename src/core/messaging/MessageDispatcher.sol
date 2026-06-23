@@ -5,7 +5,7 @@ import {IGateway} from "./interfaces/IGateway.sol";
 import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
-import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
+import {MessageLib, VaultUpdateKind, ManagerKind} from "./libraries/MessageLib.sol";
 import {ISpokeMessageSender, IHubMessageSender, IScheduleAuthMessageSender} from "./interfaces/IGatewaySenders.sol";
 import {
     ISpokeGatewayHandler,
@@ -317,20 +317,25 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendUpdateBalanceSheetManager(
+    function sendUpdateManager(
         uint16 centrifugeId,
         PoolId poolId,
+        ManagerKind kind,
         bytes32 who,
         bool canManage,
         address refund
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            balanceSheet.updateManager(poolId, who.toAddress(), canManage);
+            address whoAddr = who.toAddress();
+            if (kind == ManagerKind.BalanceSheet) balanceSheet.updateManager(poolId, whoAddr, canManage);
+            else if (kind == ManagerKind.Adapter) multiAdapter.updateManager(poolId, whoAddr, canManage);
+            else if (kind == ManagerKind.Gateway) gateway.updateManager(poolId, whoAddr, canManage);
+            else revert InvalidManagerKind();
             _refund(refund);
         } else {
             _send(
                 centrifugeId,
-                MessageLib.UpdateBalanceSheetManager({poolId: poolId.raw(), who: who, canManage: canManage})
+                MessageLib.UpdateManager({poolId: poolId.raw(), kind: uint8(kind), who: who, canManage: canManage})
                     .serialize(),
                 false,
                 refund
@@ -669,24 +674,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 MessageLib.SetPoolAdapters({
                         poolId: poolId.raw(), threshold: threshold, recoveryIndex: recoveryIndex, adapterList: adapters
                     }).serialize(),
-                false,
-                refund
-            );
-        }
-    }
-
-    function sendUpdateAdaptersManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage, address refund)
-        external
-        payable
-        auth
-    {
-        if (centrifugeId == localCentrifugeId) {
-            multiAdapter.updateManager(poolId, who.toAddress(), canManage);
-            _refund(refund);
-        } else {
-            _send(
-                centrifugeId,
-                MessageLib.UpdateAdaptersManager({poolId: poolId.raw(), who: who, canManage: canManage}).serialize(),
                 false,
                 refund
             );

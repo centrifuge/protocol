@@ -33,7 +33,7 @@ import {IMessageHandler} from "../../src/core/messaging/interfaces/IMessageHandl
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/messaging/MultiAdapter.sol";
 import {ILocalCentrifugeId} from "../../src/core/messaging/interfaces/IGatewaySenders.sol";
 import {IUntrustedContractUpdate} from "../../src/core/utils/interfaces/IContractUpdate.sol";
-import {MessageLib, MessageType, VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
+import {MessageLib, MessageType, VaultUpdateKind, ManagerKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {Root} from "../../src/admin/Root.sol";
 import {GasService} from "../../src/admin/GasService.sol";
@@ -443,20 +443,22 @@ contract EndToEndFlows is EndToEndUtils {
             address(s_.asyncRequestManager).toBytes32(),
             REFUND
         );
-        h.hub.updateBalanceSheetManager{value: GAS}(
-            POOL_A, s_.centrifugeId, address(s_.asyncRequestManager).toBytes32(), true, REFUND
+        h.hub.updateManager{value: GAS}(
+            POOL_A, s_.centrifugeId, ManagerKind.BalanceSheet, address(s_.asyncRequestManager).toBytes32(), true, REFUND
         );
-        h.hub.updateBalanceSheetManager{value: GAS}(
-            POOL_A, s_.centrifugeId, address(s_.syncManager).toBytes32(), true, REFUND
+        h.hub.updateManager{value: GAS}(
+            POOL_A, s_.centrifugeId, ManagerKind.BalanceSheet, address(s_.syncManager).toBytes32(), true, REFUND
         );
-        h.hub.updateBalanceSheetManager{value: GAS}(POOL_A, s_.centrifugeId, BSM.toBytes32(), true, REFUND);
+        h.hub.updateManager{value: GAS}(
+            POOL_A, s_.centrifugeId, ManagerKind.BalanceSheet, BSM.toBytes32(), true, REFUND
+        );
 
         vm.startPrank(FM);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
         h.oracleValuation.updateFeeder(POOL_A, 0, FEEDER.toBytes32(), true);
         h.hub.updateHubManager(POOL_A, address(h.oracleValuation), true);
-        h.hub.updateAdaptersManager{value: GAS}(
-            POOL_A, h.centrifugeId, address(h.batchRequestManager).toBytes32(), true, REFUND
+        h.hub.updateManager{value: GAS}(
+            POOL_A, h.centrifugeId, ManagerKind.Adapter, address(h.batchRequestManager).toBytes32(), true, REFUND
         );
         vm.stopPrank();
     }
@@ -477,8 +479,12 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         h.hub.setAdapters{value: GAS}(POOL_A, s_.centrifugeId, localAdapters, remoteAdapters, 1, 1, REFUND);
-        h.hub.updateAdaptersManager{value: GAS}(POOL_A, h.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
-        h.hub.updateAdaptersManager{value: GAS}(POOL_A, s_.centrifugeId, GATEWAY_MANAGER.toBytes32(), true, REFUND);
+        h.hub.updateManager{value: GAS}(
+            POOL_A, h.centrifugeId, ManagerKind.Adapter, GATEWAY_MANAGER.toBytes32(), true, REFUND
+        );
+        h.hub.updateManager{value: GAS}(
+            POOL_A, s_.centrifugeId, ManagerKind.Adapter, GATEWAY_MANAGER.toBytes32(), true, REFUND
+        );
     }
 
     function _configurePool(bool sameChain) internal {
@@ -935,7 +941,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         assertEq(uint8(poolAdapterHToS.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
         assertEq(s.spoke.pool(POOL_A), block.timestamp); // Message received and processed
 
-        h.hub.updateBalanceSheetManager{value: GAS}(POOL_A, s.centrifugeId, BSM.toBytes32(), true, REFUND);
+        h.hub.updateManager{value: GAS}(POOL_A, s.centrifugeId, ManagerKind.BalanceSheet, BSM.toBytes32(), true, REFUND);
 
         vm.startPrank(BSM);
         s.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);

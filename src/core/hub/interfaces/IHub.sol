@@ -14,9 +14,9 @@ import {IShareClassManager} from "./IShareClassManager.sol";
 import {D18} from "../../../misc/types/D18.sol";
 
 import {IAdapter} from "../../messaging/interfaces/IAdapter.sol";
-import {VaultUpdateKind} from "../../messaging/libraries/MessageLib.sol";
 import {IMultiAdapter} from "../../messaging/interfaces/IMultiAdapter.sol";
 import {IHubMessageSender} from "../../messaging/interfaces/IGatewaySenders.sol";
+import {VaultUpdateKind, ManagerKind} from "../../messaging/libraries/MessageLib.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
@@ -60,8 +60,8 @@ interface IHub is IBatchedMulticall {
     );
     event UpdateRestriction(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes payload);
     event SetSpokeRequestManager(uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 indexed manager);
-    event UpdateBalanceSheetManager(
-        uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 indexed manager, bool canManage
+    event UpdateManager(
+        uint16 indexed centrifugeId, PoolId indexed poolId, ManagerKind kind, bytes32 indexed who, bool canManage
     );
     event UpdateVault(
         PoolId indexed poolId, ShareClassId scId, AssetId assetId, bytes32 vaultOrFactory, VaultUpdateKind kind
@@ -246,11 +246,28 @@ interface IHub is IBatchedMulticall {
         external
         payable;
 
-    /// @notice Allow/disallow an account to interact as hub manager this pool
+    /// @notice Allow/disallow an account to interact as hub manager for this pool
     /// @param poolId The pool identifier
     /// @param who Address to update manager status for
     /// @param canManage Whether the address can manage the pool
     function updateHubManager(PoolId poolId, address who, bool canManage) external payable;
+
+    /// @notice Allow/disallow an account to interact as a manager for the given target contract.
+    /// @dev A message is sent to (or executed on) `centrifugeId`.
+    /// @param poolId The pool identifier
+    /// @param centrifugeId Chain where the manager will operate
+    /// @param kind Which contract's manager mapping is updated (BalanceSheet, Adapter, Gateway, Spoke)
+    /// @param who Address to update manager status for
+    /// @param canManage Whether the address can manage the target
+    /// @param refund Address to receive excess gas refund
+    function updateManager(
+        PoolId poolId,
+        uint16 centrifugeId,
+        ManagerKind kind,
+        bytes32 who,
+        bool canManage,
+        address refund
+    ) external payable;
 
     /// @notice Allow/disallow an account to interact as request manager
     /// @param poolId The pool identifier
@@ -265,16 +282,6 @@ interface IHub is IBatchedMulticall {
         bytes32 spokeManager,
         address refund
     ) external payable;
-
-    /// @notice Allow/disallow an account to interact as balance sheet manager for this pool
-    /// @param poolId The pool identifier
-    /// @param centrifugeId Chain where the balance sheet manager will operate
-    /// @param who Address to update manager status for
-    /// @param canManage Whether the address can manage the balance sheet
-    /// @param refund Address to receive excess gas refund
-    function updateBalanceSheetManager(PoolId poolId, uint16 centrifugeId, bytes32 who, bool canManage, address refund)
-        external
-        payable;
 
     /// @notice Add a new share class to the pool
     /// @param poolId The pool identifier
@@ -465,16 +472,6 @@ interface IHub is IBatchedMulticall {
         uint8 recoveryIndex,
         address refund
     ) external payable;
-
-    /// @notice Update an adapters manager for a pool
-    /// @param poolId Pool associated to this configuration
-    /// @param centrifugeId Chain where to perform the adapter configuration
-    /// @param who Address used as manager
-    /// @param canManage If enabled as manager
-    /// @param refund Address to receive excess gas refund
-    function updateAdaptersManager(PoolId poolId, uint16 centrifugeId, bytes32 who, bool canManage, address refund)
-        external
-        payable;
 
     /// @notice Update accounting for a holding amount change
     /// @param poolId The pool identifier

@@ -2,11 +2,12 @@
 pragma solidity 0.8.28;
 
 import {IAdapter} from "./interfaces/IAdapter.sol";
+import {IGateway} from "./interfaces/IGateway.sol";
 import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
-import {MessageType, MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
+import {MessageType, MessageLib, VaultUpdateKind, ManagerKind} from "./libraries/MessageLib.sol";
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
@@ -36,6 +37,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     uint16 public constant MAINNET_CENTRIFUGE_ID = 1;
 
+    IGateway public gateway;
     IMultiAdapter public multiAdapter;
     ISpokeGatewayHandler public spoke;
     IHubGatewayHandler public hubHandler;
@@ -55,6 +57,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageProcessor
     function file(bytes32 what, address data) external auth {
         if (what == "hubHandler") hubHandler = IHubGatewayHandler(data);
+        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
@@ -177,9 +180,15 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.SetRequestManager) {
             MessageLib.SetRequestManager memory m = MessageLib.deserializeSetRequestManager(message);
             spoke.setRequestManager(PoolId.wrap(m.poolId), IRequestManager(m.manager.toAddress()));
-        } else if (kind == MessageType.UpdateBalanceSheetManager) {
-            MessageLib.UpdateBalanceSheetManager memory m = MessageLib.deserializeUpdateBalanceSheetManager(message);
-            balanceSheet.updateManager(PoolId.wrap(m.poolId), m.who.toAddress(), m.canManage);
+        } else if (kind == MessageType.UpdateManager) {
+            MessageLib.UpdateManager memory m = MessageLib.deserializeUpdateManager(message);
+            PoolId poolId = PoolId.wrap(m.poolId);
+            address who = m.who.toAddress();
+            ManagerKind managerKind = ManagerKind(m.kind);
+            if (managerKind == ManagerKind.BalanceSheet) balanceSheet.updateManager(poolId, who, m.canManage);
+            else if (managerKind == ManagerKind.Adapter) multiAdapter.updateManager(poolId, who, m.canManage);
+            else if (managerKind == ManagerKind.Gateway) gateway.updateManager(poolId, who, m.canManage);
+            else revert InvalidMessage(uint8(kind));
         } else if (kind == MessageType.UpdateHoldingAmount) {
             MessageLib.UpdateHoldingAmount memory m = message.deserializeUpdateHoldingAmount();
             hubHandler.updateHoldingAmount(
@@ -212,9 +221,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.SetMaxSharePriceAge) {
             MessageLib.SetMaxSharePriceAge memory m = message.deserializeSetMaxSharePriceAge();
             spoke.setMaxSharePriceAge(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.maxPriceAge);
-        } else if (kind == MessageType.UpdateAdaptersManager) {
-            MessageLib.UpdateAdaptersManager memory m = message.deserializeUpdateAdaptersManager();
-            multiAdapter.updateManager(PoolId.wrap(m.poolId), m.who.toAddress(), m.canManage);
         } else {
             revert InvalidMessage(uint8(kind));
         }

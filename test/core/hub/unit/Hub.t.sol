@@ -15,11 +15,11 @@ import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
 import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
-import {IHub, VaultUpdateKind} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {ISnapshotHook} from "../../../../src/core/hub/interfaces/ISnapshotHook.sol";
 import {IMultiAdapter} from "../../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {IAccounting, JournalEntry} from "../../../../src/core/hub/interfaces/IAccounting.sol";
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
+import {IHub, VaultUpdateKind, ManagerKind} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {IHubMessageSender} from "../../../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
 import "forge-std/Test.sol";
@@ -128,7 +128,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateHubManager(POOL_A, address(0), false);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateBalanceSheetManager(POOL_A, 0, bytes32(0), false, REFUND);
+        hub.updateManager(POOL_A, 0, ManagerKind.BalanceSheet, bytes32(0), false, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.addShareClass(POOL_A, "", "", bytes32(0));
@@ -189,7 +189,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.setAdapters(POOL_A, 0, new IAdapter[](0), new bytes32[](0), 0, 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateAdaptersManager(POOL_A, 0, bytes32(0), false, REFUND);
+        hub.updateManager(POOL_A, 0, ManagerKind.Adapter, bytes32(0), false, REFUND);
 
         vm.stopPrank();
     }

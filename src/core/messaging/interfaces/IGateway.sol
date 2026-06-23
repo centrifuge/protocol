@@ -40,6 +40,7 @@ interface IGateway is IMessageHandler, IRecoverable {
     event SetRefundAddress(PoolId poolId, IRecoverable refund);
     event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
     event WithdrawSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
+    event UpdateManager(PoolId indexed poolId, address indexed who, bool canManage);
 
     //----------------------------------------------------------------------------------------------
     // Errors
@@ -107,6 +108,12 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @param what The name of the variable to be updated
     /// @param data New address
     function file(bytes32 what, address data) external;
+
+    /// @notice Allow/disallow an account to interact as gateway manager for a pool
+    /// @param poolId The pool identifier
+    /// @param who Address to update manager status for
+    /// @param canManage Whether the address can manage the gateway for the pool
+    function updateManager(PoolId poolId, address who, bool canManage) external;
 
     //----------------------------------------------------------------------------------------------
     // Message handling
@@ -188,6 +195,9 @@ interface IGateway is IMessageHandler, IRecoverable {
 
     /// @notice ProtocolGuardian that can pause/unpause all cross-chain messaging
     function pauser() external view returns (IProtocolPauser);
+
+    /// @notice Returns whether `who` is a gateway manager for `poolId`
+    function manager(PoolId poolId, address who) external view returns (bool);
 
     /// @notice Returns the underpaid batch info for a given chain and batch hash
     /// @param centrifugeId The destination chain identifier

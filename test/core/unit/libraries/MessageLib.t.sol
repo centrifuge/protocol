@@ -33,8 +33,8 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeUpdateAdaptersManager() public {
-        MessageLib.deserializeUpdateAdaptersManager(_prepareFor());
+    function testDeserializeUpdateManager() public {
+        MessageLib.deserializeUpdateManager(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -90,11 +90,6 @@ contract TestMessageLibIds is Test {
     /// forge-config: default.allow_internal_expect_revert = true
     function testDeserializeUpdateVault() public {
         MessageLib.deserializeUpdateVault(_prepareFor());
-    }
-
-    /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeUpdateBalanceSheetManager() public {
-        MessageLib.deserializeUpdateBalanceSheetManager(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -506,12 +501,13 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
-    function testUpdateBalanceSheetManager(uint64 poolId, bytes32 who, bool canManage) public pure {
-        MessageLib.UpdateBalanceSheetManager memory a =
-            MessageLib.UpdateBalanceSheetManager({poolId: poolId, who: who, canManage: canManage});
-        MessageLib.UpdateBalanceSheetManager memory b = MessageLib.deserializeUpdateBalanceSheetManager(a.serialize());
+    function testUpdateManager(uint64 poolId, uint8 kind, bytes32 who, bool canManage) public pure {
+        MessageLib.UpdateManager memory a =
+            MessageLib.UpdateManager({poolId: poolId, kind: kind, who: who, canManage: canManage});
+        MessageLib.UpdateManager memory b = MessageLib.deserializeUpdateManager(a.serialize());
 
         assertEq(a.poolId, b.poolId);
+        assertEq(a.kind, b.kind);
         assertEq(a.who, b.who);
         assertEq(a.canManage, b.canManage);
 
@@ -625,20 +621,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.maxPriceAge, b.maxPriceAge);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageExtraGasLimit(), 0);
-    }
-
-    function testUpdateAdaptersManager(uint64 poolId, bytes32 who, bool canManage) public pure {
-        MessageLib.UpdateAdaptersManager memory a =
-            MessageLib.UpdateAdaptersManager({poolId: poolId, who: who, canManage: canManage});
-        MessageLib.UpdateAdaptersManager memory b = MessageLib.deserializeUpdateAdaptersManager(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.who, b.who);
-        assertEq(a.canManage, b.canManage);
-
-        assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messageExtraGasLimit(), 0);
     }

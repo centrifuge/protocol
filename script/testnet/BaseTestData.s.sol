@@ -17,8 +17,8 @@ import {MultiAdapter} from "../../src/core/messaging/MultiAdapter.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
 import {WithdrawMode} from "../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
+import {VaultUpdateKind, ManagerKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {OpsGuardian} from "../../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../../src/admin/ProtocolGuardian.sol";
@@ -171,12 +171,22 @@ abstract contract BaseTestData is LaunchDeployer {
         );
 
         // Update balance sheet manager
-        hub.updateBalanceSheetManager(
-            poolId, params.targetCentrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender
+        hub.updateManager(
+            poolId,
+            params.targetCentrifugeId,
+            ManagerKind.BalanceSheet,
+            address(asyncRequestManager).toBytes32(),
+            true,
+            msg.sender
         );
         // Add admin as balance sheet manager
-        hub.updateBalanceSheetManager(
-            poolId, params.targetCentrifugeId, address(params.admin).toBytes32(), true, msg.sender
+        hub.updateManager(
+            poolId,
+            params.targetCentrifugeId,
+            ManagerKind.BalanceSheet,
+            address(params.admin).toBytes32(),
+            true,
+            msg.sender
         );
 
         // Create accounts
@@ -255,11 +265,21 @@ abstract contract BaseTestData is LaunchDeployer {
         );
 
         // Configure balance sheet managers
-        hub.updateBalanceSheetManager(
-            poolId, params.targetCentrifugeId, address(asyncRequestManager).toBytes32(), true, msg.sender
+        hub.updateManager(
+            poolId,
+            params.targetCentrifugeId,
+            ManagerKind.BalanceSheet,
+            address(asyncRequestManager).toBytes32(),
+            true,
+            msg.sender
         );
-        hub.updateBalanceSheetManager(
-            poolId, params.targetCentrifugeId, address(syncManager).toBytes32(), true, msg.sender
+        hub.updateManager(
+            poolId,
+            params.targetCentrifugeId,
+            ManagerKind.BalanceSheet,
+            address(syncManager).toBytes32(),
+            true,
+            msg.sender
         );
 
         // Create accounts

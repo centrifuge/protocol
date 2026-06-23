@@ -9,10 +9,10 @@ import {AssetId} from "../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
 import {MessageDispatcher} from "../../src/core/messaging/MessageDispatcher.sol";
-import {VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 import {IScheduleAuth} from "../../src/core/messaging/interfaces/IScheduleAuth.sol";
 import {ISpokeMessageSender} from "../../src/core/messaging/interfaces/IGatewaySenders.sol";
 import {IMessageDispatcher} from "../../src/core/messaging/interfaces/IMessageDispatcher.sol";
+import {VaultUpdateKind, ManagerKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import "forge-std/Test.sol";
 
@@ -75,7 +75,7 @@ contract TestAuthChecks is TestCommon {
         dispatcher.sendSetRequestManager(REMOTE_CHAIN, POOL_A, bytes32(0), REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendUpdateBalanceSheetManager(REMOTE_CHAIN, POOL_A, bytes32(0), true, REFUND);
+        dispatcher.sendUpdateManager(REMOTE_CHAIN, POOL_A, ManagerKind.BalanceSheet, bytes32(0), true, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendSetMaxAssetPriceAge(POOL_A, SC_A, ASSET_A, 0, REFUND);
@@ -118,7 +118,7 @@ contract TestAuthChecks is TestCommon {
         dispatcher.sendSetPoolAdapters(REMOTE_CHAIN, POOL_A, adapters, 0, 0, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendUpdateAdaptersManager(REMOTE_CHAIN, POOL_A, bytes32(0), true, REFUND);
+        dispatcher.sendUpdateManager(REMOTE_CHAIN, POOL_A, ManagerKind.Adapter, bytes32(0), true, REFUND);
 
         vm.stopPrank();
     }

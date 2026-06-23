@@ -29,7 +29,7 @@ import {IBalanceSheet, WithdrawMode} from "../../src/core/spoke/interfaces/IBala
 /// 2. Alice is removed as manager by Bob
 /// 3. Bob calls Hub.multicall([updateHoldingValue(...)])
 /// 4. updateHoldingValue() triggers this hook via holdings.callOnSyncSnapshot()
-/// 5. This hook re-enters Hub.updateHubManager(poolId, Alice, true)
+/// 5. This hook re-enters Hub.updateManager(poolId, Alice, true)
 /// 6. _isManager(poolId) checks msgSender() which returns _sender = Bob
 /// 7. The check passes and Alice is re-added as manager!
 contract MaliciousSnapshotHook is ISnapshotHook {
@@ -118,7 +118,7 @@ contract ValueStuckHook is ISnapshotHook {
 /// 2. Hub.notifyPool() → MessageDispatcher.sendNotifyPool() → _refund(ATTACKER)
 /// 3. _refund does: payable(ATTACKER).call{value: msg.value}("")
 /// 4. This contract's receive() is triggered with _sender still set to Manager
-/// 5. receive() calls Hub.updateHubManager() to add itself as manager
+/// 5. receive() calls Hub.updateManager() to add itself as manager
 contract RefundAttacker {
     IHub public immutable hub;
     PoolId public immutable targetPool;
@@ -240,7 +240,7 @@ contract MaliciousERC20 is ERC20 {
 /// @notice Tests demonstrating reentrancy vulnerabilities in the Hub's BatchedMulticall pattern
 /// @dev These tests prove that the `_sender` pattern in BatchedMulticall allows privilege escalation
 ///      during external callbacks. The vulnerability exists because:
-///      1. Hub.updateHubManager() does NOT have the `protected` modifier
+///      1. Hub.updateManager() does NOT have the `protected` modifier
 ///      2. _isManager() uses msgSender() which returns _sender during reentrancy
 ///      3. snapshotHook.onSync() is NOT a view function - can call external contracts
 ///
@@ -264,7 +264,7 @@ contract ReentrancyAttackTest is EndToEndFlows {
     ///      1. Alice (FM) sets a malicious snapshotHook with a backdoor
     ///      2. Alice is removed as manager by Bob
     ///      3. Bob triggers multicall with updateHoldingValue
-    ///      4. The hook re-enters updateHubManager to re-add Alice
+    ///      4. The hook re-enters updateManager to re-add Alice
     ///      5. _isManager() passes because msgSender() returns Bob (_sender)
     ///
     /// Expected: If vulnerability exists, test PASSES (Alice re-added)
@@ -321,7 +321,7 @@ contract ReentrancyAttackTest is EndToEndFlows {
 
         // 4. ATTACK: Bob triggers multicall with updateHoldingValue
         // This will trigger holdings.callOnSyncSnapshot() -> maliciousHook.onSync()
-        // The hook will re-enter hub.updateHubManager(POOL_A, Alice, true)
+        // The hook will re-enter hub.updateManager(POOL_A, Alice, true)
         // Since _sender = Bob, the _isManager check will pass!
         bytes[] memory calls = new bytes[](1);
         calls[0] = abi.encodeCall(IHub.updateHoldingValue, (POOL_A, SC_1, s.usdcId));

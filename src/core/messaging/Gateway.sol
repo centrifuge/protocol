@@ -47,6 +47,9 @@ contract Gateway is Auth, Recoverable, IGateway {
     address internal transient _batcher;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Underpaid)) public underpaid;
 
+    // Pool-level managers
+    mapping(PoolId => mapping(address => bool)) public manager;
+
     // Inbound
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
 
@@ -72,6 +75,12 @@ contract Gateway is Auth, Recoverable, IGateway {
         else revert FileUnrecognizedParam();
 
         emit File(what, instance);
+    }
+
+    /// @inheritdoc IGateway
+    function updateManager(PoolId poolId, address who, bool canManage) external auth {
+        manager[poolId][who] = canManage;
+        emit UpdateManager(poolId, who, canManage);
     }
 
     //----------------------------------------------------------------------------------------------

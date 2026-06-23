@@ -9,7 +9,7 @@ import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
-import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
+import {VaultUpdateKind, ManagerKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
@@ -72,8 +72,13 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
         );
 
         // Allow asyncRequestManager to call balance sheet operations for this pool
-        hub.updateBalanceSheetManager{value: 0}(
-            POOL_A, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(asyncRequestManager))), true, address(this)
+        hub.updateManager{value: 0}(
+            POOL_A,
+            LOCAL_CENTRIFUGE_ID,
+            ManagerKind.BalanceSheet,
+            bytes32(bytes20(address(asyncRequestManager))),
+            true,
+            address(this)
         );
 
         // Deploy and link vault (same-chain short-circuit: goes directly to vaultRegistry)

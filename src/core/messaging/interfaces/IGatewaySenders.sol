@@ -6,7 +6,7 @@ import {D18} from "../../../misc/types/D18.sol";
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {VaultUpdateKind} from "../libraries/MessageLib.sol";
+import {VaultUpdateKind, ManagerKind} from "../libraries/MessageLib.sol";
 
 interface ILocalCentrifugeId {
     error CannotBeSentLocally();
@@ -111,9 +111,10 @@ interface IHubMessageSender is ILocalCentrifugeId {
     function sendSetRequestManager(uint16 centrifugeId, PoolId poolId, bytes32 manager, address refund) external payable;
 
     /// @notice Creates and send the message
-    function sendUpdateBalanceSheetManager(
+    function sendUpdateManager(
         uint16 centrifugeId,
         PoolId poolId,
+        ManagerKind kind,
         bytes32 who,
         bool canManage,
         address refund
@@ -169,11 +170,6 @@ interface IHubMessageSender is ILocalCentrifugeId {
         uint8 recoveryIndex,
         address refund
     ) external payable;
-
-    /// @notice Creates and send the message
-    function sendUpdateAdaptersManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage, address refund)
-        external
-        payable;
 }
 
 /// @notice Interface for dispatch-only gateway

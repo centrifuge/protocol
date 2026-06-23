@@ -208,8 +208,7 @@ contract StdManifest is IStdManifest {
         ) return delay;
 
         // Out of policy only when the call weakens policy (classified by value).
-        if (selector == IHub.updateBalanceSheetManager.selector) return _checkManagerGrant(payload);
-        if (selector == IHub.updateAdaptersManager.selector) return _checkManagerGrant(payload);
+        if (selector == IHub.updateManager.selector) return _checkManagerGrant(payload);
         if (selector == IHub.updateSharePrice.selector) return _checkSharePrice(poolId, payload);
         if (selector == IHub.updateContract.selector) return _checkUpdateContract(payload);
         if (selector == IHub.setAdapters.selector) return _checkSetAdapters(payload);
@@ -250,10 +249,10 @@ contract StdManifest is IStdManifest {
             || selector == IHub.setHoldingAccountId.selector;
     }
 
-    /// @dev Balance-sheet / adapters manager updates (same layout): granting needs authorization,
-    ///      revoking is in policy.
+    /// @dev BalanceSheet / Adapter / Gateway / Spoke manager updates (same layout): granting needs
+    ///      authorization, revoking is in policy.
     function _checkManagerGrant(bytes calldata payload) internal view returns (uint48) {
-        (,,, bool canManage,) = abi.decode(payload, (PoolId, uint16, bytes32, bool, address));
+        (,,,, bool canManage,) = abi.decode(payload, (PoolId, uint16, uint8, bytes32, bool, address));
         return canManage ? delay : 0;
     }
 

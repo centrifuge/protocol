@@ -4,9 +4,9 @@ pragma solidity 0.8.28;
 import {D18} from "../../src/misc/types/D18.sol";
 
 import {PoolId} from "../../src/core/types/PoolId.sol";
-import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {IManifest} from "../../src/core/hub/interfaces/IManifest.sol";
+import {IHub, ManagerKind} from "../../src/core/hub/interfaces/IHub.sol";
 import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 import {IHubRegistry} from "../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IMultiAdapter} from "../../src/core/messaging/interfaces/IMultiAdapter.sol";
@@ -416,37 +416,28 @@ contract StdManifestTest is Test {
         assertEq(_delayOf(d), DELAY);
     }
 
+    function _managerCall(ManagerKind kind, bytes32 who_, bool canManage) internal pure returns (bytes memory) {
+        return abi.encodeWithSelector(IHub.updateManager.selector, POOL_A, uint16(1), kind, who_, canManage, address(0));
+    }
+
     function testGrantAdaptersManagerNeedsAuthorization() public {
-        bytes memory d = abi.encodeWithSelector(
-            IHub.updateAdaptersManager.selector, POOL_A, uint16(1), bytes32(bytes20(who)), true, address(0)
-        );
-        assertEq(_delayOf(d), DELAY);
+        assertEq(_delayOf(_managerCall(ManagerKind.Adapter, bytes32(bytes20(who)), true)), DELAY);
     }
 
     function testRevokeAdaptersManagerInPolicy() public {
-        bytes memory d = abi.encodeWithSelector(
-            IHub.updateAdaptersManager.selector, POOL_A, uint16(1), bytes32(bytes20(who)), false, address(0)
-        );
         vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, d);
+        manifest.enforce(POOL_A, manager, _managerCall(ManagerKind.Adapter, bytes32(bytes20(who)), false));
     }
 
     // ─── balance-sheet manager classification ─────────────────────────────────────
 
-    function _bsmCall(bytes32 who_, bool canManage) internal pure returns (bytes memory) {
-        return
-            abi.encodeWithSelector(
-                IHub.updateBalanceSheetManager.selector, POOL_A, uint16(1), who_, canManage, address(0)
-            );
-    }
-
     function testGrantBalanceSheetManagerNeedsAuthorization() public {
-        assertEq(_delayOf(_bsmCall(bytes32(bytes20(who)), true)), DELAY);
+        assertEq(_delayOf(_managerCall(ManagerKind.BalanceSheet, bytes32(bytes20(who)), true)), DELAY);
     }
 
     function testRevokeBalanceSheetManagerInPolicy() public {
         vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _bsmCall(bytes32(bytes20(who)), false));
+        manifest.enforce(POOL_A, manager, _managerCall(ManagerKind.BalanceSheet, bytes32(bytes20(who)), false));
     }
 
     // ─── setAdapters classification ───────────────────────────────────────────────

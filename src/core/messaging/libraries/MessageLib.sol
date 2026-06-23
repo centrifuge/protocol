@@ -28,8 +28,8 @@ enum MessageType {
     ExecuteTransferShares,
     UpdateRestriction,
     UpdateVault,
-    UpdateBalanceSheetManager,
-    UpdateAdaptersManager,
+    _GAP2,
+    _GAP3,
     UpdateHoldingAmount,
     UpdateShares,
     SetMaxAssetPriceAge,
@@ -38,7 +38,8 @@ enum MessageType {
     RequestCallback,
     SetRequestManager,
     TrustedContractUpdate,
-    UntrustedContractUpdate
+    UntrustedContractUpdate,
+    UpdateManager
 }
 
 /// @dev Used internally in the UpdateVault message (not represent a submessage)
@@ -46,6 +47,14 @@ enum VaultUpdateKind {
     DeployAndLink,
     Link,
     Unlink
+}
+
+/// @dev Used internally in the UpdateManager message to select which contract's manager is updated.
+enum ManagerKind {
+    BalanceSheet,
+    Adapter,
+    Gateway,
+    Spoke
 }
 
 library MessageLib {
@@ -76,8 +85,8 @@ library MessageLib {
         (89  << uint8(MessageType.ExecuteTransferShares) * 8) +
         (41  << uint8(MessageType.UpdateRestriction) * 8) +
         (90  << uint8(MessageType.UpdateVault) * 8) +
-        (42  << uint8(MessageType.UpdateBalanceSheetManager) * 8) +
-        (42  << uint8(MessageType.UpdateAdaptersManager) * 8) +
+        (42  << uint8(MessageType._GAP2) * 8) +
+        (42  << uint8(MessageType._GAP3) * 8) +
         (107  << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (75  << uint8(MessageType.UpdateShares) * 8) +
         (49  << uint8(MessageType.SetMaxAssetPriceAge) * 8) +
@@ -86,7 +95,8 @@ library MessageLib {
         (57  << uint8(MessageType.RequestCallback) * 8) +
         (41  << uint8(MessageType.SetRequestManager) * 8) +
         (73  << uint8(MessageType.TrustedContractUpdate) * 8) +
-        (105  << uint8(MessageType.UntrustedContractUpdate) * 8);
+        (105  << uint8(MessageType.UntrustedContractUpdate) * 8) +
+        (43  << uint8(MessageType.UpdateManager) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -704,29 +714,6 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   UpdateBalanceSheetManager
-    //---------------------------------------
-
-    struct UpdateBalanceSheetManager {
-        uint64 poolId;
-        bytes32 who;
-        bool canManage;
-    }
-
-    function deserializeUpdateBalanceSheetManager(bytes memory data)
-        internal
-        pure
-        returns (UpdateBalanceSheetManager memory)
-    {
-        require(messageType(data) == MessageType.UpdateBalanceSheetManager, UnknownMessageType());
-        return UpdateBalanceSheetManager({poolId: data.toUint64(1), who: data.toBytes32(9), canManage: data.toBool(41)});
-    }
-
-    function serialize(UpdateBalanceSheetManager memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateBalanceSheetManager, t.poolId, t.who, t.canManage);
-    }
-
-    //---------------------------------------
     //    UpdateHoldingAmount
     //---------------------------------------
 
@@ -865,21 +852,24 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   UpdateAdaptersManager
+    //   UpdateManager
     //---------------------------------------
 
-    struct UpdateAdaptersManager {
+    struct UpdateManager {
         uint64 poolId;
+        uint8 kind;
         bytes32 who;
         bool canManage;
     }
 
-    function deserializeUpdateAdaptersManager(bytes memory data) internal pure returns (UpdateAdaptersManager memory) {
-        require(messageType(data) == MessageType.UpdateAdaptersManager, UnknownMessageType());
-        return UpdateAdaptersManager({poolId: data.toUint64(1), who: data.toBytes32(9), canManage: data.toBool(41)});
+    function deserializeUpdateManager(bytes memory data) internal pure returns (UpdateManager memory) {
+        require(messageType(data) == MessageType.UpdateManager, UnknownMessageType());
+        return UpdateManager({
+            poolId: data.toUint64(1), kind: data.toUint8(9), who: data.toBytes32(10), canManage: data.toBool(42)
+        });
     }
 
-    function serialize(UpdateAdaptersManager memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateAdaptersManager, t.poolId, t.who, t.canManage);
+    function serialize(UpdateManager memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UpdateManager, t.poolId, t.kind, t.who, t.canManage);
     }
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IGateway} from "./IGateway.sol";
 import {IMultiAdapter} from "./IMultiAdapter.sol";
 import {IScheduleAuth} from "./IScheduleAuth.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
@@ -38,6 +39,9 @@ interface IMessageProcessor is IMessageHandler {
     //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
+
+    /// @notice Routes and batches cross-chain messages between hub and spoke
+    function gateway() external view returns (IGateway);
 
     /// @notice Handles multi-protocol message verification and routing for cross-chain communication
     function multiAdapter() external view returns (IMultiAdapter);

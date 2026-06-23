@@ -173,6 +173,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(messageProcessor.scheduleAuth()), address(root));
+        assertEq(address(messageProcessor.gateway()), address(gateway));
         assertEq(address(messageProcessor.multiAdapter()), address(multiAdapter));
         assertEq(address(messageProcessor.spoke()), address(spoke));
         assertEq(address(messageProcessor.balanceSheet()), address(balanceSheet));
