@@ -16,16 +16,20 @@ import "forge-std/Test.sol";
 
 /// @dev Records the last enforce() call and can be toggled to revert (out of policy / forbidden).
 contract MockManifest is IManifest {
+    error Unauthorized();
+
     PoolId public lastPoolId;
     address public lastCaller;
     bytes public lastData;
     uint256 public enforceCalls;
     bool public shouldRevert;
 
-    mapping(bytes32 => uint48) public authorizedAfter;
-
     function setShouldRevert(bool v) external {
         shouldRevert = v;
+    }
+
+    function classify(PoolId, address, bytes calldata) external pure returns (uint48) {
+        return 0;
     }
 
     function enforce(PoolId poolId, address caller, bytes calldata data) external {
@@ -35,9 +39,6 @@ contract MockManifest is IManifest {
         lastData = data;
         if (shouldRevert) revert Unauthorized();
     }
-
-    function authorize(PoolId, bytes calldata) external {}
-    function cancelAuthorization(PoolId, bytes calldata) external {}
 }
 
 contract HubManifestTest is Test {
@@ -101,7 +102,7 @@ contract HubManifestTest is Test {
 
         // A manager replacing the manifest is enforced by the current manifest.
         manifest.setShouldRevert(true);
-        vm.expectRevert(IManifest.Unauthorized.selector);
+        vm.expectRevert(MockManifest.Unauthorized.selector);
         vm.prank(manager);
         hub.setManifest(POOL_A, manifest);
 
@@ -138,7 +139,7 @@ contract HubManifestTest is Test {
         _installManifest(manifest);
         manifest.setShouldRevert(true);
 
-        vm.expectRevert(IManifest.Unauthorized.selector);
+        vm.expectRevert(MockManifest.Unauthorized.selector);
         vm.prank(manager);
         hub.setPoolMetadata(POOL_A, metadata);
     }

@@ -23,6 +23,19 @@ interface IHubRegistry is IERC6909Decimals {
     event SetHubRequestManager(PoolId indexed poolId, uint16 indexed centrifugeId, IHubRequestManager manager);
     event SetManifest(PoolId indexed poolId, IManifest manifest);
 
+    /// @notice Emitted when an out-of-policy Hub call is authorized: this starts the policy timelock.
+    ///         The authorization matures at `validAfter` and may then run, unless cancelled first. `data`
+    ///         is the exact authorized calldata, included so the action is decodable straight from logs.
+    event AuthorizationScheduled(
+        PoolId indexed poolId, address indexed caller, bytes32 indexed authId, uint48 validAfter, bytes data
+    );
+    /// @notice Emitted when a pending authorization is cancelled (a manager, or a sentinel via its
+    ///         Supervisor). `caller` is whoever cancelled it.
+    event AuthorizationCanceled(PoolId indexed poolId, address indexed caller, bytes32 indexed authId);
+    /// @notice Emitted when a matured authorization is consumed by an executing out-of-policy call.
+    ///         `caller` is the manager whose Hub call consumed it.
+    event AuthorizationConsumed(PoolId indexed poolId, address indexed caller, bytes32 indexed authId);
+
     //----------------------------------------------------------------------------------------------
     // Errors
     //----------------------------------------------------------------------------------------------
@@ -34,6 +47,19 @@ interface IHubRegistry is IERC6909Decimals {
     error EmptyCurrency();
     error EmptyShareClassManager();
     error AssetNotFound();
+    /// @notice Dispatched when {authorize}/{cancelAuthorization} caller is not a pool manager.
+    error NotManager();
+    /// @notice Dispatched when {authorize} targets a pool with no manifest installed (nothing to classify).
+    error NoManifest();
+    /// @notice Dispatched when {authorize} targets a call that is currently in policy (nothing to authorize).
+    error InPolicy();
+    /// @notice Dispatched when {authorize} targets a call that already has an authorization (cancel first).
+    error AlreadyAuthorized();
+    /// @notice Dispatched when {consumeAuthorization} finds no matured, unexpired authorization, or when
+    ///         {cancelAuthorization} finds no authorization to cancel.
+    error Unauthorized();
+    /// @notice Dispatched when {consumeAuthorization} is called by anyone other than the pool's manifest.
+    error NotManifest();
 
     //----------------------------------------------------------------------------------------------
     // Registration methods
@@ -89,8 +115,41 @@ interface IHubRegistry is IERC6909Decimals {
     function setManifest(PoolId poolId, IManifest manifest) external;
 
     //----------------------------------------------------------------------------------------------
+    // Authorization ledger
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Pre-authorize a future, out-of-policy Hub call. Manager only. The pool's manifest
+    ///         classifies the call; an in-policy call can't be authorized. Matures after the classified
+    ///         delay, after which a guarded Hub call whose calldata byte-matches `data` consumes it.
+    /// @param poolId The pool the call targets
+    /// @param data The exact future Hub calldata being authorized
+    function authorize(PoolId poolId, bytes calldata data) external;
+
+    /// @notice Cancel a pending authorization. Manager only (sentinels act through their Supervisor).
+    /// @param poolId The pool the authorization targets
+    /// @param data The exact Hub calldata that was authorized
+    function cancelAuthorization(PoolId poolId, bytes calldata data) external;
+
+    /// @notice Consume a matured authorization for an executing out-of-policy call. Callable only by the
+    ///         pool's installed manifest (from its {IManifest.enforce}). Reverts unless an authorization
+    ///         exists, has matured, and is still within `expiry` of maturing.
+    /// @param poolId The pool the call targets
+    /// @param caller The manager whose Hub call is executing (for the audit event)
+    /// @param data The exact Hub calldata being executed
+    /// @param expiry The window, after maturing, in which the authorization stays executable
+    function consumeAuthorization(PoolId poolId, address caller, bytes calldata data, uint48 expiry) external;
+
+    //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
+
+    /// @notice The timestamp at which a pending authorization matures (0 if none).
+    /// @param authId The authorization identifier, see {authId}
+    function authorizedAfter(bytes32 authId) external view returns (uint48 validAfter);
+
+    /// @notice The identifier of an authorization for `data` on `poolId`, namespaced by the pool's
+    ///         current manifest so swapping the manifest invalidates all of its pending authorizations.
+    function authId(PoolId poolId, bytes calldata data) external view returns (bytes32);
 
     /// @notice Returns the metadata attached to the pool, if any
     /// @param poolId The pool identifier

@@ -94,7 +94,7 @@ contract GasService is IGasService {
         updateVaultUnlink = _gasValue(185056);
         setRequestManager = _gasValue(154491);
         updateManager = _gasValue(153706);
-        updateHoldingAmount = _gasValue(354398);
+        updateHoldingAmount = _gasValue(354508);
         updateShares = _gasValue(251665);
         maxAssetPriceAge = _gasValue(159525);
         maxSharePriceAge = _gasValue(156459);

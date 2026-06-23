@@ -16,7 +16,7 @@ import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdat
 ///         authorization during the manifest delay window.
 ///
 ///         The Supervisor is a registered Hub manager for the pool only so that it can reach the
-///         manifest's {IManifest.cancelAuthorization} on behalf of sentinels (which are not Hub
+///         manifest's {IHubRegistry.cancelAuthorization} on behalf of sentinels (which are not Hub
 ///         managers). The hub, pool, and contract updater are immutable; the sentinel set is managed
 ///         via {trustedCall}.
 contract Supervisor is ISupervisor, ITrustedContractUpdate {
@@ -77,7 +77,7 @@ contract Supervisor is ISupervisor, ITrustedContractUpdate {
         if (sentinelCount > 1) {
             _checkNotSelfRemoval(data, msg.sender);
         }
-        hub.manifest(poolId).cancelAuthorization(poolId, data);
+        hub.hubRegistry().cancelAuthorization(poolId, data);
     }
 
     /// @dev Reverts if `data` is a Hub updateContract call whose payload removes `sender` as sentinel.

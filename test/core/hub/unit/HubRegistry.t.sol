@@ -146,6 +146,35 @@ contract HubRegistryTest is Test {
         assertEq(address(registry.manifest(poolId)), address(manifest));
     }
 
+    function testAuthorizeRevertsWithoutManifest(bytes calldata data) public {
+        address fundAdmin = makeAddr("fundAdmin");
+
+        PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
+        registry.registerPool(poolId, fundAdmin, USD);
+
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IHubRegistry.NotManager.selector);
+        registry.authorize(poolId, data);
+
+        // No manifest set for the pool, so authorize cannot classify the call.
+        vm.prank(fundAdmin);
+        vm.expectRevert(IHubRegistry.NoManifest.selector);
+        registry.authorize(poolId, data);
+    }
+
+    function testConsumeAuthorizationOnlyCallableByManifest(address caller, bytes calldata data, uint48 expiry) public {
+        address fundAdmin = makeAddr("fundAdmin");
+        IManifest manifest = IManifest(makeAddr("manifest"));
+
+        PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
+        registry.registerPool(poolId, fundAdmin, USD);
+        registry.setManifest(poolId, manifest);
+
+        // Caller is address(this), not the pool's manifest.
+        vm.expectRevert(IHubRegistry.NotManifest.selector);
+        registry.consumeAuthorization(poolId, caller, data, expiry);
+    }
+
     function testUpdateDependency(bytes32 what, address dependency) public nonZero(dependency) {
         // First register asset and pool to use for dependency testing
         registry.registerAsset(USD, 18);

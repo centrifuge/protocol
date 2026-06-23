@@ -4,7 +4,7 @@ pragma solidity ^0.8.28;
 import {CentrifugeIntegrationTestWithUtils} from "./Integration.t.sol";
 
 import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
-import {IManifest} from "../../src/core/hub/interfaces/IManifest.sol";
+import {IHubRegistry} from "../../src/core/hub/interfaces/IHubRegistry.sol";
 import {ITrustedContractUpdate} from "../../src/core/utils/interfaces/IContractUpdate.sol";
 
 import {SupervisorFactory} from "../../src/managers/hub/Supervisor.sol";
@@ -55,8 +55,8 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
         // Register the operator and the Supervisor as hub managers BEFORE installing the manifest
         // (no manifest yet, so these grants are unguarded). The operator authorizes out-of-policy
-        // calls directly on the manifest; the Supervisor must be a manager so it can reach the
-        // manifest's cancelAuthorization on behalf of sentinels.
+        // calls on the HubRegistry ledger; the Supervisor must be a manager so it can reach the
+        // registry's cancelAuthorization on behalf of sentinels.
         vm.startPrank(FM);
         hub.updateHubManager(POOL_A, operator, true);
         hub.updateHubManager(POOL_A, address(supervisor), true);
@@ -95,18 +95,18 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
     function testOutOfPolicyReverts() public {
         // Granting a hub manager is out of policy; without an authorization it reverts.
         vm.prank(FM);
-        vm.expectRevert(IManifest.Unauthorized.selector);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.updateHubManager(POOL_A, newManager, true);
     }
 
     function testAuthorizeThenExecute() public {
-        // Operator (a hub manager) pre-authorizes the exact call directly on the manifest.
+        // Operator (a hub manager) pre-authorizes the exact call on the registry.
         vm.prank(operator);
-        manifest.authorize(POOL_A, _grantManagerCall());
+        hubRegistry.authorize(POOL_A, _grantManagerCall());
 
         // Not matured yet -> still reverts.
         vm.prank(FM);
-        vm.expectRevert(IManifest.Unauthorized.selector);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.updateHubManager(POOL_A, newManager, true);
 
         // After the delay it executes (consuming the authorization).
@@ -123,7 +123,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
             .trustedCall(POOL_A, SC_1, abi.encode(TrustedCall.AddSentinel, sentinel));
 
         vm.prank(operator);
-        manifest.authorize(POOL_A, _grantManagerCall());
+        hubRegistry.authorize(POOL_A, _grantManagerCall());
 
         vm.prank(sentinel);
         supervisor.cancelAuthorization(_grantManagerCall());
@@ -131,7 +131,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         // Vetoed: even after the delay the call reverts.
         skip(POLICY_DELAY);
         vm.prank(FM);
-        vm.expectRevert(IManifest.Unauthorized.selector);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.updateHubManager(POOL_A, newManager, true);
     }
 
@@ -157,11 +157,11 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
         // A manager replacing the manifest is out of policy and waits the longer escalation delay.
         vm.prank(operator);
-        manifest.authorize(POOL_A, call);
+        hubRegistry.authorize(POOL_A, call);
 
         skip(POLICY_DELAY); // past the standard delay but not escalation
         vm.prank(FM);
-        vm.expectRevert(IManifest.Unauthorized.selector);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.setManifest(POOL_A, next);
 
         skip(POLICY_ESCALATION - POLICY_DELAY);

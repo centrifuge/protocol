@@ -19,15 +19,16 @@ import {IShareClassManager} from "../core/hub/interfaces/IShareClassManager.sol"
 import {IOnOffRamp} from "../managers/spoke/interfaces/IOnOffRamp.sol";
 
 /// @title  Standard Manifest
-/// @notice Default policy + authorization registry installed on the Hub via {IHub.setManifest}.
+/// @notice Default pool policy installed on the Hub via {IHub.setManifest}. This contract is a pure
+///         classifier; the authorization ledger (storing/maturing/vetoing/consuming authorizations and
+///         emitting their events) lives in {HubRegistry}, shared by every manifest.
 ///
 ///         The Hub calls {enforce} on every guarded manager method. In-policy calls (delay 0) run
-///         synchronously; out-of-policy calls must be pre-authorized via {authorize} and matured past
-///         the delay, leaving sentinels a veto window via {cancelAuthorization}. Matching is by exact
-///         calldata keyed on (poolId, calldata) and consumed on use; one instance can serve many
-///         pools. Only an out-of-policy call may be authorized, and a matured authorization is
+///         synchronously; out-of-policy calls must be pre-authorized via {IHubRegistry.authorize} and
+///         matured past the delay, leaving sentinels a veto window via {IHubRegistry.cancelAuthorization}.
+///         {enforce} consumes the matured authorization from the registry. A matured authorization is
 ///         executable only within `expiry` (then it fails closed), so it can neither be banked while
-///         cheap nor held until the baseline has drifted.
+///         cheap nor held until the baseline has drifted. One instance can serve many pools.
 ///
 ///         Two delay tiers: `delay` for every out-of-policy action, and the longer `escalation` only
 ///         for replacing the manifest (the gravest action, since a malicious swap disables all policy).
@@ -59,7 +60,6 @@ contract StdManifest is IStdManifest {
     uint128 public immutable thresholdPerSecond;
 
     // State
-    mapping(bytes32 authId => uint48 validAfter) public authorizedAfter;
     mapping(PoolId => mapping(ShareClassId => uint64)) public lastPriceUpdate;
     mapping(PoolId poolId => mapping(address caller => bool)) public restricted;
     mapping(PoolId poolId => mapping(address caller => mapping(bytes4 selector => bool))) public allowed;
@@ -96,20 +96,14 @@ contract StdManifest is IStdManifest {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IManifest
+    /// @dev The authorization ledger (storing/maturing/consuming) lives in {HubRegistry}; this only
+    ///      classifies and, when out of policy, consumes a matured authorization there.
     function enforce(PoolId poolId, address caller, bytes calldata data) external {
         require(msg.sender == address(hub), NotHub());
         (bytes4 selector, bytes calldata payload) = data.decodeCall();
 
         if (_classify(poolId, caller, selector, payload) != 0) {
-            bytes32 authId = _authId(poolId, data);
-            uint48 validAfter = authorizedAfter[authId];
-            // Matured and not yet expired: a stale auth fails closed, so it can't be fired much later
-            // (once the baseline has drifted) with no fresh veto window.
-            require(
-                validAfter != 0 && block.timestamp >= validAfter && block.timestamp <= uint256(validAfter) + expiry,
-                Unauthorized()
-            );
-            delete authorizedAfter[authId];
+            hubRegistry.consumeAuthorization(poolId, caller, data, expiry);
         }
 
         // Anchor the share-price baseline to this executed update (never from authorize/cancel), so
@@ -121,41 +115,11 @@ contract StdManifest is IStdManifest {
     }
 
     /// @inheritdoc IManifest
-    function authorize(PoolId poolId, bytes calldata data) external {
-        require(hubRegistry.manager(poolId, msg.sender), NotManager());
-
-        // Only an out-of-policy call may be authorized; an in-policy one would mature immediately and
-        // could be banked while cheap, then fired later once the same calldata is out of policy.
+    /// @dev Called by {HubRegistry.authorize} (to price the delay) and by {enforce}. Reverts to block
+    ///      a forbidden call outright.
+    function classify(PoolId poolId, address caller, bytes calldata data) external view returns (uint48) {
         (bytes4 selector, bytes calldata payload) = data.decodeCall();
-        uint48 delaySeconds = _classify(poolId, msg.sender, selector, payload);
-        require(delaySeconds != 0, InPolicy());
-
-        // Reject re-authorizing a call that already has an authorization: overwriting would silently
-        // reset its maturity clock (and veto window). This also covers an *expired* authorization,
-        // since `enforce` fails closed without clearing it, so a stale auth must be cancelled (via
-        // {cancelAuthorization}) before the same call can be re-authorized.
-        bytes32 authId = _authId(poolId, data);
-        require(authorizedAfter[authId] == 0, AlreadyAuthorized());
-
-        uint48 validAfter = uint48(block.timestamp) + delaySeconds;
-        authorizedAfter[authId] = validAfter;
-        emit Authorized(poolId, msg.sender, authId, validAfter);
-    }
-
-    /// @inheritdoc IManifest
-    function cancelAuthorization(PoolId poolId, bytes calldata data) external {
-        require(hubRegistry.manager(poolId, msg.sender), NotManager());
-
-        bytes32 authId = _authId(poolId, data);
-        delete authorizedAfter[authId];
-        emit AuthorizationCanceled(poolId, authId);
-    }
-
-    /// @dev Identifier for a pre-authorized call (exact-calldata match). `poolId` is mixed in even
-    ///      though `data` already encodes it, binding the authorization to its pool: without it a
-    ///      manager of one pool could authorize a call for another pool sharing the manifest.
-    function _authId(PoolId poolId, bytes calldata data) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(poolId.raw(), data));
+        return _classify(poolId, caller, selector, payload);
     }
 
     //----------------------------------------------------------------------------------------------

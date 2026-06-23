@@ -4,24 +4,16 @@ pragma solidity 0.8.28;
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IManifest} from "../../../../src/core/hub/interfaces/IManifest.sol";
+import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 
 import {Supervisor, SupervisorFactory} from "../../../../src/managers/hub/Supervisor.sol";
 import {ISupervisor, ISupervisorFactory, TrustedCall} from "../../../../src/managers/hub/interfaces/ISupervisor.sol";
 
 import "forge-std/Test.sol";
 
-contract MockManifest is IManifest {
-    bytes public lastAuthorized;
+/// @dev Records the last cancelAuthorization the Supervisor routed through the registry.
+contract MockHubRegistry {
     bytes public lastCancelled;
-
-    mapping(bytes32 => uint48) public authorizedAfter;
-
-    function enforce(PoolId, address, bytes calldata) external {}
-
-    function authorize(PoolId, bytes calldata data) external {
-        lastAuthorized = data;
-    }
 
     function cancelAuthorization(PoolId, bytes calldata data) external {
         lastCancelled = data;
@@ -29,14 +21,10 @@ contract MockManifest is IManifest {
 }
 
 contract MockHub {
-    IManifest public immutable manifestAddr;
+    IHubRegistry public immutable hubRegistry;
 
-    constructor(IManifest manifest_) {
-        manifestAddr = manifest_;
-    }
-
-    function manifest(PoolId) external view returns (IManifest) {
-        return manifestAddr;
+    constructor(IHubRegistry hubRegistry_) {
+        hubRegistry = hubRegistry_;
     }
 }
 
@@ -49,8 +37,8 @@ contract SupervisorTest is Test {
     address immutable sentinelB = makeAddr("sentinelB");
     address immutable outsider = makeAddr("outsider");
 
-    MockManifest manifest = new MockManifest();
-    MockHub mockHub = new MockHub(manifest);
+    MockHubRegistry registry = new MockHubRegistry();
+    MockHub mockHub = new MockHub(IHubRegistry(address(registry)));
     Supervisor supervisor;
 
     bytes data = abi.encodeWithSelector(IHub.updateSharePrice.selector, POOL_A, SC_A, uint256(1e18), uint64(1));
@@ -84,7 +72,7 @@ contract SupervisorTest is Test {
         _addSentinel(sentinelA);
         vm.prank(sentinelA);
         supervisor.cancelAuthorization(data);
-        assertEq(manifest.lastCancelled(), data);
+        assertEq(registry.lastCancelled(), data);
     }
 
     function testNonSentinelCannotCancel() public {
@@ -108,7 +96,7 @@ contract SupervisorTest is Test {
 
         vm.prank(sentinelA);
         supervisor.cancelAuthorization(_removeSentinelCall(sentinelB));
-        assertEq(manifest.lastCancelled(), _removeSentinelCall(sentinelB));
+        assertEq(registry.lastCancelled(), _removeSentinelCall(sentinelB));
     }
 
     function testSoleSentinelCanCancelOwnRemoval() public {
@@ -116,7 +104,7 @@ contract SupervisorTest is Test {
 
         vm.prank(sentinelA);
         supervisor.cancelAuthorization(_removeSentinelCall(sentinelA));
-        assertEq(manifest.lastCancelled(), _removeSentinelCall(sentinelA));
+        assertEq(registry.lastCancelled(), _removeSentinelCall(sentinelA));
     }
 
     function testSentinelVetoNotBlockedByMalformedPayload() public {
@@ -141,7 +129,7 @@ contract SupervisorTest is Test {
 
         vm.prank(sentinelA);
         supervisor.cancelAuthorization(call);
-        assertEq(manifest.lastCancelled(), call);
+        assertEq(registry.lastCancelled(), call);
     }
 
     // ─── sentinel management ────────────────────────────────────────────────────

@@ -24,9 +24,15 @@ contract HubRegistry is Auth, IHubRegistry {
     mapping(PoolId => IManifest) public manifest;
     mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId => mapping(bytes32 => address)) public dependency;
+    mapping(bytes32 authId => uint48 validAfter) public authorizedAfter;
     mapping(PoolId => mapping(uint16 centrifugeId => IHubRequestManager)) public hubRequestManager;
 
     constructor(address deployer) Auth(deployer) {}
+
+    modifier onlyManager(PoolId poolId_) {
+        require(manager[poolId_][msg.sender], NotManager());
+        _;
+    }
 
     //----------------------------------------------------------------------------------------------
     // Registration methods
@@ -115,8 +121,74 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     //----------------------------------------------------------------------------------------------
+    // Authorization ledger
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IHubRegistry
+    function authorize(PoolId poolId_, bytes calldata data) external onlyManager(poolId_) {
+        IManifest m = manifest[poolId_];
+        require(address(m) != address(0), NoManifest());
+
+        // Only an out-of-policy call may be authorized; an in-policy one would mature immediately and
+        // could be banked while cheap, then fired later once the same calldata is out of policy.
+        uint48 delaySeconds = m.classify(poolId_, msg.sender, data);
+        require(delaySeconds != 0, InPolicy());
+
+        // Reject re-authorizing: overwriting would silently reset the maturity clock (and veto window).
+        // This also covers an expired authorization, which {consumeAuthorization} leaves in place, so it
+        // must be cancelled before the same call can be re-authorized.
+        bytes32 id = _authId(poolId_, address(m), data);
+        require(authorizedAfter[id] == 0, AlreadyAuthorized());
+
+        uint48 validAfter = uint48(block.timestamp) + delaySeconds;
+        authorizedAfter[id] = validAfter;
+        emit AuthorizationScheduled(poolId_, msg.sender, id, validAfter, data);
+    }
+
+    /// @inheritdoc IHubRegistry
+    function cancelAuthorization(PoolId poolId_, bytes calldata data) external onlyManager(poolId_) {
+        bytes32 id = authId(poolId_, data);
+        // Fail loud on a no-op cancel: a veto against a non-existent (already consumed, already
+        // cancelled, or mismatched calldata) authorization signals a mistake worth surfacing, and
+        // avoids writing a misleading AuthorizationCanceled entry to the audit trail.
+        require(authorizedAfter[id] != 0, Unauthorized());
+        delete authorizedAfter[id];
+        emit AuthorizationCanceled(poolId_, msg.sender, id);
+    }
+
+    /// @inheritdoc IHubRegistry
+    function consumeAuthorization(PoolId poolId_, address caller, bytes calldata data, uint48 expiry) external {
+        IManifest m = manifest[poolId_];
+        require(msg.sender == address(m), NotManifest());
+
+        bytes32 id = _authId(poolId_, address(m), data);
+        uint48 validAfter = authorizedAfter[id];
+        // Matured and not yet expired: a stale auth fails closed, so it can't be fired much later (once
+        // the baseline has drifted) with no fresh veto window.
+        require(
+            validAfter != 0 && block.timestamp >= validAfter && block.timestamp <= uint256(validAfter) + expiry,
+            Unauthorized()
+        );
+        delete authorizedAfter[id];
+        emit AuthorizationConsumed(poolId_, caller, id);
+    }
+
+    //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IHubRegistry
+    /// @dev `authId` is namespaced by the pool's current manifest, so swapping the manifest makes every
+    ///      pending authorization unreachable (the new manifest computes different ids) without needing
+    ///      to enumerate and clear them — mirroring the old per-manifest-instance ledger.
+    function authId(PoolId poolId_, bytes calldata data) public view returns (bytes32) {
+        return _authId(poolId_, address(manifest[poolId_]), data);
+    }
+
+    /// @dev Computes the id from an already-loaded manifest, so callers holding it avoid re-reading the slot.
+    function _authId(PoolId poolId_, address manifest_, bytes calldata data) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(poolId_.raw(), manifest_, data));
+    }
 
     /// @inheritdoc IHubRegistry
     function poolId(uint16 centrifugeId, uint48 postfix) public pure returns (PoolId poolId_) {
