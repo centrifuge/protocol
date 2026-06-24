@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
+
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {IManagerCallFromSpoke} from "../../../../src/core/utils/interfaces/IManagerCall.sol";
 
 import {Supervisor, SupervisorFactory} from "../../../../src/managers/hub/Supervisor.sol";
 import {ISupervisor, ISupervisorFactory, TrustedCall} from "../../../../src/managers/hub/interfaces/ISupervisor.sol";
@@ -29,10 +32,12 @@ contract MockHub {
 }
 
 contract SupervisorTest is Test {
+    using CastLib for address;
+
     PoolId constant POOL_A = PoolId.wrap(1);
     ShareClassId constant SC_A = ShareClassId.wrap(bytes16(uint128(2)));
 
-    address immutable contractUpdater = makeAddr("contractUpdater");
+    address immutable envoy = makeAddr("envoy");
     address immutable sentinelA = makeAddr("sentinelA");
     address immutable sentinelB = makeAddr("sentinelB");
     address immutable outsider = makeAddr("outsider");
@@ -44,24 +49,24 @@ contract SupervisorTest is Test {
     bytes data = abi.encodeWithSelector(IHub.updateSharePrice.selector, POOL_A, SC_A, uint256(1e18), uint64(1));
 
     function setUp() public {
-        supervisor = new Supervisor(IHub(address(mockHub)), POOL_A, contractUpdater);
+        supervisor = new Supervisor(IHub(address(mockHub)), POOL_A, envoy);
     }
 
     function _addSentinel(address s) internal {
-        vm.prank(contractUpdater);
-        supervisor.trustedCall(POOL_A, SC_A, abi.encode(TrustedCall.AddSentinel, s));
+        vm.prank(envoy);
+        supervisor.fromHub(POOL_A, abi.encode(TrustedCall.AddSentinel, s));
     }
 
     function _removeSentinelCall(address s) internal view returns (bytes memory) {
         bytes memory inner = abi.encode(TrustedCall.RemoveSentinel, s);
         return abi.encodeWithSelector(
-            IHub.updateContract.selector,
+            IHub.managerCall.selector,
             POOL_A,
-            SC_A,
             uint16(1),
-            bytes32(bytes20(address(supervisor))),
+            address(supervisor).toBytes32(),
             inner,
             uint128(0),
+            uint256(0),
             address(0)
         );
     }
@@ -111,19 +116,19 @@ contract SupervisorTest is Test {
         _addSentinel(sentinelA);
         _addSentinel(sentinelB);
 
-        // A compromised operator could authorize an out-of-policy updateContract whose inner payload
-        // is shaped so a strict (TrustedCall, address) decode reverts (here: a 64-byte payload whose
-        // first word is out of enum range). The self-removal guard must tolerate it, not revert, or it
-        // would freeze the sentinel veto for exactly such calls.
+        // A compromised manager could authorize an out-of-policy managerCall whose inner payload is
+        // shaped so a strict (TrustedCall, address) decode reverts (here: a 64-byte payload whose first
+        // word is out of enum range). The self-removal guard must tolerate it, not revert, or it would
+        // freeze the sentinel veto for exactly such calls.
         bytes memory malformed = abi.encode(type(uint256).max, type(uint256).max);
         bytes memory call = abi.encodeWithSelector(
-            IHub.updateContract.selector,
+            IHub.managerCall.selector,
             POOL_A,
-            SC_A,
             uint16(1),
-            bytes32(bytes20(address(supervisor))),
+            address(supervisor).toBytes32(),
             malformed,
             uint128(0),
+            uint256(0),
             address(0)
         );
 
@@ -143,15 +148,22 @@ contract SupervisorTest is Test {
         assertEq(supervisor.sentinelCount(), 1);
     }
 
-    function testAddSentinelOnlyContractUpdater() public {
-        vm.expectRevert(ISupervisor.NotContractUpdater.selector);
-        supervisor.trustedCall(POOL_A, SC_A, abi.encode(TrustedCall.AddSentinel, sentinelA));
+    function testAddSentinelOnlyEnvoy() public {
+        vm.expectRevert(ISupervisor.NotEnvoy.selector);
+        supervisor.fromHub(POOL_A, abi.encode(TrustedCall.AddSentinel, sentinelA));
+    }
+
+    function testFromHubRejectsValue() public {
+        vm.deal(envoy, 1 ether);
+        vm.expectRevert(ISupervisor.UnexpectedValue.selector);
+        vm.prank(envoy);
+        supervisor.fromHub{value: 1 ether}(POOL_A, abi.encode(TrustedCall.AddSentinel, sentinelA));
     }
 
     function testAddSentinelZeroAddress() public {
         vm.expectRevert(ISupervisor.ZeroAddress.selector);
-        vm.prank(contractUpdater);
-        supervisor.trustedCall(POOL_A, SC_A, abi.encode(TrustedCall.AddSentinel, address(0)));
+        vm.prank(envoy);
+        supervisor.fromHub(POOL_A, abi.encode(TrustedCall.AddSentinel, address(0)));
     }
 
     function testRemoveSentinel() public {
@@ -160,8 +172,8 @@ contract SupervisorTest is Test {
 
         vm.expectEmit();
         emit ISupervisor.RemoveSentinel(sentinelA);
-        vm.prank(contractUpdater);
-        supervisor.trustedCall(POOL_A, SC_A, abi.encode(TrustedCall.RemoveSentinel, sentinelA));
+        vm.prank(envoy);
+        supervisor.fromHub(POOL_A, abi.encode(TrustedCall.RemoveSentinel, sentinelA));
 
         assertFalse(supervisor.sentinels(sentinelA));
         assertEq(supervisor.sentinelCount(), 1);
@@ -171,15 +183,26 @@ contract SupervisorTest is Test {
         _addSentinel(sentinelA);
 
         vm.expectRevert(ISupervisor.LastSentinel.selector);
-        vm.prank(contractUpdater);
-        supervisor.trustedCall(POOL_A, SC_A, abi.encode(TrustedCall.RemoveSentinel, sentinelA));
+        vm.prank(envoy);
+        supervisor.fromHub(POOL_A, abi.encode(TrustedCall.RemoveSentinel, sentinelA));
     }
 
-    function testTrustedCallWrongPoolReverts() public {
-        // An updateContract from another pool routed at this Supervisor must be rejected.
+    function testFromHubWrongPoolReverts() public {
+        // A managerCall from another pool routed at this Supervisor must be rejected.
         vm.expectRevert(ISupervisor.NotPool.selector);
-        vm.prank(contractUpdater);
-        supervisor.trustedCall(PoolId.wrap(999), SC_A, abi.encode(TrustedCall.AddSentinel, sentinelA));
+        vm.prank(envoy);
+        supervisor.fromHub(PoolId.wrap(999), abi.encode(TrustedCall.AddSentinel, sentinelA));
+    }
+
+    /// @dev Direction boundary: the Supervisor is a hub-only target — it implements
+    ///      `IManagerCallFromHub.fromHub` ONLY, never `IManagerCallFromSpoke.fromSpoke`. So the untrusted
+    ///      spoke path (`Envoy.callFromSpoke` -> `target.fromSpoke`) can never reach it (nonexistent
+    ///      selector). Freezes the guarantee on the real contract; adding `fromSpoke` later trips this.
+    function testFromSpokeUnreachable() public {
+        vm.prank(envoy);
+        vm.expectRevert();
+        IManagerCallFromSpoke(address(supervisor))
+            .fromSpoke(POOL_A, abi.encode(TrustedCall.AddSentinel, sentinelA), 0, bytes32(0));
     }
 
     // ─── factory ────────────────────────────────────────────────────────────────
@@ -189,17 +212,17 @@ contract SupervisorTest is Test {
 
         vm.expectEmit(true, false, false, false);
         emit ISupervisorFactory.DeploySupervisor(POOL_A, address(0));
-        ISupervisor s = factory.newSupervisor(POOL_A, contractUpdater);
+        ISupervisor s = factory.newSupervisor(POOL_A, envoy);
 
         assertEq(address(s.hub()), address(mockHub));
-        assertEq(s.contractUpdater(), contractUpdater);
+        assertEq(s.envoy(), envoy);
     }
 
     function testFactoryPreviewMatchesDeploy() public {
         SupervisorFactory factory = new SupervisorFactory(IHub(address(mockHub)));
 
-        address predicted = factory.previewSupervisor(POOL_A, contractUpdater);
-        ISupervisor s = factory.newSupervisor(POOL_A, contractUpdater);
+        address predicted = factory.previewSupervisor(POOL_A, envoy);
+        ISupervisor s = factory.newSupervisor(POOL_A, envoy);
         assertEq(address(s), predicted);
     }
 }

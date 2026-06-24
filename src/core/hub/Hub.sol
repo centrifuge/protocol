@@ -16,6 +16,7 @@ import {IHubRequestManagerCallback} from "./interfaces/IHubRequestManagerCallbac
 import {Auth} from "../../misc/Auth.sol";
 import {d18, D18} from "../../misc/types/D18.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
+import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {MathLib} from "../../misc/libraries/MathLib.sol";
 
 import {IAdapter} from "../messaging/interfaces/IAdapter.sol";
@@ -38,6 +39,7 @@ import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
 ///         Pools can assign hub managers which have full rights over all actions.
 contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCallback, ICreatePool {
     using MathLib for uint256;
+    using CastLib for bytes32;
     using RequestCallbackMessageLib for *;
 
     IFeeHook public feeHook;
@@ -310,6 +312,29 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         emit UpdateVault(poolId, scId, assetId, vaultOrFactory, kind);
         sender.sendUpdateVault{value: msgValue()}(poolId, scId, assetId, vaultOrFactory, kind, extraGasLimit, refund);
+    }
+
+    /// @inheritdoc IHub
+    function managerCall(
+        PoolId poolId,
+        uint16 centrifugeId,
+        bytes32 target,
+        bytes calldata payload,
+        uint128 extraGasLimit,
+        uint256 value,
+        address refund
+    ) external payable {
+        _protected(poolId);
+
+        // Gas is explicit: a local call is funded entirely by `msg.value`, a remote call carries none.
+        require(
+            centrifugeId == sender.localCentrifugeId() ? value == msgValue() : value == 0, ManagerCallUnexpectedValue()
+        );
+
+        emit ManagerCall(centrifugeId, poolId, target, payload);
+        sender.sendManagerHubCall{value: msgValue()}(
+            centrifugeId, poolId, target.toAddress(), payload, extraGasLimit, value, refund
+        );
     }
 
     /// @inheritdoc IHub

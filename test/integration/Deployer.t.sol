@@ -280,6 +280,16 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(contractUpdater.wards(nonWard), 0);
     }
 
+    function testEnvoy(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(messageDispatcher));
+
+        assertEq(envoy.wards(address(root)), 1);
+        assertEq(envoy.wards(address(messageDispatcher)), 1);
+        assertEq(envoy.wards(nonWard), 0);
+    }
+
     function testHub(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
@@ -600,12 +610,14 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(address(oracleValuation.hubRegistry()), address(hubRegistry));
         assertEq(address(oracleValuation.hub()), address(hub));
         assertEq(oracleValuation.contractUpdater(), address(contractUpdater));
+        assertEq(oracleValuation.envoy(), address(envoy));
     }
 
     function testNavManager() public view {
         // dependencies set correctly
         assertEq(address(navManager.hub()), address(hub));
         assertEq(address(navManager.holdings()), address(holdings));
+        assertEq(navManager.envoy(), address(envoy));
     }
 
     function testSimplePriceManager() public view {
@@ -628,6 +640,9 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(batchRequestManager.wards(address(hubHandler)), 1);
         assertEq(batchRequestManager.wards(address(contractUpdater)), 1);
         assertEq(batchRequestManager.wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(batchRequestManager.envoy(), address(envoy));
     }
 
     function testOnchainPMFactory() public view {

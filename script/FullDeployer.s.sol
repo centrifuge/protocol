@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {BaseDeployer} from "./BaseDeployer.s.sol";
 
 import {Hub} from "../src/core/hub/Hub.sol";
+import {Envoy} from "../src/core/utils/Envoy.sol";
 import {Spoke} from "../src/core/spoke/Spoke.sol";
 import {Holdings} from "../src/core/hub/Holdings.sol";
 import {Accounting} from "../src/core/hub/Accounting.sol";
@@ -75,6 +76,7 @@ import {
 
 string constant V3_1 = "v3.1";
 string constant V3_2 = "v3.2";
+string constant V3_3 = "v3.3";
 
 struct AxelarInput {
     bool shouldDeploy;
@@ -138,6 +140,7 @@ contract FullDeployer is BaseDeployer, Constants {
     BalanceSheet public balanceSheet;
     TokenFactory public tokenFactory;
     ContractUpdater public contractUpdater;
+    Envoy public envoy;
     VaultRegistry public vaultRegistry;
     PoolEscrowFactory public poolEscrowFactory;
 
@@ -280,6 +283,9 @@ contract FullDeployer is BaseDeployer, Constants {
                 abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, batcher))
             )
         );
+
+        envoy =
+            Envoy(create3(createSalt("envoy", V3_3), abi.encodePacked(type(Envoy).creationCode, abi.encode(batcher))));
 
         messageProcessor = MessageProcessor(
             create3(
@@ -589,7 +595,9 @@ contract FullDeployer is BaseDeployer, Constants {
         batchRequestManager = BatchRequestManager(
             create3(
                 createSalt("batchRequestManager", V3_1),
-                abi.encodePacked(type(BatchRequestManager).creationCode, abi.encode(hubRegistry, gateway, batcher))
+                abi.encodePacked(
+                    type(BatchRequestManager).creationCode, abi.encode(hubRegistry, gateway, address(envoy), batcher)
+                )
             )
         );
 
@@ -603,12 +611,16 @@ contract FullDeployer is BaseDeployer, Constants {
         oracleValuation = OracleValuation(
             create3(
                 createSalt("oracleValuation", V3_1),
-                abi.encodePacked(type(OracleValuation).creationCode, abi.encode(hub, hubRegistry, contractUpdater))
+                abi.encodePacked(
+                    type(OracleValuation).creationCode, abi.encode(hub, hubRegistry, contractUpdater, envoy)
+                )
             )
         );
 
         navManager = NAVManager(
-            create3(createSalt("navManager", V3_1), abi.encodePacked(type(NAVManager).creationCode, abi.encode(hub)))
+            create3(
+                createSalt("navManager", V3_1), abi.encodePacked(type(NAVManager).creationCode, abi.encode(hub, envoy))
+            )
         );
 
         simplePriceManager = SimplePriceManager(
@@ -700,6 +712,7 @@ contract FullDeployer is BaseDeployer, Constants {
             balanceSheet,
             tokenFactory,
             contractUpdater,
+            envoy,
             vaultRegistry,
             hubRegistry,
             accounting,

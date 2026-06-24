@@ -180,6 +180,7 @@ contract StdManifest is IStdManifest {
         if (selector == IHub.updateSharePrice.selector) return _checkSharePrice(poolId, payload);
         if (selector == IHub.updateContract.selector) return _checkUpdateContract(payload);
         if (selector == IHub.setAdapters.selector) return _checkSetAdapters(payload);
+        if (selector == IHub.managerCall.selector) return _checkManagerCall(payload);
 
         // Replacing the manifest disables all future policy, so it uses the longer `escalation`.
         if (selector == IHub.setManifest.selector) return escalation;
@@ -225,18 +226,11 @@ contract StdManifest is IStdManifest {
     }
 
     /// @dev Contract updates are out of policy (config flows through here to trusted targets), except
-    ///      two in-policy targets: a BRM (request manager) management action, and an OnOffRamp withdrawal.
-    ///      BRM actions (approveDeposits/issueShares/revokeShares/forceCancel*) are routine keeper ops, so
-    ///      they run in policy, but only when the update targets the configured request manager. Pinning
-    ///      the target defeats the ABI collision where another target's payload shares a BRM action's
-    ///      leading kind byte. The binding can't be repointed instantly: `setRequestManager` is out of
-    ///      policy. Every other target (Supervisor, NAVManager, OracleValuation, unknown) falls to the
-    ///      deny-by-default `delay`, so it stays timelocked + vetoable.
+    ///      an OnOffRamp withdrawal: it targets an already-configured offramp, so it stays in policy.
+    ///      BRM is reached via `managerCall` on this deployment (see {_checkManagerCall}), not here.
     function _checkUpdateContract(bytes calldata payload) internal view returns (uint48) {
-        (,,, bytes32 target, bytes memory innerPayload,,) =
+        (,,,, bytes memory innerPayload,,) =
             abi.decode(payload, (PoolId, ShareClassId, uint16, bytes32, bytes, uint128, address));
-
-        if (target.toAddress() == requestManager) return 0;
 
         // Read the first word directly rather than `abi.decode(_, (uint8))`: enforce classifies every
         // updateContract, and decoding as uint8 reverts whenever the first inner word exceeds 255 (any
@@ -246,6 +240,15 @@ contract StdManifest is IStdManifest {
             return 0;
         }
         return delay;
+    }
+
+    /// @dev In policy only when the target is the configured BRM (routine keeper ops); all other targets
+    ///      fall to `delay` (timelocked + vetoable). Pinning the target prevents ABI collisions where
+    ///      another target's payload shares a BRM action's leading byte. The binding can't be repointed
+    ///      instantly: `setRequestManager` is itself out of policy.
+    function _checkManagerCall(bytes calldata payload) internal view returns (uint48) {
+        (,, bytes32 target,,,,) = abi.decode(payload, (PoolId, uint16, bytes32, bytes, uint128, uint256, address));
+        return target.toAddress() == requestManager ? 0 : delay;
     }
 
     /// @dev Every local adapter must be a global adapter (poolId=0); a foreign one is blocked outright.

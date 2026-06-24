@@ -87,7 +87,14 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         );
     }
 
-    /// @dev Property: the payout of the escrow is always <= sum of redemptions paid out
+    /// @dev Property: the asset payout claimed from the escrow is always <= sum of assets paid out by fulfilled
+    ///      redemptions.
+    /// @dev Both sides are ASSET-denominated. The processed side uses userRedemptionsProcessedAssets
+    ///      (totalPayoutAssetAmount from notifyRedeem), NOT userRedemptionsProcessed (shares) — comparing
+    ///      claimed assets against processed shares is infeasible once price != 1 / decimals differ.
+    /// @dev Known scope limitation: sumOfClaimedRedemptions is keyed per-asset (global across share classes)
+    ///      while the processed sum is per-scId, so this can still report a false positive when two vaults
+    ///      share an asset across different share classes.
     function property_sum_of_pending_redeem_request() public tokenIsSet {
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
@@ -95,15 +102,15 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         address asset = vault.asset();
 
         address[] memory actors = _getActors();
-        uint256 sumOfRedemptionsProcessed;
+        uint256 sumOfRedemptionsProcessedAssets;
         for (uint256 i; i < actors.length; i++) {
-            sumOfRedemptionsProcessed += userRedemptionsProcessed[scId][assetId][actors[i]];
+            sumOfRedemptionsProcessedAssets += userRedemptionsProcessedAssets[scId][assetId][actors[i]];
         }
 
         lte(
             sumOfClaimedRedemptions[address(asset)],
-            sumOfRedemptionsProcessed,
-            "sumOfClaimedRedemptions > sumOfRedemptionsProcessed"
+            sumOfRedemptionsProcessedAssets,
+            "sumOfClaimedRedemptions > sumOfRedemptionsProcessedAssets"
         );
     }
 

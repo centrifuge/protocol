@@ -389,29 +389,25 @@ contract EndToEndFlows is EndToEndUtils {
         return abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), s.usdcId.raw(), maxReserve);
     }
 
-    /// @dev TEMPORARY shim: invoke a BRM manager action by calling `trustedCall` directly as a BRM
-    ///      ward (the Hub), forwarding value so the cross-chain `requestCallback` can pay the gateway.
-    ///
-    ///      We cannot use the real chain here because it can't carry value cross-chain yet:
-    ///      `hub.updateContract` -> MessageDispatcher (local branch) -> `ContractUpdater.trustedCall`
-    ///      (non-payable, so `msg.value` is refunded, never reaching BRM) -> `BRM.trustedCall` ->
-    ///      `requestCallback` -> `gateway.send` reverts `NotEnoughGas()` (BRM hardcodes unpaidMode=false
-    ///      and the gateway has no subsidy fallback).
-    ///
-    ///      TODO(trustedCall-payments): once trustedCall supports payments (ContractUpdater.trustedCall
-    ///      made payable + MessageDispatcher forwarding `msg.value` on the local branch instead of
-    ///      refunding — landing on a separate branch), replace this shim with the real chain:
-    ///          vm.prank(FM);
-    ///          h.hub.updateContract{value: GAS}(
-    ///              POOL_A, SC_1, h.centrifugeId, address(h.batchRequestManager).toBytes32(),
-    ///              payload, EXTRA_GAS, REFUND
-    ///          );
-    ///      which also restores manifest/manager enforcement coverage for these calls in this test.
+    /// @dev Run a BRM manager action through the real hub.managerCall chain, so the Hub's manifest and
+    ///      manager checks run too (FM is the pool manager). FM pays and the remainder refunds to REFUND.
     function _brmManagerCall(bytes memory payload) internal {
+        _brmManagerCall(payload, GAS);
+    }
+
+    /// @dev value-explicit variant. The message-sending actions carry GAS. approveRedeems sends nothing
+    ///      and rejects value, so it has to run with value 0.
+    function _brmManagerCall(bytes memory payload, uint256 value) internal {
         vm.stopPrank();
-        vm.deal(address(h.hub), GAS);
-        vm.prank(address(h.hub));
-        h.batchRequestManager.trustedCall{value: GAS}(POOL_A, SC_1, payload);
+        // Top up FM additively so we don't wipe the balance that funds its later value-bearing calls like
+        // notifySharePrice. The value we forward is spent downstream and any remainder comes back to REFUND.
+        vm.deal(FM, FM.balance + value);
+        vm.prank(FM);
+        // BRM carries its inner-action gas inside `payload`; the envelope `extraGasLimit` is inert on the
+        // hub-local branch, so 0.
+        h.hub.managerCall{value: value}(
+            POOL_A, h.centrifugeId, address(h.batchRequestManager).toBytes32(), payload, 0, value, REFUND
+        );
     }
 
     //----------------------------------------------------------------------------------------------
@@ -482,7 +478,17 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
-        h.oracleValuation.updateFeeder(POOL_A, 0, FEEDER.toBytes32(), true);
+        // Feeder management is manifest-supervised: route through hub.managerCall -> oracleValuation.fromHub.
+        h.hub
+            .managerCall(
+                POOL_A,
+                h.centrifugeId,
+                address(h.oracleValuation).toBytes32(),
+                abi.encode(uint16(0), FEEDER.toBytes32(), true),
+                0,
+                0,
+                REFUND
+            );
         h.hub.updateHubManager(POOL_A, address(h.oracleValuation), true);
         h.hub.updateManager{value: GAS}(
             POOL_A, h.centrifugeId, ManagerKind.Adapter, address(h.batchRequestManager).toBytes32(), true, REFUND
@@ -567,14 +573,16 @@ contract EndToEndFlows is EndToEndUtils {
         D18 pricePoolPerAsset = h.hub.pricePoolPerAsset(POOL_A, SC_1, s.usdcId);
         _brmManagerCall(
             BatchRequestManagerCallLib.approveDeposits(
-                s.usdcId, depositEpochId, USDC_AMOUNT_1, pricePoolPerAsset, REFUND
+                SC_1, s.usdcId, depositEpochId, USDC_AMOUNT_1, pricePoolPerAsset, REFUND
             )
         );
 
         vm.startPrank(FM);
         uint32 issueEpochId = h.batchRequestManager.nowIssueEpoch(POOL_A, SC_1, s.usdcId);
         (D18 sharePrice,) = h.shareClassManager.pricePoolPerShare(POOL_A, SC_1);
-        _brmManagerCall(BatchRequestManagerCallLib.issueShares(s.usdcId, issueEpochId, sharePrice, HOOK_GAS, REFUND));
+        _brmManagerCall(
+            BatchRequestManagerCallLib.issueShares(SC_1, s.usdcId, issueEpochId, sharePrice, HOOK_GAS, REFUND)
+        );
 
         vm.startPrank(ANY);
         h.batchRequestManager.notifyDeposit{value: GAS}(
@@ -591,6 +599,171 @@ contract EndToEndFlows is EndToEndUtils {
 
         // CHECKS
         assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), assetToShare(USDC_AMOUNT_1), "expected shares");
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // ManagerCall payment paths (batched + unbatched) and value-stranding checks
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev Configure pool + non-zero prices, deploy the async vault, and submit an investor deposit
+    ///      request so a deposit is pending approval. Shared setup for the managerCall payment tests.
+    function _setupPendingAsyncDeposit(bool sameChain) internal returns (IAsyncVault vault) {
+        _configurePool(sameChain);
+        _configurePricesForFlow(true);
+
+        vm.startPrank(FM);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
+        );
+        vm.stopPrank();
+        vault = IAsyncVault(address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
+
+        vm.startPrank(INVESTOR_A);
+        ERC20(vault.asset()).approve(address(vault), USDC_AMOUNT_1);
+        vault.requestDeposit(USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
+        vm.stopPrank();
+    }
+
+    /// @dev Route BRM manager actions through `hub.managerCall` batched inside `hub.multicall`. Inside a
+    ///      batch each inner call sees `msgValue() == 0`; the whole batch value is held by
+    ///      `gateway.withBatch` and settled at batch end (refunding the remainder to REFUND). This is the
+    ///      path that must still fund the cross-chain `requestCallback` via settlement.
+    function _brmManagerCallBatched(bytes[] memory payloads) internal {
+        bytes[] memory cs = new bytes[](payloads.length);
+        for (uint256 i; i < payloads.length; i++) {
+            cs[i] = abi.encodeWithSelector(
+                h.hub.managerCall.selector,
+                POOL_A,
+                h.centrifugeId,
+                address(h.batchRequestManager).toBytes32(),
+                payloads[i],
+                uint128(0),
+                // Inside a batch msgValue() is 0, so the per-call declared value must be 0; the batch value
+                // is settled by gateway.withBatch at batch end.
+                uint256(0),
+                REFUND
+            );
+        }
+        vm.stopPrank();
+        vm.deal(FM, FM.balance + GAS * payloads.length);
+        vm.prank(FM);
+        h.hub.multicall{value: GAS * payloads.length}(cs);
+    }
+
+    /// @dev No value may strand in the stateless ManagerCall pass-throughs on any branch (incl. the
+    ///      same-chain `requestCallback` short-circuit). The dispatcher and BRM never hold ETH.
+    function _assertNoStrandedManagerCallValue() internal view {
+        assertEq(address(h.batchRequestManager).balance, 0, "BRM stranded value");
+        assertEq(address(deployA.envoy()).balance, 0, "dispatcher stranded value");
+    }
+
+    /// forge-config: default.isolate = true
+    function testManagerCallUnbatchedNoStrandedValue(bool sameChain) public {
+        _setupPendingAsyncDeposit(sameChain);
+
+        uint32 depositEpochId = h.batchRequestManager.nowDepositEpoch(POOL_A, SC_1, s.usdcId);
+        D18 pricePoolPerAsset = h.hub.pricePoolPerAsset(POOL_A, SC_1, s.usdcId);
+
+        uint256 hubBalBefore = address(h.hub).balance;
+        uint256 refundBalBefore = REFUND.balance;
+
+        // Unbatched: value flows via the explicit call chain (hub.managerCall -> ... -> requestCallback).
+        _brmManagerCall(
+            BatchRequestManagerCallLib.approveDeposits(
+                SC_1, s.usdcId, depositEpochId, USDC_AMOUNT_1, pricePoolPerAsset, REFUND
+            )
+        );
+
+        _assertNoStrandedManagerCallValue();
+        // The Hub forwards value downstream and never retains it. On the same-chain `requestCallback`
+        // short-circuit (no payment) the value must relay/refund rather than strand in the Hub.
+        assertEq(address(h.hub).balance, hubBalBefore, "Hub stranded value (unbatched)");
+
+        // Conservation: the forwarded GAS is not just absent from the pass-throughs, it actually reaches
+        // REFUND. Same-chain requestCallback short-circuits with no adapter cost, so the full GAS refunds;
+        // cross-chain pays an adapter cost and refunds the remainder.
+        uint256 refunded = REFUND.balance - refundBalBefore;
+        if (sameChain) {
+            assertEq(refunded, GAS, "same-chain: full GAS must refund to REFUND");
+        } else {
+            assertGt(refunded, 0, "cross-chain: remainder must refund to REFUND");
+            assertLe(refunded, GAS, "cross-chain: refund cannot exceed GAS");
+        }
+    }
+
+    /// forge-config: default.isolate = true
+    function testManagerCallBatchedPayment(bool sameChain) public {
+        IAsyncVault vault = _setupPendingAsyncDeposit(sameChain);
+
+        uint32 depositEpochId = h.batchRequestManager.nowDepositEpoch(POOL_A, SC_1, s.usdcId);
+        uint32 issueEpochId = h.batchRequestManager.nowIssueEpoch(POOL_A, SC_1, s.usdcId);
+        D18 pricePoolPerAsset = h.hub.pricePoolPerAsset(POOL_A, SC_1, s.usdcId);
+        (D18 sharePrice,) = h.shareClassManager.pricePoolPerShare(POOL_A, SC_1);
+
+        uint256 hubBalBefore = address(h.hub).balance;
+
+        // Batch approve + issue through one hub.multicall: inner msgValue()==0, paid by batch settlement.
+        bytes[] memory payloads = new bytes[](2);
+        payloads[0] = BatchRequestManagerCallLib.approveDeposits(
+            SC_1, s.usdcId, depositEpochId, USDC_AMOUNT_1, pricePoolPerAsset, REFUND
+        );
+        payloads[1] = BatchRequestManagerCallLib.issueShares(SC_1, s.usdcId, issueEpochId, sharePrice, HOOK_GAS, REFUND);
+        _brmManagerCallBatched(payloads);
+
+        _assertNoStrandedManagerCallValue();
+        assertEq(address(h.hub).balance, hubBalBefore, "Hub stranded value (batched)");
+
+        // The batch paid the cross-chain callbacks -> shares are claimable. Notify + mint, assert balance.
+        vm.startPrank(ANY);
+        h.batchRequestManager.notifyDeposit{value: GAS}(
+            POOL_A,
+            SC_1,
+            s.usdcId,
+            INVESTOR_A.toBytes32(),
+            h.batchRequestManager.maxDepositClaims(POOL_A, SC_1, INVESTOR_A.toBytes32(), s.usdcId),
+            REFUND
+        );
+        vm.stopPrank();
+
+        // startPrank (not prank): the inner maxMint() view would otherwise consume a single-shot prank,
+        // making mint() run as the test contract (whose maxMint is 0 -> ExceedsDepositLimits).
+        vm.startPrank(INVESTOR_A);
+        vault.mint(vault.maxMint(INVESTOR_A), INVESTOR_A);
+        vm.stopPrank();
+
+        assertEq(
+            s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A),
+            assetToShare(USDC_AMOUNT_1),
+            "shares issued via batched managerCall"
+        );
+    }
+
+    /// @dev `updateContract` reaches a legacy spoke target (SyncManager) via `TrustedContractUpdate`.
+    ///      Fuzzing `sameChain` covers both the local (direct `trustedCall`) and cross-chain (serialized
+    ///      message) branches.
+    function testUpdateContractReachesLegacySpokeTarget(bool sameChain) public {
+        _configurePool(sameChain);
+
+        uint128 newMaxReserve = 123e6;
+        assertEq(s.syncManager.maxReserve(POOL_A, SC_1, address(s.usdc), 0), 0, "maxReserve starts unset");
+
+        vm.startPrank(FM);
+        h.hub.updateContract{value: GAS}(
+            POOL_A,
+            SC_1,
+            s.centrifugeId,
+            address(s.syncManager).toBytes32(),
+            _updateContractSyncDepositMaxReserveMsg(newMaxReserve),
+            EXTRA_GAS,
+            REFUND
+        );
+        vm.stopPrank();
+
+        assertEq(
+            s.syncManager.maxReserve(POOL_A, SC_1, address(s.usdc), 0),
+            newMaxReserve,
+            "spoke target state updated via updateContract"
+        );
     }
 
     function _testSyncDeposit(bool sameChain, bool nonZeroPrices) public {
@@ -648,12 +821,17 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(FM);
         uint32 redeemEpochId = h.batchRequestManager.nowRedeemEpoch(POOL_A, SC_1, s.usdcId);
         D18 pricePoolPerAsset = h.hub.pricePoolPerAsset(POOL_A, SC_1, s.usdcId);
-        _brmManagerCall(BatchRequestManagerCallLib.approveRedeems(s.usdcId, redeemEpochId, shares, pricePoolPerAsset));
+        // approveRedeems sends no message and rejects value, so route it with value 0.
+        _brmManagerCall(
+            BatchRequestManagerCallLib.approveRedeems(SC_1, s.usdcId, redeemEpochId, shares, pricePoolPerAsset), 0
+        );
 
         vm.startPrank(FM);
         uint32 revokeEpochId = h.batchRequestManager.nowRevokeEpoch(POOL_A, SC_1, s.usdcId);
         (D18 sharePrice,) = h.shareClassManager.pricePoolPerShare(POOL_A, SC_1);
-        _brmManagerCall(BatchRequestManagerCallLib.revokeShares(s.usdcId, revokeEpochId, sharePrice, HOOK_GAS, REFUND));
+        _brmManagerCall(
+            BatchRequestManagerCallLib.revokeShares(SC_1, s.usdcId, revokeEpochId, sharePrice, HOOK_GAS, REFUND)
+        );
 
         vm.startPrank(ANY);
         h.batchRequestManager.notifyRedeem{value: GAS}(

@@ -20,6 +20,7 @@ import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {IERC165} from "../misc/interfaces/IERC165.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
+import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
@@ -28,6 +29,7 @@ import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
 import {BatchedMulticall} from "../core/utils/BatchedMulticall.sol";
 import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
+import {IManagerCallFromHub} from "../core/utils/interfaces/IManagerCall.sol";
 import {IHubRequestManagerCallback} from "../core/hub/interfaces/IHubRequestManagerCallback.sol";
 import {IHubRequestManager, IHubRequestManagerNotifications} from "../core/hub/interfaces/IHubRequestManager.sol";
 
@@ -39,7 +41,9 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
     using BytesLib for bytes;
     using RequestMessageLib for *;
     using RequestCallbackMessageLib for *;
+    using SafeTransferLib for address;
 
+    address public immutable envoy;
     IHubRequestManagerCallback public hub;
     IHubRegistry public immutable hubRegistry;
 
@@ -70,11 +74,12 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(bytes32 investor => bool)))) public
         allowForceRedeemCancel;
 
-    constructor(IHubRegistry hubRegistry_, IGateway gateway_, address deployer)
+    constructor(IHubRegistry hubRegistry_, IGateway gateway_, address envoy_, address deployer)
         Auth(deployer)
         BatchedMulticall(gateway_)
     {
         hubRegistry = hubRegistry_;
+        envoy = envoy_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -194,35 +199,41 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
     // Manager actions
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IBatchRequestManager
-    /// @dev Decodes the action from `payload` and dispatches to the matching internal handler.
-    ///      `poolId`/`scId` come from the call; the manifest/manager check happens at the Hub.
-    function trustedCall(PoolId poolId, ShareClassId scId, bytes calldata payload) external payable auth {
-        ManagerAction kind = ManagerAction(abi.decode(payload, (uint8)));
+    /// @inheritdoc IManagerCallFromHub
+    /// @dev Decodes `(kind, scId)` from `payload` and dispatches to the matching handler. `payable` so
+    ///      forwarded value can fund a downstream `requestCallback`.
+    ///      Payload layout: `abi.encode(uint8 kind, bytes16 scId, ...action args)`.
+    function fromHub(PoolId poolId, bytes calldata payload) external payable {
+        require(msg.sender == envoy, NotEnvoy());
+        (uint8 kindRaw, bytes16 scIdRaw) = abi.decode(payload, (uint8, bytes16));
+        ManagerAction kind = ManagerAction(kindRaw);
+        ShareClassId scId = ShareClassId.wrap(scIdRaw);
 
         if (kind == ManagerAction.ApproveDeposits) {
-            (, uint128 assetId, uint32 epoch, uint128 approvedAssetAmount, uint128 price, address refund) =
-                abi.decode(payload, (uint8, uint128, uint32, uint128, uint128, address));
+            (,, uint128 assetId, uint32 epoch, uint128 approvedAssetAmount, uint128 price, address refund) =
+                abi.decode(payload, (uint8, bytes16, uint128, uint32, uint128, uint128, address));
             _approveDeposits(poolId, scId, AssetId.wrap(assetId), epoch, approvedAssetAmount, D18.wrap(price), refund);
         } else if (kind == ManagerAction.ApproveRedeems) {
-            (, uint128 assetId, uint32 epoch, uint128 approvedShareAmount, uint128 price) =
-                abi.decode(payload, (uint8, uint128, uint32, uint128, uint128));
+            // Purely local epoch state — no message, no refund path. Value would strand; reject it.
+            require(msg.value == 0, UnexpectedValue());
+            (,, uint128 assetId, uint32 epoch, uint128 approvedShareAmount, uint128 price) =
+                abi.decode(payload, (uint8, bytes16, uint128, uint32, uint128, uint128));
             _approveRedeems(poolId, scId, AssetId.wrap(assetId), epoch, approvedShareAmount, D18.wrap(price));
         } else if (kind == ManagerAction.IssueShares) {
-            (, uint128 assetId, uint32 epoch, uint128 price, uint128 extraGasLimit, address refund) =
-                abi.decode(payload, (uint8, uint128, uint32, uint128, uint128, address));
+            (,, uint128 assetId, uint32 epoch, uint128 price, uint128 extraGasLimit, address refund) =
+                abi.decode(payload, (uint8, bytes16, uint128, uint32, uint128, uint128, address));
             _issueShares(poolId, scId, AssetId.wrap(assetId), epoch, D18.wrap(price), extraGasLimit, refund);
         } else if (kind == ManagerAction.RevokeShares) {
-            (, uint128 assetId, uint32 epoch, uint128 price, uint128 extraGasLimit, address refund) =
-                abi.decode(payload, (uint8, uint128, uint32, uint128, uint128, address));
+            (,, uint128 assetId, uint32 epoch, uint128 price, uint128 extraGasLimit, address refund) =
+                abi.decode(payload, (uint8, bytes16, uint128, uint32, uint128, uint128, address));
             _revokeSharesAction(poolId, scId, AssetId.wrap(assetId), epoch, D18.wrap(price), extraGasLimit, refund);
         } else if (kind == ManagerAction.ForceCancelDepositRequest) {
-            (, bytes32 investor, uint128 assetId, address refund) =
-                abi.decode(payload, (uint8, bytes32, uint128, address));
+            (,, bytes32 investor, uint128 assetId, address refund) =
+                abi.decode(payload, (uint8, bytes16, bytes32, uint128, address));
             _forceCancelDepositRequest(poolId, scId, investor, AssetId.wrap(assetId), refund);
         } else if (kind == ManagerAction.ForceCancelRedeemRequest) {
-            (, bytes32 investor, uint128 assetId, address refund) =
-                abi.decode(payload, (uint8, bytes32, uint128, address));
+            (,, bytes32 investor, uint128 assetId, address refund) =
+                abi.decode(payload, (uint8, bytes16, bytes32, uint128, address));
             _forceCancelRedeemRequest(poolId, scId, investor, AssetId.wrap(assetId), refund);
         } else {
             revert UnknownRequestType();
@@ -445,6 +456,10 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
             bytes memory callback =
                 RequestCallbackMessageLib.FulfilledDepositRequest(investor, 0, 0, cancelledAssetAmount).serialize();
             hub.requestCallback{value: msgValue()}(poolId, scId_, depositAssetId, callback, 0, false, refund);
+        } else if (msgValue() > 0) {
+            // No callback fired, so the downstream gateway refund never runs; return any forwarded value to
+            // `refund` rather than stranding it here.
+            refund.safeTransferETH(msgValue());
         }
     }
 
@@ -466,6 +481,10 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
             bytes memory callback =
                 RequestCallbackMessageLib.FulfilledRedeemRequest(investor, 0, 0, cancelledShareAmount).serialize();
             hub.requestCallback{value: msgValue()}(poolId, scId_, payoutAssetId, callback, 0, false, refund);
+        } else if (msgValue() > 0) {
+            // No callback fired, so the downstream gateway refund never runs; return any forwarded value to
+            // `refund` rather than stranding it here.
+            refund.safeTransferETH(msgValue());
         }
     }
 
@@ -726,7 +745,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         return interfaceId == type(IBatchRequestManager).interfaceId
             || interfaceId == type(IHubRequestManager).interfaceId
             || interfaceId == type(IHubRequestManagerNotifications).interfaceId
-            || interfaceId == type(IERC165).interfaceId;
+            || interfaceId == type(IManagerCallFromHub).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
 
     //----------------------------------------------------------------------------------------------

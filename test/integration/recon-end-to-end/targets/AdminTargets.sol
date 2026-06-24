@@ -114,11 +114,10 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         AssetId paymentAssetId = _getAssetId();
         uint128 pendingDepositBefore = batchRequestManager.pendingDeposit(poolId, scId, paymentAssetId);
 
-        batchRequestManager.trustedCall{value: MAX_MESSAGE_COST}(
+        batchRequestManager.fromHub{value: MAX_MESSAGE_COST}(
             poolId,
-            scId,
             BatchRequestManagerCallLib.approveDeposits(
-                paymentAssetId, nowDepositEpochId, maxApproval, D18.wrap(1e18), address(this)
+                scId, paymentAssetId, nowDepositEpochId, maxApproval, D18.wrap(1e18), address(this)
             )
         );
 
@@ -134,10 +133,12 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         AssetId payoutAssetId = _getAssetId();
         uint128 pendingRedeemBefore = batchRequestManager.pendingRedeem(poolId, scId, payoutAssetId);
 
-        batchRequestManager.trustedCall{value: MAX_MESSAGE_COST}(
+        // approveRedeems sends no message and rejects value, so it must be called without value.
+        batchRequestManager.fromHub(
             poolId,
-            scId,
-            BatchRequestManagerCallLib.approveRedeems(payoutAssetId, nowRedeemEpochId, maxApproval, D18.wrap(1e18))
+            BatchRequestManagerCallLib.approveRedeems(
+                scId, payoutAssetId, nowRedeemEpochId, maxApproval, D18.wrap(1e18)
+            )
         );
 
         uint128 pendingRedeemAfter = batchRequestManager.pendingRedeem(poolId, scId, payoutAssetId);
@@ -259,11 +260,10 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         address shareToken = address(spoke.shareToken(poolId, scId));
         uint256 escrowSharesBefore = IShareToken(shareToken).balanceOf(_getPoolEscrowAddress());
 
-        batchRequestManager.trustedCall{value: MAX_MESSAGE_COST}(
+        batchRequestManager.fromHub{value: MAX_MESSAGE_COST}(
             poolId,
-            scId,
             BatchRequestManagerCallLib.issueShares(
-                assetId, nowIssueEpochId, D18.wrap(navPerShare), SHARE_HOOK_GAS, _getActor()
+                scId, assetId, nowIssueEpochId, D18.wrap(navPerShare), SHARE_HOOK_GAS, _getActor()
             )
         );
 
@@ -360,11 +360,10 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         address shareToken = address(spoke.shareToken(poolId, scId));
         uint256 sharesBefore = IShareToken(shareToken).balanceOf(_getPoolEscrowAddress());
 
-        batchRequestManager.trustedCall{value: MAX_MESSAGE_COST}(
+        batchRequestManager.fromHub{value: MAX_MESSAGE_COST}(
             poolId,
-            scId,
             BatchRequestManagerCallLib.revokeShares(
-                payoutAssetId, nowRevokeEpochId, D18.wrap(navPerShare), SHARE_HOOK_GAS, _getActor()
+                scId, payoutAssetId, nowRevokeEpochId, D18.wrap(navPerShare), SHARE_HOOK_GAS, _getActor()
             )
         );
 
@@ -520,8 +519,8 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         bytes32 investor = _getActor().toBytes32();
         AssetId depositAssetId = _getAssetId();
 
-        batchRequestManager.trustedCall{value: MAX_MESSAGE_COST}(
-            poolId, scId, BatchRequestManagerCallLib.forceCancelDepositRequest(investor, depositAssetId, _getActor())
+        batchRequestManager.fromHub{value: MAX_MESSAGE_COST}(
+            poolId, BatchRequestManagerCallLib.forceCancelDepositRequest(scId, investor, depositAssetId, _getActor())
         );
     }
 
@@ -532,8 +531,8 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         bytes32 investor = _getActor().toBytes32();
         AssetId payoutAssetId = _getAssetId();
 
-        batchRequestManager.trustedCall{value: MAX_MESSAGE_COST}(
-            poolId, scId, BatchRequestManagerCallLib.forceCancelRedeemRequest(investor, payoutAssetId, _getActor())
+        batchRequestManager.fromHub{value: MAX_MESSAGE_COST}(
+            poolId, BatchRequestManagerCallLib.forceCancelRedeemRequest(scId, investor, payoutAssetId, _getActor())
         );
     }
 

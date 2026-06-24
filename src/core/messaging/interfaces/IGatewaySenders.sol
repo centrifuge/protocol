@@ -96,6 +96,20 @@ interface IHubMessageSender is ILocalCentrifugeId {
         address refund
     ) external payable;
 
+    /// @notice Routes a hub-local manager call through the `Envoy`, forwarding `value`.
+    /// @dev    Only the local branch is supported; a non-local `centrifugeId` reverts. `extraGasLimit` is
+    ///         inert on the local branch and reserved for the future cross-chain branch. `Hub.managerCall`
+    ///         enforces `value == msgValue()`, so `value` funds the dispatched call in full with no remainder.
+    function sendManagerHubCall(
+        uint16 centrifugeId,
+        PoolId poolId,
+        address target,
+        bytes calldata payload,
+        uint128 extraGasLimit,
+        uint256 value,
+        address refund
+    ) external payable;
+
     /// @notice Creates and send the message
     function sendUpdateVault(
         PoolId poolId,

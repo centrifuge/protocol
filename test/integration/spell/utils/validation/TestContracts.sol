@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Hub} from "../../../../../src/core/hub/Hub.sol";
+import {Envoy} from "../../../../../src/core/utils/Envoy.sol";
 import {Spoke} from "../../../../../src/core/spoke/Spoke.sol";
 import {Holdings} from "../../../../../src/core/hub/Holdings.sol";
 import {Accounting} from "../../../../../src/core/hub/Accounting.sol";
@@ -81,6 +82,7 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         BalanceSheet(c.balanceSheet),
         TokenFactory(c.tokenFactory),
         ContractUpdater(c.contractUpdater),
+        Envoy(c.envoy),
         VaultRegistry(c.vaultRegistry),
         HubRegistry(c.hubRegistry),
         Accounting(c.accounting),

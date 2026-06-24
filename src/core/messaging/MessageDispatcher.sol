@@ -23,6 +23,7 @@ import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
+import {IEnvoy} from "../utils/interfaces/IEnvoy.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
@@ -37,6 +38,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     uint16 public immutable localCentrifugeId;
 
+    IEnvoy public envoy;
     IGateway public gateway;
     IMultiAdapter public multiAdapter;
     ISpokeGatewayHandler public spoke;
@@ -60,10 +62,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     /// @inheritdoc IMessageDispatcher
     function file(bytes32 what, address data) external auth {
-        if (what == "hubHandler") hubHandler = IHubGatewayHandler(data);
-        else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
+        if (what == "envoy") envoy = IEnvoy(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
+        else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
+        else if (what == "hubHandler") hubHandler = IHubGatewayHandler(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IContractUpdateGatewayHandler(data);
@@ -265,6 +268,23 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 refund
             );
         }
+    }
+
+    /// @inheritdoc IHubMessageSender
+    function sendManagerHubCall(
+        uint16 centrifugeId,
+        PoolId poolId,
+        address target,
+        bytes calldata payload,
+        uint128, /* extraGasLimit */
+        uint256 value,
+        address /* refund */
+    ) external payable auth {
+        // `extraGasLimit` is inert on the local branch (no message to meter), reserved for the future
+        // cross-chain branch. `Hub.managerCall` enforces `value == msgValue()`, so the whole balance funds
+        // the call (0 inside a batch). No origin args: already authorized at the Hub.
+        require(centrifugeId == localCentrifugeId, ManagerCallRemoteNotSupported());
+        envoy.callFromHub{value: value}(poolId, target, payload);
     }
 
     /// @inheritdoc IHubMessageSender

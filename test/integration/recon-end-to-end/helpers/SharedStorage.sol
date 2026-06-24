@@ -201,6 +201,11 @@ abstract contract SharedStorage {
     mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256)))
         userRequestRedeemedAssets;
     mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRedemptionsProcessed;
+    /// @dev Asset-denominated counterpart of userRedemptionsProcessed: the actual asset payout from fulfilled
+    ///      redemptions (totalPayoutAssetAmount from notifyRedeem), keyed per scId/asset/actor. Used by
+    ///      property_sum_of_pending_redeem_request so it can compare assets-vs-assets instead of assets-vs-shares.
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256)))
+        userRedemptionsProcessedAssets;
     mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userCancelledRedeems;
 
     mapping(ShareClassId scId => mapping(AssetId assetId => uint256)) approvedDeposits;

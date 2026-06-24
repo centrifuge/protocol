@@ -291,10 +291,11 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         // Read epoch amounts BEFORE zero-price issuance to compute delta
         // (epoch may already have non-zero approvals from prior non-zero-price operations)
         (uint128 approvedPoolBefore,,,,,) = batchRequestManager.epochInvestAmounts(poolId, scId, assetId, nowIssueEpoch);
-        try batchRequestManager.trustedCall{value: 0.1 ether}(
+        try batchRequestManager.fromHub{value: 0.1 ether}(
             poolId,
-            scId,
-            BatchRequestManagerCallLib.issueShares(assetId, nowIssueEpoch, D18.wrap(0), SHARE_HOOK_GAS, address(this))
+            BatchRequestManagerCallLib.issueShares(
+                scId, assetId, nowIssueEpoch, D18.wrap(0), SHARE_HOOK_GAS, address(this)
+            )
         ) {
             (uint128 approvedPoolAfter,,,,,) =
                 batchRequestManager.epochInvestAmounts(poolId, scId, assetId, nowIssueEpoch);
@@ -306,10 +307,11 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         }
 
         uint32 nowRevokeEpoch = batchRequestManager.nowRevokeEpoch(poolId, scId, assetId);
-        try batchRequestManager.trustedCall(
+        try batchRequestManager.fromHub(
             poolId,
-            scId,
-            BatchRequestManagerCallLib.revokeShares(assetId, nowRevokeEpoch, D18.wrap(0), SHARE_HOOK_GAS, address(this))
+            BatchRequestManagerCallLib.revokeShares(
+                scId, assetId, nowRevokeEpoch, D18.wrap(0), SHARE_HOOK_GAS, address(this)
+            )
         ) {
             (,,,, uint128 payoutAssetAmount,) =
                 batchRequestManager.epochRedeemAmounts(poolId, scId, assetId, nowRevokeEpoch);

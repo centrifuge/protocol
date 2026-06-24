@@ -261,8 +261,10 @@ abstract contract Setup is
         accounting = new Accounting(address(this));
         holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
         shareClassManager = new ShareClassManager(IHubRegistry(address(hubRegistry)), address(this));
+        // `managerCall` is envoy-gated; the recon admin/doomsday targets invoke it directly as this Tester
+        // contract, so set the envoy to `address(this)` to keep those call sites working without per-call pranks.
         batchRequestManager = new BatchRequestManagerHarness(
-            IHubRegistry(address(hubRegistry)), IGateway(address(gateway)), address(this)
+            IHubRegistry(address(hubRegistry)), IGateway(address(gateway)), address(this), address(this)
         );
         hub = new Hub(
             IGateway(address(gateway)),

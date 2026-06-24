@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {SetConfigParam, ILayerZeroEndpointV2Like} from "./interfaces/ILayerZeroEndpointV2Like.sol";
 
 import {Hub} from "../core/hub/Hub.sol";
+import {Envoy} from "../core/utils/Envoy.sol";
 import {Spoke} from "../core/spoke/Spoke.sol";
 import {PoolId} from "../core/types/PoolId.sol";
 import {Holdings} from "../core/hub/Holdings.sol";
@@ -68,6 +69,7 @@ struct CoreReport {
     BalanceSheet balanceSheet;
     TokenFactory tokenFactory;
     ContractUpdater contractUpdater;
+    Envoy envoy;
     VaultRegistry vaultRegistry;
     HubRegistry hubRegistry;
     Accounting accounting;
@@ -148,6 +150,7 @@ contract CoreActionBatcher is Constants {
         report.spoke.rely(root);
         report.balanceSheet.rely(root);
         report.contractUpdater.rely(root);
+        report.envoy.rely(root);
         report.vaultRegistry.rely(root);
 
         report.hubRegistry.rely(root);
@@ -170,6 +173,7 @@ contract CoreActionBatcher is Constants {
         report.spoke.rely(address(report.messageDispatcher));
         report.balanceSheet.rely(address(report.messageDispatcher));
         report.contractUpdater.rely(address(report.messageDispatcher));
+        report.envoy.rely(address(report.messageDispatcher));
         report.vaultRegistry.rely(address(report.messageDispatcher));
         report.hubHandler.rely(address(report.messageDispatcher));
         report.root.rely(address(report.messageDispatcher));
@@ -233,6 +237,7 @@ contract CoreActionBatcher is Constants {
         report.messageDispatcher.file("multiAdapter", address(report.multiAdapter));
         report.messageDispatcher.file("balanceSheet", address(report.balanceSheet));
         report.messageDispatcher.file("contractUpdater", address(report.contractUpdater));
+        report.messageDispatcher.file("envoy", address(report.envoy));
         report.messageDispatcher.file("vaultRegistry", address(report.vaultRegistry));
         report.messageDispatcher.file("hubHandler", address(report.hubHandler));
 
@@ -291,6 +296,7 @@ contract CoreActionBatcher is Constants {
         report.balanceSheet.deny(address(this));
         report.tokenFactory.deny(address(this));
         report.contractUpdater.deny(address(this));
+        report.envoy.deny(address(this));
         report.vaultRegistry.deny(address(this));
         report.poolEscrowFactory.deny(address(this));
 

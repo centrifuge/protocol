@@ -86,6 +86,7 @@ struct ContractsConfig {
     address spoke;
     address balanceSheet;
     address contractUpdater;
+    address envoy;
     address vaultRegistry;
     address hubHandler;
     // Vaults
@@ -290,6 +291,8 @@ library Env {
         config.spoke = _parseContractAddress(json, "spoke");
         config.balanceSheet = _parseContractAddress(json, "balanceSheet");
         config.contractUpdater = _parseContractAddress(json, "contractUpdater");
+        // Optional: new in v3.3, absent from earlier deployment manifests.
+        config.envoy = _tryParseContractAddress(json, "envoy");
         config.vaultRegistry = _parseContractAddress(json, "vaultRegistry");
         config.hubHandler = _parseContractAddress(json, "hubHandler");
 

@@ -13,17 +13,17 @@ import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IValuation} from "../core/hub/interfaces/IValuation.sol";
 import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
+import {IManagerCallFromHub} from "../core/utils/interfaces/IManagerCall.sol";
 import {IUntrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  OracleValuation
 /// @notice Provides an implementation for valuation of assets by trusted price feeders.
 ///         Prices should be denominated in the pool currency.
 ///         Quorum is always 1, i.e. there is no aggregation of prices across multiple feeders.
-/// @dev    To set up, add a price feeder using `updateFeeder()`, set this contract as the valuation
-///         for one or more assets, and set this contract as a hub manager, so it can call
-///         `hub.updateHoldingValue()`.
-///         Supports both local calls via `setPrice()` and remote calls via `untrustedCall()`
-///         from spoke-side executors. Both paths validate the caller against the `feeder` mapping.
+/// @dev    Setup: add feeders via `fromHub` (`hub.managerCall` -> `Envoy`, manifest-supervised), set this
+///         contract as the valuation for one or more assets, and rely it as a hub manager to call
+///         `hub.updateHoldingValue()`. Price updates: local via `setPrice()`, remote via `untrustedCall()`;
+///         both validate the caller against the `feeder` mapping.
 contract OracleValuation is IOracleValuation, IUntrustedContractUpdate {
     using CastLib for *;
 
@@ -31,6 +31,7 @@ contract OracleValuation is IOracleValuation, IUntrustedContractUpdate {
     uint16 public constant LOCAL = 0;
 
     IHub public immutable hub;
+    address public immutable envoy;
     address public immutable contractUpdater;
     IHubRegistry public immutable hubRegistry;
 
@@ -38,19 +39,25 @@ contract OracleValuation is IOracleValuation, IUntrustedContractUpdate {
     mapping(PoolId => mapping(uint16 centrifugeId => mapping(bytes32 => bool))) public feeder;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId base => Price))) public pricePoolPerAsset;
 
-    constructor(IHub hub_, IHubRegistry hubRegistry_, address contractUpdater_) {
+    constructor(IHub hub_, IHubRegistry hubRegistry_, address contractUpdater_, address envoy_) {
         hub = hub_;
         hubRegistry = hubRegistry_;
         contractUpdater = contractUpdater_;
+        envoy = envoy_;
     }
 
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IOracleValuation
-    function updateFeeder(PoolId poolId, uint16 centrifugeId, bytes32 feeder_, bool canFeed) external {
-        require(hubRegistry.manager(poolId, msg.sender), NotHubManager());
+    /// @inheritdoc IManagerCallFromHub
+    /// @dev Adds/removes a price feeder. No outgoing message, so value is rejected.
+    ///      Feeder details are encoded in `payload` (single action, no discriminator).
+    function fromHub(PoolId poolId, bytes calldata payload) external payable {
+        require(msg.sender == envoy, NotEnvoy());
+        require(msg.value == 0, UnexpectedValue());
+
+        (uint16 centrifugeId, bytes32 feeder_, bool canFeed) = abi.decode(payload, (uint16, bytes32, bool));
         feeder[poolId][centrifugeId][feeder_] = canFeed;
         emit UpdateFeeder(poolId, centrifugeId, feeder_, canFeed);
     }

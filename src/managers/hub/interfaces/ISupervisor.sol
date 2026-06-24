@@ -24,7 +24,8 @@ interface ISupervisor {
     error NotSentinel();
     error AlreadySentinel();
     error ZeroAddress();
-    error NotContractUpdater();
+    error NotEnvoy();
+    error UnexpectedValue();
     error NotPool();
     error LastSentinel();
     error CannotSelfCancel();
@@ -44,7 +45,7 @@ interface ISupervisor {
 
     function hub() external view returns (IHub);
     function poolId() external view returns (PoolId);
-    function contractUpdater() external view returns (address);
+    function envoy() external view returns (address);
     function sentinels(address who) external view returns (bool);
     function sentinelCount() external view returns (uint256);
 }
@@ -54,7 +55,7 @@ interface ISupervisorFactory {
 
     function hub() external view returns (IHub);
 
-    function newSupervisor(PoolId poolId, address contractUpdater) external returns (ISupervisor);
+    function newSupervisor(PoolId poolId, address envoy) external returns (ISupervisor);
 
-    function previewSupervisor(PoolId poolId, address contractUpdater) external view returns (address);
+    function previewSupervisor(PoolId poolId, address envoy) external view returns (address);
 }

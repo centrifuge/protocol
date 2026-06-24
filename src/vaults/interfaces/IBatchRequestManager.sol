@@ -7,6 +7,7 @@ import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
+import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
 import {IHubRequestManagerCallback} from "../../core/hub/interfaces/IHubRequestManagerCallback.sol";
 import {IHubRequestManager, IHubRequestManagerNotifications} from "../../core/hub/interfaces/IHubRequestManager.sol";
 
@@ -64,7 +65,7 @@ enum RequestType {
     Redeem
 }
 
-/// @notice Enum indicating the manager action encoded in a `trustedCall` payload
+/// @notice Enum indicating the manager action encoded in a `IManagerCallFromHub.fromHub` payload
 enum ManagerAction {
     Invalid,
     ApproveDeposits,
@@ -87,7 +88,7 @@ struct EpochId {
     uint32 revoke;
 }
 
-interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifications {
+interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifications, IManagerCallFromHub {
     //----------------------------------------------------------------------------------------------
     // Events
     //----------------------------------------------------------------------------------------------
@@ -203,6 +204,12 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     /// @notice Dispatched when unknown request type is encountered.
     error UnknownRequestType();
 
+    /// @notice Dispatched when value is forwarded to an action that sends no message (would strand).
+    error UnexpectedValue();
+
+    /// @notice Dispatched when `fromHub` is called by any address other than the `Envoy`.
+    error NotEnvoy();
+
     error InsufficientPending();
     error ZeroApprovalAmount();
     error EpochNotFound();
@@ -259,12 +266,9 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     // Manager actions
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Single entry point for all manager actions, routed via the Hub so they are subject to
-    ///         manifest policy. The `payload` is `abi.encode(ManagerAction, ...args)` where the args
-    ///         match the action (see {ManagerAction}); `poolId`/`scId` are taken from the call.
-    /// @dev Reachable only through the ContractUpdater (warded); the per-pool manager check + manifest
-    ///      enforcement happen at the Hub before this is invoked.
-    function trustedCall(PoolId poolId, ShareClassId scId, bytes calldata payload) external payable;
+    /// @dev Entry point: `IManagerCallFromHub.fromHub`. Payload: `abi.encode(uint8 kind, bytes16 scId, ...args)`
+    ///      (see `ManagerAction`). `poolId` comes from the call; `scId` is decoded from `payload`.
+    ///      Only callable through the `Envoy`; manifest enforcement happens at the Hub beforehand.
 
     //----------------------------------------------------------------------------------------------
     // Storage getters
@@ -275,6 +279,9 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
 
     /// @notice Registry of pools, assets, and manager permissions on the hub chain
     function hubRegistry() external view returns (IHubRegistry);
+
+    /// @notice The Envoy, the only authorized caller of `fromHub`
+    function envoy() external view returns (address);
 
     /// @notice Returns the epoch ID data for a given pool, share class and asset
     function epochId(PoolId poolId, ShareClassId scId, AssetId assetId)

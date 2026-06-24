@@ -359,11 +359,11 @@ abstract contract BaseTestData is LaunchDeployer {
     // TEST FLOWS
     //----------------------------------------------------------------------------------------------
 
-    /// @dev Route a BRM manager action through the hub-local contractUpdater (BRM is hub-side, so the
+    /// @dev Route a BRM manager action through the hub-local managerCall path (BRM is hub-side, so the
     ///      pool's own centrifugeId keeps the call local). Extracted to keep callers off the stack.
-    function _brmManagerCall(PoolId poolId, ShareClassId scId, bytes memory payload) internal {
-        hub.updateContract(
-            poolId, scId, poolId.centrifugeId(), address(batchRequestManager).toBytes32(), payload, 0, msg.sender
+    function _brmManagerCall(PoolId poolId, bytes memory payload) internal {
+        hub.managerCall(
+            poolId, poolId.centrifugeId(), address(batchRequestManager).toBytes32(), payload, 0, 0, msg.sender
         );
     }
 
@@ -390,8 +390,9 @@ abstract contract BaseTestData is LaunchDeployer {
         uint32 nowDepositEpoch = batchRequestManager.nowDepositEpoch(poolId, scId, assetId);
         _brmManagerCall(
             poolId,
-            scId,
-            BatchRequestManagerCallLib.approveDeposits(assetId, nowDepositEpoch, 1_000_000e6, d18(1, 1), msg.sender)
+            BatchRequestManagerCallLib.approveDeposits(
+                scId, assetId, nowDepositEpoch, 1_000_000e6, d18(1, 1), msg.sender
+            )
         );
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
 
@@ -402,7 +403,7 @@ abstract contract BaseTestData is LaunchDeployer {
         // Issue and claim
         uint32 nowIssueEpoch = batchRequestManager.nowIssueEpoch(poolId, scId, assetId);
         _brmManagerCall(
-            poolId, scId, BatchRequestManagerCallLib.issueShares(assetId, nowIssueEpoch, d18(1, 1), 0, msg.sender)
+            poolId, BatchRequestManagerCallLib.issueShares(scId, assetId, nowIssueEpoch, d18(1, 1), 0, msg.sender)
         );
         balanceSheet.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS, msg.sender);
         uint32 maxClaims = batchRequestManager.maxDepositClaims(poolId, scId, msg.sender.toBytes32(), assetId);
@@ -434,10 +435,10 @@ abstract contract BaseTestData is LaunchDeployer {
         uint32 nowRevokeEpoch = batchRequestManager.nowRevokeEpoch(poolId, scId, assetId);
 
         _brmManagerCall(
-            poolId, scId, BatchRequestManagerCallLib.approveRedeems(assetId, nowRedeemEpoch, 1_000_000e18, d18(1, 1))
+            poolId, BatchRequestManagerCallLib.approveRedeems(scId, assetId, nowRedeemEpoch, 1_000_000e18, d18(1, 1))
         );
         _brmManagerCall(
-            poolId, scId, BatchRequestManagerCallLib.revokeShares(assetId, nowRevokeEpoch, d18(11, 10), 0, msg.sender)
+            poolId, BatchRequestManagerCallLib.revokeShares(scId, assetId, nowRevokeEpoch, d18(11, 10), 0, msg.sender)
         );
         balanceSheet.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS, msg.sender);
         batchRequestManager.notifyRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1, msg.sender);
@@ -456,8 +457,7 @@ abstract contract BaseTestData is LaunchDeployer {
         vault.cancelDepositRequest(0, msg.sender);
         _brmManagerCall(
             poolId,
-            scId,
-            BatchRequestManagerCallLib.forceCancelDepositRequest(msg.sender.toBytes32(), assetId, msg.sender)
+            BatchRequestManagerCallLib.forceCancelDepositRequest(scId, msg.sender.toBytes32(), assetId, msg.sender)
         );
         vault.claimCancelDepositRequest(0, msg.sender, msg.sender);
     }

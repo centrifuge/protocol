@@ -217,11 +217,9 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
 
         // Execute notifyRedeemWithReturn and get return values
         vm.prank(actor);
-        (,
-            // totalPayoutAssetAmount - not used for ghost variables
-            uint128 totalPaymentShareAmount,
-            uint128 totalCancelledShareAmount
-        ) = BatchRequestManagerHarness(address(batchRequestManager))
+        (uint128 totalPayoutAssetAmount, uint128 totalPaymentShareAmount, uint128 totalCancelledShareAmount) = BatchRequestManagerHarness(
+                address(batchRequestManager)
+            )
             .notifyRedeemWithReturn(
                 vault.poolId(),
                 vault.scId(),
@@ -235,7 +233,8 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             investorClaimableBefore,
             asyncRequestManager.maxWithdraw(vault, actor),
             totalPaymentShareAmount,
-            totalCancelledShareAmount
+            totalCancelledShareAmount,
+            totalPayoutAssetAmount
         );
     }
 
@@ -503,11 +502,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// @param investorClaimableAfter Claimable amount after claim
     /// @param paymentShareAmount Total shares used for payment
     /// @param cancelledShareAmount Amount of shares cancelled
+    /// @param payoutAssetAmount Total assets paid out by the fulfilled redemption (asset-denominated payout)
     function _updateRedeemGhostVariables(
         uint256 investorClaimableBefore,
         uint256 investorClaimableAfter,
         uint128 paymentShareAmount,
-        uint128 cancelledShareAmount
+        uint128 cancelledShareAmount,
+        uint128 payoutAssetAmount
     ) private {
         IBaseVault vault = _getVault();
         AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
@@ -519,6 +520,8 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         }
 
         userRedemptionsProcessed[scId][assetId][actor] += paymentShareAmount;
+
+        userRedemptionsProcessedAssets[scId][assetId][actor] += payoutAssetAmount;
 
         userCancelledRedeems[scId][assetId][actor] += cancelledShareAmount;
     }

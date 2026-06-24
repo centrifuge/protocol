@@ -509,17 +509,24 @@ contract InvestmentFlowExecutor is Test {
         vm.stopPrank();
     }
 
-    /// @dev Route a BRM manager action through the real chain: hub.updateContract -> (local)
-    ///      contractUpdater -> batchRequestManager.trustedCall. Uses the local centrifugeId so the
-    ///      call stays on the hub side (BRM is hub-side). Called under the hubManager prank.
+    /// @dev Route a BRM manager action through the real chain: hub.managerCall -> (local)
+    ///      MessageDispatcher.sendManagerHubCall -> Envoy.callFromHub -> batchRequestManager.fromHub.
+    ///      Uses the local centrifugeId so the call stays on the hub side (BRM is hub-side). Called under the
+    ///      hubManager prank.
     function _brmManagerCall(InvestmentFlowContext memory ctx, bytes memory payload) internal {
-        ctx.report.core.hub.updateContract{value: GAS}(
+        _brmManagerCall(ctx, payload, GAS);
+    }
+
+    /// @dev `value`-explicit variant. `approveRedeems` sends no message and rejects value, so it must be
+    ///      routed with `value == 0`; the message-sending actions carry `GAS`.
+    function _brmManagerCall(InvestmentFlowContext memory ctx, bytes memory payload, uint256 value) internal {
+        ctx.report.core.hub.managerCall{value: value}(
             ctx.poolId,
-            ctx.scId,
             ctx.localCentrifugeId,
             address(ctx.report.batchRequestManager).toBytes32(),
             payload,
-            HOOK_GAS,
+            0,
+            value,
             address(this)
         );
     }
@@ -532,14 +539,17 @@ contract InvestmentFlowExecutor is Test {
         _brmManagerCall(
             ctx,
             BatchRequestManagerCallLib.approveDeposits(
-                ctx.assetId, depositEpochId, amount, pricePoolPerAsset, address(this)
+                ctx.scId, ctx.assetId, depositEpochId, amount, pricePoolPerAsset, address(this)
             )
         );
 
         uint32 issueEpochId = ctx.report.batchRequestManager.nowIssueEpoch(ctx.poolId, ctx.scId, ctx.assetId);
         (D18 sharePrice,) = ctx.report.core.shareClassManager.pricePoolPerShare(ctx.poolId, ctx.scId);
         _brmManagerCall(
-            ctx, BatchRequestManagerCallLib.issueShares(ctx.assetId, issueEpochId, sharePrice, HOOK_GAS, address(this))
+            ctx,
+            BatchRequestManagerCallLib.issueShares(
+                ctx.scId, ctx.assetId, issueEpochId, sharePrice, HOOK_GAS, address(this)
+            )
         );
 
         vm.stopPrank();
@@ -575,15 +585,20 @@ contract InvestmentFlowExecutor is Test {
 
         uint32 redeemEpochId = ctx.report.batchRequestManager.nowRedeemEpoch(ctx.poolId, ctx.scId, ctx.assetId);
         D18 pricePoolPerAsset = ctx.report.core.hub.pricePoolPerAsset(ctx.poolId, ctx.scId, ctx.assetId);
+        // approveRedeems sends no message and rejects value, so route it with value 0.
         _brmManagerCall(
-            ctx, BatchRequestManagerCallLib.approveRedeems(ctx.assetId, redeemEpochId, shares, pricePoolPerAsset)
+            ctx,
+            BatchRequestManagerCallLib.approveRedeems(ctx.scId, ctx.assetId, redeemEpochId, shares, pricePoolPerAsset),
+            0
         );
 
         uint32 revokeEpochId = ctx.report.batchRequestManager.nowRevokeEpoch(ctx.poolId, ctx.scId, ctx.assetId);
         (D18 sharePrice,) = ctx.report.core.shareClassManager.pricePoolPerShare(ctx.poolId, ctx.scId);
         _brmManagerCall(
             ctx,
-            BatchRequestManagerCallLib.revokeShares(ctx.assetId, revokeEpochId, sharePrice, HOOK_GAS, address(this))
+            BatchRequestManagerCallLib.revokeShares(
+                ctx.scId, ctx.assetId, revokeEpochId, sharePrice, HOOK_GAS, address(this)
+            )
         );
 
         vm.stopPrank();
@@ -624,7 +639,7 @@ contract InvestmentFlowExecutor is Test {
                 _brmManagerCall(
                     ctx,
                     BatchRequestManagerCallLib.issueShares(
-                        ctx.assetId, nowIssueEpoch, sharePrice, HOOK_GAS, address(this)
+                        ctx.scId, ctx.assetId, nowIssueEpoch, sharePrice, HOOK_GAS, address(this)
                     )
                 );
                 nowIssueEpoch = ctx.report.batchRequestManager.nowIssueEpoch(ctx.poolId, ctx.scId, ctx.assetId);
@@ -644,7 +659,7 @@ contract InvestmentFlowExecutor is Test {
                 _brmManagerCall(
                     ctx,
                     BatchRequestManagerCallLib.revokeShares(
-                        ctx.assetId, nowRevokeEpoch, sharePrice, HOOK_GAS, address(this)
+                        ctx.scId, ctx.assetId, nowRevokeEpoch, sharePrice, HOOK_GAS, address(this)
                     )
                 );
                 nowRevokeEpoch = ctx.report.batchRequestManager.nowRevokeEpoch(ctx.poolId, ctx.scId, ctx.assetId);

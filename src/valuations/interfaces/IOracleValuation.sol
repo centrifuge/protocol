@@ -9,11 +9,12 @@ import {IHub} from "../../core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IValuation} from "../../core/hub/interfaces/IValuation.sol";
 import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
+import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
 
 /// @title  IOracleValuation
 /// @notice Interface for oracle-based asset price feeds with permissioned feeders
 /// @dev    Extends IValuation to provide oracle price updates with feeder access control
-interface IOracleValuation is IValuation {
+interface IOracleValuation is IValuation, IManagerCallFromHub {
     /// @dev Latest price
     struct Price {
         D18 value;
@@ -25,8 +26,9 @@ interface IOracleValuation is IValuation {
     event UpdateFeeder(PoolId indexed poolId, uint16 indexed centrifugeId, bytes32 indexed feeder, bool canFeed);
 
     error NotAuthorized();
+    error NotEnvoy();
+    error UnexpectedValue();
     error NotFeeder();
-    error NotHubManager();
     error PriceNotSet();
 
     //----------------------------------------------------------------------------------------------
@@ -38,6 +40,9 @@ interface IOracleValuation is IValuation {
 
     /// @notice Registry of pools, assets, and manager permissions on the hub chain
     function hubRegistry() external view returns (IHubRegistry);
+
+    /// @notice The Envoy, the only authorized caller of `fromHub`
+    function envoy() external view returns (address);
 
     /// @notice Whether a feeder identifier is authorized to submit price updates for a pool from a given chain
     /// @param poolId The pool identifier
@@ -52,15 +57,8 @@ interface IOracleValuation is IValuation {
         returns (D18 value, bool isValid);
 
     //----------------------------------------------------------------------------------------------
-    // Administration
+    // Update price
     //----------------------------------------------------------------------------------------------
-
-    /// @notice Update the permission for a feeder to set prices for a pool
-    /// @param poolId The pool identifier
-    /// @param centrifugeId The source chain ID (0 for local feeders)
-    /// @param feeder_ The identifier of the feeder
-    /// @param canFeed Whether the feeder can set prices
-    function updateFeeder(PoolId poolId, uint16 centrifugeId, bytes32 feeder_, bool canFeed) external;
 
     /// @notice Set the price for an asset in a pool's share class
     /// @param poolId The pool identifier

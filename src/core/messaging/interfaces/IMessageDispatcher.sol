@@ -13,6 +13,8 @@ import {
     IVaultRegistryGatewayHandler
 } from "./IGatewayHandlers.sol";
 
+import {IEnvoy} from "../../utils/interfaces/IEnvoy.sol";
+
 interface IMessageDispatcher is IScheduleAuthMessageSender, ISpokeMessageSender, IHubMessageSender {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
@@ -25,6 +27,9 @@ interface IMessageDispatcher is IScheduleAuthMessageSender, ISpokeMessageSender,
 
     /// @notice Dispatched when an unsupported manager kind is dispatched locally
     error InvalidManagerKind();
+
+    /// @notice Dispatched when `sendManagerHubCall` targets a non-local chain (cross-chain path not yet wired).
+    error ManagerCallRemoteNotSupported();
 
     //----------------------------------------------------------------------------------------------
     // View methods
@@ -53,6 +58,9 @@ interface IMessageDispatcher is IScheduleAuthMessageSender, ISpokeMessageSender,
 
     /// @notice Spoke-side handler for trusted contract reference updates
     function contractUpdater() external view returns (IContractUpdateGatewayHandler);
+
+    /// @notice Hub-side dispatcher for the payable `IManagerCallFromHub` path
+    function envoy() external view returns (IEnvoy);
 
     //----------------------------------------------------------------------------------------------
     // Administration

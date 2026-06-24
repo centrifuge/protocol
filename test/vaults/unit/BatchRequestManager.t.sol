@@ -14,6 +14,7 @@ import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IHubRequestManagerCallback} from "../../../src/core/hub/interfaces/IHubRequestManagerCallback.sol";
+import {IManagerCallFromHub, IManagerCallFromSpoke} from "../../../src/core/utils/interfaces/IManagerCall.sol";
 import {
     IHubRequestManager,
     IHubRequestManagerNotifications
@@ -80,8 +81,8 @@ contract HubRegistryMock {
 }
 
 contract BatchRequestManagerHarness is BatchRequestManager {
-    constructor(IHubRegistry hubRegistry_, IGateway gateway_, address deployer)
-        BatchRequestManager(hubRegistry_, gateway_, deployer)
+    constructor(IHubRegistry hubRegistry_, IGateway gateway_, address envoy_, address deployer)
+        BatchRequestManager(hubRegistry_, gateway_, envoy_, deployer)
     {}
 
     function claimDeposit(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
@@ -139,8 +140,10 @@ abstract contract BatchRequestManagerBaseTest is Test {
 
     function setUp() public virtual {
         hubRegistryMock = new HubRegistryMock();
+        // Pass MANAGER as the envoy so existing `vm.prank(MANAGER)` flows through `managerCall` keep working;
+        // the envoy gate replaced the ward gate on `managerCall`.
         batchRequestManager =
-            new BatchRequestManagerHarness(IHubRegistry(address(hubRegistryMock)), gateway, address(this));
+            new BatchRequestManagerHarness(IHubRegistry(address(hubRegistryMock)), gateway, MANAGER, address(this));
 
         vm.mockCall(
             address(hub),
@@ -150,8 +153,8 @@ abstract contract BatchRequestManagerBaseTest is Test {
         );
         batchRequestManager.file("hub", address(hub));
         hubRegistryMock.updateManager(poolId, MANAGER, true);
-        // Manager actions now route through the ward-gated `trustedCall`; ward MANAGER so the existing
-        // `vm.startPrank(MANAGER)` blocks authorize it (the per-pool manager check moved to the Hub).
+        // `managerCall` is envoy-gated (MANAGER is the envoy here). Ward MANAGER too so the existing
+        // `vm.startPrank(MANAGER)` blocks authorize the other auth-gated entry points (request/file/setEpochIds).
         batchRequestManager.rely(MANAGER);
         vm.deal(MANAGER, 1 ether);
 
@@ -367,10 +370,9 @@ abstract contract BatchRequestManagerBaseTest is Test {
         D18 price,
         address refund
     ) internal {
-        batchRequestManager.trustedCall{value: value}(
+        batchRequestManager.fromHub{value: value}(
             poolId_,
-            scId_,
-            BatchRequestManagerCallLib.approveDeposits(assetId, epoch, approvedAssetAmount, price, refund)
+            BatchRequestManagerCallLib.approveDeposits(scId_, assetId, epoch, approvedAssetAmount, price, refund)
         );
     }
 
@@ -383,8 +385,8 @@ abstract contract BatchRequestManagerBaseTest is Test {
         uint128 approvedShareAmount,
         D18 price
     ) internal {
-        batchRequestManager.trustedCall{value: value}(
-            poolId_, scId_, BatchRequestManagerCallLib.approveRedeems(assetId, epoch, approvedShareAmount, price)
+        batchRequestManager.fromHub{value: value}(
+            poolId_, BatchRequestManagerCallLib.approveRedeems(scId_, assetId, epoch, approvedShareAmount, price)
         );
     }
 
@@ -398,8 +400,8 @@ abstract contract BatchRequestManagerBaseTest is Test {
         uint128 extraGasLimit,
         address refund
     ) internal {
-        batchRequestManager.trustedCall{value: value}(
-            poolId_, scId_, BatchRequestManagerCallLib.issueShares(assetId, epoch, price, extraGasLimit, refund)
+        batchRequestManager.fromHub{value: value}(
+            poolId_, BatchRequestManagerCallLib.issueShares(scId_, assetId, epoch, price, extraGasLimit, refund)
         );
     }
 
@@ -413,8 +415,8 @@ abstract contract BatchRequestManagerBaseTest is Test {
         uint128 extraGasLimit,
         address refund
     ) internal {
-        batchRequestManager.trustedCall{value: value}(
-            poolId_, scId_, BatchRequestManagerCallLib.revokeShares(assetId, epoch, price, extraGasLimit, refund)
+        batchRequestManager.fromHub{value: value}(
+            poolId_, BatchRequestManagerCallLib.revokeShares(scId_, assetId, epoch, price, extraGasLimit, refund)
         );
     }
 
@@ -426,8 +428,8 @@ abstract contract BatchRequestManagerBaseTest is Test {
         AssetId assetId,
         address refund
     ) internal {
-        batchRequestManager.trustedCall{value: value}(
-            poolId_, scId_, BatchRequestManagerCallLib.forceCancelDepositRequest(investor_, assetId, refund)
+        batchRequestManager.fromHub{value: value}(
+            poolId_, BatchRequestManagerCallLib.forceCancelDepositRequest(scId_, investor_, assetId, refund)
         );
     }
 
@@ -439,8 +441,8 @@ abstract contract BatchRequestManagerBaseTest is Test {
         AssetId assetId,
         address refund
     ) internal {
-        batchRequestManager.trustedCall{value: value}(
-            poolId_, scId_, BatchRequestManagerCallLib.forceCancelRedeemRequest(investor_, assetId, refund)
+        batchRequestManager.fromHub{value: value}(
+            poolId_, BatchRequestManagerCallLib.forceCancelRedeemRequest(scId_, investor_, assetId, refund)
         );
     }
 
@@ -869,11 +871,18 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
     function testForceCancelDepositRequestZeroPending() public {
         batchRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
 
+        uint256 refundBalBefore = REFUND.balance;
+
         vm.expectEmit();
         emit IBatchRequestManager.UpdateDepositRequest(poolId, scId, USDC, 1, investor, 0, 0, 0, false);
         vm.startPrank(MANAGER);
         _callForceCancelDepositRequest(COST, poolId, scId, investor, USDC, REFUND);
         vm.stopPrank();
+
+        // Nothing was cancelled, so no callback fired and no downstream gateway refund ran. The forwarded
+        // value must be returned to `refund` rather than stranded in the manager.
+        assertEq(REFUND.balance - refundBalBefore, COST, "unused value must refund to REFUND");
+        assertEq(address(batchRequestManager).balance, 0, "no value may strand in the manager");
 
         assertEq(
             batchRequestManager.allowForceDepositCancel(poolId, scId, USDC, investor),
@@ -2283,40 +2292,77 @@ contract BatchRequestManagerAuthTest is BatchRequestManagerBaseTest {
         batchRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
     }
 
+    // The manager actions below route through the envoy-gated `managerCall`, so a non-envoy caller reverts
+    // with `NotEnvoy` (not the ward `NotAuthorized` of the directly-warded entry points above).
     function testApproveDepositsUnauthorized() public {
         vm.prank(unauthorized);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(IBatchRequestManager.NotEnvoy.selector);
         _callApproveDeposits(COST, poolId, scId, USDC, 1, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND);
     }
 
     function testApproveRedeemsUnauthorized() public {
         vm.prank(unauthorized);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(IBatchRequestManager.NotEnvoy.selector);
         _callApproveRedeems(0, poolId, scId, USDC, 1, MIN_REQUEST_AMOUNT_SHARES, _pricePoolPerAsset(USDC));
     }
 
     function testIssueSharesUnauthorized() public {
         vm.prank(unauthorized);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(IBatchRequestManager.NotEnvoy.selector);
         _callIssueShares(COST, poolId, scId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
     }
 
     function testRevokeSharesUnauthorized() public {
         vm.prank(unauthorized);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(IBatchRequestManager.NotEnvoy.selector);
         _callRevokeShares(COST, poolId, scId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
     }
 
     function testForceCancelDepositRequestUnauthorized() public {
         vm.prank(unauthorized);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(IBatchRequestManager.NotEnvoy.selector);
         _callForceCancelDepositRequest(COST, poolId, scId, investor, USDC, REFUND);
     }
 
     function testForceCancelRedeemRequestUnauthorized() public {
         vm.prank(unauthorized);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(IBatchRequestManager.NotEnvoy.selector);
         _callForceCancelRedeemRequest(COST, poolId, scId, investor, USDC, REFUND);
+    }
+
+    /// @dev Direct check on the entry point: `managerCall` is envoy-gated, so any caller other than the
+    ///      Envoy reverts with `NotEnvoy` before any payload decode. The per-action tests above exercise this
+    ///      via the call helpers (pranked as the envoy/MANAGER); this asserts it against `managerCall` itself.
+    function testFromHubUnauthorized() public {
+        bytes memory payload = BatchRequestManagerCallLib.approveDeposits(
+            scId, USDC, 1, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
+        );
+        vm.prank(unauthorized);
+        vm.expectRevert(IBatchRequestManager.NotEnvoy.selector);
+        batchRequestManager.fromHub(poolId, payload);
+    }
+
+    /// @dev `approveRedeems` sends no message and has no refund path, so any forwarded value would strand in
+    ///      the manager. It must reject value rather than trap it.
+    function testApproveRedeemsRejectsValue() public {
+        bytes memory payload = BatchRequestManagerCallLib.approveRedeems(scId, USDC, 1, 1, _pricePoolPerAsset(USDC));
+        vm.prank(MANAGER);
+        vm.expectRevert(IBatchRequestManager.UnexpectedValue.selector);
+        batchRequestManager.fromHub{value: COST}(poolId, payload);
+    }
+
+    /// @dev Direction boundary: the BRM is a hub-only target — it implements `IManagerCallFromHub.fromHub`
+    ///      ONLY, never `IManagerCallFromSpoke.fromSpoke`. So the untrusted spoke path
+    ///      (`Envoy.callFromSpoke` -> `target.fromSpoke`) can never reach it: the `fromSpoke` selector does
+    ///      not exist and the call reverts. This freezes that guarantee on the real contract, so any future
+    ///      change that adds `fromSpoke` (re-opening the manifest-bypass) trips this test.
+    function testFromSpokeUnreachable() public {
+        bytes memory payload = BatchRequestManagerCallLib.approveDeposits(
+            scId, USDC, 1, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND
+        );
+        vm.prank(MANAGER); // the envoy here; even the authorized caller cannot reach a nonexistent selector
+        vm.expectRevert();
+        IManagerCallFromSpoke(address(batchRequestManager)).fromSpoke(poolId, payload, 0, bytes32(0));
     }
 }
 
@@ -3175,11 +3221,12 @@ contract BatchRequestManagerERC165Support is BatchRequestManagerBaseTest {
         bytes4 hubRequestManager = 0x2f6c33bf;
         bytes4 hubRequestManagerNotifications = 0x3a2d9da4;
         bytes4 batchRequestManagerID = type(IBatchRequestManager).interfaceId;
+        bytes4 fromHub = type(IManagerCallFromHub).interfaceId;
 
         vm.assume(
             unsupportedInterfaceId != erc165 && unsupportedInterfaceId != hubRequestManager
                 && unsupportedInterfaceId != hubRequestManagerNotifications
-                && unsupportedInterfaceId != batchRequestManagerID
+                && unsupportedInterfaceId != batchRequestManagerID && unsupportedInterfaceId != fromHub
         );
 
         assertEq(type(IERC165).interfaceId, erc165);
@@ -3190,6 +3237,7 @@ contract BatchRequestManagerERC165Support is BatchRequestManagerBaseTest {
         assertEq(batchRequestManager.supportsInterface(hubRequestManager), true);
         assertEq(batchRequestManager.supportsInterface(hubRequestManagerNotifications), true);
         assertEq(batchRequestManager.supportsInterface(batchRequestManagerID), true);
+        assertEq(batchRequestManager.supportsInterface(fromHub), true);
 
         assertEq(batchRequestManager.supportsInterface(unsupportedInterfaceId), false);
     }

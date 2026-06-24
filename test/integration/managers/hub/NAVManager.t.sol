@@ -2,19 +2,21 @@
 pragma solidity 0.8.28;
 
 import {d18} from "../../../../src/misc/types/D18.sol";
+import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
-import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
 import {ISnapshotHook} from "../../../../src/core/hub/interfaces/ISnapshotHook.sol";
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
 
-import {INAVHook} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
+import {INAVManager} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
 
 import {CentrifugeIntegrationTest} from "../../Integration.t.sol";
 
 contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
+    using CastLib for address;
+
     // Logical network IDs for NAV segregation — not actual deployed chains
     uint16 constant CHAIN_CP = 5;
     uint16 constant CHAIN_CV = 6;
@@ -72,9 +74,9 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         hub.setSnapshotHook(POOL_A, ISnapshotHook(address(navManager)));
         hub.updateHubManager(POOL_A, address(navManager), true);
         hub.updateHubManager(POOL_A, address(simplePriceManager), true);
-        navManager.updateManager(POOL_A, manager, true);
-        navManager.setNAVHook(POOL_A, INAVHook(address(simplePriceManager)));
         vm.stopPrank();
+
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.SetNavHook), address(simplePriceManager)));
 
         valuation.setPrice(POOL_A, scId, asset1, d18(1, 1));
         valuation.setPrice(POOL_A, scId, asset2, d18(1, 1));
@@ -82,16 +84,24 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         valuation.setPrice(POOL_A, scId, liabilityAsset, d18(1, 1));
     }
 
-    function _testInitializeAndUpdate() internal {
-        vm.startPrank(manager);
-        navManager.initializeNetwork(POOL_A, CHAIN_CP);
-        navManager.initializeNetwork(POOL_A, CHAIN_CV);
+    /// @dev Drives a NAVManager privileged action through the manifest-supervised path
+    ///      (`hub.managerCall` -> `Envoy.callFromHub` -> `navManager.fromHub`), as FM.
+    function _navManagerCall(bytes memory payload) internal {
+        uint16 localId = messageDispatcher.localCentrifugeId();
+        vm.prank(FM);
+        hub.managerCall(POOL_A, localId, address(navManager).toBytes32(), payload, 0, 0, address(0));
+    }
 
-        navManager.initializeHolding(POOL_A, scId, asset1, IValuation(address(valuation)));
-        navManager.initializeHolding(POOL_A, scId, asset2, IValuation(address(valuation)));
-        navManager.initializeHolding(POOL_A, scId, asset3, IValuation(address(valuation)));
-        navManager.initializeLiability(POOL_A, scId, liabilityAsset, IValuation(address(valuation)));
-        vm.stopPrank();
+    function _testInitializeAndUpdate() internal {
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), CHAIN_CP));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), CHAIN_CV));
+
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset1, address(valuation)));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset2, address(valuation)));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset3, address(valuation)));
+        _navManagerCall(
+            abi.encode(uint8(INAVManager.ManagerCall.InitializeLiability), scId, liabilityAsset, address(valuation))
+        );
 
         vm.prank(address(messageDispatcher));
         hubHandler.updateHoldingAmount(
@@ -139,14 +149,13 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         valuation.setPrice(POOL_A, scId, asset1, d18(11, 10)); // 10% increase in value
         valuation.setPrice(POOL_A, scId, asset3, d18(1, 2)); // 50% decrease in value
 
-        vm.prank(manager);
+        // updateHoldingValue is permissionless (intended): anyone may trigger a recompute.
         navManager.updateHoldingValue(POOL_A, scId, asset1);
 
         vm.expectCall(
             address(hub),
             abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(3650e18) / d18(3800e18))
         );
-        vm.prank(manager);
         navManager.updateHoldingValue(POOL_A, scId, asset3);
 
         uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
@@ -285,10 +294,8 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         valuation.setPrice(POOL_A, scId, asset1, d18(11, 10)); // 10% increase in value -> 100e18 gain
         valuation.setPrice(POOL_A, scId, asset3, d18(1, 2)); // 50% decrease in value -> 250e18 loss
 
-        vm.prank(manager);
         navManager.updateHoldingValue(POOL_A, scId, asset1);
 
-        vm.prank(manager);
         navManager.updateHoldingValue(POOL_A, scId, asset3);
 
         (bool spokeGainIsPositive, uint128 spokeGain) =
@@ -308,8 +315,7 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         assertEq(hubEquityBefore, 500e18);
         assertTrue(hubEquityIsPositive);
 
-        vm.prank(manager);
-        navManager.closeGainLoss(POOL_A, CHAIN_CV);
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.CloseGainLoss), CHAIN_CV));
 
         (bool spokeGainIsPositiveAfter, uint128 spokeGainAfter) =
             accounting.accountValue(POOL_A, navManager.gainAccount(CHAIN_CV));
@@ -321,8 +327,7 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         assertEq(spokeEquityAfter, spokeEquityBefore + spokeGain);
         assertTrue(spokeEquityIsPositiveAfter);
 
-        vm.prank(manager);
-        navManager.closeGainLoss(POOL_A, CHAIN_CP);
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.CloseGainLoss), CHAIN_CP));
 
         (bool hubLossIsPositiveAfter, uint128 hubLossAfter) =
             accounting.accountValue(POOL_A, navManager.lossAccount(CHAIN_CP));
@@ -347,11 +352,9 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         // calling SimplePriceManager.onUpdate causes ShareClassManager.issuance() to revert with NegativeIssuance.
         // This blocks NAV updates for the pool until submitQueuedShares with snapshot = true is called from the Spoke on the source network.
 
-        vm.startPrank(manager);
-        navManager.initializeNetwork(POOL_A, CHAIN_CP);
-        navManager.initializeNetwork(POOL_A, CHAIN_CV);
-        navManager.initializeHolding(POOL_A, scId, asset3, IValuation(address(valuation)));
-        vm.stopPrank();
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), CHAIN_CP));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), CHAIN_CV));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset3, address(valuation)));
 
         vm.prank(address(messageDispatcher));
         hubHandler.updateHoldingAmount(

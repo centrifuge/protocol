@@ -368,6 +368,34 @@ contract StdManifestTest is Test {
         manifest.enforce(POOL_A, manager, _priceCall(100e18));
     }
 
+    // ─── managerCall classification ───────────────────────────────────────────────
+
+    function _managerCall(bytes32 target, bytes memory inner) internal pure returns (bytes memory) {
+        return abi.encodeWithSelector(
+            IHub.managerCall.selector, POOL_A, uint16(1), target, inner, uint128(0), uint256(0), address(0)
+        );
+    }
+
+    function testManagerCallToRequestManagerInPolicy() public {
+        // managerCall targeting the configured request manager (BRM) is in policy: routine keeper ops run
+        // synchronously, no authorization needed. The opaque payload is not inspected (target is pinned).
+        vm.prank(address(hub));
+        manifest.enforce(POOL_A, manager, _managerCall(bytes32(bytes20(brm)), abi.encode(uint8(1), bytes16(0))));
+    }
+
+    function testManagerCallToOtherTargetDenyByDefault() public {
+        // Any other target (Supervisor, NAVManager, OracleValuation, unknown) falls to deny-by-default:
+        // out of policy, standard delay + sentinel veto. Pinning the target defeats the ABI collision where
+        // a Supervisor RemoveSentinel (kind byte 1) is disguised as a BRM ApproveDeposits (also kind 1).
+        assertEq(
+            _delayOf(_managerCall(bytes32(bytes20(supervisor)), abi.encode(uint8(1), makeAddr("attacker")))), DELAY
+        );
+    }
+
+    function testManagerCallZeroTargetDenyByDefault() public {
+        assertEq(_delayOf(_managerCall(bytes32(0), bytes(""))), DELAY);
+    }
+
     // ─── updateContract classification ───────────────────────────────────────────
 
     function _updateContractCall(bytes32 target, bytes memory inner) internal pure returns (bytes memory) {
@@ -392,16 +420,6 @@ contract StdManifestTest is Test {
         bytes memory inner = abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw));
         vm.prank(address(hub));
         manifest.enforce(POOL_A, manager, _updateContractCall(bytes32(bytes20(makeAddr("ramp"))), inner));
-    }
-
-    function testUpdateContractToRequestManagerInPolicy() public {
-        // updateContract targeting the configured request manager (BRM) is in policy: routine keeper ops
-        // (approve/issue/revoke/forceCancel) run synchronously, no authorization needed. The opaque payload
-        // is not inspected, since the target is pinned. Compare with testUpdateContractSentinelManagementDelayed,
-        // where the same leading kind byte targeting the Supervisor stays timelocked.
-        bytes memory inner = abi.encode(uint8(1), bytes16(0));
-        vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _updateContractCall(bytes32(bytes20(brm)), inner));
     }
 
     function testUpdateContractLargeFirstWordIsDelayedNotReverting() public {
