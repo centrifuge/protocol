@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
+import {newAssetId} from "../../src/core/types/AssetId.sol";
 import {PoolId, newPoolId} from "../../src/core/types/PoolId.sol";
 import {MessageLib} from "../../src/core/messaging/libraries/MessageLib.sol";
 import {MessageProcessor} from "../../src/core/messaging/MessageProcessor.sol";
@@ -21,6 +22,53 @@ contract TestCommon is Test {
 
     function setUp() external {
         processor = new MessageProcessor(scheduleAuth, AUTH);
+    }
+}
+
+contract TestSourceChecks is TestCommon {
+    function testRegisterAssetOnlyFromSource() public {
+        // assetId encodes centrifugeId=2, message sent from centrifugeId=1
+        bytes memory message =
+            MessageLib.serialize(MessageLib.RegisterAsset({assetId: newAssetId(2, 0).raw(), decimals: 18}));
+
+        vm.prank(AUTH);
+        vm.expectRevert(IMessageProcessor.OnlyFromSource.selector);
+        processor.handle(1, message);
+    }
+
+    function testSetPoolAdaptersOnlyFromSource() public {
+        // poolId encodes centrifugeId=2, message sent from centrifugeId=1
+        bytes memory message = MessageLib.serialize(
+            MessageLib.SetPoolAdapters({
+                poolId: newPoolId(2, 0).raw(), threshold: 0, recoveryIndex: 0, adapterList: new bytes32[](0)
+            })
+        );
+
+        vm.prank(AUTH);
+        vm.expectRevert(IMessageProcessor.OnlyFromSource.selector);
+        processor.handle(1, message);
+    }
+
+    function testUpdateHoldingAmountOnlyFromSource() public {
+        // assetId encodes centrifugeId=2, message sent from centrifugeId=1
+        bytes memory message = MessageLib.serialize(
+            MessageLib.UpdateHoldingAmount({
+                poolId: 0,
+                scId: bytes16(0),
+                assetId: newAssetId(2, 0).raw(),
+                amount: 0,
+                pricePoolPerAsset: 0,
+                timestamp: 0,
+                isIncrease: false,
+                isSnapshot: false,
+                nonce: 0,
+                extraGasLimit: 0
+            })
+        );
+
+        vm.prank(AUTH);
+        vm.expectRevert(IMessageProcessor.OnlyFromSource.selector);
+        processor.handle(1, message);
     }
 }
 

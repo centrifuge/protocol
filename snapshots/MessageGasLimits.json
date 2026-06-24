@@ -1,5 +1,5 @@
 {
-  "BENCHMARKING_RUN_ID": 1782309297,
+  "BENCHMARKING_RUN_ID": 1782311854,
   "scheduleUpgrade": 127177,
   "cancelUpgrade": 107633,
   "registerAsset": 137271,
@@ -20,7 +20,7 @@
   "updateVaultLink": 216177,
   "updateVaultUnlink": 164944,
   "setRequestManager": 134370,
-  "updateHoldingAmount": 334405,
+  "updateHoldingAmount": 334464,
   "updateShares": 231553,
   "maxAssetPriceAge": 139404,
   "maxSharePriceAge": 136338,

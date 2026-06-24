@@ -196,6 +196,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             else revert InvalidMessage(uint8(kind));
         } else if (kind == MessageType.UpdateHoldingAmount) {
             MessageLib.UpdateHoldingAmount memory m = message.deserializeUpdateHoldingAmount();
+            require(centrifugeId == AssetId.wrap(m.assetId).centrifugeId(), OnlyFromSource());
             hubHandler.updateHoldingAmount(
                 centrifugeId,
                 PoolId.wrap(m.poolId),
