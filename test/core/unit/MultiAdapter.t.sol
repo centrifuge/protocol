@@ -7,6 +7,7 @@ import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {MessageType} from "../../../src/core/messaging/libraries/MessageLib.sol";
 import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
@@ -38,6 +39,20 @@ contract MockMessageProperties is IMessageProperties {
     function messageLength(bytes calldata message) external pure returns (uint16) {}
 
     function messagePoolId(bytes calldata message) external pure returns (PoolId) {
+        return _poolId(message);
+    }
+
+    function routePoolId(bytes calldata message, bool poolConfigured) external pure returns (PoolId) {
+        // A SetPoolAdapters (first byte == the message kind) for an unconfigured pool falls back to global.
+        if (!poolConfigured && message.length >= 1 && uint8(message[0]) == uint8(MessageType.SetPoolAdapters)) {
+            return PoolId.wrap(0);
+        }
+        return _poolId(message);
+    }
+
+    function _poolId(bytes calldata message) internal pure returns (PoolId) {
+        // A SetPoolAdapters message (first byte == the message kind) targets POOL_A in these tests.
+        if (message.length >= 1 && uint8(message[0]) == uint8(MessageType.SetPoolAdapters)) return POOL_A;
         if (message.length >= 6) {
             bytes memory prefix = message[0:6];
             if (keccak256(prefix) == keccak256("POOL_A")) return POOL_A;
@@ -102,6 +117,8 @@ contract MultiAdapterTest is Test {
     bytes constant MESSAGE_1 = "POOL_A: Message 1";
     bytes constant MESSAGE_2 = "POOL_A: Message 2";
     bytes constant MESSAGE_POOL_0 = "Message";
+    // A SetPoolAdapters message for POOL_A: first byte is the message kind (5), rest is filler.
+    bytes constant SET_POOL_ADAPTERS_MSG = hex"05a1b2c3d4e5f6";
 
     address immutable MANAGER = makeAddr("Manager");
 
@@ -759,6 +776,54 @@ contract MultiAdapterTestSend is MultiAdapterTest {
             address(REFUND)
         );
         multiAdapter.send{value: cost}(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
+    }
+
+    /// @dev A SetPoolAdapters message for a pool with no set of its own falls back to the global set
+    ///      (the init case). This is the only message type allowed to fall back.
+    function testSendSetPoolAdaptersFallsBackToGlobalPool() public {
+        // Only the global pool (id 0) is configured; POOL_A has no set.
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter, 1, 1);
+
+        bytes memory message = _wrap(1, SET_POOL_ADAPTERS_MSG);
+        _mockAdapter(adapter1, message, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
+
+        vm.expectCall(
+            address(adapter1),
+            GAS_LIMIT + ADAPTER_ESTIMATE_1,
+            abi.encodeWithSelector(IAdapter.send.selector, REMOTE_CENT_ID, message, GAS_LIMIT, REFUND)
+        );
+        multiAdapter.send{value: GAS_LIMIT + ADAPTER_ESTIMATE_1}(
+            REMOTE_CENT_ID, SET_POOL_ADAPTERS_MSG, GAS_LIMIT, REFUND
+        );
+    }
+
+    /// @dev Once a pool configures its own set, SetPoolAdapters uses it instead of the global fallback.
+    function testSendSetPoolAdaptersUsesPoolSetOverGlobal() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter, 1, 1); // global: adapter1
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3); // POOL_A: adapter1,2,3
+
+        bytes memory message = _wrap(1, SET_POOL_ADAPTERS_MSG);
+        _mockAdapter(adapter1, message, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
+        _mockAdapter(adapter2, message, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);
+        _mockAdapter(adapter3, message, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
+
+        // adapter3 only belongs to POOL_A's set, so a call to it proves the pool set was used.
+        vm.expectCall(
+            address(adapter3),
+            GAS_LIMIT + ADAPTER_ESTIMATE_3,
+            abi.encodeWithSelector(IAdapter.send.selector, REMOTE_CENT_ID, message, GAS_LIMIT, REFUND)
+        );
+        uint256 cost = GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
+        multiAdapter.send{value: cost}(REMOTE_CENT_ID, SET_POOL_ADAPTERS_MSG, GAS_LIMIT, REFUND);
+    }
+
+    /// @dev Non-SetPoolAdapters messages do NOT fall back: an unconfigured pool still reverts, even when
+    ///      the global set exists. The fallback is scoped to the adapter-init message only.
+    function testSendNonAdapterMessageDoesNotFallBack() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter, 1, 1); // global set exists
+        // POOL_A has no set; MESSAGE_1 is a regular POOL_A message, not SetPoolAdapters.
+        vm.expectRevert(IMultiAdapter.EmptyAdapterSet.selector);
+        multiAdapter.send(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
     }
 }
 

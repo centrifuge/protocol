@@ -89,6 +89,11 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     function file(bytes32 what, address data) external;
 
     /// @notice Configure new adapters for a determined pool.
+    /// @dev    Bumps the pool's local sessionId. The normal path (`Hub.setAdapters`) keeps both endpoints in
+    ///         sync by sending `SetPoolAdapters` so the remote bumps its session in lockstep. A manager calling
+    ///         this directly (a low-level recovery path, e.g. `AdapterFailover`) bypasses that handshake, so the
+    ///         caller is responsible for ensuring the resulting sessionId matches the other endpoint, otherwise
+    ///         messages wrapped with the new session won't verify.
     /// @param  centrifugeId Chain where the adapters are associated to.
     /// @param  poolId PoolId associated to the adapters
     /// @param  adapters New adapter addresses already deployed.

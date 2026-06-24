@@ -38,6 +38,7 @@ import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";
 import {ScriptHelpers} from "../src/managers/spoke/ScriptHelpers.sol";
 import {AccountingToken} from "../src/managers/spoke/AccountingToken.sol";
 import {FlashLoanHelper} from "../src/managers/spoke/FlashLoanHelper.sol";
+import {AdapterFailover} from "../src/managers/adapters/AdapterFailover.sol";
 import {ApprovalGuard} from "../src/managers/spoke/guards/ApprovalGuard.sol";
 import {SlippageGuard} from "../src/managers/spoke/guards/SlippageGuard.sol";
 import {SimplePriceManager} from "../src/managers/hub/SimplePriceManager.sol";
@@ -165,6 +166,7 @@ contract FullDeployer is BaseDeployer, Constants {
     RedemptionRestrictions public redemptionRestrictionsHook;
 
     QueueManager public queueManager;
+    AdapterFailover public adapterFailover;
     AccountingToken public accountingToken;
     ScriptHelpers public scriptHelpers;
     FlashLoanHelper public flashLoanHelper;
@@ -542,6 +544,18 @@ contract FullDeployer is BaseDeployer, Constants {
             create3(
                 createSalt("accountingToken", V3_2),
                 abi.encodePacked(type(AccountingToken).creationCode, abi.encode(contractUpdater))
+            )
+        );
+
+        // Root-warded singleton: per-pool stewards and MultiAdapter manager registration are operational
+        // (governance) steps, so no deploy-time wiring is needed. Timelock matches the protocol delay.
+        adapterFailover = AdapterFailover(
+            create3(
+                createSalt("adapterFailover", V3_3),
+                abi.encodePacked(
+                    type(AdapterFailover).creationCode,
+                    abi.encode(multiAdapter, contractUpdater, uint64(DELAY), address(root))
+                )
             )
         );
 

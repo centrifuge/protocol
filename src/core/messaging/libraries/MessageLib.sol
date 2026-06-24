@@ -131,12 +131,28 @@ library MessageLib {
     function messagePoolId(bytes memory message) internal pure returns (PoolId poolId) {
         uint8 kind = message.toUint8(0);
 
-        // All messages from NotifyPool to the end contains a PoolId in position 1.
-        if (kind >= uint8(MessageType.NotifyPool)) {
+        // SetPoolAdapters is pool-independent in framing but configures a specific pool's adapter set,
+        // and carries its PoolId in position 1. Reporting that PoolId lets the update route over the
+        // pool's own adapters instead of the global set (MultiAdapter falls back to global while the
+        // pool has no set yet, so initialization still works). All messages from NotifyPool onward
+        // likewise carry a PoolId in position 1.
+        if (kind == uint8(MessageType.SetPoolAdapters) || kind >= uint8(MessageType.NotifyPool)) {
             return PoolId.wrap(message.toUint64(1));
         }
 
         return PoolId.wrap(0);
+    }
+
+    /// @notice The pool whose adapter set should route/verify `message`. Normally the message's own pool
+    ///         (`messagePoolId`), with one exception: a SetPoolAdapters for a pool that has no adapter set
+    ///         yet (`poolConfigured == false`) falls back to the global pool, because the pool's first
+    ///         adapter configuration has to arrive over the global set. `poolConfigured` is supplied by the
+    ///         adapter layer, which is the only place that knows whether the pool already has a set.
+    function routePoolId(bytes memory message, bool poolConfigured) internal pure returns (PoolId) {
+        if (!poolConfigured && messageType(message) == MessageType.SetPoolAdapters) {
+            return PoolId.wrap(0);
+        }
+        return messagePoolId(message);
     }
 
     function messageExtraGasLimit(bytes memory message) internal pure returns (uint128) {

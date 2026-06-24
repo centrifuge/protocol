@@ -198,7 +198,8 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.adapterList, b.adapterList);
 
         assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
-        assertEq(a.serialize().messagePoolId().raw(), 0);
+        // SetPoolAdapters reports its embedded poolId so the update routes over the pool's own adapters.
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 

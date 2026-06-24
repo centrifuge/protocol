@@ -44,7 +44,8 @@ enum MessageKind {
     WithPoolA2,
     WithPoolAFail, // Use this will fail
     WithPoolALongFail, // Use this will fail
-    WithPoolATooLong
+    WithPoolATooLong,
+    SetPoolAdapters // pool-routed: messagePoolId returns its pool (POOL_A), mirroring MessageLib
 }
 
 function length(MessageKind kind) pure returns (uint16) {
@@ -56,6 +57,7 @@ function length(MessageKind kind) pure returns (uint16) {
     if (kind == MessageKind.WithPoolAFail) return 10;
     if (kind == MessageKind.WithPoolALongFail) return uint16(10);
     if (kind == MessageKind.WithPoolATooLong) return uint16(MESSAGE_MAX_LENGTH + 1);
+    if (kind == MessageKind.SetPoolAdapters) return 13;
     return 2;
 }
 
@@ -119,6 +121,14 @@ contract MockMessageProperties is IMessageProperties {
     }
 
     function messagePoolId(bytes calldata message) external pure returns (PoolId) {
+        return _poolId(message);
+    }
+
+    function routePoolId(bytes calldata message, bool) external pure returns (PoolId) {
+        return _poolId(message);
+    }
+
+    function _poolId(bytes calldata message) internal pure returns (PoolId) {
         if (message.toUint8(0) == uint8(MessageKind.WithPool0)) return POOL_0;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA1)) return POOL_A;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA1ExtraGas)) return POOL_A;
@@ -127,6 +137,7 @@ contract MockMessageProperties is IMessageProperties {
         if (message.toUint8(0) == uint8(MessageKind.WithPoolAFail)) return POOL_A;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolALongFail)) return POOL_A;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolATooLong)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.SetPoolAdapters)) return POOL_A;
         revert("Unreachable: message never asked for pool");
     }
 
@@ -291,6 +302,19 @@ contract GatewayTestHandle is GatewayTest {
         bytes memory message1 = MessageKind.WithPoolA1.asBytes();
         bytes memory message2 = MessageKind.WithPool0.asBytes();
         bytes memory batch = abi.encodePacked(message1, message2);
+
+        vm.expectRevert(IGateway.MalformedBatch.selector);
+        gateway.handle(REMOTE_CENT_ID, batch);
+    }
+
+    /// @dev A SetPoolAdapters message now reports its own pool from messagePoolId (it routes over the pool's
+    ///      own adapter set), so it can't share a batch with a global/other-pool message — the batch's
+    ///      single-pool invariant rejects it. Nothing builds such a batch today (Hub.setAdapters sends it
+    ///      standalone), but the guard makes that explicit.
+    function testErrMalformedBatchSetPoolAdaptersWithGlobalMessage() public {
+        bytes memory setPoolAdapters = MessageKind.SetPoolAdapters.asBytes(); // messagePoolId -> POOL_A
+        bytes memory globalMessage = MessageKind.WithPool0.asBytes(); // messagePoolId -> POOL_0
+        bytes memory batch = abi.encodePacked(setPoolAdapters, globalMessage);
 
         vm.expectRevert(IGateway.MalformedBatch.selector);
         gateway.handle(REMOTE_CENT_ID, batch);

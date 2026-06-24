@@ -113,6 +113,12 @@ interface IHub is IBatchedMulticall {
     ///         `value == msgValue()`; remote branch requires `value == 0`.
     error ManagerCallUnexpectedValue();
 
+    /// @notice Dispatched when setAdapters is called while the gateway is batching. SetPoolAdapters must be
+    ///         transmitted over the adapter set still shared with the destination, which requires the message
+    ///         to be sent before the new local set is applied. Batching defers the send until after the local
+    ///         set has changed, so it would route over a set the destination does not have yet.
+    error CannotSetAdaptersWhileBatching();
+
     //----------------------------------------------------------------------------------------------
     // System methods
     //----------------------------------------------------------------------------------------------

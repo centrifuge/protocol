@@ -510,11 +510,17 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     ) external payable {
         _protected(poolId);
 
-        multiAdapter.setAdapters(centrifugeId, poolId, localAdapters, threshold, recoveryIndex);
+        // Batching would defer the send until after the new set is applied, routing over a set the
+        // destination lacks, so it is disallowed here.
+        require(!gateway.isBatching(), CannotSetAdaptersWhileBatching());
 
+        // Send the remote update before applying the local set: SetPoolAdapters routes over the pool's
+        // own set, so it must travel over the set still shared with the destination.
         sender.sendSetPoolAdapters{value: msgValue()}(
             centrifugeId, poolId, remoteAdapters, threshold, recoveryIndex, refund
         );
+
+        multiAdapter.setAdapters(centrifugeId, poolId, localAdapters, threshold, recoveryIndex);
     }
 
     //----------------------------------------------------------------------------------------------

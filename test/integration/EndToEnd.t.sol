@@ -14,6 +14,7 @@ import {Hub} from "../../src/core/hub/Hub.sol";
 import {Spoke} from "../../src/core/spoke/Spoke.sol";
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {Holdings} from "../../src/core/hub/Holdings.sol";
+import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
 import {AccountId} from "../../src/core/types/AccountId.sol";
 import {Accounting} from "../../src/core/hub/Accounting.sol";
 import {Gateway} from "../../src/core/messaging/Gateway.sol";
@@ -1192,6 +1193,35 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.expectRevert(ILocalCentrifugeId.CannotBeSentLocally.selector);
         vm.startPrank(FM);
         h.hub.setAdapters{value: GAS}(POOL_A, h.centrifugeId, localAdapters, remoteAdapters, 1, 1, REFUND);
+    }
+
+    function testErrSetAdaptersWhileBatching() public {
+        _setSpoke(IN_DIFFERENT_CHAINS);
+        _createPool();
+
+        IAdapter[] memory localAdapters = new IAdapter[](1);
+        localAdapters[0] = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
+
+        bytes32[] memory remoteAdapters = new bytes32[](1);
+        remoteAdapters[0] = address(new LocalAdapter(s.centrifugeId, s.multiAdapter, FM)).toBytes32();
+
+        // Batching defers the SetPoolAdapters send until after the new local set is applied, which would
+        // route it over a set the spoke does not yet trust, so setAdapters must reject being batched.
+        bytes[] memory calls = new bytes[](1);
+        calls[0] = abi.encodeWithSelector(
+            h.hub.setAdapters.selector,
+            POOL_A,
+            s.centrifugeId,
+            localAdapters,
+            remoteAdapters,
+            uint8(1),
+            uint8(1),
+            REFUND
+        );
+
+        vm.expectRevert(IHub.CannotSetAdaptersWhileBatching.selector);
+        vm.prank(FM);
+        h.hub.multicall{value: GAS}(calls);
     }
 
     /// forge-config: default.isolate = true

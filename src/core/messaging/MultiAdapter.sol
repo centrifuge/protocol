@@ -69,7 +69,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         IAdapter[] calldata addresses,
         uint8 threshold_,
         uint8 recoveryIndex_
-    ) external auth {
+    ) external onlyAuthOrManager(poolId) {
         uint8 quorum_ = addresses.length.toUint8();
         require(quorum_ <= MAX_ADAPTER_COUNT, ExceedsMax());
         require(threshold_ <= quorum_, ThresholdHigherThanQuorum());
@@ -131,7 +131,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     function handle(uint16 centrifugeId, bytes calldata payload) external {
         uint16 sessionId = uint16(bytes2(payload[0:2]));
         bytes calldata unwrappedPayload = payload[2:];
-        PoolId poolId = messageProperties.messagePoolId(unwrappedPayload);
+        PoolId poolId = _routePoolId(centrifugeId, unwrappedPayload);
 
         IAdapter adapterAddr = IAdapter(msg.sender);
         Adapter memory adapter = _adapterDetails[centrifugeId][poolId][sessionId][adapterAddr];
@@ -164,7 +164,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         auth
         returns (bytes32)
     {
-        PoolId poolId = messageProperties.messagePoolId(payload);
+        PoolId poolId = _routePoolId(centrifugeId, payload);
         Adapters memory adapters_ = _activeAdapters[centrifugeId][poolId];
         require(adapters_.list.length != 0, EmptyAdapterSet());
 
@@ -197,7 +197,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         view
         returns (uint256 total)
     {
-        PoolId poolId = messageProperties.messagePoolId(payload);
+        PoolId poolId = _routePoolId(centrifugeId, payload);
         IAdapter[] memory adapters_ = _activeAdapters[centrifugeId][poolId].list;
         require(adapters_.length != 0, EmptyAdapterSet());
 
@@ -237,6 +237,16 @@ contract MultiAdapter is Auth, IMultiAdapter {
     /// @inheritdoc IMultiAdapter
     function activeAdapters(uint16 centrifugeId, PoolId poolId) external view returns (Adapters memory) {
         return _activeAdapters[centrifugeId][poolId];
+    }
+
+    /// @dev Resolves which pool's adapter set routes/verifies a message. The policy lives in
+    ///      `messageProperties.routePoolId`; here we only supply whether the message's own pool already has
+    ///      a set, letting an unconfigured pool fall back to the global set (see IMessageProperties). Send
+    ///      and handle apply the same rule, so both chains agree on the carrying set.
+    function _routePoolId(uint16 centrifugeId, bytes calldata payload) internal view returns (PoolId) {
+        PoolId poolId = messageProperties.messagePoolId(payload);
+        bool poolConfigured = _activeAdapters[centrifugeId][poolId].list.length != 0;
+        return messageProperties.routePoolId(payload, poolConfigured);
     }
 
     /// @dev Internal helper to get the first adapter's details for a pool, handling empty cases

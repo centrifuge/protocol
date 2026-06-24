@@ -90,12 +90,17 @@ contract MessageProcessor is Auth, IMessageProcessor {
             hubHandler.registerAsset(AssetId.wrap(m.assetId), m.decimals);
         } else if (kind == MessageType.SetPoolAdapters) {
             MessageLib.SetPoolAdapters memory m = message.deserializeSetPoolAdapters();
-            require(centrifugeId == PoolId.wrap(m.poolId).centrifugeId(), OnlyFromSource());
+            PoolId poolId = PoolId.wrap(m.poolId);
+            require(centrifugeId == poolId.centrifugeId(), OnlyFromSource());
+            // A hub configures its own pools' adapters locally via Hub.setAdapters and never accepts an
+            // inbound SetPoolAdapters for a pool it hubs. Otherwise a forged source-is-hub message (e.g. over
+            // compromised global adapters) could install an attacker-controlled adapter set on the hub.
+            require(multiAdapter.localCentrifugeId() != poolId.centrifugeId(), CannotSetAdaptersOnHub());
             IAdapter[] memory adapters = new IAdapter[](m.adapterList.length);
             for (uint256 i; i < adapters.length; i++) {
                 adapters[i] = IAdapter(m.adapterList[i].toAddress());
             }
-            multiAdapter.setAdapters(centrifugeId, PoolId.wrap(m.poolId), adapters, m.threshold, m.recoveryIndex);
+            multiAdapter.setAdapters(centrifugeId, poolId, adapters, m.threshold, m.recoveryIndex);
         } else if (kind == MessageType.Request) {
             MessageLib.Request memory m = MessageLib.deserializeRequest(message);
             hubHandler.request(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
