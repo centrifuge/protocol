@@ -143,6 +143,27 @@ library MessageLib {
         return PoolId.wrap(0);
     }
 
+    /// @notice Whether a message is emitted by the Hub and processed on the spoke side.
+    /// @dev    Hub->spoke messages must originate from the pool's home chain (where the Hub lives),
+    ///         otherwise any chain holding an adapter set for the pool (e.g. a compromised spoke whose
+    ///         set lives on the Hub chain) could forge them. All pool-dependent messages are Hub->spoke
+    ///         by default - so newly added messages are protected automatically - except the spoke->hub
+    ///         messages explicitly excluded here. `SetPoolAdapters` is pool-dependent but ordered before
+    ///         `NotifyPool` (it bootstraps the pool adapter set via the global route), so it is matched
+    ///         explicitly. Every Hub->spoke message carries its `poolId` at offset 1.
+    ///
+    ///         When adding a new message type, classify it: a spoke->hub message MUST be added to the
+    ///         exclusion list below, otherwise it will be incorrectly rejected when arriving from its
+    ///         (spoke) source chain; a Hub->spoke message needs no change as it is covered by default.
+    ///         `isHubToSpoke` is exhaustively checked against every message type in MessageLib.t.sol.
+    function isHubToSpoke(MessageType kind) internal pure returns (bool) {
+        if (kind == MessageType.SetPoolAdapters) return true;
+        if (kind < MessageType.NotifyPool) return false;
+        return kind != MessageType.InitiateTransferShares && kind != MessageType.UpdateHoldingAmount
+            && kind != MessageType.UpdateShares && kind != MessageType.Request
+            && kind != MessageType.UntrustedContractUpdate;
+    }
+
     /// @notice The pool whose adapter set should route/verify `message`. Normally the message's own pool
     ///         (`messagePoolId`), with one exception: a SetPoolAdapters for a pool that has no adapter set
     ///         yet (`poolConfigured == false`) falls back to the global pool, because the pool's first

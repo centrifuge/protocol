@@ -76,6 +76,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function handle(uint16 centrifugeId, bytes calldata message) external auth {
         MessageType kind = message.messageType();
 
+        if (kind.isHubToSpoke()) {
+            require(centrifugeId == message.messagePoolId().centrifugeId(), OnlyFromSource());
+        }
+
         if (kind == MessageType.ScheduleUpgrade) {
             require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
@@ -91,7 +95,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.SetPoolAdapters) {
             MessageLib.SetPoolAdapters memory m = message.deserializeSetPoolAdapters();
             PoolId poolId = PoolId.wrap(m.poolId);
-            require(centrifugeId == poolId.centrifugeId(), OnlyFromSource());
             // A hub configures its own pools' adapters locally via Hub.setAdapters and never accepts an
             // inbound SetPoolAdapters for a pool it hubs. Otherwise a forged source-is-hub message (e.g. over
             // compromised global adapters) could install an attacker-controlled adapter set on the hub.
@@ -105,7 +108,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
             MessageLib.Request memory m = MessageLib.deserializeRequest(message);
             hubHandler.request(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
         } else if (kind == MessageType.NotifyPool) {
-            spoke.addPool(PoolId.wrap(MessageLib.deserializeNotifyPool(message).poolId));
+            MessageLib.NotifyPool memory m = MessageLib.deserializeNotifyPool(message);
+            spoke.addPool(PoolId.wrap(m.poolId));
         } else if (kind == MessageType.NotifyShareClass) {
             MessageLib.NotifyShareClass memory m = MessageLib.deserializeNotifyShareClass(message);
             spoke.addShareClass(

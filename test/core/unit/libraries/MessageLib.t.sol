@@ -651,3 +651,46 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
     }
 }
+
+contract TestMessageLibIsHubToSpoke is Test {
+    /// @dev Exhaustive, hand-maintained expectation for every MessageType, cross-checking
+    ///      MessageLib.isHubToSpoke. If a new message type is added, this test fails until it is
+    ///      classified here, surfacing any spoke->hub message that was not excluded in isHubToSpoke
+    ///      (which would otherwise be wrongly rejected when arriving from its source chain).
+    function testIsHubToSpokeForEveryMessageType() public pure {
+        uint256 max = uint256(type(MessageType).max);
+        bool[] memory expected = new bool[](max + 1);
+
+        // Hub->spoke messages (processed on the spoke side; must come from the pool's home chain).
+        expected[uint256(MessageType.SetPoolAdapters)] = true;
+        expected[uint256(MessageType.NotifyPool)] = true;
+        expected[uint256(MessageType.NotifyShareClass)] = true;
+        expected[uint256(MessageType.NotifyPricePoolPerShare)] = true;
+        expected[uint256(MessageType.NotifyPricePoolPerAsset)] = true;
+        expected[uint256(MessageType.NotifyShareMetadata)] = true;
+        expected[uint256(MessageType.UpdateShareHook)] = true;
+        expected[uint256(MessageType.ExecuteTransferShares)] = true;
+        expected[uint256(MessageType.UpdateRestriction)] = true;
+        expected[uint256(MessageType.UpdateVault)] = true;
+        expected[uint256(MessageType.SetMaxAssetPriceAge)] = true;
+        expected[uint256(MessageType.SetMaxSharePriceAge)] = true;
+        expected[uint256(MessageType.RequestCallback)] = true;
+        expected[uint256(MessageType.SetRequestManager)] = true;
+        expected[uint256(MessageType.TrustedContractUpdate)] = true;
+        expected[uint256(MessageType.UpdateManager)] = true;
+
+        // Reserved gaps fall in the pool-dependent range, so they are treated as Hub->spoke
+        // (fail-safe). They are never valid messages - handle() reverts them as InvalidMessage - and
+        // occupy the slots of removed Hub->spoke manager messages.
+        expected[uint256(MessageType._GAP2)] = true;
+        expected[uint256(MessageType._GAP3)] = true;
+
+        // Everything else is false: the pool-independent messages (_Invalid, ScheduleUpgrade,
+        // CancelUpgrade, _GAP, RegisterAsset) and the spoke->hub messages (InitiateTransferShares,
+        // UpdateHoldingAmount, UpdateShares, Request, UntrustedContractUpdate).
+
+        for (uint256 i = 0; i <= max; i++) {
+            assertEq(MessageLib.isHubToSpoke(MessageType(i)), expected[i], "unexpected isHubToSpoke classification");
+        }
+    }
+}
