@@ -211,25 +211,25 @@ contract AdapterFailoverTest is Test {
     }
 
     //----------------------------------------------------------------------------------------------
-    // denySession
+    // blockSession
     //----------------------------------------------------------------------------------------------
 
-    function testDenySessionForwardsToMultiAdapter() public {
+    function testBlockSessionForwardsToMultiAdapter() public {
         uint16 sessionId = 3;
 
         vm.expectCall(
             multiAdapter,
-            abi.encodeWithSelector(IMultiAdapter.denySession.selector, HUB_CENTRIFUGE_ID, POOL_A, sessionId)
+            abi.encodeWithSelector(IMultiAdapter.blockSession.selector, HUB_CENTRIFUGE_ID, POOL_A, sessionId)
         );
-        vm.mockCall(multiAdapter, abi.encodeWithSelector(IMultiAdapter.denySession.selector), "");
+        vm.mockCall(multiAdapter, abi.encodeWithSelector(IMultiAdapter.blockSession.selector), "");
 
-        adapterFailover.denySession(HUB_CENTRIFUGE_ID, POOL_A, sessionId);
+        adapterFailover.blockSession(HUB_CENTRIFUGE_ID, POOL_A, sessionId);
     }
 
-    function testDenySessionOnlySteward() public {
+    function testBlockSessionOnlySteward() public {
         vm.prank(outsider);
         vm.expectRevert(IAdapterFailover.NotSteward.selector);
-        adapterFailover.denySession(HUB_CENTRIFUGE_ID, POOL_A, 1);
+        adapterFailover.blockSession(HUB_CENTRIFUGE_ID, POOL_A, 1);
     }
 
     //----------------------------------------------------------------------------------------------

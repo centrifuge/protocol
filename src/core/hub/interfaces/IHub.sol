@@ -488,7 +488,7 @@ interface IHub is IBatchedMulticall {
     ///         All messages sent always use the latest session ID.
     ///         The system can still receive message from old session IDs.
     ///         If you want to block messages attached to some session ID from being processed,
-    ///         you need to call denySession() in the receiver side.
+    ///         you need to call blockSession() in the receiver side.
     /// @param poolId Pool associated to this configuration
     /// @param centrifugeId Chain where to perform the adapter configuration
     /// @param localAdapters Adapter addresses in this chain

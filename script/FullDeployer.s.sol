@@ -391,8 +391,7 @@ contract FullDeployer is BaseDeployer, Constants {
             create3(
                 createSalt("protocolGuardian", V3_1),
                 abi.encodePacked(
-                    type(ProtocolGuardian).creationCode,
-                    abi.encode(ISafe(address(batcher)), root, multiAdapter, messageDispatcher)
+                    type(ProtocolGuardian).creationCode, abi.encode(ISafe(address(batcher)), root, messageDispatcher)
                 )
             )
         );

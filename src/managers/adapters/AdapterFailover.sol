@@ -96,12 +96,12 @@ contract AdapterFailover is Auth, ITrustedContractUpdate, IAdapterFailover {
     }
 
     /// @inheritdoc IAdapterFailover
-    function denySession(uint16 centrifugeId, PoolId poolId, uint16 sessionId)
+    function blockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId)
         external
         notGlobalPool(poolId)
         onlySteward(poolId)
     {
-        multiAdapter.denySession(centrifugeId, poolId, sessionId);
+        multiAdapter.blockSession(centrifugeId, poolId, sessionId);
     }
 
     /// @inheritdoc IAdapterFailover

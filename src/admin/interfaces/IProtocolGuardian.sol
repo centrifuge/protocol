@@ -4,8 +4,6 @@ pragma solidity >=0.5.0;
 import {IRoot} from "./IRoot.sol";
 import {ISafe} from "./ISafe.sol";
 
-import {PoolId} from "../../core/types/PoolId.sol";
-import {IMultiAdapter} from "../../core/messaging/interfaces/IMultiAdapter.sol";
 import {IScheduleAuthMessageSender} from "../../core/messaging/interfaces/IGatewaySenders.sol";
 
 interface IProtocolGuardian {
@@ -45,15 +43,8 @@ interface IProtocolGuardian {
     /// @param refund Address to receive unused gas refund
     function cancelUpgrade(uint16 centrifugeId, address target, address refund) external payable;
 
-    /// @notice Remove adapter configuration for a session, blocking those adapters from voting on messages
-    /// @dev Local-only operation for fast emergency response
-    /// @param centrifugeId Target chain ID
-    /// @param poolId PoolId associated to the adapters
-    /// @param sessionId Session to revoke
-    function denySession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external;
-
     /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'safe', 'multiAdapter', or 'sender'
+    /// @param what Accepts a bytes32 representation of 'safe' or 'sender'
     /// @param data New value for the parameter
     function file(bytes32 what, address data) external;
 
@@ -66,9 +57,6 @@ interface IProtocolGuardian {
 
     /// @notice Multisig that authorizes protocol-level guardian operations
     function safe() external view returns (ISafe);
-
-    /// @notice Multi-adapter used for denying sessions during emergencies
-    function multiAdapter() external view returns (IMultiAdapter);
 
     /// @notice Dispatches cross-chain messages for remote upgrade scheduling and cancellation
     function sender() external view returns (IScheduleAuthMessageSender);

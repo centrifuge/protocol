@@ -61,7 +61,7 @@ interface IAdapterFailover {
     /// @notice Configure the contract. Currently only the "timelock" key (the veto window, in seconds).
     function file(bytes32 what, uint64 value) external;
 
-    /// @notice Grant or revoke an account's permission to drive failover for a pool (arm, cancel, deny a
+    /// @notice Grant or revoke an account's permission to drive failover for a pool (arm, cancel, block a
     ///         session). Ward-gated. The hub can also set a pool's steward over the pool's adapters via a
     ///         `TrustedCall.UpdateSteward` contract update. Executing an armed failover stays permissionless.
     function updateSteward(PoolId poolId, address who, bool isSteward) external;
@@ -80,8 +80,8 @@ interface IAdapterFailover {
     function cancelFailover(uint16 centrifugeId, PoolId poolId) external;
 
     /// @notice Disable an adapter session on the local MultiAdapter. AdapterFailover is the registered
-    ///         manager, so this is the steward's path to deny a stuck or compromised session.
-    function denySession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external;
+    ///         manager, so this is the steward's path to block a stuck or compromised session.
+    function blockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external;
 
     /// @notice Install the armed set after the veto window has elapsed. Permissionless: the params must
     ///         match what was armed, so a finalizer cannot substitute a different set.

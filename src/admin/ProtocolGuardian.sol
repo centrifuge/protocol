@@ -7,25 +7,21 @@ import {IProtocolGuardian} from "./interfaces/IProtocolGuardian.sol";
 
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
-import {PoolId} from "../core/types/PoolId.sol";
-import {IMultiAdapter} from "../core/messaging/interfaces/IMultiAdapter.sol";
 import {IScheduleAuthMessageSender} from "../core/messaging/interfaces/IGatewaySenders.sol";
 
 /// @title  ProtocolGuardian
 /// @notice This contract provides emergency controls and protocol-level management including pausing,
-///         permission scheduling, cross-chain upgrade coordination, and adapter configuration.
+///         permission scheduling, and cross-chain upgrade coordination.
 contract ProtocolGuardian is IProtocolGuardian {
     using CastLib for address;
 
     IRoot public immutable root;
     ISafe public safe;
-    IMultiAdapter public multiAdapter;
     IScheduleAuthMessageSender public sender;
 
-    constructor(ISafe safe_, IRoot root_, IMultiAdapter multiAdapter_, IScheduleAuthMessageSender sender_) {
+    constructor(ISafe safe_, IRoot root_, IScheduleAuthMessageSender sender_) {
         safe = safe_;
         root = root_;
-        multiAdapter = multiAdapter_;
         sender = sender_;
     }
 
@@ -46,7 +42,6 @@ contract ProtocolGuardian is IProtocolGuardian {
     /// @inheritdoc IProtocolGuardian
     function file(bytes32 what, address data) external onlySafe {
         if (what == "safe") safe = ISafe(data);
-        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "sender") sender = IScheduleAuthMessageSender(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -78,15 +73,6 @@ contract ProtocolGuardian is IProtocolGuardian {
     /// @inheritdoc IProtocolGuardian
     function cancelRely(address target) external onlySafe {
         root.cancelRely(target);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Emergency Functions (Local)
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IProtocolGuardian
-    function denySession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external onlySafeOrOwner {
-        multiAdapter.denySession(centrifugeId, poolId, sessionId);
     }
 
     //----------------------------------------------------------------------------------------------

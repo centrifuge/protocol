@@ -74,6 +74,11 @@ contract OpsGuardian is IOpsGuardian {
         IAdapterWiring(adapter).wire(centrifugeId, data);
     }
 
+    /// @inheritdoc IOpsGuardian
+    function blockSession(uint16 centrifugeId, uint16 sessionId) external onlySafe {
+        multiAdapter.blockSession(centrifugeId, GLOBAL_POOL, sessionId);
+    }
+
     //----------------------------------------------------------------------------------------------
     // Pool Management
     //----------------------------------------------------------------------------------------------

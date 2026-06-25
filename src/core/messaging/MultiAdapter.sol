@@ -23,20 +23,27 @@ contract MultiAdapter is Auth, IMultiAdapter {
     using MathLib for uint256;
     using ArrayLib for int16[8];
 
+    // Parameters
     uint16 public immutable localCentrifugeId;
 
+    // Dependencies
     IMessageHandler public gateway;
     IMessageProperties public messageProperties;
 
+    // Authorization
     mapping(PoolId => mapping(address => bool)) public manager;
 
+    // Adapters & sessions
     mapping(uint16 centrifugeId => mapping(PoolId => uint16)) public activeSessionId;
     mapping(uint16 centrifugeId => mapping(PoolId => Adapters)) internal _activeAdapters;
     mapping(uint16 centrifugeId => mapping(PoolId => mapping(uint16 sessionId => IAdapter[]))) public adapters;
     mapping(
         uint16 centrifugeId => mapping(PoolId => mapping(uint16 sessionId => mapping(IAdapter adapter => Adapter)))
     ) internal _adapterDetails;
+    mapping(uint16 centrifugeId => mapping(PoolId => mapping(uint16 sessionId => BlockedSession))) internal
+        _blockedSessions;
 
+    /// Inbound messages
     mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => int16[MAX_ADAPTER_COUNT])) internal _votes;
 
     constructor(uint16 localCentrifugeId_, IMessageHandler gateway_, address deployer) Auth(deployer) {
@@ -83,38 +90,72 @@ contract MultiAdapter is Auth, IMultiAdapter {
         if (sessionId == 0) sessionId = 1;
         activeSessionId[centrifugeId][poolId] = sessionId;
 
-        // Enable new adapters, setting quorum to number of adapters
-        for (uint8 j; j < quorum_; j++) {
-            require(_adapterDetails[centrifugeId][poolId][sessionId][addresses[j]].id == 0, NoDuplicatesAllowed());
-
-            // Ids are assigned sequentially starting at 1
-            _adapterDetails[centrifugeId][poolId][sessionId][addresses[j]] =
-                Adapter(j + 1, quorum_, threshold_, recoveryIndex_);
-        }
-
-        adapters[centrifugeId][poolId][sessionId] = addresses;
+        _installSession(centrifugeId, poolId, sessionId, addresses, threshold_, recoveryIndex_);
         _activeAdapters[centrifugeId][poolId] = Adapters(sessionId, addresses);
 
         emit SetAdapters(centrifugeId, poolId, addresses, threshold_, recoveryIndex_);
     }
 
+    /// @dev Writes the per-adapter details and the session's adapter list, assigning ids sequentially from 1.
+    function _installSession(
+        uint16 centrifugeId,
+        PoolId poolId,
+        uint16 sessionId,
+        IAdapter[] memory list,
+        uint8 threshold_,
+        uint8 recoveryIndex_
+    ) internal {
+        uint8 quorum_ = list.length.toUint8();
+        for (uint8 i; i < quorum_; i++) {
+            require(_adapterDetails[centrifugeId][poolId][sessionId][list[i]].id == 0, NoDuplicatesAllowed());
+
+            // Ids are assigned sequentially starting at 1
+            _adapterDetails[centrifugeId][poolId][sessionId][list[i]] =
+                Adapter(i + 1, quorum_, threshold_, recoveryIndex_);
+        }
+
+        adapters[centrifugeId][poolId][sessionId] = list;
+    }
+
     /// @inheritdoc IMultiAdapter
-    function denySession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external onlyAuthOrManager(poolId) {
-        uint256 numAdapters = adapters[centrifugeId][poolId][sessionId].length;
+    function blockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external onlyAuthOrManager(poolId) {
+        IAdapter[] memory list = adapters[centrifugeId][poolId][sessionId];
+        uint256 numAdapters = list.length;
+        require(numAdapters != 0, SessionNotConfigured());
 
-        for (uint8 i; i < numAdapters; i++) {
-            IAdapter adapter = adapters[centrifugeId][poolId][sessionId][i];
-            delete _adapterDetails[centrifugeId][poolId][sessionId][adapter];
+        // Move the session configuration out of the live storage so handle()/send() reject it through their
+        // existing checks (InvalidAdapter / EmptyAdapterSet), avoiding an extra SLOAD on every message.
+        // threshold and recoveryIndex are session-wide, so reading them from the first adapter is enough to restore.
+        Adapter memory first = _adapterDetails[centrifugeId][poolId][sessionId][list[0]];
+        bool wasActive = sessionId == activeSessionId[centrifugeId][poolId];
+        _blockedSessions[centrifugeId][poolId][sessionId] =
+            BlockedSession(first.threshold, first.recoveryIndex, wasActive, list);
+
+        for (uint256 i; i < numAdapters; i++) {
+            delete _adapterDetails[centrifugeId][poolId][sessionId][list[i]];
         }
-
         delete adapters[centrifugeId][poolId][sessionId];
+        if (wasActive) delete _activeAdapters[centrifugeId][poolId];
 
-        // If the session is the active one, we also remove the capability of sending messages through the adapters
-        if (sessionId == activeSessionId[centrifugeId][poolId]) {
-            delete _activeAdapters[centrifugeId][poolId];
+        emit BlockSession(centrifugeId, poolId, sessionId);
+    }
+
+    /// @inheritdoc IMultiAdapter
+    function unblockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external onlyAuthOrManager(poolId) {
+        BlockedSession memory blocked = _blockedSessions[centrifugeId][poolId][sessionId];
+        require(blocked.list.length != 0, SessionNotBlocked());
+
+        // Move the configuration back into the live storage, rebuilding the per-adapter details.
+        _installSession(centrifugeId, poolId, sessionId, blocked.list, blocked.threshold, blocked.recoveryIndex);
+
+        // Only restore the active set if this is still the active session; a later setAdapters may have replaced it.
+        if (blocked.wasActive && sessionId == activeSessionId[centrifugeId][poolId]) {
+            _activeAdapters[centrifugeId][poolId] = Adapters(sessionId, blocked.list);
         }
 
-        emit DenySession(centrifugeId, poolId, sessionId);
+        delete _blockedSessions[centrifugeId][poolId][sessionId];
+
+        emit UnblockSession(centrifugeId, poolId, sessionId);
     }
 
     /// @inheritdoc IMultiAdapter
@@ -213,6 +254,11 @@ contract MultiAdapter is Auth, IMultiAdapter {
     //----------------------------------------------------------------------------------------------
     // Getters
     //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IMultiAdapter
+    function blockedSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external view returns (bool) {
+        return _blockedSessions[centrifugeId][poolId][sessionId].list.length != 0;
+    }
 
     /// @inheritdoc IMultiAdapter
     function quorum(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {

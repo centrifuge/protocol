@@ -3,9 +3,7 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
-import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {IScheduleAuthMessageSender} from "../../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
@@ -22,7 +20,6 @@ contract ProtocolGuardianTest is Test {
 
     IRoot immutable root = IRoot(address(new IsContract()));
     ISafe immutable SAFE = ISafe(address(new IsContract()));
-    IMultiAdapter immutable multiAdapter = IMultiAdapter(address(new IsContract()));
     IScheduleAuthMessageSender immutable sender = IScheduleAuthMessageSender(address(new IsContract()));
 
     address immutable OWNER = makeAddr("owner");
@@ -32,20 +29,17 @@ contract ProtocolGuardianTest is Test {
     IAdapter immutable ADAPTER = IAdapter(makeAddr("adapter"));
 
     uint16 constant CENTRIFUGE_ID = 1;
-    uint16 constant SESSION_ID = 1;
     uint256 constant COST = 123;
-    PoolId constant POOL_ID = PoolId.wrap(1);
     ProtocolGuardian protocolGuardian;
 
     function setUp() public {
-        protocolGuardian = new ProtocolGuardian(SAFE, root, multiAdapter, sender);
+        protocolGuardian = new ProtocolGuardian(SAFE, root, sender);
         vm.deal(address(SAFE), 1 ether);
     }
 
     function testProtocolGuardian() public view {
         assertEq(address(protocolGuardian.safe()), address(SAFE));
         assertEq(address(protocolGuardian.root()), address(root));
-        assertEq(address(protocolGuardian.multiAdapter()), address(multiAdapter));
         assertEq(address(protocolGuardian.sender()), address(sender));
     }
 }
@@ -190,43 +184,6 @@ contract ProtocolGuardianTestCancelUpgrade is ProtocolGuardianTest {
     }
 }
 
-contract ProtocolGuardianTestDenySession is ProtocolGuardianTest {
-    function testDenySessionSuccessWithSafe() public {
-        vm.mockCall(
-            address(multiAdapter),
-            abi.encodeWithSelector(IMultiAdapter.denySession.selector, CENTRIFUGE_ID, POOL_ID, SESSION_ID),
-            abi.encode()
-        );
-        vm.expectCall(
-            address(multiAdapter),
-            abi.encodeWithSelector(IMultiAdapter.denySession.selector, CENTRIFUGE_ID, POOL_ID, SESSION_ID)
-        );
-
-        vm.prank(address(SAFE));
-        protocolGuardian.denySession(CENTRIFUGE_ID, POOL_ID, SESSION_ID);
-    }
-
-    function testDenySessionSuccessWithOwner() public {
-        vm.mockCall(
-            address(multiAdapter),
-            abi.encodeWithSelector(IMultiAdapter.denySession.selector, CENTRIFUGE_ID, POOL_ID, SESSION_ID),
-            abi.encode()
-        );
-        vm.mockCall(address(SAFE), abi.encodeWithSelector(ISafe.isOwner.selector, OWNER), abi.encode(true));
-
-        vm.prank(OWNER);
-        protocolGuardian.denySession(CENTRIFUGE_ID, POOL_ID, SESSION_ID);
-    }
-
-    function testDenySessionRevertWhenUnauthorized() public {
-        vm.mockCall(address(SAFE), abi.encodeWithSelector(ISafe.isOwner.selector, UNAUTHORIZED), abi.encode(false));
-
-        vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafeOrItsOwner.selector);
-        protocolGuardian.denySession(CENTRIFUGE_ID, POOL_ID, SESSION_ID);
-    }
-}
-
 contract ProtocolGuardianTestFile is ProtocolGuardianTest {
     function testFileSafeSuccess() public {
         address newSafe = makeAddr("newSafe");
@@ -238,18 +195,6 @@ contract ProtocolGuardianTestFile is ProtocolGuardianTest {
         protocolGuardian.file("safe", newSafe);
 
         assertEq(address(protocolGuardian.safe()), newSafe);
-    }
-
-    function testFileMultiAdapterSuccess() public {
-        address newMultiAdapter = makeAddr("newMultiAdapter");
-
-        vm.expectEmit();
-        emit IProtocolGuardian.File("multiAdapter", newMultiAdapter);
-
-        vm.prank(address(SAFE));
-        protocolGuardian.file("multiAdapter", newMultiAdapter);
-
-        assertEq(address(protocolGuardian.multiAdapter()), newMultiAdapter);
     }
 
     function testFileSenderSuccess() public {

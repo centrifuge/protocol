@@ -343,3 +343,28 @@ contract OpsGuardianTestWire is OpsGuardianTest {
         opsGuardian.wire(address(ADAPTER), REMOTE_CENTRIFUGE_ID, data);
     }
 }
+
+contract OpsGuardianTestBlockSession is OpsGuardianTest {
+    uint16 constant SESSION_ID = 7;
+
+    function testBlockSessionSuccess() public {
+        vm.mockCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.blockSession.selector, CENTRIFUGE_ID, GLOBAL_POOL, SESSION_ID),
+            abi.encode()
+        );
+        vm.expectCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.blockSession.selector, CENTRIFUGE_ID, GLOBAL_POOL, SESSION_ID)
+        );
+
+        vm.prank(address(SAFE));
+        opsGuardian.blockSession(CENTRIFUGE_ID, SESSION_ID);
+    }
+
+    function testBlockSessionRevertWhenNotSafe() public {
+        vm.prank(UNAUTHORIZED);
+        vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
+        opsGuardian.blockSession(CENTRIFUGE_ID, SESSION_ID);
+    }
+}

@@ -34,13 +34,23 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
         IAdapter[] list;
     }
 
+    /// @dev Stash holding a blocked session's configuration so it can be restored on unblock.
+    ///      A session is blocked iff its stashed list is non-empty.
+    struct BlockedSession {
+        uint8 threshold;
+        uint8 recoveryIndex;
+        bool wasActive;
+        IAdapter[] list;
+    }
+
     //----------------------------------------------------------------------------------------------
     // Events
     //----------------------------------------------------------------------------------------------
 
     event File(bytes32 indexed what, address addr);
     event SetAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] adapters, uint8 threshold, uint8 recoveryIndex);
-    event DenySession(uint16 centrifugeId, PoolId poolId, uint16 sessionId);
+    event BlockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId);
+    event UnblockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId);
     event HandlePayload(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
     event SendPayload(
         uint16 indexed centrifugeId,
@@ -78,6 +88,12 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
 
     /// @notice Dispatched when the contract tries to handle a message from an adapter not contained in the adapter set.
     error InvalidAdapter();
+
+    /// @notice Dispatched when trying to block a session that has no adapters configured.
+    error SessionNotConfigured();
+
+    /// @notice Dispatched when trying to unblock a session that is not currently blocked.
+    error SessionNotBlocked();
 
     //----------------------------------------------------------------------------------------------
     // Administration
@@ -119,11 +135,18 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
         uint8 recoveryIndex
     ) external;
 
-    /// @notice Remove adapter details for a given session, preventing those adapters from voting on messages.
+    /// @notice Mark a session as blocked, preventing its adapters from voting on incoming messages and, if it is the
+    ///         active session, from sending outgoing messages. The session can later be recovered with unblockSession().
     /// @param  centrifugeId Chain where the adapters are configured for
     /// @param  poolId PoolId associated to the adapters
-    /// @param  sessionId Session to revoke
-    function denySession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external;
+    /// @param  sessionId Session to block
+    function blockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external;
+
+    /// @notice Recover a previously blocked session, re-enabling its adapters.
+    /// @param  centrifugeId Chain where the adapters are configured for
+    /// @param  poolId PoolId associated to the adapters
+    /// @param  sessionId Session to unblock
+    function unblockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external;
 
     /// @notice Configures a manager address for a pool
     /// @param poolId PoolId associated to the adapters
@@ -153,6 +176,12 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @param centrifugeId The source chain identifier
     /// @param poolId The pool identifier
     function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint16);
+
+    /// @notice Returns whether a session has been blocked
+    /// @param centrifugeId The source chain identifier
+    /// @param poolId The pool identifier
+    /// @param sessionId The session identifier
+    function blockedSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external view returns (bool);
 
     /// @notice Returns the adapter at a given index for a specific session
     /// @param centrifugeId The source chain identifier

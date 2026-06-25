@@ -37,6 +37,12 @@ interface IOpsGuardian {
     /// @param data ABI-encoded adapter-specific configuration data
     function wire(address adapter, uint16 centrifugeId, bytes memory data) external;
 
+    /// @notice Mark a global-pool session as blocked, preventing its adapters from voting on messages
+    /// @dev Local-only operation for fast emergency response; recovery (unblock) is performed via a Spell
+    /// @param centrifugeId Target chain ID
+    /// @param sessionId Session to block
+    function blockSession(uint16 centrifugeId, uint16 sessionId) external;
+
     /// @notice Updates a contract parameter
     /// @param what Accepts a bytes32 representation of 'opsSafe', 'hub', or 'multiAdapter'
     /// @param data New value for the parameter
