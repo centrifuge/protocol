@@ -436,6 +436,80 @@ contract GatewayTestRetry is GatewayTest {
     }
 }
 
+contract GatewayTestClearFailedMessage is GatewayTest {
+    function testErrNotAuthorized() public {
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
+
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.clearFailedMessage(REMOTE_CENT_ID, batch);
+    }
+
+    function testErrNotFailedMessage() public {
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
+
+        vm.expectRevert(IGateway.NotFailedMessage.selector);
+        gateway.clearFailedMessage(REMOTE_CENT_ID, batch);
+    }
+
+    function testClearFailedMessageAsWard() public {
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
+
+        gateway.handle(REMOTE_CENT_ID, batch);
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 1);
+
+        vm.expectEmit();
+        emit IGateway.ClearFailedMessage(REMOTE_CENT_ID, keccak256(batch));
+        gateway.clearFailedMessage(REMOTE_CENT_ID, batch);
+
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);
+        // The message can no longer be retried nor denied
+        vm.expectRevert(IGateway.NotFailedMessage.selector);
+        gateway.retry(REMOTE_CENT_ID, batch);
+    }
+
+    function testClearFailedMessageAsManager() public {
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
+
+        gateway.handle(REMOTE_CENT_ID, batch);
+
+        // POOL_A is the pool of WithPoolAFail
+        gateway.updateManager(POOL_A, ANY, true);
+
+        vm.prank(ANY);
+        gateway.clearFailedMessage(REMOTE_CENT_ID, batch);
+
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);
+    }
+
+    function testClearFailedMessageDecrementsOneAtATime() public {
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
+
+        gateway.handle(REMOTE_CENT_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, batch);
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 2);
+
+        gateway.clearFailedMessage(REMOTE_CENT_ID, batch);
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 1);
+
+        gateway.clearFailedMessage(REMOTE_CENT_ID, batch);
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);
+    }
+
+    function testClearFailedMessageRevokedManager() public {
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
+
+        gateway.handle(REMOTE_CENT_ID, batch);
+
+        gateway.updateManager(POOL_A, ANY, true);
+        gateway.updateManager(POOL_A, ANY, false);
+
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.clearFailedMessage(REMOTE_CENT_ID, batch);
+    }
+}
+
 contract GatewayTestSend is GatewayTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);

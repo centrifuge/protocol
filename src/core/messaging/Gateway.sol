@@ -63,6 +63,11 @@ contract Gateway is Auth, Recoverable, IGateway {
         _;
     }
 
+    modifier onlyAuthOrManager(PoolId poolId) {
+        require(wards[msg.sender] == 1 || manager[poolId][msg.sender], NotAuthorized());
+        _;
+    }
+
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
@@ -81,6 +86,18 @@ contract Gateway is Auth, Recoverable, IGateway {
     function updateManager(PoolId poolId, address who, bool canManage) external auth {
         manager[poolId][who] = canManage;
         emit UpdateManager(poolId, who, canManage);
+    }
+
+    /// @inheritdoc IGateway
+    function clearFailedMessage(uint16 centrifugeId, bytes memory message)
+        external
+        onlyAuthOrManager(messageProperties.messagePoolId(message))
+    {
+        bytes32 messageHash = keccak256(message);
+        require(failedMessages[centrifugeId][messageHash] > 0, NotFailedMessage());
+
+        failedMessages[centrifugeId][messageHash]--;
+        emit ClearFailedMessage(centrifugeId, messageHash);
     }
 
     //----------------------------------------------------------------------------------------------

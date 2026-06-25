@@ -37,6 +37,7 @@ interface IGateway is IMessageHandler, IRecoverable {
     event RepayBatch(uint16 indexed centrifugeId, bytes batch);
     event ExecuteMessage(uint16 indexed centrifugeId, bytes32 messageHash);
     event FailMessage(uint16 indexed centrifugeId, bytes32 messageHash, bytes error);
+    event ClearFailedMessage(uint16 indexed centrifugeId, bytes32 messageHash);
     event SetRefundAddress(PoolId poolId, IRecoverable refund);
     event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
     event WithdrawSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
@@ -114,6 +115,15 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @param who Address to update manager status for
     /// @param canManage Whether the address can manage the gateway for the pool
     function updateManager(PoolId poolId, address who, bool canManage) external;
+
+    /// @notice Remove a failed message so it can no longer be retried.
+    /// @dev    Restricted to wards or a manager of the message's pool. Unlike `retry`, which anyone may call,
+    ///         this lets the pool's gateway manager discard a failed message that should never be processed
+    ///         (e.g. one that only became valid long after failing). Decrements the failed count by one,
+    ///         mirroring `retry`'s per-instance semantics.
+    /// @param centrifugeId The source chain the message originated from
+    /// @param message The failed message to remove
+    function clearFailedMessage(uint16 centrifugeId, bytes memory message) external;
 
     //----------------------------------------------------------------------------------------------
     // Message handling
